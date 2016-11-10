@@ -25,7 +25,7 @@ Sean Hagar; see XpLoader_LICENSE.txt for more info.
 
 To run armcom2.py, you will need:
 
-Python 2.7.8	http://www.python.org/download/releases/2.7.8/
-Libtcod 1.5.1	http://bitbucket.org/libtcod/libtcod
-PyGame 1.9.1	http://www.pygame.org/download.shtml
-XPLoader	http://github.com/RCIX/XPLoader
+* Python 2.7.8	http://www.python.org/download/releases/2.7.8/
+* Libtcod 1.5.1	http://bitbucket.org/libtcod/libtcod
+* PyGame 1.9.1	http://www.pygame.org/download.shtml
+* XPLoader	http://github.com/RCIX/XPLoader

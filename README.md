@@ -19,9 +19,6 @@ You should have received a copy of the GNU General Public License
 along with Armoured Commander II, in the form of a file named "license.txt".
 If not, see <http://www.gnu.org/licenses/>.
 
-xp_loader.py is covered under a MIT License (MIT) and is Copyright (c) 2015
-Sean Hagar; see XpLoader_LICENSE.txt for more info.
-
 
 To run armcom2.py, you will need:
 
@@ -29,3 +26,5 @@ To run armcom2.py, you will need:
 * Libtcod 1.5.1	http://bitbucket.org/libtcod/libtcod
 * PyGame 1.9.1	http://www.pygame.org/download.shtml
 * XPLoader	http://github.com/RCIX/XPLoader
+
+Note that since this is still a Proof of Concept, there's no versioning, so this version will be replaced eventually until the game is developed enough to start an Alpha series.

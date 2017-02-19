@@ -11,7 +11,7 @@
 #                                                                                        #
 ##########################################################################################
 #
-#    Copyright (c) 2016 Gregory Adam Scott (sudasana@gmail.com)
+#    Copyright (c) 2016-2017 Gregory Adam Scott (sudasana@gmail.com)
 #
 #    This file is part of Armoured Commander II.
 #
@@ -36,38 +36,46 @@
 
 ##########################################################################################
 #                                                                                        #
-#        The author does not condone any of the actions or events depicted herein        #
+#      The author does not condone any of the actions or ideologies depicted herein      #
 #                                                                                        #
 ##########################################################################################
 
 
 ##### Libraries #####
 import libtcodpy as libtcod				# The Doryen Library
-import pygame, pygame.mixer				# for sound effects
-from pygame.locals import *
 import ConfigParser					# for saving and loading settings
 import time						# for animation timing
 from random import choice, shuffle, sample
 from textwrap import wrap				# for breaking up strings
 from operator import attrgetter				# for list sorting
-from math import atan, floor				# for heading calculation, math
+from math import floor, cos, sin, sqrt			# for math
+from math import degrees, atan2, ceil			# for heading calculation
+
 import shelve						# for saving and loading games
-import dbhash, anydbm					# need this for py2exe
+#import dbhash, anydbm					# needed for py2exe
 import os, sys						# for OS-related stuff
 import xp_loader, gzip					# for loading xp image files
 import xml.etree.ElementTree as xml			# ElementTree library for xml
+
 
 
 ##########################################################################################
 #                                   Constant Definitions                                 #
 ##########################################################################################
 
+# debug constants, should all be set to False in distribution version
+NO_AI = False			# AI is disabled, non-player units will only ever wait
+AI_REPORTS = True		# AI reports are printed to console
+AI_DISPLAY = False		# AI calculations are displayed to the screen
+VIEW_ALL = False		# Player can see all hexes on viewport
+
+
 NAME = 'Armoured Commander II'
 VERSION = 'Proof of Concept'				# determines saved game compatability
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
-WINDOW_WIDTH = 88					# width of game window in characters
+WINDOW_WIDTH = 83					# width of game window in characters
 WINDOW_HEIGHT = 60					# height "
 WINDOW_XM = int(WINDOW_WIDTH/2)				# horizontal center of game window
 WINDOW_YM = int(WINDOW_HEIGHT/2)			# vertical "
@@ -86,8 +94,16 @@ GRADIENT = [						# gradient animated effect for main menu
 	libtcod.Color(51, 51, 51)
 ]
 
+# Game engine constants, can be tweaked for slightly different results
+MAX_LOS_DISTANCE = 13					# maximum distance that a Line of Sight can be drawn
 SUPPRESSED_PENALTY = -3					# penalty to morale level for being suppressed
+ELEVATION_M = 20.0					# each elevation level represents x meters of height
+WEAPON_ARC = 31						# 1/2 width of weapon arcs in degrees
+MAX_GUARD_DISTANCE = 2					# maximum distance beyond which a PSG that is guarding
+							#   a friendly PSG gets worried
 
+
+# Colour definitions
 OPEN_GROUND_COL = libtcod.Color(0, 64, 0)
 WATER_COL = libtcod.Color(0, 0, 217)
 FOREST_COL = libtcod.Color(0, 140, 0)
@@ -100,21 +116,18 @@ PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portra
 HIGHLIGHT_COLOR = libtcod.Color(51, 153, 255)		# text highlight colour
 HIGHLIGHT_BG_COLOR = libtcod.Color(0, 50, 100)		# text background highlight colour - blue
 HIGHLIGHT_BG_COLOR2 = libtcod.Color(32, 64, 0)		# text background highlight colour - green
-TARGET_HL_COL = libtcod.Color(255, 0, 0)		# target highlight background color 
+
+WEAPON_LIST_COLOR = libtcod.Color(25, 25, 90)		# background for weapon list in PSG console
+SELECTED_WEAPON_COLOR = libtcod.Color(50, 50, 150)	# " selected weapon
+
+TARGET_HL_COL = libtcod.Color(55, 0, 0)			# target highlight background color 
 SELECTED_HL_COL = libtcod.Color(50, 150, 255)		# selected PSG highlight colour
+ENEMY_HL_COL = libtcod.Color(40, 0, 0)
 INACTIVE_COL = libtcod.Color(100, 100, 100)		# inactive option color
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
 
 KEY_HIGHLIGHT_COLOR = libtcod.Color(70, 170, 255)	# highlight for key commands
 HIGHLIGHT = (libtcod.COLCTRL_1, libtcod.COLCTRL_STOP)	# constant for highlight pair
-
-SOUNDS = {}						# sound effects
-
-# terrain type codes
-OPEN_GROUND = 0
-FOREST = 1
-FIELDS = 2
-POND = 3
 
 # Descriptor definitions
 MORALE_DESC = {
@@ -132,21 +145,14 @@ SKILL_DESC = {
 	'11' : 'Elite'
 }
 
+PHASE_NAMES = ['Movement', 'Shooting']
+
+MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+	'July', 'August', 'September', 'October', 'November', 'December']
+
 DESTHEX = [(0,-1), (1,-1), (1,0), (0,1), (-1,1), (-1,0)]	# change in hx, hy values for hexes in each direction
 PLOT_DIR = [(0,-1), (1,-1), (1,1), (0,1), (-1,1), (-1,-1)]	# position of direction indicator
 TURRET_CHAR = [254, 47, 92, 254, 47, 92]			# characters to use for turret display
-
-# hexes covered by a weapon arc, with attacker in 0,0 and firing toward direction 0
-# later to be rotated and shifted and modified by maximum range, hex visibility, etc.
-ARC_HEXES = [
-	(-3, -3), (-3, -2),
-	(-2, -2), (-2, -3), (-2, -1),
-	(-1, -1), (-1, -2), (-1, -3), (-1, -4), (-1, -5),
-	(0, -1), (0, -2), (0, -3), (0, -4), (0, -5), (0, -6),
-	(1, -2), (1, -3), (1, -4), (1, -5), (1, -6),
-	(2, -4), (2, -5), (2, -6),
-	(3, -5), (3, -4)
-]
 
 # infantry fire table values
 # K# - PSG loses this number of steps
@@ -181,6 +187,69 @@ IFT_TABLE = {
 #                                         Classes                                        #
 ##########################################################################################
 
+# terrain type: determines effect of different types of map hex terrain
+class TerrainType:
+	def __init__(self):
+		self.console = []
+		self.display_name = ''
+		self.los_height = 0
+		self.base_image = ''
+		self.modifier_matrix = []
+		self.water = False
+		self.difficult = False
+		self.very_difficult = False
+		
+	# load base image and generate other elevations
+	def GenerateConsoles(self):
+		for elevation in range(4):
+			self.console.append(libtcod.console_new(7, 5))
+			libtcod.console_blit(LoadXP(self.base_image), 0, 0, 7, 5, self.console[elevation], 0, 0)
+			libtcod.console_set_key_color(self.console[elevation], KEY_COLOR)
+		
+		# apply colour modifier to elevations 0, 2, 3
+		for elevation in [0, 2, 3]:
+			for y in range(5):
+				for x in range(7):
+					bg = libtcod.console_get_char_background(self.console[elevation],x,y)
+					if bg == KEY_COLOR: continue
+					
+					if elevation == 0:
+						bg = bg * 0.9
+					elif elevation == 2:
+						bg = bg * 1.1
+					else:
+						bg = bg * 1.2
+					libtcod.console_set_char_background(self.console[elevation],x,y,bg)
+	
+	# return the modifier for the given psg if it were in this terrain
+	def GetModifier(self, psg):
+		if psg.infantry:
+			if psg.moved:
+				return int(self.modifier_matrix[0])
+			elif psg.dug_in:
+				return int(self.modifier_matrix[1])
+			return int(self.modifier_matrix[2])
+		elif psg.gun:
+			if psg.moved:
+				return int(self.modifier_matrix[3])
+			elif psg.dug_in:
+				return int(self.modifier_matrix[4])
+			return int(self.modifier_matrix[5])
+		elif psg.vehicle:
+			if not psg.recce:
+				if psg.moved:
+					return int(self.modifier_matrix[6])
+				else:
+					return int(self.modifier_matrix[7])
+			else:
+				if psg.moved:
+					return int(self.modifier_matrix[8])
+				else:
+					return int(self.modifier_matrix[9])
+		print 'ERROR: unable to calculate terrain modifier'
+		return 0
+
+
 # Attack class, used for attack objects holding scores to use in an attack
 # generated by CalcTH or CalcIFT
 class Attack:
@@ -200,365 +269,23 @@ class Attack:
 		self.roll_req = 0
 
 
-# AI class, assigned to all PSGs including player PSG
+##########################################################################################
+#                                        AI Class                                        #
+##########################################################################################
 
+# AI class, assigned to all PSGs including player PSG
 class AI:
 	def __init__(self, owner):
 		self.owner = owner		# pointer to owning PSG object
-		
-		self.mode = 'Defense'		# AI mode - determines change conditions
-						#   for AI states
-		self.state = 'Hold'		# temp - current AI state
-		
-		self.attack_target = None	# currently attacking this target
-		
-		self.guard_target = None	# target friendly unit to protect
-						#   used by 'Guard' AI mode
-		self.guard_hx = 0		# hex x offset position to keep relative to guard target
-		self.guard_hy = 0		# "
-		
-		self.hunt_target = None		# target enemy unit
-		
-		self.move_target = None		# target hx, hy into which PSG is trying to move
-
-	# print an AI report to the console
-	def Report(self, text):
-		print text
-
-	# return a list of hexes between h1 and h2 so that the distance between each
-	# location and h1 and h2 is not higher than the distance between h1 and h2
-	# if needs_los, there must be a LoS to h2
-	def GetListofInterveningHexes(self, hx1, hy1, hx2, hy2, needs_los=False):
-		hex_list = []
-		max_distance = GetHexDistance(hx1, hy1, hx2, hy2)
-		radius_list = GetHexesWithin(hx2, hy2, max_distance)
-		for (hx, hy) in radius_list:
-			if GetHexDistance(hx, hy, hx2, hy2) >= max_distance:
-				continue
-			if GetHexDistance(hx, hy, hx1, hy1) >= max_distance:
-				continue
-			
-			if needs_los:
-				if not GetLoS(hx, hy, hx2, hy2): continue
-
-			# special: can include h1 in list of locations
-			if (hx, hy) == (hx1, hy1):
-				hex_list.append((hx, hy))
-				continue
-			
-			# make sure location is not occupied by an enemy PSG
-			if not GetHexAt(hx, hy).IsOccupiedByEnemy(self.owner.owning_player):
-				hex_list.append((hx, hy))
-			
-		return hex_list
-		
-
-	# TODO
-	# calcuate the score for moving into a target location
-	# higher scores for: better potential attacks from this position, less TU
-	#  expended to reach it
-	def ScoreMove(psg, target_hx, target_hy):
-		pass
-	
-	# set guard offset position based on current location
-	def SetGuardPosition(self):
-		if self.guard_target is None:
-			return
-		self.guard_hx = self.owner.hx - self.guard_target.hx
-		self.guard_hy = self.owner.hy - self.guard_target.hy
-
-	# do AI action for this PSG
-	def ResolveMode(self):
-		
-		# check for state change conditions
-		text = 'Resolving AI Mode for ' + self.owner.GetName(true_name=True) + ': '
-		text += self.mode + ':\n  '
-		
-		if self.mode == 'Guard':
-			
-			if self.guard_target is None:
-				self.mode = 'Defense'
-				self.state = 'Hold'
-				text += 'No PSG to guard, switching to Defense mode'
-			
-			if self.guard_target not in scenario.psg_list:
-				self.guard_target = None
-				self.mode = 'Defense'
-				self.state = 'Hold'
-				text += 'Guard target destroyed, switching to Defense mode'
-			
-			# check that we are in the right position to guard
-			hx_offset = self.owner.hx - self.guard_target.hx
-			hy_offset = self.owner.hy - self.guard_target.hy
-			
-			if hx_offset != self.guard_hx or hy_offset != self.guard_hy:
-				text += 'Moving to correct guard position, '
-				hx = self.guard_target.hx + self.guard_hx
-				hy = self.guard_target.hy + self.guard_hy
-				map_hex = GetHexAt(hx, hy)
-				
-				if map_hex is None:
-					text += 'ideal position off map, holding here'
-					self.state = 'Hold'
-				elif map_hex.IsOccupiedByEnemy(self.owner.owning_player):
-					text += 'ideal position occupied by enemy, holding here'
-					self.state = 'Hold'
-				else:
-					text += 'move possible'
-					self.move_target = (map_hex.hx, map_hex.hy)
-					self.state = 'Move'
-				
-			# in correct guard position, hold here
-			else:
-				text += 'In correct guard position, '
-				if self.state == 'Hold':
-					text += 'holding here.'
-				else:
-					self.state = 'Hold'
-					text += 'switching state to Hold.'
-
-		elif self.mode == 'Hunt':
-			
-			# need to find a new target
-			if self.hunt_target is None:
-				target_list = []
-				for psg in scenario.psg_list:
-					if psg.owning_player == self.owner.owning_player:
-						continue
-					distance = GetHexDistance(self.owner.hx, self.owner.hy, psg.hx, psg.hy)
-					target_list.append((distance, psg))
-				
-				# enemy has no active PSGs
-				if len(target_list) == None:
-					text += 'no possible targets to hunt!'
-					if self.state != 'Hold':
-						self.state = 'Hold'
-					self.Report(text)
-					self.ResolveState()
-					return
-				else:
-					# pick closest target
-					target_list = sorted(target_list, key=lambda x: x[0])
-					(distance, psg) = target_list[0]
-					self.hunt_target = psg
-					text += 'selected new target: ' + psg.GetName(true_name=True)
-			
-			# if we have a good attack on the target, stop and fire
-			score = ScoreAttack(self.owner, self.owner.weapon_list[0],
-				self.hunt_target)
-			# account for possibly stopping and firing in later action
-			if self.owner.moved[0]:
-				score += 2
-			if score >= 4:
-				self.state = 'Hold'
-				text += ' in LoS of target, good attack possible, holding here'
-				
-			# not in LoS or doesn't have a good attack
-			else:
-			
-				# we need to move, pick a good location for an attack
-				#   and which is also close
-				self.state = 'Move'
-				
-				target_hex_list = self.GetListofInterveningHexes(self.owner.hx,
-					self.owner.hy, self.hunt_target.hx,
-					self.hunt_target.hy, needs_los=True)
-				
-				# score list based on proximity to current location and
-				# proximity to target
-				score_list = []
-				for (hx, hy) in target_hex_list:
-					score = GetHexDistance(self.owner.hx,
-						self.owner.hy, hx, hy)
-					score += GetHexDistance(self.hunt_target.hx,
-						self.hunt_target.hy, hx, hy)
-					score_list.append((score, (hx, hy)))
-				score_list = sorted(score_list, key=lambda x: x[0])
-				(score, (hx, hy)) = score_list[0]
-				
-				# set target as next step in path toward destination
-				hex_path = GetHexPath(self.owner.hx, self.owner.hy,
-					hx, hy)
-				if len(hex_path) < 2:
-					text += ' no path possible, switching to Hold'
-					self.state = 'Hold'
-				else:
-					(hx, hy) = hex_path[1]
-					self.move_target = (hx, hy)
-					text += (' attack score was ' + str(score) +
-						', moving to get a better attack on target')
-			
-		# defense state has no change conditions
-		else:
-			text += 'No change.'
-		
-		# print initial AI report to console
-		self.Report(text)
-		
-		# do AI action according to current state
-		self.ResolveState()
-	
-	# resolve the current AI state
-	def ResolveState(self):
-		
-		text = ('Resolving AI State: for ' + self.owner.GetName(true_name=True) +
-			': ' + self.state + ':\n  ')
-		
-		# pinned
-		if self.owner.pinned:
-			text += 'Pinned, cannot act.'
-			self.Report(text)
-			self.owner.SpendTU(8)
-			return
-		
-		if self.state == 'Move':
-			
-			if self.move_target is None:
-				text += 'ERROR: no move target set!'
-				self.Report(text)
-				self.owner.SpendTU(8)
-				return
-			
-			(hx, hy) = self.move_target
-			
-			# not yet at target
-			if self.owner.hx != hx or self.owner.hy != hy:
-				
-				# try to move closer to target hex
-				hex_path = GetHexPath(self.owner.hx, self.owner.hy, hx, hy)
-				
-				# TODO: handle no path possible
-				if len(hex_path) < 2:
-					text += 'ERROR: no path possible to target'
-					self.Report(text)
-					self.owner.SpendTU(8)
-					return
-				
-				# pick the next hex in the path
-				(target_hx, target_hy) = hex_path[1]
-				
-				# see if a pivot is required
-				if self.owner.gun or self.owner.vehicle:
-					direction = GetDirectionToAdjacent(self.owner.hx,
-						self.owner.hy, target_hx, target_hy)
-					if direction != self.owner.facing:
-						# TEMP - need a ChangeFacing function for PSGs
-						self.owner.facing = direction
-						if self.owner.turret_facing is not None:
-							self.owner.turret_facing = direction
-						self.changed_facing = True
-						text += 'pivoted to face direction ' + str(self.owner.facing) + ','
-						UpdateUnitConsole()
-						DrawScreenConsoles()
-				
-				# try to do the move
-				text += ' moving forward'
-				self.Report(text)
-				Message(self.owner.screen_x, self.owner.screen_y,
-					self.owner.GetName() + ' moves forward')
-				result = self.owner.MoveForward()
-				
-				# move was successful
-				if result:
-					return
-				
-				# move was not possible
-				self.Report('Move not possible, switching to Hold.')
-				self.state = 'Hold'
-			
-			# already at target
-			else:
-				text += 'Already arrived at destination, switching to Hold.\n  '
-				self.move_target = None
-				self.state = 'Hold'
-		
-		if self.state == 'Hold':
-			
-			# still reloading
-			weapon = self.owner.weapon_list[0]
-			if weapon.ord_weapon:
-				if weapon.reloading_tu > 0:
-					text += 'Still reloading gun - doing nothing'
-					self.Report(text)
-					self.owner.SpendTU(8)
-					return
-			
-			# already have a hunt target
-			if self.hunt_target is not None:
-				psg = self.hunt_target
-				score = ScoreAttack(self.owner, weapon, psg)
-				text += 'Hunt Target is: ' + psg.GetName()
-			
-			else:
-			
-				# check all possible targets, scoring an attack against them
-				# build a target list
-				target_list = []
-				
-				for psg in scenario.psg_list:
-					# same side
-					if psg.owning_player == self.owner.owning_player:
-						continue
-					# beyond maximum range (for now)
-					if GetHexDistance(self.owner.hx, self.owner.hy, psg.hx, psg.hy) > 6:
-						continue
-					# not in LoS
-					if not GetLoS(self.owner.hx, self.owner.hy, psg.hx, psg.hy):
-						continue
-					
-					score = ScoreAttack(self.owner, weapon, psg)
-					
-					# add the roll required to hit and the PSG as a tuple
-					target_list.append((score, psg))
-				
-				if len(target_list) == 0:
-					text += 'No valid targets found, waiting.'
-					self.Report(text)
-					self.owner.SpendTU(8)
-					return
-				
-				text += str(len(target_list)) + ' possible target(s) found,'
-				
-				# sort the list, putting lowest score at front
-				target_list = sorted(target_list, key=lambda x: x[0])
-				# pick the last tuple
-				(score, psg) = target_list[-1]
-			
-			if score <= 3:
-				text += ' best attack is ' + str(score) + ' pts, not firing'
-				self.Report(text)
-				self.owner.SpendTU(8)
-				return
-			
-			# pivot to face target if needed
-			if GetFacing(psg, self.owner, False) != 'Front':
-				hex_line = GetHexLine(self.owner.hx, self.owner.hy,
-					psg.hx, psg.hy)
-				(hx, hy) = hex_line[1]
-				direction = GetDirectionToward(self.owner.hx, self.owner.hy,
-					hx, hy)
-				self.owner.facing = direction
-				self.changed_facing = True
-				text += ' pivoted to face direction ' + str(self.owner.facing) + ', '
-				UpdateUnitConsole()
-				DrawScreenConsoles()
-			
-			# init attack on chosen target
-			text += ' starting attack on ' + psg.GetName(true_name=True)
-			self.Report(text)
-			
-			InitAttack(self.owner, psg)
 
 
 # a single option in a CommandMenu list
 class MenuOption:
-	def __init__(self, option_id, key_code, option_text, desc, tu_cost, exit_option, inactive):
+	def __init__(self, option_id, key_code, option_text, desc, inactive):
 		self.option_id = option_id	# unique id of this option
 		self.key_code = key_code	# the key used to activate this option
 		self.option_text = option_text	# text displayed for this option
 		self.desc = desc		# description of this option
-		self.tu_cost = tu_cost		# TU cost for this action
-		self.exit_option = exit_option	# this option exits the menu (mapped to #0)
 		self.inactive = inactive	# option is currently inactive
 
 		# wrap option text
@@ -585,8 +312,8 @@ class CommandMenu:
 		self.cmd_list = []
 	
 	# add an option to the menu
-	def AddOption(self, option_id, key_code, option_text, desc=None, tu_cost=None, exit_option=False, inactive=False):
-		new_option = MenuOption(option_id, key_code, option_text, desc, tu_cost, exit_option, inactive)
+	def AddOption(self, option_id, key_code, option_text, desc=None, inactive=False):
+		new_option = MenuOption(option_id, key_code, option_text, desc, inactive)
 		self.cmd_list.append(new_option)
 		# if we're adding the first option, select it
 		if len(self.cmd_list) == 1:
@@ -607,6 +334,9 @@ class CommandMenu:
 			if option.key_code == 'Tab' and key.vk == libtcod.KEY_TAB:
 				if option.inactive: return None
 				return option
+			if option.key_code == 'Space' and key.vk == libtcod.KEY_SPACE:
+				if option.inactive: return None
+				return option
 			if option.key_code == 'Backspace' and key.vk == libtcod.KEY_BACKSPACE:
 				if option.inactive: return None
 				return option
@@ -620,7 +350,6 @@ class CommandMenu:
 		# no options in list, abort
 		if len(self.cmd_list) == 0:
 			return
-		PlaySound('menu_selection')
 		n = self.cmd_list.index(self.selected_option)
 		if reverse:
 			if n == 0:
@@ -643,7 +372,6 @@ class CommandMenu:
 	
 	# display the menu to the specified console
 	def DisplayMe(self, console, x, y, w):
-		n = 0
 		original_fg = libtcod.console_get_default_foreground(console)
 		original_bg = libtcod.console_get_default_background(console)
 		
@@ -654,49 +382,28 @@ class CommandMenu:
 			libtcod.console_set_default_foreground(console, original_fg)
 			return
 		
-		max_w = 0
+		n = 0
 		for menu_option in self.cmd_list:
+			# background dots
+			libtcod.console_set_default_foreground(console, libtcod.darker_grey)
+			for x1 in range(x, x+w, 3):
+				libtcod.console_put_char(console, x1, y+n, '-')
 			
-			w = 0
-			
-			# if this is the exit command, and it's not the only option,
-			# leave a space before it
-			if menu_option.exit_option and len(self.cmd_list) > 1:
-				n += 1
-			
-			# display command key
+			# display command key text
 			if menu_option.inactive:
 				libtcod.console_set_default_foreground(console, INACTIVE_COL)
 			else:
 				libtcod.console_set_default_foreground(console, KEY_HIGHLIGHT_COLOR)
 			libtcod.console_print(console, x, y+n, menu_option.key_code)
 			
-			# determine how far to shift command text over
-			xn = len(menu_option.key_code) + 1
-			
+			# display command text lines
 			if not menu_option.inactive:
 				libtcod.console_set_default_foreground(console, libtcod.white)
 			
-			# display command text lines
 			for line in menu_option.option_text_lines:
-				libtcod.console_print(console, x+xn, y+n, line)
+				libtcod.console_print_ex(console, x+w-1, y+n, libtcod.BKGND_NONE,
+					libtcod.RIGHT, line)
 				n+=1
-			# bit of a kludge, but this makes sure that the y position is only
-			#   incremented if there's still another line to display
-			n-=1
-			
-			w = xn + len(menu_option.option_text)
-			
-			# TU cost
-			if menu_option.tu_cost is not None:
-				if menu_option.tu_cost > 0:
-					libtcod.console_print_ex(console, x+25, y+n, libtcod.BKGND_NONE,
-						libtcod.RIGHT, str(menu_option.tu_cost))
-					w = 26
-			
-			# set if widest option
-			if w > max_w:
-				max_w = w
 			
 			n += 1
 			# reset display colour
@@ -706,11 +413,9 @@ class CommandMenu:
 		max_n = n
 		n = 0
 		for menu_option in self.cmd_list:
-			if menu_option.exit_option and len(self.cmd_list) > 1:
-				n += 1
 			if self.selected_option == menu_option:
 				libtcod.console_set_default_background(console, HIGHLIGHT_BG_COLOR)
-				libtcod.console_rect(console, x, y+n, max_w, menu_option.h, False, libtcod.BKGND_SET)
+				libtcod.console_rect(console, x, y+n, w, menu_option.h, False, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(console, original_bg)
 				
 				if menu_option.desc is not None:
@@ -718,7 +423,7 @@ class CommandMenu:
 						libtcod.console_set_default_foreground(console, libtcod.dark_grey)
 					else:
 						libtcod.console_set_default_foreground(console, libtcod.white)
-					lines = wrap(menu_option.desc, 24)
+					lines = wrap(menu_option.desc, w)
 					# we re-use n here since we don't need it anymore
 					n = 0
 					for line in lines:
@@ -728,7 +433,7 @@ class CommandMenu:
 				
 				break
 						
-			n += menu_option.h
+			n += menu_option.h + 1
 		libtcod.console_set_default_foreground(console, original_fg)
 		
 
@@ -736,7 +441,7 @@ class CommandMenu:
 # platoon-sized group class
 # represents a platoon, squadron, battery, etc.
 class PSG:
-	def __init__(self, name, unit_id, num_steps, facing, turret_facing, owning_player, skill_lvl, morale_lvl, player_psg=False):
+	def __init__(self, name, unit_id, num_steps, facing, turret_facing, owning_player, skill_lvl, morale_lvl):
 		self.unit_id = unit_id			# unique ID for unit type of this PSG
 		self.name = name			# name, eg. 'Tank Squadron'
 		self.step_name = ''			# name of individual teams / vehicles w/in this PSG
@@ -746,10 +451,10 @@ class PSG:
 		
 		self.hx = 0				# hex location of this PSG, will be set
 		self.hy = 0				#   by SpawnAt()
-		self.draw_x = 0				# draw location offset from center of hex
-		self.draw_y = 0				#   set by DrawMe()
 		self.screen_x = 0			# draw location on the screen
-		self.screen_y = 0			#   set by DrawMe() based on draw_x and draw_y
+		self.screen_y = 0			#   set by DrawMe()
+		self.anim_offset_x = 0			# offset used for movement animation
+		self.anim_offset_y = 0
 		
 		self.facing = facing			# facing direction, for vehicles this
 							#   is their hull facing
@@ -759,7 +464,14 @@ class PSG:
 		self.armour = None			# armour ratings if any
 		
 		self.weapon_list = []			# list of weapons
-		self.active_weapon = None		# used for player PSG TODO: remove?
+		self.selected_weapon = None		# currently selected weapon
+		
+		self.target_list = []			# list of possible targets
+		self.target_psg = None			# currently targeted PSG
+		
+		self.acquired_target = None		# PSG has acquired this unit as target
+		self.acquired_target_lvl = 0		# level of acquired (-1, or -2)
+		self.acquired_by = []			# PSG has been acquired by this unit(s)
 		
 		self.infantry = False			# PSG type flags
 		self.gun = False
@@ -773,9 +485,9 @@ class PSG:
 		self.skill_lvl = skill_lvl		# skill and morale levels
 		self.morale_lvl = morale_lvl
 		
-		# action flags (current status, newly applied for this turn)
-		self.fired = [False, False]
-		self.moved = [False, False]
+		# action flags
+		self.moved = False
+		self.fired = False
 		self.changed_facing = False
 		self.changed_turret_facing = False
 		
@@ -784,7 +496,7 @@ class PSG:
 		self.hull_down = -1			# only vehicles can be hull down, number
 							#   is direction
 		
-		self.hidden = True			# PSG identity is not yet known
+		self.hidden = True			# PSG is not visible to enemy side
 		self.pinned = False			# move N/A, attacks less effective
 		self.bogged = False			# move N/A
 		self.suppressed = False			# move/fire N/A, penalty to morale
@@ -794,11 +506,18 @@ class PSG:
 		self.tu = 36				# remaining TU - can be negative, deficit
 							#   is removed at start of next turn
 		
+		self.max_mp = 6				# maximum Movement Points per turn
+		self.mp = 6				# current mp
+		
 		# load stats from data file
 		self.LoadStats()
 		
 		# set initial display character
 		self.display_char = self.GetDisplayChar()
+		
+		# select first weapon by default
+		if len(self.weapon_list) > 0:
+			self.selected_weapon = self.weapon_list[0]
 
 	# return description of PSG
 	# if using real name, transcode it to handle any special characters in it
@@ -809,8 +528,12 @@ class PSG:
 				return 'Possible Enemy PSG'
 		return self.name.decode('utf8').encode('IBM850')
 
+	# return the name of a single step within this PSG
+	def GetStepName(self):
+		return self.step_name.decode('utf8').encode('IBM850')
+
+	# TODO: turn into a proper spawn function
 	# try to place this PSG into the target hex, if not possible, place in random adjacent hex
-	#   also calls SetDrawLocation to determine location of glyph within hex
 	def SpawnAt(self, hx, hy):
 		hex_list = [(hx, hy)]
 		adjacent_list = GetAdjacentHexesOnMap(hx, hy)
@@ -818,76 +541,95 @@ class PSG:
 		hex_list.extend(adjacent_list)
 		for (hx1, hy1) in hex_list:
 			map_hex = GetHexAt(hx1, hy1)
-			if not map_hex.water:
-				# TODO: make sure we are within stacking limits
-				self.hx = hx1
-				self.hy = hy1
-				map_hex.contained_psgs.append(self)
-				self.SetDrawLocation()
-				
-				return
+			if map_hex is None: continue
+			if map_hex.IsOccupied(): continue
+			if map_hex.terrain_type.water: continue
+			self.hx = hx1
+			self.hy = hy1
+			return
 		print 'ERROR: unable to spawn PSG into or near ' + str(hx) + ',' + str(hy)
+
+	# cycle selected weapon in list
+	def SelectNextWeapon(self):
+		if len(self.weapon_list) == 0: return
+		if self.selected_weapon is None:
+			self.selected_weapon = self.weapon_list[0]
+			return
+		if self.selected_weapon == self.weapon_list[-1]:
+			self.selected_weapon = self.weapon_list[0]
+			return
+		n = self.weapon_list.index(self.selected_weapon)
+		self.selected_weapon = self.weapon_list[n+1]
+
+	# select next possible target for shooting
+	def SelectNextTarget(self):
+		# if no target list yet, try to build one
+		if len(self.target_list) == 0:
+			
+			if self.selected_weapon is None:
+				print 'ERROR: tried to build a target list but no weapon selected!'
+				return
+			
+			for psg in scenario.psg_list:
+				if psg.owning_player == 0: continue
+				if psg.hidden: continue
+				# check range
+				normal_range = self.selected_weapon.stats['normal_range']
+				if GetHexDistance(self.hx, self.hy, psg.hx, psg.hy) > normal_range:
+					continue
+				# check LoS
+				visible_hexes = GetLoS(self.hx, self.hy, psg.hx, psg.hy)
+				if (psg.hx, psg.hy) not in visible_hexes:
+					continue
+				# add target to list
+				self.target_list.append(psg)
+		
+		# no possible targets
+		if len(self.target_list) == 0:
+			return
+
+		# no target selected yet, select the first one
+		if self.target_psg is None:
+			self.target_psg = self.target_list[0]
+			return
+		
+		# last target in list selected, select the first one
+		if self.target_psg == self.target_list[-1]:
+			self.target_psg = self.target_list[0]
+			return
+		
+		# select next target
+		n = self.target_list.index(self.target_psg)
+		self.target_psg = self.target_list[n+1]
+
+
+	# clear any acquired target links between this PSG and any other
+	def ClearAcquiredTargets(self):
+		self.acquired_target = None
+		self.acquired_target_lvl = 0
+		self.acquired_by = []
+		for psg in scenario.psg_list:
+			if self in psg.acquired_by:
+				psg.acquired_by.remove(self)
+			if psg.acquired_target == self:
+				psg.acquired_target = None
+				psg.acquired_target_lvl = 0
 
 	# remove this PSG from the game
 	def DestroyMe(self):
 		scenario.psg_list.remove(self)
-		map_hex = GetHexAt(self.hx, self.hy)
-		# should not have to check, but was crashing
-		if self in map_hex.contained_psgs:
-			map_hex.contained_psgs.remove(self)
-		if self in scenario.oob_list:
-			scenario.oob_list.remove(self)
-			UpdateOOBConsole()
-		# remove from psg info map
-		for key, psg in scenario.psg_info_map.iteritems():
-			if psg == self:
-				del scenario.psg_info_map[key]
-				return
+		# clear acquired target records
+		self.ClearAcquiredTargets()
 
-	# do any actions that automatically occur when PSG is activated
-	def DoActivationActions(self):
-		
-		# test to recover from pinned/suppressed/etc.
-		self.DoRecoveryTests()
-	
-		# do a spot check from this PSG to all enemy PSGs
-		self.DoSpotCheck()
-		
-		# do a check to see if this PSG regains Hidden status
-		if self.hidden: return
-		
-		# TODO: if an enemy PSG has aquired target on this PSG, cannot
-		# regain hidden
-		for psg in scenario.psg_list:
-			if psg.owning_player == self.owning_player: continue
-			distance = GetHexDistance(psg.hx, psg.hy, self.hx, self.hy)
-			spotting_distance = GetSpottingDistance(psg, self)
-			if distance <= spotting_distance:
-				return
-		self.HideMe()
-
-	# do any actions that automatically occur after PSG has been activated
-	def DoPostActivationActions(self):
-		
-		# check for objective hex capture
-		map_hex = GetHexAt(self.hx, self.hy)
-		if map_hex.CaptureMe():
-			if self.owning_player == 0:
-				text = 'You have'
-			else:
-				text = 'The enemy has'
-			text += ' captured an objective!'
-			Message(self.screen_x, self.screen_y, text)
-		
-		# apply any action flags from this turn, reset flags for next turn
-		self.fired[0] = self.fired[1]
-		self.fired[1] = False
-		self.moved[0] = self.moved[1]
-		self.moved[1] = False
-		
-		# facing flags only apply for own activation
-		self.changed_facing = False
-		self.changed_turret_facing = False
+	# do any automatic actions for start of current phase
+	def ResetForPhase(self):
+		# start of movement phase
+		if scenario.current_phase == 0:
+			self.moved = False
+			self.changed_facing = False
+			self.changed_turret_facing = False
+		elif scenario.current_phase == 1:
+			self.fired = False
 
 	# roll for recovery from negative statuses
 	def DoRecoveryTests(self):
@@ -896,7 +638,7 @@ class PSG:
 			
 			if self.suppressed:
 				morale_lvl += SUPPRESSED_PENALTY
-			terrain_mod = GetHexAt(self.hx, self.hy).GetTerrainMod(self)
+			terrain_mod = GetHexAt(self.hx, self.hy).terrain_type.GetModifier(self)
 			if terrain_mod > 0:
 				morale_lvl += terrain_mod
 			
@@ -907,7 +649,7 @@ class PSG:
 			
 			# do the roll
 			d1, d2, roll = Roll2D6()
-			if roll <= morale_score:
+			if roll <= morale_lvl:
 				if self.pinned:
 					text = self.GetName() + ' recovers from being Pinned.'
 					Message(self.screen_x, self.screen_y, text)
@@ -916,23 +658,18 @@ class PSG:
 					text = self.GetName() + ' recovers from being Suppressed.'
 					Message(self.screen_x, self.screen_y, text)
 					self.suppressed = False
-		
-	# reset PSG for a new turn
-	def ResetNewTurn(self):
-		# replenish TU
-		self.tu += self.max_tu
 
 	# load the baseline stats for this PSG from XML data file
 	def LoadStats(self):
 		# find the unit type entry in the data file
-		root = xml.parse(DATAPATH + 'armcom2_unit_defs.xml')
+		root = xml.parse(DATAPATH + 'unit_defs.xml')
 		item_list = root.findall('unit_def')
 		for item in item_list:
 			# this is the one we need
 			if item.find('id').text == self.unit_id:
 				if item.find('portrait') is not None:
 					self.portrait = item.find('portrait').text
-				self.step_name = item.find('name').text
+				self.step_name = item.find('name').text.encode('utf8')
 				
 				# movement class
 				self.movement_class = item.find('movement_class').text
@@ -950,6 +687,10 @@ class PSG:
 						for weapon_item in ift_weapons:
 							new_weapon = SpawnIFTWeapon(weapon_item)
 							self.weapon_list.append(new_weapon)
+				
+				# infantry stats if any
+				if item.find('infantry') is not None:
+					self.infantry = True
 				
 				# vehicle stats if any
 				if item.find('vehicle') is not None:
@@ -983,18 +724,6 @@ class PSG:
 				return
 		
 		print 'ERROR: Could not find unit stats for: ' + self.unit_id
-
-	# spend TU, also update any TU countdown timers that are running (reloading, etc.)
-	def SpendTU(self, tu):
-		
-		self.tu -= tu
-		
-		# check for reloading ordinance weapons
-		for weapon in self.weapon_list:
-			if weapon.ord_weapon:
-				if weapon.reloading_tu > 0:
-					weapon.reloading_tu -= tu
-					if weapon.reloading_tu < 0: weapon.reloading_tu = 0
 	
 	# remove one or more steps from this PSG, also check for PSG removal
 	def RemoveSteps(self, step_num, skip_msg=False):
@@ -1010,12 +739,6 @@ class PSG:
 				self.num_steps -= 1
 				continue
 			
-			# final step in PSG
-			# TEMP - last step from player PSG cannot be removed
-			if scenario.player_psg == self:
-				print 'DEBUG: player PSG spared death'
-				return
-			
 			self.num_steps = 0
 			text = self.GetName() + ' has been destroyed!'
 			Message(self.screen_x, self.screen_y, text)
@@ -1026,30 +749,18 @@ class PSG:
 		text = self.GetName() + ' is Pinned.'
 		Message(self.screen_x, self.screen_y, text)
 		self.pinned = True
-	
-	# perform a check to see if this PSG can reveal any hidden enemy PSGs
-	def DoSpotCheck(self):
-		for psg in scenario.psg_list:
-			if psg.owning_player == self.owning_player: continue
-			# no need to check, already revealed
-			if not psg.hidden: continue
-			if GetHexDistance(self.hx, self.hy, psg.hx, psg.hy) > 6: continue
-			if not GetLoS(self.hx, self.hy, psg.hx, psg.hy): continue
-			
-			distance = GetHexDistance(self.hx, self.hy, psg.hx, psg.hy)
-			spotting_distance = GetSpottingDistance(self, psg)
-			if distance <= spotting_distance:
-				psg.RevealMe()
 		
 	# this PSG has been revealed by enemy forces
 	def RevealMe(self):
 		self.hidden = False
 
-		# draw on map
-		self.DrawMe(self.hx, self.hy)
+		# update unit console to display
 		UpdateUnitConsole()
 		DrawScreenConsoles()
 		libtcod.console_flush()
+		
+		# TEMP - no message
+		return
 		
 		# show message
 		if self.owning_player == 0:
@@ -1058,31 +769,37 @@ class PSG:
 			text = 'Enemy '
 		text += self.GetName() + ' has been spotted!'
 		Message(self.screen_x, self.screen_y, text)
-		UpdateOOBConsole()
 	
 	# regain Hidden status for this PSG
 	def HideMe(self):
-		if self.owning_player == 0:
-			text = self.GetName() + ' is now Hidden'
-		else:
-			text = 'Lost contact with ' + self.GetName()
-		Message(self.screen_x, self.screen_y, text)
+		#if self.owning_player == 0:
+		#	text = self.GetName() + ' is now Hidden'
+		#else:
+		#	text = 'Lost contact with ' + self.GetName()
+		#Message(self.screen_x, self.screen_y, text)
 		self.hidden = True
+		UpdateUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
 	
 	# get display character to be used on hex map
 	def GetDisplayChar(self):
+		
 		# enemy Hidden PSG
 		if self.owning_player == 1 and self.hidden:
 			return '?'
 		
+		# infantry
+		if self.infantry:
+			return 176
+		
 		# gun, set according to deployed status / hull facing
 		if self.gun:
-			direction = CombineDirs(self.facing, scenario.player_psg.facing)
 			if not self.deployed:
 				return 124
-			elif direction in [5, 0, 1]:
+			elif self.facing in [5, 0, 1]:
 				return 232
-			elif direction in [2, 3, 4]:
+			elif self.facing in [2, 3, 4]:
 				return 233
 			else:
 				return '!'		# should not happen
@@ -1103,173 +820,160 @@ class PSG:
 		# default
 		return '!'
 
-	# determine a draw location for the glyph representing this PSG on the screen
-	#   based on current hex location, and avoiding other PSGs already in the hex
-	def SetDrawLocation(self):
-		
-		map_hex = GetHexAt(self.hx, self.hy)
-		
-		# we are the only PSG in the hex
-		if len(map_hex.contained_psgs) == 1:
-			self.draw_x = 0
-			self.draw_y = 0
-			return
-		
-		LOCATIONS = [(0,0), (-1,-1), (1,-1), (-1,1), (1,1)]
-	
-		# try each possible location in turn
-		for (x, y) in sample(LOCATIONS, len(LOCATIONS)):
-			matched = False
-			for psg in map_hex.contained_psgs:
-				if psg.draw_x == x and psg.draw_y == y:
-					matched = True
-					break
-			if not matched:
-				self.draw_x = x
-				self.draw_y = y
-				return
-		
-		print 'ERROR: could not set a draw location within the hex for ' + self.GetName()
-		
-
-
-	# draw this PSG in given hex location in the map viewport
-	def DrawMe(self, hx, hy):
-
-		(x,y) = PlotHex(hx, hy)
-		# modify for draw position within hex
-		x += self.draw_x
-		y += self.draw_y
-		
-		# record location that this PSG appears on the screen
-		self.screen_x = x + 30
-		self.screen_y = y + 1
-		
-		# de-register any old PSG draw location and register new one
-		for key, psg in scenario.psg_info_map.iteritems():
-			if psg == self:
-				del scenario.psg_info_map[key]
-				break
-		scenario.psg_info_map[(self.screen_x, self.screen_y)] = self
+	# draw this PSG to the unit console
+	def DrawMe(self):
+		(x,y) = PlotHex(self.hx, self.hy)
+		# record draw position on screen
+		self.screen_x = x + 26
+		self.screen_y = y + 3
 		
 		self.display_char = self.GetDisplayChar()
 		
 		# determine foreground color to use
-		if self.hidden:
-			col = libtcod.light_grey
-		else:
-			col = libtcod.white
-		libtcod.console_put_char_ex(unit_con, x, y, self.display_char, col,
+		if self.owning_player == 1:
+			if self.hidden:
+				col = libtcod.dark_red
+			else:
+				col = libtcod.red
+		else:	
+			if self.hidden:
+				col = libtcod.light_grey
+			else:
+				col = libtcod.white
+		libtcod.console_put_char_ex(unit_con, x+self.anim_offset_x,
+			y+self.anim_offset_y, self.display_char, col,
 			libtcod.black)
 		
-		# if current target, record screen coords
-		if scenario.target_psg == self:
-			scenario.target_coords = (x,y)
-		# if selected PSG, same
-		elif scenario.selected_psg == self:
-			scenario.selected_coords = (x,y)
+		# determine if we need to display a turret
+		display_turret = True
 		
-		return
+		if not self.vehicle and not self.gun:
+			display_turret = False
+		elif self.owning_player == 1 and self.hidden:
+			display_turret = False
+		elif not self.gun and self.turret_facing is None:
+			display_turret = False
 		
-		# TODO: keep using following somehow?
-		
-		# draw turret if applicable
-		if not self.vehicle and not self.gun: return
-		if self.owning_player == 1 and self.hidden: return
+		if not display_turret: return
 		
 		# guns use their hull facing
 		if self.gun:
 			facing = self.facing
 		else:
-			if self.turret_facing is None: return
 			facing = self.turret_facing
 		
-		# determine relative turret facing given current viewport facing
-		direction = CombineDirs(facing, scenario.player_psg.facing)
-		
 		# determine location to draw turret character
-		x_mod, y_mod = PLOT_DIR[direction]
-		char = TURRET_CHAR[direction]
-		libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char,
-			col, libtcod.black)
+		x_mod, y_mod = PLOT_DIR[facing]
+		char = TURRET_CHAR[facing]
+		libtcod.console_put_char_ex(unit_con, x+x_mod+self.anim_offset_x,
+			y+y_mod+self.anim_offset_y, char, col, libtcod.black)
 	
+	# pivot the hull of this PSG so it faces the given direction
+	# TEMP? turret if any is rotated to face this direction too
+	def PivotToFace(self, direction):
+		if self.facing is None: return
+		self.facing = direction
+		self.changed_facing = True
+		if self.turret_facing is not None:
+			self.turret_facing = direction
+		
 	# determine if this PSG is able to move into the target hex
-	# if hex is not on the map, occupied by known enemy units, or impassible terrain
-	# then no
-	def CheckMoveInto(self, hx, hy):
+	def CheckMoveInto(self, new_hx, new_hy):
 		if self.movement_class == 'Gun': return False
-		if (hx, hy) not in scenario.hex_map.hexes: return False
-		map_hex = GetHexAt(hx, hy)
-		if map_hex.IsOccupiedByEnemy(self.owning_player): return False
-		if map_hex.water: return False
-		# TODO: check stacking limits
+		if (new_hx, new_hy) not in scenario.hex_map.hexes: return False
+		direction = GetDirectionToAdjacent(self.hx, self.hy, new_hx, new_hy)
+		if direction < 0: return False
+		map_hex = GetHexAt(new_hx, new_hy)
+		if map_hex.IsOccupied(): return False
+		if map_hex.terrain_type.water: return False
 		return True
 	
-	# try to move this PSG forward into the adjacent hex
-	# only works for units with a facing (guns and vehicles)
+	# try to move this PSG into the target hex
+	# vehicles must be facing this direction to move, or can do a reverse move
 	# returns True if the move was successful
-	def MoveForward(self, reverse=False):
-
-		if self.facing is None:
-			print 'ERROR: unit has no facing but is trying to move forward'
-			return False
-		
-		# get the target hex
-		if reverse:
-			facing = ConstrainDir(self.facing + 3)
-		else:
-			facing = self.facing
-		
-		(new_hx, new_hy) = GetAdjacentHex(self.hx, self.hy, facing)
+	def MoveInto(self, new_hx, new_hy):
 		
 		# make sure move is allowed
 		if not self.CheckMoveInto(new_hx, new_hy):
 			return False
 		
-		# calculate cost of movement and spend required TU
+		# get MP cost of move, return false if not enough
 		map_hex1 = GetHexAt(self.hx, self.hy)
 		map_hex2 = GetHexAt(new_hx, new_hy)
-		tu_cost = GetTUCostToMove(self, map_hex1, map_hex2)
-		if reverse: tu_cost = tu_cost * 4
-		self.SpendTU(tu_cost)
+		mp_cost = GetMPCostToMove(self, map_hex1, map_hex2)
+		if mp_cost > self.mp: return False
 		
-		# remove us from the list of PSGs in the old hex
-		map_hex1.contained_psgs.remove(self)
+		# TODO: spend the mp
+		
+		
+		# see if a hull pivot is required
+		if self.movement_class != 'Infantry':
+			if self.facing is not None:
+				direction = GetDirectionToAdjacent(self.hx, self.hy,
+					new_hx, new_hy)
+				self.PivotToFace(direction)
+			
+		# record movement vector
+		hx_diff = new_hx - self.hx
+		hy_diff = new_hy - self.hy
+		self.last_move = (hx_diff, hy_diff)
+		
+		# display movement animation if not player psg
+		# TEMP: disabled
+		#if self is not scenario.player_psg:
+		#	DisplayMoveAnimation(self, new_hx, new_hy)
 		
 		self.hx = new_hx
 		self.hy = new_hy
 		
-		# add to list of new hex and set draw location
-		map_hex2.contained_psgs.append(self)
-		self.SetDrawLocation()
-		
 		# set action flag for next activation
-		self.moved[1] = True
+		self.moved = True
+		
+		# clear any acquired targets
+		self.ClearAcquiredTargets()
+		
+		# recalculate FoV if needed
+		if self.owning_player == 0:
+			scenario.hex_map.CalcFoV()
+			UpdateMapFoVConsole()
+			scenario.DoHiddenCheck()
+		
+		UpdateUnitConsole()
 		
 		return True
 		
-	# try to pivot the hull facing of this PSG
-	def PivotHull(self, cw):
-		if self.facing is None:
-			return False
-			
-		if cw:
-			facing_change = 1
-		else:
-			facing_change = -1
-		
-		self.facing = ConstrainDir(self.facing + facing_change)
-		if self.turret_facing is not None:
-			self.turret_facing = ConstrainDir(self.turret_facing + facing_change)
-		self.changed_facing = True
-		return True
-		
-
 	# resolve an IFT attack against this PSG
 	def ResolveIFTAttack(self, attack_obj):
 		
-		# roll on the table
-		d1, d2, roll = Roll2D6()
+		# display dice roll animation if player is involved
+		if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
+		
+			# roll dice and display results on attack console
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 10
+			for i in range(3):
+				d1, d2, roll = Roll2D6()
+				DrawDie(attack_con, 12, 42, d1)
+				DrawDie(attack_con, 17, 42, d2)
+				libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
+				libtcod.console_flush()
+				# TODO: play sound
+				Wait(pause_time)
+				
+			# display roll result on attack console
+			# TODO: highlight result too
+			libtcod.console_rect(attack_con, 1, 8, 48, 1, False, libtcod.BKGND_SET)
+			libtcod.console_print_ex(attack_con, 15, 48, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'Roll: ' + str(roll))
+			
+			libtcod.console_print_ex(attack_con, 15, 57, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Enter to Continue')
+			
+			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
+			libtcod.console_flush()
+			WaitForEnter()
+		
+		else:
+			d1, d2, roll = Roll2D6()
 		
 		# apply modifiers to roll, limit modified roll to 0-15
 		mod_roll = roll + attack_obj.total_mod
@@ -1297,13 +1001,103 @@ class PSG:
 			if kill_num > self.num_steps: kill_num = self.num_steps
 			self.RemoveSteps(kill_num)
 		
-		# all steps must morale test or be destroyed
+		# each step must morale test or be destroyed
 		elif result[0] == 'M':
 			self.MoraleTest(int(result[1]))
 		
 		# suppression test
 		elif result[0] == 'S':
 			self.SupressionTest(int(result[1]))
+	
+	# resolve a to-hit attack against this PSG
+	def ResolveToHitAttack(self, attack_obj):
+		
+		# display dice roll animation if player is involved
+		if attack_obj.attacker == scenario.player_psg or self == scenario.player_psg:
+			
+			# roll dice and display results on attack console
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 10
+			for i in range(3):
+				d1, d2, roll = Roll2D6()
+				DrawDie(attack_con, 12, 42, d1)
+				DrawDie(attack_con, 17, 42, d2)
+				libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
+				libtcod.console_flush()
+				# TODO: play sound
+				Wait(pause_time)
+				
+			# display roll result on attack console
+			# TODO: highlight result too
+			libtcod.console_rect(attack_con, 1, 8, 48, 1, False, libtcod.BKGND_SET)
+			libtcod.console_print_ex(attack_con, 15, 48, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'Roll: ' + str(roll))
+			
+			libtcod.console_print_ex(attack_con, 15, 57, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Enter to Continue')
+			
+			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
+			libtcod.console_flush()
+			WaitForEnter()
+		
+		else:
+			d1, d2, roll = Roll2D6()
+		
+		# apply modifiers to roll, limit modified roll to 2-12
+		mod_roll = roll + attack_obj.total_mod
+		if mod_roll < 2:
+			mod_roll = 2
+		elif mod_roll > 12:
+			mod_roll = 12
+		
+		# determine number of hits from final modified roll
+		gun_roll = libtcod.random_get_int(0, 1, attack_obj.attacker.num_steps)
+		if mod_roll <= int(floor(attack_obj.roll_req / 2)):
+			total_hits = gun_roll * 2
+		elif mod_roll <= attack_obj.roll_req:
+			total_hits = gun_roll
+		elif mod_roll < (attack_obj.roll_req * 2):
+			total_hits = int(floor(gun_roll / 2))
+		else:
+			total_hits = 0
+		if total_hits > attack_obj.attacker.num_steps:
+			total_hits = attack_obj.attacker.num_steps
+		
+		# resolve hits if any
+		if total_hits > 0:
+			
+			text = str(total_hits) + ' hit'
+			if total_hits > 1: text += 's'
+			Message(self.screen_x, self.screen_y, text)
+			
+			# TEMP: shells magically transform based on target type
+			
+			# AP attack
+			if self.vehicle:
+				for h in range(total_hits):
+					self.ResolveAPHit(attack_obj)
+					# add extra pause to distinguish 2+ messages
+					Wait(config.getint('ArmCom2', 'message_pause_time'))
+					# possible that PSG was destroyed; don't try to resolve
+					#   further hits
+					if self not in scenario.psg_list:
+						break
+			
+			# HE attack
+			else:
+				
+				# calculate the IFT attack of HE hit(s)
+				hit_object = CalcIFT(attack_obj.attacker,
+					attack_obj.weapon, attack_obj.target,
+					hit_result=True, multiple_hits=total_hits)
+				
+				# display hit result IFT and resolve it
+				if attack_obj.attacker == scenario.player_psg or self == scenario.player_psg:
+					DisplayIFTRoll(hit_object, hit_result=True)
+					WaitForEnter()
+				self.ResolveIFTAttack(hit_object)
+		
+		else:
+			Message(self.screen_x, self.screen_y, 'No hits')
 	
 	# take a supression test for this PSG
 	def SupressionTest(self, modifier):
@@ -1363,6 +1157,14 @@ class PSG:
 		Message(self.screen_x, self.screen_y, text)
 		self.RemoveSteps(steps_lost, skip_msg=True)
 		self.pinned = True
+	
+	# take a skill test, returning True if passed
+	def SkillTest(self, modifier):
+		skill_lvl = self.skill_lvl - modifier
+		d1, d2, roll = Roll2D6()
+		if roll <= skill_lvl:
+			return True
+		return False
 	
 	# resolve an AP hit against this PSG
 	def ResolveAPHit(self, attack_obj):
@@ -1439,23 +1241,16 @@ class IFTWeapon:
 		
 
 # a single terrain hex on the game map
+# must have elevation and terrain type set before use
 class MapHex:
-	def __init__(self, hx, hy, terrain_type, height):
+	def __init__(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
+		self.elevation = None
+		self.terrain_type = None
+		
 		self.objective = None			# type of objective if any
 		self.held_by = None			# if objective, currently held by this player
-		self.spawn_point = False		# location is a spawn point for enemy units
-		self.terrain_type = terrain_type
-		
-		self.height = height			# TODO: elevation, not used yet
-		self.blocks_los = False			# hex blocks line of sight beyond it
-		
-		
-		self.los_hinderance = 0			# effect on los into or though
-		self.difficult = False			# counts as difficult terrain
-		self.water = False			# water terrain, only boats or amphibious
-							#   units may enter
 		
 		self.river_edges = []			# list of adjacent hexes with
 							#   which this hex shares a river edge
@@ -1463,10 +1258,7 @@ class MapHex:
 							#   this hex is connected by
 							#   a dirt road
 		
-		self.vis_to_player = False		# hex is currently visible to player 0, 1
-		
-		self.contained_psgs = []		# list of active PSGs currently in this hex
-		
+		self.vis_to_player = False		# hex is currently visible to human player
 		
 		# Pathfinding stuff
 		self.parent = None
@@ -1474,78 +1266,25 @@ class MapHex:
 		self.h = 0
 		self.f = 0
 	
-	# returns true if there is at least one enemy PSG in this hex
-	def IsOccupiedByEnemy(self, player):
-		if len(self.contained_psgs) == 0:
-			return False
-		for psg in self.contained_psgs:
-			if psg.owning_player != player:
+	# set hex elevation
+	# TODO: set up impassible cliff edges in this and adjacent hexes if required
+	def SetElevation(self, new_elevation):
+		self.elevation = new_elevation
+	
+	# set hex terrain
+	def SetTerrainType(self, new_terrain_type):
+		for terrain_type in terrain_types:
+			if terrain_type.display_name == new_terrain_type:
+				self.terrain_type = terrain_type
+				return
+		print 'ERROR: Terrain type not found: ' + new_terrain_type
+	
+	# returns true if there is a PSG in this hex
+	def IsOccupied(self):
+		for psg in scenario.psg_list:
+			if psg.hx == self.hx and psg.hy == self.hy:
 				return True
 		return False
-	
-	# return the terrain modifier to use for given PSG in this hex
-	def GetTerrainMod(self, psg):
-		
-		if self.terrain_type == OPEN_GROUND:
-			if psg.infantry:
-				if psg.moved[0]:
-					return -1
-				elif psg.dug_in:
-					return 1
-				return 0
-			elif psg.gun:
-				if psg.moved[0]:
-					return -2
-				elif psg.dug_in:
-					return 2
-				return -1
-			elif psg.vehicle:
-				if psg.moved[0]:
-					if psg.recce:
-						return 2
-					return 1
-				return 0
-		
-		elif self.terrain_type == FOREST:
-			if psg.infantry:
-				if psg.moved[0]:
-					return 1
-				elif psg.dug_in:
-					return 3
-				return 2
-			elif psg.gun:
-				if psg.moved[0]:
-					return 0
-				elif psg.dug_in:
-					return 3
-				return 3
-			elif psg.vehicle:
-				if psg.moved[0]:
-					if psg.recce:
-						return 2
-					return 1
-				return 2
-			
-		elif self.terrain_type == FIELDS:
-			if psg.infantry:
-				if psg.moved[0]:
-					return 1
-				elif psg.dug_in:
-					return 2
-				return 1
-			elif psg.gun:
-				if psg.moved[0]:
-					return 0
-				elif psg.dug_in:
-					return 2
-				return 2
-			elif psg.vehicle:
-				if psg.recce:
-					return 2
-				return 1
-		
-		print 'ERROR: terrain type not found: ' + str(self.terrain_type)
-		return 0
 
 	# reset pathfinding info for this map hex
 	def ClearPathInfo(self):
@@ -1575,71 +1314,57 @@ class HexMap:
 		# record map width and height
 		self.w = w
 		self.h = h
+		# list of edge hexes
+		self.edge_hexes = []
 		# generate map hexes
 		self.hexes = {}
 		for hx in range(w):
 			hy_start = 0 - hx//2
 			hy_end = hy_start + h
 			for hy in range(hy_start, hy_end):
-				self.hexes[(hx,hy)] = MapHex(hx, hy, OPEN_GROUND, 0)
+				self.hexes[(hx,hy)] = MapHex(hx, hy)
+				self.hexes[(hx,hy)].SetTerrainType('Open Ground')
+				self.hexes[(hx,hy)].SetElevation(1)
+				# add to list if on edge of map
+				if hx == 0 or hx == w-1:
+					self.edge_hexes.append((hx, hy))
+				elif hy == hy_start or hy == hy_end-1:
+					self.edge_hexes.append((hx, hy))
+				
 		self.vp_matrix = {}			# map viewport matrix
 	
 	# calculate field of view for human player
 	def CalcFoV(self):
 		
-		# set all map hexes in range to not visible
-		for key, map_hex in self.vp_matrix.items():
+		# set all hexes to not visible to start
+		for (hx, hy) in scenario.hex_map.hexes:
+			map_hex = GetHexAt(hx, hy)
 			map_hex.vis_to_player = False
 		
-		# raycast from player position to all hexes on edge of possible view
-		hex_list = GetHexRing(scenario.player_psg.hx, scenario.player_psg.hy, 6)
-		for (hx2, hy2) in hex_list:
-			line = GetHexLine(scenario.player_psg.hx, scenario.player_psg.hy, hx2, hy2)
-			for (hx, hy) in line:
-				# if this hex is not on map, break the ray
-				if (hx, hy) not in self.hexes: break
-				
-				map_hex = self.hexes[(hx, hy)]
+		# debug mode
+		if VIEW_ALL:
+			for (hx, hy) in scenario.hex_map.hexes:
+				map_hex = GetHexAt(hx, hy)
 				map_hex.vis_to_player = True
-				
-				# break ray if this hex blocks line of sight and is not
-				#   the player's location
-				if map_hex.blocks_los:
-					if not (map_hex.hx == scenario.player_psg.hx and
-						map_hex.hy == scenario.player_psg.hy):
-						break
-	
+			return
+		
+		# set all hex locations of player units to visible
+		for psg in scenario.psg_list:
+			if psg.owning_player == 1: continue
+			GetHexAt(psg.hx, psg.hy).vis_to_player = True
+		
+		# run through each player unit and raycast to each remaining not visible hex
+		for psg in scenario.psg_list:
+			if psg.owning_player == 1: continue
+			for (hx, hy) in scenario.hex_map.edge_hexes:
+				map_hex = GetHexAt(hx, hy)
+				visible_hexes = GetLoS(psg.hx, psg.hy, hx, hy)
+				for (hx1, hy1) in visible_hexes:
+					scenario.hex_map.hexes[(hx1, hy1)].vis_to_player = True
+
 	# set a given hex on the campaign day map to a terrain type
 	def SetHexTerrainType(self, hx, hy, terrain_type):
 		self.hexes[(hx,hy)].terrain_type = terrain_type
-	
-	# calculates which hex to display for each hex in map viewport given player
-	#   location and directional facing
-	def UpdateMapVPMatrix(self):
-		
-		self.vp_matrix = {}
-		
-		# run through hexes in map viewport
-		for (hx, hy) in VP_HEXES:
-				
-			# modify for player position
-			map_hx = hx + scenario.player_psg.hx
-			map_hy = hy + scenario.player_psg.hy
-			
-			# if player is not facing direction 0, rotate around player position
-			if scenario.player_psg.facing != 0:
-				map_hx -= scenario.player_psg.hx
-				map_hy -= scenario.player_psg.hy
-				(map_hx, map_hy) = RotateHex(map_hx, map_hy, scenario.player_psg.facing)
-				map_hx += scenario.player_psg.hx
-				map_hy += scenario.player_psg.hy
-			
-			# add the entry if it exists on map: pointer to the hex object
-			if (map_hx, map_hy) in self.hexes:
-				self.vp_matrix[(hx,hy)] = self.hexes[(map_hx, map_hy)]
-		
-		# trigger a field of view update as well
-		self.CalcFoV()
 
 
 # holds information about a scenario in progress
@@ -1647,53 +1372,120 @@ class HexMap:
 class Scenario:
 	def __init__(self, map_w, map_h):
 		
+		self.map_index = {}			# dictionary of console locations that
+							#   correspond to map hexes
+		
+		self.year = 0				# current calendar year
+		self.month = 0				# current calendar month
+		self.name = ''				# scenario name
+		
+		self.active_player = 0			# currently active player (0 or 1)
+		self.current_turn = 0			# current scenario turn
+		self.max_turns = 0			# maximum turns before scenario end
+		self.current_phase = 0			# current action phase
+		
+		self.psg_list = []			# list of all platoon-sized groups in play
+		self.active_psg = None			# currently active PSG
+		
+		
+		
+		
+		self.player_direction = 3		# direction of player-friendly forces
+		self.enemy_direction = 0		# direction of enemy forces
+		
 		self.winner = None			# number of player that has won the scenario,
 							#   None if no winner yet
 		self.end_text = ''			# description of how scenario ended
 		
-		self.psg_list = []			# list of all platoon-sized groups in play
-		self.oob_list = []			# ordered list of PSG still to act this turn
-		self.active_psg = None			# currently active PSG
+		
 		self.player_psg = None			# pointer to player-controlled PSG
-		self.player_active_weapon = None	# " pointer to currently active weapon
-		self.selected_psg = None		# pointer to currently selected PSG
-		self.active_los = None			# currently displaying a LoS btw a pair of PSGs
 		
 		self.cmd_menu = CommandMenu('scenario_menu')		# current command menu for player
 		self.active_cmd_menu = None		# currently active command menu
 		
-		self.psg_under_orders = None		# PSG currently being given orders
-		
-		# hex location selection
-		self.selected_vp_hex = None		# currently selected viewport hex
-		self.allowed_vp_hexes = []		# list of selectable viewport hexes
-		
 		self.messages = []			# list of game messages
-		
-		self.psg_info_map = {}			# dictionary of draw locations for
-							#   PSGs on the screen, used for info console
-							
-		self.target_hexes = []			# list of hexes in the viewport that are
-							#   within target arc and range
-		self.target_list = []			# list of possible enemy targets
-		self.target_psg = None			# currently selected target
-		self.target_coords = None		# x,y location of target in window
-							#  updated by psg.DrawMe()
-		self.selected_coords = None		# " selected PSG
 		
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
-		self.spawn_hexes = []				# list of enemy spawn hexes
+	
+	# finish up current phase, start new phase (and possibly new turn as well)
+	def NextPhase(self):
+		
+		# Movement -> Shooting Phase
+		if self.current_phase == 0:
+			self.current_phase = 1
+			self.active_cmd_menu = 'shooting_root'
+		
+		# Shooting Phase -> New Active Player and Movement Phase
+		elif self.current_phase == 1:
+			
+			# TEMP: skip enemy turn
+			self.active_player = 1
+			
+			if self.active_player == 0:
+				self.active_player = 1
+			else:
+				self.current_turn += 1
+				UpdateScenInfoConsole()
+				self.active_player = 0
+			self.current_phase = 0
+			self.active_cmd_menu = 'movement_root'
+		
+		# do automatic actions for active player's units for this phase
+		for psg in self.psg_list:
+			if psg.owning_player == self.active_player:
+				psg.ResetForPhase()
+		
+		UpdatePSGConsole()
+		self.BuildCmdMenu()
+	
+	# check to see if any enemy PSGs are newly visible or nto visible as a result of FoV changes
+	def DoHiddenCheck(self):
+		for psg in self.psg_list:
+			if psg.owning_player == 0: continue
+			map_hex = GetHexAt(psg.hx, psg.hy)
+			if psg.hidden:
+				if map_hex.vis_to_player:
+					psg.RevealMe()
+			else:
+				if not map_hex.vis_to_player:
+					psg.HideMe()
+	
+	# select the next player PSG; or the first one in the list if none selected
+	def SelectNextPSG(self):
+		
+		player_psgs = []
+		for psg in self.psg_list:
+			if psg.owning_player == 0: player_psgs.append(psg)
+		
+		if len(player_psgs) == 0:
+			print 'ERROR: No player PSGs to select!'
+			return
+		
+		# none selected yet, select the first one in the list
+		if self.active_psg is None:
+			self.active_psg = player_psgs[0]
+			return
+		
+		found_current = False
+		for psg in player_psgs:
+			
+			# we found the currently active PSG
+			if self.active_psg == psg:
+				found_current = True
+			else:
+				# we already found the active PSG and have found another, so
+				#   select this one
+				if found_current:
+					self.active_psg = psg
+					return
+	
+		# if we get here, we could not find a new psg to select, select the first in list
+		self.active_psg = player_psgs[0]
 	
 	# check to see if scenario has ended, triggered at start of every new turn
 	def CheckForEnd(self):
-		
-		# player PSG has been destroyed
-		if not self.player_psg in self.psg_list:
-			self.winner = 1
-			self.end_text = 'Player PSG was destroyed'
-			return
 		
 		# no remaining enemy PSGs
 		enemy_active = False
@@ -1738,150 +1530,34 @@ class Scenario:
 		libtcod.console_flush()
 		WaitForEnter()
 	
+	# given a PSG and a weapon system, return a list of hexes that could be targeted
+	#   by the PSG-weapon combo
+	def GetTargetHexes(self, psg, weapon):
+		
+		hex_list = []
+		for (hx, hy) in GetHexRing(psg.hx, psg.hy, weapon.stats['normal_range']):
+			los_list = GetLoS(psg.hx, psg.hy, hx, hy)
+			for (hx1, hy1) in los_list:
+				if (hx1, hy1) not in hex_list:
+					hex_list.append((hx1, hy1))
+		
+		if not psg.infantry:
+			# only keep hexes that are within the weapon arc
+			(x1, y1) = PlotIdealHex(psg.hx, psg.hy)
+			for (hx, hy) in reversed(hex_list):
+				(x2, y2) = PlotIdealHex(hx, hy)
+				bearing = RectifyHeading(GetBearing(x1, y1, x2, y2) -
+					(psg.facing * 60))
+				
+				if bearing <= 180:
+					if bearing > WEAPON_ARC:
+						hex_list.remove((hx, hy))
+				else:
+					if bearing + WEAPON_ARC < 360:
+						hex_list.remove((hx, hy))
+		
+		return hex_list
 	
-	# clear hex selection mode
-	def EndHexSelection(self):
-		self.selected_vp_hex = None
-		self.allowed_vp_hexes = []
-	
-	# start a new scenario turn
-	def NextTurn(self):
-		for psg in self.psg_list:
-			psg.ResetNewTurn()
-		self.RebuildOOBList()
-		self.CheckForEnd()
-	
-	# re-order psg list so that PSGs that are next to act are at top
-	def RebuildOOBList(self, flash_animate=False):
-		self.oob_list = []
-		self.active_psg = None
-		for n in range(1, 100):
-			n_list = []
-			for psg in self.psg_list:
-				if psg.tu == n: n_list.append(psg)
-			if len(n_list) == 0: continue
-			# randomly shuffle this sub-list of PSGs in place
-			shuffle(n_list)
-			# add this list to the oob
-			self.oob_list.extend(n_list[:])
-		# set a pointer to the PSG at the top of the list, it is now active
-		if len(self.oob_list) > 0:
-			self.active_psg = self.oob_list[0]
-		# re-draw the console, animate highlight top line
-		UpdateOOBConsole(flash_animate=flash_animate)
-	
-	# the active PSG has acted, move it down the list and pick a new active PSG
-	def MoveActivePSGInList(self):
-		
-		# trigger post-activation automatic actions for active PSG
-		if self.active_psg is not None:
-			self.active_psg.DoPostActivationActions()
-		
-		self.oob_list.remove(self.active_psg)
-		
-		# PSG has not finished acting for this turn
-		if self.active_psg.tu > 0:
-		
-			# find where this PSG should go in the list
-			n = 0
-			for psg in self.oob_list:
-				# reached end of list, add unit at end of list
-				if len(self.oob_list) <= n+1:
-					self.oob_list.append(self.active_psg)
-					break
-				# check following psg, if it has less TU than active unit,
-				#   insert it here
-				if self.oob_list[n+1].tu < self.active_psg.tu:
-					self.oob_list.insert(n, self.active_psg)
-					break
-				n += 1
-		
-		# select new active PSG if any remain
-		self.active_psg = None
-		if len(self.oob_list) > 0:
-			self.active_psg = self.oob_list[0]
-		
-		# re-draw the console
-		UpdateOOBConsole(flash_animate=True)
-		
-	# build a list of hexes that can be targeted
-	# TODO: change based on scenario.player_active_weapon
-	def BuildTargetHexes(self):
-		# clear any existing list
-		self.target_hexes = []
-		
-		for (hx, hy) in ARC_HEXES:
-			
-			# rotate based on player turret rotation
-			(hx, hy) = RotateHex(hx, hy, self.player_psg.turret_facing)
-			
-			# shift to player position
-			hx += self.player_psg.hx
-			hy += self.player_psg.hy
-			
-			# skip if off map, not visible, or out of range
-			if (hx, hy) not in self.hex_map.hexes: continue
-			if not self.hex_map.hexes[(hx, hy)].vis_to_player: continue
-			if self.player_active_weapon.ift_weapon:
-				dist = GetHexDistance(hx, hy, self.player_psg.hx,
-					self.player_psg.hy)
-				if self.player_active_weapon.stats['normal_range'] < dist:
-					continue
-			
-			self.target_hexes.append((hx, hy))
-	
-	# build a list of possible enemy targets
-	def BuildTargetList(self):
-		# clear any existing list
-		self.target_list = []
-		for psg in self.psg_list:
-			if psg.owning_player == 0: continue
-			
-			# if MG weapon is active and attacker has moved, can't target vehicles
-			if 'ift_class' in self.player_active_weapon.stats:
-				if self.player_active_weapon.stats['ift_class'] == 'MG':
-					if self.player_psg.moved[0] and psg.vehicle:
-						continue
-			if (psg.hx, psg.hy) in self.target_hexes:
-				self.target_list.append(psg)
-	
-	# select next (or first) target in list
-	def SelectNextTarget(self):
-		
-		# no targets to select
-		if len(self.target_list) == 0: return
-		
-		if self.target_psg is None:
-			self.target_psg = self.target_list[0]
-		else:
-			n = self.target_list.index(self.target_psg)
-			if n == len(self.target_list) - 1:
-				self.target_psg = self.target_list[0]
-			else:
-				self.target_psg = self.target_list[n+1]
-		
-		# set LoS to display
-		self.active_los = (self.player_psg, self.target_psg)
-		
-		# update unit console to record the x, y coordinate of the target unit
-		UpdateUnitConsole()
-		UpdateMapGUIConsole()
-		DrawScreenConsoles()
-		
-		# add message describing chance to hit
-		#(base_th, roll_req, drm) = CalcTH(self.player_psg,
-		#	self.player_active_weapon, self.target_psg)
-		#text = 'To hit: ' + str(roll_req)
-		#Message(self.target_psg.screen_x, self.target_psg.screen_y, text)
-	
-	# cancel target mode
-	def CancelTarget(self):
-		self.player_active_weapon = None
-		self.target_list = []
-		self.target_psg = None
-		self.active_los = None
-		self.target_hexes = []			
-			
 	# rebuild a list of commands for the command menu based on current phase and
 	#   game state
 	def BuildCmdMenu(self):
@@ -1889,214 +1565,66 @@ class Scenario:
 		# clear any existing command menu
 		self.cmd_menu.Clear()
 		
-		weapon = scenario.player_active_weapon
+		# don't display anything if player is not active
+		# TEMP - no AI right now so disabled
+		#if scenario.active_player != 0:
+		#	UpdateCmdConsole()
+		#	return
 		
-		# don't display anything if player PSG is not active
-		if scenario.active_psg != scenario.player_psg:
-			UpdateCmdConsole()
-			return
+		# all root menus get these commands
+		if self.active_cmd_menu in ['movement_root', 'shooting_root']:
+			self.cmd_menu.AddOption('select_unit', 'Tab', 'Select Next Unit')
+			self.cmd_menu.AddOption('next_phase', 'Space', 'Next Phase')
 		
-		# root command menu
-		if self.active_cmd_menu == 'root':
-			self.cmd_menu.AddOption('movement', '1', 'Movement',
-				desc='Commands associated with moving around the map')
-			self.cmd_menu.AddOption('shooting', '2', 'Shooting',
-				desc='Initiate a ranged attack with one or more weapons')
-			new_option = self.cmd_menu.AddOption('assault', '3', 'Assault')
-			new_option.inactive = True
-			self.cmd_menu.AddOption('orders', '4', 'Orders',
-				desc='Issue new orders to a subordinate unit')
-			if scenario.player_psg.tu >= 8:
-				tu_cost = 8
-			else:
-				tu_cost = scenario.player_psg.tu
-			self.cmd_menu.AddOption('wait', '0', 'Wait', exit_option=True,
-				tu_cost=tu_cost, desc='Do nothing for the moment')
+		# movement phase menu
+		if self.active_cmd_menu == 'movement_root':
+			self.cmd_menu.AddOption('move_5', 'Q', 'Up and Left')
+			self.cmd_menu.AddOption('move_0', 'W', 'Up')
+			self.cmd_menu.AddOption('move_1', 'E', 'Up and Right')
+			self.cmd_menu.AddOption('move_2', 'D', 'Down and Right')
+			self.cmd_menu.AddOption('move_3', 'S', 'Down')
+			self.cmd_menu.AddOption('move_4', 'A', 'Down and Left')
 		
-		# movement menu
-		elif self.active_cmd_menu == 'movement':
-			# forward move
-			map_hex1 = GetHexAt(self.player_psg.hx, self.player_psg.hy)
-			(hx, hy) = GetAdjacentHex(self.player_psg.hx, self.player_psg.hy,
-				self.player_psg.facing)
-			map_hex2 = GetHexAt(hx, hy)
-			tu_cost = GetTUCostToMove(self.player_psg, map_hex1, map_hex2)
-			new_option = self.cmd_menu.AddOption('move_fwd', 'W', 'Forward Move',
-				tu_cost=tu_cost, desc='Move your squadron forward ' +
-				'into the adjacent map hex, maintaining facing')
-			# move not allowed
-			if not self.player_psg.CheckMoveInto(hx, hy):
-				new_option.inactive = True
-			
-			# reverse move
-			(hx, hy) = GetAdjacentHex(self.player_psg.hx, self.player_psg.hy,
-				ConstrainDir(self.player_psg.facing + 3))
-			map_hex2 = GetHexAt(hx, hy)
-			tu_cost = GetTUCostToMove(self.player_psg, map_hex1, map_hex2) * 4
-			
-			new_option = self.cmd_menu.AddOption('move_rev', 'S', 'Reverse Move',
-				tu_cost=tu_cost, desc='Move your squadron in ' +
-				'reverse into the adjacent map hex, maintaining facing')
-			# move not allowed
-			if not self.player_psg.CheckMoveInto(hx, hy):
-				new_option.inactive = True
-			
-			new_option = self.cmd_menu.AddOption('hull_ccw', 'A', 'Hull C/Clockwise',
-				tu_cost=0, desc='Pivot your hull counter-clockwise')
-			new_option = self.cmd_menu.AddOption('hull_cw', 'D', 'Hull Clockwise',
-				tu_cost=0, desc='Pivot your hull clockwise')
-			self.cmd_menu.AddOption('return_to_root', '0', 'Return to Root Menu',
-				exit_option=True, desc='Return to the root command menu')
+		# shooting phase menu
+		elif self.active_cmd_menu == 'shooting_root':
+			if not scenario.active_psg.fired:
+				self.cmd_menu.AddOption('next_weapon', 'W', 'Select Next Weapon')
+				self.cmd_menu.AddOption('next_target', 'T', 'Select Next Target')
+				self.cmd_menu.AddOption('fire_target', 'F', 'Fire at Target')
 		
-		# shooting menu
-		elif self.active_cmd_menu == 'shooting':
-			# list all possible weapon systems in PSG
-			n = 0
-			for weapon in self.player_psg.weapon_list:
-				action_id = 'act_weap_' + str(n)
-				action_key = str(n+1)
-				text = weapon.GetName()
-				tu_cost = weapon.stats['fire_tu']
-				
-				new_option = self.cmd_menu.AddOption(action_id, action_key,
-					text, tu_cost=tu_cost,
-					desc='Fire this weapon at an enemy unit')
-				# see if this weapon cannot be fired right now
-				if weapon.ord_weapon:
-					if weapon.reloading_tu > 0:
-						new_option.inactive = True
-				n += 1
-			self.cmd_menu.AddOption('return_to_root', '0', 'Return to Root Menu',
-				exit_option=True, desc='Return to the root command menu')
 		
-		# targeting weapon menu
-		elif self.active_cmd_menu == 'targeting':
-			new_option = self.cmd_menu.AddOption('next_target', 'Tab',
-				'Select Next Target')
-			# no targets available
-			if len(self.target_list) == 0: new_option.inactive = True
-			
-			tu_cost = weapon.stats['fire_tu']
-			
-			new_option = self.cmd_menu.AddOption('fire', 'F', 'Fire at Target',
-				tu_cost=tu_cost)
-			# no target selected
-			if self.target_psg is None:
-				new_option.inactive = True
-			
-			self.cmd_menu.AddOption('return_to_shooting', '0', 'Return to Shooting Menu', exit_option=True)
-		
-		# orders menu
-		elif self.active_cmd_menu == 'orders':
-			# list all subordinate units
-			n = 0
-			for psg in scenario.psg_list:
-				if psg == scenario.player_psg: continue
-				if psg.owning_player == 0:
-					action_id = 'order_unit_' + str(n)
-					key_code = str(n+1)
-					text = psg.GetName()
-					self.cmd_menu.AddOption(action_id, key_code,
-						text, desc='Issue new orders to ' +
-						text)
-			
-			self.cmd_menu.AddOption('return_to_root', '0', 'Return to Root Menu',
-				exit_option=True, desc='Return to the root command menu')
-		
-		# PSG orders menu
-		elif self.active_cmd_menu == 'psg_orders':
-			
-			# FUTURE: list all possible orders
-			# for now, start of a generic hex selection menu
-			self.cmd_menu.AddOption('hex_sel_q', 'Q', 'Up and Left',
-				desc='Move selected hex up and left')
-			self.cmd_menu.AddOption('hex_sel_w', 'W', 'Up',
-				desc='Move selected hex up')
-			self.cmd_menu.AddOption('hex_sel_e', 'E', 'Up and Right',
-				desc='Move selected hex up and right')
-			self.cmd_menu.AddOption('hex_sel_a', 'A', 'Down and Left',
-				desc='Move selected hex down and left')
-			self.cmd_menu.AddOption('hex_sel_s', 'S', 'Down',
-				desc='Move selected hex down')
-			self.cmd_menu.AddOption('hex_sel_d', 'D', 'Down and Right',
-				desc='Move selected hex down and right')
-			self.cmd_menu.AddOption('order_to_hex', 'F', 'Take New Position',
-				desc='Order the selected unit to take up this position ' +
-				'relative to your unit')
-			
-			self.cmd_menu.AddOption('cancel_psg_orders', '0', 'Cancel',
-				exit_option=True, desc='Return to orders command menu')
-			
 		
 		UpdateCmdConsole()
-		return
-		
-		
-		# TODO: add back in these commands:
-		self.cmd_menu.AddOption('turret_ccw', 'Q', 'Turret C/Clockwise')
-		self.cmd_menu.AddOption('turret_cw', 'E', 'Turret Clockwise')
-
-	# spawn random enemy units near all spawn hexes
-	def SpawnEnemyUnits(self):
-		for map_hex in self.spawn_hexes:
-			
-			# roll for how many units are spawned nearby
-			d1, d2, roll = Roll2D6()
-			
-			if d1 <= 4:
-				n = 1
-			else:
-				n = 2
-			
-			# get list of possible spawn locations
-			hex_list = GetHexesWithin(map_hex.hx, map_hex.hy, 3)
-			
-			for i in range(n):
-				
-				shuffle(hex_list)
-				
-				# determine type of unit
-				d1, d2, roll = Roll2D6()
-				
-				if roll <= 8:
-					new_psg = PSG('AT Gun Platoon', '37mm wz. 36', 1,
-						3, None, 1, 10, 9)
-				else:
-					new_psg = PSG('Czolgów Platoon', '7TP jw', 2, 3,
-						3, 1, 10, 9)
-				
-				self.psg_list.append(new_psg)
-				
-				# determine the location to spawn the new unit
-				for (hx, hy) in hex_list:
-					
-					spawn_hex = GetHexAt(hx, hy)
-					if spawn_hex.water: continue
-					d1, d2, roll = Roll2D6()
-					
-					roll += spawn_hex.GetTerrainMod(new_psg)
-					distance = GetHexDistance(map_hex.hx, map_hex.hy,
-						hx, hy)
-					roll += distance
-					
-					if roll <= 7:
-						new_psg.hx = hx
-						new_psg.hy = hy
-						spawn_hex.contained_psgs.append(new_psg)
-						new_psg.SetDrawLocation()
-						break
-					
-				print ('DEBUG: Spawned a ' + new_psg.GetName(true_name=True) +
-					' at ' + str(new_psg.hx) + ',' + str(new_psg.hy))
-	
-		# now that we've added new enemy units, rebuild the OOB list
-		scenario.RebuildOOBList()
 
 
 
 ##########################################################################################
 #                                     General Functions                                  #
 ##########################################################################################
+
+# load terrain type definitions
+def LoadTerrainTypes():
+	terrain_types = []
+	root = xml.parse(DATAPATH + 'terrain_type_defs.xml')
+	item_list = root.findall('terrain_def')
+	for item in item_list:
+		new_type = TerrainType()
+		new_type.display_name = item.find('display_name').text
+		new_type.los_height = int(item.find('los_height').text)
+		new_type.base_image = item.find('base_image').text
+		temp = item.find('modifier_matrix').text
+		new_type.modifier_matrix = temp.split(',')
+		if item.find('water') is not None:
+			new_type.water = True
+		if item.find('difficult') is not None:
+			new_type.difficult = True
+		elif item.find('very_difficult') is not None:
+			new_type.very_difficult = True
+		terrain_types.append(new_type)
+		# set up internal stuff for this terrain type
+		new_type.GenerateConsoles()
+	return terrain_types
+
 
 # draw an armcom2-style frame
 def DrawFrame(console, x, y, w, h):
@@ -2128,8 +1656,6 @@ def LoadGame():
 # calculate a score for a given attack, determining how effective it is likely to be
 def ScoreAttack(attacker, weapon, target):
 	# no LoS
-	if not GetLoS(attacker.hx, attacker.hy, target.hx, target.hy):
-		return -1
 	
 	# check to see what the to-hit roll required would be
 	attack_obj = CalcAttack(attacker, weapon, target)
@@ -2260,13 +1786,18 @@ def CalcTH(attacker, weapon, target):
 
 	##### Dice Roll Modifiers #####
 	
+	# elevation difference
+	map_hex1 = GetHexAt(attacker.hx, attacker.hy)
+	map_hex2 = GetHexAt(target.hx, target.hy)
+	if map_hex1.elevation > map_hex2.elevation:
+		attack_obj.drm.append(('Height Advantage', -1))
+	
 	# target hex terrain modifier
-	map_hex = GetHexAt(target.hx, target.hy)
-	terrain_mod = map_hex.GetTerrainMod(target)
+	terrain_mod = map_hex2.terrain_type.GetModifier(target)
 	if terrain_mod != 0:
 		attack_obj.drm.append(('Terrain Modifier', terrain_mod))
 	
-	if attacker.moved[0]:
+	if attacker.moved:
 		attack_obj.drm.append(('Attacker Moved', 2))
 	elif attacker.changed_facing:
 		attack_obj.drm.append(('Attacker Changed Facing', 2))
@@ -2280,6 +1811,10 @@ def CalcTH(attacker, weapon, target):
 	if target.vehicle:
 		if target.size_class == 'Small':
 			attack_obj.drm.append(('Small Target', 1))
+	
+	if attacker.acquired_target is not None:
+		if attacker.acquired_target == target:
+			attack_obj.drm.append(('Acquired Target', attacker.acquired_target_lvl))
 	
 	##### Final Numbers #####
 	attack_obj.total_mod = 0
@@ -2500,7 +2035,7 @@ def CalcIFT(attacker, weapon, target, hit_result=False, multiple_hits=1):
 				attack_obj.final_fp = attack_obj.final_fp / 3.0
 				attack_obj.fp_mods.append(('Infantry at 1 step', '/3'))
 		
-		if attacker.moved[0]:
+		if attacker.moved:
 			attack_obj.final_fp = attack_obj.final_fp / 2.0
 			attack_obj.fp_mods.append(('Attacker Moved', '/2'))
 		elif attacker.changed_facing:
@@ -2537,16 +2072,21 @@ def CalcIFT(attacker, weapon, target, hit_result=False, multiple_hits=1):
 	
 	# IFT attack DRM
 	if not hit_result:
+		
+		# elevation difference
+		map_hex1 = GetHexAt(attacker.hx, attacker.hy)
+		map_hex2 = GetHexAt(target.hx, target.hy)
+		if map_hex1.elevation > map_hex2.elevation:
+			attack_obj.drm.append(('Height Advantage', -1))
+		
 		# target hex terrain modifier
-		map_hex = GetHexAt(target.hx, target.hy)
-		terrain_mod = map_hex.GetTerrainMod(target)
+		terrain_mod = map_hex2.terrain_type.GetModifier(target)
 		if terrain_mod != 0:
 			attack_obj.drm.append(('Terrain Modifier', terrain_mod))
 		
 		# target PSG is hidden
 		if target.hidden:
 			attack_obj.drm.append(('Target is Hidden', 2))
-		
 		
 	# hit result DRM
 	else:
@@ -2572,6 +2112,8 @@ def SpawnORDWeapon(item):
 	else:
 		stats['long_range'] = item.find('long_range').text
 	stats['fire_tu'] = int(item.find('fire_tu').text)
+	# all guns have a maximum normal range of 1 mile
+	stats['normal_range'] = 10
 	stats['reload_tu_min'] = int(item.find('reload_tu_min').text)
 	stats['reload_tu_max'] = int(item.find('reload_tu_max').text)
 	return OrdinanceWeapon(stats)
@@ -2606,7 +2148,7 @@ def GetHexAt(hx, hy):
 	return None
 
 
-# returns the three grid locations on given edge relative to x,y
+# returns the three orthographic grid locations on given hex edge relative to x,y
 def GetEdgeTiles(x, y, direction):
 	if direction == 0:
 		return [(x-1,y-2), (x,y-2), (x+1,y-2)]
@@ -2637,15 +2179,23 @@ def CombineDirs(dir1, dir2):
 	return ConstrainDir(direction)
 
 
-# plot the center of a given hex on an orthographic grid
+# plot the center of a given in-game hex on the viewport console
 def PlotHex(hx, hy):
 	x = hx*4
 	y = (hy*4) + (hx*2)
-	# place it in the middle of the map console on the screen
-	return (x+28,y+28)
+	return (x+4,y+3)
 
 
-# rotates a hex location around 0, 0, clockwise r times
+# plot an ideal hex onto an orthographic grid
+# the 3000.0 acts like a resolution multiplier for the final result, seems to work for purpose
+def PlotIdealHex(hx, hy):
+	(x, y, z) = GetCubeCoords(hx, hy)
+	sx = 3000.0 * 3.0 / 2.0 * float(x)
+	sy = 3000.0 * sqrt(3) * (float(z) + (float(x) / 2.0))
+	return (int(sx), int(sy))
+
+
+# rotates a hex location around 0,0 clockwise r times
 def RotateHex(hx, hy, r):
 	# convert to cube coords
 	(xx, yy, zz) = GetCubeCoords(hx, hy)
@@ -2672,7 +2222,7 @@ def GetAdjacentHexesOnMap(hx, hy, skip_occupied=-1):
 		# hex is on the game map
 		if (hx2, hy2) in scenario.hex_map.hexes:
 			if skip_occupied > -1:
-				if GetHexAt(hx2, hy2).IsOccupiedByEnemy(skip_occupied):
+				if GetHexAt(hx2, hy2).IsOccupied():
 					continue
 			hex_list.append((hx2, hy2))
 	return hex_list
@@ -2684,7 +2234,7 @@ def GetDirectionToAdjacent(hx1, hy1, hx2, hy2):
 	hy_mod = hy2 - hy1
 	if (hx_mod, hy_mod) in DESTHEX:
 		return DESTHEX.index((hx_mod, hy_mod))
-	print 'ERROR: GetDirectionToAdjacent() hex is not adjacent'
+	# hex is not adjacent
 	return -1
 
 
@@ -2743,6 +2293,7 @@ def GetHexDistance(hx1, hy1, hx2, hy2):
 
 # return a list of hexes along a line from hex1 to hex2
 # adapted from http://www.redblobgames.com/grids/hexagons/implementation.html#line-drawing
+# TODO: not used at present, might be useful later on?
 def GetHexLine(hx1, hy1, hx2, hy2):
 	
 	def Lerp(a, b, t):
@@ -2766,6 +2317,7 @@ def GetHexLine(hx1, hy1, hx2, hy2):
 		return (int(rx), int(ry), int(rz))
 
 	# get cube coordinates and distance between start and end hexes
+	# (repeated here from GetHexDistance because we need more than just the distance)
 	(x1, y1, z1) = GetCubeCoords(hx1, hy1)
 	(x2, y2, z2) = GetCubeCoords(hx2, hy2)
 	distance = int((abs(x1-x2) + abs(y1-y2) + abs(z1-z2)) / 2)
@@ -2814,8 +2366,8 @@ def GetHexesWithin(hx, hy, radius):
 	return hex_list
 
 
-# calcualte the TU required to move into the target hex
-def GetTUCostToMove(psg, map_hex1, map_hex2):
+# calculate the MP required to move into the target hex
+def GetMPCostToMove(psg, map_hex1, map_hex2):
 	
 	# linked by road
 	road = False
@@ -2823,19 +2375,37 @@ def GetTUCostToMove(psg, map_hex1, map_hex2):
 	if direction in map_hex1.dirt_road_links: road = True
 	
 	if psg.movement_class == 'Infantry':
-		if map_hex2.difficult: return 12
-		if road: return 8
-		return 12
+		if road:
+			cost = 4
+		else:
+			cost = 6
 	
-	if psg.movement_class == 'Fast Tank':
-		if map_hex2.difficult: return 10
-		if road: return 4
-		return 6
+	elif psg.movement_class == 'Wheeled':
+		if road:
+			cost = 2
+		elif map_hex2.terrain_type.difficult:
+			cost = 6
+		else:
+			cost = 3
 	
-	if psg.movement_class == 'Wheeled':
-		if map_hex2.difficult: return 24
-		if road: return 4
-		return 6
+	elif psg.movement_class == 'Tank':
+		if road:
+			cost = 3
+		elif map_hex2.terrain_type.difficult:
+			cost = 6
+		else:
+			cost = 3
+	
+	elif psg.movement_class == 'Fast Tank':
+		if road:
+			cost = 2
+		elif map_hex2.terrain_type.difficult:
+			cost = 6
+		else:
+			cost = 2
+
+	return cost
+	
 
 
 # returns a path from one hex to another, avoiding impassible and difficult terrain
@@ -2899,16 +2469,16 @@ def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None):
 			if node in closed_list: continue
 			
 			# ignore impassible nodes
-			if node.water: continue
+			if node.terrain_type.water: continue
 			
 			# TODO: calculate movement cost
 			if movement_class is not None:
 				pass
 			
-			# TEMP - intended for roads only
-			if node.terrain_type == FOREST:
+			# TEMP
+			if node.terrain_type.very_difficult:
 				cost = 6
-			elif node.terrain_type == FIELDS:
+			elif node.terrain_type.difficult:
 				cost = 2
 			else:
 				cost = 1
@@ -2986,6 +2556,14 @@ def GetLine(x1, y1, x2, y2, los=False):
 	return points
 
 
+# return the end point of a line starting from x,y with length l and angle a
+def PlotLine(x1, y1, l, a):
+	a = RectifyHeading(a-90)
+	x2 = int(x1 + (l * cos(a*PI/180.0)))
+	y2 = int(y1 + (l * sin(a*PI/180.0))) 
+	return (x2, y2)
+
+
 # wait for a specified amount of miliseconds, refreshing the screen in the meantime
 def Wait(wait_time):
 	# added this to avoid the spinning wheel of death in Windows
@@ -3033,44 +2611,151 @@ def RectifyHeading(h):
 	return h
 
 
-# returns the bearing from x1, y1 to x2, y2
+# returns the compass bearing from x1, y1 to x2, y2
 def GetBearing(x1, y1, x2, y2):
-	xdist = float(x2 - x1)
-	ydist = float(y2 - y1)
-	# prevent dividing by zero for 0 slope lines
-	if ydist == 0.0:
-		if xdist > 0.0:
-			return 90
-		else:
-			return 270
-	if y1 > y2:
-		angle = atan(xdist/ydist)*180.0/PI*-1.0
-	else:
-		angle = atan(xdist*-1/ydist*-1)*180.0/PI*-1.0
-		angle -= 180.0
-	return RectifyHeading(int(angle))
+	xdist = (x2 - x1)
+	ydist = (y2 - y1)
+	angle = degrees(atan2(ydist, xdist))
+	return int((angle + 90.0) % 360)
 
 
-# returns true if a line of sight exists between the two hexes, false if not
+# assuming an observer in hx1, hy1 looking at hx2, hy2, returns a list of visible hexes
+# along this line of sight
+# used in HexMap.CalcFoV()
 def GetLoS(hx1, hy1, hx2, hy2):
+	
+	visible_hexes = []
+	
+	visible_hexes.append((hx1, hy1))
+	
 	# same hex
 	if hx1 == hx2 and hy1 == hy2:
-		return True
-	# adjacent hex
-	if GetHexDistance(hx1, hy1, hx2, hy2) == 1:
-		return True
-	line = GetHexLine(hx1, hy1, hx2, hy2)
-	# skip first and last hex, only check hexes in between
-	for (hx, hy) in line[1:-1]:
-		map_hex = GetHexAt(hx, hy)
-		if map_hex.blocks_los:
-			return False
-	return True
+		return visible_hexes
 	
+	distance = GetHexDistance(hx1, hy1, hx2, hy2)
+	
+	# adjacent hex
+	if distance == 1:
+		visible_hexes.append((hx2, hy2))
+		return visible_hexes
+	
+	observer_elevation = float(GetHexAt(hx1, hy1).elevation)
+	los_slope = None
+	
+	# start with first hex
+	hx = hx1
+	hy = hy1
+	
+	while hx != hx2 or hy != hy2:
+		
+		# TEMP: emergency escape
+		if libtcod.console_is_window_closed():
+			sys.exit()
+		
+		# get the next hex or hex pair in the line toward the endpoint
+		(x1, y1) = PlotHex(hx, hy)
+		(x2, y2) = PlotHex(hx2, hy2)
+		bearing = GetBearing(x1, y1, x2, y2)
+		hex_list = []
+		
+		if bearing == 30:
+			hex_list.append(GetAdjacentHex(hx, hy, 0))
+			hex_list.append(GetAdjacentHex(hx, hy, 1))
+		elif bearing == 90:
+			hex_list.append(GetAdjacentHex(hx, hy, 1))
+			hex_list.append(GetAdjacentHex(hx, hy, 2))
+		elif bearing == 150:
+			hex_list.append(GetAdjacentHex(hx, hy, 2))
+			hex_list.append(GetAdjacentHex(hx, hy, 3))
+		elif bearing == 210:
+			hex_list.append(GetAdjacentHex(hx, hy, 3))
+			hex_list.append(GetAdjacentHex(hx, hy, 4))
+		elif bearing == 270:
+			hex_list.append(GetAdjacentHex(hx, hy, 4))
+			hex_list.append(GetAdjacentHex(hx, hy, 5))
+		elif bearing == 330:
+			hex_list.append(GetAdjacentHex(hx, hy, 5))
+			hex_list.append(GetAdjacentHex(hx, hy, 0))
+		else:
+			if bearing > 330 or bearing < 30:
+				hex_list.append(GetAdjacentHex(hx, hy, 0))
+			elif bearing < 90:
+				hex_list.append(GetAdjacentHex(hx, hy, 1))
+			elif bearing > 270:
+				hex_list.append(GetAdjacentHex(hx, hy, 5))
+			elif bearing < 150:
+				hex_list.append(GetAdjacentHex(hx, hy, 2))
+			elif bearing > 210:
+				hex_list.append(GetAdjacentHex(hx, hy, 4))
+			else:
+				hex_list.append(GetAdjacentHex(hx, hy, 3))
+		
+		# check that we haven't gone beyond the max LoS distance
+		(hx3, hy3) = hex_list[0]
+		if GetHexDistance(hx1, hy1, hx3, hy3) > MAX_LOS_DISTANCE:
+			return visible_hexes
+		
+		# check either the next hex or the next hex pair
+		lowest_elevation = None
+		for (hx, hy) in hex_list:
+			
+			# hex is off the map
+			if (hx, hy) not in scenario.hex_map.hexes:
+				continue
+			
+			distance = float(GetHexDistance(hx1, hy1, hx, hy)) * 160.0
+			map_hex = scenario.hex_map.hexes[(hx, hy)]
+			elevation = float(map_hex.elevation) - observer_elevation
+			elevation = elevation * ELEVATION_M
+			elevation += float(map_hex.terrain_type.los_height)
+			
+			# if no lowest elevation recorded yet, record it
+			if lowest_elevation is None:
+				lowest_elevation = elevation
+			
+			# otherwise, if lower than previously recorded, replace it
+			else:
+				if elevation < lowest_elevation:
+					lowest_elevation = elevation
+			
+			# calculate slope from observer to this hex
+			slope = elevation / distance
+			
+			# if adjacent hex, automatically visible
+			if los_slope is None:
+				visible_hexes.append((hx, hy))
+				
+				# we have reached end of LoS check
+				if hx == hx2 and hy == hy2:
+					return visible_hexes
+				
+				# set new LoS slope
+				los_slope = slope
+			
+			else:
+				# check if this hex is visible based on previous LoS slope
+				if slope >= los_slope:
+					
+					visible_hexes.append((hx, hy))
+					
+					# we have reached end of LoS check
+					if hx == hx2 and hy == hy2:
+						return visible_hexes
+			
+		# if we ended up with no lowest_elevation, hex or both hexes are off map,
+		#   so break ray
+		if lowest_elevation is None:
+			return visible_hexes
+		
+		# calculate slope to lower of hex pair
+		slope = lowest_elevation / distance
+		
+		# if slope larger than previous los_slope, set new los_slope
+		if slope > los_slope:
+			los_slope = slope
 
-##########################################################################################
-#                                  Campaign Day Functions                                #
-##########################################################################################
+	return visible_hexes
+
 
 # return the maximum range in hexes between these two PSGs for the first to spot the second
 def GetSpottingDistance(spotter, target):
@@ -3086,9 +2771,9 @@ def GetSpottingDistance(spotter, target):
 	
 	# apply target modifiers
 	map_hex = GetHexAt(target.hx, target.hy)
-	if map_hex.GetTerrainMod(target) > 0: distance -= 1
-	if target.fired[0]: distance += 3
-	if target.moved[0]: distance += 1
+	if map_hex.terrain_type.GetModifier(target) > 0: distance -= 1
+	if target.fired: distance += 3
+	if target.moved: distance += 1
 	if target.dug_in: distance -= 1
 	if target.suppressed: distance -= 1
 	if target.pinned: distance -= 1
@@ -3096,7 +2781,7 @@ def GetSpottingDistance(spotter, target):
 	# spotter modifiers
 	if spotter.recce: distance += 2
 	if spotter.dug_in: distance += 1
-	if spotter.moved[0]: distance -= 1
+	if spotter.moved: distance -= 1
 	if spotter.suppressed: distance -= 3
 	if spotter.pinned: distance -= 1
 	
@@ -3128,135 +2813,67 @@ def GetFacing(attacker, target, turret):
 # initiate an attack by one PSG on another
 def InitAttack(attacker, target):
 	
-	# clear any LoS and target hex displays
-	if scenario.active_los is not None:
-		scenario.active_los = None
-		scenario.target_hexes = []
-		libtcod.console_clear(map_gui_con)
-		DrawScreenConsoles()
+	# TEMP: make sure there's a weapon and a target
+	if target is None: return
+	if attacker.selected_weapon is None: return
+	
+	# set fired flag and clear the selected target
+	attacker.fired = True
+	attacker.target_psg = None
 	
 	# determine weapon used in attack
-	if attacker == scenario.player_psg:
-		weapon = scenario.player_active_weapon
-	else:
-		# TEMP - assume first weapon in list
-		weapon = attacker.weapon_list[0]
-	
-	# spend TU required for this attack
-	tu_cost = weapon.stats['fire_tu']
-	
-	# can always perform action if have at least min TU required
-	# TEMP?
-	if tu_cost > attacker.tu: tu_cost = attacker.tu
-	
-	# spend the TU
-	attacker.SpendTU(tu_cost)
+	weapon = attacker.selected_weapon
 	
 	# send information to CalcAttack, which will return an Attack object with the
 	# calculated stats to use for the attack
 	attack_obj = CalcAttack(attacker, weapon, target)
+	
+	# if player wasn't attacker, display LoS from attacker to target
+	if attacker.owning_player == 1:
+		line = GetLine(attacker.screen_x, attacker.screen_y, target.screen_x,
+			target.screen_y)
+		for (x,y) in line[2:-1]:
+			libtcod.console_set_char(con, x, y, 250)
+			libtcod.console_set_char_foreground(con, x, y, libtcod.red)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+			Wait(50)
 
 	# display attack console for this attack
-	# NEW: if attacker or target are player PSG
-	skip_wait = True
-	if attacker == scenario.player_psg or target == scenario.player_psg:
-		if attack_obj.ift_attack:
-			DisplayIFTRoll(attack_obj)
-		else:
-			DisplayToHitRoll(attack_obj)
-		skip_wait = False
+	if attack_obj.ift_attack:
+		DisplayIFTRoll(attack_obj)
+	else:
+		DisplayToHitRoll(attack_obj)
+	WaitForEnter()
 	
-	# animate LoS from attacker to target
-	line = GetLine(attacker.screen_x, attacker.screen_y, target.screen_x, target.screen_y)
-	for (x,y) in line[1:-1]:
-		libtcod.console_put_char_ex(map_gui_con, x-30, y-1, 250,
-			libtcod.red, libtcod.black)
-		libtcod.console_blit(map_gui_con, 0, 0, 57, 58, 0, 30, 1, 1.0, 0.0)
-		libtcod.console_flush()
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
-		if key.vk == libtcod.KEY_ENTER:
-			skip_wait = True
-			break
-		Wait(50)
-	
-	if not skip_wait:
-		WaitForEnter()
-	
-	# clear LoS from screen
-	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
-	libtcod.console_flush()
+	# clear any LoS from screen
+	DrawScreenConsoles()
 	
 	# Perform Attack
 	
 	# IFT attack: roll once for entire PSG
-	# TODO: separate animations for MGs and small arms
+	# TODO: different animations for MGs and small arms
 	if attack_obj.ift_attack:
-		IFTAttackAnimation(attack_obj)
+	#	IFTAttackAnimation(attack_obj)
 		target.ResolveIFTAttack(attack_obj)
 	
-	# to-hit attack, roll once for each step
+	# to-hit attack
 	else:
+	#	OrdAttackAnimation(attack_obj)
+		target.ResolveToHitAttack(attack_obj)
 	
-		# roll for attacks and show animations
-		total_hits = 0
-		
-		for i in range(attacker.num_steps):
-			d1, d2, roll = Roll2D6()
-			hit = False
-			if roll <= attack_obj.roll_req:
-				hit = True
-			OrdAttackAnimation(attack_obj, hit)
-			if hit:
-				total_hits += 1
-		
-		# display message stating how many hits
-		if total_hits == 0:
-			text = 'No hits on target'
-			Message(attack_obj.target.screen_x, attack_obj.target.screen_y,
-				text)
-			
-		else:
-		
-			text = str(total_hits) + ' hit'
-			if total_hits > 1: text += 's'
-			text += ' on target!'
-			Message(attack_obj.target.screen_x, attack_obj.target.screen_y,
-				text)
-			
-			# resolve hits
-			# TEMP: shells magically transform based on target type
-			
-			# AP attack
-			if attack_obj.target.vehicle:
-				for h in range(total_hits):
-					attack_obj.target.ResolveAPHit(attack_obj)
-					# add extra pause to distinguish 2+ messages
-					Wait(config.getint('ArmCom2', 'message_pause_time'))
-					# possible that PSG was destroyed
-					if attack_obj.target not in scenario.psg_list:
-						break
-			
-			# HE attack
-			else:
-				
-				# calculate the IFT attack of HE hit(s)
-				hit_object = CalcIFT(attack_obj.attacker,
-					attack_obj.weapon, attack_obj.target,
-					hit_result=True, multiple_hits=total_hits)
-				
-				# display hit result IFT and resolve it
-				if attacker == scenario.player_psg or target == scenario.player_psg:
-					DisplayIFTRoll(hit_object, hit_result=True)
-					WaitForEnter()
-				target.ResolveIFTAttack(hit_object)
-				
-	# set reload timer if IFT weapon
-	if weapon.ord_weapon:
-		weapon.reloading_tu = libtcod.random_get_int(0,
-			weapon.stats['reload_tu_min'], weapon.stats['reload_tu_max'])
+	# handle acquired target flags
 	
-	# set action flag
-	attacker.fired[1] = True
+	# attacker had already acquired target
+	if attacker.acquired_target == target:
+		if attacker.acquired_target_lvl == -1:
+			attacker.acquired_target_lvl = -2
+	# newly acquired target
+	else:
+		attacker.acquired_target = target
+		attacker.acquired_target_lvl = -1
+		target.acquired_by.append(attacker)
 
 
 # display the stats for an IFT roll on the screen
@@ -3318,13 +2935,17 @@ def DisplayIFTRoll(attack_obj, hit_result=False):
 	
 	text = str(attack_obj.total_mod)
 	if attack_obj.total_mod > 0: text = '+' + text
-	libtcod.console_print_ex(attack_con, 15, 47, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(attack_con, 15, 31, libtcod.BKGND_NONE, libtcod.CENTER,
 		'Total Modifier: ' + text)
 	
-	# display possible rolls and outcomes
+	# display list of possible results
+	libtcod.console_rect(attack_con, 1, 34, 28, 1, False, libtcod.BKGND_SET)
+	libtcod.console_print_ex(attack_con, 15, 34, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Possible Results')
+	
 	libtcod.console_set_default_background(attack_con, HIGHLIGHT_BG_COLOR2)
-	libtcod.console_rect(attack_con, 1, 51, 28, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print(attack_con, 3, 51, '2 3 4 5 6 7 8 9 10 11 12')
+	libtcod.console_rect(attack_con, 1, 36, 28, 1, False, libtcod.BKGND_SET)
+	libtcod.console_print(attack_con, 3, 36, '2 3 4 5 6 7 8 9 10 11 12')
 	
 	for test_roll in range(2, 13):
 		mod_roll = test_roll + attack_obj.total_mod
@@ -3336,8 +2957,8 @@ def DisplayIFTRoll(attack_obj, hit_result=False):
 		x = -1 + (test_roll * 2)
 		if test_roll >= 10:
 			x += test_roll-9
-		libtcod.console_print(attack_con, x, 52, result[0])
-		libtcod.console_print(attack_con, x, 53, result[1])
+		libtcod.console_print(attack_con, x, 37, result[0])
+		libtcod.console_print(attack_con, x, 38, result[1])
 	
 	libtcod.console_print_ex(attack_con, 15, 57, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Enter to Continue')
@@ -3389,11 +3010,12 @@ def DisplayToHitRoll(attack_obj):
 	libtcod.console_print_ex(attack_con, 15, 47, libtcod.BKGND_NONE, libtcod.CENTER,
 		'Total DRM: ' + text)
 	
+	# TODO: possible number of hits
 	# final to-hit roll required
-	libtcod.console_set_default_background(attack_con, HIGHLIGHT_BG_COLOR2)
-	libtcod.console_rect(attack_con, 1, 51, 28, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print_ex(attack_con, 15, 51, libtcod.BKGND_NONE, libtcod.CENTER,
-		'Final To-Hit: ' + chr(243) + str(attack_obj.roll_req))
+	#libtcod.console_set_default_background(attack_con, HIGHLIGHT_BG_COLOR2)
+	#libtcod.console_rect(attack_con, 1, 51, 28, 1, False, libtcod.BKGND_SET)
+	#libtcod.console_print_ex(attack_con, 15, 51, libtcod.BKGND_NONE, libtcod.CENTER,
+	#	'Final To-Hit: ' + chr(243) + str(attack_obj.roll_req))
 	
 	libtcod.console_print_ex(attack_con, 15, 57, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Enter to Continue')
@@ -3403,8 +3025,6 @@ def DisplayToHitRoll(attack_obj):
 	libtcod.console_flush()
 	
 	
-
-
 # display the stats for a to-kill roll on the screen
 def DisplayTKRoll(attacker, weapon, target, base_tk, roll_req, drm, total_mod):
 	libtcod.console_set_default_background(attack_con, libtcod.black)
@@ -3464,6 +3084,11 @@ def DisplayTKRoll(attacker, weapon, target, base_tk, roll_req, drm, total_mod):
 	WaitForEnter()
 
 
+# draw a representation of a die face to the console
+def DrawDie(console, x, y, d):
+	libtcod.console_blit(dice, 0+((d-1)*3), 0, 3, 3, console, x, y)
+	
+
 # fill the hex map with terrain
 def GenerateTerrain():
 	
@@ -3485,47 +3110,83 @@ def GenerateTerrain():
 	for key, map_hex in scenario.hex_map.hexes.items():
 		hex_list.append(map_hex)
 	shuffle(hex_list)
+	
+	# do first elevation pass
+	for map_hex in hex_list:
+		roll = libtcod.random_get_int(0, 1, 100)
+		if roll <= 5:
+			map_hex.SetElevation(0)
+		elif roll <= 80:
+			continue
+		elif roll <= 95:
+			map_hex.SetElevation(2)
+		else:
+			map_hex.SetElevation(3)
+	
+	# do second pass: elevation smoothing
+	for map_hex in hex_list:
+		if map_hex.elevation == 2:
+			has_adjacent_hill = False
+			adjacent_list = GetAdjacentHexesOnMap(map_hex.hx, map_hex.hy)
+			for (hx, hy) in adjacent_list:
+				adjacent_hex = GetHexAt(hx, hy)
+				if adjacent_hex.elevation >= 2:
+					has_adjacent_hill = True
+					break
+			if not has_adjacent_hill:
+				map_hex.SetElevation(1)
 
-	# do first pass of terrain generation
+	# do terrain type pass
 	for map_hex in hex_list:
 		
 		# if there's already an adjcacent pond, don't create another one
-		if HasAdjacent(map_hex, POND):
+		if HasAdjacent(map_hex, 'Pond'):
 			pond_chance = 0
 		else:
 			pond_chance = 5
 		
 		# if there's already an adjacent forest, higher chance of there being one
-		if HasAdjacent(map_hex, FOREST):
+		if HasAdjacent(map_hex, 'Forest'):
 			forest_chance = 30
 		else:
-			forest_chance = 10
+			forest_chance = 5
 		
 		# if there's already an adjacent field, higher chance of there being one
-		if HasAdjacent(map_hex, FIELDS):
+		if HasAdjacent(map_hex, 'Field'):
 			field_chance = 10
 		else:
 			field_chance = 5
 		
+		if HasAdjacent(map_hex, 'Village'):
+			village_chance = 0
+		else:
+			village_chance = 2
+		
 		roll = libtcod.random_get_int(0, 1, 100)
 		
 		if roll <= pond_chance:
-			map_hex.terrain_type = POND
-			map_hex.water = True
+			map_hex.SetTerrainType('Pond')
 			continue
 		
 		roll -= pond_chance
 		
 		if roll <= forest_chance:
-			map_hex.terrain_type = FOREST
-			map_hex.blocks_los = True
-			map_hex.difficult = True
+			map_hex.SetTerrainType('Forest')
 			continue
 		
 		roll -= forest_chance
 			
 		if roll <= field_chance:
-			map_hex.terrain_type = FIELDS
+			map_hex.SetTerrainType('Field')
+			continue
+		
+		roll -= field_chance
+		
+		if roll <= village_chance:
+			map_hex.SetTerrainType('Village')
+	
+	# TEMP - no road
+	return
 	
 	# add a road running from the bottom to the top of the map
 	path = GetHexPath(6, 84, 6, -3)
@@ -3540,26 +3201,51 @@ def GenerateTerrain():
 			direction = GetDirectionToAdjacent(hx2, hy2, hx1, hy1)
 			map_hex = GetHexAt(hx2, hy2)
 			map_hex.dirt_road_links.append(direction)
-			
+
+
+##########################################################################################
+#                                 Scenario Animations                                    #
+##########################################################################################
+
+# show a PSG moving from its current location to hx, hy
+def DisplayMoveAnimation(psg, new_hx, new_hy):
+	
+	# calculate path for animation
+	(x1,y1) = PlotHex(psg.hx, psg.hy)
+	(x2,y2) = PlotHex(new_hx, new_hy)
+	x3 = x2-x1
+	y3 = y2-y1
+	line = GetLine(0, 0, x3, y3)
+	
+	pause_time = config.getint('ArmCom2', 'animation_speed') * 6
+	
+	for (x_mod, y_mod) in line:
+		psg.anim_offset_x = x_mod
+		psg.anim_offset_y = y_mod
+		UpdateUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+		Wait(pause_time)
+
+	# reset animation offsets
+	psg.anim_offset_x = 0
+	psg.anim_offset_y = 0 
+
 
 # show an ordinance attack firing animation
-def OrdAttackAnimation(attack_obj, hit):
+def OrdAttackAnimation(attack_obj):
 	
 	# redraw screen consoles to clear any old GUI display
 	DrawScreenConsoles()
+	if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 	libtcod.console_flush()
 	
 	# use draw locations, but we'll be drawing to the GUI console so
 	#   modify by -30, -1
 	x1, y1 = attack_obj.attacker.screen_x-30, attack_obj.attacker.screen_y-1
 	x2, y2 = attack_obj.target.screen_x-30, attack_obj.target.screen_y-1
-	
-	# scatter actual hit location if shot missed
-	# uses the turret character plot locations for simplicity
-	if not hit:
-		(xmod, ymod) = choice(PLOT_DIR)
-		x2 += xmod
-		y2 += ymod
 	
 	# projectile animation
 	line = GetLine(x1, y1, x2, y2, los=True)
@@ -3572,6 +3258,8 @@ def OrdAttackAnimation(attack_obj, hit):
 		libtcod.console_put_char_ex(map_gui_con, x, y, 250,
 			libtcod.white, libtcod.black)
 		DrawScreenConsoles()
+		if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
+			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 		libtcod.console_flush()
 		Wait(pause_time)
 	
@@ -3583,6 +3271,8 @@ def OrdAttackAnimation(attack_obj, hit):
 		libtcod.console_put_char_ex(map_gui_con, x, y, '*',
 			col, libtcod.black)
 		DrawScreenConsoles()
+		if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
+			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 		libtcod.console_flush()
 		Wait(pause_time2)
 		
@@ -3596,6 +3286,8 @@ def IFTAttackAnimation(attack_obj):
 	
 	# redraw screen consoles to clear any old GUI display
 	DrawScreenConsoles()
+	if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 	libtcod.console_flush()
 	
 	# use draw locations, but we'll be drawing to the GUI console so
@@ -3615,11 +3307,15 @@ def IFTAttackAnimation(attack_obj):
 		libtcod.console_put_char_ex(map_gui_con, x, y, 250,
 			libtcod.red, libtcod.black)
 		DrawScreenConsoles()
+		if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
+			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 		libtcod.console_flush()
 		Wait(pause_time)
 	
 	libtcod.console_clear(map_gui_con)
 	DrawScreenConsoles()
+	if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 	libtcod.console_flush()
 
 
@@ -3648,78 +3344,33 @@ def Message(x, y, text):
 	libtcod.console_flush()
 
 
-# re-paint the map viewport layer, drawing information from the campaign day map
+# draw the map terrain console
 # each hex is 5x5 cells, but edges overlap with adjacent hexes
-def PaintMapVP():
+# also record the console cells covered by this hex depiction
+def UpdateMapTerrainConsole():
+		
+	#start_time = time.time()
 	
-	# paint a single hex onto the map vp console
-	# hx, hy is local to the viewport: 0,0 is player location at center of VP
-	def PaintHex(hx, hy):
-		
-		if (hx, hy) not in scenario.hex_map.vp_matrix: return
-		
-		# find this hex on the campaign day map
-		map_hex = scenario.hex_map.vp_matrix[(hx,hy)]
-		
-		(x,y) = PlotHex(hx, hy)
-		
-		# paint hex console image here, if not visible use grey hex
-		if not map_hex.vis_to_player:
-			h_con = grey_hex_con
-		else:
-			h_con = hex_con
-		libtcod.console_blit(h_con, 0, 0, 7, 5, map_vp_con, x-3, y-2)
-
-		# draw greebles overtop if required
-		if map_hex.terrain_type != OPEN_GROUND:
-			
-			char = None
-			col = None
-			bg_col = None
-			
-			if map_hex.terrain_type == POND:
-				bg_col = WATER_COL
-			if map_hex.terrain_type == FOREST:
-				col = FOREST_COL
-				bg_col = FOREST_BG_COL
-				char = 6
-			elif map_hex.terrain_type == FIELDS:
-				col = FIELDS_COL
-				char = 177
-			
-			# grey out if tile is not visible to player
-			if not map_hex.vis_to_player:
-				if col is not None:
-					col = col * libtcod.grey
-				if bg_col is not None:
-					bg_col = bg_col * libtcod.grey
-			
-			for dy in range(y-1, y+2):
-				if dy == y:
-					min_x = x-2
-					max_x = x+2
-				else:
-					min_x = x-1
-					max_x = x+1
-				for dx in range(min_x, max_x+1):
-					if char is not None:
-						libtcod.console_set_char(map_vp_con,
-							dx, dy, char)
-					if col is not None:
-						libtcod.console_set_char_foreground(map_vp_con,
-							dx, dy, col)
-					if bg_col is not None:
-						libtcod.console_set_char_background(map_vp_con,
-							dx, dy, bg_col)
-
+	libtcod.console_set_default_background(map_terrain_con, libtcod.black)
+	libtcod.console_clear(map_terrain_con)
 	
-	libtcod.console_set_default_background(map_vp_con, KEY_COLOR)
-	libtcod.console_clear(map_vp_con)
-	libtcod.console_set_default_background(map_vp_con, OPEN_GROUND_COL)
-	libtcod.console_set_default_foreground(map_vp_con, libtcod.grey)
+	for elevation in range(4):
+		for (hx, hy) in scenario.hex_map.hexes:
+			map_hex = GetHexAt(hx, hy)
+			if map_hex.elevation != elevation: continue
+			(x,y) = PlotHex(hx, hy)
+			h_con = map_hex.terrain_type.console[map_hex.elevation]
+			libtcod.console_blit(h_con, 0, 0, 0, 0, map_terrain_con, x-3, y-2)
+			
+			for x1 in range(x-1, x+2):
+				scenario.map_index[(x1,y-1)] = (hx, hy)
+				scenario.map_index[(x1,y+1)] = (hx, hy)
+			for x1 in range(x-2, x+3):
+				scenario.map_index[(x1,y)] = (hx, hy)
 	
-	for (hx, hy) in VP_HEXES:
-		PaintHex(hx,hy)
+	# TEMP
+	return
+	
 	
 	# TEMP: draw roads and rivers overtop
 	for (hx, hy) in VP_HEXES:
@@ -3736,7 +3387,7 @@ def PaintMapVP():
 				# modify for vp rotation
 		#		direction = CombineDirs(direction, scenario.player_psg.facing)
 		#		for (rx,ry) in GetEdgeTiles(x, y, direction):
-		#			libtcod.console_set_char_background(map_vp_con, rx, ry, RIVER_BG_COL, flag=libtcod.BKGND_SET)
+		#			libtcod.console_set_char_background(map_terrain_con, rx, ry, RIVER_BG_COL, flag=libtcod.BKGND_SET)
 		
 		# dirt roads
 		if len(map_hex.dirt_road_links) > 0:
@@ -3757,11 +3408,11 @@ def PaintMapVP():
 				
 				line = GetLine(x1, y1, x2, y2)
 				for (x, y) in line:
-					libtcod.console_set_char_background(map_vp_con, x, y, col, libtcod.BKGND_SET)
+					libtcod.console_set_char_background(map_terrain_con, x, y, col, libtcod.BKGND_SET)
 					
 					# if character is not blank or hex edge, remove it
-					if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
-						libtcod.console_set_char(map_vp_con, x, y, 0)
+					if libtcod.console_get_char(map_terrain_con, x, y) not in [0, 250]:
+						libtcod.console_set_char(map_terrain_con, x, y, 0)
 
 	# highlight any objective hexes
 	for (vp_hx, vp_hy), map_hex in scenario.hex_map.vp_matrix.iteritems():
@@ -3769,223 +3420,226 @@ def PaintMapVP():
 			(x,y) = PlotHex(vp_hx, vp_hy)
 			temp = LoadXP('ArmCom2_objective_highlight.xp')
 			libtcod.console_set_key_color(temp, KEY_COLOR)
-			libtcod.console_blit(temp, 0, 0, 7, 5, map_vp_con, x-3, y-2, 1.0, 0.0)
+			libtcod.console_blit(temp, 0, 0, 7, 5, map_terrain_con, x-3, y-2, 1.0, 0.0)
 			del temp
 	
-	# draw indicators for any off-map objective hexes
-	libtcod.console_set_default_background(map_vp_con, libtcod.black)
-	libtcod.console_set_default_foreground(map_vp_con, libtcod.white)
-	y = 0
-	for map_hex in scenario.objective_hexes:
-		distance = GetHexDistance(scenario.player_psg.hx, scenario.player_psg.hy,
-			map_hex.hx, map_hex.hy)
-		if distance > 6:
-			direction = GetDirectionToward(scenario.player_psg.hx,
-				scenario.player_psg.hy, map_hex.hx, map_hex.hy)
-			direction = ConstrainDir(direction - scenario.player_psg.facing)
-			char = GetDirectionalArrow(direction)
-			
-			text = 'Objective ' + char + ' ' + str(distance*160) + 'm.'
-			libtcod.console_print_ex(map_vp_con, 56, y, libtcod.BKGND_SET,
-				libtcod.RIGHT, text)
-			y += 1
-			
+	#print 'UpdateMapTerrainConsole() Finished: Took ' + str(time.time() - start_time) + ' seconds'
+
+
+# draw the Field of View overlay for the player, darkening map hexes that are not currently visible
+def UpdateMapFoVConsole():
+	libtcod.console_clear(map_fov_con)
+	temp = LoadXP('ArmCom2_tile_fov.xp')
+	libtcod.console_set_key_color(temp, libtcod.black)
+	for (hx, hy) in scenario.hex_map.hexes:
+		map_hex = GetHexAt(hx, hy)
+		if map_hex.vis_to_player:
+			(x,y) = PlotHex(hx, hy)
+			libtcod.console_blit(temp, 0, 0, 0, 0, map_fov_con, x-3, y-2)
+	del temp
 
 
 # updates the map viewport gui layer
 def UpdateMapGUIConsole():
 	libtcod.console_clear(map_gui_con)
-	
-	# highlight current target hexes
-	if len(scenario.target_hexes) > 0:
-		temp = LoadXP('ArmCom2_tile_highlight.xp')
-		for (vp_hx, vp_hy), map_hex in scenario.hex_map.vp_matrix.iteritems():
-			if (map_hex.hx, map_hex.hy) in scenario.target_hexes:
-				(x,y) = PlotHex(vp_hx, vp_hy)
-				libtcod.console_blit(temp, 0, 0, 7, 5, map_gui_con, x-3, y-2)
-		del temp
-	
-	# display active targeting LoS if any
-	if scenario.active_los is not None:
-		(psg1, psg2) = scenario.active_los
-		line = GetLine(psg1.screen_x, psg1.screen_y, psg2.screen_x, psg2.screen_y)
-		# TODO: determine if attacker has turret character to skip
-		for (x,y) in line[2:-1]:
-			libtcod.console_put_char_ex(map_gui_con, x-30, y-1, 250,
-				libtcod.red, libtcod.black)
-
-	# display currently selected hex if any
-	if scenario.selected_vp_hex is not None:
-		(vp_hx, vp_hy) = scenario.selected_vp_hex
-		(x,y) = PlotHex(vp_hx, vp_hy)
-		temp = LoadXP('ArmCom2_tile_highlight.xp')
-		libtcod.console_blit(temp, 0, 0, 7, 5, map_gui_con, x-3, y-2)
-		del temp
 		
 
-# paints active and visible PSGs onto unit console
+# run through active PSGs and draw them to the unit console
 def UpdateUnitConsole():
 	libtcod.console_clear(unit_con)
-	
-	# run through locations in map viewport, and if there's a psg here, draw it
-	for (vp_hx, vp_hy), map_hex in scenario.hex_map.vp_matrix.iteritems():
-		for psg in scenario.psg_list:
-			if psg.hx == map_hex.hx and psg.hy == map_hex.hy:
-				psg.DrawMe(vp_hx, vp_hy)
+	for psg in scenario.psg_list:
+		# don't draw hidden enemy units
+		if psg.owning_player == 1 and psg.hidden: continue
+		psg.DrawMe()
 
 
-# updates the player tank info console
-# TODO: in future, will display detailed info on any PSG
-def UpdateTankConsole():
-	libtcod.console_clear(tank_con)
+# updates the selected PSG info console
+def UpdatePSGConsole():
+	libtcod.console_clear(psg_con)
 	
-	# TEMP - always show player PSG info
-	psg = scenario.player_psg
+	# create a local pointer to the currently active PSG
+	psg = scenario.active_psg
 	
 	# PSG name
-	libtcod.console_print(tank_con, 0, 0, psg.GetName())
+	libtcod.console_print(psg_con, 0, 0, psg.GetName())
 	
 	# unit type
-	libtcod.console_set_default_foreground(tank_con, HIGHLIGHT_COLOR)
-	libtcod.console_print(tank_con, 0, 1, psg.step_name)
-	libtcod.console_set_default_foreground(tank_con, libtcod.white)
+	libtcod.console_set_default_foreground(psg_con, HIGHLIGHT_COLOR)
+	libtcod.console_print(psg_con, 0, 1, psg.GetStepName())
+	libtcod.console_set_default_foreground(psg_con, libtcod.white)
 	
 	# vehicle portrait
-	libtcod.console_set_default_background(tank_con, PORTRAIT_BG_COL)
-	libtcod.console_rect(tank_con, 0, 2, 28, 8, False, libtcod.BKGND_SET)
-	libtcod.console_set_default_background(tank_con, libtcod.black)
+	libtcod.console_set_default_background(psg_con, PORTRAIT_BG_COL)
+	libtcod.console_rect(psg_con, 0, 2, 24, 8, False, libtcod.BKGND_SET)
+	libtcod.console_set_default_background(psg_con, libtcod.black)
 	
+	# TODO: re-do portraits so that width is now 24
 	if psg.portrait is not None:
 		temp = LoadXP(psg.portrait)
 		if temp is not None:
 			x = 14 - int(libtcod.console_get_width(temp) / 2)
-			libtcod.console_blit(temp, 0, 0, 0, 0, tank_con, x, 2)
+			libtcod.console_blit(temp, 0, 0, 24, 8, psg_con, x, 2)
 		else:
 			print 'ERROR: unit portrait not found: ' + psg.portrait
 	
-	y = 10
-	
 	# morale and skill levels
-	libtcod.console_set_default_background(tank_con, libtcod.dark_grey)
-	libtcod.console_rect(tank_con, 0, y, 28, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print(tank_con, 0, y, MORALE_DESC[str(psg.morale_lvl)])
-	libtcod.console_print_ex(tank_con, 27, y, libtcod.BKGND_NONE, libtcod.RIGHT,
+	libtcod.console_set_default_background(psg_con, libtcod.dark_grey)
+	libtcod.console_rect(psg_con, 0, 10, 24, 1, False, libtcod.BKGND_SET)
+	libtcod.console_print(psg_con, 0, 10, MORALE_DESC[str(psg.morale_lvl)])
+	libtcod.console_print_ex(psg_con, 23, 10, libtcod.BKGND_NONE, libtcod.RIGHT,
 		SKILL_DESC[str(psg.skill_lvl)])
 	
 	# weapon list
-	y += 2
-	libtcod.console_set_default_background(tank_con, HIGHLIGHT_BG_COLOR)
+	# TODO: only show max three, allow scrolling
+	y = 12
+	libtcod.console_set_default_background(psg_con, HIGHLIGHT_BG_COLOR)
 	
 	for weapon in psg.weapon_list:
-		libtcod.console_rect(tank_con, 0, y, 28, 1, False, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(psg_con, WEAPON_LIST_COLOR)
+		# highlight selected weapon if in shooting phase
+		if scenario.current_phase == 1 and psg.selected_weapon is not None:
+			if weapon == psg.selected_weapon:
+				libtcod.console_set_default_background(psg_con, SELECTED_WEAPON_COLOR)
+		libtcod.console_rect(psg_con, 0, y, 24, 1, False, libtcod.BKGND_SET)
 		if weapon.ord_weapon:
-			text = str(weapon.stats['calibre']) + 'mm' + weapon.stats['long_range']
-			libtcod.console_print(tank_con, 0, y, text)
-			# reload status
-			# TEMP: no ammo type displayed
-			text = ''
-			if weapon.reloading_tu > 0:
-				text = ('Reloading ' + text + ' (' + 
-					str(weapon.reloading_tu) + ')')
-			else:
-				text += ' Loaded'
-			libtcod.console_print_ex(tank_con, 27, y, libtcod.BKGND_NONE,
-				libtcod.RIGHT, text)
+			text = str(weapon.stats['calibre']) + 'mm ' + weapon.stats['long_range']
+			libtcod.console_print(psg_con, 0, y, text)
 		else:
-			libtcod.console_print(tank_con, 0, y, weapon.stats['name'])
+			libtcod.console_print(psg_con, 0, y, weapon.stats['name'])
 			text = str(weapon.stats['fp']) + '-' + str(weapon.stats['normal_range'])
-			libtcod.console_print_ex(tank_con, 27, y, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(psg_con, 23, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
 		y += 1
-	y += 1
 	
 	# armour ratings if any
 	if psg.armour:
 		text = ('Turret ' + str(psg.armour['turret_front']) + '/' +
 			str(psg.armour['turret_side']))
-		libtcod.console_print(tank_con, 0, y, text)
+		libtcod.console_print(psg_con, 0, 16, text)
 		text = ('Hull   ' + str(psg.armour['hull_front']) + '/' +
 			str(psg.armour['hull_side']))
-		libtcod.console_print(tank_con, 0, y+1, text)
+		libtcod.console_print(psg_con, 0, 17, text)
 	
-	# Movement class and TU
-	libtcod.console_set_default_foreground(tank_con, libtcod.green)
-	libtcod.console_print_ex(tank_con, 27, y, libtcod.BKGND_NONE,
+	# Movement class
+	libtcod.console_set_default_foreground(psg_con, libtcod.green)
+	libtcod.console_print_ex(psg_con, 23, 16, libtcod.BKGND_NONE,
 		libtcod.RIGHT, psg.movement_class)
-	text = str(psg.tu) + '/' + str(psg.max_tu) + ' TU'
-	libtcod.console_print_ex(tank_con, 27, y+1, libtcod.BKGND_NONE,
-		libtcod.RIGHT, text)
 	
-	y += 3
+	# display MP if in movement phase
+	if scenario.current_phase == 0:
+		text = str(psg.mp) + '/' + str(psg.max_mp) + ' MP'
+		libtcod.console_print_ex(psg_con, 23, 17, libtcod.BKGND_NONE,
+			libtcod.RIGHT, text)
 	
-	# action status flags
-	libtcod.console_set_default_foreground(tank_con, libtcod.lighter_blue)
-	libtcod.console_set_default_background(tank_con, HIGHLIGHT_BG_COLOR2)
-	libtcod.console_rect(tank_con, 0, y, 28, 1, False, libtcod.BKGND_SET)
+	# status flags
+	libtcod.console_set_default_foreground(psg_con, libtcod.lighter_blue)
+	libtcod.console_set_default_background(psg_con, HIGHLIGHT_BG_COLOR)
+	libtcod.console_rect(psg_con, 0, 19, 24, 1, False, libtcod.BKGND_SET)
 	
-	if psg.moved[0]:
-		libtcod.console_print(tank_con, 0, y, 'Moved')
+	# movement- and position-related flags
+	if psg.moved:
+		libtcod.console_print(psg_con, 0, 19, 'Moved')
+	elif psg.changed_facing:
+		libtcod.console_print(psg_con, 0, 19, 'Pivoted Hull')
+	elif psg.changed_turret_facing:
+		libtcod.console_print(psg_con, 0, 19, 'Rotated Turret')
 	elif psg.dug_in:
-		libtcod.console_print(tank_con, 0, y, 'Dug-in')
+		libtcod.console_print(psg_con, 0, 19, 'Dug-in')
 	elif psg.hull_down > -1:
 		text = 'HD '
 		# TODO: add directional character
-		libtcod.console_print(tank_con, 0, y, text)
-	if psg.fired[0]:
-		libtcod.console_print(tank_con, 8, y, 'Fired')
-	if psg.changed_facing:
-		libtcod.console_print(tank_con, 14, y, 'Pivoted')
-	if psg.changed_turret_facing:
-		libtcod.console_print(tank_con, 22, y, 'Turret')
+		libtcod.console_print(psg_con, 0, 19, text)
 	
-	y += 1
+	# fired last turn
+	if psg.fired:
+		libtcod.console_print_ex(psg_con, 23, 19, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'Fired')
+
 	
 	# status flags
-	libtcod.console_set_default_foreground(tank_con, libtcod.light_red)
-	libtcod.console_set_default_background(tank_con, libtcod.darkest_red)
-	libtcod.console_rect(tank_con, 0, y, 28, 1, False, libtcod.BKGND_SET)
+	#libtcod.console_set_default_foreground(psg_con, libtcod.light_red)
+	#libtcod.console_set_default_background(psg_con, libtcod.darkest_red)
+	#libtcod.console_rect(psg_con, 0, y, 24, 1, False, libtcod.BKGND_SET)
 	
-	if psg.suppressed:
-		libtcod.console_print(tank_con, 0, y, 'Suppressed')
-	elif psg.pinned:
-		libtcod.console_print(tank_con, 0, y, 'Pinned')
+	#if psg.suppressed:
+	#	libtcod.console_print(psg_con, 0, y, 'Suppressed')
+	#elif psg.pinned:
+	#	libtcod.console_print(psg_con, 0, y, 'Pinned')
 	
 	
 	# TODO: current terrain type
 	
 	# TODO: vehicle crew?
-	#libtcod.console_set_default_background(tank_con, libtcod.dark_grey)
-	#libtcod.console_set_default_foreground(tank_con, libtcod.light_grey)
-	#libtcod.console_rect(tank_con, 0, 15, 28, 1, False, libtcod.BKGND_SET)
-	#libtcod.console_print(tank_con, 0, 15, 'Crew')
+	#libtcod.console_set_default_background(psg_con, libtcod.dark_grey)
+	#libtcod.console_set_default_foreground(psg_con, libtcod.light_grey)
+	#libtcod.console_rect(psg_con, 0, 15, 28, 1, False, libtcod.BKGND_SET)
+	#libtcod.console_print(psg_con, 0, 15, 'Crew')
 	
-	libtcod.console_set_default_foreground(tank_con, libtcod.white)
-	libtcod.console_set_default_background(tank_con, libtcod.black)
+	libtcod.console_set_default_foreground(psg_con, libtcod.white)
+	libtcod.console_set_default_background(psg_con, libtcod.black)
 
 
 # updates the command console
 def UpdateCmdConsole():
 	libtcod.console_clear(cmd_con)
 	libtcod.console_set_default_background(cmd_con, HIGHLIGHT_BG_COLOR)
-	libtcod.console_rect(cmd_con, 0, 0, 28, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print(cmd_con, 0, 0, 'Action')
-	libtcod.console_print(cmd_con, 25, 0, 'TU')
+	libtcod.console_rect(cmd_con, 0, 0, 24, 2, False, libtcod.BKGND_SET)
+	if scenario.active_player == 0:
+		text = 'Player'
+	else:
+		text = 'Enemy'
+	text += ' Turn'
+	libtcod.console_print_ex(cmd_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
+		text)
+	text = PHASE_NAMES[scenario.current_phase]
+	libtcod.console_print_ex(cmd_con, 12, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+		text)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
-	scenario.cmd_menu.DisplayMe(cmd_con, 1, 2, 28)
+	scenario.cmd_menu.DisplayMe(cmd_con, 0, 3, 24)
+
+
+# draw scenario info to the scenario info console
+def UpdateScenInfoConsole():
+	libtcod.console_clear(scen_info_con)
+	
+	# scenario date
+	text = MONTH_NAMES[scenario.month] + ', ' + str(scenario.year)
+	libtcod.console_print_ex(scen_info_con, 42, 0, libtcod.BKGND_NONE, libtcod.CENTER,
+		text)
+	
+	# scenario name
+	libtcod.console_set_default_foreground(scen_info_con, libtcod.light_blue)
+	libtcod.console_print_ex(scen_info_con, 42, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+		scenario.name)
+	libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
+	
+	# current turn and maximum turns
+	text = 'Turn ' + str(scenario.current_turn) + '/' + str(scenario.max_turns)
+	libtcod.console_print_ex(scen_info_con, 42, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+		text)
+	
+	# TODO: pull wind and weather info from scenario object
+	text = 'No Wind, Clear'
+	libtcod.console_print_ex(scen_info_con, 82, 0, libtcod.BKGND_NONE, libtcod.RIGHT,
+		text)
+	
+	# TODO: pull light and visibility info from scenario object
+	text = ''
+	libtcod.console_print_ex(scen_info_con, 82, 1, libtcod.BKGND_NONE, libtcod.RIGHT,
+		text)
 
 
 # draw PSG info to the PSG info console based on current mouse location
+# DEFUNCT: merge into UpdateHexInfoConsole() below
 def UpdatePSGInfoConsole():
+	
+	# TEMP
+	psg_info_con = libtcod.console_new(57, 57)
+	
+	
 	libtcod.console_clear(psg_info_con)
 	
-	# mouse cursor outside of map area
-	if mouse.cx < 31 or mouse.cx > 85: return
-	if mouse.cy < 3 or mouse.cy > 55: return
-
-	# no PSG being draw here
-	if (mouse.cx, mouse.cy) not in scenario.psg_info_map: return
-	
-	psg = scenario.psg_info_map[(mouse.cx, mouse.cy)]
+	psg = None
 	
 	# PSG name (max 2 lines)
 	# hidden enemy PSG
@@ -4001,25 +3655,40 @@ def UpdatePSGInfoConsole():
 		n += 1
 	
 	# number of steps in PSG and name of squads/vehicles
-	text = str(psg.num_steps) + ' ' + psg.step_name
+	text = str(psg.num_steps) + ' ' + psg.GetStepName()
 	libtcod.console_print(psg_info_con, 0, 2, text)
 	
-	# important unit abilities
-	if psg.recce:
-		libtcod.console_print(psg_info_con, 0, 4, 'Recce')
+	# hull and turret facing if any
+	text = ''
+	if psg.vehicle or psg.gun:
+		direction = CombineDirs(psg.facing, scenario.player_psg.facing)
+		char = GetDirectionalArrow(direction)
+		if psg.gun:
+			text += 'Gun '
+		else:
+			text += 'Hull '
+		text += char + ' '
+		if psg.turret_facing is not None:
+			direction = CombineDirs(psg.turret_facing, scenario.player_psg.facing)
+			char = GetDirectionalArrow(direction)
+			text += 'Turret ' + char
 	
-	# status line
+	libtcod.console_print(psg_info_con, 0, 4, text)
+	
+	# unit abilities and status
+	if psg.recce:
+		libtcod.console_print(psg_info_con, 0, 5, 'Recce')
+	
 	text = ''
 	if psg.pinned:
-		text = 'PINNED'
+		text = 'Pinned'
 	elif psg.suppressed:
-		text = 'SUPPRESSED'
-	libtcod.console_print(psg_info_con, 0, 5, text)
+		text = 'Suppressed'
 	
-	text = ''
 	if psg.hidden:
 		if len(text) > 0: text += ' '
 		text += 'Hidden'
+	
 	libtcod.console_print_ex(psg_info_con, 20, 5, libtcod.BKGND_NONE,
 		libtcod.RIGHT, text)
 	
@@ -4031,115 +3700,78 @@ def UpdateHexInfoConsole():
 	libtcod.console_clear(hex_info_con)
 	
 	# mouse cursor outside of map area
-	if mouse.cx < 31 or mouse.cx > 85: return
-	if mouse.cy < 3 or mouse.cy > 55: return
+	if mouse.cx < 26: return
 	
-	x = mouse.cx - 30
-	y = mouse.cy - 1
+	x = mouse.cx - 26
+	y = mouse.cy - 3
 	
-	if (x,y) in SCREEN_TO_VP_HEX:
-		(vp_hx, vp_hy) = SCREEN_TO_VP_HEX[(x,y)]
+	if (x,y) in scenario.map_index:
+		(hx, hy) = scenario.map_index[(x,y)]
+		map_hex = GetHexAt(hx, hy)
 		
-		# this hex is not on the map
-		if (vp_hx, vp_hy) not in scenario.hex_map.vp_matrix: return
-		
-		map_hex = scenario.hex_map.vp_matrix[(vp_hx, vp_hy)]
-		
-		# TEMP: TODO need a terrain class?
-		if map_hex.terrain_type == OPEN_GROUND:
-			text = 'Open Ground'
-		elif map_hex.terrain_type == POND:
-			text = 'Pond'
-		elif map_hex.terrain_type == FOREST:
-			text = 'Woods'
-		elif map_hex.terrain_type == FIELDS:
-			text = 'Fields'
+		# coordinates and elevation
+		text = str(map_hex.hx) + ',' + str(map_hex.hy) + ':'
+		elevation = int(map_hex.terrain_type.los_height + (map_hex.elevation * ELEVATION_M))
+		text += str(elevation) + 'm'
 		libtcod.console_print(hex_info_con, 0, 0, text)
 		
-		if len(map_hex.dirt_road_links) > 0:
-			libtcod.console_print(hex_info_con, 0, 1, 'Dirt Road')
-		
+		# objective status
 		if map_hex.objective is not None:
-			libtcod.console_print(hex_info_con, 0, 2, 'Objective')
-		
+			libtcod.console_print_ex(hex_info_con, 23, 0, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Objective')
 
-# update the Order of Battle console; if flash_animate, show an animation for the new
-#   top PSG in the list
-def UpdateOOBConsole(flash_animate=False):
-	libtcod.console_set_default_foreground(oob_con, libtcod.white)
-	libtcod.console_set_default_background(oob_con, libtcod.black)
-	libtcod.console_clear(oob_con)
-	
-	libtcod.console_set_default_background(oob_con, HIGHLIGHT_BG_COLOR)
-	libtcod.console_rect(oob_con, 0, 0, 28, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print(oob_con, 0, 0, 'Order of Battle')
-	libtcod.console_print(oob_con, 25, 0, 'TU')
-	
-	# list first 8 PSGs to act next in order, 
-	n = 1
-	for psg in scenario.oob_list:
-		
-		if psg.owning_player == 1 and psg.hidden:
-			col = libtcod.grey
-			name_text = ['Possible Enemy Platoon']
-			tu_text = '?'
-		else:
-			col = libtcod.white
-			name_text = wrap(psg.GetName(), 23, subsequent_indent = ' ')
-			tu_text = str(psg.tu)
-		
-		libtcod.console_set_default_foreground(oob_con, col)
-		h = len(name_text)
-		libtcod.console_print(oob_con, 1, n, name_text[0])
-		if h > 1:
-			n += 1
-			libtcod.console_print(oob_con, 1, n, name_text[1])	
-		libtcod.console_print_ex(oob_con, 26, n, libtcod.BKGND_NONE,
-			libtcod.RIGHT, tu_text)
-		
-		# highlight if currently active PSG
-		if scenario.active_psg is not None:
-			if scenario.active_psg == psg:
-				libtcod.console_put_char_ex(oob_con, 0, n-(h-1), '[',
-					libtcod.light_blue, libtcod.black)
-				libtcod.console_put_char_ex(oob_con, 27, n, ']',
-					libtcod.light_blue, libtcod.black)
-		n += 1
-		if n == 9: break
+		# hex terrain type
+		libtcod.console_print(hex_info_con, 0, 1, map_hex.terrain_type.display_name)
+
+		# road status
+		if len(map_hex.dirt_road_links) > 0:
+			libtcod.console_print(hex_info_con, 0, 2, 'Dirt Road')
 	
 
 # layer the display consoles onto the screen
 def DrawScreenConsoles():
-	# viewport stuff
-	libtcod.console_blit(bkg_console, 0, 0, 88, 60, con, 0, 0)
-	libtcod.console_blit(map_vp_con, 0, 0, 57, 58, con, 30, 1)
-	libtcod.console_blit(unit_con, 0, 0, 57, 58, con, 30, 1, 1.0, 0.0)
-	libtcod.console_blit(map_gui_con, 0, 0, 57, 58, con, 30, 1, 1.0, 0.0)
-	libtcod.console_blit(hex_info_con, 0, 0, 21, 6, con, 30, 53)
-	libtcod.console_blit(psg_info_con, 0, 0, 21, 6, con, 66, 53)
+	libtcod.console_clear(con)
 	
-	# highlight current target PSG if any
-	if scenario.target_psg is not None:
-		(x, y) = scenario.target_coords
-		libtcod.console_set_char_background(con, x+30, y+1, TARGET_HL_COL, flag=libtcod.BKGND_SET)
-	
+	# map viewport layers
+	libtcod.console_blit(bkg_console, 0, 0, 0, 0, con, 0, 3)		# grey outline
+	libtcod.console_blit(map_terrain_con, 0, 0, 0, 0, con, 26, 3)		# map terrain
+	libtcod.console_blit(map_fov_con, 0, 0, 0, 0, con, 26, 3, 0.7, 0.7)	# map FoV overlay
+	libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# map unit layer
+	#libtcod.console_blit(map_gui_con, 0, 0, 0, 0, con, 26, 0, 0.0, 1.0)	# map GUI layer
+
 	# highlight selected PSG if any
-	if scenario.selected_psg is not None:
-		(x, y) = scenario.selected_coords
-		libtcod.console_set_char_background(con, x+30, y+1, SELECTED_HL_COL, flag=libtcod.BKGND_SET)
+	if scenario.active_psg is not None:
+		libtcod.console_set_char_background(con, scenario.active_psg.screen_x,
+			scenario.active_psg.screen_y, SELECTED_HL_COL, flag=libtcod.BKGND_SET)
 	
-	libtcod.console_blit(tank_con, 0, 0, 28, 26, con, 1, 1)
-	libtcod.console_blit(cmd_con, 0, 0, 28, 20, con, 1, 28)
-	libtcod.console_blit(oob_con, 0, 0, 28, 10, con, 1, 49)
+		# highlight targeted PSG if any
+		psg = scenario.active_psg.target_psg
+		if psg is not None:
+			libtcod.console_set_char_background(con, psg.screen_x, psg.screen_y,
+				TARGET_HL_COL, flag=libtcod.BKGND_SET)
+			# TODO: draw LoS line too
+			line = GetLine(scenario.active_psg.screen_x, scenario.active_psg.screen_y,
+				psg.screen_x, psg.screen_y)
+			for (x, y) in line[2:-1]:
+				libtcod.console_set_char(con, x, y, 250)
+				libtcod.console_set_char_foreground(con, x, y, libtcod.red)
 	
-	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
+	# left column consoles
+	libtcod.console_blit(psg_con, 0, 0, 0, 0, con, 1, 4)
+	libtcod.console_blit(cmd_con, 0, 0, 0, 0, con, 1, 26)
+	libtcod.console_blit(hex_info_con, 0, 0, 0, 0, con, 1, 52)
+	
+	# scenario info
+	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 0, 0)
+	
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 
 
 # display the in-game menu
 def ScenarioMenu():
 	
 	def UpdateScreen():
-		libtcod.console_blit(scen_menu_con, 0, 0, 0, 0, 0, 7, 3)
+		libtcod.console_blit(scen_menu_con, 0, 0, 0, 0, 0, 5, 3)
 		cmd_menu.DisplayMe(0, WINDOW_XM-12, 24, 25)
 	
 	# use the buffer console to darken the screen background
@@ -4152,7 +3784,7 @@ def ScenarioMenu():
 	cmd_menu.AddOption('save_and_quit', 'Q', 'Save and Quit', desc='Save the scenario ' +
 		'in progress and quit to the Main Menu')
 	cmd_menu.AddOption('return', 'Esc', 'Return to Scenario', desc='Return and continue ' +
-		'playing the scenario in progress', exit_option=True)
+		'playing the scenario in progress')
 	
 	UpdateScreen()
 	
@@ -4186,7 +3818,6 @@ def ScenarioMenu():
 		
 		# select this option and highlight it
 		cmd_menu.selected_option = option
-		PlaySound('menu_choice')
 		UpdateScreen()
 		libtcod.console_flush()
 		Wait(100)
@@ -4202,100 +3833,108 @@ def ScenarioMenu():
 def DoScenario(load_savegame=False):
 	
 	global scenario
-	global scen_menu_con
-	global bkg_console, map_vp_con, map_gui_con
-	global unit_con, tank_con, cmd_con, oob_con, attack_con
-	global hex_info_con, psg_info_con
-	global hex_con, grey_hex_con
+	global terrain_types
+	# screen consoles
+	global scen_menu_con, bkg_console, map_terrain_con, map_fov_con, map_gui_con
+	global unit_con, psg_con, cmd_con, attack_con, scen_info_con
+	global hex_info_con, grey_hex_con
+	global dice
 	
 	def UpdateScreen():
-		PaintMapVP()
+		UpdateMapFoVConsole()
 		UpdateUnitConsole()
 		UpdateMapGUIConsole()
-		UpdateTankConsole()
+		UpdatePSGConsole()
 		UpdateCmdConsole()
 		DrawScreenConsoles()
 	
 	# create screen consoles
+	
+	# background console
 	bkg_console = LoadXP('ArmCom2_bkg.xp')
 	
+	# main menu console
 	scen_menu_con = LoadXP('ArmCom2_menu.xp')
 	libtcod.console_set_default_background(scen_menu_con, libtcod.black)
 	libtcod.console_set_default_foreground(scen_menu_con, libtcod.white)
 	libtcod.console_print_ex(scen_menu_con, 37, 2, libtcod.BKGND_NONE, libtcod.CENTER,
 		VERSION + SUBVERSION)
 	
-	# map viewport console
-	map_vp_con = libtcod.console_new(57, 58)
-	libtcod.console_set_default_background(map_vp_con, KEY_COLOR)
-	libtcod.console_set_default_foreground(map_vp_con, libtcod.white)
-	libtcod.console_set_key_color(map_vp_con, KEY_COLOR)
-	libtcod.console_clear(map_vp_con)
+	# map terrain console
+	map_terrain_con = libtcod.console_new(57, 57)
+	libtcod.console_set_default_background(map_terrain_con, libtcod.black)
+	libtcod.console_set_default_foreground(map_terrain_con, libtcod.white)
+	libtcod.console_clear(map_terrain_con)
+	
+	# field of view overlay console
+	map_fov_con = libtcod.console_new(57, 57)
+	libtcod.console_set_default_background(map_fov_con, libtcod.black)
+	libtcod.console_set_default_foreground(map_fov_con, libtcod.white)
+	libtcod.console_set_key_color(map_fov_con, KEY_COLOR)
+	libtcod.console_clear(map_fov_con)
 	
 	# map gui console
-	map_gui_con = libtcod.console_new(57, 58)
+	map_gui_con = libtcod.console_new(57, 57)
 	libtcod.console_set_default_background(map_gui_con, KEY_COLOR)
 	libtcod.console_set_default_foreground(map_gui_con, libtcod.white)
 	libtcod.console_set_key_color(map_gui_con, KEY_COLOR)
 	libtcod.console_clear(map_gui_con)
 	
-	# unit console
-	unit_con = libtcod.console_new(57, 58)
+	# unit layer console
+	unit_con = libtcod.console_new(57, 57)
 	libtcod.console_set_default_background(unit_con, KEY_COLOR)
 	libtcod.console_set_default_foreground(unit_con, libtcod.grey)
 	libtcod.console_set_key_color(unit_con, KEY_COLOR)
 	libtcod.console_clear(unit_con)
 	
-	# player tank info console
-	tank_con = libtcod.console_new(28, 26)
-	libtcod.console_set_default_background(tank_con, libtcod.black)
-	libtcod.console_set_default_foreground(tank_con, libtcod.white)
-	libtcod.console_clear(tank_con)
+	# top banner scenario info console
+	scen_info_con = libtcod.console_new(83, 3)
+	libtcod.console_set_default_background(scen_info_con, libtcod.black)
+	libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
+	libtcod.console_clear(scen_info_con)
+	
+	# selected PSG info console
+	psg_con = libtcod.console_new(24, 21)
+	libtcod.console_set_default_background(psg_con, libtcod.black)
+	libtcod.console_set_default_foreground(psg_con, libtcod.white)
+	libtcod.console_clear(psg_con)
 	
 	# command menu console
-	cmd_con = libtcod.console_new(28, 20)
+	cmd_con = libtcod.console_new(24, 25)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
 	libtcod.console_set_default_foreground(cmd_con, libtcod.white)
 	libtcod.console_clear(cmd_con)
 	
-	# order of battle (PSG list) console
-	oob_con = libtcod.console_new(28, 10)
-	libtcod.console_set_default_background(oob_con, libtcod.black)
-	libtcod.console_set_default_foreground(oob_con, libtcod.white)
-	libtcod.console_clear(oob_con)
-	
-	# attack resolution console
-	attack_con = libtcod.console_new(30, 60)
-	libtcod.console_set_default_background(attack_con, libtcod.black)
-	libtcod.console_set_default_foreground(attack_con, libtcod.light_grey)
-	libtcod.console_clear(attack_con)
-	
-	# psg info console - used to display info about a psg when mouse cursor
-	#   is over its depiction on the map
-	psg_info_con = libtcod.console_new(21, 6)
-	libtcod.console_set_default_background(psg_info_con, libtcod.black)
-	libtcod.console_set_default_foreground(psg_info_con, libtcod.white)
-	libtcod.console_clear(psg_info_con)
-	
 	# map hex info console
-	hex_info_con = libtcod.console_new(21, 6)
+	hex_info_con = libtcod.console_new(24, 7)
 	libtcod.console_set_default_background(hex_info_con, libtcod.black)
 	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
 	libtcod.console_clear(hex_info_con)
 	
-	# hex image consoles
-	# TODO: can be set to a different base colour
-	hex_con = LoadXP('ArmCom2_tile_green.xp')
-	libtcod.console_set_key_color(hex_con, KEY_COLOR)
-	
+	# attack resolution console (TEMP)
+	attack_con = libtcod.console_new(30, 60)
+	libtcod.console_set_default_background(attack_con, libtcod.black)
+	libtcod.console_set_default_foreground(attack_con, libtcod.light_grey)
+	libtcod.console_clear(attack_con)
+
 	# load grey tile to indicate tiles that aren't visible to the player
 	grey_hex_con = LoadXP('ArmCom2_tile_grey.xp')
 	libtcod.console_set_key_color(grey_hex_con, KEY_COLOR)
+
+	# die face image
+	dice = LoadXP('dice.xp')
 	
+	# load terrain type definitions
+	terrain_types = LoadTerrainTypes()
 	
 	# here is where a saved game in-progress would be loaded
 	if load_savegame:
 		LoadGame()
+		# reset pointers to terrain consoles for each map hex
+		# (needed because consoles can't be pickled)
+		for map_key, map_hex in scenario.hex_map.hexes.iteritems():
+			map_hex.SetTerrainType(map_hex.terrain_type.display_name)
+		UpdateMapTerrainConsole()
 	
 	else:
 	
@@ -4304,77 +3943,80 @@ def DoScenario(load_savegame=False):
 		##################################################################################
 		
 		# create a new campaign day object and hex map
-		scenario = Scenario(26, 88)
+		scenario = Scenario(13, 13)
 		GenerateTerrain()
 		
 		# FUTURE: following will be handled by a Scenario Generator
 		# for now, things are set up manually
 		
-		# set up our objective
-		map_hex = GetHexAt(6, 64)
-		map_hex.SetObjective('Capture')
-		
+		scenario.year = 1939
+		scenario.month = 9
+		scenario.name = 'Spearhead'
+		scenario.max_turns = 8
+		scenario.current_turn = 1		# TEMP
 		
 		# spawn the player PSGs
 		new_psg = PSG('HQ Panzer Squadron', 'Panzer 35t', 5, 0, 0, 0, 9, 9)
 		scenario.player_psg = new_psg
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(6, 82)
+		new_psg.SpawnAt(5, 10)
+		
+		new_psg = PSG('Light Panzer Squadron', 'Panzer II A', 5, 0, 0, 0, 9, 9)
+		scenario.psg_list.append(new_psg)
+		new_psg.SpawnAt(6, 9)
 		
 		new_psg = PSG('Light Panzerspäh Platoon', 'sd_kfz_221', 3, 0, 0, 0, 9, 9)
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(5, 82)
-		# set AI to protect player
-		new_psg.ai.mode = 'Guard'
-		new_psg.ai.guard_target = scenario.player_psg
-		new_psg.ai.SetGuardPosition()
+		new_psg.SpawnAt(7, 9)
+		
+		new_psg = PSG('Schützen Platoon', 'german_schutzen', 5, 0, 0, 0, 10, 9)
+		scenario.psg_list.append(new_psg)
+		new_psg.SpawnAt(8, 9)
 		
 		
-		# set up enemy spawn points
-		total_map_hexes = len(scenario.hex_map.hexes)
-		num_spawn_points = int(total_map_hexes / 170)
-		if num_spawn_points < 1:
-			num_spawn_points = 1
+		# select the first player PSG
+		scenario.SelectNextPSG()
 		
-		# TEMP
-		num_spawn_points = 0
+		# set up our objective
+		#map_hex = GetHexAt(6, 48)
+		# make sure it can be entered
+		#if map_hex.terrain_type.display_name == 'Pond':
+		#	map_hex = GetHexAt(6, 47)
+		#map_hex.SetObjective('Capture')
 		
-		for i in range(num_spawn_points):
-			for map_key, map_hex in sample(scenario.hex_map.hexes.items(), len(scenario.hex_map.hexes)):
-				if GetHexDistance(map_hex.hx, map_hex.hy, scenario.player_psg.hx, scenario.player_psg.hy) <= 6:
-					continue
-				map_hex.spawn_point = True
-				scenario.spawn_hexes.append(map_hex)
-				print 'Set spawn point at ' + str(map_hex.hx) + ',' + str(map_hex.hy)
-				break
+		# set up enemy PSGs
+		new_psg = PSG('HQ Tank Squadron', '7TP jw', 3, 3, 3, 1, 10, 10)
+		scenario.psg_list.append(new_psg)
+		new_psg.SpawnAt(5, 4)
+		
+		new_psg = PSG('AT Gun Section', '37mm wz. 36', 2, 3, 3, 1, 10, 10)
+		scenario.psg_list.append(new_psg)
+		new_psg.SpawnAt(6, 5)
+		
 	
-		# TEMP - testing
-		map_hex = GetHexAt(6, 76)
-		map_hex.spawn_point = True
-		scenario.spawn_hexes.append(map_hex)
-		
-		map_hex = GetHexAt(6, 70)
-		map_hex.spawn_point = True
-		scenario.spawn_hexes.append(map_hex)
-	
-	
-		# set up map viewport, also calculates field of view
-		scenario.hex_map.UpdateMapVPMatrix()
+		# draw map terrain
+		UpdateMapTerrainConsole()
+		# calculate initial field of view
+		scenario.hex_map.CalcFoV()
+		UpdateMapFoVConsole()
 		
 		# build initial command menu
-		scenario.active_cmd_menu = 'root'
+		scenario.active_cmd_menu = 'movement_root'
 		scenario.BuildCmdMenu()
 		
 		UpdateScreen()
 		
-		# do initial enemy spawn
-		scenario.SpawnEnemyUnits()
+		# do initial hidden/reveal check
+		scenario.DoHiddenCheck()
 		
-		# do initial OOB list
-		scenario.RebuildOOBList()
-	
+		# do initial enemy spawn
+		#scenario.SpawnEnemyUnits()
+		
 	
 	# TODO: End new game set-up
+	
+	UpdateScenInfoConsole()
+	
 	
 	##################################################################################
 	#     Main Campaign Day Loop
@@ -4392,40 +4034,15 @@ def DoScenario(load_savegame=False):
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
 			key, mouse)
 		
-		# TEMP: only way to exit for now
+		# TEMP: emergency exit
 		if libtcod.console_is_window_closed(): sys.exit()
 		
-		# no more PSGs to act this turn: replenish TU, rebuild OOB list and redraw
-		#   OOB console
-		if scenario.active_psg is None:
-			scenario.NextTurn()
-			
-			# check to see if scenario has ended
-			if scenario.winner is not None:
-				os.remove('savegame')
-				scenario.DisplayEndScreen()
-				exit_scenario = True
-			UpdateScreen()
-			continue
-		
-		# trigger automatic pre-activation actions
-		scenario.active_psg.DoActivationActions()
-		
-		# active PSG is an AI unit
-		if scenario.active_psg != scenario.player_psg:
-			scenario.active_psg.ai.ResolveMode()
-			scenario.MoveActivePSGInList()
-			UpdateScreen()
-			continue
-		
-		# active PSG is player, hand over control
-		scenario.BuildCmdMenu()
 		UpdateScreen()
 		
 		# save the game in progress at this point
 		SaveGame()
 		
-		while scenario.active_psg == scenario.player_psg and not exit_scenario:
+		while not exit_scenario:
 			
 			libtcod.console_flush()
 		
@@ -4440,27 +4057,14 @@ def DoScenario(load_savegame=False):
 				mouse_x = mouse.cx
 				mouse_y = mouse.cy
 				UpdateHexInfoConsole()
-				UpdatePSGInfoConsole()
 				DrawScreenConsoles()
 			
 			##### Mouse Commands #####
 			#if mouse.rbutton:
-				# there is a PSG here
-			#	if (mouse.cx, mouse.cy) in scenario.psg_draw_map.keys():
-			#		psg = scenario.psg_draw_map[(mouse.cx, mouse.cy)]
-			#		UpdatePSGInfoConsole(psg)
-			#		UpdateScreen()
-			#	else:
-			#		libtcod.console_clear(psg_info_con)
-			#		UpdateScreen()
+				
 			
 			#elif mouse.lbutton:
-			#	if (mouse.cx, mouse.cy) in scenario.psg_draw_map.keys():
-			#		scenario.selected_psg = scenario.psg_draw_map[(mouse.cx, mouse.cy)]
-			#		UpdateScreen()
-			#	else:
-			#		scenario.selected_psg = None
-			#		UpdateScreen()
+			
 				
 			
 			##### Keyboard Commands #####
@@ -4500,184 +4104,53 @@ def DoScenario(load_savegame=False):
 			
 			# select this option, highlight it
 			scenario.cmd_menu.selected_option = option
-			PlaySound('menu_choice')
 			UpdateScreen()
 			libtcod.console_flush()
 			Wait(100)
 			
-			# Returning to Root Menu
-			if option.option_id == 'return_to_root':
-				scenario.active_cmd_menu = 'root'
-				scenario.player_active_weapon = None
+			##################################################################
+			# Root Menu Actions
+			##################################################################
+			if option.option_id == 'select_unit':
+				scenario.SelectNextPSG()
+				UpdatePSGConsole()
 				scenario.BuildCmdMenu()
-				UpdateScreen()
+				DrawScreenConsoles()
+			elif option.option_id == 'next_phase':
+				scenario.NextPhase()
+				DrawScreenConsoles()
 			
-			# Root Menu Options
-			elif option.option_id == 'orders':
-				scenario.active_cmd_menu = 'orders'
-				scenario.BuildCmdMenu()
-				UpdateScreen()
-			
-			elif option.option_id == 'movement':
-				scenario.active_cmd_menu = 'movement'
-				scenario.BuildCmdMenu()
-				UpdateScreen()
-			
-			elif option.option_id == 'shooting':
-				scenario.active_cmd_menu = 'shooting'
-				scenario.BuildCmdMenu()
-				UpdateScreen()
-			
-			elif option.option_id == 'wait':
-				scenario.player_psg.SpendTU(option.tu_cost)
-				scenario.MoveActivePSGInList()
-			
-			# Movement Commands
-			elif option.option_id in ['move_fwd', 'move_rev']:
-				
-				# try to move player PSG forward or reverse
-				if scenario.player_psg.MoveForward():
-					scenario.hex_map.UpdateMapVPMatrix()
+			##################################################################
+			# Movement Phase Actions
+			##################################################################
+			elif option.option_id[:5] == 'move_':
+				# get the target map hex
+				direction = int(option.option_id[5])
+				(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
+					scenario.active_psg.hy, direction)
+				# attempt the move
+				if scenario.active_psg.MoveInto(hx, hy):
 					UpdateScreen()
-					scenario.MoveActivePSGInList()
-					scenario.BuildCmdMenu()
-					UpdateScreen()		
-			elif option.option_id == 'hull_ccw':
-				if scenario.player_psg.PivotHull(False):
-					scenario.hex_map.UpdateMapVPMatrix()
-					UpdateOOBConsole()
-					scenario.BuildCmdMenu()
-					UpdateScreen()
-			elif option.option_id == 'hull_cw':
-				if scenario.player_psg.PivotHull(True):
-					scenario.hex_map.UpdateMapVPMatrix()
-					UpdateOOBConsole()
-					scenario.BuildCmdMenu()
-					UpdateScreen()
-			elif option.option_id == 'turret_ccw':
-				scenario.player_psg.turret_facing = ConstrainDir(scenario.player_psg.turret_facing - 1)
-				UpdateScreen()
-			elif option.option_id == 'turret_cw':
-				scenario.player_psg.turret_facing = ConstrainDir(scenario.player_psg.turret_facing + 1)
-				UpdateScreen()
 			
-			# Shooting Commands: select a weapon and start target mode
-			elif option.option_id[:9] == 'act_weap_':
-				# find the weapon to be activated and activate it
-				n = int(option.option_id[9])
-				scenario.player_active_weapon = scenario.player_psg.weapon_list[n]
-				scenario.active_cmd_menu = 'targeting'
-				scenario.BuildTargetHexes()
-				scenario.BuildTargetList()
-				scenario.BuildCmdMenu()
-				UpdateMapGUIConsole()
-				UpdateScreen()
-			
+			##################################################################
+			# Shooting Phase Actions
+			##################################################################
+			elif option.option_id == 'next_weapon':
+				scenario.active_psg.SelectNextWeapon()
+				# clear target list and select a new target
+				scenario.active_psg.target_list = []
+				scenario.active_psg.SelectNextTarget()
+				UpdatePSGConsole()
+				DrawScreenConsoles()
 			elif option.option_id == 'next_target':
-				scenario.SelectNextTarget()
+				scenario.active_psg.SelectNextTarget()
+				DrawScreenConsoles()
+			
+			elif option.option_id == 'fire_target':
+				InitAttack(scenario.active_psg, scenario.active_psg.target_psg)
 				scenario.BuildCmdMenu()
-				UpdateMapGUIConsole()
-				UpdateScreen()
-			
-			elif option.option_id == 'fire':
-				# TODO: where to put TU cost?
-				InitAttack(scenario.player_psg, scenario.target_psg)
-				scenario.CancelTarget()
-				scenario.MoveActivePSGInList()
-				scenario.active_cmd_menu = 'shooting'
-				scenario.BuildCmdMenu()
-				UpdateMapGUIConsole()
-				UpdateScreen()
-			
-			# cancel target mode and return to shooting menu
-			elif option.option_id == 'return_to_shooting':
-				scenario.CancelTarget()
-				scenario.active_cmd_menu = 'shooting'
-				scenario.BuildCmdMenu()
-				UpdateMapGUIConsole()
-				UpdateScreen()
-			
-			# Orders Commands: select a friendly PSG to order
-			elif option.option_id[:11] == 'order_unit_':
-				
-				# find the unit to order
-				n = 0
-				for psg in scenario.psg_list:
-					if psg == scenario.player_psg: continue
-					if psg.owning_player == 0:
-						if n == int(option.key_code) - 1:
-							scenario.psg_under_orders = psg
-							
-							# set currently selected hex to psg location
-							hx = scenario.psg_under_orders.hx
-							hy = scenario.psg_under_orders.hy
-							scenario.selected_vp_hex = GetVPHex(hx, hy)
-							
-							# build list of allowable locations
-							scenario.allowed_vp_hexes.append(GetVPHex(scenario.player_psg.hx, scenario.player_psg.hy))
-							for (hx, hy) in GetHexesWithin(scenario.player_psg.hx, scenario.player_psg.hy, 2):
-								map_hex = GetHexAt(hx, hy)
-								if map_hex.water: continue
-								if map_hex.IsOccupiedByEnemy(0): continue
-								scenario.allowed_vp_hexes.append(GetVPHex(hx, hy))
-							
-							print 'DEBUG: added ' + str(len(scenario.allowed_vp_hexes)) + ' possible locations'
-							
-							scenario.active_cmd_menu = 'psg_orders'
-							scenario.BuildCmdMenu()
-							UpdateMapGUIConsole()
-							UpdateScreen()
-			
-			# issue take up new position order
-			elif option.option_id == 'order_to_hex':
-				(vp_hx, vp_hy) = scenario.selected_vp_hex
-				map_hex = scenario.hex_map.vp_matrix[(vp_hx, vp_hy)]
-				scenario.psg_under_orders.ai.guard_hx = map_hex.hx - scenario.psg_under_orders.ai.guard_target.hx
-				scenario.psg_under_orders.ai.guard_hy = map_hex.hy - scenario.psg_under_orders.ai.guard_target.hy
-				print ('DEBUG: new guard offset set: ' + str(scenario.psg_under_orders.ai.guard_hx) +
-					',' + str(scenario.psg_under_orders.ai.guard_hy))
-				scenario.psg_under_orders = None
-				scenario.EndHexSelection()
-				scenario.active_cmd_menu = 'orders'
-				scenario.BuildCmdMenu()
-				UpdateScreen()
-				
-			
-			# cancel PSG orders
-			elif option.option_id == 'cancel_psg_orders':
-				scenario.psg_under_orders = None
-				scenario.EndHexSelection()
-				scenario.active_cmd_menu = 'orders'
-				scenario.BuildCmdMenu()
-				UpdateScreen()
-			
-			# hex selection commands
-			elif option.option_id[:8] == 'hex_sel_':
-				
-				direction = option.option_id[8]
-				(hx, hy) = scenario.selected_vp_hex
-				new_hx = hx
-				new_hy = hy
-				if direction == 'q':
-					new_hx -= 1
-				elif direction == 'w':
-					new_hy -= 1
-				elif direction == 'e':
-					new_hx += 1
-					new_hy -= 1
-				elif direction == 'a':
-					new_hx -= 1
-					new_hy += 1
-				elif direction == 's':
-					new_hy += 1
-				elif direction == 'd':
-					new_hx += 1
-				
-				if (new_hx, new_hy) in scenario.allowed_vp_hexes:
-					scenario.selected_vp_hex = (new_hx, new_hy)
-					UpdateMapGUIConsole()
-					UpdateScreen()
-	
+				DrawScreenConsoles()
+
 	# we're exiting back to the main menu, so delete the scenario object
 	del scenario
 
@@ -4710,22 +4183,6 @@ def LoadCFG():
 def SaveCFG():
 	with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
 		config.write(configfile)
-
-
-# load game sound effects
-def LoadSounds():
-	SOUND_LIST = ['menu_selection', 'menu_choice']
-	for sound_name in SOUND_LIST:
-		sound = pygame.mixer.Sound(DATAPATH + sound_name + '.wav')
-		SOUNDS[sound_name] = sound
-
-# play a sound
-def PlaySound(sound_name):
-	# make sure sound is actually part of archive
-	if not sound_name in SOUNDS:
-		print 'ERROR: Sound file not found: ' + sound_name + '.wav'
-		return
-	SOUNDS[sound_name].play()
 
 
 
@@ -4770,54 +4227,12 @@ libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CE
 	'Loading ...')
 libtcod.console_flush()
 
-
-# init pygame mixer stuff
-pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=1024)
-pygame.mixer.init()
-
 # create mouse and key event holders
 mouse = libtcod.Mouse()
 key = libtcod.Key()
 
-# load sound effects
-LoadSounds()
-
 # set up colour control for highlighting command keys
 libtcod.console_set_color_control(libtcod.COLCTRL_1, KEY_HIGHLIGHT_COLOR, libtcod.black)
-
-# set up constant hex defintitions for viewport
-# list of viewport hexes, with 0,0 in the center and a 6-hex radius around it
-VP_HEXES = []
-for hx in range(-6, 7):
-	if hx <= 0:
-		hy_start = 0 - (hx+6)
-		hy_end = 6
-	else:
-		hy_start = -6
-		hy_end = 6-hx
-
-	for hy in range(hy_start, hy_end+1):
-		VP_HEXES.append((hx, hy))
-
-# sort list of hexes by hex distance from 0,0
-range_list = []
-for (hx, hy) in VP_HEXES:
-	range_list.append(GetHexDistance(hx, hy, 0, 0))
-VP_HEXES = [x[0] for x in sorted(zip(VP_HEXES, range_list))]
-# delete this list since we don't need it any more
-del range_list[:]
-
-
-# create a dictionary of screen locations within each viewport hex
-# used to quickly display info about that map hex
-SCREEN_TO_VP_HEX = {}
-for (hx, hy) in VP_HEXES:
-	(x,y) = PlotHex(hx, hy)
-	for x1 in range(x-1, x+2):
-		SCREEN_TO_VP_HEX[(x1,y-1)] = (hx, hy)
-		SCREEN_TO_VP_HEX[(x1,y+1)] = (hx, hy)
-	for x1 in range(x-2, x+3):
-		SCREEN_TO_VP_HEX[(x1,y)] = (hx, hy)
 
 
 
@@ -4840,7 +4255,7 @@ libtcod.console_set_default_foreground(main_menu_con, libtcod.black)
 libtcod.console_print_ex(main_menu_con, WINDOW_WIDTH-1, 0, libtcod.BKGND_NONE, libtcod.RIGHT, VERSION + SUBVERSION)
 libtcod.console_set_default_foreground(main_menu_con, libtcod.light_grey)
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-4,
-	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2016' )
+	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2016-2017' )
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-3,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'Free Software under the GNU GPL')
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-2,
@@ -4858,7 +4273,7 @@ if not os.path.exists('savegame'): menu_option.inactive = True
 cmd_menu.AddOption('new_scenario', 'N', 'New', desc='Start a new scenario, erasing any ' +
 	'scenario already in progress')
 cmd_menu.AddOption('options', 'O', 'Options', desc='View display and game options')
-cmd_menu.AddOption('quit', 'Q', 'Quit', desc='Quit to desktop', exit_option=True)
+cmd_menu.AddOption('quit', 'Q', 'Quit', desc='Quit to desktop')
 menus.append(cmd_menu)
 
 cmd_menu = CommandMenu('settings_menu')
@@ -4868,7 +4283,7 @@ cmd_menu.AddOption('select_msg_speed', 'M', 'Select Message Pause Time',
 	desc='Change how long messages are displayed before being cleared')
 cmd_menu.AddOption('select_ani_speed', 'A', 'Select Animation Speed',
 	desc='Change the display speed of in-game animations')
-cmd_menu.AddOption('return_to_main', '0', 'Return to Main Menu', exit_option=True)
+cmd_menu.AddOption('return_to_main', '0', 'Return to Main Menu')
 menus.append(cmd_menu)
 
 active_menu = menus[0]
@@ -4882,7 +4297,7 @@ def AnimateScreen():
 	# draw gradient
 	for x in range(0, 10):
 		if x + gradient_x > WINDOW_WIDTH: continue
-		for y in range(16, 31):
+		for y in range(19, 34):
 			char = libtcod.console_get_char(main_menu_con, x + gradient_x, y)
 			fg = libtcod.console_get_char_foreground(main_menu_con, x + gradient_x, y)
 			if char != 0 and fg != GRADIENT[x]:
@@ -4898,7 +4313,7 @@ def AnimateScreen():
 def UpdateScreen():
 	libtcod.console_blit(main_menu_con, 0, 0, 88, 60, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
-	active_menu.DisplayMe(0, WINDOW_XM-12, 34, 25)
+	active_menu.DisplayMe(0, WINDOW_XM-10, 36, 18)
 	
 	# settings menu active
 	if active_menu == menus[1]:
@@ -4978,7 +4393,6 @@ while not exit_game:
 	
 	# select this option and highlight it
 	active_menu.selected_option = option
-	PlaySound('menu_choice')
 	UpdateScreen()
 	libtcod.console_flush()
 	Wait(100)

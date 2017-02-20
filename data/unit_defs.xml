@@ -5,13 +5,11 @@
     <name>Schützen Squad</name>
     <movement_class>Infantry</movement_class>
     <weapon_list>
-      <ift_weapon>         
+      <weapon>         
          <name>Rifles and MGs</name>
-         <ift_class>LW</ift_class>
-         <fp>4</fp>
-         <fire_tu>10</fire_tu>
-         <normal_range>2</normal_range>
-      </ift_weapon>
+         <area_strength>4</area_strength>
+         <max_range>2</max_range>
+      </weapon>
     </weapon_list>
   </unit_def>
 
@@ -26,33 +24,16 @@
     <size_class>Small</size_class>
     <ground_pressure>Light</ground_pressure>
     <armour>
-      <turret>
-        <front>1</front>
-        <side>1</side>
-      </turret>
-      <hull>
-        <front>1</front>
-        <side>1</side>
-      </hull>
+      <front>1</front>
+      <side>1</side>
     </armour>
     <weapon_list>
-      <ift_weapon>
+      <weapon>
          <name>Dual MGs</name>
-         <ift_class>MG</ift_class>
-         <fp>6</fp>
-         <normal_range>4</normal_range>
-         <mount>turret_0</mount>
-         <firing_crew>Commander</firing_crew>
-      </ift_weapon>
+         <area_strength>6</area_strength>
+         <max_range>4</max_range>
+      </weapon>
     </weapon_list>
-    <turret_list>
-      <turret>
-        <name>turret_0</name>
-        <center_facing>0</center_facing>
-        <rotate_range>4</rotate_range>
-        <linked_firing/>
-      </turret>
-    </turret_list>
     <movement_class>Fast Tank</movement_class>
   </unit_def>
   
@@ -69,44 +50,23 @@
     <size_class>Small</size_class>
     <ground_pressure>Light</ground_pressure>
     <armour>
-      <turret>
-        <front>1</front>
-        <side>1</side>
-      </turret>
-      <hull>
-        <front>1</front>
-        <side>1</side>
-      </hull>
+      <front>1</front>
+      <side>1</side>
     </armour>
     <weapon_list>
-      <ord_weapon>
+      <weapon>
         <name>KwK 30</name>
-        <calibre>20</calibre>
-        <fire_tu>8</fire_tu>
-        <reload_tu_min>4</reload_tu_min>
-        <reload_tu_max>10</reload_tu_max>
+        <point_strength>2</point_strength>
+        <area_strength>1</area_strength>
+        <max_range>8</max_range>
         <long_range>L</long_range>
-        <mount>turret_0</mount>
-        <firing_crew>Commander</firing_crew>
-      </ord_weapon>
-      <ift_weapon>
+      </weapon>
+      <weapon>
          <name>Co-ax MG</name>
-         <ift_class>MG</ift_class>
-         <fp>2</fp>
-         <fire_tu>8</fire_tu>
-         <normal_range>4</normal_range>
-         <mount>turret_0</mount>
-         <firing_crew>Commander</firing_crew>
-      </ift_weapon>
+         <area_strength>2</area_strength>
+         <max_range>4</max_range>
+      </weapon>
     </weapon_list>
-    <turret_list>
-      <turret>
-        <name>turret_0</name>
-        <center_facing>0</center_facing>
-        <rotate_range>4</rotate_range>
-        <linked_firing/>    
-      </turret>
-    </turret_list>
     <movement_class>Fast Tank</movement_class>
     <protected_ammo/>
   </unit_def>
@@ -116,62 +76,24 @@
     <id>Panzer 35t</id>
     <name>Panzer 35(t)</name>
     <portrait>unit_pz_35t.xp</portrait>
-    <crew_positions>
-      <position>Commander</position>
-      <position>Loader</position>
-      <position>Driver</position>
-      <position>Radio Operator</position>
-    </crew_positions>
     <size_class>Small</size_class>
     <ground_pressure>Light</ground_pressure>
     <armour>
-      <turret>
-        <front>3</front>
-        <side>1</side>
-      </turret>
-      <hull>
-        <front>3</front>
-        <side>1</side>
-      </hull>
+      <front>3</front>
+      <side>1</side>
     </armour>
     <weapon_list>
-      <ord_weapon>
+      <weapon>
         <name>KwK 34(t)</name>
-        <calibre>37</calibre>
-        <fire_tu>8</fire_tu>
-        <reload_tu_min>8</reload_tu_min>
-        <reload_tu_max>12</reload_tu_max>
-        <mount>turret_0</mount>
-        <firing_crew>Commander</firing_crew>
-      </ord_weapon>
-      <ift_weapon>
-         <name>Co-ax MG</name>
-         <ift_class>MG</ift_class>
-         <fp>2</fp>
-         <fire_tu>8</fire_tu>
-         <normal_range>4</normal_range>
-         <mount>turret_0</mount>
-         <firing_crew>Commander</firing_crew>
-      </ift_weapon>
-      <ift_weapon>
-         <name>Hull MG</name>
-         <ift_class>MG</ift_class>
-         <fp>2</fp>
-         <fire_tu>8</fire_tu>
-         <normal_range>4</normal_range>
-         <mount>hull</mount>
-         <firing_crew>Driver</firing_crew>
-         <firing_crew>Radio Operator</firing_crew>
-      </ift_weapon>
+        <point_strength>3</point_strength>
+        <max_range>8</max_range>
+      </weapon>
+      <weapon>
+         <name>MG</name>
+         <area_strength>3</area_strength>
+         <max_range>4</max_range>
+      </weapon>
     </weapon_list>
-    <turret_list>
-      <turret>
-        <name>turret_0</name>
-        <center_facing>0</center_facing>
-        <rotate_range>4</rotate_range>
-        <linked_firing/>    
-      </turret>
-    </turret_list>
     <movement_class>Fast Tank</movement_class>
   </unit_def>
   
@@ -187,34 +109,16 @@
     <size_class>Small</size_class>
     <ground_pressure>Light</ground_pressure>
     <armour>
-      <turret>
-        <front>1</front>
-        <side>1</side>
-      </turret>
-      <hull>
-        <front>1</front>
-        <side>1</side>
-      </hull>
+      <front>1</front>
+      <side>1</side>
     </armour>
     <weapon_list>
-      <ift_weapon>
-         <name>Co-ax MG</name>
-         <ift_class>MG</ift_class>
-         <fp>2</fp>
-         <fire_tu>8</fire_tu>
-         <normal_range>4</normal_range>
-         <mount>turret_0</mount>
-         <firing_crew>Commander</firing_crew>
-      </ift_weapon>
+      <weapon>
+         <name>MG</name>
+         <area_strength>2</area_strength>
+         <max_range>4</max_range>
+      </weapon>
     </weapon_list>
-    <turret_list>
-      <turret>
-        <name>turret_0</name>
-        <center_facing>0</center_facing>
-        <rotate_range>4</rotate_range>
-        <linked_firing/>    
-      </turret>
-    </turret_list>
     <movement_class>Wheeled</movement_class>
     <recce/>
   </unit_def>
@@ -227,13 +131,11 @@
     <name>Piechoty Platoon</name>
     <movement_class>Infantry</movement_class>
     <weapon_list>
-      <ift_weapon>         
+      <weapon>         
          <name>Rifles and MGs</name>
-         <ift_class>LW</ift_class>
-         <fp>4</fp>
-         <fire_tu>10</fire_tu>
-         <normal_range>2</normal_range>
-      </ift_weapon>
+         <area_strength>4</area_strength>
+         <max_range>2</max_range>
+      </weapon>
     </weapon_list>
   </unit_def>
   
@@ -244,14 +146,12 @@
     <movement_class>Gun</movement_class>
     <max_ap>10</max_ap>
     <weapon_list>
-      <ord_weapon>
+      <weapon>
         <name>Bofors</name>
-        <calibre>37</calibre>
-        <fire_tu>8</fire_tu>
-        <reload_tu_min>8</reload_tu_min>
-        <reload_tu_max>10</reload_tu_max>
-        <long_range>L</long_range>
-      </ord_weapon>
+        <point_strength>3</point_strength>
+        <area_strength>2</area_strength>
+        <max_range>8</max_range>
+      </weapon>
     </weapon_list>
     <gun_shield/>
   </unit_def>
@@ -267,44 +167,23 @@
     </crew_positions>
     <ground_pressure>Light</ground_pressure>
     <armour>
-      <turret>
-        <front>2</front>
-        <side>1</side>
-      </turret>
-      <hull>
-        <front>2</front>
-        <side>1</side>
-      </hull>
+      <front>2</front>
+      <side>1</side>
     </armour>
     <weapon_list>
-      <ord_weapon>
+      <weapon>
         <name>Wz.37 L/45</name>
-        <calibre>37</calibre>
-        <fire_tu>8</fire_tu>
-        <reload_tu_min>8</reload_tu_min>
-        <reload_tu_max>12</reload_tu_max>
+        <point_strength>2</point_strength>
+        <area_strength>1</area_strength>
+        <max_range>8</max_range>
         <long_range>L</long_range>
-        <mount>turret_0</mount>
-        <firing_crew>Commander</firing_crew>
-      </ord_weapon>
-      <ift_weapon>
-         <name>Co-ax MG</name>
-         <ift_class>MG</ift_class>
-         <fp>2</fp>
-         <fire_tu>8</fire_tu>
-         <normal_range>4</normal_range>
-         <mount>turret_0</mount>
-         <firing_crew>Commander</firing_crew>
-      </ift_weapon>
+      </weapon>
+      <weapon>
+         <name>MG</name>
+         <area_strength>2</area_strength>
+         <max_range>4</max_range>
+      </weapon>
     </weapon_list>
-    <turret_list>
-      <turret>
-        <name>turret_0</name>
-        <center_facing>0</center_facing>
-        <rotate_range>4</rotate_range>
-        <linked_firing/>    
-      </turret>
-    </turret_list>
     <movement_class>Fast Tank</movement_class>
   </unit_def>
   

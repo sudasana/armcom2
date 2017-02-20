@@ -15,12 +15,9 @@
 
   <unit_def>
     <vehicle/>
+    <turret/>
     <id>Panzer I B</id>
     <name>Panzer I(B)</name>
-    <crew_positions>
-      <position>Commander</position>
-      <position>Driver</position>
-    </crew_positions>
     <size_class>Small</size_class>
     <ground_pressure>Light</ground_pressure>
     <armour>
@@ -39,6 +36,7 @@
   
   <unit_def>
     <vehicle/>
+    <turret/>
     <id>Panzer II A</id>
     <name>Panzer II(A)</name>
     <portrait>unit_pz_II.xp</portrait>
@@ -56,10 +54,9 @@
     <weapon_list>
       <weapon>
         <name>KwK 30</name>
-        <point_strength>2</point_strength>
-        <area_strength>1</area_strength>
+        <point_strength>5</point_strength>
+        <area_strength>2</area_strength>
         <max_range>8</max_range>
-        <long_range>L</long_range>
       </weapon>
       <weapon>
          <name>Co-ax MG</name>
@@ -73,6 +70,7 @@
 
   <unit_def>
     <vehicle/>
+    <turret/>
     <id>Panzer 35t</id>
     <name>Panzer 35(t)</name>
     <portrait>unit_pz_35t.xp</portrait>
@@ -85,7 +83,8 @@
     <weapon_list>
       <weapon>
         <name>KwK 34(t)</name>
-        <point_strength>3</point_strength>
+        <point_strength>6</point_strength>
+        <area_strength>3</area_strength>
         <max_range>8</max_range>
       </weapon>
       <weapon>
@@ -99,6 +98,7 @@
   
   <unit_def>
     <vehicle/>
+    <turret/>
     <id>sd_kfz_221</id>
     <name>Sd. Kfz. 221</name>
     <portrait>unit_sd_kfz_221.xp</portrait>
@@ -148,8 +148,8 @@
     <weapon_list>
       <weapon>
         <name>Bofors</name>
-        <point_strength>3</point_strength>
-        <area_strength>2</area_strength>
+        <point_strength>6</point_strength>
+        <area_strength>3</area_strength>
         <max_range>8</max_range>
       </weapon>
     </weapon_list>
@@ -158,6 +158,7 @@
   
   <unit_def>
     <vehicle/>
+    <turret/>
     <id>7TP jw</id>
     <name>7TP Single Turret</name>
     <crew_positions>
@@ -173,8 +174,8 @@
     <weapon_list>
       <weapon>
         <name>Wz.37 L/45</name>
-        <point_strength>2</point_strength>
-        <area_strength>1</area_strength>
+        <point_strength>6</point_strength>
+        <area_strength>3</area_strength>
         <max_range>8</max_range>
         <long_range>L</long_range>
       </weapon>

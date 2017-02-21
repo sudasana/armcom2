@@ -464,6 +464,9 @@ class PSG:
 		self.gun = False
 		self.vehicle = False
 		
+		self.af_target = False			# PSG can be targeted by area fire
+		self.pf_target = False			# " point fire
+		
 		self.recce = False			# unit has recce abilities
 		
 		self.owning_player = owning_player	# player that controls this PSG
@@ -493,6 +496,15 @@ class PSG:
 		
 		# load stats from data file
 		self.LoadStats()
+		
+		# set area/point fire target status
+		if self.infantry:
+			self.af_target = True
+		elif (self.vehicle and self.armour is None) or self.gun:
+			self.af_target = True
+			self.pf_target = True
+		elif self.vehicle and self.armour:
+			self.pf_target = True
 		
 		# set initial display character
 		self.display_char = self.GetDisplayChar()
@@ -604,14 +616,17 @@ class PSG:
 
 	# do any automatic actions for start of current phase
 	def ResetForPhase(self):
+		
+		# clear any targets and selected weapon
+		self.target_list = []
+		self.target_psg = None
+		self.selected_weapon = None
+		
 		# start of movement phase
 		if scenario.current_phase == 0:
 			self.mp = self.max_mp
 			self.moved = False
 			self.changed_facing = False
-			# clear any targets
-			self.target_list = []
-			self.target_psg = None
 		elif scenario.current_phase == 1:
 			self.fired = False
 			self.SelectNextWeapon()
@@ -656,10 +671,11 @@ class PSG:
 						self.size_class = item.find('size_class').text
 					else:
 						self.size_class = 'Normal'
-					self.armour = {}
-					armour_ratings = item.find('armour')
-					self.armour['front'] = int(armour_ratings.find('front').text)
-					self.armour['side'] = int(armour_ratings.find('side').text)
+					if item.find('armour') is not None:
+						self.armour = {}
+						armour_ratings = item.find('armour')
+						self.armour['front'] = int(armour_ratings.find('front').text)
+						self.armour['side'] = int(armour_ratings.find('side').text)
 					if item.find('recce') is not None: self.recce = True
 				
 				# gun stats
@@ -1271,27 +1287,46 @@ class Scenario:
 		#	UpdateCmdConsole()
 		#	return
 		
-		# all root menus get these commands
-		if self.active_cmd_menu in ['movement_root', 'shooting_root']:
-			self.cmd_menu.AddOption('select_unit', 'Tab', 'Select Next Unit')
-			self.cmd_menu.AddOption('next_phase', 'Space', 'Next Phase')
-		
 		# movement phase menu
 		if self.active_cmd_menu == 'movement_root':
-			self.cmd_menu.AddOption('move_5', 'Q', 'Up and Left')
-			self.cmd_menu.AddOption('move_0', 'W', 'Up')
-			self.cmd_menu.AddOption('move_1', 'E', 'Up and Right')
-			self.cmd_menu.AddOption('move_2', 'D', 'Down and Right')
-			self.cmd_menu.AddOption('move_3', 'S', 'Down')
-			self.cmd_menu.AddOption('move_4', 'A', 'Down and Left')
-		
+			self.cmd_menu.AddOption('move_5', 'Q', 'Move ' + chr(231))
+			self.cmd_menu.AddOption('move_0', 'W', 'Move ' + chr(24))
+			self.cmd_menu.AddOption('move_1', 'E', 'Move ' + chr(228))
+			self.cmd_menu.AddOption('move_4', 'A', 'Move ' + chr(230))
+			self.cmd_menu.AddOption('move_3', 'S', 'Move ' + chr(25))
+			self.cmd_menu.AddOption('move_2', 'D', 'Move ' + chr(229))
+			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
 			if not scenario.active_psg.fired:
-				self.cmd_menu.AddOption('next_weapon', 'W', 'Select Next Weapon')
-				self.cmd_menu.AddOption('next_target', 'T', 'Select Next Target')
-				self.cmd_menu.AddOption('fire_target', 'F', 'Fire at Target')
+				self.cmd_menu.AddOption('next_weapon', 'W', 'Next Weapon')
+				self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
+				menu_option = self.cmd_menu.AddOption('fire_area', 'A', 'Area Fire')
+				
+				# Conditions under which Area Fire not Possible:
+				if scenario.active_psg.selected_weapon.stats['area_strength'] == 0:
+					menu_option.inactive = True
+				if scenario.active_psg.target_psg is None:
+					menu_option.inactive = True
+				else:
+					if not scenario.active_psg.target_psg.af_target:
+						menu_option.inactive = True
+				
+				menu_option = self.cmd_menu.AddOption('fire_point', 'P', 'Point Fire')
+				
+				# Conditions under which Point Fire not Possible:
+				if scenario.active_psg.selected_weapon.stats['point_strength'] == 0:
+					menu_option.inactive = True
+				if scenario.active_psg.target_psg is None:
+					menu_option.inactive = True
+				else:
+					if not scenario.active_psg.target_psg.pf_target:
+						menu_option.inactive = True
 		
+		# all root menus get these commands
+		if self.active_cmd_menu in ['movement_root', 'shooting_root']:
+			self.cmd_menu.AddOption('select_unit', 'Tab', 'Next Unit')
+			self.cmd_menu.AddOption('next_phase', 'Space', 'Next Phase')
 		
 		
 		UpdateCmdConsole()
@@ -1342,24 +1377,15 @@ def LoadGame():
 
 
 # calculate an area or point fire attack
-def CalcAttack(attacker, weapon, target, area_fire=False, point_fire=False):
+def CalcAttack(attacker, weapon, target, area_fire):
 	# create a new attack object
 	attack_obj = Attack(attacker, weapon, target)
 	
 	# determine if this is an area or point fire attack
 	if area_fire:
 		attack_obj.area_fire = True
-	elif point_fire:
-		attack_obj.point_fire = True
 	else:
-		# try to determine from weapon type
-		if weapon.stats['point_strength'] > 0:
-			attack_obj.point_fire = True
-		elif weapon.stats['area_strength'] > 0:
-			attack_obj.area_fire = True
-		else:
-			print 'ERROR: Could not determine attack type from weapon!'
-			return None
+		attack_obj.point_fire = True
 	
 	# determine distance to target
 	distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
@@ -2154,7 +2180,7 @@ def GetFacing(attacker, target):
 
 
 # initiate an attack by one PSG on another
-def InitAttack(attacker, target):
+def InitAttack(attacker, target, area_fire):
 	
 	# make sure there's a weapon and a target
 	if target is None: return
@@ -2172,7 +2198,7 @@ def InitAttack(attacker, target):
 	
 	# send information to CalcAttack, which will return an Attack object with the
 	# calculated stats to use for the attack
-	attack_obj = CalcAttack(attacker, weapon, target)
+	attack_obj = CalcAttack(attacker, weapon, target, area_fire)
 	
 	# if player wasn't attacker, display LoS from attacker to target
 	if attacker.owning_player == 1:
@@ -3414,13 +3440,18 @@ def DoScenario(load_savegame=False):
 				scenario.active_psg.target_list = []
 				scenario.active_psg.target_psg = None
 				UpdatePSGConsole()
+				# rebuild command menu for newly selected weapon
+				scenario.BuildCmdMenu()
 				DrawScreenConsoles()
 			elif option.option_id == 'next_target':
 				scenario.active_psg.SelectNextTarget()
+				scenario.BuildCmdMenu()
 				DrawScreenConsoles()
-			
-			elif option.option_id == 'fire_target':
-				InitAttack(scenario.active_psg, scenario.active_psg.target_psg)
+			elif option.option_id[:5] == 'fire_':
+				area_fire = False
+				if option.option_id[5:] == 'area':
+					area_fire = True
+				InitAttack(scenario.active_psg, scenario.active_psg.target_psg, area_fire)
 				UpdatePSGConsole()
 				scenario.BuildCmdMenu()
 				DrawScreenConsoles()

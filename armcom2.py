@@ -97,7 +97,7 @@ GRADIENT = [						# gradient animated effect for main menu
 MAX_LOS_DISTANCE = 13				# maximum distance that a Line of Sight can be drawn
 ELEVATION_M = 20.0				# each elevation level represents x meters of height
 WEAPON_ARC = 31					# 1/2 width of weapon arcs in degrees
-MP_ALLOWANCE = 8				# how many MP each unit has for each Movement phase
+MP_ALLOWANCE = 12				# how many MP each unit has for each Movement phase
 
 # Colour definitions
 OPEN_GROUND_COL = libtcod.Color(0, 64, 0)
@@ -128,17 +128,17 @@ HIGHLIGHT = (libtcod.COLCTRL_1, libtcod.COLCTRL_STOP)	# constant for highlight p
 # Descriptor definitions
 MORALE_DESC = {
 	'7' : 'Reluctant',
-	'8' : 'Regular',
-	'9' : 'Confident',
-	'10' : 'Fearless',
-	'11' : 'Fanatic'
+	'6' : 'Regular',
+	'5' : 'Confident',
+	'4' : 'Fearless',
+	'3' : 'Fanatic'
 }
 SKILL_DESC = {
 	'7': 'Green',
-	'8' : '2nd Line',
-	'9' : '1st Line',
-	'10' : 'Veteran',
-	'11' : 'Elite'
+	'6' : '2nd Line',
+	'5' : '1st Line',
+	'4' : 'Veteran',
+	'3' : 'Elite'
 }
 
 PHASE_NAMES = ['Movement', 'Shooting']
@@ -237,14 +237,14 @@ class TerrainType:
 		if psg.infantry:
 			if psg.moved:
 				return int(self.modifier_matrix[0])
-			elif psg.dug_in:
-				return int(self.modifier_matrix[1])
+#			elif psg.dug_in:
+#				return int(self.modifier_matrix[1])
 			return int(self.modifier_matrix[2])
 		elif psg.gun:
 			if psg.moved:
 				return int(self.modifier_matrix[3])
-			elif psg.dug_in:
-				return int(self.modifier_matrix[4])
+#			elif psg.dug_in:
+#				return int(self.modifier_matrix[4])
 			return int(self.modifier_matrix[5])
 		elif psg.vehicle:
 			if not psg.recce:
@@ -481,15 +481,15 @@ class PSG:
 		self.changed_facing = False
 		
 		# status flags
-		self.dug_in = False			# only infantry units and guns can dig in
-		self.hull_down = -1			# only vehicles can be hull down, number
+		#self.dug_in = False			# only infantry units and guns can dig in
+		#self.hull_down = -1			# only vehicles can be hull down, number
 							#   is direction
 		
 		self.hidden = True			# PSG is not visible to enemy side
 		self.pinned = False			# move N/A, attacks less effective
-		self.bogged = False			# move N/A
-		self.suppressed = False			# move/fire N/A, penalty to morale
-		self.melee = False			# held in melee
+		#self.bogged = False			# move N/A
+		#self.broken = False			# move/fire N/A, must rout unless armoured
+		#self.melee = False			# held in melee
 		
 		self.max_mp = MP_ALLOWANCE		# maximum Movement Points per turn
 		self.mp = self.max_mp			# current mp
@@ -633,7 +633,9 @@ class PSG:
 
 	# TODO: roll for recovery from negative statuses
 	def DoRecoveryTests(self):
-		pass
+		if self.pinned:
+			if self.MoraleCheck(0):
+				self.UnPinMe()
 
 	# load the baseline stats for this PSG from XML data file
 	def LoadStats(self):
@@ -945,15 +947,57 @@ class PSG:
 			if self.num_steps > 1: text += 's'
 			Message(self.screen_x, self.screen_y, text)
 		
-		# TODO: apply morale check
-		pass
-	
-	
+		# apply morale check
+		if self.MoraleCheck(result_row):
+			text = self.GetName() + ' saves from being pinned.'
+			Message(self.screen_x, self.screen_y, text)
+		else:
+			self.PinMe()
 	
 	# TODO: perform a morale check for this PSG
 	def MoraleCheck(self, modifier):
-		pass
 		
+		# calculate effective morale level
+		morale_lvl = self.morale_lvl
+		
+		# modifier provided by test conditions
+		morale_lvl += modifier
+		
+		# protective terrain
+		map_hex = GetHexAt(self.hx, self.hy)
+		terrain_mod = map_hex.terrain_type.GetModifier(self)
+		if terrain_mod < 0:
+			morale_lvl -= 1
+		
+		# normalize
+		if morale_lvl < 3:
+			morale_lvl = 3
+		elif morale_lvl > 10:
+			morale_lvl = 10
+		
+		# do the roll
+		d1, d2, roll = Roll2D6()
+		
+		if roll >= morale_lvl:
+			return True
+		return False
+	
+	# pin this unit
+	def PinMe(self):
+		
+		# armoured vehicles never pinned
+		if self.vehicle and self.armour is not None:
+			return
+
+		self.pinned = True
+		text = self.GetName() + ' is pinned.'
+		Message(self.screen_x, self.screen_y, text)
+	
+	# unpin this unit
+	def UnPinMe(self):
+		self.pinned = False
+		text = self.GetName() + ' is no longer pinned.'
+		Message(self.screen_x, self.screen_y, text)
 	
 	# take a skill test, returning True if passed
 	def SkillTest(self, modifier):
@@ -1175,6 +1219,9 @@ class Scenario:
 				self.active_player = 0
 			self.current_phase = 0
 			self.active_cmd_menu = 'movement_root'
+			for psg in self.psg_list:
+				if psg.owning_player == self.active_player:
+					psg.DoRecoveryTests()
 		
 		# do automatic actions for active player's units for this phase
 		for psg in self.psg_list:
@@ -1289,12 +1336,13 @@ class Scenario:
 		
 		# movement phase menu
 		if self.active_cmd_menu == 'movement_root':
-			self.cmd_menu.AddOption('move_5', 'Q', 'Move ' + chr(231))
-			self.cmd_menu.AddOption('move_0', 'W', 'Move ' + chr(24))
-			self.cmd_menu.AddOption('move_1', 'E', 'Move ' + chr(228))
-			self.cmd_menu.AddOption('move_4', 'A', 'Move ' + chr(230))
-			self.cmd_menu.AddOption('move_3', 'S', 'Move ' + chr(25))
-			self.cmd_menu.AddOption('move_2', 'D', 'Move ' + chr(229))
+			if not scenario.active_psg.pinned:
+				self.cmd_menu.AddOption('move_5', 'Q', 'Move ' + chr(231))
+				self.cmd_menu.AddOption('move_0', 'W', 'Move ' + chr(24))
+				self.cmd_menu.AddOption('move_1', 'E', 'Move ' + chr(228))
+				self.cmd_menu.AddOption('move_4', 'A', 'Move ' + chr(230))
+				self.cmd_menu.AddOption('move_3', 'S', 'Move ' + chr(25))
+				self.cmd_menu.AddOption('move_2', 'D', 'Move ' + chr(229))
 			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
@@ -1398,6 +1446,10 @@ def CalcAttack(attacker, weapon, target, area_fire):
 				attack_strength += int(ceil(attacker.num_steps / 2))
 		else:
 			attack_strength = attack_strength * attacker.num_steps
+		
+		if attacker.pinned:
+			attack_strength = int(ceil(attack_strength / 2))
+		
 	else:
 		attack_strength = attacker.num_steps
 	attack_obj.attack_strength = attack_strength
@@ -1457,6 +1509,11 @@ def CalcAttack(attacker, weapon, target, area_fire):
 		elif distance <= normal_range:
 			attack_obj.column_modifiers.append(('Normal Range', 3))
 	
+	# pinned PF attack
+	if not area_fire:
+		if attacker.pinned:
+			attack_obj.column_modifiers.append(('Attacker Pinned', -2))
+	
 	# attacker moved or changed facing
 	if attacker.moved:
 		attack_obj.column_modifiers.append(('Attacker Moved', -3))
@@ -1467,21 +1524,27 @@ def CalcAttack(attacker, weapon, target, area_fire):
 	map_hex = GetHexAt(target.hx, target.hy)
 	terrain_mod = map_hex.terrain_type.GetModifier(target)
 	if terrain_mod != 0:
-		text = map_hex.terrain_type.display_name + ' Terrain'
+		text = map_hex.terrain_type.display_name
 		attack_obj.column_modifiers.append((text, terrain_mod))
 	
 	# Armour Modifier
 	if attack_obj.point_fire and target.vehicle:
-		facing = GetFacing(attacker, target)
-		ap = weapon.stats['point_strength']
-		if distance > normal_range:
-			ap = int(ceil(ap / 2))
-		ap_diff = ap - target.armour[facing]
-		if ap_diff > MAX_AP_DIFF: ap_diff = MAX_AP_DIFF
-		if ap_diff < MIN_AP_DIFF: ap_diff = MIN_AP_DIFF
-		mod = AP_MODS[ap_diff]
-		text = 'AP ' + str(ap) + ' vs Armour ' + str(target.armour[facing])
-		attack_obj.column_modifiers.append((text, mod))
+		if target.armour is not None:
+			ap = weapon.stats['point_strength']
+			if distance > normal_range:
+				ap = int(ceil(ap / 2))
+			facing = GetFacing(attacker, target)
+			ap_diff = ap - target.armour[facing]
+			if ap_diff > MAX_AP_DIFF: ap_diff = MAX_AP_DIFF
+			if ap_diff < MIN_AP_DIFF: ap_diff = MIN_AP_DIFF
+			mod = AP_MODS[ap_diff]
+			text = 'AP ' + str(ap) + ' vs Armour ' + str(target.armour[facing])
+			attack_obj.column_modifiers.append((text, mod))
+		else:
+			attack_obj.column_modifiers.append(('Unarmoured', 2))
+	
+	# TODO: gun shields
+	
 	
 	# apply column modifiers
 	for (text, mod) in attack_obj.column_modifiers:
@@ -1774,10 +1837,11 @@ def GetHexesWithin(hx, hy, radius):
 # calculate the MP required to move into the target hex
 def GetMPCostToMove(psg, map_hex1, map_hex2):
 	
-	# linked by road
+	# check if linked by road
 	road = False
 	direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, map_hex2.hx, map_hex2.hy)
-	if direction in map_hex1.dirt_road_links: road = True
+	if direction in map_hex1.dirt_road_links:
+		road = True
 	
 	if psg.movement_class == 'Infantry':
 		if road:
@@ -1789,25 +1853,25 @@ def GetMPCostToMove(psg, map_hex1, map_hex2):
 		if road:
 			cost = 2
 		elif map_hex2.terrain_type.difficult:
-			cost = 6
+			cost = 12
 		else:
-			cost = 3
+			cost = 4
 	
 	elif psg.movement_class == 'Tank':
 		if road:
-			cost = 3
+			cost = 4
 		elif map_hex2.terrain_type.difficult:
 			cost = 6
 		else:
-			cost = 3
+			cost = 4
 	
 	elif psg.movement_class == 'Fast Tank':
 		if road:
-			cost = 2
+			cost = 3
 		elif map_hex2.terrain_type.difficult:
 			cost = 6
 		else:
-			cost = 2
+			cost = 3
 
 	return cost
 	
@@ -2749,12 +2813,12 @@ def UpdatePSGConsole():
 		libtcod.console_print(psg_con, 0, 19, 'Moved')
 	elif psg.changed_facing:
 		libtcod.console_print(psg_con, 0, 19, 'Changed Facing')
-	elif psg.dug_in:
-		libtcod.console_print(psg_con, 0, 19, 'Dug-in')
-	elif psg.hull_down > -1:
-		text = 'HD '
+	#elif psg.dug_in:
+	#	libtcod.console_print(psg_con, 0, 19, 'Dug-in')
+	#elif psg.hull_down > -1:
+	#	text = 'HD '
 		# TODO: add directional character
-		libtcod.console_print(psg_con, 0, 19, text)
+	#	libtcod.console_print(psg_con, 0, 19, text)
 	
 	# fired last turn
 	if psg.fired:
@@ -2762,24 +2826,12 @@ def UpdatePSGConsole():
 			libtcod.RIGHT, 'Fired')
 
 	
-	# status flags
-	#libtcod.console_set_default_foreground(psg_con, libtcod.light_red)
-	#libtcod.console_set_default_background(psg_con, libtcod.darkest_red)
-	#libtcod.console_rect(psg_con, 0, y, 24, 1, False, libtcod.BKGND_SET)
-	
-	#if psg.suppressed:
-	#	libtcod.console_print(psg_con, 0, y, 'Suppressed')
-	#elif psg.pinned:
-	#	libtcod.console_print(psg_con, 0, y, 'Pinned')
-	
-	
-	# TODO: current terrain type
-	
-	# TODO: vehicle crew?
-	#libtcod.console_set_default_background(psg_con, libtcod.dark_grey)
-	#libtcod.console_set_default_foreground(psg_con, libtcod.light_grey)
-	#libtcod.console_rect(psg_con, 0, 15, 28, 1, False, libtcod.BKGND_SET)
-	#libtcod.console_print(psg_con, 0, 15, 'Crew')
+	# negative status flags
+	libtcod.console_set_default_foreground(psg_con, libtcod.light_red)
+	libtcod.console_set_default_background(psg_con, libtcod.darkest_red)
+	libtcod.console_rect(psg_con, 0, 20, 24, 1, False, libtcod.BKGND_SET)
+	if psg.pinned:
+		libtcod.console_print(psg_con, 0, 20, 'Pinned')
 	
 	libtcod.console_set_default_foreground(psg_con, libtcod.white)
 	libtcod.console_set_default_background(psg_con, libtcod.black)
@@ -2842,60 +2894,6 @@ def UpdateScenInfoConsole():
 		text)
 
 
-# draw PSG info to the PSG info console based on current mouse location
-# DEFUNCT: merge into UpdateHexInfoConsole() below
-def UpdatePSGInfoConsole():
-	
-	# TEMP
-	psg_info_con = libtcod.console_new(57, 57)
-	
-	
-	libtcod.console_clear(psg_info_con)
-	
-	psg = None
-	
-	# PSG name (max 2 lines)
-	# hidden enemy PSG
-	if psg.owning_player == 1 and psg.hidden:
-		libtcod.console_print(psg_info_con, 0, 0, 'Possible Enemy')
-		libtcod.console_set_default_background(psg_info_con, libtcod.black)
-		return
-	
-	lines = wrap(psg.GetName(), 21, subsequent_indent = ' ')
-	n = 0
-	for line in lines[:2]:
-		libtcod.console_print(psg_info_con, 0, 0+n, line)
-		n += 1
-	
-	# number of steps in PSG and name of squads/vehicles
-	text = str(psg.num_steps) + ' ' + psg.GetStepName()
-	libtcod.console_print(psg_info_con, 0, 2, text)
-	
-	# hull facing if any
-	if psg.vehicle or psg.gun:
-		text = 'Hull ' + GetDirectionalArrow(facing) + ' '
-		libtcod.console_print(psg_info_con, 0, 4, text)
-	
-	# unit abilities and status
-	if psg.recce:
-		libtcod.console_print(psg_info_con, 0, 5, 'Recce')
-	
-	text = ''
-	if psg.pinned:
-		text = 'Pinned'
-	elif psg.suppressed:
-		text = 'Suppressed'
-	
-	if psg.hidden:
-		if len(text) > 0: text += ' '
-		text += 'Hidden'
-	
-	libtcod.console_print_ex(psg_info_con, 20, 5, libtcod.BKGND_NONE,
-		libtcod.RIGHT, text)
-	
-	libtcod.console_set_default_background(psg_info_con, libtcod.black)
-
-
 # update the map hex info console based on current mouse location
 def UpdateHexInfoConsole():
 	libtcod.console_clear(hex_info_con)
@@ -2926,7 +2924,36 @@ def UpdateHexInfoConsole():
 
 		# road status
 		if len(map_hex.dirt_road_links) > 0:
-			libtcod.console_print(hex_info_con, 0, 2, 'Dirt Road')
+			libtcod.console_print_ex(hex_info_con, 23, 1, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Dirt Road')
+		
+		# PSG present
+		for psg in scenario.psg_list:
+			if psg.hx == map_hex.hx and psg.hy == map_hex.hy:
+				if psg.owning_player == 1:
+					libtcod.console_set_default_foreground(hex_info_con, libtcod.red)
+				else:
+					libtcod.console_set_default_foreground(hex_info_con, HIGHLIGHT_COLOR)
+				
+				lines = wrap(psg.GetName(), 23)
+				n = 0
+				for line in lines[:2]:
+					libtcod.console_print(hex_info_con, 0, 3+n, line)
+					n += 1
+				
+				libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
+				# number of steps in PSG and name of squads/vehicles
+				text = str(psg.num_steps) + ' ' + psg.GetStepName()
+				libtcod.console_print(hex_info_con, 0, 3+n, text)
+				
+				if psg.pinned:
+					libtcod.console_print(hex_info_con, 0, 6, 'Pinned')
+				if psg.hidden:
+					libtcod.console_print_ex(hex_info_con, 23, 6,
+						libtcod.BKGND_NONE, libtcod.RIGHT,
+						'Hidden')
+				return
+		
 	
 
 # layer the display consoles onto the screen
@@ -3259,19 +3286,19 @@ def DoScenario(load_savegame=False):
 			return
 		
 		# spawn the player PSGs
-		new_psg = PSG('HQ Panzer Squadron', 'Panzer 35t', 5, 0, 0, 9, 9)
+		new_psg = PSG('HQ Panzer Squadron', 'Panzer 35t', 5, 0, 0, 5, 5)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(5, 10)
 		
-		new_psg = PSG('Light Panzer Squadron', 'Panzer II A', 5, 0, 0, 9, 9)
+		new_psg = PSG('Light Panzer Squadron', 'Panzer II A', 5, 0, 0, 5, 5)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(6, 9)
 		
-		new_psg = PSG('Light Panzerspäh Platoon', 'sd_kfz_221', 3, 0, 0, 9, 9)
+		new_psg = PSG('Light Panzerspäh Platoon', 'sd_kfz_221', 3, 0, 0, 5, 5)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(7, 9)
 		
-		new_psg = PSG('Schützen Platoon', 'german_schutzen', 5, 0, 0, 10, 9)
+		new_psg = PSG('Schützen Platoon', 'german_schutzen', 5, 0, 0, 4, 5)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(8, 9)
 		
@@ -3284,11 +3311,11 @@ def DoScenario(load_savegame=False):
 		scenario.hex_map.AddObjectiveAt(6, -2)
 		
 		# set up enemy PSGs
-		new_psg = PSG('HQ Tank Squadron', '7TP jw', 3, 3, 1, 10, 10)
+		new_psg = PSG('HQ Tank Squadron', '7TP jw', 3, 3, 1, 4, 4)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(5, 3)
 		
-		new_psg = PSG('AT Gun Section', '37mm wz. 36', 2, 3, 1, 10, 10)
+		new_psg = PSG('AT Gun Section', '37mm wz. 36', 2, 3, 1, 4, 4)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(6, -2)
 		

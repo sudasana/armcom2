@@ -2666,7 +2666,7 @@ def UpdatePSGConsole():
 	# TODO: only show max three, allow scrolling
 	libtcod.console_set_default_foreground(psg_con, libtcod.grey)
 	libtcod.console_print_ex(psg_con, 23, 11, libtcod.BKGND_NONE, libtcod.RIGHT,
-		'A P')
+		'Rng AF PF')
 	libtcod.console_set_default_foreground(psg_con, libtcod.white)
 	y = 12
 	libtcod.console_set_default_background(psg_con, HIGHLIGHT_BG_COLOR)
@@ -2679,16 +2679,19 @@ def UpdatePSGConsole():
 				libtcod.console_set_default_background(psg_con, SELECTED_WEAPON_COLOR)
 		libtcod.console_rect(psg_con, 0, y, 24, 1, False, libtcod.BKGND_SET)
 		libtcod.console_print(psg_con, 0, y, weapon.stats['name'])
-		text = str(weapon.stats['max_range']) + weapon.stats['long_range'] + '/'
+		text = str(weapon.stats['max_range']) + weapon.stats['long_range']
+		libtcod.console_print_ex(psg_con, 17, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, text)
 		if weapon.stats['area_strength'] == 0:
-			text += '-'
+			text = '-'
 		else:
-			text += str(weapon.stats['area_strength'])
-		text += '/'
+			text = str(weapon.stats['area_strength'])
+		libtcod.console_print_ex(psg_con, 20, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, text)
 		if weapon.stats['point_strength'] == 0:
-			text += '-'
+			text = '-'
 		else:
-			text += str(weapon.stats['point_strength'])
+			text = str(weapon.stats['point_strength'])
 		libtcod.console_print_ex(psg_con, 23, y, libtcod.BKGND_NONE,
 			libtcod.RIGHT, text)
 		y += 1
@@ -2934,7 +2937,97 @@ def DrawScreenConsoles():
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 
 
-# display the in-game menu
+##########################################################################################
+#                                     In-Game Menus                                      #
+##########################################################################################
+
+# display a summary of the scenario in progress or about to be started
+def ScenarioSummary():
+	# use the buffer console to darken the screen background
+	libtcod.console_clear(con)
+	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0, 
+		0.0, 0.7)
+	# load menu background
+	temp = LoadXP('ArmCom2_scen_summary.xp')
+	libtcod.console_set_default_foreground(temp, libtcod.white)
+	libtcod.console_set_default_background(temp, libtcod.black)
+	
+	# display scenario information
+	libtcod.console_print_ex(temp, 13, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+		'Scenario')
+	libtcod.console_set_default_foreground(temp, HIGHLIGHT_COLOR)
+	libtcod.console_print_ex(temp, 13, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+		scenario.name)
+	libtcod.console_set_default_foreground(temp, libtcod.white)
+	
+	# scenario description
+	lines = wrap(scenario.description, 25)
+	n = 0
+	for line in lines:
+		libtcod.console_print(temp, 1, 5+n, line)
+		n += 1
+	
+	# battlefront, date, and start time
+	libtcod.console_print_ex(temp, 13, 20, libtcod.BKGND_NONE, libtcod.CENTER,
+		scenario.battlefront)
+	text = MONTH_NAMES[scenario.month] + ' ' + str(scenario.year)
+	libtcod.console_print_ex(temp, 13, 21, libtcod.BKGND_NONE, libtcod.CENTER,
+		text)
+	text = str(scenario.hour) + ':' + str(scenario.minute).zfill(2)
+	libtcod.console_print_ex(temp, 13, 22, libtcod.BKGND_NONE, libtcod.CENTER,
+		text)
+	
+	# forces on both sides
+	# TODO: this info should be part of scenario object as well
+	libtcod.console_set_default_foreground(temp, HIGHLIGHT_COLOR)
+	libtcod.console_print(temp, 1, 25, 'Your Forces')
+	libtcod.console_print(temp, 1, 31, 'Expected Resistance')
+	libtcod.console_set_default_foreground(temp, libtcod.white)
+	libtcod.console_print(temp, 2, 26, 'German Heer')
+	libtcod.console_print(temp, 2, 27, 'Armoured Battlegroup')
+	libtcod.console_print(temp, 2, 32, 'Polish Army')
+	libtcod.console_print(temp, 2, 33, 'Armoured and Infantry')
+	
+	# objectives
+	libtcod.console_set_default_foreground(temp, HIGHLIGHT_COLOR)
+	libtcod.console_print(temp, 1, 38, 'Objectives')
+	libtcod.console_set_default_foreground(temp, libtcod.white)
+	text = (scenario.objectives + ' by ' + str(scenario.hour_limit) + ':' +
+		str(scenario.minute_limit).zfill(2))
+	lines = wrap(text, 25)
+	n = 0
+	for line in lines:
+		libtcod.console_print(temp, 1, 40+n, line)
+		n += 1
+	
+	# list of menu commands
+	libtcod.console_set_default_foreground(temp, HIGHLIGHT_COLOR)
+	libtcod.console_print(temp, 1, 52, 'ESC')
+	libtcod.console_print(temp, 15, 52, 'Enter')
+	libtcod.console_set_default_foreground(temp, libtcod.white)
+	libtcod.console_print(temp, 5, 52, 'Cancel')
+	libtcod.console_print(temp, 21, 52, 'Start')
+	
+	libtcod.console_blit(temp, 0, 0, 0, 0, 0, 27, 3)
+	del temp
+	
+	exit_menu = False
+	while not exit_menu:
+		
+		libtcod.console_flush()
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+		
+		if libtcod.console_is_window_closed(): return False
+		
+		if key is None: continue
+		
+		if key.vk == libtcod.KEY_ENTER:
+			return True
+		elif key.vk == libtcod.KEY_ESCAPE:
+			return False
+	
+
+# display the root scenario menu
 def ScenarioMenu():
 	
 	def UpdateScreen():
@@ -3118,13 +3211,21 @@ def DoScenario(load_savegame=False):
 		
 		scenario.battlefront = 'Western Poland'
 		scenario.name = 'Spearhead'
-		scenario.objectives = 'Capture all objectives'
+		scenario.description = ('Your forces have broken through enemy lines, ' +
+			'and are advancing to capture strategic objectives before the ' +
+			'defenders have a chance to react.')
+		scenario.objectives = 'Capture & Hold all objectives'
 		scenario.year = 1939
 		scenario.month = 9
 		scenario.hour = 5
 		scenario.minute = 0
 		scenario.hour_limit = 8
 		scenario.minute_limit = 0
+		
+		# display scenario info: chance to cancel start
+		if not ScenarioSummary():
+			del scenario
+			return
 		
 		# spawn the player PSGs
 		new_psg = PSG('HQ Panzer Squadron', 'Panzer 35t', 5, 0, 0, 9, 9)

@@ -604,16 +604,17 @@ class PSG:
 
 	# do any automatic actions for start of current phase
 	def ResetForPhase(self):
-		# clear any targets
-		self.target_list = []
-		self.target_psg = None
 		# start of movement phase
 		if scenario.current_phase == 0:
 			self.mp = self.max_mp
 			self.moved = False
 			self.changed_facing = False
+			# clear any targets
+			self.target_list = []
+			self.target_psg = None
 		elif scenario.current_phase == 1:
 			self.fired = False
+			self.SelectNextWeapon()
 
 	# TODO: roll for recovery from negative statuses
 	def DoRecoveryTests(self):
@@ -2781,13 +2782,17 @@ def UpdateCmdConsole():
 def UpdateScenInfoConsole():
 	libtcod.console_clear(scen_info_con)
 	
-	# scenario name, objectives, and time limit
+	# scenario name and time remaining
 	libtcod.console_set_default_foreground(scen_info_con, HIGHLIGHT_COLOR)
 	libtcod.console_print(scen_info_con, 0, 0, scenario.name)
 	libtcod.console_set_default_foreground(scen_info_con, libtcod.light_grey)
-	libtcod.console_print(scen_info_con, 0, 1, scenario.objectives)
-	text = 'by ' + str(scenario.hour_limit) + ':' + str(scenario.minute_limit).zfill(2)
-	libtcod.console_print(scen_info_con, 0, 2, text)
+	hr = scenario.hour_limit - scenario.hour
+	mr = scenario.minute_limit - scenario.minute
+	if mr < 0:
+		hr -= 1
+		mr += 60
+	text = '-' + str(hr) + ':' + str(mr).zfill(2)
+	libtcod.console_print(scen_info_con, 0, 1, text)
 	
 	# scenario battlefront, current and time
 	libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
@@ -3219,7 +3224,7 @@ def DoScenario(load_savegame=False):
 		scenario.month = 9
 		scenario.hour = 5
 		scenario.minute = 0
-		scenario.hour_limit = 8
+		scenario.hour_limit = 10
 		scenario.minute_limit = 0
 		
 		# display scenario info: chance to cancel start

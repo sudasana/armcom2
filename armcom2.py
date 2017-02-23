@@ -61,12 +61,11 @@ import xml.etree.ElementTree as xml			# ElementTree library for xml
 
 ##########################################################################################
 #                                   Constant Definitions                                 #
+#                                   You can rely on them                                 #
 ##########################################################################################
 
 # debug constants, should all be set to False in distribution version
-AI_REPORTS = True		# AI reports are printed to console
-AI_DISPLAY = False		# AI calculations are displayed to the screen
-VIEW_ALL = False		# Player can see all hexes on viewport
+VIEW_ALL = False			# Player can see all hexes on viewport
 
 
 NAME = 'Armoured Commander II'
@@ -96,7 +95,6 @@ GRADIENT = [						# gradient animated effect for main menu
 # Game engine constants, can be tweaked for slightly different results
 MAX_LOS_DISTANCE = 13				# maximum distance that a Line of Sight can be drawn
 ELEVATION_M = 20.0				# each elevation level represents x meters of height
-WEAPON_ARC = 31					# 1/2 width of weapon arcs in degrees
 MP_ALLOWANCE = 12				# how many MP each unit has for each Movement phase
 
 # Colour definitions
@@ -150,13 +148,20 @@ DESTHEX = [(0,-1), (1,-1), (1,0), (0,1), (-1,1), (-1,0)]	# change in hx, hy valu
 PLOT_DIR = [(0,-1), (1,-1), (1,1), (0,1), (-1,1), (-1,-1)]	# position of direction indicator
 TURRET_CHAR = [254, 47, 92, 254, 47, 92]			# characters to use for turret display
 
+# pre-calculated hexpairs and second hex step for lines of sight along hexspines
+HEXSPINES = {
+	30: [(0,-1), (1,-1), (1,-2)],
+	90: [(1,-1), (1,0), (2,-1)],
+	150: [(1,0), (0,1), (1,1)],
+	210: [(0,1), (-1,1), (1,2)],
+	270: [(-1,1), (-1,0), (-2,1)],
+	330: [(-1,0), (0,-1), (-1,-1)]
+}
+
 # fire table values
 # highest column that is not more than attack strength is used
 # number is the final dice roll to equal or beat for: Morale Check, -1 Step, -2 Steps, etc.
 # if 0, then not possible
-
-# change this if more columns are added
-MAX_FIRE_TABLE_COLUMN = 12
 
 FIRE_TABLE = [
 	[11, 12, 0, 0, 0, 0, 0, 0, 0, 0],		# AF 0
@@ -173,6 +178,7 @@ FIRE_TABLE = [
 	[4, 7, 9, 11, 12, 0, 0, 0, 0, 0],		# AF 17 / PF 5
 	[3, 7, 9, 10, 11, 12, 0, 0, 0, 0]		# AF 21 / PF 6
 ]                                                   
+MAX_FIRE_TABLE_COLUMN = len(FIRE_TABLE)
 
 # AF, PF strengths to use for each column above
 FIRE_TABLE_ROWS = [
@@ -193,6 +199,8 @@ AP_MODS = {
 }
 MAX_AP_DIFF = 5
 MIN_AP_DIFF = -2
+
+
 
 ##########################################################################################
 #                                         Classes                                        #
@@ -1136,6 +1144,7 @@ class HexMap:
 			GetHexAt(psg.hx, psg.hy).vis_to_player = True
 		
 		# run through each player unit and raycast to each remaining not visible hex
+		#start_time = time.time()
 		for psg in scenario.psg_list:
 			if psg.owning_player == 1: continue
 			for (hx, hy) in scenario.hex_map.edge_hexes:
@@ -1143,6 +1152,8 @@ class HexMap:
 				visible_hexes = GetLoS(psg.hx, psg.hy, hx, hy)
 				for (hx1, hy1) in visible_hexes:
 					scenario.hex_map.hexes[(hx1, hy1)].vis_to_player = True
+		#end_time = time.time()
+		#print 'FoV raycasting finished: Took ' + str(end_time - start_time) + ' seconds'
 
 	# set a given hex on the campaign day map to a terrain type
 	def SetHexTerrainType(self, hx, hy, terrain_type):
@@ -1554,8 +1565,8 @@ def CalcAttack(attacker, weapon, target, area_fire):
 	# TODO: if column is less than 0, no chance of effect?
 	if column < 0:
 		column = 0
-	elif column > MAX_FIRE_TABLE_COLUMN:
-		column = MAX_FIRE_TABLE_COLUMN
+	elif column > MAX_FIRE_TABLE_COLUMN - 1:
+		column = MAX_FIRE_TABLE_COLUMN - 1
 		
 	final_column = FIRE_TABLE[column]
 	attack_obj.final_column = final_column
@@ -2091,26 +2102,27 @@ def GetBearing(x1, y1, x2, y2):
 
 # assuming an observer in hx1, hy1 looking at hx2, hy2, returns a list of visible hexes
 # along this line of sight
-# used in HexMap.CalcFoV()
+# used in HexMap.CalcFoV() and psg.SelectNextTarget()
 def GetLoS(hx1, hy1, hx2, hy2):
 	
-	visible_hexes = []
-	
-	visible_hexes.append((hx1, hy1))
-	
-	# same hex
+	# handle same hex and adjacent hex cases first
 	if hx1 == hx2 and hy1 == hy2:
-		return visible_hexes
-	
+		return [(hx1, hy1)]
 	distance = GetHexDistance(hx1, hy1, hx2, hy2)
-	
-	# adjacent hex
 	if distance == 1:
-		visible_hexes.append((hx2, hy2))
-		return visible_hexes
+		return [(hx1, hy1), (hx2, hy2)]
 	
-	observer_elevation = float(GetHexAt(hx1, hy1).elevation)
-	los_slope = None
+	# build list of hexes along LoS first
+	hex_list = []
+	
+	# lines of sight along hex spines need a special procedure
+	(x1, y1) = PlotIdealHex(hx1, hy1)
+	(x2, y2) = PlotIdealHex(hx2, hy2)
+	los_bearing = GetBearing(x1, y1, x2, y2)
+	
+	mod_list = None
+	if los_bearing in [30, 90, 150, 210, 270, 330]:
+		mod_list = HEXSPINES[los_bearing]
 	
 	# start with first hex
 	hx = hx1
@@ -2118,111 +2130,105 @@ def GetLoS(hx1, hy1, hx2, hy2):
 	
 	while hx != hx2 or hy != hy2:
 		
-		# TEMP: emergency escape
+		# break if we've gone off map
+		if (hx, hy) not in scenario.hex_map.hexes:
+			break
+		
+		# TEMP: emergency escape in case of stuck loop
 		if libtcod.console_is_window_closed():
 			sys.exit()
 		
-		# get the next hex or hex pair in the line toward the endpoint
-		(x1, y1) = PlotHex(hx, hy)
-		(x2, y2) = PlotHex(hx2, hy2)
-		bearing = GetBearing(x1, y1, x2, y2)
-		hex_list = []
+		# hexspines have a pre-computed step
+		if mod_list is not None:
+			for (xm, ym) in mod_list:
+				new_hx = hx + xm
+				new_hy = hy + ym
+				hex_list.append((new_hx, new_hy))
+			(hx, hy) = hex_list[-1]
 		
-		if bearing == 30:
-			hex_list.append(GetAdjacentHex(hx, hy, 0))
-			hex_list.append(GetAdjacentHex(hx, hy, 1))
-		elif bearing == 90:
-			hex_list.append(GetAdjacentHex(hx, hy, 1))
-			hex_list.append(GetAdjacentHex(hx, hy, 2))
-		elif bearing == 150:
-			hex_list.append(GetAdjacentHex(hx, hy, 2))
-			hex_list.append(GetAdjacentHex(hx, hy, 3))
-		elif bearing == 210:
-			hex_list.append(GetAdjacentHex(hx, hy, 3))
-			hex_list.append(GetAdjacentHex(hx, hy, 4))
-		elif bearing == 270:
-			hex_list.append(GetAdjacentHex(hx, hy, 4))
-			hex_list.append(GetAdjacentHex(hx, hy, 5))
-		elif bearing == 330:
-			hex_list.append(GetAdjacentHex(hx, hy, 5))
-			hex_list.append(GetAdjacentHex(hx, hy, 0))
+		# non-hexspine lines use bearing toward final goal
 		else:
+			(x1, y1) = PlotIdealHex(hx, hy)
+			(x2, y2) = PlotIdealHex(hx2, hy2)
+			bearing = GetBearing(x1, y1, x2, y2)
 			if bearing > 330 or bearing < 30:
-				hex_list.append(GetAdjacentHex(hx, hy, 0))
+				(xm, ym) = DESTHEX[0]
 			elif bearing < 90:
-				hex_list.append(GetAdjacentHex(hx, hy, 1))
+				(xm, ym) = DESTHEX[1]
 			elif bearing > 270:
-				hex_list.append(GetAdjacentHex(hx, hy, 5))
+				(xm, ym) = DESTHEX[5]
 			elif bearing < 150:
-				hex_list.append(GetAdjacentHex(hx, hy, 2))
+				(xm, ym) = DESTHEX[2]
 			elif bearing > 210:
-				hex_list.append(GetAdjacentHex(hx, hy, 4))
+				(xm, ym) = DESTHEX[4]
 			else:
-				hex_list.append(GetAdjacentHex(hx, hy, 3))
+				(xm, ym) = DESTHEX[3]
+			hx += xm
+			hy += ym
+			hex_list.append((hx, hy))
+	
+	# now that list is built, step through the list, checking elevations along the way
+	# add visible hexes to a final list
+	visible_hexes = []
+	observer_elevation = float(GetHexAt(hx1, hy1).elevation)
+	los_slope = None
+	
+	# check a hex in the LoS, return None if the hex is off map or beyond max LoS distance
+	#  otherwise return the elevation of this hex
+	def GetHexElevation(hx1, hy1, hx, hy):
+		if (hx, hy) not in scenario.hex_map.hexes:
+			return None
+		if GetHexDistance(hx1, hy1, hx, hy) > MAX_LOS_DISTANCE:
+			return None
+		map_hex = scenario.hex_map.hexes[(hx, hy)]
+		elevation = float(map_hex.elevation) - observer_elevation
+		return (elevation * ELEVATION_M) + float(map_hex.terrain_type.los_height)
+	
+	# run through the list of hexes, starting with the first adjacent one from observer
+	lowest_elevation = None
+	hexpair_elevation = 0
+	for (hx, hy) in hex_list:
 		
-		# check that we haven't gone beyond the max LoS distance
-		(hx3, hy3) = hex_list[0]
-		if GetHexDistance(hx1, hy1, hx3, hy3) > MAX_LOS_DISTANCE:
-			return visible_hexes
+		elevation = GetHexElevation(hx1, hy1, hx, hy)
+		if elevation is None: continue
 		
-		# check either the next hex or the next hex pair
-		lowest_elevation = None
-		for (hx, hy) in hex_list:
-			
-			# hex is off the map
-			if (hx, hy) not in scenario.hex_map.hexes:
+		# if we're on a hexspine, we need to compare some pairs of hexes
+		if mod_list is not None:
+			index = hex_list.index((hx, hy))
+			# hexes 0,3,6... are stored for comparison
+			if index % 3 == 0:
+				hexpair_elevation = elevation
 				continue
-			
-			distance = float(GetHexDistance(hx1, hy1, hx, hy)) * 160.0
-			map_hex = scenario.hex_map.hexes[(hx, hy)]
-			elevation = float(map_hex.elevation) - observer_elevation
-			elevation = elevation * ELEVATION_M
-			elevation += float(map_hex.terrain_type.los_height)
-			
-			# if no lowest elevation recorded yet, record it
-			if lowest_elevation is None:
-				lowest_elevation = elevation
-			
-			# otherwise, if lower than previously recorded, replace it
-			else:
-				if elevation < lowest_elevation:
-					lowest_elevation = elevation
-			
-			# calculate slope from observer to this hex
-			slope = elevation / distance
-			
-			# if adjacent hex, automatically visible
-			if los_slope is None:
-				visible_hexes.append((hx, hy))
-				
-				# we have reached end of LoS check
-				if hx == hx2 and hy == hy2:
-					return visible_hexes
-				
-				# set new LoS slope
-				los_slope = slope
-			
-			else:
-				# check if this hex is visible based on previous LoS slope
-				if slope >= los_slope:
-					
-					visible_hexes.append((hx, hy))
-					
-					# we have reached end of LoS check
-					if hx == hx2 and hy == hy2:
-						return visible_hexes
-			
-		# if we ended up with no lowest_elevation, hex or both hexes are off map,
-		#   so break ray
+			# hexes 1,4,7... are compared with stored value
+			elif (index - 1) % 4 == 0:
+				if hexpair_elevation < elevation:
+					elevation = hexpair_elevation
+
+		# if no lowest elevation recorded yet, record it
 		if lowest_elevation is None:
-			return visible_hexes
+			lowest_elevation = elevation
 		
-		# calculate slope to lower of hex pair
-		slope = lowest_elevation / distance
+		# otherwise, if lower than previously recorded, replace it
+		else:
+			if elevation < lowest_elevation:
+				lowest_elevation = elevation
 		
-		# if slope larger than previous los_slope, set new los_slope
-		if slope > los_slope:
+		# calculate slope from observer to this hex
+		slope = elevation / float(GetHexDistance(hx1, hy1, hx, hy)) * 160.0
+		
+		# if adjacent hex, automatically visible
+		if los_slope is None:
+			visible_hexes.append((hx, hy))
 			los_slope = slope
+		
+		else:
+			# check if this hex is visible based on previous LoS slope
+			if slope >= los_slope:
+				visible_hexes.append((hx, hy))
+		
+			# if slope larger than previous los_slope, set new los_slope
+			if slope > los_slope:
+				los_slope = slope
 
 	return visible_hexes
 	
@@ -2624,9 +2630,6 @@ def Message(x, y, text):
 # each hex is 5x5 cells, but edges overlap with adjacent hexes
 # also record the console cells covered by this hex depiction
 def UpdateMapTerrainConsole():
-		
-	#start_time = time.time()
-	
 	libtcod.console_set_default_background(map_terrain_con, libtcod.black)
 	libtcod.console_clear(map_terrain_con)
 	
@@ -2673,8 +2676,6 @@ def UpdateMapTerrainConsole():
 					# if character is not blank or hex edge, remove it
 					if libtcod.console_get_char(map_terrain_con, x, y) not in [0, 250]:
 						libtcod.console_set_char(map_terrain_con, x, y, 0)
-	
-	#print 'UpdateMapTerrainConsole() Finished: Took ' + str(time.time() - start_time) + ' seconds'
 
 
 # draw the Field of View overlay for the player, darkening map hexes that are not currently visible

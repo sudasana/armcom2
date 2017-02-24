@@ -158,6 +158,17 @@ HEXSPINES = {
 	330: [(-1,0), (0,-1), (-1,-1)]
 }
 
+# option codes, key codes, and directional arrows to use for rotate/move commands
+MOVE_COMMANDS = [
+	(5, 'Q', chr(231)),
+	(0, 'W', chr(24)),
+	(1, 'E', chr(228)),
+	(4, 'A', chr(230)),
+	(3, 'S', chr(25)),
+	(2, 'D', chr(229))
+]
+
+
 # fire table values
 # highest column that is not more than attack strength is used
 # number is the final dice roll to equal or beat for: Morale Check, -1 Step, -2 Steps, etc.
@@ -1347,13 +1358,37 @@ class Scenario:
 		
 		# movement phase menu
 		if self.active_cmd_menu == 'movement_root':
-			if not scenario.active_psg.pinned:
-				self.cmd_menu.AddOption('move_5', 'Q', 'Move ' + chr(231))
-				self.cmd_menu.AddOption('move_0', 'W', 'Move ' + chr(24))
-				self.cmd_menu.AddOption('move_1', 'E', 'Move ' + chr(228))
-				self.cmd_menu.AddOption('move_4', 'A', 'Move ' + chr(230))
-				self.cmd_menu.AddOption('move_3', 'S', 'Move ' + chr(25))
-				self.cmd_menu.AddOption('move_2', 'D', 'Move ' + chr(229))
+			
+			# run through six possible rotate/move directions and build commands
+			for (direction, key_code, char) in MOVE_COMMANDS:
+				
+				if not scenario.active_psg.infantry:
+					if scenario.active_psg.facing != direction:
+						cmd = 'rotate_' + str(direction)
+						desc = 'Face ' + char
+						self.cmd_menu.AddOption(cmd, key_code, desc)
+						# FUTURE: disable rotate if not allowed
+						continue
+				cmd = 'move_' + str(direction)
+				desc = 'Move ' + char
+				menu_option = self.cmd_menu.AddOption(cmd, key_code, desc)
+				
+				# disable move command if move not allowed
+				if scenario.active_psg.pinned:
+					menu_option.inactive = True
+					continue
+				(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
+					scenario.active_psg.hy, direction)
+				if not scenario.active_psg.CheckMoveInto(hx, hy):
+					menu_option.inactive = True
+				
+			#if not scenario.active_psg.pinned:
+			#	self.cmd_menu.AddOption('move_5', 'Q', 'Move ' + chr(231))
+			#	self.cmd_menu.AddOption('move_0', 'W', 'Move ' + chr(24))
+			#	self.cmd_menu.AddOption('move_1', 'E', 'Move ' + chr(228))
+			#	self.cmd_menu.AddOption('move_4', 'A', 'Move ' + chr(230))
+			#	self.cmd_menu.AddOption('move_3', 'S', 'Move ' + chr(25))
+			#	self.cmd_menu.AddOption('move_2', 'D', 'Move ' + chr(229))
 			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
@@ -2149,7 +2184,6 @@ def GetLoS(hx1, hy1, hx2, hy2):
 		# non-hexspine lines use bearing toward final goal
 		else:
 			(x1, y1) = PlotIdealHex(hx, hy)
-			(x2, y2) = PlotIdealHex(hx2, hy2)
 			bearing = GetBearing(x1, y1, x2, y2)
 			if bearing > 330 or bearing < 30:
 				(xm, ym) = DESTHEX[0]
@@ -3459,7 +3493,13 @@ def DoScenario(load_savegame=False):
 					scenario.active_psg.hy, direction)
 				# attempt the move
 				if scenario.active_psg.MoveInto(hx, hy):
+					scenario.BuildCmdMenu()
 					UpdateScreen()
+			elif option.option_id[:7] == 'rotate_':
+				direction = int(option.option_id[7])
+				scenario.active_psg.PivotToFace(direction)
+				scenario.BuildCmdMenu()
+				UpdateScreen()
 			
 			##################################################################
 			# Shooting Phase Actions

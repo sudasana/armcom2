@@ -2173,30 +2173,27 @@ def GetLoS(hx1, hy1, hx2, hy2):
 	observer_elevation = float(GetHexAt(hx1, hy1).elevation)
 	los_slope = None
 	
-	# check a hex in the LoS, return None if the hex is off map or beyond max LoS distance
-	#  otherwise return the elevation of this hex
-	def GetHexElevation(hx1, hy1, hx, hy):
-		if (hx, hy) not in scenario.hex_map.hexes:
-			return None
-		if GetHexDistance(hx1, hy1, hx, hy) > MAX_LOS_DISTANCE:
-			return None
-		map_hex = scenario.hex_map.hexes[(hx, hy)]
-		elevation = float(map_hex.elevation) - observer_elevation
-		return (elevation * ELEVATION_M) + float(map_hex.terrain_type.los_height)
-	
 	# run through the list of hexes, starting with the first adjacent one from observer
 	lowest_elevation = None
+	hexpair = None
 	hexpair_elevation = 0
 	for (hx, hy) in hex_list:
 		
-		elevation = GetHexElevation(hx1, hy1, hx, hy)
-		if elevation is None: continue
+		if (hx, hy) not in scenario.hex_map.hexes:
+			continue
+		if GetHexDistance(hx1, hy1, hx, hy) > MAX_LOS_DISTANCE:
+			continue
+		
+		map_hex = scenario.hex_map.hexes[(hx, hy)]
+		elevation = float(map_hex.elevation) - observer_elevation
+		elevation = (elevation * ELEVATION_M) + float(map_hex.terrain_type.los_height)
 		
 		# if we're on a hexspine, we need to compare some pairs of hexes
 		if mod_list is not None:
 			index = hex_list.index((hx, hy))
 			# hexes 0,3,6... are stored for comparison
 			if index % 3 == 0:
+				hexpair = (hx, hy)
 				hexpair_elevation = elevation
 				continue
 			# hexes 1,4,7... are compared with stored value
@@ -2225,6 +2222,11 @@ def GetLoS(hx1, hy1, hx2, hy2):
 			# check if this hex is visible based on previous LoS slope
 			if slope >= los_slope:
 				visible_hexes.append((hx, hy))
+				# if hexspine, check for also making first part of a hexpair
+				# visible as well
+				if hexpair is not None:
+					visible_hexes.append(hexpair)
+					hexpair = None
 		
 			# if slope larger than previous los_slope, set new los_slope
 			if slope > los_slope:

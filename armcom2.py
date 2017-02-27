@@ -897,6 +897,11 @@ class PSG:
 			scenario.DoHiddenCheck()
 		
 		UpdateUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
+		
+		# check for objective capture
+		map_hex2.CheckCapture()
 		
 		return True
 	
@@ -1086,13 +1091,38 @@ class MapHex:
 		self.h = 0
 		self.f = 0
 	
-	# capture this hex by the PSG
-	def CaptureMe(self, psg):
-		if self.objective is False: return False		# not an objective hex
+	# check to see if this hex has been captured
+	def CheckCapture(self, no_message=False):
+		# this hex is not an objective
+		if self.objective is False: return
+		
+		resident_psg = None
+		for psg in scenario.psg_list:
+			if psg.hx == self.hx and psg.hy == self.hy:
+				resident_psg = psg
+				break
+		
+		# no PSG in this hex
+		if resident_psg is None: return
+		
+		# already held by this player
 		if self.held_by is not None:
-			if self.held_by == psg.owning_player: return False	# already captured
-		self.held_by = psg.owning_player
-		return True
+			if self.held_by == resident_psg.owning_player:
+				return
+		
+		# captured!
+		self.held_by = resident_psg.owning_player
+		
+		if not no_message:
+			if self.held_by == 0:
+				text = 'You have'
+			else:
+				text = 'The enemy has'
+			text += ' captured this objective!'
+			(x,y) = PlotHex(self.hx, self.hy)
+			Message(x+26, y+3, text)
+		
+		UpdateMapGUIConsole()
 
 
 # a map of hexes for use in a campaign day
@@ -1212,9 +1242,9 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
-	# end of turn, advance the scenario clock by 20 minutes
+	# end of turn, advance the scenario clock by one turn
 	def AdvanceClock(self):
-		self.minute += 20
+		self.minute += 15
 		if self.minute >= 60:
 			self.minute -= 60
 			self.hour += 1
@@ -2267,19 +2297,20 @@ def GetLoS(hx1, hy1, hx2, hy2):
 				los_slope = slope
 
 	return visible_hexes
-	
 
-# get the relative facing of a target PSG from the pov of an attacker PSG
-def GetFacing(attacker, target):
-	
-	# first assume that target unit is facing direction 0 and get bearing
-	(x1, y1) = PlotHex(target.hx, target.hy)
-	(x2, y2) = PlotHex(attacker.hx, attacker.hy)
+
+# get the bearing from psg1 to psg2, rotated for psg1's facing
+def GetRelativeBearing(psg1, psg2):
+	(x1, y1) = PlotHex(psg1.hx, psg1.hy)
+	(x2, y2) = PlotHex(psg2.hx, psg2.hy)
 	bearing = GetBearing(x1, y1, x2, y2)
-	
-	# rotate for target PSG's facing	
-	bearing = RectifyHeading(bearing - (target.facing * 60))
-	
+	return RectifyHeading(bearing - (psg1.facing * 60))
+
+
+# get the relative facing of one PSG from the pov of another PSG
+# psg1 is the observer, psg2 is being observed
+def GetFacing(attacker, target):
+	bearing = GetRelativeBearing(target, attacker)
 	if bearing >= 300 or bearing <= 60:
 		return 'front'
 	return 'side'
@@ -2299,8 +2330,16 @@ def InitAttack(attacker, target, area_fire):
 	# determine weapon used in attack
 	weapon = attacker.selected_weapon
 	
-	# TODO: determine if a facing change is needed
-	
+	# determine if a facing change is needed
+	if not attacker.infantry:
+		bearing = GetRelativeBearing(attacker, target)
+		if 30 < bearing < 330:
+			direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx,
+				target.hy)
+			attacker.PivotToFace(direction)
+			UpdateUnitConsole()
+			DrawScreenConsoles()
+			libtcod.console_flush()
 	
 	# send information to CalcAttack, which will return an Attack object with the
 	# calculated stats to use for the attack
@@ -2732,12 +2771,25 @@ def UpdateMapGUIConsole():
 	libtcod.console_clear(map_gui_con)
 	
 	# highlight objective hexes
-	temp = LoadXP('ArmCom2_objective_neutral.xp')
-	libtcod.console_set_key_color(temp, KEY_COLOR)
+	hex_neutral = LoadXP('ArmCom2_objective_neutral.xp')
+	hex_friendly = LoadXP('ArmCom2_objective_friendly.xp')
+	hex_enemy = LoadXP('ArmCom2_objective_enemy.xp')
+	libtcod.console_set_key_color(hex_neutral, KEY_COLOR)
+	libtcod.console_set_key_color(hex_friendly, KEY_COLOR)
+	libtcod.console_set_key_color(hex_enemy, KEY_COLOR)
 	for map_hex in scenario.objective_hexes:
 		(x,y) = PlotHex(map_hex.hx, map_hex.hy)
-		libtcod.console_blit(temp, 0, 0, 0, 0, map_gui_con, x-3, y-2)
-	del temp
+		if map_hex.held_by is None:
+			con = hex_neutral
+		else:
+			if map_hex.held_by == 0:
+				con = hex_friendly
+			else:
+				con = hex_enemy
+		libtcod.console_blit(con, 0, 0, 0, 0, map_gui_con, x-3, y-2)
+	del hex_neutral
+	del hex_friendly
+	del hex_enemy
 		
 		
 
@@ -3354,8 +3406,15 @@ def DoScenario(load_savegame=False):
 		
 		new_psg = PSG('AT Gun Section', '37mm wz. 36', 2, 3, 1, 4, 4)
 		scenario.psg_list.append(new_psg)
+		new_psg.SpawnAt(7, -2)
+		
+		new_psg = PSG('Piechoty Platoon', 'polish_piechoty', 5, 3, 1, 4, 4)
+		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(6, -2)
 		
+		# do initial objective capture
+		for map_hex in scenario.objective_hexes:
+			map_hex.CheckCapture(no_message=True)
 	
 		# draw map terrain
 		UpdateMapTerrainConsole()
@@ -3372,8 +3431,6 @@ def DoScenario(load_savegame=False):
 		# do initial hidden/reveal check
 		scenario.DoHiddenCheck()
 		
-		# do initial enemy spawn
-		#scenario.SpawnEnemyUnits()
 		
 	
 	# TODO: End new game set-up
@@ -3642,13 +3699,11 @@ libtcod.console_set_default_foreground(main_menu_con, libtcod.white)
 menus = []
 
 cmd_menu = CommandMenu('main_menu')
-menu_option = cmd_menu.AddOption('continue_scenario', 'C', 'Continue', desc='Continue a ' +
-	'scenario in progress')
+menu_option = cmd_menu.AddOption('continue_scenario', 'C', 'Continue')
 if not os.path.exists('savegame'): menu_option.inactive = True
-cmd_menu.AddOption('new_scenario', 'N', 'New', desc='Start a new scenario, erasing any ' +
-	'scenario already in progress')
-cmd_menu.AddOption('options', 'O', 'Options', desc='View display and game options')
-cmd_menu.AddOption('quit', 'Q', 'Quit', desc='Quit to desktop')
+cmd_menu.AddOption('new_scenario', 'N', 'New')
+cmd_menu.AddOption('options', 'O', 'Options')
+cmd_menu.AddOption('quit', 'Q', 'Quit')
 menus.append(cmd_menu)
 
 cmd_menu = CommandMenu('settings_menu')

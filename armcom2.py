@@ -236,7 +236,6 @@ class AI:
 			return
 		
 
-
 # terrain type: determines effect of different types of map hex terrain
 class TerrainType:
 	def __init__(self):
@@ -244,7 +243,8 @@ class TerrainType:
 		self.display_name = ''
 		self.los_height = 0
 		self.base_image = ''
-		self.modifier_matrix = []
+		self.af_modifier = 0
+		self.pf_modifier = 0
 		self.water = False
 		self.difficult = False
 		self.very_difficult = False
@@ -270,34 +270,6 @@ class TerrainType:
 					else:
 						bg = bg * 1.2
 					libtcod.console_set_char_background(self.console[elevation],x,y,bg)
-	
-	# return the modifier for the given psg if it were in this terrain
-	def GetModifier(self, psg):
-		if psg.infantry:
-			if psg.moved:
-				return int(self.modifier_matrix[0])
-#			elif psg.dug_in:
-#				return int(self.modifier_matrix[1])
-			return int(self.modifier_matrix[2])
-		elif psg.gun:
-			if psg.moved:
-				return int(self.modifier_matrix[3])
-#			elif psg.dug_in:
-#				return int(self.modifier_matrix[4])
-			return int(self.modifier_matrix[5])
-		elif psg.vehicle:
-			if not psg.recce:
-				if psg.moved:
-					return int(self.modifier_matrix[6])
-				else:
-					return int(self.modifier_matrix[7])
-			else:
-				if psg.moved:
-					return int(self.modifier_matrix[6]) - 1
-				else:
-					return int(self.modifier_matrix[7]) - 1
-		print 'ERROR: unable to calculate terrain modifier'
-		return 0
 
 
 # Attack class, used for attack objects holding scores to use in an attack
@@ -1011,8 +983,7 @@ class PSG:
 		
 		# protective terrain
 		map_hex = GetHexAt(self.hx, self.hy)
-		terrain_mod = map_hex.terrain_type.GetModifier(self)
-		if terrain_mod < 0:
+		if map_hex.terrain_type.af_modifier > 0 or map_hex.terrain_type.pf_modifier > 0:
 			morale_lvl -= 1
 		
 		# normalize
@@ -1162,7 +1133,7 @@ class HexMap:
 			hy_end = hy_start + h
 			for hy in range(hy_start, hy_end):
 				self.hexes[(hx,hy)] = MapHex(hx, hy)
-				self.hexes[(hx,hy)].SetTerrainType('Open Ground')
+				self.hexes[(hx,hy)].SetTerrainType('Fields')
 				self.hexes[(hx,hy)].SetElevation(1)
 				# add to list if on edge of map
 				if hx == 0 or hx == w-1:
@@ -1494,8 +1465,8 @@ def LoadTerrainTypes():
 		new_type.display_name = item.find('display_name').text
 		new_type.los_height = int(item.find('los_height').text)
 		new_type.base_image = item.find('base_image').text
-		temp = item.find('modifier_matrix').text
-		new_type.modifier_matrix = temp.split(',')
+		new_type.af_modifier = int(item.find('af_modifier').text)
+		new_type.pf_modifier = int(item.find('pf_modifier').text)
 		if item.find('water') is not None:
 			new_type.water = True
 		if item.find('difficult') is not None:
@@ -1621,10 +1592,18 @@ def CalcAttack(attacker, weapon, target, area_fire):
 	
 	# Target Terrain Modifier
 	map_hex = GetHexAt(target.hx, target.hy)
-	terrain_mod = map_hex.terrain_type.GetModifier(target)
-	if terrain_mod != 0:
-		text = map_hex.terrain_type.display_name
-		attack_obj.column_modifiers.append((text, terrain_mod))
+	af_modifier = map_hex.terrain_type.af_modifier
+	pf_modifier = map_hex.terrain_type.pf_modifier
+	if area_fire:
+		if af_modifier != 0:
+			attack_obj.column_modifiers.append((map_hex.terrain_type.display_name, af_modifier))
+	else:
+		if pf_modifier != 0:
+			attack_obj.column_modifiers.append((map_hex.terrain_type.display_name, pf_modifier))
+	
+	# infantry movement in no cover
+	if target.infantry and pf_modifier == 0:
+		attack_obj.column_modifiers.append(('Moved without protective cover', 2))
 	
 	# Armour Modifier
 	if attack_obj.point_fire and target.vehicle:
@@ -2461,7 +2440,12 @@ def DisplayAttack(attack_obj):
 		libtcod.console_print_ex(attack_con, 13, y, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'None')
 	for (text, mod) in attack_obj.column_modifiers:
-		libtcod.console_print(attack_con, 2, y, text)
+		
+		lines = wrap(text, 18, subsequent_indent = ' ')
+		for line in lines:
+			libtcod.console_print(attack_con, 2, y, line)
+			y += 1
+		y -= 1
 		mod_text = str(mod)
 		if mod > 0: mod_text = '+' + mod_text
 		libtcod.console_print_ex(attack_con, 23, y, libtcod.BKGND_NONE,
@@ -2553,18 +2537,18 @@ def GenerateTerrain():
 			pond_chance = 5
 		
 		# if there's already an adjacent forest, higher chance of there being one
-		if HasAdjacent(map_hex, 'Forest'):
+		if HasAdjacent(map_hex, 'Sparse Forest'):
 			forest_chance = 30
 		else:
 			forest_chance = 5
 		
 		# if there's already an adjacent field, higher chance of there being one
-		if HasAdjacent(map_hex, 'Field'):
+		if HasAdjacent(map_hex, 'In-Season Fields'):
 			field_chance = 10
 		else:
 			field_chance = 5
 		
-		if HasAdjacent(map_hex, 'Village'):
+		if HasAdjacent(map_hex, 'Village, Wood Buildings'):
 			village_chance = 0
 		else:
 			village_chance = 2
@@ -2578,19 +2562,19 @@ def GenerateTerrain():
 		roll -= pond_chance
 		
 		if roll <= forest_chance:
-			map_hex.SetTerrainType('Forest')
+			map_hex.SetTerrainType('Sparse Forest')
 			continue
 		
 		roll -= forest_chance
 			
 		if roll <= field_chance:
-			map_hex.SetTerrainType('Field')
+			map_hex.SetTerrainType('In-Season Fields')
 			continue
 		
 		roll -= field_chance
 		
 		if roll <= village_chance:
-			map_hex.SetTerrainType('Village')
+			map_hex.SetTerrainType('Village, Wood Buildings')
 	
 	# add a road running from the bottom to the top of the map
 	path = GetHexPath(5, 10, 8, -4)

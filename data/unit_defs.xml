@@ -128,7 +128,7 @@
   <unit_def>
     <infantry/>
     <id>polish_piechoty</id>
-    <name>Piechoty Platoon</name>
+    <name>Piechoty Squad</name>
     <movement_class>Infantry</movement_class>
     <weapon_list>
       <weapon>         

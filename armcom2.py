@@ -217,6 +217,26 @@ MIN_AP_DIFF = -2
 #                                         Classes                                        #
 ##########################################################################################
 
+# AI: used to determine actions of non-player-controlled units
+class AI:
+	def __init__(self, owner):
+		self.owner = owner			# the PSG for whom this AI instance is
+		
+	# randomly choose and execute and action for the current phase
+	def DoPhaseAction(self):
+		
+		# Movement Phase actions
+		if scenario.current_phase == 0:
+			# TEMP - no move actions
+			return
+		
+		# Shooting Phase actions
+		elif scenario.current_phase == 1:
+			# TEMP - no shooting actions
+			return
+		
+
+
 # terrain type: determines effect of different types of map hex terrain
 class TerrainType:
 	def __init__(self):
@@ -455,6 +475,7 @@ class PSG:
 		self.step_name = ''			# name of individual teams / vehicles w/in this PSG
 		self.num_steps = num_steps		# number of unit steps in this PSG
 		self.portrait = None			# portrait filename if any
+		self.ai = None				# pointer to AI instance
 		
 		self.hx = 0				# hex location of this PSG, will be set
 		self.hy = 0				#   by SpawnAt()
@@ -813,6 +834,7 @@ class PSG:
 		
 		# determine if we need to display a turret
 		if not self.gun and not self.turret: return
+		if self.owning_player == 1 and self.hidden: return
 		
 		# determine location to draw turret character
 		x_mod, y_mod = PLOT_DIR[self.facing]
@@ -973,7 +995,7 @@ class PSG:
 		
 		# apply morale check
 		if self.MoraleCheck(result_row):
-			text = self.GetName() + ' saves from being pinned.'
+			text = self.GetName() + ' passes its morale check.'
 			Message(self.screen_x, self.screen_y, text)
 		else:
 			self.PinMe()
@@ -1242,6 +1264,18 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
+	# do enemy AI actions for this phase
+	def DoAIPhase(self):
+		
+		# build a list of units that can be activated this phase
+		activate_list = []
+		for psg in self.psg_list:
+			if psg.ai is None: continue
+			activate_list.append(psg)
+		shuffle(activate_list)
+		for psg in activate_list:
+			psg.ai.DoPhaseAction()
+	
 	# end of turn, advance the scenario clock by one turn
 	def AdvanceClock(self):
 		self.minute += 15
@@ -1260,15 +1294,14 @@ class Scenario:
 		# Shooting Phase -> New Active Player and Movement Phase
 		elif self.current_phase == 1:
 			
-			# TEMP: skip enemy turn
-			self.active_player = 1
-			
 			if self.active_player == 0:
 				self.active_player = 1
+				self.active_psg = None
 			else:
 				self.AdvanceClock()
 				UpdateScenInfoConsole()
 				self.active_player = 0
+				scenario.SelectNextPSG()
 			self.current_phase = 0
 			self.active_cmd_menu = 'movement_root'
 			for psg in self.psg_list:
@@ -1381,10 +1414,9 @@ class Scenario:
 		self.cmd_menu.Clear()
 		
 		# don't display anything if player is not active
-		# TEMP - no AI right now so disabled
-		#if scenario.active_player != 0:
-		#	UpdateCmdConsole()
-		#	return
+		if scenario.active_player != 0:
+			UpdateCmdConsole()
+			return
 		
 		# movement phase menu
 		if self.active_cmd_menu == 'movement_root':
@@ -1411,14 +1443,6 @@ class Scenario:
 					scenario.active_psg.hy, direction)
 				if not scenario.active_psg.CheckMoveInto(hx, hy):
 					menu_option.inactive = True
-				
-			#if not scenario.active_psg.pinned:
-			#	self.cmd_menu.AddOption('move_5', 'Q', 'Move ' + chr(231))
-			#	self.cmd_menu.AddOption('move_0', 'W', 'Move ' + chr(24))
-			#	self.cmd_menu.AddOption('move_1', 'E', 'Move ' + chr(228))
-			#	self.cmd_menu.AddOption('move_4', 'A', 'Move ' + chr(230))
-			#	self.cmd_menu.AddOption('move_3', 'S', 'Move ' + chr(25))
-			#	self.cmd_menu.AddOption('move_2', 'D', 'Move ' + chr(229))
 			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
@@ -1451,7 +1475,6 @@ class Scenario:
 		if self.active_cmd_menu in ['movement_root', 'shooting_root']:
 			self.cmd_menu.AddOption('select_unit', 'Tab', 'Next Unit')
 			self.cmd_menu.AddOption('next_phase', 'Space', 'Next Phase')
-		
 		
 		UpdateCmdConsole()
 
@@ -2797,14 +2820,15 @@ def UpdateMapGUIConsole():
 def UpdateUnitConsole():
 	libtcod.console_clear(unit_con)
 	for psg in scenario.psg_list:
-		# don't draw hidden enemy units
-		if psg.owning_player == 1 and psg.hidden: continue
 		psg.DrawMe()
 
 
 # updates the selected PSG info console
 def UpdatePSGConsole():
 	libtcod.console_clear(psg_con)
+	
+	if scenario.active_psg is None:
+		return
 	
 	# create a local pointer to the currently active PSG
 	psg = scenario.active_psg
@@ -3029,8 +3053,11 @@ def UpdateHexInfoConsole():
 				for line in lines[:2]:
 					libtcod.console_print(hex_info_con, 0, 3+n, line)
 					n += 1
-				
 				libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
+				
+				if psg.owning_player == 1 and psg.hidden:
+					return
+
 				# number of steps in PSG and name of squads/vehicles
 				text = str(psg.num_steps) + ' ' + psg.GetStepName()
 				libtcod.console_print(hex_info_con, 0, 3+n, text)
@@ -3401,14 +3428,17 @@ def DoScenario(load_savegame=False):
 		
 		# set up enemy PSGs
 		new_psg = PSG('HQ Tank Squadron', '7TP jw', 3, 3, 1, 4, 4)
+		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(5, 3)
+		new_psg.SpawnAt(2, 4)
 		
 		new_psg = PSG('AT Gun Section', '37mm wz. 36', 2, 3, 1, 4, 4)
+		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(7, -2)
+		new_psg.SpawnAt(8, 0)
 		
 		new_psg = PSG('Piechoty Platoon', 'polish_piechoty', 5, 3, 1, 4, 4)
+		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(6, -2)
 		
@@ -3485,13 +3515,6 @@ def DoScenario(load_savegame=False):
 			
 			#elif mouse.lbutton:
 			
-				
-			
-			##### Keyboard Commands #####
-			
-			# skip this section if no commands in buffer
-			if key is None: continue
-			
 			# open scenario menu screen
 			if key.vk == libtcod.KEY_ESCAPE:
 				if ScenarioMenu():
@@ -3499,6 +3522,20 @@ def DoScenario(load_savegame=False):
 				else:
 					DrawScreenConsoles()
 				continue
+			
+			
+			##### AI Actions #####
+			if scenario.active_player == 1:
+				scenario.DoAIPhase()
+				scenario.NextPhase()
+				UpdateScreen()
+				continue
+			
+			
+			##### Player Keyboard Commands #####
+			
+			# skip this section if no commands in buffer
+			if key is None: continue
 			
 			# select previous or next menu option
 			if key.vk == libtcod.KEY_UP:
@@ -3526,7 +3563,7 @@ def DoScenario(load_savegame=False):
 			scenario.cmd_menu.selected_option = option
 			UpdateScreen()
 			libtcod.console_flush()
-			Wait(100)
+			#Wait(100)
 			
 			##################################################################
 			# Root Menu Actions

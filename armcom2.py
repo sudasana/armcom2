@@ -456,6 +456,8 @@ class PSG:
 		self.anim_x = 0				# animation location in console
 		self.anim_y = 0
 		
+		self.spotted = False			# PSG has been spotted by an enemy unit
+		
 		self.facing = facing			# facing direction for guns and vehicles
 		self.turret = False			# vehicle has a turret
 		
@@ -469,7 +471,6 @@ class PSG:
 		self.target_psg = None			# currently targeted PSG
 		
 		self.acquired_target = None		# PSG has acquired this unit as target
-		self.acquired_target_lvl = 0		# level of acquired (-1, or -2)
 		self.acquired_by = []			# PSG has been acquired by this unit(s)
 		
 		self.infantry = False			# PSG type flags
@@ -497,7 +498,6 @@ class PSG:
 		#self.hull_down = -1			# only vehicles can be hull down, number
 							#   is direction
 		
-		self.hidden = True			# PSG is not visible to enemy side
 		self.pinned = False			# move N/A, attacks less effective
 		#self.bogged = False			# move N/A
 		#self.broken = False			# move/fire N/A, must rout unless armoured
@@ -547,7 +547,7 @@ class PSG:
 	# if true_name, return the real identity of this PSG no matter what
 	def GetName(self, true_name=False):
 		if not true_name:
-			if self.owning_player == 1 and self.hidden:
+			if self.owning_player == 1 and not self.spotted:
 				return 'Possible Enemy PSG'
 		return self.name.decode('utf8').encode('IBM850')
 
@@ -578,7 +578,6 @@ class PSG:
 			
 			for psg in scenario.psg_list:
 				if psg.owning_player == 0: continue
-				if psg.hidden: continue
 				# check range
 				max_range = self.selected_weapon.stats['max_range']
 				if GetHexDistance(self.hx, self.hy, psg.hx, psg.hy) > max_range:
@@ -611,14 +610,12 @@ class PSG:
 	# clear any acquired target links between this PSG and any other
 	def ClearAcquiredTargets(self):
 		self.acquired_target = None
-		self.acquired_target_lvl = 0
 		self.acquired_by = []
 		for psg in scenario.psg_list:
 			if self in psg.acquired_by:
 				psg.acquired_by.remove(self)
 			if psg.acquired_target == self:
 				psg.acquired_target = None
-				psg.acquired_target_lvl = 0
 
 	# remove this PSG from the game
 	def DestroyMe(self):
@@ -706,10 +703,13 @@ class PSG:
 				return
 		
 		print 'ERROR: Could not find unit stats for: ' + self.unit_id
-		
-	# this PSG has been revealed by enemy forces
-	def RevealMe(self):
-		self.hidden = False
+	
+	# this PSG has been spotted by enemy forces
+	
+	
+	# this PSG has been revealed 
+	def SpotMe(self):
+		self.spotted = True
 
 		# update unit console to display
 		UpdateUnitConsole()
@@ -727,14 +727,14 @@ class PSG:
 		text += self.GetName() + ' has been spotted!'
 		Message(self.screen_x, self.screen_y, text)
 	
-	# regain Hidden status for this PSG
+	# regain unspotted status for this PSG
 	def HideMe(self):
 		#if self.owning_player == 0:
 		#	text = self.GetName() + ' is now Hidden'
 		#else:
 		#	text = 'Lost contact with ' + self.GetName()
 		#Message(self.screen_x, self.screen_y, text)
-		self.hidden = True
+		self.spotted = False
 		UpdateUnitConsole()
 		DrawScreenConsoles()
 		libtcod.console_flush()
@@ -743,7 +743,7 @@ class PSG:
 	def GetDisplayChar(self):
 		
 		# enemy Hidden PSG
-		if self.owning_player == 1 and self.hidden:
+		if self.owning_player == 1 and not self.spotted:
 			return '?'
 		
 		# infantry
@@ -792,12 +792,12 @@ class PSG:
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
-			if self.hidden:
+			if not self.spotted:
 				col = libtcod.dark_red
 			else:
 				col = libtcod.red
 		else:	
-			if self.hidden:
+			if not self.spotted:
 				col = libtcod.light_grey
 			else:
 				col = libtcod.white
@@ -806,7 +806,7 @@ class PSG:
 		
 		# determine if we need to display a turret
 		if not self.gun and not self.turret: return
-		if self.owning_player == 1 and self.hidden: return
+		if self.owning_player == 1 and not self.spotted: return
 		
 		# determine location to draw turret character
 		x_mod, y_mod = PLOT_DIR[self.facing]
@@ -888,7 +888,7 @@ class PSG:
 		if self.owning_player == 0:
 			scenario.hex_map.CalcFoV()
 			UpdateMapFoVConsole()
-			scenario.DoHiddenCheck()
+			scenario.DoSpotCheck()
 		
 		UpdateUnitConsole()
 		DrawScreenConsoles()
@@ -1177,17 +1177,21 @@ class HexMap:
 			if psg.owning_player == 1: continue
 			GetHexAt(psg.hx, psg.hy).vis_to_player = True
 		
-		# run through each player unit and raycast to each remaining not visible hex
+		# run through each player unit and raycast to each map hex
 		#start_time = time.time()
 		for psg in scenario.psg_list:
 			if psg.owning_player == 1: continue
-			for (hx, hy) in scenario.hex_map.edge_hexes:
+			for (hx, hy) in scenario.hex_map.hexes:
+				# skip own hexes
+				if hx == psg.hx and hy == psg.hy: continue
+
 				map_hex = GetHexAt(hx, hy)
-				visible_hexes = GetLoS(psg.hx, psg.hy, hx, hy)
-				for (hx1, hy1) in visible_hexes:
-					scenario.hex_map.hexes[(hx1, hy1)].vis_to_player = True
+				los_line = GetLoS(psg.hx, psg.hy, hx, hy)
+				if (hx, hy) in los_line:
+					scenario.hex_map.hexes[(hx, hy)].vis_to_player = True
 		#end_time = time.time()
-		#print 'FoV raycasting finished: Took ' + str(end_time - start_time) + ' seconds'
+		#time_taken = round((end_time - start_time) * 1000, 3) 
+		#print 'FoV raycasting finished: Took ' + str(time_taken) + ' ms.'
 
 	# set a given hex on the campaign day map to a terrain type
 	def SetHexTerrainType(self, hx, hy, terrain_type):
@@ -1288,17 +1292,43 @@ class Scenario:
 		self.BuildCmdMenu()
 		SaveGame()
 	
-	# check to see if any enemy PSGs are newly visible or nto visible as a result of FoV changes
-	def DoHiddenCheck(self):
+	# check to see if any units are spotted by enemy forces or regain unspotted status
+	def DoSpotCheck(self):
+		
+		spotted_psgs = []
+		unspotted_psgs = []
+		
+		# assume that all PSGs should be unspotted
 		for psg in self.psg_list:
-			if psg.owning_player == 0: continue
-			map_hex = GetHexAt(psg.hx, psg.hy)
-			if psg.hidden:
-				if map_hex.vis_to_player:
-					psg.RevealMe()
-			else:
-				if not map_hex.vis_to_player:
-					psg.HideMe()
+			unspotted_psgs.append(psg)
+		
+		# check all possible enemy pairs
+		for psg1 in self.psg_list:
+			for psg2 in self.psg_list:
+				# both units are on same side
+				if psg1.owning_player == psg2.owning_player:
+					continue
+				
+				# check for LoS
+				los_line = GetLoS(psg1.hx, psg1.hy, psg2.hx, psg2.hy)
+				# no LoS
+				if (psg2.hx, psg2.hy) not in los_line:
+					continue
+				
+				# TODO: calculate spot distance for psg2
+				
+				# psg2 has been spotted by psg1
+				if psg2 in unspotted_psgs:
+					unspotted_psgs.remove(psg2)
+					spotted_psgs.append(psg2)
+		
+		# finally, go through lists and check for any changes in status
+		for psg in spotted_psgs:
+			if not psg.spotted:
+				psg.SpotMe()
+		for psg in unspotted_psgs:
+			if psg.spotted:
+				psg.HideMe()
 	
 	# select the next player PSG; or the first one in the list if none selected
 	def SelectNextPSG(self):
@@ -1589,6 +1619,9 @@ def CalcAttack(attacker, weapon, target, area_fire):
 		attack_obj.column_modifiers.append(('Attacker Moved', -3))
 	elif attacker.changed_facing:
 		attack_obj.column_modifiers.append(('Attacker Pivoted', -1))
+	
+	# TODO: acquired target
+	
 	
 	# Target Terrain Modifier
 	map_hex = GetHexAt(target.hx, target.hy)
@@ -2190,48 +2223,29 @@ def GetLoS(hx1, hy1, hx2, hy2):
 	mod_list = None
 	if los_bearing in [30, 90, 150, 210, 270, 330]:
 		mod_list = HEXSPINES[los_bearing]
-	
-	# start with first hex
-	hx = hx1
-	hy = hy1
-	
-	while hx != hx2 or hy != hy2:
 		
-		# break if we've gone off map
-		if (hx, hy) not in scenario.hex_map.hexes:
-			break
+		# start with first hex
+		hx = hx1
+		hy = hy1
 		
-		# TEMP: emergency escape in case of stuck loop
-		if libtcod.console_is_window_closed():
-			sys.exit()
-		
-		# hexspines have a pre-computed step
-		if mod_list is not None:
+		while hx != hx2 or hy != hy2:
+			# break if we've gone off map
+			if (hx, hy) not in scenario.hex_map.hexes: break
+			
+			# TEMP: emergency escape in case of stuck loop
+			if libtcod.console_is_window_closed(): sys.exit()
+			
+			# add the next three hexes to the list
 			for (xm, ym) in mod_list:
 				new_hx = hx + xm
 				new_hy = hy + ym
 				hex_list.append((new_hx, new_hy))
 			(hx, hy) = hex_list[-1]
-		
-		# non-hexspine lines use bearing toward final goal
-		else:
-			(x1, y1) = PlotIdealHex(hx, hy)
-			bearing = GetBearing(x1, y1, x2, y2)
-			if bearing > 330 or bearing < 30:
-				(xm, ym) = DESTHEX[0]
-			elif bearing < 90:
-				(xm, ym) = DESTHEX[1]
-			elif bearing > 270:
-				(xm, ym) = DESTHEX[5]
-			elif bearing < 150:
-				(xm, ym) = DESTHEX[2]
-			elif bearing > 210:
-				(xm, ym) = DESTHEX[4]
-			else:
-				(xm, ym) = DESTHEX[3]
-			hx += xm
-			hy += ym
-			hex_list.append((hx, hy))
+	
+	else:
+		hex_list = GetHexLine(hx1, hy1, hx2, hy2)
+		# remove first hex in list, since this is the observer's hex
+		hex_list.pop(0)
 	
 	# now that list is built, step through the list, checking elevations along the way
 	# add visible hexes to a final list
@@ -2374,17 +2388,18 @@ def InitAttack(attacker, target, area_fire):
 	# clear attacker's selected weapon
 	attacker.selected_weapon = None
 	
-	# handle acquired target flags
-	
-	# attacker had already acquired target
-	if attacker.acquired_target == target:
-		if attacker.acquired_target_lvl == -1:
-			attacker.acquired_target_lvl = -2
-	# newly acquired target
-	else:
+	# handle newly acquired target
+	if attacker.acquired_target is None:
 		attacker.acquired_target = target
-		attacker.acquired_target_lvl = -1
 		target.acquired_by.append(attacker)
+	else:
+		# attacker had a different acquired target
+		if attacker.acquired_target != target:
+			for psg in scenario.psg_list:
+				if attacker in psg.acquired_by:
+					psg.acquired_by.remove(self)
+			attacker.acquired_target = target
+			target.acquired_by.append(attacker)
 
 
 # display the factors and odds for an attack on the screen
@@ -3039,7 +3054,7 @@ def UpdateHexInfoConsole():
 					n += 1
 				libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
 				
-				if psg.owning_player == 1 and psg.hidden:
+				if psg.owning_player == 1 and not psg.spotted:
 					return
 
 				# number of steps in PSG and name of squads/vehicles
@@ -3048,13 +3063,12 @@ def UpdateHexInfoConsole():
 				
 				if psg.pinned:
 					libtcod.console_print(hex_info_con, 0, 6, 'Pinned')
-				if psg.hidden:
+				if not psg.spotted:
 					libtcod.console_print_ex(hex_info_con, 23, 6,
 						libtcod.BKGND_NONE, libtcod.RIGHT,
-						'Hidden')
+						'Unspotted')
 				return
 		
-	
 
 # layer the display consoles onto the screen
 def DrawScreenConsoles():
@@ -3077,12 +3091,24 @@ def DrawScreenConsoles():
 		if psg is not None:
 			libtcod.console_set_char_background(con, psg.screen_x, psg.screen_y,
 				TARGET_HL_COL, flag=libtcod.BKGND_SET)
-			# draw LoS line
-			line = GetLine(scenario.active_psg.screen_x, scenario.active_psg.screen_y,
-				psg.screen_x, psg.screen_y)
-			for (x, y) in line[2:-1]:
+			
+			# TEMP - show LoS hexes
+			los_line = GetLoS(scenario.active_psg.hx, scenario.active_psg.hy,
+				psg.hx, psg.hy)
+			
+			for (hx, hy) in los_line:
+				(x,y) = PlotHex(hx, hy)
+				x += 26
+				y += 3
 				libtcod.console_set_char(con, x, y, 250)
 				libtcod.console_set_char_foreground(con, x, y, libtcod.red)
+			
+			# draw LoS line
+			#line = GetLine(scenario.active_psg.screen_x, scenario.active_psg.screen_y,
+			#	psg.screen_x, psg.screen_y)
+			#for (x, y) in line[2:-1]:
+			#	libtcod.console_set_char(con, x, y, 250)
+			#	libtcod.console_set_char_foreground(con, x, y, libtcod.red)
 	
 	# left column consoles
 	libtcod.console_blit(psg_con, 0, 0, 0, 0, con, 1, 4)
@@ -3442,8 +3468,8 @@ def DoScenario(load_savegame=False):
 		
 		UpdateScreen()
 		
-		# do initial hidden/reveal check
-		scenario.DoHiddenCheck()
+		# do initial spot check
+		scenario.DoSpotCheck()
 		
 		
 	

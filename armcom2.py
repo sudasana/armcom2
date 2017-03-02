@@ -232,8 +232,53 @@ class AI:
 		
 		# Shooting Phase actions
 		elif scenario.current_phase == 1:
-			# TEMP - no shooting actions
-			return
+			
+			print 'AI Shooting Phase Action for: ' + self.owner.GetName(true_name=True)
+			
+			
+				
+			
+			af_strength = self.owner.weapon_list[0].stats['area_strength']
+			pf_strength = self.owner.weapon_list[0].stats['point_strength']
+			max_range = self.owner.weapon_list[0].stats['max_range']
+			
+			# build list of possible targets
+			target_list = []
+			for psg in scenario.psg_list:
+				# same team!
+				if psg.owning_player == self.owner.owning_player: continue
+				
+				# out of max range
+				if GetHexDistance(self.owner.hx, self.owner.hy, psg.hx, psg.hy) > max_range: continue
+				
+				# don't have the right kind of attack for this target
+				if af_strength == 0 and not psg.pf_target: continue
+				if pf_strength == 0 and not psg.af_target: continue
+				
+				# no line of sight
+				if (psg.hx, psg.hy) not in GetLoS(self.owner.hx, self.owner.hy, psg.hx, psg.hy): continue
+				
+				# if we had already aquired this target, choose it automatically
+				if self.owner.acquired_target is not None:
+					if self.owner.acquired_target == psg:
+						print 'AI: Continuing attack on acquired target'
+						InitAttack(self.owner, psg, psg.af_target)
+						return
+				
+				target_list.append(psg)
+			
+			if len(target_list) == 0:
+				print 'AI: No possible targets'
+				return
+			
+			text = 'AI: Found ' + str(len(target_list)) + ' possible target'
+			if len(target_list) > 1: text += 's'
+			print text
+			
+			# choose a random target!
+			psg = choice(target_list)
+			
+			InitAttack(self.owner, psg, psg.af_target)
 		
 
 # terrain type: determines effect of different types of map hex terrain
@@ -1620,8 +1665,10 @@ def CalcAttack(attacker, weapon, target, area_fire):
 	elif attacker.changed_facing:
 		attack_obj.column_modifiers.append(('Attacker Pivoted', -1))
 	
-	# TODO: acquired target
-	
+	# acquired target
+	if attacker.acquired_target is not None:
+		if attacker.acquired_target == target:
+			attack_obj.column_modifiers.append(('Acquired Target', 1))
 	
 	# Target Terrain Modifier
 	map_hex = GetHexAt(target.hx, target.hy)
@@ -1635,8 +1682,11 @@ def CalcAttack(attacker, weapon, target, area_fire):
 			attack_obj.column_modifiers.append((map_hex.terrain_type.display_name, pf_modifier))
 	
 	# infantry movement in no cover
-	if target.infantry and pf_modifier == 0:
-		attack_obj.column_modifiers.append(('Moved without protective cover', 2))
+	if target.infantry and target.moved and pf_modifier == 0:
+		attack_obj.column_modifiers.append(('Target Moved, No Protective Cover', 2))
+	
+	if target.vehicle and target.moved:
+		attack_obj.column_modifiers.append(('Target Vehicle Moved', -2))
 	
 	# Armour Modifier
 	if attack_obj.point_fire and target.vehicle:
@@ -2371,10 +2421,11 @@ def InitAttack(attacker, target, area_fire):
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
 			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
-			Wait(50)
-
+			Wait(15)
+	
 	# display attack console for this attack
 	DisplayAttack(attack_obj)
+	
 	WaitForEnter()
 	
 	# clear any LoS from screen
@@ -2397,7 +2448,7 @@ def InitAttack(attacker, target, area_fire):
 		if attacker.acquired_target != target:
 			for psg in scenario.psg_list:
 				if attacker in psg.acquired_by:
-					psg.acquired_by.remove(self)
+					psg.acquired_by.remove(attacker)
 			attacker.acquired_target = target
 			target.acquired_by.append(attacker)
 

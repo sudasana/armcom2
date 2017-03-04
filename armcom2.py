@@ -97,6 +97,10 @@ MAX_LOS_DISTANCE = 13				# maximum distance that a Line of Sight can be drawn
 ELEVATION_M = 20.0				# each elevation level represents x meters of height
 MP_ALLOWANCE = 12				# how many MP each unit has for each Movement phase
 
+# turn phases, in order
+PHASE_LIST = ['Movement', 'Shooting']
+
+
 # Colour definitions
 OPEN_GROUND_COL = libtcod.Color(0, 64, 0)
 WATER_COL = libtcod.Color(0, 0, 217)
@@ -142,8 +146,6 @@ SKILL_DESC = {
 	'4' : 'Veteran',
 	'3' : 'Elite'
 }
-
-PHASE_NAMES = ['Movement', 'Shooting']
 
 MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June',
 	'July', 'August', 'September', 'October', 'November', 'December']
@@ -230,12 +232,12 @@ class AI:
 	def DoPhaseAction(self):
 		
 		# Movement Phase actions
-		if scenario.current_phase == 0:
+		if scenario.GetCurrentPhase() == 'Movement':
 			# TEMP - no move actions
 			return
 		
 		# Shooting Phase actions
-		elif scenario.current_phase == 1:
+		elif scenario.GetCurrentPhase() == 'Shooting':
 			
 			print 'AI Shooting Phase Action for: ' + self.owner.GetName(true_name=True)
 			
@@ -707,11 +709,12 @@ class PSG:
 		self.selected_weapon = None
 		
 		# start of movement phase
-		if scenario.current_phase == 0:
+		if scenario.GetCurrentPhase() == 'Movement':
 			self.mp = self.max_mp
 			self.moved = False
 			self.changed_facing = False
-		elif scenario.current_phase == 1:
+		# start of shooting phase
+		elif scenario.GetCurrentPhase() == 'Shooting':
 			self.fired = False
 			self.SelectNextWeapon()
 
@@ -735,6 +738,10 @@ class PSG:
 				
 				# movement class
 				self.movement_class = item.find('movement_class').text
+				
+				if self.movement_class == 'Fast Tank':
+					self.max_mp += 4
+					self.mp = self.max_mp
 				
 				# weapon info
 				weapon_list = item.find('weapon_list')
@@ -779,9 +786,7 @@ class PSG:
 		
 		print 'ERROR: Could not find unit stats for: ' + self.unit_id
 	
-	# this PSG has been spotted by enemy forces
-	
-	
+
 	# this PSG has been revealed 
 	def SpotMe(self):
 		self.spotted = True
@@ -1288,7 +1293,7 @@ class Scenario:
 		
 		
 		self.active_player = 0			# currently active player (0 or 1)
-		self.current_phase = 0			# current action phase
+		self.current_phase = 0			# current action phase (full list defined by PHASE_LIST)
 		
 		self.psg_list = []			# list of all platoon-sized groups in play
 		self.active_psg = None			# currently active PSG
@@ -1308,6 +1313,11 @@ class Scenario:
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
+	
+	# return a text string for the current turn phase
+	def GetCurrentPhase(self):
+		return PHASE_LIST[self.current_phase]
+	
 	
 	# do enemy AI actions for this phase
 	def DoAIPhase(self):
@@ -1332,12 +1342,12 @@ class Scenario:
 	def NextPhase(self):
 		
 		# Movement -> Shooting Phase
-		if self.current_phase == 0:
+		if self.GetCurrentPhase() == 'Movement':
 			self.current_phase = 1
 			self.active_cmd_menu = 'shooting_root'
 		
 		# Shooting Phase -> New Active Player and Movement Phase
-		elif self.current_phase == 1:
+		elif self.GetCurrentPhase() == 'Shooting':
 			
 			if self.active_player == 0:
 				self.active_player = 1
@@ -1381,6 +1391,12 @@ class Scenario:
 				
 				# check for no LoS
 				if (psg2.hx, psg2.hy) not in GetLoS(psg1.hx, psg1.hy, psg2.hx, psg2.hy):
+					continue
+				
+				# if psg2 was spotted, it won't lose this status if any enemy unit is in LoS
+				if psg2.spotted and psg2 in unspotted_psgs:
+					unspotted_psgs.remove(psg2)
+					spotted_psgs.append(psg2)
 					continue
 				
 				# calculate spot range for psg2
@@ -1525,25 +1541,32 @@ class Scenario:
 				# Conditions under which Area Fire not Possible:
 				if scenario.active_psg.selected_weapon.stats['area_strength'] == 0:
 					menu_option.inactive = True
+					menu_option.desc = 'Current weapon has no Area Fire attack'
 				if scenario.active_psg.target_psg is None:
 					menu_option.inactive = True
+					menu_option.desc = 'No target selected'
 				else:
 					if not scenario.active_psg.target_psg.af_target:
 						menu_option.inactive = True
+						menu_option.desc = 'Target cannot be harmed by Area Fire attacks'
 				
 				menu_option = self.cmd_menu.AddOption('fire_point', 'P', 'Point Fire')
 				
 				# Conditions under which Point Fire not Possible:
 				if scenario.active_psg.selected_weapon.stats['point_strength'] == 0:
 					menu_option.inactive = True
+					menu_option.desc = 'Current weapon has no Point Fire attack'
 				if scenario.active_psg.target_psg is None:
 					menu_option.inactive = True
+					menu_option.desc = 'No target selected'
 				else:
 					if not scenario.active_psg.target_psg.pf_target:
 						menu_option.inactive = True
+						menu_option.desc = 'Target cannot be harmed by Point Fire attacks'
 					# PF attacks have to be on spotted units
 					elif not scenario.active_psg.target_psg.spotted:
 						menu_option.inactive = True
+						menu_option.desc = 'Point attacks must be against spotted targets'
 		
 		# all root menus get these commands
 		if self.active_cmd_menu in ['movement_root', 'shooting_root']:
@@ -1598,7 +1621,7 @@ def LoadGame():
 
 
 # calculate an area or point fire attack
-def CalcAttack(attacker, weapon, target, area_fire):
+def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 	# create a new attack object
 	attack_obj = Attack(attacker, weapon, target)
 	
@@ -1617,6 +1640,8 @@ def CalcAttack(attacker, weapon, target, area_fire):
 		if attacker.infantry:
 			if distance == 1:
 				attack_strength += int(ceil(attacker.num_steps / 2))
+			elif distance == 0:
+				attack_strength += attacker.num_steps
 		else:
 			attack_strength = attack_strength * attacker.num_steps
 		
@@ -1693,7 +1718,7 @@ def CalcAttack(attacker, weapon, target, area_fire):
 	# attacker moved or changed facing
 	if attacker.moved:
 		attack_obj.column_modifiers.append(('Attacker Moved', -3))
-	elif attacker.changed_facing:
+	elif assume_pivot or attacker.changed_facing:
 		attack_obj.column_modifiers.append(('Attacker Pivoted', -1))
 	
 	# acquired target
@@ -1743,7 +1768,7 @@ def CalcAttack(attacker, weapon, target, area_fire):
 		column += mod
 	
 	# normalize final column
-	# TODO: if column is less than 0, no chance of effect?
+	# TODO: if column is less than 0, no chance of effect
 	if column < 0:
 		column = 0
 	elif column > MAX_FIRE_TABLE_COLUMN - 1:
@@ -2027,6 +2052,7 @@ def GetHexesWithin(hx, hy, radius):
 
 
 # calculate the MP required to move into the target hex
+# most units have 12 MP max, fast tanks have 16
 def GetMPCostToMove(psg, map_hex1, map_hex2):
 	
 	# check if linked by road
@@ -2049,21 +2075,13 @@ def GetMPCostToMove(psg, map_hex1, map_hex2):
 		else:
 			cost = 4
 	
-	elif psg.movement_class == 'Tank':
-		if road:
-			cost = 4
-		elif map_hex2.terrain_type.difficult:
-			cost = 6
-		else:
-			cost = 4
-	
-	elif psg.movement_class == 'Fast Tank':
+	elif psg.movement_class in ['Tank', 'Fast Tank']:
 		if road:
 			cost = 3
 		elif map_hex2.terrain_type.difficult:
 			cost = 6
 		else:
-			cost = 3
+			cost = 4
 
 	return cost
 	
@@ -2426,19 +2444,25 @@ def InitAttack(attacker, target, area_fire):
 	# make sure there's a weapon and a target
 	if target is None: return
 	if attacker.selected_weapon is None: return
+	
+	# determine if a pivot would be required
+	pivot_required = False
+	if not attacker.infantry:
+		bearing = GetRelativeBearing(attacker, target)
+		if 30 < bearing < 330:
+			pivot_required = True
 
 	# send information to CalcAttack, which will return an Attack object with the
 	#   calculated stats to use for the attack
-	attack_obj = CalcAttack(attacker, attacker.selected_weapon, target, area_fire)
+	attack_obj = CalcAttack(attacker, attacker.selected_weapon, target, area_fire, assume_pivot=pivot_required)
 	
 	# if player wasn't attacker, display LoS from attacker to target
 	if attacker.owning_player == 1:
 		line = GetLine(attacker.screen_x, attacker.screen_y, target.screen_x,
 			target.screen_y)
-		for (x,y) in line[2:-1]:
-			libtcod.console_set_char(con, x, y, 250)
-			libtcod.console_set_char_foreground(con, x, y, libtcod.red)
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		for (x,y) in line[2:-2]:
+			libtcod.console_set_char(0, x, y, 250)
+			libtcod.console_set_char_foreground(0, x, y, libtcod.red)
 			libtcod.console_flush()
 			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
 			Wait(15)
@@ -2453,7 +2477,7 @@ def InitAttack(attacker, target, area_fire):
 		return
 	
 	# clear any LoS drawn above from screen
-	DrawScreenConsoles()
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
 	
 	# TODO: display attack animation
@@ -2463,16 +2487,14 @@ def InitAttack(attacker, target, area_fire):
 	attacker.fired = True
 	attacker.target_psg = None
 	
-	# determine if a facing change is needed
-	if not attacker.infantry:
-		bearing = GetRelativeBearing(attacker, target)
-		if 30 < bearing < 330:
-			direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx,
-				target.hy)
-			attacker.PivotToFace(direction)
-			UpdateUnitConsole()
-			DrawScreenConsoles()
-			libtcod.console_flush()
+	# do the pivot if it was required
+	if pivot_required:
+		direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx,
+			target.hy)
+		attacker.PivotToFace(direction)
+		UpdateUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
 	
 	# resolve attack
 	target.ResolveAttack(attack_obj)
@@ -2963,7 +2985,7 @@ def UpdatePSGConsole():
 	for weapon in psg.weapon_list:
 		libtcod.console_set_default_background(psg_con, WEAPON_LIST_COLOR)
 		# highlight selected weapon if in shooting phase
-		if scenario.current_phase == 1 and psg.selected_weapon is not None:
+		if scenario.GetCurrentPhase() == 'Shooting' and psg.selected_weapon is not None:
 			if weapon == psg.selected_weapon:
 				libtcod.console_set_default_background(psg_con, SELECTED_WEAPON_COLOR)
 		libtcod.console_rect(psg_con, 0, y, 24, 1, False, libtcod.BKGND_SET)
@@ -2996,7 +3018,7 @@ def UpdatePSGConsole():
 		libtcod.RIGHT, psg.movement_class)
 	
 	# display MP if in movement phase
-	if scenario.current_phase == 0:
+	if scenario.GetCurrentPhase() == 'Movement':
 		text = str(psg.mp) + '/' + str(psg.max_mp) + ' MP'
 		libtcod.console_print_ex(psg_con, 23, 17, libtcod.BKGND_NONE,
 			libtcod.RIGHT, text)
@@ -3047,7 +3069,7 @@ def UpdateCmdConsole():
 	text += ' Turn'
 	libtcod.console_print_ex(cmd_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
-	text = PHASE_NAMES[scenario.current_phase]
+	text = scenario.GetCurrentPhase()
 	libtcod.console_print_ex(cmd_con, 12, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
@@ -3179,22 +3201,22 @@ def DrawScreenConsoles():
 				TARGET_HL_COL, flag=libtcod.BKGND_SET)
 			
 			# TEMP - show LoS hexes
-			los_line = GetLoS(scenario.active_psg.hx, scenario.active_psg.hy,
-				psg.hx, psg.hy)
+			#los_line = GetLoS(scenario.active_psg.hx, scenario.active_psg.hy,
+			#	psg.hx, psg.hy)
 			
-			for (hx, hy) in los_line:
-				(x,y) = PlotHex(hx, hy)
-				x += 26
-				y += 3
-				libtcod.console_set_char(con, x, y, 250)
-				libtcod.console_set_char_foreground(con, x, y, libtcod.red)
-			
-			# draw LoS line
-			#line = GetLine(scenario.active_psg.screen_x, scenario.active_psg.screen_y,
-			#	psg.screen_x, psg.screen_y)
-			#for (x, y) in line[2:-1]:
+			#for (hx, hy) in los_line:
+			#	(x,y) = PlotHex(hx, hy)
+			#	x += 26
+			#	y += 3
 			#	libtcod.console_set_char(con, x, y, 250)
 			#	libtcod.console_set_char_foreground(con, x, y, libtcod.red)
+			
+			# draw LoS line
+			line = GetLine(scenario.active_psg.screen_x, scenario.active_psg.screen_y,
+				psg.screen_x, psg.screen_y)
+			for (x, y) in line[2:-2]:
+				libtcod.console_set_char(con, x, y, 250)
+				libtcod.console_set_char_foreground(con, x, y, libtcod.red)
 	
 	# left column consoles
 	libtcod.console_blit(psg_con, 0, 0, 0, 0, con, 1, 4)

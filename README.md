@@ -1,7 +1,6 @@
 # Armoured Commander II
-Proof of Concept
 
-This is a work-in-progress version: nothing works right and everything will be changed.
+This is the work-in-progress version of Alpha 1. It's an unstable branch that might not work at the moment!
 
 ![screenshot 1](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_1.png "Armoured Commander II Screenshot")
 ![screenshot 2](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_2.png "Armoured Commander II Screenshot")
@@ -30,5 +29,3 @@ To run armcom2.py, you will need:
 * Python 2.7.8	http://www.python.org/download/releases/2.7.8/
 * Libtcod 1.5.1	http://bitbucket.org/libtcod/libtcod
 * XPLoader	http://github.com/RCIX/XPLoader
-
-Note that since this is still a Proof of Concept, there's no versioning, so this version will be updated eventually until the game is developed enough to start an Alpha series.

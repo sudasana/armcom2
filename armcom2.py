@@ -106,6 +106,10 @@ FIELDS_COL = libtcod.Color(102, 102, 0)
 RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
 
+NEUTRAL_OBJ_COL = libtcod.Color(0, 255, 255)		# neutral objective color
+ENEMY_OBJ_COL = libtcod.Color(255, 31, 0)		# enemy-held "
+FRIENDLY_OBJ_COL = libtcod.Color(50, 255, 0)		# friendly-held "
+
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 HIGHLIGHT_COLOR = libtcod.Color(51, 153, 255)		# text highlight colour
 HIGHLIGHT_BG_COLOR = libtcod.Color(0, 50, 100)		# text background highlight colour - blue
@@ -567,6 +571,35 @@ class PSG:
 		if len(self.weapon_list) > 0:
 			self.selected_weapon = self.weapon_list[0]
 
+	# get the base range in hexes that this PSG will be spotted by an enemy unit
+	def GetSpotRange(self):
+		
+		if self.vehicle:
+			spot_range = 6
+		else:
+			spot_range = 2
+		map_hex = GetHexAt(self.hx, self.hy)
+		
+		# protective terrain
+		if map_hex.terrain_type.af_modifier < 0 or map_hex.terrain_type.pf_modifier < 0:
+			spot_range -= 1
+		else:
+			spot_range += 2
+		
+		# fired, moved, or pinned: apply worst one
+		if self.fired:
+			spot_range += 4
+		elif self.moved:
+			spot_range += 2
+		elif self.pinned:
+			spot_range -= 1
+		
+		# skill modifier
+		if self.skill_lvl <= 4:
+			spot_range -= 1
+		
+		return spot_range
+
 	# TODO: turn into a proper spawn function
 	# try to place this PSG into the target hex, if not possible, place in random adjacent hex
 	def SpawnAt(self, hx, hy):
@@ -758,9 +791,6 @@ class PSG:
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		
-		# TEMP - no message
-		return
-		
 		# show message
 		if self.owning_player == 0:
 			text = 'Your '
@@ -771,11 +801,11 @@ class PSG:
 	
 	# regain unspotted status for this PSG
 	def HideMe(self):
-		#if self.owning_player == 0:
-		#	text = self.GetName() + ' is now Hidden'
-		#else:
-		#	text = 'Lost contact with ' + self.GetName()
-		#Message(self.screen_x, self.screen_y, text)
+		if self.owning_player == 0:
+			text = self.GetName() + ' is now Unspotted'
+		else:
+			text = 'Lost contact with ' + self.GetName()
+		Message(self.screen_x, self.screen_y, text)
 		self.spotted = False
 		UpdateUnitConsole()
 		DrawScreenConsoles()
@@ -944,7 +974,9 @@ class PSG:
 	# resolve an attack against this PSG
 	def ResolveAttack(self, attack_obj):
 		
-		# clear "Enter to Roll" line
+		# clear and "Backspace to Cancel" and "Enter to Roll" line
+		libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
+			libtcod.CENTER, '                   ')
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, '             ')
 		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
@@ -1157,7 +1189,7 @@ class MapHex:
 			(x,y) = PlotHex(self.hx, self.hy)
 			Message(x+26, y+3, text)
 		
-		UpdateMapGUIConsole()
+		UpdateGUIConsole()
 
 
 # a map of hexes for use in a campaign day
@@ -1347,18 +1379,18 @@ class Scenario:
 				if psg1.owning_player == psg2.owning_player:
 					continue
 				
-				# check for LoS
-				los_line = GetLoS(psg1.hx, psg1.hy, psg2.hx, psg2.hy)
-				# no LoS
-				if (psg2.hx, psg2.hy) not in los_line:
+				# check for no LoS
+				if (psg2.hx, psg2.hy) not in GetLoS(psg1.hx, psg1.hy, psg2.hx, psg2.hy):
 					continue
 				
-				# TODO: calculate spot distance for psg2
+				# calculate spot range for psg2
+				spot_range = psg2.GetSpotRange()
+				if GetHexDistance(psg1.hx, psg1.hy, psg2.hx, psg2.hy) <= spot_range:
 				
-				# psg2 has been spotted by psg1
-				if psg2 in unspotted_psgs:
-					unspotted_psgs.remove(psg2)
-					spotted_psgs.append(psg2)
+					# psg2 has been spotted by psg1
+					if psg2 in unspotted_psgs:
+						unspotted_psgs.remove(psg2)
+						spotted_psgs.append(psg2)
 		
 		# finally, go through lists and check for any changes in status
 		for psg in spotted_psgs:
@@ -1509,6 +1541,9 @@ class Scenario:
 				else:
 					if not scenario.active_psg.target_psg.pf_target:
 						menu_option.inactive = True
+					# PF attacks have to be on spotted units
+					elif not scenario.active_psg.target_psg.spotted:
+						menu_option.inactive = True
 		
 		# all root menus get these commands
 		if self.active_cmd_menu in ['movement_root', 'shooting_root']:
@@ -1588,6 +1623,9 @@ def CalcAttack(attacker, weapon, target, area_fire):
 		if attacker.pinned:
 			attack_strength = int(ceil(attack_strength / 2))
 		
+		if not target.spotted:
+			attack_strength = int(ceil(attack_strength / 2))
+		
 	else:
 		attack_strength = attacker.num_steps
 	attack_obj.attack_strength = attack_strength
@@ -1650,7 +1688,7 @@ def CalcAttack(attacker, weapon, target, area_fire):
 	# pinned PF attack
 	if not area_fire:
 		if attacker.pinned:
-			attack_obj.column_modifiers.append(('Attacker Pinned', -2))
+			attack_obj.column_modifiers.append(('Attacker Pinned', -2))	
 	
 	# attacker moved or changed facing
 	if attacker.moved:
@@ -2198,27 +2236,37 @@ def Wait(wait_time):
 
 
 # wait for player to press enter before continuing
+# option to allow backspace pressed instead, returns True if so 
 # TODO: keep updating animations while waiting
-def WaitForEnter():
+def WaitForEnter(allow_cancel=False):
 	end_pause = False
+	cancel = False
 	while not end_pause:
 		# get input from user
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
 		
-		# exit right away
+		# TEMP - emergency exit from game
 		if libtcod.console_is_window_closed():
 			sys.exit()
 		
 		elif key.vk == libtcod.KEY_ENTER: 
 			end_pause = True
 		
+		elif key.vk == libtcod.KEY_BACKSPACE and allow_cancel:
+			end_pause = True
+			cancel = True
+		
 		# refresh the screen
 		libtcod.console_flush()
 	
-	# wait for enter to be released
-	while libtcod.console_is_key_pressed(libtcod.KEY_ENTER):
+	# wait for key to be released
+	while libtcod.console_is_key_pressed(libtcod.KEY_ENTER) or libtcod.console_is_key_pressed(libtcod.KEY_BACKSPACE):
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
 		libtcod.console_flush()
+	
+	if allow_cancel and cancel:
+		return True
+	return False
 
 
 # return the result of a 2D6 roll
@@ -2378,28 +2426,10 @@ def InitAttack(attacker, target, area_fire):
 	# make sure there's a weapon and a target
 	if target is None: return
 	if attacker.selected_weapon is None: return
-	
-	# set fired flag and clear the selected target
-	attacker.fired = True
-	attacker.target_psg = None
-	
-	# determine weapon used in attack
-	weapon = attacker.selected_weapon
-	
-	# determine if a facing change is needed
-	if not attacker.infantry:
-		bearing = GetRelativeBearing(attacker, target)
-		if 30 < bearing < 330:
-			direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx,
-				target.hy)
-			attacker.PivotToFace(direction)
-			UpdateUnitConsole()
-			DrawScreenConsoles()
-			libtcod.console_flush()
-	
+
 	# send information to CalcAttack, which will return an Attack object with the
-	# calculated stats to use for the attack
-	attack_obj = CalcAttack(attacker, weapon, target, area_fire)
+	#   calculated stats to use for the attack
+	attack_obj = CalcAttack(attacker, attacker.selected_weapon, target, area_fire)
 	
 	# if player wasn't attacker, display LoS from attacker to target
 	if attacker.owning_player == 1:
@@ -2416,12 +2446,33 @@ def InitAttack(attacker, target, area_fire):
 	# display attack console for this attack
 	DisplayAttack(attack_obj)
 	
-	WaitForEnter()
+	cancel_attack = WaitForEnter(allow_cancel=True)
 	
-	# clear any LoS from screen
+	# player has chance to cancel attack at this point
+	if attacker.owning_player == 0 and cancel_attack:
+		return
+	
+	# clear any LoS drawn above from screen
 	DrawScreenConsoles()
 	
+	
 	# TODO: display attack animation
+	
+	
+	# set fired flag and clear the selected target
+	attacker.fired = True
+	attacker.target_psg = None
+	
+	# determine if a facing change is needed
+	if not attacker.infantry:
+		bearing = GetRelativeBearing(attacker, target)
+		if 30 < bearing < 330:
+			direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx,
+				target.hy)
+			attacker.PivotToFace(direction)
+			UpdateUnitConsole()
+			DrawScreenConsoles()
+			libtcod.console_flush()
 	
 	# resolve attack
 	target.ResolveAttack(attack_obj)
@@ -2520,7 +2571,9 @@ def DisplayAttack(attack_obj):
 			libtcod.RIGHT, text2)
 		y += 1
 	
-	# TEMP?
+	if attack_obj.attacker.owning_player == 0:
+		libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Backspace to Cancel')
 	libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Enter to Roll')
 	
@@ -2673,7 +2726,7 @@ def OrdAttackAnimation(attack_obj):
 	pause_time2 = int(pause_time / 2)
 	
 	for (x, y) in line:
-		UpdateMapGUIConsole()
+		UpdateGUIConsole()
 		libtcod.console_put_char_ex(map_gui_con, x, y, 250,
 			libtcod.white, libtcod.black)
 		DrawScreenConsoles()
@@ -2685,7 +2738,7 @@ def OrdAttackAnimation(attack_obj):
 	# final explosion animation
 	(x,y) = line[-1]
 	for i in range(10):
-		UpdateMapGUIConsole()
+		UpdateGUIConsole()
 		col = choice([libtcod.red, libtcod.yellow, libtcod.grey])
 		libtcod.console_put_char_ex(map_gui_con, x, y, '*',
 			col, libtcod.black)
@@ -2830,30 +2883,22 @@ def UpdateMapFoVConsole():
 
 
 # updates the map viewport gui layer
-def UpdateMapGUIConsole():
+def UpdateGUIConsole():
 	libtcod.console_clear(map_gui_con)
 	
 	# highlight objective hexes
-	hex_neutral = LoadXP('ArmCom2_objective_neutral.xp')
-	hex_friendly = LoadXP('ArmCom2_objective_friendly.xp')
-	hex_enemy = LoadXP('ArmCom2_objective_enemy.xp')
-	libtcod.console_set_key_color(hex_neutral, KEY_COLOR)
-	libtcod.console_set_key_color(hex_friendly, KEY_COLOR)
-	libtcod.console_set_key_color(hex_enemy, KEY_COLOR)
 	for map_hex in scenario.objective_hexes:
 		(x,y) = PlotHex(map_hex.hx, map_hex.hy)
 		if map_hex.held_by is None:
-			con = hex_neutral
+			col = NEUTRAL_OBJ_COL
 		else:
 			if map_hex.held_by == 0:
-				con = hex_friendly
+				col = FRIENDLY_OBJ_COL
 			else:
-				con = hex_enemy
-		libtcod.console_blit(con, 0, 0, 0, 0, map_gui_con, x-3, y-2)
-	del hex_neutral
-	del hex_friendly
-	del hex_enemy
-		
+				col = ENEMY_OBJ_COL
+		for (xm,ym) in [(-2, -1),(-2, 1),(2, -1),(2, 1)]:
+			libtcod.console_put_char_ex(map_gui_con, x+xm, y+ym, 249, col,
+				libtcod.black)
 		
 
 # run through active PSGs and draw them to the unit console
@@ -3328,7 +3373,7 @@ def DoScenario(load_savegame=False):
 	def UpdateScreen():
 		UpdateMapFoVConsole()
 		UpdateUnitConsole()
-		UpdateMapGUIConsole()
+		UpdateGUIConsole()
 		UpdatePSGConsole()
 		UpdateCmdConsole()
 		DrawScreenConsoles()

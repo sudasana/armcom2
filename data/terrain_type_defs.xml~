@@ -1,8 +1,0 @@
-<root>
-  <terrain_def>
-    <display_name>Open Ground</display_name>
-    <los_height>0</los_height>
-    <base_image>hex_openground.xp</base_image>
-    <modifier_matrix>-1,1,0,-2,2,-1,1,0,2,0</modifier_matrix>
-  </terrain_def>
-</root>

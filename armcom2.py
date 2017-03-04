@@ -69,7 +69,7 @@ VIEW_ALL = False			# Player can see all hexes on viewport
 
 
 NAME = 'Armoured Commander II'
-VERSION = 'Proof of Concept'				# determines saved game compatability
+VERSION = 'Alpha 1'					# determines saved game compatability
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -234,9 +234,6 @@ class AI:
 		elif scenario.current_phase == 1:
 			
 			print 'AI Shooting Phase Action for: ' + self.owner.GetName(true_name=True)
-			
-			
-				
 			
 			af_strength = self.owner.weapon_list[0].stats['area_strength']
 			pf_strength = self.owner.weapon_list[0].stats['point_strength']
@@ -1207,30 +1204,26 @@ class HexMap:
 		
 		# set all hexes to not visible to start
 		for (hx, hy) in scenario.hex_map.hexes:
-			map_hex = GetHexAt(hx, hy)
-			map_hex.vis_to_player = False
+			scenario.hex_map.hexes[(hx, hy)].vis_to_player = False
 		
 		# debug mode
 		if VIEW_ALL:
 			for (hx, hy) in scenario.hex_map.hexes:
-				map_hex = GetHexAt(hx, hy)
-				map_hex.vis_to_player = True
+				scenario.hex_map.hexes[(hx, hy)].vis_to_player = True
 			return
 		
 		# set all hex locations of player units to visible
 		for psg in scenario.psg_list:
 			if psg.owning_player == 1: continue
-			GetHexAt(psg.hx, psg.hy).vis_to_player = True
+			scenario.hex_map.hexes[(hx, hy)].vis_to_player = True
 		
 		# run through each player unit and raycast to each map hex
 		#start_time = time.time()
 		for psg in scenario.psg_list:
 			if psg.owning_player == 1: continue
 			for (hx, hy) in scenario.hex_map.hexes:
-				# skip own hexes
-				if hx == psg.hx and hy == psg.hy: continue
-
-				map_hex = GetHexAt(hx, hy)
+				# skip already visible hexes
+				if scenario.hex_map.hexes[(hx, hy)].vis_to_player: continue
 				los_line = GetLoS(psg.hx, psg.hy, hx, hy)
 				if (hx, hy) in los_line:
 					scenario.hex_map.hexes[(hx, hy)].vis_to_player = True
@@ -2244,10 +2237,7 @@ def RectifyHeading(h):
 
 # returns the compass bearing from x1, y1 to x2, y2
 def GetBearing(x1, y1, x2, y2):
-	xdist = (x2 - x1)
-	ydist = (y2 - y1)
-	angle = degrees(atan2(ydist, xdist))
-	return int((angle + 90.0) % 360)
+	return int((degrees(atan2((y2 - y1), (x2 - x1))) + 90.0) % 360)
 
 
 # assuming an observer in hx1, hy1 looking at hx2, hy2, returns a list of visible hexes

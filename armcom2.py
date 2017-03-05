@@ -47,7 +47,6 @@ import ConfigParser					# for saving and loading settings
 import time						# for animation timing
 from random import choice, shuffle, sample
 from textwrap import wrap				# for breaking up strings
-#from operator import attrgetter				# for list sorting
 from math import floor, cos, sin, sqrt			# for math
 from math import degrees, atan2, ceil			# for heading calculation
 
@@ -787,6 +786,10 @@ class PSG:
 	
 	# regain unspotted status for this PSG
 	def HideMe(self):
+		# update console and screen to make sure unit has finished move animation
+		UpdateUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
 		if self.owning_player == 0:
 			text = self.GetName() + ' is now Unspotted'
 		else:
@@ -2091,7 +2094,7 @@ def GetMPCostToMove(psg, map_hex1, map_hex2):
 # based on function from ArmCom 1, which was based on:
 # http://stackoverflow.com/questions/4159331/python-speed-up-an-a-star-pathfinding-algorithm
 # http://www.policyalmanac.org/games/aStarTutorial.htm
-def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None):
+def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None, road_path=False):
 	
 	# retrace a set of nodes and return the best path
 	def RetracePath(end_node):
@@ -2152,16 +2155,22 @@ def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None):
 			
 			# TODO: calculate movement cost
 			if movement_class is not None:
-				pass
-			
-			# TEMP
-			if node.terrain_type.very_difficult:
-				cost = 6
-			elif node.terrain_type.difficult:
-				cost = 2
-			else:
 				cost = 1
 			
+			# we're create a path for a road
+			elif road_path:
+				
+				# prefer to pass through villages if possible
+				if node.terrain_type.display_name == 'Village, Wood Buildings':
+					cost = -5
+				elif node.terrain_type.difficult:
+					cost = 5
+				else:
+					cost = 3
+				
+				if node.elevation > current.elevation:
+					cost = cost * 3
+				
 			g = current.g + cost
 			
 			# if not in open list, add it
@@ -2181,15 +2190,6 @@ def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None):
 	# no path possible
 	print 'GetHexPath() Error: No path possible'
 	return []
-	
-
-# returns the viewport hex corresponding to this map hex, None if not in viewport
-def GetVPHex(hx, hy):
-	for (vp_hx, vp_hy), map_hex in scenario.hex_map.vp_matrix.iteritems():
-		if hx == map_hex.hx and hy == map_hex.hy:
-			return (vp_hx, vp_hy)
-	return None
-
 
 # Bresenham's Line Algorithm (based on an implementation on the roguebasin wiki)
 # returns a series of x, y points along a line
@@ -2649,11 +2649,10 @@ def GenerateTerrain():
 	#                                 Elevation                                      #
 	##################################################################################
 	
-	# FUTURE: set locally now
-	# will be supplied by battleground settings later on
+	# FUTURE: will used and will be supplied by battleground settings
 	#smoothness = 0.9
 	
-	for hill in range(3):
+	for terrain_pass in range(3):
 		hex_list = []
 		
 		# determine upper left corner, width, and height of hill area
@@ -2684,68 +2683,133 @@ def GenerateTerrain():
 			if map_hex is not None:
 				map_hex.SetElevation(2)
 		
-		ShowTerrainGeneration()
-
-
-	# do terrain type pass
-	shuffle(map_hex_list)
-	for (hx, hy) in map_hex_list:
-		
-		map_hex = GetHexAt(hx, hy)
-		
-		# if there's already an adjcacent pond, don't create another one
-		if HasAdjacent(map_hex, 'Pond'):
-			pond_chance = 0
-		else:
-			pond_chance = 5
-		
-		# if there's already an adjacent forest, higher chance of there being one
-		if HasAdjacent(map_hex, 'Sparse Forest'):
-			forest_chance = 30
-		else:
-			forest_chance = 5
-		
-		# if there's already an adjacent field, higher chance of there being one
-		if HasAdjacent(map_hex, 'In-Season Fields'):
-			field_chance = 10
-		else:
-			field_chance = 5
-		
-		if HasAdjacent(map_hex, 'Village, Wood Buildings'):
-			village_chance = 0
-		else:
-			village_chance = 2
-		
-		roll = libtcod.random_get_int(0, 1, 100)
-		
-		if roll <= pond_chance:
-			map_hex.SetTerrainType('Pond')
-			continue
-		
-		roll -= pond_chance
-		
-		if roll <= forest_chance:
-			map_hex.SetTerrainType('Sparse Forest')
-			continue
-		
-		roll -= forest_chance
-			
-		if roll <= field_chance:
-			map_hex.SetTerrainType('In-Season Fields')
-			continue
-		
-		roll -= field_chance
-		
-		if roll <= village_chance:
-			map_hex.SetTerrainType('Village, Wood Buildings')
-	
 	ShowTerrainGeneration()
 	
-	# TEMP - no roads
-	return
+	##################################################################################
+	#                                  Forests                                       #
+	##################################################################################
+	
+	# must be 2+
+	forest_size = 6
+	
+	for terrain_pass in range(4):
+		hex_list = []
+		(hx_start, hy_start) = choice(map_hex_list)
+		width = libtcod.random_get_int(0, 1, forest_size-1)
+		height = forest_size - width
+		hx_start -= int(width / 2)
+		hy_start -= int(height / 2)
+		
+		# get a rectangle of hex locations
+		hex_rect = GetHexRect(hx_start, hy_start, width, height)
+		
+		# apply forest locations if they are on map
+		for (hx, hy) in hex_rect:
+			map_hex = GetHexAt(hx, hy)
+			if map_hex is not None:
+				# small chance of gaps in area
+				if libtcod.random_get_int(0, 1, 15) == 1:
+					continue
+				map_hex.SetTerrainType('Sparse Forest')
+	ShowTerrainGeneration()
+	
+	##################################################################################
+	#                                 Villages                                       #
+	##################################################################################
+	
+	d1, d2, roll = Roll2D6()
+	
+	if roll <= 3:
+		num_villages = 4
+	elif roll <= 5:
+		num_villages = 3
+	elif roll <= 7:
+		num_villages = 2
+	elif roll <= 10:
+		num_villages = 1
+	else:
+		num_villages = 0
+	
+	for terrain_pass in range(num_villages):
+		# determine size of village in hexes: 1,1,1,2,3 hexes total
+		village_size = libtcod.random_get_int(0, 1, 5) - 2
+		if village_size < 1: village_size = 1
+		
+		# find centre of village
+		shuffle(map_hex_list)
+		for (hx, hy) in map_hex_list:
+			map_hex = GetHexAt(hx, hy)
+			if map_hex.terrain_type.display_name == 'Sparse Forest':
+				continue
+			map_hex.SetTerrainType('Village, Wood Buildings')
+			
+			# handle large villages; if extra hexes fall off map they won't
+			#  be added
+			if village_size > 1:
+				for extra_hex in range(village_size-1):
+					(hx2, hy2) = GetAdjacentHex(hx, hy, libtcod.random_get_int(0, 0, 5))
+					map_hex = GetHexAt(hx2, hy2)
+					if map_hex is not None:
+						map_hex.SetTerrainType('Village, Wood Buildings')
+				
+			break
+	ShowTerrainGeneration()
+	
+	##################################################################################
+	#                             In-Season Fields                                   #
+	##################################################################################
+	
+	for terrain_pass in range(4):
+		hex_list = []
+		(hx_start, hy_start) = choice(map_hex_list)
+		width = libtcod.random_get_int(0, 2, 4)
+		height = libtcod.random_get_int(0, 2, 4)
+		hx_start -= int(width / 2)
+		hy_start -= int(height / 2)
+		
+		# get a rectangle of hex locations
+		hex_rect = GetHexRect(hx_start, hy_start, width, height)
+		
+		# apply forest locations if they are on map
+		for (hx, hy) in hex_rect:
+			map_hex = GetHexAt(hx, hy)
+			if map_hex is not None:
+				
+				# don't overwrite villages
+				if map_hex.terrain_type.display_name == 'Village, Wood Buildings':
+					continue
+				# small chance of overwriting forest
+				if map_hex.terrain_type.display_name == 'Sparse Forest':
+					if libtcod.random_get_int(0, 1, 10) <= 9:
+						continue
+				map_hex.SetTerrainType('In-Season Fields')
+	ShowTerrainGeneration()
+	
+	##################################################################################
+	#                                   Ponds                                        #
+	##################################################################################
+	
+	num_ponds = libtcod.random_get_int(0, 0, 4)
+	for terrain_pass in range(num_ponds):
+		shuffle(map_hex_list)
+		for (hx, hy) in map_hex_list:
+			map_hex = GetHexAt(hx, hy)
+			if map_hex.terrain_type.display_name != 'Fields':
+				continue
+			if map_hex.elevation != 1:
+				continue
+			map_hex.SetTerrainType('Pond')
+			break
+	ShowTerrainGeneration()
+	
+	##################################################################################
+	#                                   Roads                                        #
+	##################################################################################
 	
 	# add a road running from the bottom to the top of the map
-	path = GetHexPath(5, 10, 8, -4)
+	# TODO: choose random starting and ending points, avoid starting or ending in a pond
+	
+	path = GetHexPath(5, 10, 8, -4, road_path=True)
 	for n in range(len(path)):
 		(hx1, hy1) = path[n]
 		if n+1 < len(path):
@@ -3253,7 +3317,7 @@ def DrawScreenConsoles():
 			# draw LoS line
 			line = GetLine(scenario.active_psg.screen_x, scenario.active_psg.screen_y,
 				psg.screen_x, psg.screen_y)
-			for (x, y) in line[2:-2]:
+			for (x, y) in line[2:-1]:
 				libtcod.console_set_char(con, x, y, 250)
 				libtcod.console_set_char_foreground(con, x, y, libtcod.red)
 	
@@ -3572,7 +3636,7 @@ def DoScenario(load_savegame=False):
 		
 		new_psg = PSG('Schützen Platoon', 'german_schutzen', 5, 0, 0, 4, 5)
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(8, 9)
+		new_psg.SpawnAt(8, 8)
 		
 		
 		# select the first player PSG
@@ -3681,12 +3745,13 @@ def DoScenario(load_savegame=False):
 		
 		##################################################################
 		
-		# TEMP- debug testing command
-		#key_char = chr(key.c).lower()
-		#if key_char == 'g':
-		#	GenerateTerrain()
-		#	UpdateScreen()
-		#	continue
+		# TEMP - debug testing command
+		if SHOW_TERRAIN_GEN:
+			key_char = chr(key.c).lower()
+			if key_char == 'g':
+				GenerateTerrain()
+				UpdateScreen()
+				continue
 		
 		##################################################################
 		

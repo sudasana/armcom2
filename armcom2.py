@@ -47,7 +47,7 @@ import ConfigParser					# for saving and loading settings
 import time						# for animation timing
 from random import choice, shuffle, sample
 from textwrap import wrap				# for breaking up strings
-from operator import attrgetter				# for list sorting
+#from operator import attrgetter				# for list sorting
 from math import floor, cos, sin, sqrt			# for math
 from math import degrees, atan2, ceil			# for heading calculation
 
@@ -64,7 +64,7 @@ import xml.etree.ElementTree as xml			# ElementTree library for xml
 #                                   You can rely on them                                 #
 ##########################################################################################
 
-# debug constants, should all be set to False in distribution version
+# debug constants, should all be set to False in any distribution version
 VIEW_ALL = False				# Player can see all hexes on viewport
 SHOW_TERRAIN_GEN = False			# show steps of terrain generation in progress
 
@@ -80,16 +80,11 @@ WINDOW_XM = int(WINDOW_WIDTH/2)				# horizontal center of game window
 WINDOW_YM = int(WINDOW_HEIGHT/2)			# vertical "
 PI = 3.141592653589793					# good enough for the JPL, good enough for us
 
-GRADIENT = [						# gradient animated effect for main menu
-	libtcod.Color(51, 51, 51),
-	libtcod.Color(64, 64, 64),
-	libtcod.Color(128, 128, 128),
-	libtcod.Color(192, 192, 192),
-	libtcod.Color(255, 255, 255),
-	libtcod.Color(192, 192, 192),
-	libtcod.Color(128, 128, 128),
-	libtcod.Color(64, 64, 64),
-	libtcod.Color(51, 51, 51),
+# gradient animated effect for main menu
+GRADIENT = [
+	libtcod.Color(51, 51, 51), libtcod.Color(64, 64, 64), libtcod.Color(128, 128, 128),
+	libtcod.Color(192, 192, 192), libtcod.Color(255, 255, 255), libtcod.Color(192, 192, 192),
+	libtcod.Color(128, 128, 128), libtcod.Color(64, 64, 64), libtcod.Color(51, 51, 51),
 	libtcod.Color(51, 51, 51)
 ]
 
@@ -100,7 +95,6 @@ MP_ALLOWANCE = 12				# how many MP each unit has for each Movement phase
 
 # turn phases, in order
 PHASE_LIST = ['Movement', 'Shooting']
-
 
 # Colour definitions
 OPEN_GROUND_COL = libtcod.Color(0, 64, 0)
@@ -129,22 +123,16 @@ KEY_HIGHLIGHT_COLOR = libtcod.Color(70, 170, 255)	# highlight for key commands
 
 # Descriptor definitions
 MORALE_DESC = {
-	'7' : 'Reluctant',
-	'6' : 'Regular',
-	'5' : 'Confident',
-	'4' : 'Fearless',
-	'3' : 'Fanatic'
+	'7' : 'Reluctant', '6' : 'Regular', '5' : 'Confident', '4' : 'Fearless', '3' : 'Fanatic'
 }
 SKILL_DESC = {
-	'7': 'Green',
-	'6' : '2nd Line',
-	'5' : '1st Line',
-	'4' : 'Veteran',
-	'3' : 'Elite'
+	'7': 'Green', '6' : '2nd Line', '5' : '1st Line', '4' : 'Veteran', '3' : 'Elite'
 }
 
-MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-	'July', 'August', 'September', 'October', 'November', 'December']
+MONTH_NAMES = [
+	'', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+	'September', 'October', 'November', 'December'
+]
 
 DESTHEX = [(0,-1), (1,-1), (1,0), (0,1), (-1,1), (-1,0)]	# change in hx, hy values for hexes in each direction
 PLOT_DIR = [(0,-1), (1,-1), (1,1), (0,1), (-1,1), (-1,-1)]	# position of direction indicator
@@ -162,12 +150,8 @@ HEXSPINES = {
 
 # option codes, key codes, and directional arrows to use for rotate/move commands
 MOVE_COMMANDS = [
-	(5, 'Q', chr(231)),
-	(0, 'W', chr(24)),
-	(1, 'E', chr(228)),
-	(4, 'A', chr(230)),
-	(3, 'S', chr(25)),
-	(2, 'D', chr(229))
+	(5, 'Q', chr(231)), (0, 'W', chr(24)), (1, 'E', chr(228)), (4, 'A', chr(230)),
+	(3, 'S', chr(25)), (2, 'D', chr(229))
 ]
 
 
@@ -198,7 +182,7 @@ FIRE_TABLE_ROWS = [
 	(0,0),(1,0),(2,0),(3,0),(4,1),(5,0),(6,0),(7,2),(9,0),(11,3),(14,4),(17,5),(21,6)
 ]
 
-# column shifts for differentials in point sterngth vs. armour rating
+# column shifts for differentials in point strength vs. armour rating
 # TODO: will need to adjust to that they are fair
 AP_MODS = {
 	5:3,
@@ -3436,11 +3420,9 @@ def ScenarioMenu():
 			return False
 		
 
-
 def DoScenario(load_savegame=False):
 	
-	global scenario
-	global terrain_types
+	global scenario, terrain_types
 	# screen consoles
 	global scen_menu_con, bkg_console, map_terrain_con, map_fov_con, map_gui_con
 	global unit_con, psg_con, cmd_con, attack_con, scen_info_con
@@ -3640,7 +3622,8 @@ def DoScenario(load_savegame=False):
 	# TODO: End new game set-up
 	
 	UpdateScenInfoConsole()
-	
+	UpdateScreen()
+	SaveGame()
 	
 	##################################################################################
 	#     Main Campaign Day Loop
@@ -3654,156 +3637,141 @@ def DoScenario(load_savegame=False):
 	while not exit_scenario:
 		
 		libtcod.console_flush()
-		
+	
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
 			key, mouse)
 		
-		# TEMP: emergency exit
+		# TEMP: emergency escape
 		if libtcod.console_is_window_closed(): sys.exit()
 		
-		UpdateScreen()
+		# check to see if mouse cursor has moved
+		if mouse.cx != mouse_x or mouse.cy != mouse_y:
+			mouse_x = mouse.cx
+			mouse_y = mouse.cy
+			UpdateHexInfoConsole()
+			DrawScreenConsoles()
 		
-		# save the game in progress at this point
-		SaveGame()
+		##### Mouse Commands #####
+		#if mouse.rbutton:
+			
 		
-		while not exit_scenario:
-			
-			libtcod.console_flush()
+		#elif mouse.lbutton:
 		
-			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-				key, mouse)
-			
-			# TEMP: emergency escape
-			if libtcod.console_is_window_closed(): sys.exit()
-			
-			# check to see if mouse cursor has moved
-			if mouse.cx != mouse_x or mouse.cy != mouse_y:
-				mouse_x = mouse.cx
-				mouse_y = mouse.cy
-				UpdateHexInfoConsole()
-				DrawScreenConsoles()
-			
-			##### Mouse Commands #####
-			#if mouse.rbutton:
-				
-			
-			#elif mouse.lbutton:
-			
-			# open scenario menu screen
-			if key.vk == libtcod.KEY_ESCAPE:
-				if ScenarioMenu():
-					exit_scenario = True
-				else:
-					DrawScreenConsoles()
-				continue
-			
-			
-			##### AI Actions #####
-			if scenario.active_player == 1:
-				scenario.DoAIPhase()
-				scenario.NextPhase()
-				UpdateScreen()
-				continue
-			
-			
-			##### Player Keyboard Commands #####
-			
-			# skip this section if no commands in buffer
-			if key is None: continue
-			
-			##################################################################
-			
-			# TEMP- debug testing command
-			#key_char = chr(key.c).lower()
-			#if key_char == 'g':
-			#	GenerateTerrain()
-			#	UpdateScreen()
-			#	continue
-			
-			##################################################################
-			
-			# select previous or next menu option
-			if key.vk == libtcod.KEY_UP:
-				scenario.cmd_menu.SelectNextOption(reverse=True)
-				UpdateScreen()
-				continue
-				
-			elif key.vk == libtcod.KEY_DOWN:
-				scenario.cmd_menu.SelectNextOption()
-				UpdateScreen()
-				continue
-			
-			# activate selected menu option
-			elif key.vk == libtcod.KEY_ENTER:
-				option = scenario.cmd_menu.GetSelectedOption()
-			
-			# see if key is in current menu options
+		# open scenario menu screen
+		if key.vk == libtcod.KEY_ESCAPE:
+			if ScenarioMenu():
+				exit_scenario = True
 			else:
-				option = scenario.cmd_menu.GetOptionByKey()
-			
-			# no option selected
-			if option is None: continue
-			
-			# select this option, highlight it
-			scenario.cmd_menu.selected_option = option
+				DrawScreenConsoles()
+			continue
+		
+		
+		##### AI Actions #####
+		if scenario.active_player == 1:
+			scenario.DoAIPhase()
+			scenario.NextPhase()
 			UpdateScreen()
-			libtcod.console_flush()
-			#Wait(100)
+			continue
+		
+		
+		##### Player Keyboard Commands #####
+		
+		# skip this section if no commands in buffer
+		if key is None: continue
+		
+		##################################################################
+		
+		# TEMP- debug testing command
+		#key_char = chr(key.c).lower()
+		#if key_char == 'g':
+		#	GenerateTerrain()
+		#	UpdateScreen()
+		#	continue
+		
+		##################################################################
+		
+		# select previous or next menu option
+		if key.vk == libtcod.KEY_UP:
+			scenario.cmd_menu.SelectNextOption(reverse=True)
+			UpdateScreen()
+			continue
 			
-			##################################################################
-			# Root Menu Actions
-			##################################################################
-			if option.option_id == 'select_unit':
-				scenario.SelectNextPSG()
-				UpdatePSGConsole()
-				scenario.BuildCmdMenu()
-				DrawScreenConsoles()
-			elif option.option_id == 'next_phase':
-				scenario.NextPhase()
-				DrawScreenConsoles()
-			
-			##################################################################
-			# Movement Phase Actions
-			##################################################################
-			elif option.option_id[:5] == 'move_':
-				# get the target map hex
-				direction = int(option.option_id[5])
-				(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
-					scenario.active_psg.hy, direction)
-				# attempt the move
-				if scenario.active_psg.MoveInto(hx, hy):
-					scenario.BuildCmdMenu()
-					UpdateScreen()
-			elif option.option_id[:7] == 'rotate_':
-				direction = int(option.option_id[7])
-				scenario.active_psg.PivotToFace(direction)
+		elif key.vk == libtcod.KEY_DOWN:
+			scenario.cmd_menu.SelectNextOption()
+			UpdateScreen()
+			continue
+		
+		# activate selected menu option
+		elif key.vk == libtcod.KEY_ENTER:
+			option = scenario.cmd_menu.GetSelectedOption()
+		
+		# see if key is in current menu options
+		else:
+			option = scenario.cmd_menu.GetOptionByKey()
+		
+		# no option selected
+		if option is None: continue
+		
+		# select this option, highlight it
+		scenario.cmd_menu.selected_option = option
+		UpdateScreen()
+		libtcod.console_flush()
+		#Wait(100)
+		
+		##################################################################
+		# Root Menu Actions
+		##################################################################
+		if option.option_id == 'select_unit':
+			scenario.SelectNextPSG()
+			UpdatePSGConsole()
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
+		elif option.option_id == 'next_phase':
+			scenario.NextPhase()
+			DrawScreenConsoles()
+		
+		##################################################################
+		# Movement Phase Actions
+		##################################################################
+		elif option.option_id[:5] == 'move_':
+			# get the target map hex
+			direction = int(option.option_id[5])
+			(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
+				scenario.active_psg.hy, direction)
+			# attempt the move
+			if scenario.active_psg.MoveInto(hx, hy):
 				scenario.BuildCmdMenu()
 				UpdateScreen()
-			
-			##################################################################
-			# Shooting Phase Actions
-			##################################################################
-			elif option.option_id == 'next_weapon':
-				scenario.active_psg.SelectNextWeapon()
-				# clear target list
-				scenario.active_psg.target_list = []
-				scenario.active_psg.target_psg = None
-				UpdatePSGConsole()
-				# rebuild command menu for newly selected weapon
-				scenario.BuildCmdMenu()
-				DrawScreenConsoles()
-			elif option.option_id == 'next_target':
-				scenario.active_psg.SelectNextTarget()
-				scenario.BuildCmdMenu()
-				DrawScreenConsoles()
-			elif option.option_id[:5] == 'fire_':
-				area_fire = False
-				if option.option_id[5:] == 'area':
-					area_fire = True
-				InitAttack(scenario.active_psg, scenario.active_psg.target_psg, area_fire)
-				UpdatePSGConsole()
-				scenario.BuildCmdMenu()
-				DrawScreenConsoles()
+		elif option.option_id[:7] == 'rotate_':
+			direction = int(option.option_id[7])
+			scenario.active_psg.PivotToFace(direction)
+			scenario.BuildCmdMenu()
+			UpdateScreen()
+		
+		##################################################################
+		# Shooting Phase Actions
+		##################################################################
+		elif option.option_id == 'next_weapon':
+			scenario.active_psg.SelectNextWeapon()
+			# clear target list
+			scenario.active_psg.target_list = []
+			scenario.active_psg.target_psg = None
+			UpdatePSGConsole()
+			# rebuild command menu for newly selected weapon
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
+		elif option.option_id == 'next_target':
+			scenario.active_psg.SelectNextTarget()
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
+		elif option.option_id[:5] == 'fire_':
+			area_fire = False
+			if option.option_id[5:] == 'area':
+				area_fire = True
+			InitAttack(scenario.active_psg, scenario.active_psg.target_psg, area_fire)
+			UpdatePSGConsole()
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
 
 	# we're exiting back to the main menu, so delete the scenario object
 	del scenario

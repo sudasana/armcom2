@@ -93,7 +93,7 @@ ELEVATION_M = 20.0				# each elevation level represents x meters of height
 MP_ALLOWANCE = 12				# how many MP each unit has for each Movement phase
 
 # turn phases, in order
-PHASE_LIST = ['Movement', 'Shooting']
+PHASE_LIST = ['Movement', 'Shooting', 'Close Combat']
 
 # Colour definitions
 OPEN_GROUND_COL = libtcod.Color(0, 64, 0)
@@ -217,6 +217,9 @@ class AI:
 		
 		# Shooting Phase actions
 		elif scenario.GetCurrentPhase() == 'Shooting':
+			
+			# TEMP - no shooting actions
+			return
 			
 			print 'AI Shooting Phase Action for: ' + self.owner.GetName(true_name=True)
 			
@@ -465,7 +468,7 @@ class CommandMenu:
 		libtcod.console_set_default_foreground(console, original_fg)
 		
 
-# platoon-sized group class
+# Platoon-Sized Group class
 # represents a platoon, squadron, battery, etc.
 class PSG:
 	def __init__(self, name, unit_id, num_steps, facing, owning_player, skill_lvl, morale_lvl):
@@ -499,6 +502,8 @@ class PSG:
 		
 		self.acquired_target = None		# PSG has acquired this unit as target
 		self.acquired_by = []			# PSG has been acquired by this unit(s)
+		
+		self.assault_target = None		# PSG is locked into assaulting this hex location
 		
 		self.infantry = False			# PSG type flags
 		self.gun = False
@@ -594,7 +599,7 @@ class PSG:
 		for (hx1, hy1) in hex_list:
 			map_hex = GetHexAt(hx1, hy1)
 			if map_hex is None: continue
-			if map_hex.IsOccupied(): continue
+			if map_hex.IsOccupied() > -1: continue
 			if map_hex.terrain_type.water: continue
 			self.hx = hx1
 			self.hy = hy1
@@ -637,6 +642,13 @@ class PSG:
 			
 			for psg in scenario.psg_list:
 				if psg.owning_player == 0: continue
+				
+				# check assaults in progress
+				if self.assault_target is not None:
+					(hx, hy) = self.assault_target
+					if psg.hx != hx or psg.hy != hy:
+						continue
+				
 				# check range
 				max_range = self.selected_weapon.stats['max_range']
 				if GetHexDistance(self.hx, self.hy, psg.hx, psg.hy) > max_range:
@@ -695,6 +707,7 @@ class PSG:
 			self.mp = self.max_mp
 			self.moved = False
 			self.changed_facing = False
+			self.assault_target = None
 		# start of shooting phase
 		elif scenario.GetCurrentPhase() == 'Shooting':
 			self.fired = False
@@ -920,7 +933,7 @@ class PSG:
 		direction = GetDirectionToAdjacent(self.hx, self.hy, new_hx, new_hy)
 		if direction < 0: return False
 		map_hex = GetHexAt(new_hx, new_hy)
-		if map_hex.IsOccupied(): return False
+		if map_hex.IsOccupied() == self.owning_player: return False
 		if map_hex.terrain_type.water: return False
 		return True
 	
@@ -1171,12 +1184,13 @@ class MapHex:
 				return
 		print 'ERROR: Terrain type not found: ' + new_terrain_type
 	
-	# returns true if there is a PSG in this hex
+	# returns owning player number if there is a PSG in this hex
+	# otherwise -1 if empty
 	def IsOccupied(self):
 		for psg in scenario.psg_list:
 			if psg.hx == self.hx and psg.hy == self.hy:
-				return True
-		return False
+				return psg.owning_player
+		return -1
 
 	# reset pathfinding info for this map hex
 	def ClearPathInfo(self):
@@ -1358,16 +1372,37 @@ class Scenario:
 			self.minute -= 60
 			self.hour += 1
 	
+	# set current turn phase
+	def SetPhase(self, new_phase):
+		self.current_phase = PHASE_LIST.index(new_phase)
+	
 	# finish up current phase, start new phase (and possibly new turn as well)
 	def NextPhase(self):
 		
 		# Movement -> Shooting Phase
 		if self.GetCurrentPhase() == 'Movement':
-			self.current_phase = 1
+			self.SetPhase('Shooting')
 			self.active_cmd_menu = 'shooting_root'
 		
-		# Shooting Phase -> New Active Player and Movement Phase
+		# Shooting -> Close Combat
 		elif self.GetCurrentPhase() == 'Shooting':
+			
+			self.SetPhase('Close Combat')
+			self.active_cmd_menu = 'cc_root'
+			self.active_psg = None
+			
+			# return if any close combats need to be resolved
+			# TEMP?
+			for psg in self.psg_list:
+				if psg.owning_player != self.active_player: continue
+				if psg.assault_target is not None:
+					UpdatePSGConsole()
+					self.BuildCmdMenu()
+					SaveGame()
+					return
+		
+		# Close Combat Phase -> New Active Player and Movement Phase
+		if self.GetCurrentPhase() == 'Close Combat':
 			
 			if self.active_player == 0:
 				self.active_player = 1
@@ -1377,7 +1412,7 @@ class Scenario:
 				UpdateScenInfoConsole()
 				self.active_player = 0
 				scenario.SelectNextPSG()
-			self.current_phase = 0
+			self.SetPhase('Movement')
 			self.active_cmd_menu = 'movement_root'
 			for psg in self.psg_list:
 				if psg.owning_player == self.active_player:
@@ -1520,7 +1555,7 @@ class Scenario:
 		# clear any existing command menu
 		self.cmd_menu.Clear()
 		
-		# don't display anything if player is not active
+		# don't display anything if human player is not active
 		if scenario.active_player != 0:
 			UpdateCmdConsole()
 			return
@@ -1528,30 +1563,43 @@ class Scenario:
 		# movement phase menu
 		if self.active_cmd_menu == 'movement_root':
 			
-			# run through six possible rotate/move directions and build commands
-			for (direction, key_code, char) in MOVE_COMMANDS:
-				
-				if not scenario.active_psg.infantry:
-					if scenario.active_psg.facing != direction:
-						cmd = 'rotate_' + str(direction)
-						desc = 'Face ' + char
-						self.cmd_menu.AddOption(cmd, key_code, desc)
-						# FUTURE: disable rotate if not allowed
+			# units committed to an assault can't otherwise move
+			if scenario.active_psg.assault_target is None:
+			
+				# run through six possible rotate/move directions and build commands
+				for (direction, key_code, char) in MOVE_COMMANDS:
+					
+					if not scenario.active_psg.infantry:
+						if scenario.active_psg.facing != direction:
+							cmd = 'rotate_' + str(direction)
+							desc = 'Face ' + char
+							self.cmd_menu.AddOption(cmd, key_code, desc)
+							# FUTURE: disable rotate if not allowed
+							continue
+					
+					cmd = 'move_' + str(direction)
+					desc = 'Move ' + char
+					
+					# check to see if target hex contains an enemy unit
+					(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
+						scenario.active_psg.hy, direction)
+					map_hex = GetHexAt(hx, hy)
+					if map_hex is not None:
+						if map_hex.IsOccupied() == 1:
+							cmd = 'assault_' + str(direction)
+							desc = 'Assault ' + char
+						
+					menu_option = self.cmd_menu.AddOption(cmd, key_code, desc)
+					
+					# disable move command if move not allowed
+					if scenario.active_psg.suppressed:
+						menu_option.desc = 'Cannot move when Suppressed'
+						menu_option.inactive = True
 						continue
-				cmd = 'move_' + str(direction)
-				desc = 'Move ' + char
-				menu_option = self.cmd_menu.AddOption(cmd, key_code, desc)
-				
-				# disable move command if move not allowed
-				if scenario.active_psg.suppressed:
-					menu_option.desc = 'Cannot move when Suppressed'
-					menu_option.inactive = True
-					continue
-				(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
-					scenario.active_psg.hy, direction)
-				if not scenario.active_psg.CheckMoveInto(hx, hy):
-					menu_option.inactive = True
-					menu_option.desc = 'Cannot move into this terrain or off map'
+					
+					if not scenario.active_psg.CheckMoveInto(hx, hy):
+						menu_option.inactive = True
+						menu_option.desc = 'Cannot move into this hex'
 			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
@@ -1590,10 +1638,12 @@ class Scenario:
 						menu_option.inactive = True
 						menu_option.desc = 'Point attacks must be against spotted targets'
 		
-		# all root menus get these commands
+		# both movement and shooting root menus get this commands
 		if self.active_cmd_menu in ['movement_root', 'shooting_root']:
 			self.cmd_menu.AddOption('select_unit', 'Tab', 'Next Unit')
-			self.cmd_menu.AddOption('next_phase', 'Space', 'Next Phase')
+			
+		# all root menus get this command
+		self.cmd_menu.AddOption('next_phase', 'Space', 'Next Phase')
 		
 		UpdateCmdConsole()
 
@@ -1919,8 +1969,7 @@ def GetAdjacentHex(hx, hy, direction):
 
 
 # returns a list of adjacent hexes, skipping hexes not on the game map
-# if skip_occupied > -1, skip hexes that already have an enemy PSG in them
-def GetAdjacentHexesOnMap(hx, hy, skip_occupied=-1):
+def GetAdjacentHexesOnMap(hx, hy):
 	hex_list = []
 	for d in range(6):
 		(hx_mod, hy_mod) = DESTHEX[d]
@@ -1928,9 +1977,6 @@ def GetAdjacentHexesOnMap(hx, hy, skip_occupied=-1):
 		hy2 = hy+hy_mod
 		# hex is on the game map
 		if (hx2, hy2) in scenario.hex_map.hexes:
-			if skip_occupied > -1:
-				if GetHexAt(hx2, hy2).IsOccupied():
-					continue
 			hex_list.append((hx2, hy2))
 	return hex_list
 	
@@ -2662,14 +2708,6 @@ def GenerateTerrain():
 		libtcod.console_flush()
 		Wait(500)
 	
-	# returns true if an adjacent map hex has alrady been set to this terrain type
-	def HasAdjacent(map_hex, terrain_type):
-		hex_list = GetAdjacentHexesOnMap(map_hex.hx, map_hex.hy)
-		for (hx, hy) in hex_list:
-			if scenario.hex_map.hexes[(hx, hy)].terrain_type == terrain_type:
-				return True
-		return False
-	
 	# create a local list of all hx, hy locations in map
 	map_hex_list = []
 	for key, map_hex in scenario.hex_map.hexes.iteritems():
@@ -3064,6 +3102,18 @@ def UpdateGUIConsole():
 		for (xm,ym) in [(-2, -1),(-2, 1),(2, -1),(2, 1)]:
 			libtcod.console_put_char_ex(map_gui_con, x+xm, y+ym, 249, col,
 				libtcod.black)
+	
+	# show assaults
+	for psg in scenario.psg_list:
+		if psg.assault_target is not None:
+			(hx, hy) = psg.assault_target
+			direction = GetDirectionToAdjacent(psg.hx, psg.hy, hx, hy)
+			char = GetDirectionalArrow(direction)
+			(x, y) = PlotHex(psg.hx, psg.hy)
+			tile_list = GetEdgeTiles(x, y, direction)
+			for (x,y) in tile_list:
+				libtcod.console_put_char_ex(map_gui_con, x, y, char,
+					libtcod.red, libtcod.black)
 		
 
 # run through active PSGs and draw them to the unit console
@@ -3860,6 +3910,16 @@ def DoScenario(load_savegame=False):
 			scenario.active_psg.PivotToFace(direction)
 			scenario.BuildCmdMenu()
 			UpdateScreen()
+		elif option.option_id[:8] == 'assault_':
+			# TODO: get confirmation from player
+			direction = int(option.option_id[8])
+			(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
+				scenario.active_psg.hy, direction)
+			scenario.active_psg.assault_target = (hx, hy)
+			scenario.active_psg.moved = True
+			scenario.BuildCmdMenu()
+			UpdateGUIConsole()
+			DrawScreenConsoles()
 		
 		##################################################################
 		# Shooting Phase Actions

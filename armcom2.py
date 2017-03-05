@@ -520,12 +520,14 @@ class PSG:
 		self.fired = False
 		self.changed_facing = False
 		
-		# status flags
+		# status levels and flags
 		#self.dug_in = False			# only infantry units and guns can dig in
 		#self.hull_down = -1			# only vehicles can be hull down, number
 							#   is direction
 		
-		self.pinned = False			# move N/A, attacks less effective
+		self.pin_points = 0
+		self.suppressed = False			# move N/A, attacks less effective
+		
 		#self.bogged = False			# move N/A
 		#self.broken = False			# move/fire N/A, must rout unless armoured
 		#self.melee = False			# held in melee
@@ -573,7 +575,7 @@ class PSG:
 			spot_range += 4
 		elif self.moved:
 			spot_range += 2
-		elif self.pinned:
+		elif self.pin_points > 0:
 			spot_range -= 1
 		
 		# skill modifier
@@ -698,11 +700,42 @@ class PSG:
 			self.fired = False
 			self.SelectNextWeapon()
 
-	# TODO: roll for recovery from negative statuses
+	# roll for recovery from negative statuses
+	# TODO: move into its own phase eventually
 	def DoRecoveryTests(self):
-		if self.pinned:
+		if not self.suppressed and self.pin_points == 0:
+			return
+		
+		# test to rally from supression
+		if self.suppressed:
 			if self.MoraleCheck(0):
-				self.UnPinMe()
+				self.UnSuppressMe()
+			# lose 1 PP either way
+			self.pin_points -= 1
+			text = self.GetName() + ' now has ' + str(self.pin_points) + ' pin point'
+			if self.pin_points != 1: text += 's'
+			Message(self.screen_x, self.screen_y, text)
+			return
+		
+		if self.pin_points == 0:
+			return
+		
+		# test to remove pin points and avoid being suppressed
+		if self.MoraleCheck(0):
+			
+			if self.pin_points == 1:
+				lost_points = 1
+			else:
+				lost_points = int(ceil(self.pin_points / 2))
+			self.pin_points -= lost_points
+			text = self.GetName() + ' loses ' + str(lost_points) + ' pin point'
+			if lost_points != 1: text += 's'
+			Message(self.screen_x, self.screen_y, text)
+			return
+		
+		# test failed, unit is suppressed
+		self.SuppressMe()
+			
 
 	# load the baseline stats for this PSG from XML data file
 	def LoadStats(self):
@@ -997,7 +1030,7 @@ class PSG:
 		if result_row is None:
 			text = 'No Effect'
 		elif result_row == 0:
-			text = 'Morale Check'
+			text = '+1 Pin Point'
 		else:
 			text = str(result_row) + ' step loss'
 			
@@ -1028,14 +1061,21 @@ class PSG:
 			if self.num_steps > 1: text += 's'
 			Message(self.screen_x, self.screen_y, text)
 		
-		# apply morale check
-		if self.MoraleCheck(result_row):
-			text = self.GetName() + ' passes its morale check.'
-			Message(self.screen_x, self.screen_y, text)
-		else:
-			self.PinMe()
+		# apply pin point
+		self.pin_points += 1
+		text = self.GetName() + ' now has ' + str(self.pin_points) + ' pin point'
+		if self.pin_points > 1: text += 's'
+		Message(self.screen_x, self.screen_y, text)
+		
+		# already suppressed
+		if self.suppressed: return
+		
+		# test for suppression
+		if not self.MoraleCheck(0):
+			self.SuppressMe()
+		
 	
-	# TODO: perform a morale check for this PSG
+	# perform a morale check for this PSG
 	def MoraleCheck(self, modifier):
 		
 		# calculate effective morale level
@@ -1058,25 +1098,23 @@ class PSG:
 		# do the roll
 		d1, d2, roll = Roll2D6()
 		
+		# apply pin points
+		roll -= self.pin_points
+		
 		if roll >= morale_lvl:
 			return True
 		return False
 	
-	# pin this unit
-	def PinMe(self):
-		
-		# armoured vehicles never pinned
-		if self.vehicle and self.armour is not None:
-			return
-
-		self.pinned = True
-		text = self.GetName() + ' is pinned.'
+	# suppress this unit
+	def SuppressMe(self):
+		self.suppressed = True
+		text = self.GetName() + ' has failed its morale check and is suppressed.'
 		Message(self.screen_x, self.screen_y, text)
 	
-	# unpin this unit
-	def UnPinMe(self):
-		self.pinned = False
-		text = self.GetName() + ' is no longer pinned.'
+	# unit recovers from being suppressed
+	def UnSuppressMe(self):
+		self.suppressed = False
+		text = self.GetName() + ' has rallied and recovers from being suppressed.'
 		Message(self.screen_x, self.screen_y, text)
 	
 	# take a skill test, returning True if passed
@@ -1505,13 +1543,15 @@ class Scenario:
 				menu_option = self.cmd_menu.AddOption(cmd, key_code, desc)
 				
 				# disable move command if move not allowed
-				if scenario.active_psg.pinned:
+				if scenario.active_psg.suppressed:
+					menu_option.desc = 'Cannot move when Suppressed'
 					menu_option.inactive = True
 					continue
 				(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
 					scenario.active_psg.hy, direction)
 				if not scenario.active_psg.CheckMoveInto(hx, hy):
 					menu_option.inactive = True
+					menu_option.desc = 'Cannot move into this terrain or off map'
 			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
@@ -1627,7 +1667,7 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 		else:
 			attack_strength = attack_strength * attacker.num_steps
 		
-		if attacker.pinned:
+		if attacker.suppressed:
 			attack_strength = int(ceil(attack_strength / 2))
 		
 		if not target.spotted:
@@ -1694,8 +1734,8 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 	
 	# pinned PF attack
 	if not area_fire:
-		if attacker.pinned:
-			attack_obj.column_modifiers.append(('Attacker Pinned', -2))	
+		if attacker.suppressed:
+			attack_obj.column_modifiers.append(('Attacker Suppressed', -3))	
 	
 	# attacker moved or changed facing
 	if attacker.moved:
@@ -3147,14 +3187,17 @@ def UpdatePSGConsole():
 	if psg.fired:
 		libtcod.console_print_ex(psg_con, 23, 19, libtcod.BKGND_NONE,
 			libtcod.RIGHT, 'Fired')
-
 	
-	# negative status flags
+	# negative statuses
 	libtcod.console_set_default_foreground(psg_con, libtcod.light_red)
 	libtcod.console_set_default_background(psg_con, libtcod.darkest_red)
 	libtcod.console_rect(psg_con, 0, 20, 24, 1, False, libtcod.BKGND_SET)
-	if psg.pinned:
-		libtcod.console_print(psg_con, 0, 20, 'Pinned')
+	
+	if psg.pin_points > 0:
+		libtcod.console_print(psg_con, 0, 20, 'Pin Pts: ' + str(psg.pin_points))
+	if psg.suppressed:
+		libtcod.console_print_ex(psg_con, 23, 20, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'Suppressed')
 	
 	libtcod.console_set_default_foreground(psg_con, libtcod.white)
 	libtcod.console_set_default_background(psg_con, libtcod.black)
@@ -3272,8 +3315,8 @@ def UpdateHexInfoConsole():
 				text = str(psg.num_steps) + ' ' + psg.GetStepName()
 				libtcod.console_print(hex_info_con, 0, 3+n, text)
 				
-				if psg.pinned:
-					libtcod.console_print(hex_info_con, 0, 6, 'Pinned')
+				if psg.suppressed:
+					libtcod.console_print(hex_info_con, 0, 6, 'Suppressed')
 				if not psg.spotted:
 					libtcod.console_print_ex(hex_info_con, 23, 6,
 						libtcod.BKGND_NONE, libtcod.RIGHT,
@@ -3647,15 +3690,20 @@ def DoScenario(load_savegame=False):
 		scenario.hex_map.AddObjectiveAt(6, -2)
 		
 		# set up enemy PSGs
-		new_psg = PSG('HQ Tank Squadron', '7TP jw', 3, 3, 1, 4, 4)
+		new_psg = PSG('HQ Tank Squadron', '7TP jw', 4, 3, 1, 4, 4)
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(2, 4)
 		
-		new_psg = PSG('AT Gun Section', '37mm wz. 36', 2, 3, 1, 4, 4)
+		new_psg = PSG('AT Gun Section', '37mm wz. 36', 3, 3, 1, 4, 4)
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(8, 0)
+		
+		new_psg = PSG('AT Gun Section', '37mm wz. 36', 3, 3, 1, 4, 4)
+		new_psg.ai = AI(new_psg)
+		scenario.psg_list.append(new_psg)
+		new_psg.SpawnAt(3, 0)
 		
 		new_psg = PSG('Piechoty Platoon', 'polish_piechoty', 5, 3, 1, 4, 4)
 		new_psg.ai = AI(new_psg)

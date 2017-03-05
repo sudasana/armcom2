@@ -40,11 +40,6 @@
     <id>Panzer II A</id>
     <name>Panzer II(A)</name>
     <portrait>unit_pz_II.xp</portrait>
-    <crew_positions>
-      <position>Commander</position>
-      <position>Loader</position>
-      <position>Driver</position>
-    </crew_positions>
     <size_class>Small</size_class>
     <ground_pressure>Light</ground_pressure>
     <armour>
@@ -59,8 +54,8 @@
         <max_range>8</max_range>
       </weapon>
       <weapon>
-         <name>Co-ax MG</name>
-         <area_strength>2</area_strength>
+         <name>MG</name>
+         <area_strength>4</area_strength>
          <max_range>4</max_range>
       </weapon>
     </weapon_list>
@@ -89,7 +84,7 @@
       </weapon>
       <weapon>
          <name>MG</name>
-         <area_strength>3</area_strength>
+         <area_strength>4</area_strength>
          <max_range>4</max_range>
       </weapon>
     </weapon_list>
@@ -115,7 +110,7 @@
     <weapon_list>
       <weapon>
          <name>MG</name>
-         <area_strength>2</area_strength>
+         <area_strength>3</area_strength>
          <max_range>4</max_range>
       </weapon>
     </weapon_list>
@@ -144,12 +139,11 @@
     <id>37mm wz. 36</id>
     <name>37mm AT Gun</name>
     <movement_class>Gun</movement_class>
-    <max_ap>10</max_ap>
     <weapon_list>
       <weapon>
         <name>Bofors</name>
         <point_strength>6</point_strength>
-        <area_strength>3</area_strength>
+        <area_strength>2</area_strength>
         <max_range>8</max_range>
       </weapon>
     </weapon_list>
@@ -161,12 +155,6 @@
     <turret/>
     <id>7TP jw</id>
     <name>7TP Single Turret</name>
-    <crew_positions>
-      <position>Commander</position>
-      <position>Gunner</position>
-      <position>Driver</position>
-    </crew_positions>
-    <ground_pressure>Light</ground_pressure>
     <armour>
       <front>2</front>
       <side>1</side>
@@ -181,7 +169,7 @@
       </weapon>
       <weapon>
          <name>MG</name>
-         <area_strength>2</area_strength>
+         <area_strength>4</area_strength>
          <max_range>4</max_range>
       </weapon>
     </weapon_list>

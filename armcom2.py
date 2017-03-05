@@ -65,7 +65,8 @@ import xml.etree.ElementTree as xml			# ElementTree library for xml
 ##########################################################################################
 
 # debug constants, should all be set to False in distribution version
-VIEW_ALL = False			# Player can see all hexes on viewport
+VIEW_ALL = False				# Player can see all hexes on viewport
+SHOW_TERRAIN_GEN = False			# show steps of terrain generation in progress
 
 
 NAME = 'Armoured Commander II'
@@ -103,10 +104,6 @@ PHASE_LIST = ['Movement', 'Shooting']
 
 # Colour definitions
 OPEN_GROUND_COL = libtcod.Color(0, 64, 0)
-WATER_COL = libtcod.Color(0, 0, 217)
-FOREST_COL = libtcod.Color(0, 140, 0)
-FOREST_BG_COL = libtcod.Color(0, 40, 0)
-FIELDS_COL = libtcod.Color(102, 102, 0)
 RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
 
@@ -129,7 +126,6 @@ INACTIVE_COL = libtcod.Color(100, 100, 100)		# inactive option color
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
 
 KEY_HIGHLIGHT_COLOR = libtcod.Color(70, 170, 255)	# highlight for key commands
-HIGHLIGHT = (libtcod.COLCTRL_1, libtcod.COLCTRL_STOP)	# constant for highlight pair
 
 # Descriptor definitions
 MORALE_DESC = {
@@ -576,13 +572,14 @@ class PSG:
 	# get the base range in hexes that this PSG will be spotted by an enemy unit
 	def GetSpotRange(self):
 		
+		# base distance
 		if self.vehicle:
 			spot_range = 6
 		else:
-			spot_range = 2
-		map_hex = GetHexAt(self.hx, self.hy)
+			spot_range = 3
 		
 		# protective terrain
+		map_hex = GetHexAt(self.hx, self.hy)
 		if map_hex.terrain_type.af_modifier < 0 or map_hex.terrain_type.pf_modifier < 0:
 			spot_range -= 1
 		else:
@@ -1212,8 +1209,6 @@ class HexMap:
 			hy_end = hy_start + h
 			for hy in range(hy_start, hy_end):
 				self.hexes[(hx,hy)] = MapHex(hx, hy)
-				self.hexes[(hx,hy)].SetTerrainType('Fields')
-				self.hexes[(hx,hy)].SetElevation(1)
 				# add to list if on edge of map
 				if hx == 0 or hx == w-1:
 					self.edge_hexes.append((hx, hy))
@@ -1826,7 +1821,7 @@ def LoadXP(filename):
 	return console
 
 
-# returns the hex object at the given hex coordinate
+# returns the hex object at the given hex coordinate if it exists on the map
 def GetHexAt(hx, hy):
 	if (hx, hy) in scenario.hex_map.hexes:
 		return scenario.hex_map.hexes[(hx, hy)]
@@ -2048,6 +2043,27 @@ def GetHexesWithin(hx, hy, radius):
 		for (hx1, hy1) in ring_list:
 			if (hx1, hy1) not in scenario.hex_map.hexes: continue
 			hex_list.append((hx1, hy1))
+	return hex_list
+
+
+# returns a rectangular area of hexes with given width and height,
+#  hx, hy being the top left corner hex
+def GetHexRect(hx, hy, w, h):
+	hex_list = []
+	for x in range(w):
+		# run down hex column
+		for y in range(h):
+			hex_list.append((hx, hy))
+			hy += 1
+		# move to new column
+		hy -= h
+		if hx % 2 == 0:
+			# even -> odd column, direction 2
+			direction = 2
+		else:
+			# odd -> even column, direction 1
+			direction = 1
+		(hx, hy) = GetAdjacentHex(hx, hy, direction)
 	return hex_list
 
 
@@ -2614,10 +2630,13 @@ def DrawDie(console, x, y, d):
 # fill the hex map with terrain
 def GenerateTerrain():
 	
-	# create a river
-	# TEMP not yet implemented
-	def CreateRiver(start_hx, start_hy, direction):
-		pass
+	def ShowTerrainGeneration():
+		if not SHOW_TERRAIN_GEN: return
+		libtcod.console_clear(0)
+		UpdateMapTerrainConsole()
+		libtcod.console_blit(map_terrain_con, 0, 0, 0, 0, 0, 26, 3)
+		libtcod.console_flush()
+		Wait(500)
 	
 	# returns true if an adjacent map hex has alrady been set to this terrain type
 	def HasAdjacent(map_hex, terrain_type):
@@ -2627,39 +2646,68 @@ def GenerateTerrain():
 				return True
 		return False
 	
-	# create a list of map hexes and shuffle their order
-	hex_list = []
-	for key, map_hex in scenario.hex_map.hexes.items():
-		hex_list.append(map_hex)
-	shuffle(hex_list)
+	# create a local list of all hx, hy locations in map
+	map_hex_list = []
+	for key, map_hex in scenario.hex_map.hexes.iteritems():
+		map_hex_list.append((map_hex.hx, map_hex.hy))
 	
-	# do first elevation pass
-	for map_hex in hex_list:
-		roll = libtcod.random_get_int(0, 1, 100)
-		if roll <= 5:
-			map_hex.SetElevation(0)
-		elif roll <= 80:
-			continue
-		elif roll <= 95:
-			map_hex.SetElevation(2)
-		else:
-			map_hex.SetElevation(3)
 	
-	# do second pass: elevation smoothing
-	for map_hex in hex_list:
-		if map_hex.elevation == 2:
-			has_adjacent_hill = False
-			adjacent_list = GetAdjacentHexesOnMap(map_hex.hx, map_hex.hy)
-			for (hx, hy) in adjacent_list:
-				adjacent_hex = GetHexAt(hx, hy)
-				if adjacent_hex.elevation >= 2:
-					has_adjacent_hill = True
-					break
-			if not has_adjacent_hill:
-				map_hex.SetElevation(1)
+	# clear map
+	for (hx, hy) in map_hex_list:
+		map_hex = GetHexAt(hx, hy)
+		map_hex.SetTerrainType('Fields')
+		map_hex.SetElevation(1)
+		map_hex.dirt_road_links = []
+	
+	ShowTerrainGeneration()
+	
+	##################################################################################
+	#                                 Elevation                                      #
+	##################################################################################
+	
+	# FUTURE: set locally now
+	# will be supplied by battleground settings later on
+	#smoothness = 0.9
+	
+	for hill in range(3):
+		hex_list = []
+		
+		# determine upper left corner, width, and height of hill area
+		(hx_start, hy_start) = choice(map_hex_list)
+		hill_width = libtcod.random_get_int(0, 3, 6)
+		hill_height = libtcod.random_get_int(0, 3, 6)
+		hx_start -= int(hill_width / 2)
+		hy_start -= int(hill_height / 2)
+		
+		# get a rectangle of hex locations
+		hex_rect = GetHexRect(hx_start, hy_start, hill_width, hill_height)
+		
+		# determine how many points to use for hill generation
+		min_points = int(len(hex_rect) / 10)
+		max_points = int(len(hex_rect) / 3)
+		hill_points = libtcod.random_get_int(0, min_points, max_points)
+		
+		# build a list of hill locations around random points
+		for i in range(hill_points):
+			(hx, hy) = choice(hex_rect)
+			hex_list.append((hx, hy))
+			for direction in range(6):
+				hex_list.append(GetAdjacentHex(hx, hy, direction))
+		
+		# apply the hill locations if they are on map
+		for (hx, hy) in hex_list:
+			map_hex = GetHexAt(hx, hy)
+			if map_hex is not None:
+				map_hex.SetElevation(2)
+		
+		ShowTerrainGeneration()
+
 
 	# do terrain type pass
-	for map_hex in hex_list:
+	shuffle(map_hex_list)
+	for (hx, hy) in map_hex_list:
+		
+		map_hex = GetHexAt(hx, hy)
 		
 		# if there's already an adjcacent pond, don't create another one
 		if HasAdjacent(map_hex, 'Pond'):
@@ -2707,6 +2755,11 @@ def GenerateTerrain():
 		if roll <= village_chance:
 			map_hex.SetTerrainType('Village, Wood Buildings')
 	
+	ShowTerrainGeneration()
+	
+	# TEMP - no roads
+	return
+	
 	# add a road running from the bottom to the top of the map
 	path = GetHexPath(5, 10, 8, -4)
 	for n in range(len(path)):
@@ -2720,6 +2773,8 @@ def GenerateTerrain():
 			direction = GetDirectionToAdjacent(hx2, hy2, hx1, hy1)
 			map_hex = GetHexAt(hx2, hy2)
 			map_hex.dirt_road_links.append(direction)
+	
+	ShowTerrainGeneration()
 
 
 
@@ -3515,9 +3570,10 @@ def DoScenario(load_savegame=False):
 		scenario.minute_limit = 0
 		
 		# display scenario info: chance to cancel start
-		if not ScenarioSummary():
-			del scenario
-			return
+		# TEMP menu disabled
+		#if not ScenarioSummary():
+		#	del scenario
+		#	return
 		
 		# spawn the player PSGs
 		new_psg = PSG('HQ Panzer Squadron', 'Panzer 35t', 5, 0, 0, 5, 5)
@@ -3654,6 +3710,17 @@ def DoScenario(load_savegame=False):
 			
 			# skip this section if no commands in buffer
 			if key is None: continue
+			
+			##################################################################
+			
+			# TEMP- debug testing command
+			#key_char = chr(key.c).lower()
+			#if key_char == 'g':
+			#	GenerateTerrain()
+			#	UpdateScreen()
+			#	continue
+			
+			##################################################################
 			
 			# select previous or next menu option
 			if key.vk == libtcod.KEY_UP:
@@ -3817,10 +3884,6 @@ libtcod.console_flush()
 # create mouse and key event holders
 mouse = libtcod.Mouse()
 key = libtcod.Key()
-
-# set up colour control for highlighting command keys
-libtcod.console_set_color_control(libtcod.COLCTRL_1, KEY_HIGHLIGHT_COLOR, libtcod.black)
-
 
 
 ##########################################################################################

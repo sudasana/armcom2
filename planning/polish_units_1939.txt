@@ -1,0 +1,62 @@
+
+Proposed List of Polish Units for September 1939
+
+Tanks
+~~~~~
+
+Name			Movement	Armour	Steps	Weapon		Rng	AF	PF	Special
+###############################################################################################################
+
+TKS			Fast Tank	0/0	3-5	MG		4	4	-
+
+FT-17 (MG)		Slow Tank	1/1		MG		4	4	-	Unreliable
+
+FT-17 (37mm)		Slow Tank	1/1		S.A. 37mm	6	2	6	Unreliable
+
+Vickers E Type A	Slow Tank	0/0	3-5	Twin MGs	4	6	-	Unreliable
+
+Vickers E Type B	Slow Tank	0/0	3-5	47mm		6	2	8
+							MG		4	4	-
+
+  (Both types normally grouped together in roughly equal numbers)							
+							
+7TP (double turret)	Tank		1/1	3-5	Twin MGs	4	6	-
+
+7TP			Tank		1/1	3-5	Wz.37 L/45	8	3	6
+							MG		4	4	-
+  
+
+Armoured Cars
+~~~~~~~~~~~~~
+
+Name			Movement	Armour	Steps	Weapon		Rng	AF	PF	Special
+###############################################################################################################
+
+Wz. 34 (MG)		Wheeled		0/0		MG		4	4	-
+
+Wz. 34 (37mm)		Wheeled		0/0		S.A. 37mm	4	2	6
+
+
+Guns
+~~~~
+
+Name			Movement	Armour	Steps	Weapon		Rng	AF	PF	Special
+###############################################################################################################
+
+KP Pluton		Infantry	-	3-5	AT Rifle	2	-	3		
+  (Karabin Przeciwpancerny)
+
+37mm wz. 36 Pluton	Gun		-		37mm		8	2	6
+
+
+
+Infantry
+~~~~~~~~
+
+Name			Movement	Armour	Steps	Weapon		Rng	AF	PF	Special
+###############################################################################################################
+
+Karabin Pluton		Infantry	-	12	Rifles		2	1	-
+
+KM Pluton		Infantry	-	4	Ckm wz. 30 HMG	3	4	-
+  (Karabin Maszynowy)

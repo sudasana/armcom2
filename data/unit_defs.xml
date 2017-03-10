@@ -27,8 +27,8 @@
     <weapon_list>
       <weapon>
          <name>Dual MGs</name>
-         <area_strength>6</area_strength>
-         <max_range>4</max_range>
+         <area_strength>8</area_strength>
+         <max_range>2</max_range>
       </weapon>
     </weapon_list>
     <movement_class>Fast Tank</movement_class>
@@ -55,8 +55,8 @@
       </weapon>
       <weapon>
          <name>MG</name>
-         <area_strength>4</area_strength>
-         <max_range>4</max_range>
+         <area_strength>6</area_strength>
+         <max_range>2</max_range>
       </weapon>
     </weapon_list>
     <movement_class>Fast Tank</movement_class>
@@ -84,8 +84,8 @@
       </weapon>
       <weapon>
          <name>MG</name>
-         <area_strength>4</area_strength>
-         <max_range>4</max_range>
+         <area_strength>6</area_strength>
+         <max_range>2</max_range>
       </weapon>
     </weapon_list>
     <movement_class>Fast Tank</movement_class>
@@ -110,8 +110,8 @@
     <weapon_list>
       <weapon>
          <name>MG</name>
-         <area_strength>3</area_strength>
-         <max_range>4</max_range>
+         <area_strength>6</area_strength>
+         <max_range>2</max_range>
       </weapon>
     </weapon_list>
     <movement_class>Wheeled</movement_class>
@@ -169,8 +169,8 @@
       </weapon>
       <weapon>
          <name>MG</name>
-         <area_strength>4</area_strength>
-         <max_range>4</max_range>
+         <area_strength>6</area_strength>
+         <max_range>2</max_range>
       </weapon>
     </weapon_list>
     <movement_class>Fast Tank</movement_class>

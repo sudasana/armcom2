@@ -16,7 +16,7 @@
     <difficult/>
   </terrain_def>
   <terrain_def>
-    <display_name>In-Season Fields</display_name>
+    <display_name>Tall Fields</display_name>
     <los_height>0</los_height>
     <base_image>hex_fields_in_season.xp</base_image>
     <af_modifier>0</af_modifier>

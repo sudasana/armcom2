@@ -40,12 +40,12 @@
 #                                                                                        #
 ##########################################################################################
 
-
 ##### Libraries #####
 import libtcodpy as libtcod				# The Doryen Library
 import ConfigParser					# for saving and loading settings
 import time						# for animation timing
 from random import choice, shuffle, sample
+from operator import itemgetter
 from textwrap import wrap				# for breaking up strings
 from math import floor, cos, sin, sqrt			# for math
 from math import degrees, atan2, ceil			# for heading calculation
@@ -63,9 +63,9 @@ import xml.etree.ElementTree as xml			# ElementTree library for xml
 #                                   You can rely on them                                 #
 ##########################################################################################
 
-# debug constants, should all be set to False in any distribution version
-VIEW_ALL = False				# Player can see all hexes on viewport
-SHOW_TERRAIN_GEN = False			# show steps of terrain generation in progress
+# debug constants: should all be set to False in any distribution version
+VIEW_ALL = False				# human player can see all hexes on viewport
+SHOW_TERRAIN_GEN = False			# display terrain generation in progress
 
 
 NAME = 'Armoured Commander II'
@@ -206,7 +206,63 @@ MIN_AP_DIFF = -2
 class AI:
 	def __init__(self, owner):
 		self.owner = owner			# the PSG for whom this AI instance is
+	
+	# return a scored list of best possible attacks on this target
+	def GetBestAttacks(self, target):
 		
+		# will hold list of following: (final column, weapon, target, area_fire, at_attack)
+		attack_list = []
+		
+		# run through available weapons
+		for weapon in self.owner.weapon_list:
+			# out of range
+			if GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > weapon.stats['max_range']:
+				continue
+				
+			# point fire target but not spotted
+			if target.pf_target and not target.af_target and not target.spotted:
+				continue
+
+			# area fire target but no area fire possible
+			if target.af_target and not target.pf_target and weapon.stats['area_strength'] == 0:
+				continue
+			
+			# point fire target but no point fire possible
+			if target.pf_target and not target.af_target and weapon.stats['point_strength'] == 0:
+				continue
+			
+			# not in LoS
+			visible_hexes = GetLoS(self.owner.hx, self.owner.hy, target.hx, target.hy)
+			if (target.hx, target.hy) not in visible_hexes:
+				continue
+			
+			# determine if a pivot would be required
+			pivot_required = False
+			if not self.owner.infantry:
+				bearing = GetRelativeBearing(self.owner, target)
+				if 30 < bearing < 330:
+					pivot_required = True
+			
+			# calculate column of attack and add to attack list
+			if weapon.stats['area_strength'] > 0 and target.af_target:
+				attack_obj = CalcAttack(self.owner, weapon, target, True, assume_pivot=pivot_required)
+				attack_list.append((attack_obj.final_column, weapon, target, True, False))
+			
+			if weapon.stats['point_strength'] > 0 and target.pf_target:
+				attack_obj = CalcAttack(self.owner, weapon, target, False, assume_pivot=pivot_required)
+				attack_list.append((attack_obj.final_column, weapon, target, False, False))
+	
+			del attack_obj
+	
+		# TODO: check for possible anti-tank attack
+		
+		# no attacks possible
+		if len(attack_list) == 0:
+			return None
+		
+		return attack_list
+		
+	
 	# randomly choose and execute and action for the current phase
 	def DoPhaseAction(self):
 		
@@ -223,32 +279,14 @@ class AI:
 			
 			print 'AI Shooting Phase Action for: ' + self.owner.GetName(true_name=True)
 			
-			af_strength = self.owner.weapon_list[0].stats['area_strength']
-			pf_strength = self.owner.weapon_list[0].stats['point_strength']
-			max_range = self.owner.weapon_list[0].stats['max_range']
-			
 			# build list of possible targets
 			target_list = []
 			for psg in scenario.psg_list:
 				# same team!
 				if psg.owning_player == self.owner.owning_player: continue
 				
-				# out of max range
-				if GetHexDistance(self.owner.hx, self.owner.hy, psg.hx, psg.hy) > max_range: continue
-				
-				# don't have the right kind of attack for this target
-				if af_strength == 0 and not psg.pf_target: continue
-				if pf_strength == 0 and not psg.af_target: continue
-				
 				# no line of sight
 				if (psg.hx, psg.hy) not in GetLoS(self.owner.hx, self.owner.hy, psg.hx, psg.hy): continue
-				
-				# if we had already aquired this target, choose it automatically
-				if self.owner.acquired_target is not None:
-					if self.owner.acquired_target == psg:
-						print 'AI: Continuing attack on acquired target'
-						InitAttack(self.owner, psg, psg.af_target)
-						return
 				
 				target_list.append(psg)
 			
@@ -260,10 +298,28 @@ class AI:
 			if len(target_list) > 1: text += 's'
 			print text
 			
-			# choose a random target!
-			psg = choice(target_list)
+			# select best attacks
+			attack_list = []
+			for psg in target_list:
+				target_attack_list = self.GetBestAttacks(psg)
+				if target_attack_list is not None:
+					attack_list.extend(target_attack_list)
 			
-			InitAttack(self.owner, psg, psg.af_target)
+			# could not find any attacks
+			if len(attack_list) == 0:
+				print 'AI: No attacks possible'
+				return
+			
+			text = 'AI: got a list of ' + str(len(attack_list)) + ' possible attack'
+			if len(attack_list) > 1: text += 's'
+			print text
+			
+			sorted(attack_list,key=itemgetter(0))
+			
+			# choose best attack and initiate it
+			(final_column, weapon, target, area_fire, at_attack) = attack_list[0]
+			
+			InitAttack(self.owner, weapon, target, area_fire, at_attack=at_attack)
 		
 
 # terrain type: determines effect of different types of map hex terrain
@@ -311,6 +367,7 @@ class Attack:
 		self.target = target
 		self.area_fire = False
 		self.point_fire = False
+		self.at_attack = False
 		self.attack_strength = 0
 		self.column_modifiers = []
 		self.final_column = 0
@@ -688,8 +745,17 @@ class PSG:
 			if psg.acquired_target == self:
 				psg.acquired_target = None
 
+	# remove one step from this PSG
+	def RemoveStep(self):
+		self.num_steps -= 1
+		if self.num_steps == 0:
+			self.DestroyMe()
+			UpdateUnitConsole()
+
 	# remove this PSG from the game
 	def DestroyMe(self):
+		text = self.GetName() + ' has been destroyed!'
+		Message(self.screen_x, self.screen_y, text)
 		scenario.psg_list.remove(self)
 		# clear acquired target records
 		self.ClearAcquiredTargets()
@@ -822,6 +888,9 @@ class PSG:
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		
+		# TEMP - no message
+		return
+		
 		# show message
 		if self.owning_player == 0:
 			text = 'Your '
@@ -940,20 +1009,21 @@ class PSG:
 	# try to move this PSG into the target hex
 	# vehicles must be facing this direction to move, or can do a reverse move
 	# returns True if the move was successful
-	def MoveInto(self, new_hx, new_hy):
+	def MoveInto(self, new_hx, new_hy, free_move=False):
 		
 		# make sure move is allowed
 		if not self.CheckMoveInto(new_hx, new_hy):
 			return False
 		
-		# get MP cost of move, return false if not enough
-		map_hex1 = GetHexAt(self.hx, self.hy)
-		map_hex2 = GetHexAt(new_hx, new_hy)
-		mp_cost = GetMPCostToMove(self, map_hex1, map_hex2)
-		if mp_cost > self.mp: return False
-		
-		# spend the mp
-		self.mp -= mp_cost
+		if not free_move:
+			# get MP cost of move, return false if not enough
+			map_hex1 = GetHexAt(self.hx, self.hy)
+			map_hex2 = GetHexAt(new_hx, new_hy)
+			mp_cost = GetMPCostToMove(self, map_hex1, map_hex2)
+			if mp_cost > self.mp: return False
+			
+			# spend the mp
+			self.mp -= mp_cost
 		
 		# see if a pivot is required
 		if self.movement_class != 'Infantry':
@@ -1039,13 +1109,24 @@ class PSG:
 			if score <= roll:
 				result_row = attack_obj.final_column.index(score)
 				break
-		# no result
-		if result_row is None:
-			text = 'No Effect'
-		elif result_row == 0:
-			text = '+1 Pin Point'
+		
+		if attack_obj.at_attack:
+			if 2 <= roll <= 3:
+				text = 'Attacking Step Lost'
+			elif result_row is None:
+				text = 'No Effect'
+			else:
+				if result_row == 0:
+					text = 'No Effect'
+				else:
+					text = str(result_row) + ' step loss'
 		else:
-			text = str(result_row) + ' step loss'
+			if result_row is None:
+				text = 'No Effect'
+			elif result_row == 0:
+				text = '+1 Pin Point'	
+			else:
+				text = str(result_row) + ' step loss'
 			
 		libtcod.console_print_ex(attack_con, 13, 50, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
@@ -1055,20 +1136,23 @@ class PSG:
 		libtcod.console_flush()
 		WaitForEnter()
 		
+		# apply attacker step loss result or no result
+		if attack_obj.at_attack:
+			if 2 <= roll <= 3:
+				attack_obj.RemoveStep()
+				return
+			elif result_row == 0:
+				return
+		
 		if result_row is None: return
 		
-		# apply result: step loss
+		# apply result to target: step loss
 		if result_row >= 1:
-			self.num_steps -= result_row
-			if self.num_steps < 0: self.num_steps = 0
-		
-			# check to see if unit has been destroyed completely
-			if self.num_steps == 0:
-				text = self.GetName() + ' has been destroyed!'
-				Message(self.screen_x, self.screen_y, text)
-				self.DestroyMe()
-				UpdateUnitConsole()
-				return
+			for i in range(result_row):
+				self.RemoveStep()
+				# PSG has been destroyed
+				if self not in scenario.psg_list:
+					return
 			
 			text = self.GetName() + ' has been reduced to ' + str(self.num_steps) + ' step'
 			if self.num_steps > 1: text += 's'
@@ -1137,6 +1221,37 @@ class PSG:
 		if roll <= skill_lvl:
 			return True
 		return False
+	
+	# have this unit retreat to an adjacent hex, triggered eg. in Close Combat
+	def RetreatToSafety(self):
+		
+		# guns cannot retreat
+		if self.movement_class == 'Gun':
+			text = self.GetName() + ' cannot retreat!'
+			Message(self.screen_x, self.screen_y, text)
+			self.DestroyMe()
+			return
+		
+		# build a list of possible destinations
+		hex_list = []
+		for direction in range(6):
+			(hx, hy) = GetAdjacentHex(self.hx, self.hy, direction)
+			if (hx, hy) not in scenario.hex_map.hexes: continue
+			map_hex = GetHexAt(hx, hy)
+			if map_hex.IsOccupied() > -1: continue
+			if map_hex.terrain_type.water: continue
+			hex_list.append((hx, hy))
+		
+		# no possible place to go
+		if len(hex_list) == 0:
+			text = self.GetName() + ' has no place to retreat!'
+			Message(self.screen_x, self.screen_y, text)
+			self.DestroyMe()
+			return
+		
+		# FUTURE: choose location based on terrain modifier and distance from known enemy
+		(hx, hy) = choice(hex_list)
+		self.MoveInto(hx, hy, free_move=True)
 	
 	
 # Weapon class: represents a weapon carried by or mounted on a unit
@@ -1348,6 +1463,103 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
+	# resolve all close combats for this phase
+	def ResolveCloseCombats(self):
+		
+		cc_psg_list = []
+		
+		for psg in self.psg_list:
+			if psg.owning_player != self.active_player: continue
+			if psg.assault_target is not None:
+				cc_psg_list.append(psg)
+		
+		# no combats to resolve
+		if len(cc_psg_list) == 0: return
+		
+		# FUTURE: sort list by MP remaining
+		for attacker in cc_psg_list:
+			
+			# get target psg, clear assault target
+			(hx, hy) = attacker.assault_target
+			target = GetPSGAt(hx, hy)
+			attacker.assault_target = None
+			UpdateGUIConsole()
+			DrawScreenConsoles()
+			libtcod.console_flush()
+			
+			# show message
+			text = attacker.GetName() + ' assaults ' + target.GetName()
+			Message(attacker.screen_x, attacker.screen_y, text)
+			
+			# do initial half-move animation
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 3
+			(x1,y1) = PlotHex(attacker.hx, attacker.hy)
+			(x2,y2) = PlotHex(target.hx, target.hy)
+			line = GetLine(x1,y1,x2,y2)
+			for (x,y) in line[1:2]:
+				attacker.anim_x = x
+				attacker.anim_y = y
+				UpdateUnitConsole()
+				DrawScreenConsoles()
+				libtcod.console_flush()
+				Wait(pause_time)
+			
+			# defensive fire: automatically choose best attack possible
+			attack_list = target.ai.GetBestAttacks(attacker)
+			if attack_list is None:
+				text = 'No defensive fire possible'
+				Message(target.screen_x, target.screen_y, text)
+			else:
+				sorted(attack_list,key=itemgetter(0))
+				(final_column, weapon, null, area_fire, at_attack) = attack_list[0]
+				text = target.GetName() + ' conducts defensive fire'
+				Message(target.screen_x, target.screen_y, text)
+				InitAttack(target, weapon, attacker, area_fire, at_attack=at_attack)
+			
+			# TODO: if attacker has been Suppressed, it must fall back
+			
+			# move attacker to target hex, record original position
+			attacker_retreat_hx = attacker.hx
+			attacker_retreat_hy = attacker.hy
+			attacker.hx = target.hx
+			attacker.hy = target.hy
+			
+			# start attack loop
+			exit_attack = False
+			while not exit_attack:
+				
+				# assaulting platoon attacks
+				attack_list = attacker.ai.GetBestAttacks(target)
+				sorted(attack_list,key=itemgetter(0))
+				(final_column, weapon, null, area_fire, at_attack) = attack_list[0]
+				InitAttack(attacker, weapon, target, area_fire, at_attack=at_attack)
+				
+				# if defender is dead, exit
+				if target not in scenario.psg_list:
+					exit_attack = True
+					continue
+				
+				# defender is still alive, must pass a morale check to continue
+				if not target.MoraleCheck(0):
+					text = target.GetName() + ' fails its morale check and must withdraw'
+					Message(target.screen_x, target.screen_y, text)
+					target.RetreatToSafety()
+					exit_attack = True
+					continue
+				
+				# defender gets an attack
+				
+			
+			
+			# reset attacker's animation
+			attacker.anim_x = 0
+			attacker.anim_y = 0
+			UpdateUnitConsole()
+			DrawScreenConsoles()
+			libtcod.console_flush()
+			
+	
+	
 	# return a text string for the current turn phase
 	def GetCurrentPhase(self):
 		return PHASE_LIST[self.current_phase]
@@ -1355,11 +1567,10 @@ class Scenario:
 	
 	# do enemy AI actions for this phase
 	def DoAIPhase(self):
-		
 		# build a list of units that can be activated this phase
 		activate_list = []
 		for psg in self.psg_list:
-			if psg.ai is None: continue
+			if psg.owning_player == 0: continue
 			activate_list.append(psg)
 		shuffle(activate_list)
 		for psg in activate_list:
@@ -1391,18 +1602,8 @@ class Scenario:
 			self.active_cmd_menu = 'cc_root'
 			self.active_psg = None
 			
-			# return if any close combats need to be resolved
-			# TEMP?
-			for psg in self.psg_list:
-				if psg.owning_player != self.active_player: continue
-				if psg.assault_target is not None:
-					UpdatePSGConsole()
-					self.BuildCmdMenu()
-					SaveGame()
-					return
-		
 		# Close Combat Phase -> New Active Player and Movement Phase
-		if self.GetCurrentPhase() == 'Close Combat':
+		elif self.GetCurrentPhase() == 'Close Combat':
 			
 			if self.active_player == 0:
 				self.active_player = 1
@@ -1693,7 +1894,9 @@ def LoadGame():
 
 
 # calculate an area or point fire attack
-def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
+#   if at_attack is true, this is a close combat infantry attack on an armoured vehicle target,
+#   and weapon is not used in calculation
+def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attack=False):
 	# create a new attack object
 	attack_obj = Attack(attacker, weapon, target)
 	
@@ -1702,6 +1905,8 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 		attack_obj.area_fire = True
 	else:
 		attack_obj.point_fire = True
+	if at_attack:
+		attack_obj.at_attack = True
 	
 	# determine distance to target
 	distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
@@ -1717,7 +1922,7 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 		else:
 			attack_strength = attack_strength * attacker.num_steps
 		
-		if attacker.suppressed:
+		if attacker.suppressed and distance > 0:
 			attack_strength = int(ceil(attack_strength / 2))
 		
 		if not target.spotted:
@@ -1752,7 +1957,7 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 	# Range Modifiers
 	
 	# AF range modifiers
-	if area_fire:
+	if attack_obj.area_fire:
 		if distance <= 1:
 			attack_obj.column_modifiers.append(('Point Blank Range', 2))
 		elif distance == 2:
@@ -1767,7 +1972,7 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 			attack_obj.column_modifiers.append(('Extreme Range', -6))
 	
 	# PF range modifier
-	else:
+	elif not attack_obj.at_attack:
 		max_range = weapon.stats['max_range']
 		multipler = 0.5	
 		if weapon.stats['long_range'] == 'L':
@@ -1782,27 +1987,31 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 		elif distance <= normal_range:
 			attack_obj.column_modifiers.append(('Normal Range', 3))
 	
-	# pinned PF attack
-	if not area_fire:
-		if attacker.suppressed:
-			attack_obj.column_modifiers.append(('Attacker Suppressed', -3))	
+	# suppressed PF attack, not CC
+	if attack_obj.point_fire and distance > 0 and attacker.suppressed:
+		attack_obj.column_modifiers.append(('Attacker Suppressed', -3))	
 	
 	# attacker moved or changed facing
 	if attacker.moved:
-		attack_obj.column_modifiers.append(('Attacker Moved', -3))
+		attack_obj.column_modifiers.append(('Attacker Moved', -2))
 	elif assume_pivot or attacker.changed_facing:
 		attack_obj.column_modifiers.append(('Attacker Pivoted', -1))
 	
 	# acquired target
-	if attacker.acquired_target is not None:
-		if attacker.acquired_target == target:
-			attack_obj.column_modifiers.append(('Acquired Target', 1))
+	if not attack_obj.at_attack:
+		if attacker.acquired_target is not None:
+			if attacker.acquired_target == target:
+				attack_obj.column_modifiers.append(('Acquired Target', 1))
 	
 	# Target Terrain Modifier
 	map_hex = GetHexAt(target.hx, target.hy)
 	af_modifier = map_hex.terrain_type.af_modifier
 	pf_modifier = map_hex.terrain_type.pf_modifier
-	if area_fire:
+	
+	if attack_obj.at_attack:
+		if pf_modifier != 0:
+			attack_obj.column_modifiers.append((map_hex.terrain_type.display_name, 0 - pf_modifier))
+	elif attack_obj.area_fire:
 		if af_modifier != 0:
 			attack_obj.column_modifiers.append((map_hex.terrain_type.display_name, af_modifier))
 	else:
@@ -1816,8 +2025,8 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 	if target.vehicle and target.moved:
 		attack_obj.column_modifiers.append(('Target Vehicle Moved', -2))
 	
-	# Armour Modifier
-	if attack_obj.point_fire and target.vehicle:
+	# Armour Modifier - not used in AT attacks
+	if attack_obj.point_fire and target.vehicle and not attack_obj.at_attack:
 		if target.armour is not None:
 			ap = weapon.stats['point_strength']
 			if distance > normal_range:
@@ -1850,7 +2059,10 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False):
 	attack_obj.final_column = final_column
 	
 	# build list of possible final outcomes
-	attack_obj.outcome_list.append((str(final_column[0]) + '+', 'Morale Check'))
+	if attack_obj.at_attack:
+		attack_obj.outcome_list.append(('2-3', 'Attacking Step Lost'))
+	else:
+		attack_obj.outcome_list.append((str(final_column[0]) + '+', 'Morale Check'))
 	n = 1
 	for result in final_column[1:]:
 		# if result not possible, stop building list
@@ -1902,6 +2114,14 @@ def LoadXP(filename):
 def GetHexAt(hx, hy):
 	if (hx, hy) in scenario.hex_map.hexes:
 		return scenario.hex_map.hexes[(hx, hy)]
+	return None
+
+
+# returns the PSG located in this hex
+def GetPSGAt(hx, hy):
+	for psg in scenario.psg_list:
+		if psg.hx == hx and psg.hy == hy:
+			return psg
 	return None
 
 
@@ -2525,11 +2745,7 @@ def GetFacing(attacker, target):
 
 
 # initiate an attack by one PSG on another
-def InitAttack(attacker, target, area_fire):
-	
-	# make sure there's a weapon and a target
-	if target is None: return
-	if attacker.selected_weapon is None: return
+def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 	
 	# determine if a pivot would be required
 	pivot_required = False
@@ -2540,10 +2756,11 @@ def InitAttack(attacker, target, area_fire):
 
 	# send information to CalcAttack, which will return an Attack object with the
 	#   calculated stats to use for the attack
-	attack_obj = CalcAttack(attacker, attacker.selected_weapon, target, area_fire, assume_pivot=pivot_required)
+	attack_obj = CalcAttack(attacker, weapon, target, area_fire,
+		assume_pivot=pivot_required, at_attack=at_attack)
 	
-	# if player wasn't attacker, display LoS from attacker to target
-	if attacker.owning_player == 1:
+	# if not close combat and player wasn't attacker, display LoS from attacker to target
+	if GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy) > 0 and attacker.owning_player == 1:
 		line = GetLine(attacker.screen_x, attacker.screen_y, target.screen_x,
 			target.screen_y)
 		for (x,y) in line[2:-2]:
@@ -2589,17 +2806,18 @@ def InitAttack(attacker, target, area_fire):
 	attacker.selected_weapon = None
 	
 	# handle newly acquired target
-	if attacker.acquired_target is None:
-		attacker.acquired_target = target
-		target.acquired_by.append(attacker)
-	else:
-		# attacker had a different acquired target
-		if attacker.acquired_target != target:
-			for psg in scenario.psg_list:
-				if attacker in psg.acquired_by:
-					psg.acquired_by.remove(attacker)
+	if GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy) > 0:
+		if attacker.acquired_target is None:
 			attacker.acquired_target = target
 			target.acquired_by.append(attacker)
+		else:
+			# attacker had a different acquired target
+			if attacker.acquired_target != target:
+				for psg in scenario.psg_list:
+					if attacker in psg.acquired_by:
+						psg.acquired_by.remove(attacker)
+				attacker.acquired_target = target
+				target.acquired_by.append(attacker)
 
 
 # display the factors and odds for an attack on the screen
@@ -2617,11 +2835,13 @@ def DisplayAttack(attack_obj):
 	libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Attack Resolution')
 	
-	if attack_obj.area_fire:
-		text = 'Area'
+	if attack_obj.at_attack:
+		text = 'Anti-Tank'
+	elif attack_obj.area_fire:
+		text = 'Area Fire'
 	else:
-		text = 'Point'
-	text += ' fire attack by'
+		text = 'Point Fire'
+	text += ' attack by'
 	libtcod.console_print_ex(attack_con, 13, 3, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
@@ -2629,7 +2849,10 @@ def DisplayAttack(attack_obj):
 	libtcod.console_print_ex(attack_con, 13, 4, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
-	text = 'firing ' + attack_obj.weapon.stats['name'] + ' at'
+	if attack_obj.at_attack:
+		text = 'against'
+	else:
+		text = 'firing ' + attack_obj.weapon.stats['name'] + ' at'
 	libtcod.console_print_ex(attack_con, 13, 5, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
@@ -3716,18 +3939,22 @@ def DoScenario(load_savegame=False):
 		
 		# spawn the player PSGs
 		new_psg = PSG('HQ Panzer Squadron', 'Panzer 35t', 5, 0, 0, 5, 5)
+		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(5, 10)
 		
 		new_psg = PSG('Light Panzer Squadron', 'Panzer II A', 5, 0, 0, 5, 5)
+		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(6, 9)
 		
 		new_psg = PSG('Light Panzerspäh Platoon', 'sd_kfz_221', 3, 0, 0, 5, 5)
+		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(7, 9)
 		
 		new_psg = PSG('Schützen Platoon', 'german_schutzen', 5, 0, 0, 4, 5)
+		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(8, 8)
 		
@@ -3743,22 +3970,22 @@ def DoScenario(load_savegame=False):
 		new_psg = PSG('HQ Tank Squadron', '7TP jw', 4, 3, 1, 4, 4)
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(2, 4)
+		new_psg.SpawnAt(4, 9)
 		
 		new_psg = PSG('AT Gun Section', '37mm wz. 36', 3, 3, 1, 4, 4)
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(8, 0)
+		new_psg.SpawnAt(5, 8)
 		
 		new_psg = PSG('AT Gun Section', '37mm wz. 36', 3, 3, 1, 4, 4)
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(3, 0)
+		new_psg.SpawnAt(7, 7)
 		
 		new_psg = PSG('Piechoty Platoon', 'polish_piechoty', 5, 3, 1, 4, 4)
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(6, -2)
+		new_psg.SpawnAt(8, 7)
 		
 		# do initial objective capture
 		for map_hex in scenario.objective_hexes:
@@ -3835,6 +4062,12 @@ def DoScenario(load_savegame=False):
 			UpdateScreen()
 			continue
 		
+		##### Automatic Phase Actions #####
+		if scenario.GetCurrentPhase() == 'Close Combat':
+			scenario.ResolveCloseCombats()
+			scenario.NextPhase()
+			UpdateScreen()
+			continue
 		
 		##### Player Keyboard Commands #####
 		
@@ -3941,7 +4174,8 @@ def DoScenario(load_savegame=False):
 			area_fire = False
 			if option.option_id[5:] == 'area':
 				area_fire = True
-			InitAttack(scenario.active_psg, scenario.active_psg.target_psg, area_fire)
+			InitAttack(scenario.active_psg, scenario.active_psg.selected_weapon,
+				scenario.active_psg.target_psg, area_fire)
 			UpdatePSGConsole()
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()

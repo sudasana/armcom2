@@ -1547,6 +1547,13 @@ class Scenario:
 				attacker_won = False
 				exit_attack = True
 			else:
+				
+				# attacker and defender are spotted if not already
+				if not target.spotted:
+					target.SpotMe()
+				if not attacker.spotted:
+					attacker.SpotMe()
+				
 				# set flags to start attack loop
 				exit_attack = False
 				attacker_won = True
@@ -2059,7 +2066,9 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 		normal_range = int(ceil(float(max_range) * multipler))
 		close_range = int(ceil(float(normal_range) * 0.5))
 		
-		if distance <= close_range:
+		if distance == 0:
+			attack_obj.column_modifiers.append(('Close Combat Range', -2))
+		elif distance <= close_range:
 			attack_obj.column_modifiers.append(('Close Range', 5))
 		elif distance <= normal_range:
 			attack_obj.column_modifiers.append(('Normal Range', 3))
@@ -2082,11 +2091,10 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 		elif assume_pivot or attacker.changed_facing:
 			attack_obj.column_modifiers.append(('Attacker Pivoted', -1))
 		
-		# acquired target, not CC attack
-		if not attack_obj.at_attack:
-			if attacker.acquired_target is not None:
-				if attacker.acquired_target == target:
-					attack_obj.column_modifiers.append(('Acquired Target', 1))
+		# PF acquired target
+		if attack_obj.point_fire and attacker.acquired_target is not None:
+			if attacker.acquired_target == target:
+				attack_obj.column_modifiers.append(('Acquired Target', 1))
 	
 		# infantry movement in no cover
 		if target.infantry and target.moved and pf_modifier == 0:
@@ -2645,7 +2653,7 @@ def Wait(wait_time):
 	# added this to avoid the spinning wheel of death in Windows
 	libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
 	libtcod.sys_sleep_milli(wait_time)
-	# TEMP?
+	# emergency exit
 	if libtcod.console_is_window_closed(): sys.exit()
 
 
@@ -2659,7 +2667,7 @@ def WaitForEnter(allow_cancel=False):
 		# get input from user
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
 		
-		# TEMP - emergency exit from game
+		# emergency exit from game
 		if libtcod.console_is_window_closed():
 			sys.exit()
 		
@@ -2734,7 +2742,7 @@ def GetLoS(hx1, hy1, hx2, hy2):
 			# break if we've gone off map
 			if (hx, hy) not in scenario.hex_map.hexes: break
 			
-			# TEMP: emergency escape in case of stuck loop
+			# emergency escape in case of stuck loop
 			if libtcod.console_is_window_closed(): sys.exit()
 			
 			# add the next three hexes to the list
@@ -2756,7 +2764,6 @@ def GetLoS(hx1, hy1, hx2, hy2):
 	los_slope = None
 	
 	# run through the list of hexes, starting with the first adjacent one from observer
-	lowest_elevation = None
 	hexpair = None
 	hexpair_elevation = 0
 	for (hx, hy) in hex_list:
@@ -2767,8 +2774,7 @@ def GetLoS(hx1, hy1, hx2, hy2):
 			continue
 		
 		map_hex = scenario.hex_map.hexes[(hx, hy)]
-		elevation = float(map_hex.elevation) - observer_elevation
-		elevation = (elevation * ELEVATION_M) + float(map_hex.terrain_type.los_height)
+		elevation = (float(map_hex.elevation) - observer_elevation) * ELEVATION_M
 		
 		# if we're on a hexspine, we need to compare some pairs of hexes
 		if mod_list is not None:
@@ -2782,27 +2788,22 @@ def GetLoS(hx1, hy1, hx2, hy2):
 			elif (index - 1) % 4 == 0:
 				if hexpair_elevation < elevation:
 					elevation = hexpair_elevation
-
-		# if no lowest elevation recorded yet, record it
-		if lowest_elevation is None:
-			lowest_elevation = elevation
 		
-		# otherwise, if lower than previously recorded, replace it
-		else:
-			if elevation < lowest_elevation:
-				lowest_elevation = elevation
+		# calculate slope from observer to floor of this hex and to terrain top
+		floor_slope = elevation / float(GetHexDistance(hx1, hy1, hx, hy)) * 160.0
+		terrain_top_slope = (elevation + float(map_hex.terrain_type.los_height)) / float(GetHexDistance(hx1, hy1, hx, hy)) * 160.0
 		
-		# calculate slope from observer to this hex
-		slope = elevation / float(GetHexDistance(hx1, hy1, hx, hy)) * 160.0
+		# determine visibility
 		
-		# if adjacent hex, automatically visible
+		# if this is an adjacent hex, it's automatically visible
 		if los_slope is None:
 			visible_hexes.append((hx, hy))
-			los_slope = slope
+			# use the terrain top for future visibility
+			los_slope = terrain_top_slope
 		
+		# otherwise, compare against current LoS slope
 		else:
-			# check if this hex is visible based on previous LoS slope
-			if slope >= los_slope:
+			if floor_slope >= los_slope:
 				visible_hexes.append((hx, hy))
 				# if hexspine, check for also making first part of a hexpair
 				# visible as well
@@ -2810,9 +2811,9 @@ def GetLoS(hx1, hy1, hx2, hy2):
 					visible_hexes.append(hexpair)
 					hexpair = None
 		
-			# if slope larger than previous los_slope, set new los_slope
-			if slope > los_slope:
-				los_slope = slope
+			# if terrain top slope is larger than previous los_slope, replace
+			if terrain_top_slope > los_slope:
+				los_slope = terrain_top_slope
 
 	return visible_hexes
 
@@ -2871,9 +2872,10 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 	if attacker.owning_player == 0 and distance > 0 and cancel_attack:
 		return
 	
-	# clear any LoS drawn above from screen
+	# clear any LoS drawn above from screen, but keep attack console visible
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-	
+	libtcod.console_blit(attack_con, 0, 0, 0, 0, 0, 0, 3)
+	libtcod.console_flush()
 	
 	# TODO: display attack animation
 	
@@ -2898,7 +2900,7 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 	attacker.selected_weapon = None
 	
 	# handle newly acquired target
-	if distance > 0:
+	if distance > 0 and not area_fire:
 		if attacker.acquired_target is None:
 			attacker.acquired_target = target
 			target.acquired_by.append(attacker)
@@ -2910,6 +2912,9 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 						psg.acquired_by.remove(attacker)
 				attacker.acquired_target = target
 				target.acquired_by.append(attacker)
+	
+	# check for spotting changes as a result of this attack
+	scenario.DoSpotCheck()
 
 
 # display the factors and odds for an attack on the screen
@@ -3358,7 +3363,7 @@ def UpdateMapTerrainConsole():
 			for x1 in range(x-2, x+3):
 				scenario.map_index[(x1,y)] = (hx, hy)
 	
-	# TEMP: draw roads and rivers overtop
+	# draw roads and rivers overtop
 	for key, map_hex in scenario.hex_map.hexes.items():
 		
 		# river edges		
@@ -3713,7 +3718,7 @@ def DrawScreenConsoles():
 			libtcod.console_set_char_background(con, psg.screen_x, psg.screen_y,
 				TARGET_HL_COL, flag=libtcod.BKGND_SET)
 			
-			# TEMP - show LoS hexes
+			# DEBUG - show LoS hexes
 			#los_line = GetLoS(scenario.active_psg.hx, scenario.active_psg.hy,
 			#	psg.hx, psg.hy)
 			
@@ -3758,10 +3763,10 @@ def ScenarioSummary():
 	libtcod.console_set_default_background(temp, libtcod.black)
 	
 	# display scenario information
-	libtcod.console_print_ex(temp, 13, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(temp, 14, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 		'Scenario')
 	libtcod.console_set_default_foreground(temp, HIGHLIGHT_COLOR)
-	libtcod.console_print_ex(temp, 13, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(temp, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
 		scenario.name)
 	libtcod.console_set_default_foreground(temp, libtcod.white)
 	
@@ -3769,51 +3774,51 @@ def ScenarioSummary():
 	lines = wrap(scenario.description, 25)
 	n = 0
 	for line in lines:
-		libtcod.console_print(temp, 1, 5+n, line)
+		libtcod.console_print(temp, 2, 5+n, line)
 		n += 1
 	
 	# battlefront, date, and start time
-	libtcod.console_print_ex(temp, 13, 20, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(temp, 14, 20, libtcod.BKGND_NONE, libtcod.CENTER,
 		scenario.battlefront)
 	text = MONTH_NAMES[scenario.month] + ' ' + str(scenario.year)
-	libtcod.console_print_ex(temp, 13, 21, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(temp, 14, 21, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	text = str(scenario.hour) + ':' + str(scenario.minute).zfill(2)
-	libtcod.console_print_ex(temp, 13, 22, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(temp, 14, 22, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	
 	# forces on both sides
 	# TODO: this info should be part of scenario object as well
 	libtcod.console_set_default_foreground(temp, HIGHLIGHT_COLOR)
-	libtcod.console_print(temp, 1, 25, 'Your Forces')
-	libtcod.console_print(temp, 1, 31, 'Expected Resistance')
+	libtcod.console_print(temp, 2, 25, 'Your Forces')
+	libtcod.console_print(temp, 2, 31, 'Expected Resistance')
 	libtcod.console_set_default_foreground(temp, libtcod.white)
-	libtcod.console_print(temp, 2, 26, 'German Heer')
-	libtcod.console_print(temp, 2, 27, 'Armoured Battlegroup')
-	libtcod.console_print(temp, 2, 32, 'Polish Army')
-	libtcod.console_print(temp, 2, 33, 'Armoured and Infantry')
+	libtcod.console_print(temp, 3, 26, 'German Heer')
+	libtcod.console_print(temp, 3, 27, 'Armoured Battlegroup')
+	libtcod.console_print(temp, 3, 32, 'Polish Army')
+	libtcod.console_print(temp, 3, 33, 'Armoured and Infantry')
 	
 	# objectives
 	libtcod.console_set_default_foreground(temp, HIGHLIGHT_COLOR)
-	libtcod.console_print(temp, 1, 38, 'Objectives')
+	libtcod.console_print(temp, 2, 38, 'Objectives')
 	libtcod.console_set_default_foreground(temp, libtcod.white)
 	text = (scenario.objectives + ' by ' + str(scenario.hour_limit) + ':' +
 		str(scenario.minute_limit).zfill(2))
 	lines = wrap(text, 25)
 	n = 0
 	for line in lines:
-		libtcod.console_print(temp, 1, 40+n, line)
+		libtcod.console_print(temp, 2, 40+n, line)
 		n += 1
 	
 	# list of menu commands
 	libtcod.console_set_default_foreground(temp, HIGHLIGHT_COLOR)
-	libtcod.console_print(temp, 1, 52, 'ESC')
-	libtcod.console_print(temp, 15, 52, 'Enter')
+	libtcod.console_print(temp, 2, 52, 'ESC')
+	libtcod.console_print(temp, 16, 52, 'Enter')
 	libtcod.console_set_default_foreground(temp, libtcod.white)
-	libtcod.console_print(temp, 5, 52, 'Cancel')
-	libtcod.console_print(temp, 21, 52, 'Start')
+	libtcod.console_print(temp, 6, 52, 'Cancel')
+	libtcod.console_print(temp, 22, 52, 'Start')
 	
-	libtcod.console_blit(temp, 0, 0, 0, 0, 0, 27, 3)
+	libtcod.console_blit(temp, 0, 0, 0, 0, 0, 26, 3)
 	del temp
 	
 	exit_menu = False
@@ -4123,7 +4128,7 @@ def DoScenario(load_savegame=False):
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
 			key, mouse)
 		
-		# TEMP: emergency loop escape
+		# emergency loop escape
 		if libtcod.console_is_window_closed(): sys.exit()
 		
 		# check to see if mouse cursor has moved
@@ -4169,7 +4174,7 @@ def DoScenario(load_savegame=False):
 		
 		##################################################################
 		
-		# TEMP - debug testing command
+		# DEBUG command
 		if SHOW_TERRAIN_GEN:
 			key_char = chr(key.c).lower()
 			if key_char == 'g':

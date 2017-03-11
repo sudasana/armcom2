@@ -761,6 +761,7 @@ class PSG:
 		scenario.psg_list.remove(self)
 		# clear acquired target records
 		self.ClearAcquiredTargets()
+		UpdateUnitConsole()
 
 	# do any automatic actions for start of current phase
 	def ResetForPhase(self):
@@ -2566,7 +2567,7 @@ def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None, road_path=False):
 			elif road_path:
 				
 				# prefer to pass through villages if possible
-				if node.terrain_type.display_name == 'Village, Wood Buildings':
+				if node.terrain_type.display_name == 'Wooden Village':
 					cost = -5
 				elif node.terrain_type.difficult:
 					cost = 5
@@ -2892,6 +2893,7 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 		attacker.PivotToFace(direction)
 		UpdateUnitConsole()
 		DrawScreenConsoles()
+		libtcod.console_blit(attack_con, 0, 0, 0, 0, 0, 0, 3)
 		libtcod.console_flush()
 	
 	# resolve attack
@@ -3142,7 +3144,7 @@ def GenerateTerrain():
 			map_hex = GetHexAt(hx, hy)
 			if map_hex.terrain_type.display_name == 'Sparse Forest':
 				continue
-			map_hex.SetTerrainType('Village, Wood Buildings')
+			map_hex.SetTerrainType('Wooden Village')
 			
 			# handle large villages; if extra hexes fall off map they won't
 			#  be added
@@ -3151,7 +3153,7 @@ def GenerateTerrain():
 					(hx2, hy2) = GetAdjacentHex(hx, hy, libtcod.random_get_int(0, 0, 5))
 					map_hex = GetHexAt(hx2, hy2)
 					if map_hex is not None:
-						map_hex.SetTerrainType('Village, Wood Buildings')
+						map_hex.SetTerrainType('Wooden Village')
 				
 			break
 	ShowTerrainGeneration()
@@ -3177,7 +3179,7 @@ def GenerateTerrain():
 			if map_hex is not None:
 				
 				# don't overwrite villages
-				if map_hex.terrain_type.display_name == 'Village, Wood Buildings':
+				if map_hex.terrain_type.display_name == 'Wooden Village':
 					continue
 				# small chance of overwriting forest
 				if map_hex.terrain_type.display_name == 'Sparse Forest':
@@ -4071,7 +4073,7 @@ def DoScenario(load_savegame=False):
 		scenario.hex_map.AddObjectiveAt(6, -2)
 		
 		# set up enemy PSGs
-		new_psg = PSG('HQ Tank Squadron', '7TP jw', 4, 3, 1, 4, 4)
+		new_psg = PSG('HQ Tank Squadron', '7TP jw', 3, 3, 1, 4, 4)
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(8, 0)
@@ -4080,11 +4082,6 @@ def DoScenario(load_savegame=False):
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(3, 3)
-		
-		new_psg = PSG('AT Gun Section', '37mm wz. 36', 3, 3, 1, 4, 4)
-		new_psg.ai = AI(new_psg)
-		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(9, -2)
 		
 		new_psg = PSG('Piechoty Platoon', 'polish_piechoty', 7, 3, 1, 4, 4)
 		new_psg.ai = AI(new_psg)

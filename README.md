@@ -2,7 +2,7 @@
 
 This is the work-in-progress version of Alpha 1.
 
-![screenshot 1](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_1.png "Armoured Commander II Screenshot")
+![screenshot 1](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_4.png "Armoured Commander II Screenshot")
 ![screenshot 2](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_2.png "Armoured Commander II Screenshot")
 ![screenshot 3](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_3.png "Armoured Commander II Screenshot")
 

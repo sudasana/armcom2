@@ -23,7 +23,7 @@
     <pf_modifier>-1</pf_modifier>
   </terrain_def>
   <terrain_def>
-    <display_name>Village, Wood Buildings</display_name>
+    <display_name>Wooden Village</display_name>
     <los_height>5</los_height>
     <base_image>hex_village.xp</base_image>
     <af_modifier>-2</af_modifier>

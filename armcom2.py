@@ -1496,10 +1496,11 @@ class Scenario:
 			# if target has been destroyed, take location
 			if target is None:
 				attacker.MoveInto(hx, hy, free_move=True)
-			
-			# if target location now occupied by an ally, cancel attack
-			if target.owning_player == attacker.owning_player:
 				continue
+			else:
+				# if target location now occupied by an ally, cancel attack
+				if target.owning_player == attacker.owning_player:
+					continue
 			
 			# show message
 			text = attacker.GetName() + ' assaults ' + target.GetName()
@@ -4041,6 +4042,11 @@ def DoScenario(load_savegame=False):
 		scenario.psg_list.append(new_psg)
 		new_psg.SpawnAt(5, 10)
 		
+		new_psg = PSG('Panzer Squadron', 'Panzer 35t', 5, 0, 0, 5, 5)
+		new_psg.ai = AI(new_psg)
+		scenario.psg_list.append(new_psg)
+		new_psg.SpawnAt(4, 10)
+		
 		new_psg = PSG('Light Panzer Squadron', 'Panzer II A', 5, 0, 0, 5, 5)
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
@@ -4054,7 +4060,7 @@ def DoScenario(load_savegame=False):
 		new_psg = PSG('Schützen Platoon', 'german_schutzen', 5, 0, 0, 4, 5)
 		new_psg.ai = AI(new_psg)
 		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(4, 10)
+		new_psg.SpawnAt(8, 8)
 		
 		
 		# select the first player PSG

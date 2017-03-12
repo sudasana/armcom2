@@ -1974,6 +1974,11 @@ def LoadGame():
 	save.close()
 
 
+# remove a saved game, either because the scenario is over or the player abandoned it
+def EraseGame():
+	os.remove('savegame')
+
+
 # calculate an area or point fire attack
 #   if at_attack is true, this is a close combat infantry attack on an armoured vehicle target,
 #   and weapon is not used in calculation
@@ -2105,6 +2110,13 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 		# vehicle movement
 		if target.vehicle and target.moved:
 			attack_obj.column_modifiers.append(('Target Vehicle Moved', -2))
+		
+		# PF attack, vehicle size modifier
+		if attack_obj.point_fire and target.vehicle:
+			if target.size_class != 'Normal':
+				if target.size_class == 'Small':
+					attack_obj.column_modifiers.append(('Small Vehicle Target', -1))
+		
 	
 	# AT attack modifiers
 	if attack_obj.at_attack:
@@ -2691,6 +2703,39 @@ def WaitForEnter(allow_cancel=False):
 	if allow_cancel and cancel:
 		return True
 	return False
+
+
+# get a confirmation from the player that they really want to do this
+def GetConfirmation(text):
+	
+	lines = wrap(text, 20)
+	y = WINDOW_YM - int(len(lines) / 2)
+	libtcod.console_set_default_background(0, libtcod.darker_red)
+	libtcod.console_rect(0, 30, y-1, 22, len(lines)+4, True, libtcod.BKGND_SET)
+	libtcod.console_set_default_background(0, libtcod.black)
+	for line in lines:
+		libtcod.console_print_ex(0, WINDOW_XM, y, libtcod.BKGND_NONE,
+			libtcod.CENTER, line)
+		y += 1
+	y += 1
+	libtcod.console_set_default_foreground(0, HIGHLIGHT_COLOR)
+	libtcod.console_print(0, 32, y, 'Enter')
+	libtcod.console_print(0, 43, y, 'ESC')
+	libtcod.console_set_default_foreground(0, libtcod.white)
+	libtcod.console_print(0, 38, y, 'Yes')
+	libtcod.console_print(0, 47, y, 'No')
+	
+	exit_menu = False
+	while not exit_menu:
+		
+		libtcod.console_flush()
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+		if libtcod.console_is_window_closed(): return False
+		if key is None: continue
+		if key.vk == libtcod.KEY_ENTER:
+			return True
+		elif key.vk == libtcod.KEY_ESCAPE:
+			return False
 
 
 # return the result of a 2D6 roll
@@ -3829,11 +3874,8 @@ def ScenarioSummary():
 		
 		libtcod.console_flush()
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
-		
 		if libtcod.console_is_window_closed(): return False
-		
 		if key is None: continue
-		
 		if key.vk == libtcod.KEY_ENTER:
 			return True
 		elif key.vk == libtcod.KEY_ESCAPE:
@@ -3844,20 +3886,21 @@ def ScenarioSummary():
 def ScenarioMenu():
 	
 	def UpdateScreen():
-		libtcod.console_blit(scen_menu_con, 0, 0, 0, 0, 0, 5, 3)
-		cmd_menu.DisplayMe(0, WINDOW_XM-12, 24, 25)
+		libtcod.console_blit(scen_menu_con, 0, 0, 0, 0, con, 5, 3)
+		cmd_menu.DisplayMe(con, WINDOW_XM-12, 24, 25)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
-	# use the buffer console to darken the screen background
-	libtcod.console_clear(con)
-	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0, 
-		0.0, 0.7)
+	# darken the screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, con, 0, 0, 0.0, 0.7)
 	
 	# build menu of basic options
 	cmd_menu = CommandMenu('scenario_menu')
 	cmd_menu.AddOption('save_and_quit', 'Q', 'Save and Quit', desc='Save the scenario ' +
-		'in progress and quit to the Main Menu')
+		'in progress and quit to main menu')
 	cmd_menu.AddOption('return', 'Esc', 'Return to Scenario', desc='Return and continue ' +
 		'playing the scenario in progress')
+	cmd_menu.AddOption('abandon', 'A', 'Abandon Scenario', desc='Abandon the scenario ' +
+		'in progress, erasing saved game, and quit to main menu')
 	
 	UpdateScreen()
 	
@@ -3900,6 +3943,13 @@ def ScenarioMenu():
 			return True
 		elif option.option_id == 'return':
 			return False
+		elif option.option_id == 'abandon':
+			text = ('Are you sure? This will erase the currently saved scenario ' +
+				'in progress')
+			if GetConfirmation(text):
+				EraseGame()
+				return True
+			UpdateScreen()
 		
 
 def DoScenario(load_savegame=False):
@@ -4321,13 +4371,13 @@ def SaveCFG():
 ##########################################################################################
 
 global config
-global mouse, key, con
+global mouse, key, con, darken_con
 
 # try to load game settings from config file
 LoadCFG()
 
-# set up basic stuff
-os.putenv('SDL_VIDEO_CENTERED', '1')		# center window on screen
+# center window on screen
+os.putenv('SDL_VIDEO_CENTERED', '1')
 
 # determine font to use based on settings file
 if config.getboolean('ArmCom2', 'large_display_font'):
@@ -4352,6 +4402,12 @@ con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
 libtcod.console_set_default_background(con, libtcod.black)
 libtcod.console_set_default_foreground(con, libtcod.white)
 libtcod.console_clear(con)
+
+# darken screen console
+darken_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+libtcod.console_set_default_background(darken_con, libtcod.black)
+libtcod.console_set_default_foreground(darken_con, libtcod.black)
+libtcod.console_clear(darken_con)
 
 libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
 	'Loading ...')
@@ -4393,8 +4449,7 @@ libtcod.console_set_default_foreground(main_menu_con, libtcod.white)
 menus = []
 
 cmd_menu = CommandMenu('main_menu')
-menu_option = cmd_menu.AddOption('continue_scenario', 'C', 'Continue')
-if not os.path.exists('savegame'): menu_option.inactive = True
+cmd_menu.AddOption('continue_scenario', 'C', 'Continue')
 cmd_menu.AddOption('new_scenario', 'N', 'New')
 cmd_menu.AddOption('options', 'O', 'Options')
 cmd_menu.AddOption('quit', 'Q', 'Quit')
@@ -4411,6 +4466,19 @@ cmd_menu.AddOption('return_to_main', '0', 'Return to Main Menu')
 menus.append(cmd_menu)
 
 active_menu = menus[0]
+
+# checked for presence of saved game and disable "continue" option if not present
+def CheckSavedGame(menu):
+	for menu_option in menu.cmd_list:
+		if menu_option.option_id != 'continue_scenario': continue
+		if os.path.exists('savegame'):
+			menu_option.inactive = False
+		else:
+			menu_option.inactive = True
+		return
+
+CheckSavedGame(active_menu)
+
 
 global gradient_x
 
@@ -4525,10 +4593,12 @@ while not exit_game:
 	if option.option_id == 'continue_scenario':
 		DoScenario(load_savegame=True)
 		active_menu = menus[0]
+		CheckSavedGame(active_menu)
 		UpdateScreen()
 	elif option.option_id == 'new_scenario':
 		DoScenario()
 		active_menu = menus[0]
+		CheckSavedGame(active_menu)
 		UpdateScreen()
 	elif option.option_id == 'options':
 		active_menu = menus[1]

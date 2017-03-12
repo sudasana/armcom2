@@ -113,7 +113,7 @@ WEAPON_LIST_COLOR = libtcod.Color(25, 25, 90)		# background for weapon list in P
 SELECTED_WEAPON_COLOR = libtcod.Color(50, 50, 150)	# " selected weapon
 
 TARGET_HL_COL = libtcod.Color(55, 0, 0)			# target highlight background color 
-SELECTED_HL_COL = libtcod.Color(50, 150, 255)		# selected PSG highlight colour
+SELECTED_HL_COL = libtcod.Color(100, 255, 255)		# selected PSG highlight colour
 ENEMY_HL_COL = libtcod.Color(40, 0, 0)
 INACTIVE_COL = libtcod.Color(100, 100, 100)		# inactive option color
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
@@ -146,6 +146,11 @@ HEXSPINES = {
 	270: [(-1,1), (-1,0), (-2,1)],
 	330: [(-1,0), (0,-1), (-1,-1)]
 }
+
+# tile locations of hex edges
+HEX_EDGE_TILES = [(-1,-2), (0,-2), (1,-2), (2,-1), (3,0), (2,1), (1,2), (0,2), (-1,2),
+	(-2,1), (-3,0), (-2,-1)]
+
 
 # option codes, key codes, and directional arrows to use for rotate/move commands
 MOVE_COMMANDS = [
@@ -182,7 +187,7 @@ FIRE_TABLE_ROWS = [
 ]
 
 # column shifts for differentials in point strength vs. armour rating
-# TODO: will need to adjust to that they are fair
+# FUTURE: will need to adjust to that they are fair
 AP_MODS = {
 	5:3,
 	4:2,
@@ -401,12 +406,13 @@ class MenuOption:
 class CommandMenu:
 	def __init__(self, menu_id):
 		self.menu_id = menu_id			# a unique id for this menu
-		self.Clear()
-		self.selected_option = None		# currently selected option
+		self.cmd_list = []			# list of commands
+		self.selected_option = None		# currently selected command
 	
 	# clear any existing menu options
 	def Clear(self):
 		self.cmd_list = []
+		#self.selected_option = None
 	
 	# add an option to the menu
 	def AddOption(self, option_id, key_code, option_text, desc=None, inactive=False):
@@ -422,23 +428,16 @@ class CommandMenu:
 		key_char = chr(key.c).lower()
 		for option in self.cmd_list:
 			if option.key_code.lower() == key_char:
-				# player chose an inactive menu item
-				if option.inactive: return None
 				return option
 			if option.key_code == 'Enter' and key.vk == libtcod.KEY_ENTER:
-				if option.inactive: return None
 				return option
 			if option.key_code == 'Tab' and key.vk == libtcod.KEY_TAB:
-				if option.inactive: return None
 				return option
 			if option.key_code == 'Space' and key.vk == libtcod.KEY_SPACE:
-				if option.inactive: return None
 				return option
 			if option.key_code == 'Backspace' and key.vk == libtcod.KEY_BACKSPACE:
-				if option.inactive: return None
 				return option
 			if option.key_code == 'Esc' and key.vk == libtcod.KEY_ESCAPE:
-				if option.inactive: return None
 				return option
 		return None
 	
@@ -870,8 +869,11 @@ class PSG:
 				elif item.find('gun') is not None:
 					self.gun = True
 					self.deployed = True
-					self.emplaced = True
-					
+					#self.emplaced = True	# not used yet
+					if item.find('size_class') is not None:
+						self.size_class = item.find('size_class').text
+					else:
+						self.size_class = 'Normal'
 					if item.find('gun_shield') is not None:
 						self.gun_shield = True
 					else:
@@ -1020,8 +1022,6 @@ class PSG:
 		
 		if not free_move:
 			# get MP cost of move, return false if not enough
-			map_hex1 = GetHexAt(self.hx, self.hy)
-			map_hex2 = GetHexAt(new_hx, new_hy)
 			mp_cost = GetMPCostToMove(self, map_hex1, map_hex2)
 			if mp_cost > self.mp: return False
 			
@@ -1098,7 +1098,6 @@ class PSG:
 			DrawDie(attack_con, 14, 42, d2)
 			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
 			libtcod.console_flush()
-			# TODO: play sound
 			Wait(pause_time)
 		
 		# display roll result on attack console
@@ -1294,7 +1293,7 @@ class MapHex:
 		self.f = 0
 	
 	# set hex elevation
-	# TODO: set up impassible cliff edges in this and adjacent hexes if required
+	# FUTURE: set up impassible cliff edges in this and adjacent hexes if required
 	def SetElevation(self, new_elevation):
 		self.elevation = new_elevation
 	
@@ -1842,46 +1841,58 @@ class Scenario:
 			UpdateCmdConsole()
 			return
 		
-		# movement phase menu
-		if self.active_cmd_menu == 'movement_root':
+		# movement phase menu - units committed to an assault can't otherwise move
+		if self.active_cmd_menu == 'movement_root' and scenario.active_psg.assault_target is None:
 			
-			# units committed to an assault can't otherwise move
-			if scenario.active_psg.assault_target is None:
-			
-				# run through six possible rotate/move directions and build commands
-				for (direction, key_code, char) in MOVE_COMMANDS:
-					
-					if not scenario.active_psg.infantry:
-						if scenario.active_psg.facing != direction:
-							cmd = 'rotate_' + str(direction)
-							desc = 'Face ' + char
-							self.cmd_menu.AddOption(cmd, key_code, desc)
-							# FUTURE: disable rotate if not allowed
-							continue
-					
-					cmd = 'move_' + str(direction)
-					desc = 'Move ' + char
-					
-					# check to see if target hex contains an enemy unit
-					(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
-						scenario.active_psg.hy, direction)
-					map_hex = GetHexAt(hx, hy)
-					if map_hex is not None:
-						if map_hex.IsOccupied() == 1:
-							cmd = 'assault_' + str(direction)
-							desc = 'Assault ' + char
-						
-					menu_option = self.cmd_menu.AddOption(cmd, key_code, desc)
-					
-					# disable move command if move not allowed
-					if scenario.active_psg.suppressed:
-						menu_option.desc = 'Cannot move when Suppressed'
-						menu_option.inactive = True
+			# run through six possible rotate/move directions and build commands
+			for (direction, key_code, char) in MOVE_COMMANDS:
+				
+				if not scenario.active_psg.infantry:
+					if scenario.active_psg.facing != direction:
+						cmd = 'rotate_' + str(direction)
+						desc = 'Face ' + char
+						self.cmd_menu.AddOption(cmd, key_code, desc)
+						# FUTURE: disable rotate if not allowed
 						continue
+				
+				map_hex1 = GetHexAt(scenario.active_psg.hx, scenario.active_psg.hy)
+				
+				cmd = 'move_' + str(direction)
+				desc = 'Move ' + char
+				
+				(hx, hy) = GetAdjacentHex(scenario.active_psg.hx,
+					scenario.active_psg.hy, direction)
+				map_hex2 = GetHexAt(hx, hy)
+				
+				# no map hex there
+				if map_hex2 is None:
+					menu_option = self.cmd_menu.AddOption(cmd, key_code, desc)
+					menu_option.desc = 'Cannot move off map'
+					menu_option.inactive = True
+					continue
+				
+				# if target hex contains an enemy unit, change to assault action
+				if map_hex2.IsOccupied() == 1:
+					cmd = 'assault_' + str(direction)
+					desc = 'Assault ' + char
 					
-					if not scenario.active_psg.CheckMoveInto(hx, hy):
-						menu_option.inactive = True
-						menu_option.desc = 'Cannot move into this hex'
+				menu_option = self.cmd_menu.AddOption(cmd, key_code, desc)
+				
+				# disable move command if move not allowed or not possible
+				if scenario.active_psg.suppressed:
+					menu_option.desc = 'Cannot move when Suppressed'
+					menu_option.inactive = True
+					continue
+				
+				if not scenario.active_psg.CheckMoveInto(hx, hy):
+					menu_option.inactive = True
+					menu_option.desc = 'Cannot move into this hex'
+					continue
+				
+				mp_cost = GetMPCostToMove(scenario.active_psg, map_hex1, map_hex2)
+				if mp_cost > scenario.active_psg.mp:
+					menu_option.inactive = True
+					menu_option.desc = 'Not enough MP'
 			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
@@ -2111,12 +2122,13 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 		if target.vehicle and target.moved:
 			attack_obj.column_modifiers.append(('Target Vehicle Moved', -2))
 		
-		# PF attack, vehicle size modifier
-		if attack_obj.point_fire and target.vehicle:
+		# PF attack, target size modifier
+		if attack_obj.point_fire:
 			if target.size_class != 'Normal':
-				if target.size_class == 'Small':
-					attack_obj.column_modifiers.append(('Small Vehicle Target', -1))
-		
+				if target.size_class == 'Very Small':
+					attack_obj.column_modifiers.append(('Very Small Target', -2))
+				elif target.size_class == 'Small':
+					attack_obj.column_modifiers.append(('Small Target', -1))
 	
 	# AT attack modifiers
 	if attack_obj.at_attack:
@@ -2161,7 +2173,7 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 		column += mod
 	
 	# normalize final column
-	# TODO: if column is less than 0, no chance of effect
+	# FUTURE: if column is less than 0, no chance of effect
 	if column < 0:
 		column = 0
 	elif column > MAX_FIRE_TABLE_COLUMN - 1:
@@ -3759,6 +3771,13 @@ def DrawScreenConsoles():
 	if scenario.active_psg is not None:
 		libtcod.console_set_char_background(con, scenario.active_psg.screen_x,
 			scenario.active_psg.screen_y, SELECTED_HL_COL, flag=libtcod.BKGND_SET)
+		
+		# only highlight hex if not in move animation
+		if scenario.active_psg.anim_x == 0 and scenario.active_psg.anim_y == 0:
+		
+			for (xm, ym) in HEX_EDGE_TILES:
+				libtcod.console_set_char_foreground(con, scenario.active_psg.screen_x+xm,
+					scenario.active_psg.screen_y+ym, SELECTED_HL_COL)
 	
 		# highlight targeted PSG if any
 		psg = scenario.active_psg.target_psg
@@ -3936,7 +3955,9 @@ def ScenarioMenu():
 		cmd_menu.selected_option = option
 		UpdateScreen()
 		libtcod.console_flush()
-		Wait(100)
+		
+		# selected an inactive menu option
+		if option.inactive: continue
 		
 		if option.option_id == 'save_and_quit':
 			SaveGame()
@@ -4263,7 +4284,9 @@ def DoScenario(load_savegame=False):
 		scenario.cmd_menu.selected_option = option
 		UpdateScreen()
 		libtcod.console_flush()
-		#Wait(100)
+		
+		# selected an inactive menu option
+		if option.inactive: continue
 		
 		##################################################################
 		# Root Menu Actions
@@ -4587,7 +4610,9 @@ while not exit_game:
 	active_menu.selected_option = option
 	UpdateScreen()
 	libtcod.console_flush()
-	Wait(100)
+	
+	# selected an inactive menu option
+	if option.inactive: continue
 	
 	# main menu
 	if option.option_id == 'continue_scenario':

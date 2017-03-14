@@ -1445,7 +1445,7 @@ class Scenario:
 		
 		self.hour_limit = 0			# time at which scenario ends
 		self.minute_limit = 0
-		
+		self.time_limit_winner = 1		# player who wins if time limit is reached
 		
 		self.active_player = 0			# currently active player (0 or 1)
 		self.current_phase = 0			# current action phase (full list defined by PHASE_LIST)
@@ -1456,18 +1456,83 @@ class Scenario:
 		self.player_direction = 3		# direction of player-friendly forces
 		self.enemy_direction = 0		# direction of enemy forces
 		
+		# scenario end variables
 		self.winner = None			# number of player that has won the scenario,
 							#   None if no winner yet
 		self.end_text = ''			# description of how scenario ended
 		
 		self.cmd_menu = CommandMenu('scenario_menu')		# current command menu for player
-		self.active_cmd_menu = None		# currently active command menu
+		self.active_cmd_menu = None				# currently active command menu
 		
-		self.messages = []			# list of game messages
+		#self.messages = []			# FUTURE: list of stored game messages for review
 		
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
+	
+	# check for scenario end and set up data if so
+	def CheckForEnd(self):
+		
+		# objective capture win
+		all_objectives_captured = True
+		for map_hex in self.objective_hexes:
+			if map_hex.held_by is None:
+				all_objectives_captured = False
+				break
+			if map_hex.held_by == 1:
+				all_objectives_captured = False
+				break
+		
+		if all_objectives_captured:
+			self.winner = 0
+			self.end_text = 'You have captured all objectives and won this scenario.'
+			return
+		
+		# one side has no PSGs in play
+		psgs_in_play = [0,0]
+		for psg in self.psg_list:
+			psgs_in_play[psg.owning_player] += 1
+		if psgs_in_play[0] == 0:
+			self.winner = 1
+		elif psgs_in_play[1] == 0:
+			self.winner = 0
+		if self.winner is not None:
+			if self.winner == 0:
+				self.end_text += 'The enemy has no units remaining, you have'
+			else:
+				self.end_text += 'You have no units remaining, the enemy has'
+			self.end_text += ' won this scenario.'
+			return
+		
+		# time limit has been reached
+		if self.minute == self.minute_limit and self.hour == self.hour_limit:
+			self.winner = self.time_limit_winner
+			self.end_text = 'The time limit for this scenario has been reached. '
+			if self.winner == 0:
+				self.end_text += 'You have'
+			else:
+				self.end_text += 'The enemy has'
+			self.end_text += ' won this scenario.'
+	
+	# display a screen of info about a completed scenario
+	def DisplayEndScreen(self):
+		# use the buffer console to darken the screen background
+		libtcod.console_clear(con)
+		libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0, 
+			0.0, 0.7)
+		libtcod.console_rect(0, 4, 10, 80, 40, True, libtcod.BKGND_SET)
+		
+		lines = wrap(self.end_text, 26)
+		y = 16
+		for line in lines:
+			libtcod.console_print_ex(0, WINDOW_XM, y, libtcod.BKGND_NONE,
+				libtcod.CENTER, line)
+			y+=1
+		
+		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM+2, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Press [Enter] to Return to Main Menu')
+		libtcod.console_flush()
+		WaitForEnter()
 	
 	# resolve all close combats for this phase
 	def ResolveCloseCombats(self):
@@ -1689,6 +1754,14 @@ class Scenario:
 				self.active_player = 1
 				self.active_psg = None
 			else:
+				# end of turn, check for scenario end
+				self.CheckForEnd()
+				if self.winner is not None:
+					# display scenario report
+					self.DisplayEndScreen()
+					# delete saved game
+					EraseGame()
+					return
 				self.AdvanceClock()
 				UpdateScenInfoConsole()
 				self.active_player = 0
@@ -1783,51 +1856,6 @@ class Scenario:
 	
 		# if we get here, we could not find a new psg to select, select the first in list
 		self.active_psg = player_psgs[0]
-	
-	# check to see if scenario has ended, triggered at start of every new turn
-	def CheckForEnd(self):
-		
-		# no remaining enemy PSGs
-		enemy_active = False
-		for psg in self.psg_list:
-			if psg.owning_player == 1:
-				enemy_active = True
-				break
-		if not enemy_active:
-			self.winner = 0
-			self.end_text = 'All enemy PSGs were destroyed'
-			return
-		
-		# player captured objective
-		for map_hex in self.objective_hexes:
-			if map_hex.objective:
-				if map_hex.held_by == 0:
-					self.winner = 0
-					self.end_text = 'Objective was captured'
-					return
-	
-	# display a screen of info about a completed scenario
-	def DisplayEndScreen(self):
-		# use the buffer console to darken the screen background
-		libtcod.console_clear(con)
-		libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0, 
-			0.0, 0.7)
-		libtcod.console_rect(0, 4, 10, 80, 40, True, libtcod.BKGND_SET)
-		
-		text = 'You have '
-		if self.winner == 0:
-			text += 'won'
-		else:
-			text += 'lost'
-		text += ' the scenario'
-		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM-4, libtcod.BKGND_NONE,
-			libtcod.CENTER, text)
-		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM-2, libtcod.BKGND_NONE,
-			libtcod.CENTER, self.end_text)
-		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM+2, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Press [Enter] to Return to Main Menu')
-		libtcod.console_flush()
-		WaitForEnter()
 	
 	# rebuild a list of commands for the command menu based on current phase and
 	#   game state
@@ -2019,12 +2047,6 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 		else:
 			attack_strength = attack_strength * attacker.num_steps
 		
-		if attacker.suppressed:
-			attack_strength = int(ceil(attack_strength / 2))
-		
-		if not target.spotted:
-			attack_strength = int(ceil(attack_strength / 2))
-		
 	else:
 		attack_strength = attacker.num_steps
 		if at_attack:
@@ -2099,8 +2121,8 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 	# following only apply if not in CC
 	if distance > 0:
 	
-		# suppressed PF attack, not CC
-		if attack_obj.point_fire and attacker.suppressed:
+		# attacker suppressed
+		if attacker.suppressed:
 			attack_obj.column_modifiers.append(('Attacker Suppressed', -3))	
 		
 		# attacker moved or changed facing
@@ -2113,6 +2135,10 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 		if attack_obj.point_fire and attacker.acquired_target is not None:
 			if attacker.acquired_target == target:
 				attack_obj.column_modifiers.append(('Acquired Target', 1))
+		
+		# unspotted target (only possible with AF)
+		if not target.spotted:
+			attack_obj.column_modifiers.append(('Target Unspotted', -3))
 	
 		# infantry movement in no cover
 		if target.infantry and target.moved and pf_modifier == 0:
@@ -2515,6 +2541,9 @@ def GetMPCostToMove(psg, map_hex1, map_hex2):
 			cost = 6
 		else:
 			cost = 4
+	
+	elif psg.movement_class == 'Slow Tank':
+		cost = 6
 
 	return cost
 	
@@ -2911,6 +2940,16 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 	attack_obj = CalcAttack(attacker, weapon, target, area_fire,
 		assume_pivot=pivot_required, at_attack=at_attack)
 	
+	# do the pivot if it was required
+	if pivot_required:
+		direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx,
+			target.hy)
+		attacker.PivotToFace(direction)
+		UpdateUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_blit(attack_con, 0, 0, 0, 0, 0, 0, 3)
+		libtcod.console_flush()
+	
 	# if not close combat and player wasn't attacker, display LoS from attacker to target
 	if distance > 0 and attacker.owning_player == 1:
 		line = GetLine(attacker.screen_x, attacker.screen_y, target.screen_x,
@@ -2942,16 +2981,6 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 	# set fired flag and clear the selected target
 	attacker.fired = True
 	attacker.target_psg = None
-	
-	# do the pivot if it was required
-	if pivot_required:
-		direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx,
-			target.hy)
-		attacker.PivotToFace(direction)
-		UpdateUnitConsole()
-		DrawScreenConsoles()
-		libtcod.console_blit(attack_con, 0, 0, 0, 0, 0, 0, 3)
-		libtcod.console_flush()
 	
 	# resolve attack
 	target.ResolveAttack(attack_obj)
@@ -4140,7 +4169,7 @@ def DoScenario(load_savegame=False):
 		scenario.SelectNextPSG()
 		
 		# set up our objectives
-		scenario.hex_map.AddObjectiveAt(5, 3)
+		scenario.hex_map.AddObjectiveAt(5, 4)
 		scenario.hex_map.AddObjectiveAt(6, -2)
 		
 		# set up enemy PSGs
@@ -4226,6 +4255,10 @@ def DoScenario(load_savegame=False):
 				DrawScreenConsoles()
 			continue
 		
+		# check for scenario end
+		if scenario.winner is not None:
+			exit_scenario = True
+			continue
 		
 		##### AI Actions #####
 		if scenario.active_player == 1:

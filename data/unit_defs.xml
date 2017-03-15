@@ -1,4 +1,321 @@
 <root>
+
+  <!-- Polish Units -->
+  
+  <!-- Tanks -->
+  
+  <unit_def>
+    <id>TK_3</id>
+    <name>TK-3</name>
+    <vehicle/>
+    <movement_class>Fast Tank</movement_class>
+    <size_class>Very Small</size_class>
+    <armour>
+      <front>0</front>
+      <side>0</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+         <name>MG</name>
+         <max_range>2</max_range>
+         <area_strength>4</area_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>TKS</id>
+    <name>TKS</name>
+    <vehicle/>
+    <unreliable/>
+    <movement_class>Fast Tank</movement_class>
+    <size_class>Very Small</size_class>
+    <armour>
+      <front>1</front>
+      <side>0</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+         <name>MG</name>
+         <max_range>2</max_range>
+         <area_strength>4</area_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>TKS_20mm</id>
+    <name>TKS (20mm)</name>
+    <vehicle/>
+    <unreliable/>
+    <movement_class>Fast Tank</movement_class>
+    <size_class>Very Small</size_class>
+    <armour>
+      <front>1</front>
+      <side>0</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+         <name>20mm</name>
+         <max_range>4</max_range>
+         <area_strength>2</area_strength>
+         <point_strength>4</point_strength>
+         <long_range>L</long_range>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>Renault_FT_MG</id>
+    <name>Renault FT (MG)</name>
+    <vehicle/>
+    <unreliable/>
+    <movement_class>Slow Tank</movement_class>
+    <size_class>Small</size_class>
+    <armour>
+      <front>1</front>
+      <side>0</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+         <name>MGs</name>
+         <max_range>2</max_range>
+         <area_strength>6</area_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>Renault_FT_37</id>
+    <name>Renault FT (37mm)</name>
+    <vehicle/>
+    <unreliable/>
+    <movement_class>Slow Tank</movement_class>
+    <size_class>Small</size_class>
+    <armour>
+      <front>1</front>
+      <side>0</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+        <name>37mm</name>
+        <max_range>5</max_range>
+        <area_strength>2</area_strength>
+        <point_strength>6</point_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>Vickers_E_A</id>
+    <name>Vickers E Type A</name>
+    <vehicle/>
+    <movement_class>Slow Tank</movement_class>
+    <size_class>Small</size_class>
+    <armour>
+      <front>2</front>
+      <side>1</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+        <name>47mm</name>
+        <max_range>6</max_range>
+        <area_strength>3</area_strength>
+        <point_strength>8</point_strength>
+      </weapon>
+      <weapon>
+         <name>MG</name>
+         <max_range>2</max_range>
+         <area_strength>4</area_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>Vickers_E_B</id>
+    <name>Vickers E Type B</name>
+    <vehicle/>
+    <movement_class>Slow Tank</movement_class>
+    <size_class>Small</size_class>
+    <armour>
+      <front>2</front>
+      <side>1</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+         <name>Twin MGs</name>
+         <max_range>2</max_range>
+         <area_strength>8</area_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>7TP_double</id>
+    <name>7TP (Double Turret)</name>
+    <vehicle/>
+    <movement_class>Tank</movement_class>
+    <size_class>Small</size_class>
+    <armour>
+      <front>2</front>
+      <side>1</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+         <name>Twin MGs</name>
+         <max_range>2</max_range>
+         <area_strength>8</area_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>7TP</id>
+    <name>7TP</name>
+    <vehicle/>
+    <movement_class>Tank</movement_class>
+    <size_class>Normal</size_class>
+    <armour>
+      <front>2</front>
+      <side>1</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+        <name>37mm</name>
+        <max_range>5</max_range>
+        <area_strength>2</area_strength>
+        <point_strength>6</point_strength>
+        <long_range>L</long_range>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <!-- Armoured Cars and Other Armed Vehicles -->
+  
+  <unit_def>
+    <id>wz_34_mg</id>
+    <name>Wz. 34 (MG)</name>
+    <vehicle/>
+    <movement_class>Wheeled</movement_class>
+    <size_class>Small</size_class>
+    <armour>
+      <front>1</front>
+      <side>0</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+         <name>MG</name>
+         <max_range>2</max_range>
+         <area_strength>4</area_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>wz_34_37</id>
+    <name>Wz. 34 (37mm)</name>
+    <vehicle/>
+    <movement_class>Wheeled</movement_class>
+    <size_class>Small</size_class>
+    <armour>
+      <front>1</front>
+      <side>0</side>
+    </armour>
+    <weapon_list>
+      <weapon>
+        <name>37mm</name>
+        <max_range>5</max_range>
+        <area_strength>2</area_strength>
+        <point_strength>6</point_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>302t_taczanka</id>
+    <name>302T Taczanka</name>
+    <vehicle/>
+    <movement_class>Wheeled</movement_class>
+    <size_class>Normal</size_class>
+    <weapon_list>
+      <weapon>
+        <name>AA HMG</name>
+        <max_range>3</max_range>
+        <area_strength>8</area_strength>
+        <point_strength>2</point_strength>
+        <aa/> <!-- for future -->
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <!-- Guns and Gun Teams -->
+  
+  <unit_def>
+    <id>37mm_wz_36</id>
+    <name>37mm wz. 36</name>
+    <gun/>
+    <movement_class>Gun</movement_class>
+    <size_class>Very Small</size_class>
+    <weapon_list>
+      <weapon>
+        <name>37mm</name>
+        <max_range>5</max_range>
+        <area_strength>2</area_strength>
+        <point_strength>6</point_strength>
+        <long_range>L</long_range>
+      </weapon>
+    </weapon_list>
+    <gun_shield/>
+  </unit_def>
+  
+  <unit_def>
+    <id>ur_wz_35</id>
+    <name>Ur. wz. 35</name>
+    <infantry/>
+    <movement_class>Infantry</movement_class>
+    <weapon_list>
+      <weapon>
+        <name>Anti-Tank Rifle</name>
+        <max_range>3</max_range>
+        <point_strength>2</point_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <!-- Infantry -->
+  
+  <unit_def>
+    <id>karabin_pluton</id>
+    <name>Karabin, Pluton</name>
+    <infantry/>
+    <movement_class>Infantry</movement_class>
+    <weapon_list>
+      <weapon>         
+         <name>Rifles</name>
+         <max_range>2</max_range>
+         <area_strength>1</area_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <unit_def>
+    <id>km_pluton</id>
+    <name>KM, Pluton</name>
+    <infantry/>
+    <movement_class>Infantry</movement_class>
+    <weapon_list>
+      <weapon>         
+         <name>HMG</name>
+         <max_range>3</max_range>
+         <area_strength>6</area_strength>
+         <point_strength>2</point_strength>
+      </weapon>
+    </weapon_list>
+  </unit_def>
+  
+  <!-- German Units -->
+  
+  
   <unit_def>
     <infantry/>
     <id>german_schutzen</id>
@@ -119,61 +436,7 @@
   </unit_def>
   
   
-  <!-- Polish Units -->
-  <unit_def>
-    <infantry/>
-    <id>polish_piechoty</id>
-    <name>Piechoty Squad</name>
-    <movement_class>Infantry</movement_class>
-    <weapon_list>
-      <weapon>         
-         <name>Rifles and MGs</name>
-         <area_strength>4</area_strength>
-         <max_range>2</max_range>
-      </weapon>
-    </weapon_list>
-  </unit_def>
   
-  <unit_def>
-    <gun/>
-    <id>37mm wz. 36</id>
-    <name>37mm AT Gun</name>
-    <movement_class>Gun</movement_class>
-    <weapon_list>
-      <weapon>
-        <name>Bofors</name>
-        <point_strength>6</point_strength>
-        <area_strength>2</area_strength>
-        <max_range>8</max_range>
-      </weapon>
-    </weapon_list>
-    <gun_shield/>
-  </unit_def>
   
-  <unit_def>
-    <vehicle/>
-    <turret/>
-    <id>7TP jw</id>
-    <name>7TP Single Turret</name>
-    <armour>
-      <front>2</front>
-      <side>1</side>
-    </armour>
-    <weapon_list>
-      <weapon>
-        <name>Wz.37 L/45</name>
-        <point_strength>6</point_strength>
-        <area_strength>3</area_strength>
-        <max_range>8</max_range>
-        <long_range>L</long_range>
-      </weapon>
-      <weapon>
-         <name>MG</name>
-         <area_strength>6</area_strength>
-         <max_range>2</max_range>
-      </weapon>
-    </weapon_list>
-    <movement_class>Fast Tank</movement_class>
-  </unit_def>
   
 </root>

@@ -7,6 +7,7 @@
   <unit_def>
     <id>TK_3</id>
     <name>TK-3</name>
+    <portrait>unit_TK_3.xp</portrait>
     <vehicle/>
     <movement_class>Fast Tank</movement_class>
     <size_class>Very Small</size_class>
@@ -26,6 +27,7 @@
   <unit_def>
     <id>TKS</id>
     <name>TKS</name>
+     <portrait>unit_TKS.xp</portrait>
     <vehicle/>
     <unreliable/>
     <movement_class>Fast Tank</movement_class>
@@ -285,8 +287,8 @@
   <!-- Infantry -->
   
   <unit_def>
-    <id>karabin_pluton</id>
-    <name>Karabin, Pluton</name>
+    <id>polish_rifle_platoon</id>
+    <name>Rifle Platoon</name>
     <infantry/>
     <movement_class>Infantry</movement_class>
     <weapon_list>
@@ -299,8 +301,8 @@
   </unit_def>
   
   <unit_def>
-    <id>km_pluton</id>
-    <name>KM, Pluton</name>
+    <id>polish_hmg_platoon</id>
+    <name>HMG Platoon</name>
     <infantry/>
     <movement_class>Infantry</movement_class>
     <weapon_list>
@@ -314,7 +316,6 @@
   </unit_def>
   
   <!-- German Units -->
-  
   
   <unit_def>
     <infantry/>
@@ -434,9 +435,5 @@
     <movement_class>Wheeled</movement_class>
     <recce/>
   </unit_def>
-  
-  
-  
-  
   
 </root>

@@ -529,13 +529,14 @@ class CommandMenu:
 # Platoon-Sized Group class
 # represents a platoon, squadron, battery, etc.
 class PSG:
-	def __init__(self, name, unit_id, num_steps, facing, owning_player, skill_lvl, morale_lvl):
+	def __init__(self, name, unit_id, num_steps):
 		self.unit_id = unit_id			# unique ID for unit type of this PSG
 		self.name = name			# name, eg. 'Tank Squadron'
 		self.step_name = ''			# name of individual teams / vehicles w/in this PSG
 		self.num_steps = num_steps		# number of unit steps in this PSG
 		self.portrait = None			# portrait filename if any
-		self.ai = None				# pointer to AI instance
+		self.ai = AI(self)			# pointer to AI instance
+		self.owning_player = None		# player that controls this PSG; set later
 		
 		self.hx = 0				# hex location of this PSG, will be set
 		self.hy = 0				#   by SpawnAt()
@@ -546,7 +547,7 @@ class PSG:
 		
 		self.spotted = False			# PSG has been spotted by an enemy unit
 		
-		self.facing = facing			# facing direction for guns and vehicles
+		self.facing = None			# facing direction: guns and vehicles must have this set
 		self.turret = False			# vehicle has a turret
 		
 		self.movement_class = ''		# movement class
@@ -572,11 +573,11 @@ class PSG:
 		
 		self.recce = False			# unit has recce abilities
 		
-		self.owning_player = owning_player	# player that controls this PSG
+		
 		self.display_char = ''			# character to display on map, set below
 		
-		self.skill_lvl = skill_lvl		# skill and morale levels
-		self.morale_lvl = morale_lvl
+		self.skill_lvl = 7			# skill and morale levels; can be set later
+		self.morale_lvl = 7
 		
 		# action flags
 		self.moved = False
@@ -647,9 +648,8 @@ class PSG:
 		
 		return spot_range
 
-	# TODO: turn into a proper spawn function
 	# try to place this PSG into the target hex, if not possible, place in random adjacent hex
-	def SpawnAt(self, hx, hy):
+	def PlaceAt(self, hx, hy):
 		hex_list = [(hx, hy)]
 		adjacent_list = GetAdjacentHexesOnMap(hx, hy)
 		shuffle(adjacent_list)
@@ -662,7 +662,7 @@ class PSG:
 			self.hx = hx1
 			self.hy = hy1
 			return
-		print 'ERROR: unable to spawn PSG into or near ' + str(hx) + ',' + str(hy)
+		print 'ERROR: unable to place PSG into or near ' + str(hx) + ',' + str(hy)
 
 	# return description of PSG
 	# if using real name, transcode it to handle any special characters in it
@@ -833,7 +833,11 @@ class PSG:
 				# movement class
 				self.movement_class = item.find('movement_class').text
 				
-				if self.movement_class == 'Fast Tank':
+				# adjust maximum MP for slow and fast vehicles
+				if self.movement_class == 'Slow Tank':
+					self.max_mp -= 4
+					self.mp = self.max_mp
+				elif self.movement_class == 'Fast Tank':
 					self.max_mp += 4
 					self.mp = self.max_mp
 				
@@ -1258,8 +1262,15 @@ class PSG:
 		# FUTURE: choose location based on terrain modifier and distance from known enemy
 		(hx, hy) = choice(hex_list)
 		self.MoveInto(hx, hy, free_move=True)
-	
-	
+
+
+# spawn a PSG into a scenario
+def SpawnPSG(name, unit_id, num_steps):
+	new_psg = PSG(name, unit_id, num_steps)
+	scenario.psg_list.append(new_psg)
+	return new_psg
+
+
 # Weapon class: represents a weapon carried by or mounted on a unit
 class Weapon:
 	def __init__(self, stats):
@@ -2534,7 +2545,7 @@ def GetMPCostToMove(psg, map_hex1, map_hex2):
 		else:
 			cost = 4
 	
-	elif psg.movement_class in ['Tank', 'Fast Tank']:
+	elif psg.movement_class in ['Slow Tank', 'Tank', 'Fast Tank']:
 		if road:
 			cost = 3
 		elif map_hex2.terrain_type.difficult:
@@ -4119,7 +4130,6 @@ def DoScenario(load_savegame=False):
 		
 		# FUTURE: following will be handled by a Scenario Generator
 		# for now, things are set up manually
-		
 		scenario.battlefront = 'Western Poland'
 		scenario.name = 'Spearhead'
 		scenario.description = ('Your forces have broken through enemy lines, ' +
@@ -4139,30 +4149,40 @@ def DoScenario(load_savegame=False):
 			return
 		
 		# spawn the player PSGs
-		new_psg = PSG('HQ Panzer Squadron', 'Panzer 35t', 5, 0, 0, 5, 5)
-		new_psg.ai = AI(new_psg)
-		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(5, 10)
+		new_psg = SpawnPSG('HQ Panzer Squadron', 'Panzer 35t', 5)
+		new_psg.owning_player = 0
+		new_psg.facing = 0
+		new_psg.skill_lvl = 5
+		new_psg.morale_lvl = 5
+		new_psg.PlaceAt(5, 10)
 		
-		new_psg = PSG('Panzer Squadron', 'Panzer 35t', 5, 0, 0, 5, 5)
-		new_psg.ai = AI(new_psg)
-		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(4, 10)
+		new_psg = SpawnPSG('Panzer Squadron', 'Panzer 35t', 5)
+		new_psg.owning_player = 0
+		new_psg.facing = 0
+		new_psg.skill_lvl = 5
+		new_psg.morale_lvl = 5
+		new_psg.PlaceAt(4, 10)
 		
-		new_psg = PSG('Light Panzer Squadron', 'Panzer II A', 5, 0, 0, 5, 5)
-		new_psg.ai = AI(new_psg)
-		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(6, 9)
+		new_psg = SpawnPSG('Light Panzer Squadron', 'Panzer II A', 5)
+		new_psg.owning_player = 0
+		new_psg.facing = 0
+		new_psg.skill_lvl = 5
+		new_psg.morale_lvl = 5
+		new_psg.PlaceAt(6, 9)
 		
-		new_psg = PSG('Light Panzerspäh Platoon', 'sd_kfz_221', 3, 0, 0, 5, 5)
-		new_psg.ai = AI(new_psg)
-		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(7, 9)
+		new_psg = SpawnPSG('Light Panzerspäh Platoon', 'sd_kfz_221', 3)
+		new_psg.owning_player = 0
+		new_psg.facing = 0
+		new_psg.skill_lvl = 5
+		new_psg.morale_lvl = 5
+		new_psg.PlaceAt(7, 9)
 		
-		new_psg = PSG('Schützen Platoon', 'german_schutzen', 5, 0, 0, 4, 5)
-		new_psg.ai = AI(new_psg)
-		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(8, 8)
+		new_psg = SpawnPSG('Schützen Platoon', 'german_schutzen', 5)
+		new_psg.owning_player = 0
+		new_psg.facing = 0
+		new_psg.skill_lvl = 4
+		new_psg.morale_lvl = 5
+		new_psg.PlaceAt(8, 8)
 		
 		
 		# select the first player PSG
@@ -4173,20 +4193,33 @@ def DoScenario(load_savegame=False):
 		scenario.hex_map.AddObjectiveAt(6, -2)
 		
 		# set up enemy PSGs
-		new_psg = PSG('HQ Tank Squadron', '7TP jw', 3, 3, 1, 4, 4)
-		new_psg.ai = AI(new_psg)
-		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(8, 0)
+		new_psg = SpawnPSG('HQ Tank Squadron', '7TP', 4)
+		new_psg.owning_player = 1
+		new_psg.facing = 3
+		new_psg.skill_lvl = 4
+		new_psg.morale_lvl = 4
+		new_psg.PlaceAt(8, 0)
 		
-		new_psg = PSG('AT Gun Section', '37mm wz. 36', 3, 3, 1, 4, 4)
-		new_psg.ai = AI(new_psg)
-		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(3, 3)
+		new_psg = SpawnPSG('AT Gun Section', '37mm_wz_36', 3)
+		new_psg.owning_player = 1
+		new_psg.facing = 3
+		new_psg.skill_lvl = 4
+		new_psg.morale_lvl = 4
+		new_psg.PlaceAt(3, 3)
 		
-		new_psg = PSG('Piechoty Platoon', 'polish_piechoty', 7, 3, 1, 4, 4)
-		new_psg.ai = AI(new_psg)
-		scenario.psg_list.append(new_psg)
-		new_psg.SpawnAt(6, -2)
+		new_psg = SpawnPSG('Rifle Company', 'polish_rifle_platoon', 7)
+		new_psg.owning_player = 1
+		new_psg.facing = 3
+		new_psg.skill_lvl = 4
+		new_psg.morale_lvl = 4
+		new_psg.PlaceAt(6, -2)
+		
+		new_psg = SpawnPSG('Rifle Company', 'polish_rifle_platoon', 7)
+		new_psg.owning_player = 1
+		new_psg.facing = 3
+		new_psg.skill_lvl = 4
+		new_psg.morale_lvl = 4
+		new_psg.PlaceAt(5, 4)
 		
 		# do initial objective capture
 		for map_hex in scenario.objective_hexes:

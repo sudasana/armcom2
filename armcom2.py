@@ -92,6 +92,25 @@ MAX_LOS_DISTANCE = 13				# maximum distance that a Line of Sight can be drawn
 ELEVATION_M = 20.0				# each elevation level represents x meters of height
 MP_ALLOWANCE = 12				# how many MP each unit has for each Movement phase
 
+# Weapon stat constants, will be tweaked for realism and balance
+# id : display name, long range rating, maximum range, area fire strength, point fire strength
+WEAPON_STATS = {
+	'rifles': ['Rifles', '', 2, 1, 0],
+	'rifles_mgs': ['Rifles and MGs', '', 2, 4, 0],
+	'at_rifle': ['AT Rifle', '', 3, 0, 2],
+	'hmg': ['HMG', '', 3, 6, 2],
+	'vehicle_mg': ['MG', '', 2, 4, 0],
+	'vehicle_mgs' : ['MGs', '', 2, 6, 0],
+	'twin_vehicle_mgs' : ['Twin MGs', '', 2, 8, 0],
+	'vehicle_aa_mg': ['AA MG', '', 2, 4, 0],
+	'vehicle_aa_hmg': ['AA HMG', '', 3, 8, 2],
+	'20L' : ['20mm', 'L', 4, 2, 4],
+	'37' : ['37mm', '', 5, 2, 6],
+	'37L' : ['37mm', 'L', 5, 2, 6],
+	'47' : ['47mm', '', 6, 3, 8]
+}
+
+
 # turn phases, in order
 PHASE_LIST = ['Movement', 'Shooting', 'Close Combat']
 
@@ -548,7 +567,6 @@ class PSG:
 		self.spotted = False			# PSG has been spotted by an enemy unit
 		
 		self.facing = None			# facing direction: guns and vehicles must have this set
-		self.turret = False			# vehicle has a turret
 		
 		self.movement_class = ''		# movement class
 		self.armour = None			# armour factors if any
@@ -571,8 +589,10 @@ class PSG:
 		self.af_target = False			# PSG can be targeted by area fire
 		self.pf_target = False			# " point fire
 		
-		self.recce = False			# unit has recce abilities
+		self.gun_shield = False			# unit has a gun shield
 		
+		self.recce = False			# unit has recce abilities (not used yet)
+		self.unreliable = False			# vehicle unit may suffer breakdowns
 		
 		self.display_char = ''			# character to display on map, set below
 		
@@ -842,13 +862,11 @@ class PSG:
 					self.mp = self.max_mp
 				
 				# weapon info
-				weapon_list = item.find('weapon_list')
+				weapon_list = item.findall('weapon')
 				if weapon_list is not None:
-					weapons = weapon_list.findall('weapon')
-					if weapons is not None:
-						for weapon_item in weapons:
-							new_weapon = SpawnWeapon(weapon_item)
-							self.weapon_list.append(new_weapon)
+					for weapon_item in weapon_list:
+						new_weapon = SpawnWeapon(weapon_item)
+						self.weapon_list.append(new_weapon)
 				
 				# infantry stats if any
 				if item.find('infantry') is not None:
@@ -857,7 +875,6 @@ class PSG:
 				# vehicle stats if any
 				if item.find('vehicle') is not None:
 					self.vehicle = True
-					if item.find('turret') is not None: self.turret = True
 					if item.find('size_class') is not None:
 						self.size_class = item.find('size_class').text
 					else:
@@ -868,6 +885,7 @@ class PSG:
 						self.armour['front'] = int(armour_ratings.find('front').text)
 						self.armour['side'] = int(armour_ratings.find('side').text)
 					if item.find('recce') is not None: self.recce = True
+					if item.find('unreliable') is not None: self.unreliable = True
 				
 				# gun stats
 				elif item.find('gun') is not None:
@@ -880,8 +898,6 @@ class PSG:
 						self.size_class = 'Normal'
 					if item.find('gun_shield') is not None:
 						self.gun_shield = True
-					else:
-						self.gun_shield = False
 				
 				return
 		
@@ -987,7 +1003,7 @@ class PSG:
 			libtcod.black)
 		
 		# determine if we need to display a turret
-		if not self.gun and not self.turret: return
+		if not self.gun and not self.vehicle: return
 		if self.owning_player == 1 and not self.spotted: return
 		
 		# determine location to draw turret character
@@ -1029,6 +1045,20 @@ class PSG:
 			mp_cost = GetMPCostToMove(self, map_hex1, map_hex2)
 			if mp_cost > self.mp: return False
 			
+			# check for unreliable effect
+			if self.unreliable:
+				d1, d2, roll = Roll2D6()
+				if roll <= 3:
+					extra_cost = libtcod.random_get_int(0, 1, 6)
+					if mp_cost + extra_cost > self.mp:
+						extra_cost = self.mp - mp_cost
+					if mp_cost > 0:
+						mp_cost += extra_cost
+						if not (self.owning_player == 1 and not self.spotted):
+							text = self.GetName() + ' suffers a breakdown, +'
+							text += str(extra_cost) + 'MP cost!'
+							Message(self.screen_x, self.screen_y, text)
+						
 			# spend the mp
 			self.mp -= mp_cost
 		
@@ -2166,6 +2196,11 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 					attack_obj.column_modifiers.append(('Very Small Target', -2))
 				elif target.size_class == 'Small':
 					attack_obj.column_modifiers.append(('Small Target', -1))
+		
+		# AF attack, target has gun shield, attack in front facing
+		if attack_obj.area_fire and target.gun and target.gun_shield:
+			if GetFacing(attacker, target) == 'front':
+				attack_obj.column_modifiers.append(('Gun Shield', -2))
 	
 	# AT attack modifiers
 	if attack_obj.at_attack:
@@ -2239,24 +2274,19 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 # spawns a weapon and loads its stats from a given XML item
 def SpawnWeapon(item):
 	stats = {}
-	stats['name'] = item.find('name').text
-	if item.find('area_strength') is None:
-		stats['area_strength'] = 0
-	else:
-		stats['area_strength'] = int(item.find('area_strength').text)
-	if item.find('point_strength') is None:
-		stats['point_strength'] = 0
-	else:
-		stats['point_strength'] = int(item.find('point_strength').text)
-	if item.find('max_range') is None:
-		# guns by default have max range of 1 mile
-		stats['max_range'] = 10
-	else:
-		stats['max_range'] = int(item.find('max_range').text)
-	if item.find('long_range') is None:
-		stats['long_range'] = ''
-	else:
-		stats['long_range'] = item.find('long_range').text
+	
+	# get info from weapon stat constant
+	if item.text not in WEAPON_STATS:
+		print 'ERROR: Could not find stats for weapon type: ' + item.text
+		return
+	
+	stat_list = WEAPON_STATS[item.text]
+	stats['name'] = stat_list[0]
+	stats['long_range'] = stat_list[1]
+	stats['max_range'] = stat_list[2]
+	stats['area_strength'] = stat_list[3]
+	stats['point_strength'] = stat_list[4]
+	
 	return Weapon(stats)
 
 
@@ -4170,7 +4200,7 @@ def DoScenario(load_savegame=False):
 		new_psg.morale_lvl = 5
 		new_psg.PlaceAt(6, 9)
 		
-		new_psg = SpawnPSG('Light Panzerspäh Platoon', 'sd_kfz_221', 3)
+		new_psg = SpawnPSG('Light Panzerspäh Platoon', 'psw_221', 3)
 		new_psg.owning_player = 0
 		new_psg.facing = 0
 		new_psg.skill_lvl = 5
@@ -4193,7 +4223,7 @@ def DoScenario(load_savegame=False):
 		scenario.hex_map.AddObjectiveAt(6, -2)
 		
 		# set up enemy PSGs
-		new_psg = SpawnPSG('HQ Tank Squadron', '7TP', 4)
+		new_psg = SpawnPSG('HQ Tank Squadron', 'Vickers_E_A', 4)
 		new_psg.owning_player = 1
 		new_psg.facing = 3
 		new_psg.skill_lvl = 4

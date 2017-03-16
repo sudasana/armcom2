@@ -15,13 +15,7 @@
       <front>0</front>
       <side>0</side>
     </armour>
-    <weapon_list>
-      <weapon>
-         <name>MG</name>
-         <max_range>2</max_range>
-         <area_strength>4</area_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>vehicle_mg</weapon>
   </unit_def>
   
   <unit_def>
@@ -36,13 +30,7 @@
       <front>1</front>
       <side>0</side>
     </armour>
-    <weapon_list>
-      <weapon>
-         <name>MG</name>
-         <max_range>2</max_range>
-         <area_strength>4</area_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>vehicle_mg</weapon>
   </unit_def>
   
   <unit_def>
@@ -56,15 +44,7 @@
       <front>1</front>
       <side>0</side>
     </armour>
-    <weapon_list>
-      <weapon>
-         <name>20mm</name>
-         <max_range>4</max_range>
-         <area_strength>2</area_strength>
-         <point_strength>4</point_strength>
-         <long_range>L</long_range>
-      </weapon>
-    </weapon_list>
+    <weapon>20L</weapon>
   </unit_def>
   
   <unit_def>
@@ -78,13 +58,7 @@
       <front>1</front>
       <side>0</side>
     </armour>
-    <weapon_list>
-      <weapon>
-         <name>MGs</name>
-         <max_range>2</max_range>
-         <area_strength>6</area_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>vehicle_mgs</weapon>
   </unit_def>
   
   <unit_def>
@@ -98,14 +72,7 @@
       <front>1</front>
       <side>0</side>
     </armour>
-    <weapon_list>
-      <weapon>
-        <name>37mm</name>
-        <max_range>5</max_range>
-        <area_strength>2</area_strength>
-        <point_strength>6</point_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>37</weapon>
   </unit_def>
   
   <unit_def>
@@ -118,19 +85,8 @@
       <front>2</front>
       <side>1</side>
     </armour>
-    <weapon_list>
-      <weapon>
-        <name>47mm</name>
-        <max_range>6</max_range>
-        <area_strength>3</area_strength>
-        <point_strength>8</point_strength>
-      </weapon>
-      <weapon>
-         <name>MG</name>
-         <max_range>2</max_range>
-         <area_strength>4</area_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>47</weapon>
+    <weapon>vehicle_mg</weapon>
   </unit_def>
   
   <unit_def>
@@ -143,13 +99,7 @@
       <front>2</front>
       <side>1</side>
     </armour>
-    <weapon_list>
-      <weapon>
-         <name>Twin MGs</name>
-         <max_range>2</max_range>
-         <area_strength>8</area_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>twin_vehicle_mgs</weapon>
   </unit_def>
   
   <unit_def>
@@ -162,13 +112,7 @@
       <front>2</front>
       <side>1</side>
     </armour>
-    <weapon_list>
-      <weapon>
-         <name>Twin MGs</name>
-         <max_range>2</max_range>
-         <area_strength>8</area_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>twin_vehicle_mgs</weapon>
   </unit_def>
   
   <unit_def>
@@ -181,15 +125,7 @@
       <front>2</front>
       <side>1</side>
     </armour>
-    <weapon_list>
-      <weapon>
-        <name>37mm</name>
-        <max_range>5</max_range>
-        <area_strength>2</area_strength>
-        <point_strength>6</point_strength>
-        <long_range>L</long_range>
-      </weapon>
-    </weapon_list>
+    <weapon>37L</weapon>
   </unit_def>
   
   <!-- Armoured Cars and Other Armed Vehicles -->
@@ -204,13 +140,7 @@
       <front>1</front>
       <side>0</side>
     </armour>
-    <weapon_list>
-      <weapon>
-         <name>MG</name>
-         <max_range>2</max_range>
-         <area_strength>4</area_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>vehicle_mg</weapon>
   </unit_def>
   
   <unit_def>
@@ -223,31 +153,16 @@
       <front>1</front>
       <side>0</side>
     </armour>
-    <weapon_list>
-      <weapon>
-        <name>37mm</name>
-        <max_range>5</max_range>
-        <area_strength>2</area_strength>
-        <point_strength>6</point_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>37</weapon>
   </unit_def>
   
   <unit_def>
-    <id>302t_taczanka</id>
-    <name>302T Taczanka</name>
+    <id>302_taczanka</id>
+    <name>302 Taczanka</name>
     <vehicle/>
     <movement_class>Wheeled</movement_class>
     <size_class>Normal</size_class>
-    <weapon_list>
-      <weapon>
-        <name>AA HMG</name>
-        <max_range>3</max_range>
-        <area_strength>8</area_strength>
-        <point_strength>2</point_strength>
-        <aa/> <!-- for future -->
-      </weapon>
-    </weapon_list>
+    <weapon>vehicle_aa_hmg</weapon>
   </unit_def>
   
   <!-- Guns and Gun Teams -->
@@ -258,15 +173,7 @@
     <gun/>
     <movement_class>Gun</movement_class>
     <size_class>Very Small</size_class>
-    <weapon_list>
-      <weapon>
-        <name>37mm</name>
-        <max_range>5</max_range>
-        <area_strength>2</area_strength>
-        <point_strength>6</point_strength>
-        <long_range>L</long_range>
-      </weapon>
-    </weapon_list>
+    <weapon>37L</weapon>
     <gun_shield/>
   </unit_def>
   
@@ -275,13 +182,7 @@
     <name>Ur. wz. 35</name>
     <infantry/>
     <movement_class>Infantry</movement_class>
-    <weapon_list>
-      <weapon>
-        <name>Anti-Tank Rifle</name>
-        <max_range>3</max_range>
-        <point_strength>2</point_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>at_rifle</weapon>
   </unit_def>
   
   <!-- Infantry -->
@@ -291,13 +192,7 @@
     <name>Rifle Platoon</name>
     <infantry/>
     <movement_class>Infantry</movement_class>
-    <weapon_list>
-      <weapon>         
-         <name>Rifles</name>
-         <max_range>2</max_range>
-         <area_strength>1</area_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>rifles</weapon>
   </unit_def>
   
   <unit_def>
@@ -305,14 +200,7 @@
     <name>HMG Platoon</name>
     <infantry/>
     <movement_class>Infantry</movement_class>
-    <weapon_list>
-      <weapon>         
-         <name>HMG</name>
-         <max_range>3</max_range>
-         <area_strength>6</area_strength>
-         <point_strength>2</point_strength>
-      </weapon>
-    </weapon_list>
+    <weapon>hmg</weapon>
   </unit_def>
   
   <!-- German Units -->
@@ -322,117 +210,65 @@
     <id>german_schutzen</id>
     <name>Schützen Squad</name>
     <movement_class>Infantry</movement_class>
-    <weapon_list>
-      <weapon>         
-         <name>Rifles and MGs</name>
-         <area_strength>4</area_strength>
-         <max_range>2</max_range>
-      </weapon>
-    </weapon_list>
+    <weapon>rifles_mgs</weapon>
   </unit_def>
 
   <unit_def>
     <vehicle/>
-    <turret/>
     <id>Panzer I B</id>
     <name>Panzer I(B)</name>
     <size_class>Small</size_class>
-    <ground_pressure>Light</ground_pressure>
+    <movement_class>Fast Tank</movement_class>
     <armour>
       <front>1</front>
       <side>1</side>
     </armour>
-    <weapon_list>
-      <weapon>
-         <name>Dual MGs</name>
-         <area_strength>8</area_strength>
-         <max_range>2</max_range>
-      </weapon>
-    </weapon_list>
-    <movement_class>Fast Tank</movement_class>
+    <weapon>twin_vehicle_mgs</weapon>
+    
   </unit_def>
   
   <unit_def>
     <vehicle/>
-    <turret/>
     <id>Panzer II A</id>
     <name>Panzer II(A)</name>
     <portrait>unit_pz_II.xp</portrait>
     <size_class>Small</size_class>
-    <ground_pressure>Light</ground_pressure>
+    <movement_class>Fast Tank</movement_class>
     <armour>
       <front>1</front>
       <side>1</side>
     </armour>
-    <weapon_list>
-      <weapon>
-        <name>KwK 30</name>
-        <point_strength>5</point_strength>
-        <area_strength>2</area_strength>
-        <max_range>8</max_range>
-      </weapon>
-      <weapon>
-         <name>MG</name>
-         <area_strength>6</area_strength>
-         <max_range>2</max_range>
-      </weapon>
-    </weapon_list>
-    <movement_class>Fast Tank</movement_class>
-    <protected_ammo/>
+    <weapon>20L</weapon>
+    <weapon>vehicle_mg</weapon>
   </unit_def>
 
   <unit_def>
     <vehicle/>
-    <turret/>
     <id>Panzer 35t</id>
     <name>Panzer 35(t)</name>
     <portrait>unit_pz_35t.xp</portrait>
     <size_class>Small</size_class>
-    <ground_pressure>Light</ground_pressure>
+    <movement_class>Fast Tank</movement_class>
     <armour>
       <front>3</front>
       <side>1</side>
     </armour>
-    <weapon_list>
-      <weapon>
-        <name>KwK 34(t)</name>
-        <point_strength>6</point_strength>
-        <area_strength>3</area_strength>
-        <max_range>8</max_range>
-      </weapon>
-      <weapon>
-         <name>MG</name>
-         <area_strength>6</area_strength>
-         <max_range>2</max_range>
-      </weapon>
-    </weapon_list>
-    <movement_class>Fast Tank</movement_class>
+    <weapon>37</weapon>
+    <weapon>vehicle_mg</weapon>
   </unit_def>
   
   <unit_def>
     <vehicle/>
-    <turret/>
-    <id>sd_kfz_221</id>
-    <name>Sd. Kfz. 221</name>
+    <id>psw_221</id>
+    <name>PSW 221</name>
     <portrait>unit_sd_kfz_221.xp</portrait>
-    <crew_positions>
-      <position>Commander</position>
-      <position>Driver</position>
-    </crew_positions>
+    <movement_class>Wheeled</movement_class>
     <size_class>Small</size_class>
-    <ground_pressure>Light</ground_pressure>
     <armour>
       <front>1</front>
       <side>1</side>
     </armour>
-    <weapon_list>
-      <weapon>
-         <name>MG</name>
-         <area_strength>6</area_strength>
-         <max_range>2</max_range>
-      </weapon>
-    </weapon_list>
-    <movement_class>Wheeled</movement_class>
+    <weapon>vehicle_mg</weapon>
     <recce/>
   </unit_def>
   

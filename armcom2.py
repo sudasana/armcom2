@@ -1511,6 +1511,20 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
+	# procedurally generate an Order of Battle for the AI player
+	def GenerateEnemyOOB(self):
+		
+		psg_type_list = []
+		
+		# TEMP - hardcoded
+		enemy_nation = 'Poland'
+		
+		# load the order of battle definitions XML and build a list of possible PSG types
+		#  for this nation
+		pass
+		
+	
+	
 	# check for scenario end and set up data if so
 	def CheckForEnd(self):
 		
@@ -4222,6 +4236,8 @@ def DoScenario(load_savegame=False):
 		scenario.hex_map.AddObjectiveAt(5, 4)
 		scenario.hex_map.AddObjectiveAt(6, -2)
 		
+		# TODO: generate enemy OOB and spawn into map
+		
 		# set up enemy PSGs
 		new_psg = SpawnPSG('HQ Tank Squadron', 'Vickers_E_A', 4)
 		new_psg.owning_player = 1
@@ -4237,14 +4253,14 @@ def DoScenario(load_savegame=False):
 		new_psg.morale_lvl = 4
 		new_psg.PlaceAt(3, 3)
 		
-		new_psg = SpawnPSG('Rifle Company', 'polish_rifle_platoon', 7)
+		new_psg = SpawnPSG('Rifle Company', 'rifle_squad', 7)
 		new_psg.owning_player = 1
 		new_psg.facing = 3
 		new_psg.skill_lvl = 4
 		new_psg.morale_lvl = 4
 		new_psg.PlaceAt(6, -2)
 		
-		new_psg = SpawnPSG('Rifle Company', 'polish_rifle_platoon', 7)
+		new_psg = SpawnPSG('Rifle Company', 'rifle_squad', 7)
 		new_psg.owning_player = 1
 		new_psg.facing = 3
 		new_psg.skill_lvl = 4

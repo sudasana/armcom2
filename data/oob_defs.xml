@@ -1,0 +1,64 @@
+<root>
+
+  <!-- Poland: September - October 1939 -->
+
+  <nation>
+  
+    <name>Poland</name>
+    <full_name>Second Polish Republic</full_name>
+    <short_form>POL</short_form>
+    <flag_xp>flag_POL.xp</flag_xp>
+    
+    <psg_defs>
+    
+      <!-- Tank Squadrons -->
+    
+      <psg>
+        <name>Tankette Squadron</name>
+        <category>Armoured</category>
+        <unit_id>TKS</unit_id>
+        <min_steps>3</min_steps>
+        <max_steps>5</max_steps>
+        <skill_lvl>4</skill_lvl>
+        <morale_lvl>4</morale_lvl>
+      </psg>
+      
+      <psg>
+        <name>Tank Squadron</name>
+        <category>Armoured</category>
+        <unit_id>7TP</unit_id>
+        <min_steps>3</min_steps>
+        <max_steps>5</max_steps>
+        <skill_lvl>4</skill_lvl>
+        <morale_lvl>4</morale_lvl>
+      </psg>
+      
+      <!-- AT Gun Sections -->
+      
+      <psg>
+        <name>AT Gun Section</name>
+        <category>Gun</category>
+        <unit_id>37mm_wz_36</unit_id>
+        <min_steps>3</min_steps>
+        <max_steps>5</max_steps>
+        <skill_lvl>4</skill_lvl>
+        <morale_lvl>4</morale_lvl>
+      </psg>
+      
+      <!-- Infantry Companies -->
+      
+      <psg>
+        <name>Rifle Company</name>
+        <category>Infantry</category>
+        <unit_id>rifle_squad</unit_id>
+        <min_steps>7</min_steps>
+        <max_steps>12</max_steps>
+        <skill_lvl>5</skill_lvl>
+        <morale_lvl>4</morale_lvl>
+      </psg>
+    
+    </psg_defs>
+  
+  </nation>
+
+</root>

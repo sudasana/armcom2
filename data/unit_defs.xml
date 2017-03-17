@@ -1,5 +1,23 @@
 <root>
 
+  <!-- Generic Units used by many nations -->
+  
+  <unit_def>
+    <id>rifle_squad</id>
+    <name>Rifle Squad</name>
+    <infantry/>
+    <movement_class>Infantry</movement_class>
+    <weapon>rifles</weapon>
+  </unit_def>
+  
+  <unit_def>
+    <id>hmg_team</id>
+    <name>HMG Team</name>
+    <infantry/>
+    <movement_class>Infantry</movement_class>
+    <weapon>hmg</weapon>
+  </unit_def>
+
   <!-- Polish Units -->
   
   <!-- Tanks -->
@@ -187,21 +205,7 @@
   
   <!-- Infantry -->
   
-  <unit_def>
-    <id>polish_rifle_platoon</id>
-    <name>Rifle Platoon</name>
-    <infantry/>
-    <movement_class>Infantry</movement_class>
-    <weapon>rifles</weapon>
-  </unit_def>
   
-  <unit_def>
-    <id>polish_hmg_platoon</id>
-    <name>HMG Platoon</name>
-    <infantry/>
-    <movement_class>Infantry</movement_class>
-    <weapon>hmg</weapon>
-  </unit_def>
   
   <!-- German Units -->
   

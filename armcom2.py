@@ -77,7 +77,7 @@ WINDOW_WIDTH = 83					# width of game window in characters
 WINDOW_HEIGHT = 60					# height "
 WINDOW_XM = int(WINDOW_WIDTH/2)				# horizontal center of game window
 WINDOW_YM = int(WINDOW_HEIGHT/2)			# vertical "
-PI = 3.141592653589793					# good enough for the JPL, good enough for us
+#PI = 3.141592653589793					# good enough for the JPL, good enough for us
 
 # gradient animated effect for main menu
 GRADIENT = [
@@ -646,6 +646,8 @@ class PSG:
 			spot_range = 6
 		else:
 			spot_range = 3
+		
+		if self.recce: spot_range -= 2
 		
 		# protective terrain
 		map_hex = GetHexAt(self.hx, self.hy)
@@ -1401,8 +1403,12 @@ class HexMap:
 		# record map width and height
 		self.w = w
 		self.h = h
-		# list of edge hexes
-		self.edge_hexes = []
+		# lists of hexes along each edge
+		self.top_edge_hexes = []
+		self.right_edge_hexes = []
+		self.bottom_edge_hexes = []
+		self.left_edge_hexes = []
+		
 		# generate map hexes
 		self.hexes = {}
 		for hx in range(w):
@@ -1410,11 +1416,15 @@ class HexMap:
 			hy_end = hy_start + h
 			for hy in range(hy_start, hy_end):
 				self.hexes[(hx,hy)] = MapHex(hx, hy)
-				# add to list if on edge of map
-				if hx == 0 or hx == w-1:
-					self.edge_hexes.append((hx, hy))
-				elif hy == hy_start or hy == hy_end-1:
-					self.edge_hexes.append((hx, hy))
+				# add to edge lists if on edge of map
+				if hx == 0:
+					self.left_edge_hexes.append((hx, hy))
+				elif hx == w-1:
+					self.right_edge_hexes.append((hx, hy))
+				elif hy == hy_start:
+					self.top_edge_hexes.append((hx, hy))
+				elif hy == hy_end-1:
+					self.bottom_edge_hexes.append((hx, hy))
 				
 		self.vp_matrix = {}			# map viewport matrix
 	
@@ -1613,6 +1623,10 @@ class Scenario:
 			DrawScreenConsoles()
 			libtcod.console_flush()
 			
+			# clear both units' acquired targets
+			attacker.ClearAcquiredTargets()
+			target.ClearAcquiredTargets()
+			
 			# if target has been destroyed, take location
 			if target is None:
 				attacker.MoveInto(hx, hy, free_move=True)
@@ -1752,18 +1766,25 @@ class Scenario:
 				libtcod.console_flush()
 				Wait(pause_time)
 			
-			# reset attacker's animation
+			# reset attacker's animation location
 			attacker.anim_x = 0
 			attacker.anim_y = 0
 			UpdateUnitConsole()
 			DrawScreenConsoles()
 			libtcod.console_flush()
-	
+			
+			# recalculate FoV if needed
+			if attacker.owning_player == 0:
+				scenario.hex_map.CalcFoV()
+				UpdateMapFoVConsole()
+				scenario.DoSpotCheck()
+			
+			# check for objective capture
+			map_hex2.CheckCapture()
 	
 	# return a text string for the current turn phase
 	def GetCurrentPhase(self):
 		return PHASE_LIST[self.current_phase]
-	
 	
 	# do enemy AI actions for this phase
 	def DoAIPhase(self):
@@ -1865,6 +1886,9 @@ class Scenario:
 				
 				# calculate spot range for psg2
 				spot_range = psg2.GetSpotRange()
+				# add any bonuses for spotting unit
+				if psg1.recce: spot_range += 2
+				
 				if GetHexDistance(psg1.hx, psg1.hy, psg2.hx, psg2.hy) <= spot_range:
 				
 					# psg2 has been spotted by psg1
@@ -2671,8 +2695,12 @@ def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None, road_path=False):
 			if movement_class is not None:
 				cost = 1
 			
-			# we're create a path for a road
+			# we're creating a path for a road
 			elif road_path:
+				
+				# prefer to use already-existing roads
+				if direction in current.dirt_road_links:
+					cost = -5
 				
 				# prefer to pass through villages if possible
 				if node.terrain_type.display_name == 'Wooden Village':
@@ -2702,7 +2730,7 @@ def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None, road_path=False):
 					node.f = node.g + node.h
 	
 	# no path possible
-	print 'GetHexPath() Error: No path possible'
+	#print 'GetHexPath() Error: No path possible'
 	return []
 
 # Bresenham's Line Algorithm (based on an implementation on the roguebasin wiki)
@@ -2751,11 +2779,11 @@ def GetLine(x1, y1, x2, y2, los=False):
 
 # return the end point of a line starting from x,y with length l and angle a
 # NOT USED RIGHT NOW BUT MAY BE USEFUL IN FUTURE
-def PlotLine(x1, y1, l, a):
-	a = RectifyHeading(a-90)
-	x2 = int(x1 + (l * cos(a*PI/180.0)))
-	y2 = int(y1 + (l * sin(a*PI/180.0))) 
-	return (x2, y2)
+#def PlotLine(x1, y1, l, a):
+#	a = RectifyHeading(a-90)
+#	x2 = int(x1 + (l * cos(a*PI/180.0)))
+#	y2 = int(y1 + (l * sin(a*PI/180.0))) 
+#	return (x2, y2)
 
 
 # wait for a specified amount of miliseconds, refreshing the screen in the meantime
@@ -3174,6 +3202,63 @@ def GenerateTerrain():
 		libtcod.console_flush()
 		Wait(500)
 	
+	# try to create a road from one edge of the map to the other
+	def CreateRoad(vertical=True):
+		
+		road_finished = False
+		while not road_finished:
+		
+			if vertical:
+				hex_list1 = scenario.hex_map.bottom_edge_hexes
+				hex_list2 = scenario.hex_map.top_edge_hexes
+			else:
+				hex_list1 = scenario.hex_map.left_edge_hexes
+				hex_list2 = scenario.hex_map.right_edge_hexes
+			
+			# select start and end hexes
+			good_hex = False
+			while not good_hex:
+				(hx1, hy1) = choice(hex_list1)
+				map_hex = GetHexAt(hx1, hy1)
+				if not map_hex.terrain_type.water:
+					good_hex = True
+			
+			good_hex = False
+			while not good_hex:
+				(hx2, hy2) = choice(hex_list2)
+				map_hex = GetHexAt(hx2, hy2)
+				if not map_hex.terrain_type.water:
+					good_hex = True
+				
+			path = GetHexPath(hx1, hy1, hx2, hy2, road_path=True)
+			
+			# no path was possible
+			if len(path) == 0:
+				continue
+			
+			# create the road
+			for n in range(len(path)):
+				(hx1, hy1) = path[n]
+				if n+1 < len(path):
+					hx2, hy2 = path[n+1]
+					direction = GetDirectionToAdjacent(hx1, hy1, hx2, hy2)
+					map_hex = GetHexAt(hx1, hy1)
+					map_hex.dirt_road_links.append(direction)
+					
+					direction = GetDirectionToAdjacent(hx2, hy2, hx1, hy1)
+					map_hex = GetHexAt(hx2, hy2)
+					map_hex.dirt_road_links.append(direction)
+					
+					if SHOW_TERRAIN_GEN:
+						libtcod.console_clear(0)
+						UpdateMapTerrainConsole()
+						libtcod.console_blit(map_terrain_con, 0, 0, 0, 0, 0, 26, 3)
+						libtcod.console_flush()
+						Wait(80)
+			
+			road_finished = True
+	
+	
 	# create a local list of all hx, hy locations in map
 	map_hex_list = []
 	for key, map_hex in scenario.hex_map.hexes.iteritems():
@@ -3344,27 +3429,16 @@ def GenerateTerrain():
 				continue
 			map_hex.SetTerrainType('Pond')
 			break
-	ShowTerrainGeneration()
+	if num_ponds > 0:
+		ShowTerrainGeneration()
 	
 	##################################################################################
 	#                                   Roads                                        #
 	##################################################################################
 	
-	# add a road running from the bottom to the top of the map
-	# TODO: choose random starting and ending points, avoid starting or ending in a pond
-	
-	path = GetHexPath(5, 10, 8, -4, road_path=True)
-	for n in range(len(path)):
-		(hx1, hy1) = path[n]
-		if n+1 < len(path):
-			hx2, hy2 = path[n+1]
-			direction = GetDirectionToAdjacent(hx1, hy1, hx2, hy2)
-			map_hex = GetHexAt(hx1, hy1)
-			map_hex.dirt_road_links.append(direction)
-			
-			direction = GetDirectionToAdjacent(hx2, hy2, hx1, hy1)
-			map_hex = GetHexAt(hx2, hy2)
-			map_hex.dirt_road_links.append(direction)
+	# add two roads
+	CreateRoad()
+	CreateRoad(vertical=False)
 	
 	ShowTerrainGeneration()
 
@@ -3625,6 +3699,13 @@ def UpdatePSGConsole():
 		else:
 			print 'ERROR: unit portrait not found: ' + psg.portrait
 	
+	# unit special skills
+	libtcod.console_set_default_foreground(psg_con, libtcod.black)
+	if psg.recce:
+		libtcod.console_print(psg_con, 0, 2, 'Recce')
+	
+	libtcod.console_set_default_foreground(psg_con, libtcod.white)
+	
 	# morale and skill levels
 	libtcod.console_set_default_background(psg_con, libtcod.dark_grey)
 	libtcod.console_rect(psg_con, 0, 10, 24, 1, False, libtcod.BKGND_SET)
@@ -3692,12 +3773,6 @@ def UpdatePSGConsole():
 		libtcod.console_print(psg_con, 0, 19, 'Moved')
 	elif psg.changed_facing:
 		libtcod.console_print(psg_con, 0, 19, 'Changed Facing')
-	#elif psg.dug_in:
-	#	libtcod.console_print(psg_con, 0, 19, 'Dug-in')
-	#elif psg.hull_down > -1:
-	#	text = 'HD '
-		# TODO: add directional character
-	#	libtcod.console_print(psg_con, 0, 19, text)
 	
 	# fired last turn
 	if psg.fired:
@@ -3827,8 +3902,8 @@ def UpdateHexInfoConsole():
 				if psg.owning_player == 1 and not psg.spotted:
 					return
 
-				# number of steps in PSG and name of squads/vehicles
-				text = str(psg.num_steps) + ' ' + psg.GetStepName()
+				# name of squads/vehicles and number of steps in PSG
+				text = psg.GetStepName() + ' x' + str(psg.num_steps)
 				libtcod.console_print(hex_info_con, 0, 3+n, text)
 				
 				if psg.suppressed:
@@ -3860,8 +3935,10 @@ def DrawScreenConsoles():
 		if scenario.active_psg.anim_x == 0 and scenario.active_psg.anim_y == 0:
 		
 			for (xm, ym) in HEX_EDGE_TILES:
-				libtcod.console_set_char_foreground(con, scenario.active_psg.screen_x+xm,
-					scenario.active_psg.screen_y+ym, SELECTED_HL_COL)
+				x = scenario.active_psg.screen_x+xm
+				y = scenario.active_psg.screen_y+ym
+				if libtcod.console_get_char(con, x, y) == 250:
+					libtcod.console_set_char_foreground(con, x, y, SELECTED_HL_COL)
 	
 		# highlight targeted PSG if any
 		psg = scenario.active_psg.target_psg
@@ -4184,7 +4261,7 @@ def DoScenario(load_savegame=False):
 		scenario.month = 9
 		scenario.hour = 5
 		scenario.minute = 0
-		scenario.hour_limit = 10
+		scenario.hour_limit = 12
 		scenario.minute_limit = 0
 		
 		# display scenario info: chance to cancel scenario start
@@ -4321,10 +4398,19 @@ def DoScenario(load_savegame=False):
 			DrawScreenConsoles()
 		
 		##### Mouse Commands #####
-		#if mouse.rbutton:
-			
+		if mouse.lbutton:
+			x = mouse.cx - 26
+			y = mouse.cy - 3
+			if (x,y) in scenario.map_index:
+				(hx, hy) = scenario.map_index[(x,y)]
+				for psg in scenario.psg_list:
+					if psg.owning_player == 1: continue
+					if psg.hx == hx and psg.hy == hy:
+						scenario.active_psg = psg
+						DrawScreenConsoles()
+						continue
 		
-		#elif mouse.lbutton:
+		#elif mouse.rbutton:
 		
 		# open scenario menu screen
 		if key.vk == libtcod.KEY_ESCAPE:
@@ -4365,6 +4451,8 @@ def DoScenario(load_savegame=False):
 			key_char = chr(key.c).lower()
 			if key_char == 'g':
 				GenerateTerrain()
+				scenario.hex_map.CalcFoV()
+				UpdateMapFoVConsole()
 				UpdateScreen()
 				continue
 		

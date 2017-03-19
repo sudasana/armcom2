@@ -1803,10 +1803,18 @@ class Scenario:
 				text = attacker.GetName() + ' attacks in close combat'
 				Message(attacker.screen_x, attacker.screen_y, text)
 				attack_list = attacker.ai.GetBestAttacks(target)
+				
+				if attack_list is None:
+					text = 'Attacker cannot damage ' + target.GetName() + ' and must break off'
+					Message(attacker.screen_x, attacker.screen_y, text)
+					attacker_won = False
+					exit_attack = True
+					continue
+				
+				# pick best attack and do it
 				sorted(attack_list,key=itemgetter(0))
 				(final_column, weapon, null, area_fire, at_attack) = attack_list[0]
 				InitAttack(attacker, weapon, target, area_fire, at_attack=at_attack)
-				
 				
 				# if defender is dead, exit
 				if target not in scenario.psg_list:
@@ -1827,6 +1835,15 @@ class Scenario:
 				text = target.GetName() + ' attacks in close combat'
 				Message(target.screen_x, target.screen_y, text)
 				attack_list = target.ai.GetBestAttacks(attacker)
+				
+				if attack_list is None:
+					text = target.GetName() + ' cannot damage attacker and must withdraw'
+					Message(target.screen_x, target.screen_y, text)
+					target.RetreatToSafety()
+					exit_attack = True
+					continue
+				
+				# pick best attack and do it
 				sorted(attack_list,key=itemgetter(0))
 				(final_column, weapon, null, area_fire, at_attack) = attack_list[0]
 				InitAttack(target, weapon, attacker, area_fire, at_attack=at_attack)
@@ -2102,6 +2119,8 @@ class Scenario:
 				if mp_cost > scenario.active_psg.mp:
 					menu_option.inactive = True
 					menu_option.desc = 'Not enough MP'
+					
+				# TODO: check that this unit could damage unit it's trying to assault
 			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
@@ -4466,6 +4485,8 @@ def DoScenario(load_savegame=False):
 					if psg.owning_player == 1: continue
 					if psg.hx == hx and psg.hy == hy:
 						scenario.active_psg = psg
+						UpdatePSGConsole()
+						scenario.BuildCmdMenu()
 						DrawScreenConsoles()
 						continue
 		

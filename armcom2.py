@@ -558,9 +558,10 @@ class PSG:
 		self.portrait = None			# portrait filename if any
 		self.ai = AI(self)			# pointer to AI instance
 		self.owning_player = None		# player that controls this PSG; set later
+		self.op_value = 0			# operations point value
 		
-		self.hx = 0				# hex location of this PSG, will be set
-		self.hy = 0				#   by SpawnAt()
+		self.hx = -1				# hex location of this PSG, will be set
+		self.hy = -1				#   by PlaceAt()
 		self.screen_x = 0			# draw location on the screen
 		self.screen_y = 0			#   set by DrawMe()
 		self.anim_x = 0				# animation location in console
@@ -902,6 +903,10 @@ class PSG:
 						self.size_class = 'Normal'
 					if item.find('gun_shield') is not None:
 						self.gun_shield = True
+				
+				# OP value set for entire unit
+				if item.find('op_value') is not None:
+					self.op_value = self.num_steps * int(item.find('op_value').text)
 				
 				return
 		
@@ -1526,15 +1531,110 @@ class Scenario:
 	# procedurally generate an Order of Battle for the AI player
 	def GenerateEnemyOOB(self):
 		
-		psg_type_list = []
+		psg_type_lists = {
+			'Tank': [],
+			'Gun': [],
+			'Infantry': [],
+			'Armoured Car': []
+		}
+		enemy_oob = []
 		
 		# TEMP - hardcoded
 		enemy_nation = 'Poland'
+		oob_op_budget = 400
+		spawn_chances = {
+			'Tank': 40,
+			'Gun': 30,
+			'Infantry': 20,
+			'Armoured Car': 10
+		}
 		
 		# load the order of battle definitions XML and build a list of possible PSG types
 		#  for this nation
-		pass
+		psg_defs_item = None
+		root = xml.parse(DATAPATH + 'oob_defs.xml')
+		nation_list = root.findall('nation')
+		for item in nation_list:
+			if item.find('name').text == enemy_nation:
+				psg_defs_item = item.find('psg_defs')
+				break
 		
+		# could not find nation
+		if psg_defs_item is None:
+			print 'ERROR: Could not find PSG type definitions for nation: ' + enemy_nation
+			return
+		
+		for item in psg_defs_item.findall('psg'):
+			new_psg = {}
+			new_psg['name'] = item.find('name').text
+			category = item.find('category').text
+			new_psg['category'] = category
+			new_psg['unit_id'] = item.find('unit_id').text
+			new_psg['min_steps'] = int(item.find('min_steps').text)
+			new_psg['max_steps'] = int(item.find('max_steps').text)
+			new_psg['skill_lvl'] = int(item.find('skill_lvl').text)
+			new_psg['morale_lvl'] = int(item.find('morale_lvl').text)
+			psg_type_lists[category].append(new_psg)
+		
+		# start selecting units until point limit is reached
+		for tries in range(100):
+			
+			# randomly select a category of unit
+			roll = libtcod.random_get_int(0, 1, 100)
+			for key, value in spawn_chances.iteritems():
+				if roll <= value:
+					category = key
+					break
+				roll -= value
+			
+			psg_type = choice(psg_type_lists[category])
+			num_steps = libtcod.random_get_int(0, psg_type['min_steps'],
+				psg_type['max_steps'])
+			
+			new_psg = PSG(psg_type['name'], psg_type['unit_id'], num_steps)
+			
+			# not enough points remaining for this unit, skip
+			if oob_op_budget < new_psg.op_value:
+				del new_psg
+				continue
+			
+			new_psg.owning_player = 1
+			new_psg.facing = 3
+			new_psg.skill_lvl = psg_type['skill_lvl']
+			new_psg.morale_lvl = psg_type['morale_lvl']
+			
+			enemy_oob.append(new_psg)
+			
+			oob_op_budget -= new_psg.op_value
+			
+			#print ('DEBUG: spawned a ' + psg_type['name'] + ' unit with ' + 
+			#	str(num_steps) + ' steps worth ' + str(new_psg.op_value) +
+			#	' points')
+		
+		# add the list of enemy units into the scenario
+		self.psg_list.extend(enemy_oob)
+		
+		# place units into map w/ PlaceAt()
+		for psg in enemy_oob:
+			
+			# if infantry or gun, try to place into an objective first
+			if psg.infantry or psg.gun:
+				for map_hex in self.objective_hexes:
+					if map_hex.IsOccupied() == -1:
+						psg.PlaceAt(map_hex.hx, map_hex.hy)
+						break
+			# placment on objective was a success
+			if psg.hx != -1 or psg.hy != -1:
+				continue
+			
+			# choose a random map hex
+			for tries in range(300):
+				(hx, hy) = choice(self.hex_map.hexes.keys())
+				# too close to bottom edge
+				if hy + 6 >= 0 - hx//2 + self.hex_map.h:
+					continue
+				psg.PlaceAt(hx, hy)
+				break
 	
 	
 	# check for scenario end and set up data if so
@@ -4300,36 +4400,8 @@ def DoScenario(load_savegame=False):
 		scenario.hex_map.AddObjectiveAt(5, 4)
 		scenario.hex_map.AddObjectiveAt(6, -2)
 		
-		# TODO: generate enemy OOB and spawn into map
-		
-		# set up enemy PSGs
-		new_psg = SpawnPSG('HQ Tank Squadron', 'Vickers_E_A', 4)
-		new_psg.owning_player = 1
-		new_psg.facing = 3
-		new_psg.skill_lvl = 4
-		new_psg.morale_lvl = 4
-		new_psg.PlaceAt(8, 0)
-		
-		new_psg = SpawnPSG('AT Gun Section', '37mm_wz_36', 3)
-		new_psg.owning_player = 1
-		new_psg.facing = 3
-		new_psg.skill_lvl = 4
-		new_psg.morale_lvl = 4
-		new_psg.PlaceAt(3, 3)
-		
-		new_psg = SpawnPSG('Rifle Company', 'rifle_squad', 7)
-		new_psg.owning_player = 1
-		new_psg.facing = 3
-		new_psg.skill_lvl = 4
-		new_psg.morale_lvl = 4
-		new_psg.PlaceAt(6, -2)
-		
-		new_psg = SpawnPSG('Rifle Company', 'rifle_squad', 7)
-		new_psg.owning_player = 1
-		new_psg.facing = 3
-		new_psg.skill_lvl = 4
-		new_psg.morale_lvl = 4
-		new_psg.PlaceAt(5, 4)
+		# generate enemy OOB and spawn into map
+		scenario.GenerateEnemyOOB()
 		
 		# do initial objective capture
 		for map_hex in scenario.objective_hexes:

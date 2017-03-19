@@ -15,7 +15,7 @@
     
       <psg>
         <name>Tankette Squadron</name>
-        <category>Armoured</category>
+        <category>Tank</category>
         <unit_id>TKS</unit_id>
         <min_steps>3</min_steps>
         <max_steps>5</max_steps>
@@ -25,7 +25,7 @@
       
       <psg>
         <name>Tank Squadron</name>
-        <category>Armoured</category>
+        <category>Tank</category>
         <unit_id>7TP</unit_id>
         <min_steps>3</min_steps>
         <max_steps>5</max_steps>
@@ -54,6 +54,18 @@
         <min_steps>7</min_steps>
         <max_steps>12</max_steps>
         <skill_lvl>5</skill_lvl>
+        <morale_lvl>4</morale_lvl>
+      </psg>
+      
+      <!-- Armoured Car Squadrons -->
+      
+      <psg>
+        <name>Recce Squadron</name>
+        <category>Armoured Car</category>
+        <unit_id>wz_34_mg</unit_id>
+        <min_steps>2</min_steps>
+        <max_steps>4</max_steps>
+        <skill_lvl>4</skill_lvl>
         <morale_lvl>4</morale_lvl>
       </psg>
     

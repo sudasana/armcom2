@@ -8,6 +8,7 @@
     <infantry/>
     <movement_class>Infantry</movement_class>
     <weapon>rifles</weapon>
+    <op_value>5</op_value>
   </unit_def>
   
   <unit_def>
@@ -16,6 +17,7 @@
     <infantry/>
     <movement_class>Infantry</movement_class>
     <weapon>hmg</weapon>
+    <op_value>9</op_value>
   </unit_def>
 
   <!-- Polish Units -->
@@ -27,6 +29,7 @@
     <name>TK-3</name>
     <portrait>unit_TK_3.xp</portrait>
     <vehicle/>
+    <unreliable/>
     <movement_class>Fast Tank</movement_class>
     <size_class>Very Small</size_class>
     <armour>
@@ -34,6 +37,7 @@
       <side>0</side>
     </armour>
     <weapon>vehicle_mg</weapon>
+    <op_value>18</op_value>
   </unit_def>
   
   <unit_def>
@@ -41,7 +45,6 @@
     <name>TKS</name>
      <portrait>unit_TKS.xp</portrait>
     <vehicle/>
-    <unreliable/>
     <movement_class>Fast Tank</movement_class>
     <size_class>Very Small</size_class>
     <armour>
@@ -49,13 +52,13 @@
       <side>0</side>
     </armour>
     <weapon>vehicle_mg</weapon>
+    <op_value>20</op_value>
   </unit_def>
   
   <unit_def>
     <id>TKS_20mm</id>
     <name>TKS (20mm)</name>
     <vehicle/>
-    <unreliable/>
     <movement_class>Fast Tank</movement_class>
     <size_class>Very Small</size_class>
     <armour>
@@ -63,6 +66,7 @@
       <side>0</side>
     </armour>
     <weapon>20L</weapon>
+    <op_value>22</op_value>
   </unit_def>
   
   <unit_def>
@@ -77,6 +81,7 @@
       <side>0</side>
     </armour>
     <weapon>vehicle_mgs</weapon>
+    <op_value>18</op_value>
   </unit_def>
   
   <unit_def>
@@ -91,6 +96,7 @@
       <side>0</side>
     </armour>
     <weapon>37</weapon>
+    <op_value>20</op_value>
   </unit_def>
   
   <unit_def>
@@ -105,6 +111,7 @@
     </armour>
     <weapon>47</weapon>
     <weapon>vehicle_mg</weapon>
+    <op_value>33</op_value>
   </unit_def>
   
   <unit_def>
@@ -118,6 +125,7 @@
       <side>1</side>
     </armour>
     <weapon>twin_vehicle_mgs</weapon>
+    <op_value>30</op_value>
   </unit_def>
   
   <unit_def>
@@ -131,6 +139,7 @@
       <side>1</side>
     </armour>
     <weapon>twin_vehicle_mgs</weapon>
+    <op_value>27</op_value>
   </unit_def>
   
   <unit_def>
@@ -144,6 +153,7 @@
       <side>1</side>
     </armour>
     <weapon>37L</weapon>
+    <op_value>33</op_value>
   </unit_def>
   
   <!-- Armoured Cars and Other Armed Vehicles -->
@@ -159,6 +169,8 @@
       <side>0</side>
     </armour>
     <weapon>vehicle_mg</weapon>
+    <recce/>
+    <op_value>19</op_value>
   </unit_def>
   
   <unit_def>
@@ -172,6 +184,8 @@
       <side>0</side>
     </armour>
     <weapon>37</weapon>
+    <recce/>
+    <op_value>22</op_value>
   </unit_def>
   
   <unit_def>
@@ -181,6 +195,7 @@
     <movement_class>Wheeled</movement_class>
     <size_class>Normal</size_class>
     <weapon>vehicle_aa_hmg</weapon>
+    <op_value>17</op_value>
   </unit_def>
   
   <!-- Guns and Gun Teams -->
@@ -193,6 +208,7 @@
     <size_class>Very Small</size_class>
     <weapon>37L</weapon>
     <gun_shield/>
+    <op_value>20</op_value>
   </unit_def>
   
   <unit_def>
@@ -201,10 +217,8 @@
     <infantry/>
     <movement_class>Infantry</movement_class>
     <weapon>at_rifle</weapon>
+    <op_value>5</op_value>
   </unit_def>
-  
-  <!-- Infantry -->
-  
   
   
   <!-- German Units -->

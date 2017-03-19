@@ -71,7 +71,7 @@ SHOW_TERRAIN_GEN = False			# display terrain generation in progress
 
 
 NAME = 'Armoured Commander II'
-VERSION = 'Proof of Concept'				# determines saved game compatability
+VERSION = 'Proof of Concept 2'				# determines saved game compatability
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -3066,11 +3066,11 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 	libtcod.console_flush()
 	
 	# display appropriate attack animation
-	if weapon.stats['class'] == 'gun':
-		GunAttackAnimation(attack_obj)
-	elif weapon.stats['class'] == 'mg':
-		MGAttackAnimation(attack_obj)
-	
+	if not at_attack:
+		if weapon.stats['class'] == 'gun':
+			GunAttackAnimation(attack_obj)
+		elif weapon.stats['class'] == 'mg':
+			MGAttackAnimation(attack_obj)
 	
 	# resolve attack
 	target.ResolveAttack(attack_obj)

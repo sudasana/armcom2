@@ -21,6 +21,7 @@ If not, see <http://www.gnu.org/licenses/>.
 xp_loader.py is covered under a MIT License (MIT) and is Copyright (c) 2015
 Sean Hagar; see XpLoader_LICENSE.txt for more info.
 
+Full source code is available at: https://github.com/sudasana/armcom2
 
 To run armcom2.py, you will need:
 

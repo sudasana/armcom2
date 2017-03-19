@@ -49,12 +49,14 @@ from operator import itemgetter
 from textwrap import wrap				# for breaking up strings
 from math import floor, cos, sin, sqrt			# for math
 from math import degrees, atan2, ceil			# for heading calculation
-
 import shelve						# for saving and loading games
-#import dbhash, anydbm					# needed for py2exe
 import os, sys						# for OS-related stuff
 import xp_loader, gzip					# for loading xp image files
 import xml.etree.ElementTree as xml			# ElementTree library for xml
+
+# needed for py2exe
+import dbhash, anydbm					
+from encodings import hex_codec, ascii, utf_8, cp850
 
 
 
@@ -69,7 +71,7 @@ SHOW_TERRAIN_GEN = False			# display terrain generation in progress
 
 
 NAME = 'Armoured Commander II'
-VERSION = 'Alpha 1'					# determines saved game compatability
+VERSION = 'Proof of Concept'				# determines saved game compatability
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -95,19 +97,19 @@ MP_ALLOWANCE = 12				# how many MP each unit has for each Movement phase
 # Weapon stat constants, will be tweaked for realism and balance
 # id : display name, long range rating, maximum range, area fire strength, point fire strength
 WEAPON_STATS = {
-	'rifles': ['Rifles', '', 2, 1, 0],
-	'rifles_mgs': ['Rifles and MGs', '', 2, 4, 0],
-	'at_rifle': ['AT Rifle', '', 3, 0, 2],
-	'hmg': ['HMG', '', 3, 6, 2],
-	'vehicle_mg': ['MG', '', 2, 4, 0],
-	'vehicle_mgs' : ['MGs', '', 2, 6, 0],
-	'twin_vehicle_mgs' : ['Twin MGs', '', 2, 8, 0],
-	'vehicle_aa_mg': ['AA MG', '', 2, 4, 0],
-	'vehicle_aa_hmg': ['AA HMG', '', 3, 8, 2],
-	'20L' : ['20mm', 'L', 4, 2, 4],
-	'37' : ['37mm', '', 5, 2, 6],
-	'37L' : ['37mm', 'L', 5, 2, 6],
-	'47' : ['47mm', '', 6, 3, 8]
+	'rifles': ['Rifles', '', 2, 1, 0, 'small_arms'],
+	'rifles_mgs': ['Rifles and MGs', '', 2, 4, 0, 'small_arms'],
+	'at_rifle': ['AT Rifle', '', 3, 0, 2, 'gun'],
+	'hmg': ['HMG', '', 3, 6, 2, 'mg'],
+	'vehicle_mg': ['MG', '', 2, 4, 0, 'mg'],
+	'vehicle_mgs' : ['MGs', '', 2, 6, 0, 'mg'],
+	'twin_vehicle_mgs' : ['Twin MGs', '', 2, 8, 0, 'mg'],
+	'vehicle_aa_mg': ['AA MG', '', 2, 4, 0, 'mg'],
+	'vehicle_aa_hmg': ['AA HMG', '', 3, 8, 2, 'mg'],
+	'20L' : ['20mm', 'L', 4, 2, 4, 'gun'],
+	'37' : ['37mm', '', 4, 4, 4, 'gun'],
+	'37L' : ['37mm', 'L', 5, 2, 6, 'gun'],
+	'47' : ['47mm', '', 6, 3, 8, 'gun']
 }
 
 
@@ -411,9 +413,9 @@ class MenuOption:
 
 		# wrap option text
 		# calculate total length of first line
-		width = len(self.key_code) + 1 + len(self.option_text)
+		width = len(self.key_code) + 6 + len(self.option_text)
 		if width > 23:
-			wrap_w = 23 - (len(self.key_code) + 1)
+			wrap_w = 23 - (len(self.key_code) + 6)
 			self.option_text_lines = wrap(self.option_text, wrap_w)
 		else:
 			self.option_text_lines = [self.option_text]
@@ -1780,7 +1782,7 @@ class Scenario:
 				scenario.DoSpotCheck()
 			
 			# check for objective capture
-			map_hex2.CheckCapture()
+			GetHexAt(attacker.hx, attacker.hy).CheckCapture()
 	
 	# return a text string for the current turn phase
 	def GetCurrentPhase(self):
@@ -2324,6 +2326,7 @@ def SpawnWeapon(item):
 	stats['max_range'] = stat_list[2]
 	stats['area_strength'] = stat_list[3]
 	stats['point_strength'] = stat_list[4]
+	stats['class'] = stat_list[5]
 	
 	return Weapon(stats)
 
@@ -3053,17 +3056,21 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 	if attacker.owning_player == 0 and distance > 0 and cancel_attack:
 		return
 	
+	# set fired flag and clear the selected target
+	attacker.fired = True
+	attacker.target_psg = None
+	
 	# clear any LoS drawn above from screen, but keep attack console visible
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_blit(attack_con, 0, 0, 0, 0, 0, 0, 3)
 	libtcod.console_flush()
 	
-	# TODO: display attack animation
+	# display appropriate attack animation
+	if weapon.stats['class'] == 'gun':
+		GunAttackAnimation(attack_obj)
+	elif weapon.stats['class'] == 'mg':
+		MGAttackAnimation(attack_obj)
 	
-	
-	# set fired flag and clear the selected target
-	attacker.fired = True
-	attacker.target_psg = None
 	
 	# resolve attack
 	target.ResolveAttack(attack_obj)
@@ -3448,33 +3455,26 @@ def GenerateTerrain():
 #                                 Scenario Animations                                    #
 ##########################################################################################
 
-# show an ordinance attack firing animation
-def OrdAttackAnimation(attack_obj):
+# TODO: combine into one function
+
+# display a gun projectile fire animation
+def GunAttackAnimation(attack_obj):
 	
-	# redraw screen consoles to clear any old GUI display
-	DrawScreenConsoles()
-	if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
-	libtcod.console_flush()
-	
-	# use draw locations, but we'll be drawing to the GUI console so
-	#   modify by -30, -1
-	x1, y1 = attack_obj.attacker.screen_x-30, attack_obj.attacker.screen_y-1
-	x2, y2 = attack_obj.target.screen_x-30, attack_obj.target.screen_y-1
+	# use draw locations, but we'll be drawing to the GUI console so modify
+	x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
+	x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
 	
 	# projectile animation
 	line = GetLine(x1, y1, x2, y2, los=True)
 	
-	pause_time = config.getint('ArmCom2', 'animation_speed')
+	pause_time = config.getint('ArmCom2', 'animation_speed') * 3
 	pause_time2 = int(pause_time / 2)
 	
 	for (x, y) in line:
 		UpdateGUIConsole()
-		libtcod.console_put_char_ex(map_gui_con, x, y, 250,
-			libtcod.white, libtcod.black)
+		libtcod.console_put_char_ex(map_gui_con, x, y, 250, libtcod.white, libtcod.black)
 		DrawScreenConsoles()
-		if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
-			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
 		libtcod.console_flush()
 		Wait(pause_time)
 	
@@ -3486,8 +3486,7 @@ def OrdAttackAnimation(attack_obj):
 		libtcod.console_put_char_ex(map_gui_con, x, y, '*',
 			col, libtcod.black)
 		DrawScreenConsoles()
-		if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
-			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
 		libtcod.console_flush()
 		Wait(pause_time2)
 		
@@ -3496,41 +3495,29 @@ def OrdAttackAnimation(attack_obj):
 	libtcod.console_flush()
 
 
-# show a small arms / MG firing animation
-def IFTAttackAnimation(attack_obj):
+# display an MG fire animation
+def MGAttackAnimation(attack_obj):
 	
-	# redraw screen consoles to clear any old GUI display
-	DrawScreenConsoles()
-	if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
-	libtcod.console_flush()
-	
-	# use draw locations, but we'll be drawing to the GUI console so
-	#   modify by -30, -1
-	x1, y1 = attack_obj.attacker.screen_x-30, attack_obj.attacker.screen_y-1
-	x2, y2 = attack_obj.target.screen_x-30, attack_obj.target.screen_y-1
+	# use draw locations, but we'll be drawing to the GUI console so modify
+	x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
+	x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
 	
 	line = GetLine(x1, y1, x2, y2, los=True)
 	
-	# TODO: different animation depending on weapon class (MG / SA)
-	
-	pause_time = config.getint('ArmCom2', 'animation_speed')
+	pause_time = config.getint('ArmCom2', 'animation_speed') * 2
 	
 	for i in range(20):
 		(x,y) = choice(line[:-1])
 		libtcod.console_clear(map_gui_con)
-		libtcod.console_put_char_ex(map_gui_con, x, y, 250,
-			libtcod.red, libtcod.black)
+		libtcod.console_put_char_ex(map_gui_con, x, y, 250, libtcod.red, libtcod.black)
 		DrawScreenConsoles()
-		if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
-			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
 		libtcod.console_flush()
 		Wait(pause_time)
 	
 	libtcod.console_clear(map_gui_con)
 	DrawScreenConsoles()
-	if attack_obj.attacker == scenario.player_psg or attack_obj.target == scenario.player_psg:
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
+	libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
 	libtcod.console_flush()
 
 
@@ -3946,7 +3933,7 @@ def DrawScreenConsoles():
 			libtcod.console_set_char_background(con, psg.screen_x, psg.screen_y,
 				TARGET_HL_COL, flag=libtcod.BKGND_SET)
 			
-			# DEBUG - show LoS hexes
+			# TEMP - show LoS hexes
 			#los_line = GetLoS(scenario.active_psg.hx, scenario.active_psg.hy,
 			#	psg.hx, psg.hy)
 			
@@ -4657,10 +4644,18 @@ del tank_image
 
 libtcod.console_blit(main_menu_image, 0, 0, 88, 60, main_menu_con, 0, 0)
 libtcod.console_set_default_foreground(main_menu_con, libtcod.black)
-libtcod.console_print_ex(main_menu_con, WINDOW_WIDTH-1, 0, libtcod.BKGND_NONE, libtcod.RIGHT, VERSION + SUBVERSION)
+libtcod.console_print_ex(main_menu_con, WINDOW_WIDTH-1, 0, libtcod.BKGND_NONE, libtcod.RIGHT,
+	VERSION + SUBVERSION)
+
+libtcod.console_set_default_foreground(main_menu_con, libtcod.red)
+libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-17,
+	libtcod.BKGND_NONE, libtcod.CENTER, 'NOTE: This is an incomplete, proof-of-concept version')
+libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-16,
+	libtcod.BKGND_NONE, libtcod.CENTER, 'intended only to demonstrate the core gameplay of the game')
+
 libtcod.console_set_default_foreground(main_menu_con, libtcod.light_grey)
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-4,
-	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2016-2017' )
+	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2016-2017')
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-3,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'Free Software under the GNU GPL')
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-2,
@@ -4728,7 +4723,7 @@ def AnimateScreen():
 def UpdateScreen():
 	libtcod.console_blit(main_menu_con, 0, 0, 88, 60, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
-	active_menu.DisplayMe(0, WINDOW_XM-10, 36, 18)
+	active_menu.DisplayMe(0, WINDOW_XM-12, 36, 24)
 	
 	# settings menu active
 	if active_menu == menus[1]:

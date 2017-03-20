@@ -1727,7 +1727,8 @@ class Scenario:
 			
 			# clear both units' acquired targets
 			attacker.ClearAcquiredTargets()
-			target.ClearAcquiredTargets()
+			if target is not None:
+				target.ClearAcquiredTargets()
 			
 			# if target has been destroyed, take location
 			if target is None:

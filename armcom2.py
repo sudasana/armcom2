@@ -36,7 +36,7 @@
 
 ##########################################################################################
 #                                                                                        #
-#      The author does not condone any of the actions or ideologies depicted herein      #
+#       The author does not condone any of the events or ideologies depicted herein      #
 #                                                                                        #
 ##########################################################################################
 
@@ -227,6 +227,56 @@ MIN_AP_DIFF = -2
 ##########################################################################################
 #                                         Classes                                        #
 ##########################################################################################
+
+# animation handler
+# keeps track of animations in progress and updates the animation console layer
+class AnimHandler:
+	def __init__(self):
+		
+		# TEMP testing rain animation effect
+		#self.raindrops = []
+		#for i in range(20):
+		#	x = libtcod.random_get_int(0, 0, 56)
+		#	y = libtcod.random_get_int(0, 0, 56)
+		#	lifetime = libtcod.random_get_int(0, 4, 7)
+		#	self.raindrops.append([x, y, lifetime])
+		
+		self.update_timer = time.time()
+	
+	# update animation statuses and animation console
+	def Update(self):
+		
+		# TEMP
+		return
+		
+		# not time to update yet
+		if time.time() - self.update_timer <= 0.1: return False
+		
+		self.update_timer = time.time()
+		
+		# update raindrop position and lifetime
+		for drop in self.raindrops:
+			drop[0] += 1
+			drop[1] += 1
+			drop[2] -= 1
+			if drop[0] > 56 or drop[1] > 56 or drop[2] == 0:
+				# reposition as new raindrop
+				drop[0] = libtcod.random_get_int(0, 0, 56)
+				drop[1] = libtcod.random_get_int(0, 0, 56)
+				drop[2] = libtcod.random_get_int(0, 4, 7)
+		
+		# draw to console
+		libtcod.console_clear(anim_con)
+		for drop in self.raindrops:
+			if drop[2] == 1:
+				char = '*'
+			else:
+				char = chr(92)
+			libtcod.console_put_char_ex(anim_con, drop[0], drop[1], char,
+				libtcod.light_blue, libtcod.black)
+		
+		return True
+
 
 # AI: used to determine actions of non-player-controlled units
 class AI:
@@ -1490,6 +1540,8 @@ class HexMap:
 # on creation, also set the map size
 class Scenario:
 	def __init__(self, map_w, map_h):
+		
+		self.anim = AnimHandler()		# animation handler
 		
 		self.map_index = {}			# dictionary of console locations that
 							#   correspond to map hexes
@@ -4034,6 +4086,7 @@ def DrawScreenConsoles():
 	libtcod.console_blit(map_gui_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# map GUI layer
 
 	# highlight selected PSG if any
+	# TODO: integrate into GUI console?
 	if scenario.active_psg is not None:
 		libtcod.console_set_char_background(con, scenario.active_psg.screen_x,
 			scenario.active_psg.screen_y, SELECTED_HL_COL, flag=libtcod.BKGND_SET)
@@ -4070,6 +4123,8 @@ def DrawScreenConsoles():
 			for (x, y) in line[2:-1]:
 				libtcod.console_set_char(con, x, y, 250)
 				libtcod.console_set_char_foreground(con, x, y, libtcod.red)
+	
+	libtcod.console_blit(anim_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# animation layer
 	
 	# left column consoles
 	libtcod.console_blit(psg_con, 0, 0, 0, 0, con, 1, 4)
@@ -4246,7 +4301,7 @@ def DoScenario(load_savegame=False):
 	global scenario, terrain_types
 	# screen consoles
 	global scen_menu_con, bkg_console, map_terrain_con, map_fov_con, map_gui_con
-	global unit_con, psg_con, cmd_con, attack_con, scen_info_con
+	global unit_con, psg_con, anim_con, cmd_con, attack_con, scen_info_con
 	global hex_info_con, grey_hex_con
 	global dice
 	
@@ -4296,6 +4351,13 @@ def DoScenario(load_savegame=False):
 	libtcod.console_set_default_foreground(unit_con, libtcod.grey)
 	libtcod.console_set_key_color(unit_con, KEY_COLOR)
 	libtcod.console_clear(unit_con)
+	
+	# animation layer console
+	anim_con = libtcod.console_new(57, 57)
+	libtcod.console_set_default_background(anim_con, KEY_COLOR)
+	libtcod.console_set_default_foreground(anim_con, libtcod.grey)
+	libtcod.console_set_key_color(anim_con, KEY_COLOR)
+	libtcod.console_clear(anim_con)
 	
 	# top banner scenario info console
 	scen_info_con = libtcod.console_new(83, 3)
@@ -4460,6 +4522,9 @@ def DoScenario(load_savegame=False):
 	
 	exit_scenario = False
 	while not exit_scenario:
+		
+		if scenario.anim.Update():
+			DrawScreenConsoles()
 		
 		libtcod.console_flush()
 	

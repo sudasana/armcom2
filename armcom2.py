@@ -233,49 +233,88 @@ MIN_AP_DIFF = -2
 class AnimHandler:
 	def __init__(self):
 		
-		# TEMP testing rain animation effect
-		#self.raindrops = []
-		#for i in range(20):
-		#	x = libtcod.random_get_int(0, 0, 56)
-		#	y = libtcod.random_get_int(0, 0, 56)
-		#	lifetime = libtcod.random_get_int(0, 4, 7)
-		#	self.raindrops.append([x, y, lifetime])
+		# flag to let rest of program know when a limited-lifespan animation has finished
+		self.anim_finished = False
 		
-		self.update_timer = time.time()
+		# rain animation effect
+		self.raindrops = []
+		for i in range(20):
+			x = libtcod.random_get_int(0, 0, 56)
+			y = libtcod.random_get_int(0, 0, 56)
+			lifetime = libtcod.random_get_int(0, 4, 7)
+			self.raindrops.append([x, y, lifetime])
+		self.rain_timer = time.time()
+		self.rain_active = True
+		
+		# gun weapon attack effect
+		self.gun_line = []			# path of projectile on screen
+		self.gun_location = 0			# index number of current x,y location of projectile
+		self.gun_timer = time.time()		# animation timer
+		self.gun_click = 0			# time between animation updates
+		self.gun_active = False
+	
+	# start a gun projectile animation
+	def InitGunEffect(self, x1, y1, x2, y2):
+		self.gun_line = GetLine(x1, y1, x2, y2, los=True)
+		self.gun_location = 0
+		self.gun_timer = time.time()
+		self.gun_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.001
+		self.gun_active = True
 	
 	# update animation statuses and animation console
 	def Update(self):
 		
-		# TEMP
-		return
+		updated_animation = False
 		
-		# not time to update yet
-		if time.time() - self.update_timer <= 0.1: return False
+		# rain effect
+		if self.rain_active:
+			if time.time() - self.rain_timer >= 0.1:
+				updated_animation = True
+				self.rain_timer = time.time()
+				
+				# update raindrop position and lifetime
+				for drop in self.raindrops:
+					drop[0] += 1
+					drop[1] += 1
+					drop[2] -= 1
+					if drop[0] > 56 or drop[1] > 56 or drop[2] == 0:
+						# reposition as new raindrop
+						drop[0] = libtcod.random_get_int(0, 0, 56)
+						drop[1] = libtcod.random_get_int(0, 0, 56)
+						drop[2] = libtcod.random_get_int(0, 4, 7)
 		
-		self.update_timer = time.time()
+		# gun projectile effect
+		if self.gun_active:
+			if time.time() - self.gun_timer >= self.gun_click:
+				updated_animation = True
+				self.gun_timer = time.time()
+				
+				# remove gun animation if it's reached its end
+				if self.gun_location == len(self.gun_line) - 1:
+					self.gun_location = 0
+					self.gun_active = False
+					self.anim_finished = True
+				# otherwise, update its position
+				else:
+					self.gun_location += 1
 		
-		# update raindrop position and lifetime
-		for drop in self.raindrops:
-			drop[0] += 1
-			drop[1] += 1
-			drop[2] -= 1
-			if drop[0] > 56 or drop[1] > 56 or drop[2] == 0:
-				# reposition as new raindrop
-				drop[0] = libtcod.random_get_int(0, 0, 56)
-				drop[1] = libtcod.random_get_int(0, 0, 56)
-				drop[2] = libtcod.random_get_int(0, 4, 7)
+		# if we updated any animations, draw all of them to the screen
+		if updated_animation:
+			libtcod.console_clear(anim_con)
+			if self.rain_active:
+				for drop in self.raindrops:
+					if drop[2] == 1:
+						char = '*'
+					else:
+						char = chr(92)
+					libtcod.console_put_char_ex(anim_con, drop[0], drop[1], char,
+						libtcod.light_blue, libtcod.black)
+			if self.gun_active:
+				(x,y) = self.gun_line[self.gun_location]
+				libtcod.console_put_char_ex(anim_con, x, y, 250, libtcod.white,
+					libtcod.black)
 		
-		# draw to console
-		libtcod.console_clear(anim_con)
-		for drop in self.raindrops:
-			if drop[2] == 1:
-				char = '*'
-			else:
-				char = chr(92)
-			libtcod.console_put_char_ex(anim_con, drop[0], drop[1], char,
-				libtcod.light_blue, libtcod.black)
-		
-		return True
+		return updated_animation
 
 
 # AI: used to determine actions of non-player-controlled units
@@ -354,6 +393,9 @@ class AI:
 		
 		# Shooting Phase actions
 		elif scenario.GetCurrentPhase() == 'Shooting':
+			
+			# TEMP - no shooting actions
+			return
 			
 			print 'AI Shooting Phase Action for: ' + self.owner.GetName(true_name=True)
 			
@@ -1124,7 +1166,7 @@ class PSG:
 		# see if a pivot is required
 		if self.movement_class != 'Infantry':
 			if self.facing is not None:
-				pause_time = config.getint('ArmCom2', 'animation_speed') * 2
+				pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
 				direction = GetDirectionToAdjacent(self.hx, self.hy,
 					new_hx, new_hy)
 				self.PivotToFace(direction)
@@ -1134,7 +1176,7 @@ class PSG:
 				Wait(pause_time)
 		
 		# display movement animation
-		pause_time = config.getint('ArmCom2', 'animation_speed') * 3
+		pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
 		(x1,y1) = PlotHex(self.hx, self.hy)
 		(x2,y2) = PlotHex(new_hx, new_hy)
 		line = GetLine(x1,y1,x2,y2)
@@ -1184,7 +1226,7 @@ class PSG:
 		libtcod.console_flush()
 		
 		# do dice roll and display animation
-		pause_time = config.getint('ArmCom2', 'animation_speed') * 8
+		pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
 		for i in range(5):
 			d1, d2, roll = Roll2D6()
 			DrawDie(attack_con, 9, 42, d1)
@@ -2866,7 +2908,7 @@ def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None, road_path=False):
 			# ignore impassible nodes
 			if node.terrain_type.water: continue
 			
-			# TODO: calculate movement cost
+			# TODO: calculate real movement cost based on movement class
 			if movement_class is not None:
 				cost = 1
 			
@@ -2963,11 +3005,39 @@ def GetLine(x1, y1, x2, y2, los=False):
 
 # wait for a specified amount of miliseconds, refreshing the screen in the meantime
 def Wait(wait_time):
-	# added this to avoid the spinning wheel of death in Windows
-	libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
-	libtcod.sys_sleep_milli(wait_time)
-	# emergency exit
-	if libtcod.console_is_window_closed(): sys.exit()
+	wait_time = wait_time * 0.01
+	start_time = time.time()
+	while time.time() - start_time < wait_time:
+	
+		# added this to avoid the spinning wheel of death in Windows
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
+		if libtcod.console_is_window_closed(): sys.exit()
+		
+		# check for animation update
+		if scenario.anim.Update():
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)
+			
+		libtcod.console_flush()
+
+
+# function to update animations, used while waiting for a particular animation to finish
+def WaitForAnimation():
+	while not scenario.anim.anim_finished:
+		# added this to avoid the spinning wheel of death in Windows
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
+		if libtcod.console_is_window_closed(): sys.exit()
+		
+		# check for animation update
+		if scenario.anim.Update():
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)
+			
+		libtcod.console_flush()
+	# reset flag before returning
+	scenario.anim.anim_finished = False
 
 
 # wait for player to press enter before continuing
@@ -3233,16 +3303,20 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 	attacker.target_psg = None
 	
 	# clear any LoS drawn above from screen, but keep attack console visible
-	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	DrawScreenConsoles()
 	libtcod.console_blit(attack_con, 0, 0, 0, 0, 0, 0, 3)
 	libtcod.console_flush()
 	
 	# display appropriate attack animation
 	if not at_attack:
 		if weapon.stats['class'] == 'gun':
-			GunAttackAnimation(attack_obj)
+			x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
+			x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
+			scenario.anim.InitGunEffect(x1, y1, x2, y2)
+			WaitForAnimation()
 		elif weapon.stats['class'] == 'mg':
-			MGAttackAnimation(attack_obj)
+			pass
+			#MGAttackAnimation(attack_obj)
 	
 	# resolve attack
 	target.ResolveAttack(attack_obj)
@@ -3714,7 +3788,7 @@ def Message(x, y, text):
 		libtcod.console_print_ex(0, x, y+n, libtcod.BKGND_SET, libtcod.CENTER, line)
 		n+=1
 	libtcod.console_flush()
-	Wait(config.getint('ArmCom2', 'message_pause_time'))
+	Wait(config.getint('ArmCom2', 'message_pause_time') * 0.1)
 	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
 	libtcod.console_flush()
 
@@ -4124,8 +4198,6 @@ def DrawScreenConsoles():
 				libtcod.console_set_char(con, x, y, 250)
 				libtcod.console_set_char_foreground(con, x, y, libtcod.red)
 	
-	libtcod.console_blit(anim_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# animation layer
-	
 	# left column consoles
 	libtcod.console_blit(psg_con, 0, 0, 0, 0, con, 1, 4)
 	libtcod.console_blit(cmd_con, 0, 0, 0, 0, con, 1, 26)
@@ -4135,6 +4207,7 @@ def DrawScreenConsoles():
 	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 0, 0)
 	
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)	# animation layer
 
 
 ##########################################################################################
@@ -4521,10 +4594,11 @@ def DoScenario(load_savegame=False):
 	mouse_y = -1
 	
 	exit_scenario = False
-	while not exit_scenario:
+	while not exit_scenario:                    
 		
 		if scenario.anim.Update():
-			DrawScreenConsoles()
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)
 		
 		libtcod.console_flush()
 	
@@ -4807,9 +4881,9 @@ libtcod.console_print_ex(main_menu_con, WINDOW_WIDTH-1, 0, libtcod.BKGND_NONE, l
 	VERSION + SUBVERSION)
 
 libtcod.console_set_default_foreground(main_menu_con, libtcod.red)
-libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-17,
+libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-7,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'NOTE: This is an incomplete, proof-of-concept version')
-libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-16,
+libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-6,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'intended only to demonstrate the core gameplay of the game')
 
 libtcod.console_set_default_foreground(main_menu_con, libtcod.light_grey)

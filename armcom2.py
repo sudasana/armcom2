@@ -3915,14 +3915,14 @@ def UpdateUnitConsole():
 
 
 # updates the selected PSG info console
-def UpdatePSGConsole():
+def UpdatePSGConsole(psg=None):
 	libtcod.console_clear(psg_con)
 	
-	if scenario.active_psg is None:
-		return
-	
-	# create a local pointer to the currently active PSG
-	psg = scenario.active_psg
+	if psg is None:
+		# try to grab the currently active PSG
+		if scenario.active_psg is None:
+			return
+		psg = scenario.active_psg
 	
 	# PSG name
 	libtcod.console_print(psg_con, 0, 0, psg.GetName())
@@ -4044,6 +4044,41 @@ def UpdatePSGConsole():
 	libtcod.console_set_default_foreground(psg_con, libtcod.white)
 	libtcod.console_set_default_background(psg_con, libtcod.black)
 
+
+# displays a window with information about a particular PSG
+def DisplayPSGInfoWindow(psg):
+	
+	# darken the screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	
+	# display PSG info in the centre of the screen
+	
+	UpdatePSGConsole(psg=psg)
+	y = 14
+	libtcod.console_rect(0, WINDOW_XM-12, y, 24, 23, True, libtcod.BKGND_SET)
+	libtcod.console_blit(psg_con, 0, 0, 0, 0, 0, WINDOW_XM-12, y)
+	
+	libtcod.console_print_ex(0, WINDOW_XM, y+22, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'X to Return')
+	
+	# Note: animations are paused while this window is active
+	exit_menu = False
+	while not exit_menu:
+		
+		libtcod.console_flush()
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+		if key is None: continue
+		
+		key_char = chr(key.c).lower()
+		
+		if key_char == 'x':
+			exit_menu = True
+	
+	# restore the PSG console and blit the main console to the screen again
+	UpdatePSGConsole()
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	libtcod.console_flush()
+	
 
 # updates the command console
 def UpdateCmdConsole():
@@ -4189,6 +4224,11 @@ def UpdateMsgInfoConsole():
 					libtcod.console_print_ex(msg_info_con, 23, 8,
 						libtcod.BKGND_NONE, libtcod.RIGHT,
 						'Unknown to Enemy')
+				
+				if not (psg.suspected and psg.owning_player == 1):
+					libtcod.console_print(msg_info_con, 0, 12,
+						'Right Click: Unit Info')
+				
 				return
 		
 
@@ -4482,7 +4522,7 @@ def DoScenario(load_savegame=False):
 	libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
 	libtcod.console_clear(scen_info_con)
 	
-	# selected PSG info console
+	# PSG info console
 	psg_con = libtcod.console_new(24, 21)
 	libtcod.console_set_default_background(psg_con, libtcod.black)
 	libtcod.console_set_default_foreground(psg_con, libtcod.white)
@@ -4660,21 +4700,25 @@ def DoScenario(load_savegame=False):
 			DrawScreenConsoles()
 		
 		##### Mouse Commands #####
-		if mouse.lbutton:
+		if mouse.lbutton or mouse.rbutton:
 			x = mouse.cx - 26
 			y = mouse.cy - 3
 			if (x,y) in scenario.map_index:
 				(hx, hy) = scenario.map_index[(x,y)]
 				for psg in scenario.psg_list:
-					if psg.owning_player == 1: continue
 					if psg.hx == hx and psg.hy == hy:
-						scenario.active_psg = psg
-						UpdatePSGConsole()
-						scenario.BuildCmdMenu()
-						DrawScreenConsoles()
-						continue
-		
-		#elif mouse.rbutton:
+						
+						# left button: select this PSG
+						if mouse.lbutton and psg.owning_player == 0:
+							scenario.active_psg = psg
+							UpdatePSGConsole()
+							scenario.BuildCmdMenu()
+							DrawScreenConsoles()
+							break
+						
+						# right button: display PSG info window
+						elif mouse.rbutton and not (psg.suspected and psg.owning_player == 1):
+							DisplayPSGInfoWindow(psg)
 		
 		# open scenario menu screen
 		if key.vk == libtcod.KEY_ESCAPE:

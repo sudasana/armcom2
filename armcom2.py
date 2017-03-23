@@ -238,7 +238,7 @@ class AnimHandler:
 		
 		# rain animation effect
 		self.raindrops = []
-		for i in range(20):
+		for i in range(14):
 			x = libtcod.random_get_int(0, 0, 56)
 			y = libtcod.random_get_int(0, 0, 56)
 			lifetime = libtcod.random_get_int(0, 4, 7)
@@ -335,18 +335,24 @@ class AI:
 			# out of range
 			if distance > weapon.stats['max_range']:
 				continue
-				
-			# point fire target but not spotted
-			if target.pf_target and not target.af_target and not target.spotted:
-				continue
-
-			# area fire target but no area fire possible
-			if target.af_target and not target.pf_target and weapon.stats['area_strength'] == 0:
-				continue
 			
-			# point fire target but no point fire possible
-			if target.pf_target and not target.af_target and weapon.stats['point_strength'] == 0:
-				continue
+			# suspected target
+			if target.suspected:
+				
+				# no AF attack possible
+				if weapon.stats['area_strength'] == 0:
+					continue
+			
+			# known target
+			else:
+			
+				# area fire target only but no area fire possible
+				if target.af_target and not target.pf_target and weapon.stats['area_strength'] == 0:
+					continue
+				
+				# point fire target only but no point fire possible
+				if target.pf_target and not target.af_target and weapon.stats['point_strength'] == 0:
+					continue
 			
 			# not in LoS
 			visible_hexes = GetLoS(self.owner.hx, self.owner.hy, target.hx, target.hy)
@@ -362,17 +368,21 @@ class AI:
 			
 			# calculate column of attack and add to attack list
 			if weapon.stats['area_strength'] > 0 and target.af_target:
-				attack_obj = CalcAttack(self.owner, weapon, target, True, assume_pivot=pivot_required)
-				attack_list.append((attack_obj.final_column, weapon, target, True, False))
+				attack_obj = CalcAttack(self.owner, weapon, target, True,
+					assume_pivot=pivot_required)
+				attack_list.append((attack_obj.final_column, weapon, target,
+					True, False))
 			
 			if weapon.stats['point_strength'] > 0 and target.pf_target:
-				attack_obj = CalcAttack(self.owner, weapon, target, False, assume_pivot=pivot_required)
-				attack_list.append((attack_obj.final_column, weapon, target, False, False))
+				attack_obj = CalcAttack(self.owner, weapon, target, False,
+					assume_pivot=pivot_required)
+				attack_list.append((attack_obj.final_column, weapon, target,
+					False, False))
 	
 			del attack_obj
 	
 		# check for possible anti-tank attack
-		if self.owner.infantry and target.vehicle and target.armour is not None and distance == 0:
+		if self.owner.infantry and target.vehicle and target.armour and distance == 0:
 			attack_obj = CalcAttack(self.owner, None, target, False, at_attack=True)
 			attack_list.append((attack_obj.final_column, None, target, False, True))
 		
@@ -419,7 +429,7 @@ class AI:
 			attack_list = []
 			for psg in target_list:
 				target_attack_list = self.GetBestAttacks(psg)
-				if target_attack_list is not None:
+				if target_attack_list:
 					attack_list.extend(target_attack_list)
 			
 			# could not find any attacks
@@ -619,7 +629,7 @@ class CommandMenu:
 				libtcod.console_rect(console, x, y+n, w, menu_option.h, False, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(console, original_bg)
 				
-				if menu_option.desc is not None:
+				if menu_option.desc:
 					if menu_option.inactive:
 						libtcod.console_set_default_foreground(console, libtcod.dark_grey)
 					else:
@@ -657,7 +667,7 @@ class PSG:
 		self.anim_x = 0				# animation location in console
 		self.anim_y = 0
 		
-		self.spotted = False			# PSG has been spotted by an enemy unit
+		self.suspected = True			# PSG has not been spotted&identified by the enemy
 		
 		self.facing = None			# facing direction: guns and vehicles must have this set
 		
@@ -784,8 +794,8 @@ class PSG:
 	# if true_name, return the real identity of this PSG no matter what
 	def GetName(self, true_name=False):
 		if not true_name:
-			if self.owning_player == 1 and not self.spotted:
-				return 'Possible Enemy PSG'
+			if self.owning_player == 1 and self.suspected:
+				return 'Suspected Enemy'
 		return self.name.decode('utf8').encode('IBM850')
 
 	# return the name of a single step within this PSG
@@ -817,7 +827,7 @@ class PSG:
 				if psg.owning_player == 0: continue
 				
 				# check assaults in progress
-				if self.assault_target is not None:
+				if self.assault_target:
 					(hx, hy) = self.assault_target
 					if psg.hx != hx or psg.hy != hy:
 						continue
@@ -958,7 +968,7 @@ class PSG:
 				
 				# weapon info
 				weapon_list = item.findall('weapon')
-				if weapon_list is not None:
+				if weapon_list:
 					for weapon_item in weapon_list:
 						new_weapon = SpawnWeapon(weapon_item)
 						self.weapon_list.append(new_weapon)
@@ -1005,7 +1015,8 @@ class PSG:
 
 	# this PSG has been revealed 
 	def SpotMe(self):
-		self.spotted = True
+		
+		self.suspected = False
 
 		# update unit console to display
 		UpdateUnitConsole()
@@ -1027,11 +1038,11 @@ class PSG:
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		if self.owning_player == 0:
-			text = self.GetName() + ' is now Unspotted'
+			text = self.GetName() + ' is now Unknown to the enemy'
 		else:
 			text = 'Lost contact with ' + self.GetName()
 		Message(text, self)
-		self.spotted = False
+		self.suspected = True
 		UpdateUnitConsole()
 		DrawScreenConsoles()
 		libtcod.console_flush()
@@ -1039,8 +1050,8 @@ class PSG:
 	# get display character to be used on hex map
 	def GetDisplayChar(self):
 		
-		# enemy Hidden PSG
-		if self.owning_player == 1 and not self.spotted:
+		# suspected enemy PSG
+		if self.owning_player == 1 and self.suspected:
 			return '?'
 		
 		# infantry
@@ -1089,12 +1100,12 @@ class PSG:
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
-			if not self.spotted:
+			if self.suspected:
 				col = libtcod.dark_red
 			else:
 				col = libtcod.red
 		else:	
-			if not self.spotted:
+			if self.suspected:
 				col = libtcod.light_grey
 			else:
 				col = libtcod.white
@@ -1103,7 +1114,7 @@ class PSG:
 		
 		# determine if we need to display a turret
 		if not self.gun and not self.vehicle: return
-		if self.owning_player == 1 and not self.spotted: return
+		if self.owning_player == 1 and self.suspected: return
 		
 		# determine location to draw turret character
 		x_mod, y_mod = PLOT_DIR[self.facing]
@@ -1153,7 +1164,7 @@ class PSG:
 						extra_cost = self.mp - mp_cost
 					if mp_cost > 0:
 						mp_cost += extra_cost
-						if not (self.owning_player == 1 and not self.spotted):
+						if not (self.owning_player == 1 and self.suspected):
 							text = self.GetName() + ' suffers a breakdown, +'
 							text += str(extra_cost) + 'MP cost!'
 							Message(text, self)
@@ -1164,30 +1175,33 @@ class PSG:
 		# see if a pivot is required
 		if self.movement_class != 'Infantry':
 			if self.facing is not None:
-				pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
 				direction = GetDirectionToAdjacent(self.hx, self.hy,
 					new_hx, new_hy)
 				self.PivotToFace(direction)
+				if not (self.owning_player == 1 and self.suspected):
+					pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
+					UpdateUnitConsole()
+					DrawScreenConsoles()
+					libtcod.console_flush()
+					Wait(pause_time)
+		
+		# display movement animation
+		if not (self.owning_player == 1 and self.suspected):
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
+			(x1,y1) = PlotHex(self.hx, self.hy)
+			(x2,y2) = PlotHex(new_hx, new_hy)
+			line = GetLine(x1,y1,x2,y2)
+			for (x,y) in line[1:-1]:
+				self.anim_x = x
+				self.anim_y = y
 				UpdateUnitConsole()
 				DrawScreenConsoles()
 				libtcod.console_flush()
 				Wait(pause_time)
+			self.anim_x = 0
+			self.anim_y = 0
 		
-		# display movement animation
-		pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
-		(x1,y1) = PlotHex(self.hx, self.hy)
-		(x2,y2) = PlotHex(new_hx, new_hy)
-		line = GetLine(x1,y1,x2,y2)
-		for (x,y) in line[1:-1]:
-			self.anim_x = x
-			self.anim_y = y
-			UpdateUnitConsole()
-			DrawScreenConsoles()
-			libtcod.console_flush()
-			Wait(pause_time)
-		
-		self.anim_x = 0
-		self.anim_y = 0
+		# set location in new hex
 		self.hx = new_hx
 		self.hy = new_hy
 		
@@ -1274,7 +1288,10 @@ class PSG:
 		libtcod.console_flush()
 		WaitForEnter()
 		
-		# apply attacker step loss result or no result
+		# no effect
+		if result_row is None: return
+		
+		# AT attack: apply attacker step loss result or no result
 		if attack_obj.at_attack:
 			if 2 <= roll <= 3:
 				attack_obj.RemoveStep()
@@ -1282,7 +1299,15 @@ class PSG:
 			elif result_row == 0:
 				return
 		
-		if result_row is None: return
+		# check for AF attack on suspected PF target
+		if attack_obj.target.suspected and not attack_obj.target.af_target:
+			text = 'Target cannot be harmed by Area Fire attacks'
+			Message(text, self)
+			return
+		
+		# result was at least a pin point: check for target reveal
+		if attack_obj.target.suspected:
+			attack_obj.target.SpotMe()
 		
 		# apply result to target: step loss
 		if result_row >= 1:
@@ -1840,7 +1865,7 @@ class Scenario:
 			Message(text, attacker)
 			
 			# do initial half-move animation
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 3
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
 			(x1,y1) = PlotHex(attacker.hx, attacker.hy)
 			(x2,y2) = PlotHex(target.hx, target.hy)
 			line = GetLine(x1,y1,x2,y2)
@@ -1883,9 +1908,9 @@ class Scenario:
 			else:
 				
 				# attacker and defender are spotted if not already
-				if not target.spotted:
+				if target.suspected:
 					target.SpotMe()
-				if not attacker.spotted:
+				if attacker.suspected:
 					attacker.SpotMe()
 				
 				# set flags to start attack loop
@@ -1971,7 +1996,7 @@ class Scenario:
 				attacker.hy = attacker_retreat_hy
 				# TODO: pivot if required?
 				
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 3
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
 			(x2,y2) = PlotHex(attacker.hx, attacker.hy)
 			line = GetLine(attacker.anim_x,attacker.anim_y,x2,y2)
 			for (x,y) in line[1:]:
@@ -2095,7 +2120,7 @@ class Scenario:
 					continue
 				
 				# if psg2 was spotted, it won't lose this status if any enemy unit is in LoS
-				if psg2.spotted and psg2 in unspotted_psgs:
+				if not psg2.suspected and psg2 in unspotted_psgs:
 					unspotted_psgs.remove(psg2)
 					spotted_psgs.append(psg2)
 					continue
@@ -2114,10 +2139,10 @@ class Scenario:
 		
 		# finally, go through lists and check for any changes in status
 		for psg in spotted_psgs:
-			if not psg.spotted:
+			if psg.suspected:
 				psg.SpotMe()
 		for psg in unspotted_psgs:
-			if psg.spotted:
+			if not psg.suspected:
 				psg.HideMe()
 	
 	# select the next player PSG; or the first one in the list if none selected
@@ -2234,7 +2259,7 @@ class Scenario:
 					menu_option.inactive = True
 					menu_option.desc = 'No target selected'
 				else:
-					if not scenario.active_psg.target_psg.af_target:
+					if not scenario.active_psg.target_psg.suspected and not scenario.active_psg.target_psg.af_target:
 						menu_option.inactive = True
 						menu_option.desc = 'Target cannot be harmed by Area Fire attacks'
 				
@@ -2252,9 +2277,9 @@ class Scenario:
 						menu_option.inactive = True
 						menu_option.desc = 'Target cannot be harmed by Point Fire attacks'
 					# PF attacks have to be on spotted units
-					elif not scenario.active_psg.target_psg.spotted:
+					elif scenario.active_psg.target_psg.suspected:
 						menu_option.inactive = True
-						menu_option.desc = 'Point attacks must be against spotted targets'
+						menu_option.desc = 'Point attacks must be against Known targets'
 		
 		# both movement and shooting root menus get this commands
 		if self.active_cmd_menu in ['movement_root', 'shooting_root']:
@@ -2417,46 +2442,48 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 	
 	# following only apply if not in CC
 	if distance > 0:
-	
-		# attacker suppressed
+		
+		# applies to both suspected and known targets
 		if attacker.suppressed:
 			attack_obj.column_modifiers.append(('Attacker Suppressed', -3))	
 		
-		# attacker moved or changed facing
 		if attacker.moved:
 			attack_obj.column_modifiers.append(('Attacker Moved', -2))
 		elif assume_pivot or attacker.changed_facing:
 			attack_obj.column_modifiers.append(('Attacker Pivoted', -1))
 		
-		# PF acquired target
-		if attack_obj.point_fire and attacker.acquired_target is not None:
-			if attacker.acquired_target == target:
-				attack_obj.column_modifiers.append(('Acquired Target', 1))
+		# suspected targets only
+		if target.suspected:
+			attack_obj.column_modifiers.append(('Suspected Target', -3))
 		
-		# unspotted target (only possible with AF)
-		if not target.spotted:
-			attack_obj.column_modifiers.append(('Target Unspotted', -3))
+		# known targets only
+		else:
 	
-		# infantry movement in no cover
-		if target.infantry and target.moved and pf_modifier == 0:
-			attack_obj.column_modifiers.append(('Target Moved, No Protective Cover', 2))
-		
-		# vehicle movement
-		if target.vehicle and target.moved:
-			attack_obj.column_modifiers.append(('Target Vehicle Moved', -2))
-		
-		# PF attack, target size modifier
-		if attack_obj.point_fire:
-			if target.size_class != 'Normal':
-				if target.size_class == 'Very Small':
-					attack_obj.column_modifiers.append(('Very Small Target', -2))
-				elif target.size_class == 'Small':
-					attack_obj.column_modifiers.append(('Small Target', -1))
-		
-		# AF attack, target has gun shield, attack in front facing
-		if attack_obj.area_fire and target.gun and target.gun_shield:
-			if GetFacing(attacker, target) == 'front':
-				attack_obj.column_modifiers.append(('Gun Shield', -2))
+			# PF acquired target
+			if attack_obj.point_fire and attacker.acquired_target is not None:
+				if attacker.acquired_target == target:
+					attack_obj.column_modifiers.append(('Acquired Target', 1))
+			
+			# infantry movement in no cover
+			if target.infantry and target.moved and pf_modifier == 0:
+				attack_obj.column_modifiers.append(('Target Moved, No Protective Cover', 2))
+			
+			# vehicle movement
+			if target.vehicle and target.moved:
+				attack_obj.column_modifiers.append(('Target Vehicle Moved', -2))
+			
+			# PF attack, target size modifier
+			if attack_obj.point_fire:
+				if target.size_class != 'Normal':
+					if target.size_class == 'Very Small':
+						attack_obj.column_modifiers.append(('Very Small Target', -2))
+					elif target.size_class == 'Small':
+						attack_obj.column_modifiers.append(('Small Target', -1))
+			
+			# AF attack, target has gun shield, attack in front facing
+			if attack_obj.area_fire and target.gun and target.gun_shield:
+				if GetFacing(attacker, target) == 'front':
+					attack_obj.column_modifiers.append(('Gun Shield', -2))
 	
 	# AT attack modifiers
 	if attack_obj.at_attack:
@@ -2492,9 +2519,6 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 				attack_obj.column_modifiers.append((text, mod))
 			else:
 				attack_obj.column_modifiers.append(('Unarmoured', 2))
-	
-	# TODO: gun shields
-	
 	
 	# apply column modifiers
 	for (text, mod) in attack_obj.column_modifiers:
@@ -3049,15 +3073,11 @@ def WaitForEnter(allow_cancel=False):
 	cancel = False
 	while not end_pause:
 		# get input from user
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
 		
 		# emergency exit from game
 		if libtcod.console_is_window_closed(): sys.exit()
-		
-		# check for animation update
-		if scenario.anim.Update():
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)
 		
 		elif key.vk == libtcod.KEY_ENTER: 
 			end_pause = True
@@ -3066,13 +3086,13 @@ def WaitForEnter(allow_cancel=False):
 			end_pause = True
 			cancel = True
 		
+		# check for animation update
+		if scenario.anim.Update():
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)
+		
 		# refresh the screen
 		libtcod.console_flush()
-	
-	# wait for key to be released
-	#while libtcod.console_is_key_pressed(libtcod.KEY_ENTER) or libtcod.console_is_key_pressed(libtcod.KEY_BACKSPACE):
-	#	libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
-	#	libtcod.console_flush()
 	
 	if allow_cancel and cancel:
 		return True
@@ -4074,7 +4094,7 @@ def UpdateScenInfoConsole():
 		text)
 	
 	# TODO: pull wind and weather info from scenario object
-	text = 'No Wind, Clear'
+	text = 'No Wind, Light Rain'
 	libtcod.console_print_ex(scen_info_con, 82, 0, libtcod.BKGND_NONE, libtcod.RIGHT,
 		text)
 	
@@ -4156,7 +4176,7 @@ def UpdateMsgInfoConsole():
 					n += 1
 				libtcod.console_set_default_foreground(msg_info_con, libtcod.white)
 				
-				if psg.owning_player == 1 and not psg.spotted:
+				if psg.owning_player == 1 and psg.suspected:
 					return
 
 				# name of squads/vehicles and number of steps in PSG
@@ -4165,10 +4185,10 @@ def UpdateMsgInfoConsole():
 				
 				if psg.suppressed:
 					libtcod.console_print(msg_info_con, 0, 8, 'Suppressed')
-				if not psg.spotted:
+				if psg.suspected:
 					libtcod.console_print_ex(msg_info_con, 23, 8,
 						libtcod.BKGND_NONE, libtcod.RIGHT,
-						'Unspotted')
+						'Unknown to Enemy')
 				return
 		
 

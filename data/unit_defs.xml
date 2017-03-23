@@ -161,6 +161,7 @@
   <unit_def>
     <id>wz_34_mg</id>
     <name>Wz. 34 (MG)</name>
+    <portrait>unit_wz_34_MG.xp</portrait>
     <vehicle/>
     <movement_class>Wheeled</movement_class>
     <size_class>Small</size_class>

@@ -7,7 +7,7 @@
 #                                                                                        #
 ##########################################################################################
 #                                                                                        #
-#                          Project re-started July 25, 2016                              #
+#             Project Started February 23, 2016; Restarted July 25, 2016                 #
 #                                                                                        #
 ##########################################################################################
 #
@@ -117,7 +117,6 @@ WEAPON_STATS = {
 PHASE_LIST = ['Movement', 'Shooting', 'Close Combat']
 
 # Colour definitions
-OPEN_GROUND_COL = libtcod.Color(0, 64, 0)
 RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
 
@@ -125,21 +124,22 @@ NEUTRAL_OBJ_COL = libtcod.Color(0, 255, 255)		# neutral objective color
 ENEMY_OBJ_COL = libtcod.Color(255, 31, 0)		# enemy-held "
 FRIENDLY_OBJ_COL = libtcod.Color(50, 255, 0)		# friendly-held "
 
+ACTION_KEY_COL = libtcod.Color(70, 170, 255)		# colour for key commands
+TITLE_COL = libtcod.white				# fore and background colours for
+TITLE_BG_COL = libtcod.Color(0, 50, 100)		#  console titles and highlighted options
+INFO_TEXT_COL = libtcod.Color(190, 190, 190)		# informational text colour
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
-HIGHLIGHT_COLOR = libtcod.Color(51, 153, 255)		# text highlight colour
-HIGHLIGHT_BG_COLOR = libtcod.Color(0, 50, 100)		# text background highlight colour - blue
-HIGHLIGHT_BG_COLOR2 = libtcod.Color(32, 64, 0)		# text background highlight colour - green
-
+HIGHLIGHT_COLOR = libtcod.Color(51, 153, 255)		# colour for highlighted text 
 WEAPON_LIST_COLOR = libtcod.Color(25, 25, 90)		# background for weapon list in PSG console
 SELECTED_WEAPON_COLOR = libtcod.Color(50, 50, 150)	# " selected weapon
+ACTIVE_MSG_COL = libtcod.Color(0, 210, 0)		# active message colour
 
 TARGET_HL_COL = libtcod.Color(55, 0, 0)			# target highlight background color 
 SELECTED_HL_COL = libtcod.Color(100, 255, 255)		# selected PSG highlight colour
 ENEMY_HL_COL = libtcod.Color(40, 0, 0)
 INACTIVE_COL = libtcod.Color(100, 100, 100)		# inactive option color
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
-
-KEY_HIGHLIGHT_COLOR = libtcod.Color(70, 170, 255)	# highlight for key commands
+	
 
 # Descriptor definitions
 MORALE_DESC = {
@@ -394,9 +394,6 @@ class AI:
 		# Shooting Phase actions
 		elif scenario.GetCurrentPhase() == 'Shooting':
 			
-			# TEMP - no shooting actions
-			return
-			
 			print 'AI Shooting Phase Action for: ' + self.owner.GetName(true_name=True)
 			
 			# build list of possible targets
@@ -580,6 +577,7 @@ class CommandMenu:
 		return option
 	
 	# display the menu to the specified console
+	# TODO: add maximum height
 	def DisplayMe(self, console, x, y, w):
 		original_fg = libtcod.console_get_default_foreground(console)
 		original_bg = libtcod.console_get_default_background(console)
@@ -598,7 +596,7 @@ class CommandMenu:
 			if menu_option.inactive:
 				libtcod.console_set_default_foreground(console, INACTIVE_COL)
 			else:
-				libtcod.console_set_default_foreground(console, KEY_HIGHLIGHT_COLOR)
+				libtcod.console_set_default_foreground(console, ACTION_KEY_COL)
 			libtcod.console_print(console, x, y+n, menu_option.key_code)
 			
 			# display command text lines
@@ -617,7 +615,7 @@ class CommandMenu:
 		n = 0
 		for menu_option in self.cmd_list:
 			if self.selected_option == menu_option:
-				libtcod.console_set_default_background(console, HIGHLIGHT_BG_COLOR)
+				libtcod.console_set_default_background(console, TITLE_BG_COL)
 				libtcod.console_rect(console, x, y+n, w, menu_option.h, False, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(console, original_bg)
 				
@@ -873,7 +871,7 @@ class PSG:
 	# remove this PSG from the game
 	def DestroyMe(self):
 		text = self.GetName() + ' has been destroyed!'
-		Message(self.screen_x, self.screen_y, text)
+		Message(text, self)
 		scenario.psg_list.remove(self)
 		# clear acquired target records
 		self.ClearAcquiredTargets()
@@ -912,7 +910,7 @@ class PSG:
 			self.pin_points -= 1
 			text = self.GetName() + ' now has ' + str(self.pin_points) + ' pin point'
 			if self.pin_points != 1: text += 's'
-			Message(self.screen_x, self.screen_y, text)
+			Message(text, self)
 			return
 		
 		if self.pin_points == 0:
@@ -928,7 +926,7 @@ class PSG:
 			self.pin_points -= lost_points
 			text = self.GetName() + ' loses ' + str(lost_points) + ' pin point'
 			if lost_points != 1: text += 's'
-			Message(self.screen_x, self.screen_y, text)
+			Message(text, self)
 			return
 		
 		# test failed, unit is suppressed
@@ -1020,7 +1018,7 @@ class PSG:
 		else:
 			text = 'Enemy '
 		text += self.GetName() + ' has been spotted!'
-		Message(self.screen_x, self.screen_y, text)
+		Message(text, self)
 	
 	# regain unspotted status for this PSG
 	def HideMe(self):
@@ -1032,7 +1030,7 @@ class PSG:
 			text = self.GetName() + ' is now Unspotted'
 		else:
 			text = 'Lost contact with ' + self.GetName()
-		Message(self.screen_x, self.screen_y, text)
+		Message(text, self)
 		self.spotted = False
 		UpdateUnitConsole()
 		DrawScreenConsoles()
@@ -1158,7 +1156,7 @@ class PSG:
 						if not (self.owning_player == 1 and not self.spotted):
 							text = self.GetName() + ' suffers a breakdown, +'
 							text += str(extra_cost) + 'MP cost!'
-							Message(self.screen_x, self.screen_y, text)
+							Message(text, self)
 						
 			# spend the mp
 			self.mp -= mp_cost
@@ -1222,7 +1220,8 @@ class PSG:
 			libtcod.CENTER, '                   ')
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, '             ')
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 3)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 		
 		# do dice roll and display animation
@@ -1231,7 +1230,8 @@ class PSG:
 			d1, d2, roll = Roll2D6()
 			DrawDie(attack_con, 9, 42, d1)
 			DrawDie(attack_con, 14, 42, d2)
-			libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
+			libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 3)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
 			Wait(pause_time)
 		
@@ -1269,7 +1269,8 @@ class PSG:
 			libtcod.CENTER, text)
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Enter to Continue')
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 3)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 		WaitForEnter()
 		
@@ -1293,13 +1294,13 @@ class PSG:
 			
 			text = self.GetName() + ' has been reduced to ' + str(self.num_steps) + ' step'
 			if self.num_steps > 1: text += 's'
-			Message(self.screen_x, self.screen_y, text)
+			Message(text, self)
 		
 		# apply pin point
 		self.pin_points += 1
 		text = self.GetName() + ' now has ' + str(self.pin_points) + ' pin point'
 		if self.pin_points > 1: text += 's'
-		Message(self.screen_x, self.screen_y, text)
+		Message(text, self)
 		
 		# already suppressed
 		if self.suppressed: return
@@ -1347,13 +1348,13 @@ class PSG:
 	def SuppressMe(self):
 		self.suppressed = True
 		text = self.GetName() + ' has failed its morale check and is suppressed.'
-		Message(self.screen_x, self.screen_y, text)
+		Message(text, self)
 	
 	# unit recovers from being suppressed
 	def UnSuppressMe(self):
 		self.suppressed = False
 		text = self.GetName() + ' has rallied and recovers from being suppressed.'
-		Message(self.screen_x, self.screen_y, text)
+		Message(text, self)
 	
 	# take a skill test, returning True if passed
 	def SkillTest(self, modifier):
@@ -1369,7 +1370,7 @@ class PSG:
 		# guns cannot retreat
 		if self.movement_class == 'Gun':
 			text = self.GetName() + ' cannot retreat!'
-			Message(self.screen_x, self.screen_y, text)
+			Message(text, self)
 			self.DestroyMe()
 			return
 		
@@ -1386,7 +1387,7 @@ class PSG:
 		# no possible place to go
 		if len(hex_list) == 0:
 			text = self.GetName() + ' has no place to retreat!'
-			Message(self.screen_x, self.screen_y, text)
+			Message(text, self)
 			self.DestroyMe()
 			return
 		
@@ -1489,9 +1490,9 @@ class MapHex:
 				text = 'You have'
 			else:
 				text = 'The enemy has'
-			text += ' captured this objective!'
+			text += ' captured an objective!'
 			(x,y) = PlotHex(self.hx, self.hy)
-			Message(x+26, y+3, text)
+			Message(text, None)
 		
 		UpdateGUIConsole()
 
@@ -1616,7 +1617,8 @@ class Scenario:
 		self.cmd_menu = CommandMenu('scenario_menu')		# current command menu for player
 		self.active_cmd_menu = None				# currently active command menu
 		
-		#self.messages = []			# FUTURE: list of stored game messages for review
+		self.messages = []			# game message log
+		self.display_msg = False		# currently displaying most recent message
 		
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
@@ -1835,7 +1837,7 @@ class Scenario:
 			
 			# show message
 			text = attacker.GetName() + ' assaults ' + target.GetName()
-			Message(attacker.screen_x, attacker.screen_y, text)
+			Message(text, attacker)
 			
 			# do initial half-move animation
 			pause_time = config.getint('ArmCom2', 'animation_speed') * 3
@@ -1854,12 +1856,12 @@ class Scenario:
 			attack_list = target.ai.GetBestAttacks(attacker)
 			if attack_list is None:
 				text = 'No defensive fire possible'
-				Message(target.screen_x, target.screen_y, text)
+				Message(text, target)
 			else:
 				sorted(attack_list,key=itemgetter(0))
 				(final_column, weapon, null, area_fire, at_attack) = attack_list[0]
 				text = target.GetName() + ' conducts defensive fire'
-				Message(target.screen_x, target.screen_y, text)
+				Message(text, target)
 				InitAttack(target, weapon, attacker, area_fire, at_attack=at_attack)
 			
 			# attacker was destroyed by defensive fire
@@ -1875,7 +1877,7 @@ class Scenario:
 			# if attacker has been Suppressed, it must fall back; skip attack loop
 			if attacker.suppressed:
 				text = attacker.GetName() + ' must break off attack'
-				Message(attacker.screen_x, attacker.screen_y, text)
+				Message(text, attacker)
 				attacker_won = False
 				exit_attack = True
 			else:
@@ -1896,12 +1898,12 @@ class Scenario:
 				
 				# assaulting platoon attacks
 				text = attacker.GetName() + ' attacks in close combat'
-				Message(attacker.screen_x, attacker.screen_y, text)
+				Message(text, attacker)
 				attack_list = attacker.ai.GetBestAttacks(target)
 				
 				if attack_list is None:
 					text = 'Attacker cannot damage ' + target.GetName() + ' and must break off'
-					Message(attacker.screen_x, attacker.screen_y, text)
+					Message(text, attacker)
 					attacker_won = False
 					exit_attack = True
 					continue
@@ -1921,19 +1923,19 @@ class Scenario:
 					target_steps = target.num_steps
 					if not target.MoraleCheck(0):
 						text = target.GetName() + ' fails its morale check and must withdraw'
-						Message(target.screen_x, target.screen_y, text)
+						Message(text, target)
 						target.RetreatToSafety()
 						exit_attack = True
 						continue
 				
 				# defender gets an attack
 				text = target.GetName() + ' attacks in close combat'
-				Message(target.screen_x, target.screen_y, text)
+				Message(text, target)
 				attack_list = target.ai.GetBestAttacks(attacker)
 				
 				if attack_list is None:
 					text = target.GetName() + ' cannot damage attacker and must withdraw'
-					Message(target.screen_x, target.screen_y, text)
+					Message(text, target)
 					target.RetreatToSafety()
 					exit_attack = True
 					continue
@@ -1954,7 +1956,7 @@ class Scenario:
 					attacker_steps = attacker.num_steps
 					if not attacker.MoraleCheck(0):
 						text = attacker.GetName() + ' fails its morale check and must break off attack'
-						Message(attacker.screen_x, attacker.screen_y, text)
+						Message(text, attacker)
 						attacker_won = False
 						exit_attack = True
 						continue
@@ -3042,7 +3044,6 @@ def WaitForAnimation():
 
 # wait for player to press enter before continuing
 # option to allow backspace pressed instead, returns True if so 
-# TODO: keep updating animations while waiting
 def WaitForEnter(allow_cancel=False):
 	end_pause = False
 	cancel = False
@@ -3051,8 +3052,12 @@ def WaitForEnter(allow_cancel=False):
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
 		
 		# emergency exit from game
-		if libtcod.console_is_window_closed():
-			sys.exit()
+		if libtcod.console_is_window_closed(): sys.exit()
+		
+		# check for animation update
+		if scenario.anim.Update():
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)
 		
 		elif key.vk == libtcod.KEY_ENTER: 
 			end_pause = True
@@ -3065,9 +3070,9 @@ def WaitForEnter(allow_cancel=False):
 		libtcod.console_flush()
 	
 	# wait for key to be released
-	while libtcod.console_is_key_pressed(libtcod.KEY_ENTER) or libtcod.console_is_key_pressed(libtcod.KEY_BACKSPACE):
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
-		libtcod.console_flush()
+	#while libtcod.console_is_key_pressed(libtcod.KEY_ENTER) or libtcod.console_is_key_pressed(libtcod.KEY_BACKSPACE):
+	#	libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+	#	libtcod.console_flush()
 	
 	if allow_cancel and cancel:
 		return True
@@ -3275,7 +3280,8 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 		attacker.PivotToFace(direction)
 		UpdateUnitConsole()
 		DrawScreenConsoles()
-		libtcod.console_blit(attack_con, 0, 0, 0, 0, 0, 0, 3)
+		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 3)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 	
 	# if not close combat and player wasn't attacker, display LoS from attacker to target
@@ -3283,28 +3289,29 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 		line = GetLine(attacker.screen_x, attacker.screen_y, target.screen_x,
 			target.screen_y)
 		for (x,y) in line[2:-2]:
-			libtcod.console_set_char(0, x, y, 250)
-			libtcod.console_set_char_foreground(0, x, y, libtcod.red)
+			libtcod.console_set_char(con, x, y, 250)
+			libtcod.console_set_char_foreground(con, x, y, libtcod.red)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
-			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
-			Wait(15)
+			Wait(5)
 	
-	# display attack console for this attack
+	# display attack console and wait for confirmation before proceeding
 	DisplayAttack(attack_obj)
-	
 	cancel_attack = WaitForEnter(allow_cancel=True)
 	
 	# player has chance to cancel a ranged attack at this point
 	if attacker.owning_player == 0 and distance > 0 and cancel_attack:
+		DrawScreenConsoles()
 		return
 	
 	# set fired flag and clear the selected target
 	attacker.fired = True
 	attacker.target_psg = None
 	
-	# clear any LoS drawn above from screen, but keep attack console visible
+	# clear any LoS drawn above from screen
 	DrawScreenConsoles()
-	libtcod.console_blit(attack_con, 0, 0, 0, 0, 0, 0, 3)
+	libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 3)
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
 	
 	# display appropriate attack animation
@@ -3352,7 +3359,7 @@ def DisplayAttack(attack_obj):
 	del temp
 	
 	# title
-	libtcod.console_set_default_background(attack_con, HIGHLIGHT_BG_COLOR)
+	libtcod.console_set_default_background(attack_con, TITLE_BG_COL)
 	libtcod.console_rect(attack_con, 1, 1, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Attack Resolution')
@@ -3435,7 +3442,8 @@ def DisplayAttack(attack_obj):
 	libtcod.console_set_default_background(attack_con, libtcod.black)
 	
 	# display console on screen
-	libtcod.console_blit(attack_con, 0, 0, 0, 0, 0, 0, 3)
+	libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 3)
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
 
 
@@ -3767,29 +3775,19 @@ def MGAttackAnimation(attack_obj):
 	libtcod.console_flush()
 
 
-# display an animated message overtop the map viewport
-def Message(x, y, text):
-	
-	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
-	lines = wrap(text, 16)
-	
-	# reposition messages that would appear off-screen
-	if x < 30:
-		x = 30
-	if x > WINDOW_WIDTH - 8:
-		x = WINDOW_WIDTH - 8
-	if y < 6:
-		y = 6
-	elif y+len(lines) > WINDOW_HEIGHT - 2:
-		y = WINDOW_HEIGHT - 2 - len(lines)
-	
-	n = 1
-	for line in lines:
-		libtcod.console_print_ex(0, x, y+n, libtcod.BKGND_SET, libtcod.CENTER, line)
-		n+=1
+# add a new message to the message log
+#   unless otherwise indicated, display this message in the message and info console, highlight
+#   the given PSG, and pause the game so that the player can read the message
+def Message(text, psg):
+	scenario.messages.append(text)
+	scenario.display_msg = True
+	UpdateMsgInfoConsole()
+	DrawScreenConsoles()
 	libtcod.console_flush()
 	Wait(config.getint('ArmCom2', 'message_pause_time') * 0.1)
-	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
+	scenario.display_msg = False
+	UpdateMsgInfoConsole()
+	DrawScreenConsoles()
 	libtcod.console_flush()
 
 
@@ -3927,7 +3925,7 @@ def UpdatePSGConsole():
 	if psg.portrait is not None:
 		temp = LoadXP(psg.portrait)
 		if temp is not None:
-			x = 13 - int(libtcod.console_get_width(temp) / 2)
+			x = 11 - int(libtcod.console_get_width(temp) / 2)
 			libtcod.console_blit(temp, 0, 0, 0, 0, psg_con, x, 2)
 		else:
 			print 'ERROR: unit portrait not found: ' + psg.portrait
@@ -3953,7 +3951,7 @@ def UpdatePSGConsole():
 		'Rng AF PF')
 	libtcod.console_set_default_foreground(psg_con, libtcod.white)
 	y = 12
-	libtcod.console_set_default_background(psg_con, HIGHLIGHT_BG_COLOR)
+	libtcod.console_set_default_background(psg_con, TITLE_BG_COL)
 	
 	for weapon in psg.weapon_list:
 		libtcod.console_set_default_background(psg_con, WEAPON_LIST_COLOR)
@@ -3998,7 +3996,7 @@ def UpdatePSGConsole():
 	
 	# status flags
 	libtcod.console_set_default_foreground(psg_con, libtcod.lighter_blue)
-	libtcod.console_set_default_background(psg_con, HIGHLIGHT_BG_COLOR)
+	libtcod.console_set_default_background(psg_con, TITLE_BG_COL)
 	libtcod.console_rect(psg_con, 0, 19, 24, 1, False, libtcod.BKGND_SET)
 	
 	# movement- and position-related flags
@@ -4030,19 +4028,21 @@ def UpdatePSGConsole():
 # updates the command console
 def UpdateCmdConsole():
 	libtcod.console_clear(cmd_con)
-	libtcod.console_set_default_background(cmd_con, HIGHLIGHT_BG_COLOR)
-	libtcod.console_rect(cmd_con, 0, 0, 24, 2, False, libtcod.BKGND_SET)
-	if scenario.active_player == 0:
-		text = 'Player'
-	else:
-		text = 'Enemy'
-	text += ' Turn'
+	libtcod.console_set_default_foreground(cmd_con, TITLE_COL)
+	libtcod.console_set_default_background(cmd_con, TITLE_BG_COL)
+	libtcod.console_rect(cmd_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(cmd_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-		text)
-	text = scenario.GetCurrentPhase()
-	libtcod.console_print_ex(cmd_con, 12, 1, libtcod.BKGND_NONE, libtcod.CENTER,
-		text)
+		'Command Menu')
+	
+	libtcod.console_set_default_foreground(cmd_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
+	if scenario.active_player == 0:
+		text = 'Player '
+	else:
+		text = 'Enemy '
+	text += scenario.GetCurrentPhase()
+	libtcod.console_print(cmd_con, 0, 1, text)
+	
 	scenario.cmd_menu.DisplayMe(cmd_con, 0, 3, 24)
 
 
@@ -4084,9 +4084,33 @@ def UpdateScenInfoConsole():
 		text)
 
 
-# update the map hex info console based on current mouse location
-def UpdateHexInfoConsole():
-	libtcod.console_clear(hex_info_con)
+# update the message and info console
+# if a message is active, display that, otherwise display info based on current mouse location
+def UpdateMsgInfoConsole():
+	libtcod.console_clear(msg_info_con)
+	libtcod.console_set_default_foreground(msg_info_con, TITLE_COL)
+	libtcod.console_set_default_background(msg_info_con, TITLE_BG_COL)
+	libtcod.console_rect(msg_info_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
+	libtcod.console_print_ex(msg_info_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
+		'Messages and Info')
+	libtcod.console_print(msg_info_con, 0, 13, '[M]essage Log')
+	libtcod.console_put_char_ex(msg_info_con, 1, 13, 'M', ACTION_KEY_COL, libtcod.black)
+	libtcod.console_set_default_foreground(msg_info_con, INFO_TEXT_COL)
+	libtcod.console_set_default_background(msg_info_con, libtcod.black)
+	
+	# currently displaying most recent message
+	if scenario.display_msg:
+		libtcod.console_set_default_foreground(msg_info_con, ACTIVE_MSG_COL)
+		lines = wrap(scenario.messages[-1], 24)
+		y = 2
+		for line in lines:
+			libtcod.console_print(msg_info_con, 0, y, line)
+			y += 1
+			# message too long to be displayed in window
+			if y == 12: break
+		return
+	
+	# see if we can display info about a map hex
 	
 	# mouse cursor outside of map area
 	if mouse.cx < 26: return
@@ -4102,47 +4126,47 @@ def UpdateHexInfoConsole():
 		text = str(map_hex.hx) + ',' + str(map_hex.hy) + ':'
 		elevation = int(map_hex.terrain_type.los_height + (map_hex.elevation * ELEVATION_M))
 		text += str(elevation) + 'm'
-		libtcod.console_print(hex_info_con, 0, 0, text)
+		libtcod.console_print(msg_info_con, 0, 2, text)
 		
 		# objective status
 		if map_hex.objective:
-			libtcod.console_print_ex(hex_info_con, 23, 0, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(msg_info_con, 23, 2, libtcod.BKGND_NONE,
 				libtcod.RIGHT, 'Objective')
 
 		# hex terrain type
-		libtcod.console_print(hex_info_con, 0, 1, map_hex.terrain_type.display_name)
+		libtcod.console_print(msg_info_con, 0, 3, map_hex.terrain_type.display_name)
 
 		# road status
 		if len(map_hex.dirt_road_links) > 0:
-			libtcod.console_print_ex(hex_info_con, 23, 1, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(msg_info_con, 23, 3, libtcod.BKGND_NONE,
 				libtcod.RIGHT, 'Dirt Road')
 		
 		# PSG present
 		for psg in scenario.psg_list:
 			if psg.hx == map_hex.hx and psg.hy == map_hex.hy:
 				if psg.owning_player == 1:
-					libtcod.console_set_default_foreground(hex_info_con, libtcod.red)
+					libtcod.console_set_default_foreground(msg_info_con, libtcod.red)
 				else:
-					libtcod.console_set_default_foreground(hex_info_con, HIGHLIGHT_COLOR)
+					libtcod.console_set_default_foreground(msg_info_con, HIGHLIGHT_COLOR)
 				
 				lines = wrap(psg.GetName(), 23)
 				n = 0
 				for line in lines[:2]:
-					libtcod.console_print(hex_info_con, 0, 3+n, line)
+					libtcod.console_print(msg_info_con, 0, 4+n, line)
 					n += 1
-				libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
+				libtcod.console_set_default_foreground(msg_info_con, libtcod.white)
 				
 				if psg.owning_player == 1 and not psg.spotted:
 					return
 
 				# name of squads/vehicles and number of steps in PSG
 				text = psg.GetStepName() + ' x' + str(psg.num_steps)
-				libtcod.console_print(hex_info_con, 0, 3+n, text)
+				libtcod.console_print(msg_info_con, 0, 5+n, text)
 				
 				if psg.suppressed:
-					libtcod.console_print(hex_info_con, 0, 6, 'Suppressed')
+					libtcod.console_print(msg_info_con, 0, 8, 'Suppressed')
 				if not psg.spotted:
-					libtcod.console_print_ex(hex_info_con, 23, 6,
+					libtcod.console_print_ex(msg_info_con, 23, 8,
 						libtcod.BKGND_NONE, libtcod.RIGHT,
 						'Unspotted')
 				return
@@ -4201,7 +4225,7 @@ def DrawScreenConsoles():
 	# left column consoles
 	libtcod.console_blit(psg_con, 0, 0, 0, 0, con, 1, 4)
 	libtcod.console_blit(cmd_con, 0, 0, 0, 0, con, 1, 26)
-	libtcod.console_blit(hex_info_con, 0, 0, 0, 0, con, 1, 52)
+	libtcod.console_blit(msg_info_con, 0, 0, 0, 0, con, 1, 45)
 	
 	# scenario info
 	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 0, 0)
@@ -4375,7 +4399,7 @@ def DoScenario(load_savegame=False):
 	# screen consoles
 	global scen_menu_con, bkg_console, map_terrain_con, map_fov_con, map_gui_con
 	global unit_con, psg_con, anim_con, cmd_con, attack_con, scen_info_con
-	global hex_info_con, grey_hex_con
+	global msg_info_con, grey_hex_con
 	global dice
 	
 	def UpdateScreen():
@@ -4445,16 +4469,16 @@ def DoScenario(load_savegame=False):
 	libtcod.console_clear(psg_con)
 	
 	# command menu console
-	cmd_con = libtcod.console_new(24, 25)
+	cmd_con = libtcod.console_new(24, 18)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
 	libtcod.console_set_default_foreground(cmd_con, libtcod.white)
 	libtcod.console_clear(cmd_con)
 	
-	# map hex info console
-	hex_info_con = libtcod.console_new(24, 7)
-	libtcod.console_set_default_background(hex_info_con, libtcod.black)
-	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
-	libtcod.console_clear(hex_info_con)
+	# message and info console
+	msg_info_con = libtcod.console_new(24, 14)
+	libtcod.console_set_default_background(msg_info_con, libtcod.black)
+	libtcod.console_set_default_foreground(msg_info_con, libtcod.white)
+	libtcod.console_clear(msg_info_con)
 	
 	# attack resolution console
 	attack_con = libtcod.console_new(26, 57)
@@ -4612,7 +4636,7 @@ def DoScenario(load_savegame=False):
 		if mouse.cx != mouse_x or mouse.cy != mouse_y:
 			mouse_x = mouse.cx
 			mouse_y = mouse.cy
-			UpdateHexInfoConsole()
+			UpdateMsgInfoConsole()
 			DrawScreenConsoles()
 		
 		##### Mouse Commands #####

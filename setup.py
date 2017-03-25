@@ -5,7 +5,7 @@ import pygame
 sys.argv.append('py2exe')
 
 # constant defs
-VERSION = 'Proof of Concept'
+VERSION = 'Proof of Concept 2'
 AUTHOR_NAME = 'Gregory Adam Scott'
 AUTHOR_EMAIL = 'armouredcommander@gmail.com'
 AUTHOR_URL = 'http://www.armouredcommander.com'
@@ -23,7 +23,7 @@ DLLS = ['libtcod-mingw.dll', 'python27.dll', 'SDL.dll']
 if os.path.exists('dist/'): shutil.rmtree('dist/')	# remove last dist dir
 
 extra_files = [ ("",['readme.txt', 'gpl.txt']),
-	("data",glob.glob(os.path.join('data','c64_8x8.png'))),
+	("data",glob.glob(os.path.join('data','c64_12x12.png'))),
 	("data",glob.glob(os.path.join('data','c64_16x16.png'))),
 	("data",glob.glob(os.path.join('data','*.xml'))),
 	("data",glob.glob(os.path.join('data','*.xp'))),

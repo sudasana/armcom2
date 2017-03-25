@@ -139,7 +139,9 @@ SELECTED_HL_COL = libtcod.Color(100, 255, 255)		# selected PSG highlight colour
 ENEMY_HL_COL = libtcod.Color(40, 0, 0)
 INACTIVE_COL = libtcod.Color(100, 100, 100)		# inactive option color
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
-	
+
+HIGHLIGHT_CHARS = [250, 249, 7, 7, 7, 7, 249, 250]
+
 
 # Descriptor definitions
 MORALE_DESC = {
@@ -252,6 +254,12 @@ class AnimHandler:
 		self.gun_timer = time.time()		# animation timer
 		self.gun_click = 0			# time between animation updates
 		self.gun_active = False
+		
+		# PSG highlight effect
+		self.highlight_psg = None
+		self.highlight_timer = time.time()	# animation timer
+		self.highlight_click = 0		# time between animation updates
+		self.highlight_char = 0			# current character of animation
 	
 	# start a gun projectile animation
 	def InitGunEffect(self, x1, y1, x2, y2):
@@ -260,6 +268,13 @@ class AnimHandler:
 		self.gun_timer = time.time()
 		self.gun_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.001
 		self.gun_active = True
+	
+	# start a PSG highlight animation
+	def InitHighlight(self, psg):
+		self.highlight_psg = psg
+		self.highlight_timer = time.time()
+		self.highlight_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.003
+		self.highlight_char = 0
 	
 	# update animation statuses and animation console
 	def Update(self):
@@ -298,6 +313,16 @@ class AnimHandler:
 				else:
 					self.gun_location += 1
 		
+		# PSG highlight
+		if self.highlight_psg:
+			if time.time() - self.highlight_timer >= self.highlight_click:
+				updated_animation = True
+				self.highlight_timer =  time.time()
+				# remove animation if it's reached its end
+				if self.highlight_char == len(HIGHLIGHT_CHARS) - 1:
+					self.highlight_psg = None
+				self.highlight_char += 1
+		
 		# if we updated any animations, draw all of them to the screen
 		if updated_animation:
 			libtcod.console_clear(anim_con)
@@ -313,6 +338,13 @@ class AnimHandler:
 				(x,y) = self.gun_line[self.gun_location]
 				libtcod.console_put_char_ex(anim_con, x, y, 250, libtcod.white,
 					libtcod.black)
+			if self.highlight_psg:
+				x = self.highlight_psg.screen_x - 26
+				y = self.highlight_psg.screen_y - 3
+				for (xm, ym) in HEX_EDGE_TILES:
+					libtcod.console_put_char_ex(anim_con, x+xm, y+ym,
+						HIGHLIGHT_CHARS[self.highlight_char],
+						ACTIVE_MSG_COL, libtcod.black)
 		
 		return updated_animation
 
@@ -403,6 +435,18 @@ class AI:
 		if roll <= 5 and self.owner.acquired_target:
 			d1, d2, roll = Roll2D6()
 		
+		# modify result if infantry in open
+		map_hex = GetHexAt(self.owner.hx, self.owner.hy)
+		if self.owner.infantry and map_hex.terrain_type.af_modifier >= 0:
+			roll -= 3
+		
+		if self.owner.vehicle:
+			if len(self.owner.visible_enemies) == 0:
+				self.turn_action = 'Move'
+				print ('AI: no visible targets for ' + self.owner.GetName(true_name=True) +
+					', moving automatically')
+				return
+				
 		if roll <= 5:
 			self.turn_action = 'Move'
 			if self.owner.gun:
@@ -420,7 +464,8 @@ class AI:
 			# unit is not moving this turn
 			if self.turn_action != 'Move':
 				return
-			print 'AI: Starting move action for ' + self.owner.GetName(true_name=True)
+			print ('AI: Starting move action for ' + self.owner.GetName(true_name=True) +
+				' at ' + str(self.owner.hx) + ',' + str(self.owner.hy))
 			current_hex = GetHexAt(self.owner.hx, self.owner.hy)
 			
 			# Infantry
@@ -432,35 +477,84 @@ class AI:
 					return
 				
 				# try to move to better terrain if possible
-				move_locations = []
+				move_paths = []
 				current_modifier = current_hex.terrain_type.af_modifier
 				
-				hex_list = GetAdjacentHexesOnMap(current_hex.hx, current_hex.hy)
+				# check paths to all hexes within 4
+				hex_list = GetHexesWithin(current_hex.hx, current_hex.hy, 4)
 				for (hx, hy) in hex_list:
 					map_hex = GetHexAt(hx, hy)
 					if map_hex.IsOccupied() > -1:
 						continue
-					move_locations.append((map_hex.terrain_type.af_modifier, hx, hy))
+					if map_hex.terrain_type.af_modifier >= current_modifier:
+						continue
+					hex_path = GetHexPath(current_hex.hx, current_hex.hy,
+						hx, hy, psg=self.owner)
+					# no move path possible
+					if len(hex_path) == 0:
+						continue
+					move_paths.append((map_hex.terrain_type.af_modifier, hex_path))
 				
-				if len(move_locations) == 0:
-					print 'AI: No possible move locations, not moving'
+				if len(move_paths) == 0:
+					print 'AI: No move paths to a better location, not moving'
+					return
 				
-				sorted(move_locations,key=itemgetter(0))
+				sorted(move_paths,key=itemgetter(0))
 				
-				for (af_modifier, hx, hy) in move_locations:
-					if af_modifier < current_modifier:
-						break
-					print 'AI: Attempting move to ' + str(hx) + ',' + str(hy)
-					if self.owner.MoveInto(hx, hy):
-						print 'AI: Move completed'
+				# try to move along best path in list
+				(af_modifier, hex_path) = move_paths[0]
+				(hx, hy) = hex_path[-1]
+				print 'AI: Moving along path to ' + str(hx) + ',' + str(hy)
+				for (hx, hy) in hex_path[1:]:
+					print 'AI: Trying to move to ' + str(hx) + ',' + str(hy)
+					if not self.owner.CheckMoveInto(hx, hy):
+						print 'AI: Move along path was not possible, stopping here'
 						return
-				
-				print 'AI: Could not move to better terrain location, not moving'
-				return
+					if not self.owner.suspected:
+						text = self.owner.GetName() + 'moves'
+						Message(text, self.owner)
+					self.owner.MoveInto(hx, hy)
+				print 'AI: Move completed'
 			
-			# Vehicles - if no target within range, move toward it
+			# Vehicles - if no valid target within range, move toward closest target
 			if self.owner.vehicle:
-				pass
+				
+				if len(self.owner.visible_enemies) > 0:
+					for psg in self.owner.visible_enemies:
+						if self.GetBestAttacks(psg):
+							print 'AI: Have a possible attack, not moving'
+							return
+				
+				move_targets = []
+				for psg in scenario.psg_list:
+					if psg.owning_player == self.owner.owning_player:
+						continue
+					distance = GetHexDistance(self.owner.hx, self.owner.hy,
+						psg.hx, psg.hy)
+					move_targets.append((distance, psg))
+				
+				# sort by nearest to unit at top
+				reversed(sorted(move_targets,key=itemgetter(0)))
+				
+				for (distance, psg) in move_targets:
+					hex_path = GetHexPath(self.owner.hx, self.owner.hy,
+						psg.hx, psg.hy, psg=self.owner)
+					# no move path possible
+					if len(hex_path) == 0:
+						continue
+					for (hx, hy) in hex_path[1:]:
+						print 'AI: Trying to move to ' + str(hx) + ',' + str(hy)
+						if not self.owner.CheckMoveInto(hx, hy):
+							print 'AI: Move along path was not possible, stopping here'
+							return
+						if not self.owner.suspected:
+							text = self.owner.GetName() + 'moves'
+							Message(text, self.owner)
+						self.owner.MoveInto(hx, hy)
+					print 'AI: Move completed'
+					return
+				
+				print 'AI: Could not find a path to an enemy, not moving'
 			
 			# TEMP - no other move actions
 		
@@ -1258,7 +1352,7 @@ class PSG:
 		
 		# display movement animation
 		if not (self.owning_player == 1 and self.suspected):
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.2
 			(x1,y1) = PlotHex(self.hx, self.hy)
 			(x2,y2) = PlotHex(new_hx, new_hy)
 			line = GetLine(x1,y1,x2,y2)
@@ -1286,7 +1380,8 @@ class PSG:
 		if self.owning_player == 0:
 			scenario.hex_map.CalcFoV()
 			UpdateMapFoVConsole()
-			scenario.DoSpotCheck()
+		# do a spot check
+		scenario.DoSpotCheck()
 		
 		UpdateUnitConsole()
 		UpdateMsgInfoConsole()
@@ -1781,6 +1876,7 @@ class Scenario:
 				roll -= value
 			
 			psg_type = choice(psg_type_lists[category])
+			
 			num_steps = libtcod.random_get_int(0, psg_type['min_steps'],
 				psg_type['max_steps'])
 			
@@ -2186,6 +2282,12 @@ class Scenario:
 			for psg2 in self.psg_list:
 				# both units are on same side
 				if psg1.owning_player == psg2.owning_player:
+					continue
+				
+				# DEBUG
+				if VIEW_ALL and psg2.owning_player == 1 and psg2 in unspotted_psgs:
+					unspotted_psgs.remove(psg2)
+					spotted_psgs.append(psg2)
 					continue
 				
 				# no LoS
@@ -2939,7 +3041,7 @@ def GetMPCostToMove(psg, map_hex1, map_hex2):
 		else:
 			cost = 4
 	
-	elif psg.movement_class in ['Slow Tank', 'Tank', 'Fast Tank']:
+	elif psg.movement_class in ['Tank', 'Fast Tank']:
 		if road:
 			cost = 3
 		elif map_hex2.terrain_type.difficult:
@@ -2958,7 +3060,7 @@ def GetMPCostToMove(psg, map_hex1, map_hex2):
 # based on function from ArmCom 1, which was based on:
 # http://stackoverflow.com/questions/4159331/python-speed-up-an-a-star-pathfinding-algorithm
 # http://www.policyalmanac.org/games/aStarTutorial.htm
-def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None, road_path=False):
+def GetHexPath(hx1, hy1, hx2, hy2, psg=None, road_path=False):
 	
 	# retrace a set of nodes and return the best path
 	def RetracePath(end_node):
@@ -3017,9 +3119,9 @@ def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None, road_path=False):
 			# ignore impassible nodes
 			if node.terrain_type.water: continue
 			
-			# TODO: calculate real movement cost based on movement class
-			if movement_class is not None:
-				cost = 1
+			# calculate movement cost based on psg type
+			if psg:
+				cost = GetMPCostToMove(psg, current, node)
 			
 			# we're creating a path for a road
 			elif road_path:
@@ -3881,12 +3983,13 @@ def MGAttackAnimation(attack_obj):
 #   unless otherwise indicated, display this message in the message and info console, highlight
 #   the given PSG, and pause the game so that the player can read the message
 def Message(text, psg):
+	scenario.anim.InitHighlight(psg)
 	scenario.messages.append(text)
 	scenario.display_msg = True
 	UpdateMsgInfoConsole()
 	DrawScreenConsoles()
 	libtcod.console_flush()
-	Wait(config.getint('ArmCom2', 'message_pause_time') * 0.1)
+	Wait(config.getint('ArmCom2', 'message_pause_time') * 0.2)
 	scenario.display_msg = False
 	UpdateMsgInfoConsole()
 	DrawScreenConsoles()
@@ -4091,7 +4194,7 @@ def UpdatePSGConsole(psg=None):
 		libtcod.RIGHT, psg.movement_class)
 	
 	# display MP if in movement phase
-	if scenario.GetCurrentPhase() == 'Movement':
+	if scenario.GetCurrentPhase() == 'Movement' and scenario.active_player == psg.owning_player:
 		text = str(psg.mp) + '/' + str(psg.max_mp) + ' MP'
 		libtcod.console_print_ex(psg_con, 23, 17, libtcod.BKGND_NONE,
 			libtcod.RIGHT, text)
@@ -4801,6 +4904,7 @@ def DoScenario(load_savegame=False):
 						# right button: display PSG info window
 						elif mouse.rbutton and not (psg.suspected and psg.owning_player == 1):
 							DisplayPSGInfoWindow(psg)
+							break
 		
 		# open scenario menu screen
 		if key.vk == libtcod.KEY_ESCAPE:
@@ -5234,7 +5338,7 @@ while not exit_game:
 		libtcod.console_delete(0)
 		if config.getboolean('ArmCom2', 'large_display_font'):
 			config.set('ArmCom2', 'large_display_font', 'false')
-			fontname = 'c64_8x8.png'
+			fontname = 'c64_12x12.png'
 		else:
 			config.set('ArmCom2', 'large_display_font', 'true')
 			fontname = 'c64_16x16.png'

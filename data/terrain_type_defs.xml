@@ -19,7 +19,7 @@
     <display_name>Tall Fields</display_name>
     <los_height>0</los_height>
     <base_image>hex_fields_in_season.xp</base_image>
-    <af_modifier>0</af_modifier>
+    <af_modifier>-1</af_modifier>
     <pf_modifier>-1</pf_modifier>
   </terrain_def>
   <terrain_def>

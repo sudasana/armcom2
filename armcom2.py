@@ -246,6 +246,7 @@ class AnimHandler:
 			lifetime = libtcod.random_get_int(0, 4, 7)
 			self.raindrops.append([x, y, lifetime])
 		self.rain_timer = time.time()
+		# TEMP - FUTURE: will be set by weather handler
 		self.rain_active = True
 		
 		# gun weapon attack effect
@@ -275,6 +276,13 @@ class AnimHandler:
 		self.highlight_timer = time.time()
 		self.highlight_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.003
 		self.highlight_char = 0
+	
+	# step all animations in progress
+	def StopAll(self):
+		self.rain_active = False
+		self.gun_active = False
+		self.highlight_psg = None
+		libtcod.console_clear(anim_con)
 	
 	# update animation statuses and animation console
 	def Update(self):
@@ -511,7 +519,7 @@ class AI:
 						print 'AI: Move along path was not possible, stopping here'
 						return
 					if not self.owner.suspected:
-						text = self.owner.GetName() + 'moves'
+						text = self.owner.GetName() + ' moves'
 						Message(text, self.owner)
 					self.owner.MoveInto(hx, hy)
 				print 'AI: Move completed'
@@ -1203,7 +1211,7 @@ class PSG:
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		if self.owning_player == 0:
-			text = self.GetName() + ' is now Unknown to the enemy'
+			text = self.GetName() + ' is now unseen by the enemy'
 		else:
 			text = 'Lost contact with ' + self.GetName()
 		Message(text, self)
@@ -1972,10 +1980,13 @@ class Scenario:
 	
 	# display a screen of info about a completed scenario
 	def DisplayEndScreen(self):
-		# use the buffer console to darken the screen background
-		libtcod.console_clear(con)
-		libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0, 
-			0.0, 0.7)
+		
+		# stop any animations
+		scenario.anim.StopAll()
+		
+		# darken the screen background
+		libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+		
 		libtcod.console_rect(0, 4, 10, 80, 40, True, libtcod.BKGND_SET)
 		
 		lines = wrap(self.end_text, 26)
@@ -3121,6 +3132,9 @@ def GetHexPath(hx1, hy1, hx2, hy2, psg=None, road_path=False):
 			
 			# calculate movement cost based on psg type
 			if psg:
+				# can't move into an occupied location
+				if node.IsOccupied() > -1:
+					continue
 				cost = GetMPCostToMove(psg, current, node)
 			
 			# we're creating a path for a road
@@ -4334,7 +4348,7 @@ def UpdateMsgInfoConsole():
 	libtcod.console_print_ex(msg_info_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 		'Messages and Info')
 	#libtcod.console_print(msg_info_con, 0, 13, '[M]essage Log')
-	libtcod.console_put_char_ex(msg_info_con, 1, 13, 'M', ACTION_KEY_COL, libtcod.black)
+	#libtcod.console_put_char_ex(msg_info_con, 1, 13, 'M', ACTION_KEY_COL, libtcod.black)
 	libtcod.console_set_default_foreground(msg_info_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(msg_info_con, libtcod.black)
 	
@@ -4772,7 +4786,7 @@ def DoScenario(load_savegame=False):
 		scenario.month = 9
 		scenario.hour = 5
 		scenario.minute = 0
-		scenario.hour_limit = 12
+		scenario.hour_limit = 9
 		scenario.minute_limit = 0
 		
 		# display scenario info: chance to cancel scenario start

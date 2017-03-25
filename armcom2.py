@@ -1352,7 +1352,7 @@ class PSG:
 		
 		# display movement animation
 		if not (self.owning_player == 1 and self.suspected):
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.2
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
 			(x1,y1) = PlotHex(self.hx, self.hy)
 			(x2,y2) = PlotHex(new_hx, new_hy)
 			line = GetLine(x1,y1,x2,y2)
@@ -4333,7 +4333,7 @@ def UpdateMsgInfoConsole():
 	libtcod.console_rect(msg_info_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(msg_info_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 		'Messages and Info')
-	libtcod.console_print(msg_info_con, 0, 13, '[M]essage Log')
+	#libtcod.console_print(msg_info_con, 0, 13, '[M]essage Log')
 	libtcod.console_put_char_ex(msg_info_con, 1, 13, 'M', ACTION_KEY_COL, libtcod.black)
 	libtcod.console_set_default_foreground(msg_info_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(msg_info_con, libtcod.black)

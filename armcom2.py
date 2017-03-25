@@ -321,6 +321,7 @@ class AnimHandler:
 class AI:
 	def __init__(self, owner):
 		self.owner = owner			# the PSG for whom this AI instance is
+		self.turn_action = ''			# PSG action for this turn
 	
 	# return a scored list of best possible attacks on this target
 	def GetBestAttacks(self, target):
@@ -391,20 +392,82 @@ class AI:
 			return None
 		
 		return attack_list
-		
 	
-	# randomly choose and execute and action for the current phase
+	# randomly determine action for this turn
+	def GenerateAction(self):
+		
+		# TEMP: assume a defensive attitude
+		d1, d2, roll = Roll2D6()
+		
+		# re-roll move result if we have an acquired target
+		if roll <= 5 and self.owner.acquired_target:
+			d1, d2, roll = Roll2D6()
+		
+		if roll <= 5:
+			self.turn_action = 'Move'
+			if self.owner.gun:
+				self.turn_action = 'Shoot'
+		else:
+			self.turn_action = 'Shoot'
+		print 'AI: set turn action for ' + self.owner.GetName(true_name=True) + ' to ' + self.turn_action
+	
+	# execute an action for the current phase
 	def DoPhaseAction(self):
 		
 		# Movement Phase actions
 		if scenario.GetCurrentPhase() == 'Movement':
-			# TEMP - no move actions
-			return
+			
+			# unit is not moving this turn
+			if self.turn_action != 'Move':
+				return
+			print 'AI: Starting move action for ' + self.owner.GetName(true_name=True)
+			current_hex = GetHexAt(self.owner.hx, self.owner.hy)
+			
+			# Infantry
+			if self.owner.infantry:
+			
+				# stay put if on objective
+				if current_hex.objective:
+					print 'AI: Already on objective, not moving'
+					return
+				
+				# try to move to better terrain if possible
+				move_locations = []
+				current_modifier = current_hex.terrain_type.af_modifier
+				
+				hex_list = GetAdjacentHexesOnMap(current_hex.hx, current_hex.hy)
+				for (hx, hy) in hex_list:
+					map_hex = GetHexAt(hx, hy)
+					if map_hex.IsOccupied() > -1:
+						continue
+					move_locations.append((map_hex.terrain_type.af_modifier, hx, hy))
+				
+				if len(move_locations) == 0:
+					print 'AI: No possible move locations, not moving'
+				
+				sorted(move_locations,key=itemgetter(0))
+				
+				for (af_modifier, hx, hy) in move_locations:
+					if af_modifier < current_modifier:
+						break
+					print 'AI: Attempting move to ' + str(hx) + ',' + str(hy)
+					if self.owner.MoveInto(hx, hy):
+						print 'AI: Move completed'
+						return
+				
+				print 'AI: Could not move to better terrain location, not moving'
+				return
+			
+			# Vehicles - if no target within range, move toward it
+			if self.owner.vehicle:
+				pass
+			
+			# TEMP - no other move actions
 		
 		# Shooting Phase actions
 		elif scenario.GetCurrentPhase() == 'Shooting':
 			
-			print 'AI Shooting Phase Action for: ' + self.owner.GetName(true_name=True)
+			print 'AI: Starting shoot action for ' + self.owner.GetName(true_name=True)
 			
 			# build list of possible targets
 			target_list = []
@@ -722,6 +785,9 @@ class PSG:
 		self.max_mp = MP_ALLOWANCE		# maximum Movement Points per turn
 		self.mp = self.max_mp			# current mp
 		
+		self.visible_enemies = []			# list of visible targets, set by DoSpotCheck()
+		
+		
 		# load stats from data file
 		self.LoadStats()
 		
@@ -895,12 +961,17 @@ class PSG:
 		self.target_psg = None
 		self.selected_weapon = None
 		
-		# start of movement phase
+		# start of movement phase (and new player turn)
 		if scenario.GetCurrentPhase() == 'Movement':
 			self.mp = self.max_mp
 			self.moved = False
 			self.changed_facing = False
 			self.assault_target = None
+			
+			# if enemy player, roll for action this turn
+			if self.owning_player == 1:
+				self.ai.GenerateAction()
+			
 		# start of shooting phase
 		elif scenario.GetCurrentPhase() == 'Shooting':
 			self.fired = False
@@ -1218,6 +1289,7 @@ class PSG:
 			scenario.DoSpotCheck()
 		
 		UpdateUnitConsole()
+		UpdateMsgInfoConsole()
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		
@@ -1848,11 +1920,11 @@ class Scenario:
 			
 			# clear both units' acquired targets
 			attacker.ClearAcquiredTargets()
-			if target is not None:
+			if target:
 				target.ClearAcquiredTargets()
 			
 			# if target has been destroyed, take location
-			if target is None:
+			if not target:
 				attacker.MoveInto(hx, hy, free_move=True)
 				continue
 			else:
@@ -2110,14 +2182,17 @@ class Scenario:
 		
 		# check all possible enemy pairs
 		for psg1 in self.psg_list:
+			psg1.visible_enemies = []
 			for psg2 in self.psg_list:
 				# both units are on same side
 				if psg1.owning_player == psg2.owning_player:
 					continue
 				
-				# check for no LoS
+				# no LoS
 				if (psg2.hx, psg2.hy) not in GetLoS(psg1.hx, psg1.hy, psg2.hx, psg2.hy):
 					continue
+				
+				psg1.visible_enemies.append(psg2)
 				
 				# if psg2 was spotted, it won't lose this status if any enemy unit is in LoS
 				if not psg2.suspected and psg2 in unspotted_psgs:
@@ -2148,6 +2223,10 @@ class Scenario:
 	# select the next player PSG; or the first one in the list if none selected
 	def SelectNextPSG(self):
 		
+		reverse = False
+		if libtcod.console_is_key_pressed(libtcod.KEY_SHIFT):
+			reverse = True
+		
 		player_psgs = []
 		for psg in self.psg_list:
 			if psg.owning_player == 0: player_psgs.append(psg)
@@ -2161,21 +2240,25 @@ class Scenario:
 			self.active_psg = player_psgs[0]
 			return
 		
-		found_current = False
+		n = 0
 		for psg in player_psgs:
-			
-			# we found the currently active PSG
-			if self.active_psg == psg:
-				found_current = True
-			else:
-				# we already found the active PSG and have found another, so
-				#   select this one
-				if found_current:
-					self.active_psg = psg
+			if psg == self.active_psg:
+				# try to select the previous unit in the list
+				if reverse:
+					if n > 0:
+						self.active_psg = player_psgs[n-1]
+					else:
+						self.active_psg = player_psgs[-1]
 					return
-	
-		# if we get here, we could not find a new psg to select, select the first in list
-		self.active_psg = player_psgs[0]
+				# try to select the next unit in the list
+				else:
+					if n < len(player_psgs) - 1:
+						self.active_psg = player_psgs[n+1]
+					else:
+						self.active_psg = player_psgs[0]
+					return
+			n += 1
+		
 	
 	# rebuild a list of commands for the command menu based on current phase and
 	#   game state
@@ -2283,7 +2366,7 @@ class Scenario:
 		
 		# both movement and shooting root menus get this commands
 		if self.active_cmd_menu in ['movement_root', 'shooting_root']:
-			self.cmd_menu.AddOption('select_unit', 'Tab', 'Next Unit')
+			self.cmd_menu.AddOption('select_unit', 'Tab', 'Next/Prev Unit')
 			
 		# all root menus get this command
 		self.cmd_menu.AddOption('next_phase', 'Space', 'Next Phase')
@@ -2973,7 +3056,6 @@ def GetHexPath(hx1, hy1, hx2, hy2, movement_class=None, road_path=False):
 					node.f = node.g + node.h
 	
 	# no path possible
-	#print 'GetHexPath() Error: No path possible'
 	return []
 
 # Bresenham's Line Algorithm (based on an implementation on the roguebasin wiki)
@@ -3335,7 +3417,7 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 	libtcod.console_flush()
 	
 	# display appropriate attack animation
-	if not at_attack:
+	if not at_attack and distance > 0:
 		if weapon.stats['class'] == 'gun':
 			x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
 			x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
@@ -3975,8 +4057,8 @@ def UpdatePSGConsole(psg=None):
 	
 	for weapon in psg.weapon_list:
 		libtcod.console_set_default_background(psg_con, WEAPON_LIST_COLOR)
-		# highlight selected weapon if in shooting phase
-		if scenario.GetCurrentPhase() == 'Shooting' and psg.selected_weapon is not None:
+		# highlight selected weapon if active and in shooting phase
+		if scenario.active_psg == psg and scenario.GetCurrentPhase() == 'Shooting' and psg.selected_weapon is not None:
 			if weapon == psg.selected_weapon:
 				libtcod.console_set_default_background(psg_con, SELECTED_WEAPON_COLOR)
 		libtcod.console_rect(psg_con, 0, y, 24, 1, False, libtcod.BKGND_SET)

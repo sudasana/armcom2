@@ -370,15 +370,12 @@ class AnimHandler:
 				# bit of a kludge but might work
 				libtcod.console_rect(con, self.message_x+18, self.message_y+3,
 					16, len(self.message_lines), True, libtcod.BKGND_SET)
-				
-				print 'DEBUG: displaying message'
 			
 			# remove if expired
 			if self.message_timer + self.message_lifetime <= time.time():
 				self.message_lines = None
 				updated_animation = True
 				self.anim_finished = True
-				print 'DEBUG: message display ended'
 				
 		# if we updated any animations, draw all of them to the screen
 		if updated_animation:
@@ -512,7 +509,7 @@ class AI:
 				print ('AI: no visible targets for ' + self.owner.GetName(true_name=True) +
 					', moving automatically')
 				return
-				
+		
 		if roll <= 5:
 			self.turn_action = 'Move'
 			if self.owner.gun:
@@ -578,7 +575,7 @@ class AI:
 						return
 					if not self.owner.suspected:
 						text = self.owner.GetName() + ' moves'
-						Message(text, self.owner)
+						Message(text, self.owner.screen_x, self.owner.screen_y)
 					self.owner.MoveInto(hx, hy)
 				print 'AI: Move completed'
 			
@@ -603,10 +600,12 @@ class AI:
 				reversed(sorted(move_targets,key=itemgetter(0)))
 				
 				for (distance, psg) in move_targets:
+					print 'AI: Found an enemy at ' + str(psg.hx) + ',' + str(psg.hy)
 					hex_path = GetHexPath(self.owner.hx, self.owner.hy,
 						psg.hx, psg.hy, psg=self.owner)
 					# no move path possible
 					if len(hex_path) == 0:
+						print 'AI: No path to ' + str(psg.hx) + ',' + str(psg.hy)
 						continue
 					for (hx, hy) in hex_path[1:]:
 						print 'AI: Trying to move to ' + str(hx) + ',' + str(hy)
@@ -614,8 +613,8 @@ class AI:
 							print 'AI: Move along path was not possible, stopping here'
 							return
 						if not self.owner.suspected:
-							text = self.owner.GetName() + 'moves'
-							Message(text, self.owner)
+							text = self.owner.GetName() + ' moves'
+							Message(text, self.owner.screen_x, self.owner.screen_y)
 						self.owner.MoveInto(hx, hy)
 					print 'AI: Move completed'
 					return
@@ -1107,7 +1106,7 @@ class PSG:
 	# remove this PSG from the game
 	def DestroyMe(self):
 		text = self.GetName() + ' has been destroyed!'
-		Message(text, self)
+		Message(text, self.screen_x, self.screen_y)
 		scenario.psg_list.remove(self)
 		# clear acquired target records
 		self.ClearAcquiredTargets()
@@ -1151,7 +1150,7 @@ class PSG:
 			self.pin_points -= 1
 			text = self.GetName() + ' now has ' + str(self.pin_points) + ' pin point'
 			if self.pin_points != 1: text += 's'
-			Message(text, self)
+			Message(text, self.screen_x, self.screen_y)
 			return
 		
 		if self.pin_points == 0:
@@ -1167,7 +1166,7 @@ class PSG:
 			self.pin_points -= lost_points
 			text = self.GetName() + ' loses ' + str(lost_points) + ' pin point'
 			if lost_points != 1: text += 's'
-			Message(text, self)
+			Message(text, self.screen_x, self.screen_y)
 			return
 		
 		# test failed, unit is suppressed
@@ -1260,7 +1259,7 @@ class PSG:
 		else:
 			text = 'Enemy '
 		text += self.GetName() + ' has been spotted!'
-		Message(text, self)
+		Message(text, self.screen_x, self.screen_y)
 	
 	# regain unspotted status for this PSG
 	def HideMe(self):
@@ -1272,7 +1271,7 @@ class PSG:
 			text = self.GetName() + ' is now unseen by the enemy'
 		else:
 			text = 'Lost contact with ' + self.GetName()
-		Message(text, self)
+		Message(text, self.screen_x, self.screen_y)
 		self.suspected = True
 		UpdateUnitConsole()
 		DrawScreenConsoles()
@@ -1398,7 +1397,7 @@ class PSG:
 						if not (self.owning_player == 1 and self.suspected):
 							text = self.GetName() + ' suffers a breakdown, +'
 							text += str(extra_cost) + 'MP cost!'
-							Message(text, self)
+							Message(text, self.screen_x, self.screen_y)
 						
 			# spend the mp
 			self.mp -= mp_cost
@@ -1535,7 +1534,7 @@ class PSG:
 		# check for AF attack on suspected PF target
 		if attack_obj.target.suspected and not attack_obj.target.af_target:
 			text = 'Target cannot be harmed by Area Fire attacks'
-			Message(text, self)
+			Message(text, self.screen_x, self.screen_y)
 			return
 		
 		# result was at least a pin point: check for target reveal
@@ -1552,13 +1551,13 @@ class PSG:
 			
 			text = self.GetName() + ' has been reduced to ' + str(self.num_steps) + ' step'
 			if self.num_steps > 1: text += 's'
-			Message(text, self)
+			Message(text, self.screen_x, self.screen_y)
 		
 		# apply pin point
 		self.pin_points += 1
 		text = self.GetName() + ' now has ' + str(self.pin_points) + ' pin point'
 		if self.pin_points > 1: text += 's'
-		Message(text, self)
+		Message(text, self.screen_x, self.screen_y)
 		
 		# already suppressed
 		if self.suppressed: return
@@ -1606,13 +1605,13 @@ class PSG:
 	def SuppressMe(self):
 		self.suppressed = True
 		text = self.GetName() + ' has failed its morale check and is suppressed.'
-		Message(text, self)
+		Message(text, self.screen_x, self.screen_y)
 	
 	# unit recovers from being suppressed
 	def UnSuppressMe(self):
 		self.suppressed = False
 		text = self.GetName() + ' has rallied and recovers from being suppressed.'
-		Message(text, self)
+		Message(text, self.screen_x, self.screen_y)
 	
 	# take a skill test, returning True if passed
 	def SkillTest(self, modifier):
@@ -1628,7 +1627,7 @@ class PSG:
 		# guns cannot retreat
 		if self.movement_class == 'Gun':
 			text = self.GetName() + ' cannot retreat!'
-			Message(text, self)
+			Message(text, self.screen_x, self.screen_y)
 			self.DestroyMe()
 			return
 		
@@ -1645,7 +1644,7 @@ class PSG:
 		# no possible place to go
 		if len(hex_list) == 0:
 			text = self.GetName() + ' has no place to retreat!'
-			Message(text, self)
+			Message(text, self.screen_x, self.screen_y)
 			self.DestroyMe()
 			return
 		
@@ -1750,7 +1749,7 @@ class MapHex:
 				text = 'The enemy has'
 			text += ' captured an objective!'
 			(x,y) = PlotHex(self.hx, self.hy)
-			Message(text, None)
+			Message(text, x+26, y+2)
 		
 		UpdateGUIConsole()
 
@@ -1897,8 +1896,8 @@ class Scenario:
 		oob_op_budget = 400
 		spawn_chances = {
 			'Tank': 40,
-			'Gun': 30,
-			'Infantry': 20,
+			'Gun': 20,
+			'Infantry': 30,
 			'Armoured Car': 10
 		}
 		
@@ -2098,7 +2097,7 @@ class Scenario:
 			
 			# show message
 			text = attacker.GetName() + ' assaults ' + target.GetName()
-			Message(text, attacker)
+			Message(text, attacker.screen_x, attacker.screen_y)
 			
 			# do initial half-move animation
 			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
@@ -2117,12 +2116,12 @@ class Scenario:
 			attack_list = target.ai.GetBestAttacks(attacker)
 			if attack_list is None:
 				text = 'No defensive fire possible'
-				Message(text, target)
+				Message(text, target.screen_x, target.screen_y)
 			else:
 				sorted(attack_list,key=itemgetter(0))
 				(final_column, weapon, null, area_fire, at_attack) = attack_list[0]
 				text = target.GetName() + ' conducts defensive fire'
-				Message(text, target)
+				Message(text, target.screen_x, target.screen_y)
 				InitAttack(target, weapon, attacker, area_fire, at_attack=at_attack)
 			
 			# attacker was destroyed by defensive fire
@@ -2138,7 +2137,7 @@ class Scenario:
 			# if attacker has been Suppressed, it must fall back; skip attack loop
 			if attacker.suppressed:
 				text = attacker.GetName() + ' must break off attack'
-				Message(text, attacker)
+				Message(text, attacker.screen_x, attacker.screen_y)
 				attacker_won = False
 				exit_attack = True
 			else:
@@ -2159,12 +2158,12 @@ class Scenario:
 				
 				# assaulting platoon attacks
 				text = attacker.GetName() + ' attacks in close combat'
-				Message(text, attacker)
+				Message(text, attacker.screen_x, attacker.screen_y)
 				attack_list = attacker.ai.GetBestAttacks(target)
 				
 				if attack_list is None:
 					text = 'Attacker cannot damage ' + target.GetName() + ' and must break off'
-					Message(text, attacker)
+					Message(text, attacker.screen_x, attacker.screen_y)
 					attacker_won = False
 					exit_attack = True
 					continue
@@ -2184,19 +2183,19 @@ class Scenario:
 					target_steps = target.num_steps
 					if not target.MoraleCheck(0):
 						text = target.GetName() + ' fails its morale check and must withdraw'
-						Message(text, target)
+						Message(text, target.screen_x, target.screen_y)
 						target.RetreatToSafety()
 						exit_attack = True
 						continue
 				
 				# defender gets an attack
 				text = target.GetName() + ' attacks in close combat'
-				Message(text, target)
+				Message(text, target.screen_x, target.screen_y)
 				attack_list = target.ai.GetBestAttacks(attacker)
 				
 				if attack_list is None:
 					text = target.GetName() + ' cannot damage attacker and must withdraw'
-					Message(text, target)
+					Message(text, target.screen_x, target.screen_y)
 					target.RetreatToSafety()
 					exit_attack = True
 					continue
@@ -2217,7 +2216,7 @@ class Scenario:
 					attacker_steps = attacker.num_steps
 					if not attacker.MoraleCheck(0):
 						text = attacker.GetName() + ' fails its morale check and must break off attack'
-						Message(text, attacker)
+						Message(text, attacker.screen_x, attacker.screen_y)
 						attacker_won = False
 						exit_attack = True
 						continue
@@ -2729,9 +2728,9 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 			if attack_obj.point_fire:
 				if target.size_class != 'Normal':
 					if target.size_class == 'Very Small':
-						attack_obj.column_modifiers.append(('Very Small Target', -2))
+						attack_obj.column_modifiers.append(('Very Small Target', -4))
 					elif target.size_class == 'Small':
-						attack_obj.column_modifiers.append(('Small Target', -1))
+						attack_obj.column_modifiers.append(('Small Target', -2))
 			
 			# AF attack, target has gun shield, attack in front facing
 			if attack_obj.area_fire and target.gun and target.gun_shield:
@@ -3155,7 +3154,7 @@ def GetHexPath(hx1, hy1, hx2, hy2, psg=None, road_path=False):
 	start.f = start.g + start.h
 	end = node2
 	open_list.add(start)		# add the start node to the open list
-	last_good_node = None
+	#last_good_node = None
 	
 	while open_list:
 		
@@ -3189,8 +3188,8 @@ def GetHexPath(hx1, hy1, hx2, hy2, psg=None, road_path=False):
 			
 			# calculate movement cost based on psg type
 			if psg:
-				# can't move into an occupied location
-				if node.IsOccupied() > -1:
+				# can't move into an occupied location unless it's our destination
+				if node != node2 and node.IsOccupied() != -1:
 					continue
 				cost = GetMPCostToMove(psg, current, node)
 			
@@ -4050,10 +4049,10 @@ def MGAttackAnimation(attack_obj):
 	libtcod.console_flush()
 
 
-# add a new message to the message log and displays it on the map
-def Message(text, psg):
+# add a new message to the message log and displays it on the map at the given screen location
+def Message(text, x, y):
 	scenario.messages.append(text)
-	scenario.anim.InitMessage(psg.screen_x, psg.screen_y, text)
+	scenario.anim.InitMessage(x, y, text)
 	DrawScreenConsoles()
 	WaitForAnimation()
 	DrawScreenConsoles()
@@ -4480,7 +4479,6 @@ def DrawScreenConsoles():
 	libtcod.console_blit(map_gui_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# map GUI layer
 
 	# highlight selected PSG if any
-	# TODO: integrate into GUI console?
 	if scenario.active_psg is not None:
 		libtcod.console_set_char_background(con, scenario.active_psg.screen_x,
 			scenario.active_psg.screen_y, SELECTED_HL_COL, flag=libtcod.BKGND_SET)
@@ -4860,10 +4858,10 @@ def DoScenario(load_savegame=False):
 		new_psg.morale_lvl = 5
 		new_psg.PlaceAt(7, 9)
 		
-		new_psg = SpawnPSG('Schützen Platoon', 'german_schutzen', 5)
+		new_psg = SpawnPSG('Light Panzerspäh Platoon', 'psw_221', 3)
 		new_psg.owning_player = 0
 		new_psg.facing = 0
-		new_psg.skill_lvl = 4
+		new_psg.skill_lvl = 5
 		new_psg.morale_lvl = 5
 		new_psg.PlaceAt(8, 8)
 		

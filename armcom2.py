@@ -71,7 +71,7 @@ SHOW_TERRAIN_GEN = False			# display terrain generation in progress
 
 
 NAME = 'Armoured Commander II'
-VERSION = 'Proof of Concept 2'				# determines saved game compatability
+VERSION = 'Proof of Concept 3'				# determines saved game compatability
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -261,6 +261,14 @@ class AnimHandler:
 		self.highlight_timer = time.time()	# animation timer
 		self.highlight_click = 0		# time between animation updates
 		self.highlight_char = 0			# current character of animation
+		
+		# on-map message
+		self.message_lines = None		# lines of message text
+		self.message_started = False		# flag that message has been drawn once
+		self.message_x = 0			# location on which message is centered
+		self.message_y = 0
+		self.message_timer = time.time()
+		self.message_lifetime = 0
 	
 	# start a gun projectile animation
 	def InitGunEffect(self, x1, y1, x2, y2):
@@ -277,11 +285,30 @@ class AnimHandler:
 		self.highlight_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.003
 		self.highlight_char = 0
 	
-	# step all animations in progress
+	# display a message on the scenario map
+	def InitMessage(self, x, y, text):
+		self.message_lines = wrap(text, 16)
+		self.message_started = False
+		self.message_x = x - 26
+		self.message_y = y - 2
+		# reposition messages that would appear off-screen
+		if self.message_x < 8:
+			self.message_x = 8
+		elif self.message_x > WINDOW_WIDTH - 8:
+			self.message_x = WINDOW_WIDTH - 8
+		if self.message_y < 3:
+			self.message_y = 3
+		elif self.message_y+len(self.message_lines) > 57:
+			self.message_y = WINDOW_HEIGHT - 2 - len(self.message_lines)
+		# TEMP - need to set according to cfg file
+		self.message_lifetime = 1.5
+	
+	# stop all animations in progress
 	def StopAll(self):
 		self.rain_active = False
 		self.gun_active = False
 		self.highlight_psg = None
+		self.message_lines = None
 		libtcod.console_clear(anim_con)
 	
 	# update animation statuses and animation console
@@ -331,6 +358,28 @@ class AnimHandler:
 					self.highlight_psg = None
 				self.highlight_char += 1
 		
+		# on-map message
+		if self.message_lines:
+			
+			# first appearance
+			if not self.message_started:
+				self.message_started = True
+				self.message_timer = time.time()
+				updated_animation = True
+				
+				# bit of a kludge but might work
+				libtcod.console_rect(con, self.message_x+18, self.message_y+3,
+					16, len(self.message_lines), True, libtcod.BKGND_SET)
+				
+				print 'DEBUG: displaying message'
+			
+			# remove if expired
+			if self.message_timer + self.message_lifetime <= time.time():
+				self.message_lines = None
+				updated_animation = True
+				self.anim_finished = True
+				print 'DEBUG: message display ended'
+				
 		# if we updated any animations, draw all of them to the screen
 		if updated_animation:
 			libtcod.console_clear(anim_con)
@@ -353,6 +402,15 @@ class AnimHandler:
 					libtcod.console_put_char_ex(anim_con, x+xm, y+ym,
 						HIGHLIGHT_CHARS[self.highlight_char],
 						ACTIVE_MSG_COL, libtcod.black)
+			if self.message_lines:
+				n=0
+				libtcod.console_set_default_background(anim_con, libtcod.black)
+				for line in self.message_lines:
+					libtcod.console_print_ex(anim_con, self.message_x,
+						self.message_y+n, libtcod.BKGND_SET,
+						libtcod.CENTER, line)
+					n+=1
+				libtcod.console_set_default_background(anim_con, KEY_COLOR)
 		
 		return updated_animation
 
@@ -1392,7 +1450,7 @@ class PSG:
 		scenario.DoSpotCheck()
 		
 		UpdateUnitConsole()
-		UpdateMsgInfoConsole()
+		UpdateHexInfoConsole()
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		
@@ -1818,7 +1876,6 @@ class Scenario:
 		self.active_cmd_menu = None				# currently active command menu
 		
 		self.messages = []			# game message log
-		self.display_msg = False		# currently displaying most recent message
 		
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
@@ -3993,19 +4050,12 @@ def MGAttackAnimation(attack_obj):
 	libtcod.console_flush()
 
 
-# add a new message to the message log
-#   unless otherwise indicated, display this message in the message and info console, highlight
-#   the given PSG, and pause the game so that the player can read the message
+# add a new message to the message log and displays it on the map
 def Message(text, psg):
-	scenario.anim.InitHighlight(psg)
 	scenario.messages.append(text)
-	scenario.display_msg = True
-	UpdateMsgInfoConsole()
+	scenario.anim.InitMessage(psg.screen_x, psg.screen_y, text)
 	DrawScreenConsoles()
-	libtcod.console_flush()
-	Wait(config.getint('ArmCom2', 'message_pause_time') * 0.2)
-	scenario.display_msg = False
-	UpdateMsgInfoConsole()
+	WaitForAnimation()
 	DrawScreenConsoles()
 	libtcod.console_flush()
 
@@ -4338,31 +4388,18 @@ def UpdateScenInfoConsole():
 		text)
 
 
-# update the message and info console
-# if a message is active, display that, otherwise display info based on current mouse location
-def UpdateMsgInfoConsole():
+# update the map hex info console
+def UpdateHexInfoConsole():
 	libtcod.console_clear(msg_info_con)
 	libtcod.console_set_default_foreground(msg_info_con, TITLE_COL)
 	libtcod.console_set_default_background(msg_info_con, TITLE_BG_COL)
 	libtcod.console_rect(msg_info_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(msg_info_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-		'Messages and Info')
-	#libtcod.console_print(msg_info_con, 0, 13, '[M]essage Log')
-	#libtcod.console_put_char_ex(msg_info_con, 1, 13, 'M', ACTION_KEY_COL, libtcod.black)
+		'Map Hex & Unit Info')
+	libtcod.console_print(msg_info_con, 0, 13, '[M]essage Log')
+	libtcod.console_put_char_ex(msg_info_con, 1, 13, 'M', ACTION_KEY_COL, libtcod.black)
 	libtcod.console_set_default_foreground(msg_info_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(msg_info_con, libtcod.black)
-	
-	# currently displaying most recent message
-	if scenario.display_msg:
-		libtcod.console_set_default_foreground(msg_info_con, ACTIVE_MSG_COL)
-		lines = wrap(scenario.messages[-1], 24)
-		y = 2
-		for line in lines:
-			libtcod.console_print(msg_info_con, 0, y, line)
-			y += 1
-			# message too long to be displayed in window
-			if y == 12: break
-		return
 	
 	# see if we can display info about a map hex
 	
@@ -4426,7 +4463,7 @@ def UpdateMsgInfoConsole():
 				
 				if not (psg.suspected and psg.owning_player == 1):
 					libtcod.console_print(msg_info_con, 0, 12,
-						'Right Click: Unit Info')
+						'Right Click: More Info')
 				
 				return
 		
@@ -4711,7 +4748,7 @@ def DoScenario(load_savegame=False):
 	# animation layer console
 	anim_con = libtcod.console_new(57, 57)
 	libtcod.console_set_default_background(anim_con, KEY_COLOR)
-	libtcod.console_set_default_foreground(anim_con, libtcod.grey)
+	libtcod.console_set_default_foreground(anim_con, libtcod.white)
 	libtcod.console_set_key_color(anim_con, KEY_COLOR)
 	libtcod.console_clear(anim_con)
 	
@@ -4895,7 +4932,7 @@ def DoScenario(load_savegame=False):
 		if mouse.cx != mouse_x or mouse.cy != mouse_y:
 			mouse_x = mouse.cx
 			mouse_y = mouse.cy
-			UpdateMsgInfoConsole()
+			UpdateHexInfoConsole()
 			DrawScreenConsoles()
 		
 		##### Mouse Commands #####

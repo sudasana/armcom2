@@ -509,6 +509,15 @@ class AI:
 				print ('AI: no visible targets for ' + self.owner.GetName(true_name=True) +
 					', moving automatically')
 				return
+			has_attack = False
+			for psg in self.owner.visible_enemies:
+				if self.GetBestAttacks(psg):
+					has_attack = True
+					break
+			if not has_attack:
+				self.turn_action = 'Move'
+				print 'AI: No possible attacks from current position, moving'
+				return
 		
 		if roll <= 5:
 			self.turn_action = 'Move'
@@ -573,9 +582,9 @@ class AI:
 					if not self.owner.CheckMoveInto(hx, hy):
 						print 'AI: Move along path was not possible, stopping here'
 						return
-					if not self.owner.suspected:
-						text = self.owner.GetName() + ' moves'
-						Message(text, self.owner.screen_x, self.owner.screen_y)
+					#if not self.owner.suspected:
+					#	text = self.owner.GetName() + ' moves'
+					#	Message(text, self.owner.screen_x, self.owner.screen_y)
 					self.owner.MoveInto(hx, hy)
 				print 'AI: Move completed'
 			
@@ -612,9 +621,9 @@ class AI:
 						if not self.owner.CheckMoveInto(hx, hy):
 							print 'AI: Move along path was not possible, stopping here'
 							return
-						if not self.owner.suspected:
-							text = self.owner.GetName() + ' moves'
-							Message(text, self.owner.screen_x, self.owner.screen_y)
+						#if not self.owner.suspected:
+						#	text = self.owner.GetName() + ' moves'
+						#	Message(text, self.owner.screen_x, self.owner.screen_y)
 						self.owner.MoveInto(hx, hy)
 					print 'AI: Move completed'
 					return
@@ -2655,9 +2664,9 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 	# AF range modifiers
 	if attack_obj.area_fire:
 		if distance == 0:
-			attack_obj.column_modifiers.append(('Close Combat Range', 3))
+			attack_obj.column_modifiers.append(('Close Combat Range', 4))
 		elif distance == 1:
-			attack_obj.column_modifiers.append(('Point Blank Range', 2))
+			attack_obj.column_modifiers.append(('Very Close Range', 2))
 		elif distance == 2:
 			attack_obj.column_modifiers.append(('Close Range', 1))
 		elif distance == 4:
@@ -2681,11 +2690,11 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 		close_range = int(ceil(float(normal_range) * 0.5))
 		
 		if distance == 0:
-			attack_obj.column_modifiers.append(('Close Combat Range', -2))
+			attack_obj.column_modifiers.append(('Close Combat Range', 4))
 		elif distance <= close_range:
-			attack_obj.column_modifiers.append(('Close Range', 5))
-		elif distance <= normal_range:
-			attack_obj.column_modifiers.append(('Normal Range', 3))
+			attack_obj.column_modifiers.append(('Close Range', 2))
+		elif distance > normal_range:
+			attack_obj.column_modifiers.append(('Long Range', -2))
 	
 	# get target terrain info
 	map_hex = GetHexAt(target.hx, target.hy)
@@ -2780,8 +2789,10 @@ def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attac
 	# FUTURE: if column is less than 0, no chance of effect
 	if column < 0:
 		column = 0
+		print 'DEBUG: attack column was less than zero'
 	elif column > MAX_FIRE_TABLE_COLUMN - 1:
 		column = MAX_FIRE_TABLE_COLUMN - 1
+		print 'DEBUG: exceeded highest attack column'
 		
 	final_column = FIRE_TABLE[column]
 	attack_obj.final_column = final_column
@@ -4459,12 +4470,7 @@ def UpdateHexInfoConsole():
 					libtcod.console_print_ex(msg_info_con, 23, 8,
 						libtcod.BKGND_NONE, libtcod.RIGHT,
 						'Unknown to Enemy')
-				
-				if not (psg.suspected and psg.owning_player == 1):
-					libtcod.console_print(msg_info_con, 0, 12,
-						'Right Click: More Info')
-				
-				return
+				break
 		
 
 # layer the display consoles onto the screen

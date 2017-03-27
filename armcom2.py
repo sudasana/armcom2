@@ -2426,7 +2426,6 @@ class Scenario:
 		# none selected yet, select the first one in the list
 		if self.active_psg is None:
 			self.active_psg = player_psgs[0]
-			print 'DEBUG: selected first player PSG'
 			return
 		
 		n = 0
@@ -4429,8 +4428,8 @@ def UpdateHexInfoConsole():
 	libtcod.console_rect(msg_info_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(msg_info_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 		'Map Hex & Unit Info')
-	libtcod.console_print(msg_info_con, 0, 13, '[M]essage Log')
-	libtcod.console_put_char_ex(msg_info_con, 1, 13, 'M', ACTION_KEY_COL, libtcod.black)
+	#libtcod.console_print(msg_info_con, 0, 13, '[M]essage Log')
+	#libtcod.console_put_char_ex(msg_info_con, 1, 13, 'M', ACTION_KEY_COL, libtcod.black)
 	libtcod.console_set_default_foreground(msg_info_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(msg_info_con, libtcod.black)
 	

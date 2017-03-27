@@ -298,10 +298,10 @@ class AnimHandler:
 			self.message_x = WINDOW_WIDTH - 8
 		if self.message_y < 3:
 			self.message_y = 3
-		elif self.message_y+len(self.message_lines) > 57:
-			self.message_y = WINDOW_HEIGHT - 2 - len(self.message_lines)
+		elif self.message_y + len(self.message_lines) > 56:
+			self.message_y = 56 - len(self.message_lines)
 		# TEMP - need to set according to cfg file
-		self.message_lifetime = 1.5
+		self.message_lifetime = 1.2
 	
 	# stop all animations in progress
 	def StopAll(self):
@@ -577,14 +577,11 @@ class AI:
 				(af_modifier, hex_path) = move_paths[0]
 				(hx, hy) = hex_path[-1]
 				print 'AI: Moving along path to ' + str(hx) + ',' + str(hy)
-				for (hx, hy) in hex_path[1:]:
+				for (hx, hy) in hex_path[1:-1]:
 					print 'AI: Trying to move to ' + str(hx) + ',' + str(hy)
 					if not self.owner.CheckMoveInto(hx, hy):
 						print 'AI: Move along path was not possible, stopping here'
 						return
-					#if not self.owner.suspected:
-					#	text = self.owner.GetName() + ' moves'
-					#	Message(text, self.owner.screen_x, self.owner.screen_y)
 					self.owner.MoveInto(hx, hy)
 				print 'AI: Move completed'
 			
@@ -616,7 +613,7 @@ class AI:
 					if len(hex_path) == 0:
 						print 'AI: No path to ' + str(psg.hx) + ',' + str(psg.hy)
 						continue
-					for (hx, hy) in hex_path[1:]:
+					for (hx, hy) in hex_path[1:-1]:
 						print 'AI: Trying to move to ' + str(hx) + ',' + str(hy)
 						if not self.owner.CheckMoveInto(hx, hy):
 							print 'AI: Move along path was not possible, stopping here'
@@ -953,7 +950,7 @@ class PSG:
 		self.max_mp = MP_ALLOWANCE		# maximum Movement Points per turn
 		self.mp = self.max_mp			# current mp
 		
-		self.visible_enemies = []			# list of visible targets, set by DoSpotCheck()
+		self.visible_enemies = []		# list of visible targets, set by DoSpotCheck()
 		
 		
 		# load stats from data file
@@ -1257,8 +1254,10 @@ class PSG:
 		
 		self.suspected = False
 
-		# update unit console to display
+		# update unit console and perhaps PSG console to display
 		UpdateUnitConsole()
+		if scenario.active_psg == self:
+			UpdatePSGConsole()
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		
@@ -1283,6 +1282,8 @@ class PSG:
 		Message(text, self.screen_x, self.screen_y)
 		self.suspected = True
 		UpdateUnitConsole()
+		if scenario.active_psg == self:
+			UpdatePSGConsole()
 		DrawScreenConsoles()
 		libtcod.console_flush()
 	
@@ -2280,6 +2281,10 @@ class Scenario:
 			activate_list.append(psg)
 		shuffle(activate_list)
 		for psg in activate_list:
+			scenario.active_psg = psg
+			UpdatePSGConsole()
+			DrawScreenConsoles()
+			libtcod.console_flush()
 			psg.ai.DoPhaseAction()
 	
 	# end of turn, advance the scenario clock by one turn
@@ -2313,6 +2318,7 @@ class Scenario:
 			
 			if self.active_player == 0:
 				self.active_player = 1
+				# clear active PSG
 				self.active_psg = None
 			else:
 				# end of turn, check for scenario end
@@ -2326,7 +2332,9 @@ class Scenario:
 				self.AdvanceClock()
 				UpdateScenInfoConsole()
 				self.active_player = 0
+				self.active_psg = None
 				scenario.SelectNextPSG()
+				UpdatePSGConsole()
 			self.SetPhase('Movement')
 			self.active_cmd_menu = 'movement_root'
 			for psg in self.psg_list:
@@ -2416,6 +2424,7 @@ class Scenario:
 		# none selected yet, select the first one in the list
 		if self.active_psg is None:
 			self.active_psg = player_psgs[0]
+			print 'DEBUG: selected first player PSG'
 			return
 		
 		n = 0
@@ -4120,6 +4129,8 @@ def UpdateMapTerrainConsole():
 					# if character is not blank or hex edge, remove it
 					if libtcod.console_get_char(map_terrain_con, x, y) not in [0, 250]:
 						libtcod.console_set_char(map_terrain_con, x, y, 0)
+	
+
 
 
 # draw the Field of View overlay for the player, darkening map hexes that are not currently visible
@@ -4185,6 +4196,10 @@ def UpdatePSGConsole(psg=None):
 	
 	# PSG name
 	libtcod.console_print(psg_con, 0, 0, psg.GetName())
+	
+	# quit now if unit is enemy and suspected
+	if psg.owning_player == 1 and psg.suspected:
+		return
 	
 	# unit type
 	libtcod.console_set_default_foreground(psg_con, HIGHLIGHT_COLOR)
@@ -4475,17 +4490,15 @@ def UpdateHexInfoConsole():
 
 # layer the display consoles onto the screen
 def DrawScreenConsoles():
-	libtcod.console_clear(con)
 	
-	# map viewport layers
-	libtcod.console_blit(bkg_console, 0, 0, 0, 0, con, 0, 3)		# grey outline
-	libtcod.console_blit(map_terrain_con, 0, 0, 0, 0, con, 26, 3)		# map terrain
-	libtcod.console_blit(map_fov_con, 0, 0, 0, 0, con, 26, 3, 0.7, 0.7)	# map FoV overlay
-	libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# map unit layer
-	libtcod.console_blit(map_gui_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# map GUI layer
-
-	# highlight selected PSG if any
-	if scenario.active_psg is not None:
+	def DrawHighlights():
+		
+		# don't highlight unit if enemy and its hex is not visible to player
+		if scenario.active_psg.owning_player == 1:
+			map_hex = GetHexAt(scenario.active_psg.hx, scenario.active_psg.hy)
+			if not map_hex.vis_to_player:
+				return
+		
 		libtcod.console_set_char_background(con, scenario.active_psg.screen_x,
 			scenario.active_psg.screen_y, SELECTED_HL_COL, flag=libtcod.BKGND_SET)
 		
@@ -4500,7 +4513,7 @@ def DrawScreenConsoles():
 	
 		# highlight targeted PSG if any
 		psg = scenario.active_psg.target_psg
-		if psg is not None:
+		if psg:
 			libtcod.console_set_char_background(con, psg.screen_x, psg.screen_y,
 				TARGET_HL_COL, flag=libtcod.BKGND_SET)
 			
@@ -4522,6 +4535,16 @@ def DrawScreenConsoles():
 				libtcod.console_set_char(con, x, y, 250)
 				libtcod.console_set_char_foreground(con, x, y, libtcod.red)
 	
+	
+	libtcod.console_clear(con)
+	
+	# map viewport layers
+	libtcod.console_blit(bkg_console, 0, 0, 0, 0, con, 0, 3)		# grey outline
+	libtcod.console_blit(map_terrain_con, 0, 0, 0, 0, con, 26, 3)		# map terrain
+	libtcod.console_blit(map_fov_con, 0, 0, 0, 0, con, 26, 3, 0.7, 0.7)	# map FoV overlay
+	libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# map unit layer
+	libtcod.console_blit(map_gui_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# map GUI layer
+
 	# left column consoles
 	libtcod.console_blit(psg_con, 0, 0, 0, 0, con, 1, 4)
 	libtcod.console_blit(cmd_con, 0, 0, 0, 0, con, 1, 26)
@@ -4529,7 +4552,11 @@ def DrawScreenConsoles():
 	
 	# scenario info
 	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 0, 0)
-	
+
+	# highlight selected PSG if any
+	if scenario.active_psg:
+		DrawHighlights()
+		
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)	# animation layer
 
@@ -5378,6 +5405,13 @@ while not exit_game:
 		CheckSavedGame(active_menu)
 		UpdateScreen()
 	elif option.option_id == 'new_scenario':
+		# check for already-existing saved game
+		if os.path.exists('savegame'):
+			text = 'Starting a new game will erase the previous one. Proceed?'
+			if not GetConfirmation(text):
+				UpdateScreen()
+				continue
+			
 		DoScenario()
 		active_menu = menus[0]
 		CheckSavedGame(active_menu)

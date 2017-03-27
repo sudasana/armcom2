@@ -176,11 +176,16 @@ HEX_EDGE_TILES = [(-1,-2), (0,-2), (1,-2), (2,-1), (3,0), (2,1), (1,2), (0,2), (
 
 
 # option codes, key codes, and directional arrows to use for rotate/move commands
-MOVE_COMMANDS = [
+# two version: QWE/ASD and UIO/JKL
+MOVE_COMMANDS_QWE = [
 	(5, 'Q', chr(231)), (0, 'W', chr(24)), (1, 'E', chr(228)), (4, 'A', chr(230)),
 	(3, 'S', chr(25)), (2, 'D', chr(229))
 ]
 
+MOVE_COMMANDS_UIO = [
+	(5, 'U', chr(231)), (0, 'I', chr(24)), (1, 'O', chr(228)), (4, 'J', chr(230)),
+	(3, 'K', chr(25)), (2, 'L', chr(229))
+]
 
 # fire table values
 # highest column that is not more than attack strength is used
@@ -618,9 +623,6 @@ class AI:
 						if not self.owner.CheckMoveInto(hx, hy):
 							print 'AI: Move along path was not possible, stopping here'
 							return
-						#if not self.owner.suspected:
-						#	text = self.owner.GetName() + ' moves'
-						#	Message(text, self.owner.screen_x, self.owner.screen_y)
 						self.owner.MoveInto(hx, hy)
 					print 'AI: Move completed'
 					return
@@ -2463,7 +2465,13 @@ class Scenario:
 		if self.active_cmd_menu == 'movement_root' and scenario.active_psg.assault_target is None:
 			
 			# run through six possible rotate/move directions and build commands
-			for (direction, key_code, char) in MOVE_COMMANDS:
+			movement_keys = config.get('ArmCom2', 'movement_keys')
+			if movement_keys == 'qweasd':
+				move_command_list = MOVE_COMMANDS_QWE
+			else:
+				move_command_list = MOVE_COMMANDS_UIO
+			
+			for (direction, key_code, char) in move_command_list:
 				
 				if not scenario.active_psg.infantry:
 					if scenario.active_psg.facing != direction:
@@ -5148,6 +5156,7 @@ def LoadCFG():
 		config.set('ArmCom2', 'large_display_font', 'true')
 		config.set('ArmCom2', 'message_pause_time', '700')
 		config.set('ArmCom2', 'animation_speed', '30')
+		config.set('ArmCom2', 'movement_keys', 'qweasd')
 		
 		# write to disk
 		with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
@@ -5263,13 +5272,15 @@ cmd_menu.AddOption('quit', 'Q', 'Quit')
 menus.append(cmd_menu)
 
 cmd_menu = CommandMenu('settings_menu')
-cmd_menu.AddOption('toggle_font_size', 'F', 'Toggle Font/Window Size',
-	desc='Switch between 8px and 16px font size')
-cmd_menu.AddOption('select_msg_speed', 'M', 'Select Message Pause Time',
+cmd_menu.AddOption('toggle_font_size', 'F', 'Font Size',
+	desc='Switch between 12px and 16px font size')
+cmd_menu.AddOption('select_msg_speed', 'M', 'Message Pause',
 	desc='Change how long messages are displayed before being cleared')
-cmd_menu.AddOption('select_ani_speed', 'A', 'Select Animation Speed',
+cmd_menu.AddOption('select_ani_speed', 'A', 'Animation Speed',
 	desc='Change the display speed of in-game animations')
-cmd_menu.AddOption('return_to_main', '0', 'Return to Main Menu')
+cmd_menu.AddOption('toggle_move_keys', 'K', 'Movement Keys',
+	desc='Toggles between QWE/ASD and UIO/JKL for movement commands')
+cmd_menu.AddOption('return_to_main', '0', 'Main Menu')
 menus.append(cmd_menu)
 
 active_menu = menus[0]
@@ -5325,7 +5336,7 @@ def UpdateScreen():
 			text += 'Medium'
 		else:
 			text += 'Long'
-		libtcod.console_print(0, WINDOW_XM-12, 49, text)
+		libtcod.console_print(0, WINDOW_XM-12, 48, text)
 		
 		text = 'Animation Speed: '
 		ani_time = config.getint('ArmCom2', 'animation_speed')
@@ -5335,7 +5346,16 @@ def UpdateScreen():
 			text += 'Normal'
 		else:
 			text += 'Slow'
+		libtcod.console_print(0, WINDOW_XM-12, 49, text)
+		
+		text = 'Movement Keys: '
+		movement_keys = config.get('ArmCom2', 'movement_keys')
+		if movement_keys == 'qweasd':
+			text += 'QWE/ASD'
+		else:
+			text += 'UIO/JKL'
 		libtcod.console_print(0, WINDOW_XM-12, 50, text)
+		
 		libtcod.console_set_default_foreground(0, libtcod.white)
 	
 UpdateScreen()
@@ -5458,6 +5478,15 @@ while not exit_game:
 			config.set('ArmCom2', 'animation_speed', 46)
 		else:
 			config.set('ArmCom2', 'animation_speed', 16)
+		SaveCFG()
+		UpdateScreen()
+	
+	elif option.option_id == 'toggle_move_keys':
+		movement_keys = config.get('ArmCom2', 'movement_keys')
+		if movement_keys == 'qweasd':
+			config.set('ArmCom2', 'movement_keys', 'uiojkl')
+		else:
+			config.set('ArmCom2', 'movement_keys', 'qweasd')
 		SaveCFG()
 		UpdateScreen()
 	

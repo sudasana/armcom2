@@ -24,11 +24,31 @@
       </psg>
       
       <psg>
+        <name>Tankette Squadron</name>
+        <category>Tank</category>
+        <unit_id>TKS_20mm</unit_id>
+        <min_steps>3</min_steps>
+        <max_steps>5</max_steps>
+        <skill_lvl>4</skill_lvl>
+        <morale_lvl>4</morale_lvl>
+      </psg>
+      
+      <psg>
         <name>Tank Squadron</name>
         <category>Tank</category>
         <unit_id>7TP</unit_id>
         <min_steps>3</min_steps>
         <max_steps>5</max_steps>
+        <skill_lvl>4</skill_lvl>
+        <morale_lvl>4</morale_lvl>
+      </psg>
+      
+      <psg>
+        <name>Tank Squadron</name>
+        <category>Tank</category>
+        <unit_id>Vickers_E_A</unit_id>
+        <min_steps>2</min_steps>
+        <max_steps>4</max_steps>
         <skill_lvl>4</skill_lvl>
         <morale_lvl>4</morale_lvl>
       </psg>

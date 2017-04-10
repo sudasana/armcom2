@@ -1,269 +1,8 @@
 <root>
 
-  <!-- Generic Units used by many nations -->
-  
-  <unit_def>
-    <id>rifle_squad</id>
-    <name>Rifle Squad</name>
-    <infantry/>
-    <movement_class>Infantry</movement_class>
-    <weapon>rifles</weapon>
-    <op_value>5</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>hmg_team</id>
-    <name>HMG Team</name>
-    <infantry/>
-    <movement_class>Infantry</movement_class>
-    <weapon>hmg</weapon>
-    <op_value>9</op_value>
-  </unit_def>
-
-  <!-- Polish Units -->
-  
-  <!-- Tanks -->
-  
-  <unit_def>
-    <id>TK_3</id>
-    <name>TK-3</name>
-    <portrait>unit_TK_3.xp</portrait>
-    <vehicle/>
-    <unreliable/>
-    <movement_class>Fast Tank</movement_class>
-    <size_class>Very Small</size_class>
-    <armour>
-      <front>0</front>
-      <side>0</side>
-    </armour>
-    <weapon>vehicle_mg</weapon>
-    <op_value>18</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>TKS</id>
-    <name>TKS</name>
-     <portrait>unit_TKS.xp</portrait>
-    <vehicle/>
-    <movement_class>Fast Tank</movement_class>
-    <size_class>Very Small</size_class>
-    <armour>
-      <front>1</front>
-      <side>0</side>
-    </armour>
-    <weapon>vehicle_mg</weapon>
-    <op_value>20</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>TKS_20mm</id>
-    <name>TKS (20mm)</name>
-    <vehicle/>
-    <movement_class>Fast Tank</movement_class>
-    <size_class>Very Small</size_class>
-    <armour>
-      <front>1</front>
-      <side>0</side>
-    </armour>
-    <weapon>20L</weapon>
-    <op_value>22</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>Renault_FT_MG</id>
-    <name>Renault FT (MG)</name>
-    <vehicle/>
-    <unreliable/>
-    <movement_class>Slow Tank</movement_class>
-    <size_class>Small</size_class>
-    <armour>
-      <front>1</front>
-      <side>0</side>
-    </armour>
-    <weapon>vehicle_mgs</weapon>
-    <op_value>18</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>Renault_FT_37</id>
-    <name>Renault FT (37mm)</name>
-    <vehicle/>
-    <unreliable/>
-    <movement_class>Slow Tank</movement_class>
-    <size_class>Small</size_class>
-    <armour>
-      <front>1</front>
-      <side>0</side>
-    </armour>
-    <weapon>37</weapon>
-    <op_value>20</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>Vickers_E_A</id>
-    <name>Vickers E Type A</name>
-    <vehicle/>
-    <movement_class>Slow Tank</movement_class>
-    <size_class>Small</size_class>
-    <armour>
-      <front>2</front>
-      <side>1</side>
-    </armour>
-    <weapon>47</weapon>
-    <weapon>vehicle_mg</weapon>
-    <op_value>33</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>Vickers_E_B</id>
-    <name>Vickers E Type B</name>
-    <vehicle/>
-    <movement_class>Slow Tank</movement_class>
-    <size_class>Small</size_class>
-    <armour>
-      <front>2</front>
-      <side>1</side>
-    </armour>
-    <weapon>twin_vehicle_mgs</weapon>
-    <op_value>30</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>7TP_double</id>
-    <name>7TP (Double Turret)</name>
-    <vehicle/>
-    <movement_class>Tank</movement_class>
-    <size_class>Small</size_class>
-    <armour>
-      <front>2</front>
-      <side>1</side>
-    </armour>
-    <weapon>twin_vehicle_mgs</weapon>
-    <op_value>27</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>7TP</id>
-    <name>7TP</name>
-    <vehicle/>
-    <movement_class>Tank</movement_class>
-    <size_class>Normal</size_class>
-    <armour>
-      <front>2</front>
-      <side>1</side>
-    </armour>
-    <weapon>37L</weapon>
-    <op_value>33</op_value>
-  </unit_def>
-  
-  <!-- Armoured Cars and Other Armed Vehicles -->
-  
-  <unit_def>
-    <id>wz_34_mg</id>
-    <name>Wz. 34 (MG)</name>
-    <portrait>unit_wz_34_MG.xp</portrait>
-    <vehicle/>
-    <movement_class>Wheeled</movement_class>
-    <size_class>Small</size_class>
-    <armour>
-      <front>1</front>
-      <side>0</side>
-    </armour>
-    <weapon>vehicle_mg</weapon>
-    <recce/>
-    <op_value>19</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>wz_34_37</id>
-    <name>Wz. 34 (37mm)</name>
-    <vehicle/>
-    <movement_class>Wheeled</movement_class>
-    <size_class>Small</size_class>
-    <armour>
-      <front>1</front>
-      <side>0</side>
-    </armour>
-    <weapon>37</weapon>
-    <recce/>
-    <op_value>22</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>302_taczanka</id>
-    <name>302 Taczanka</name>
-    <vehicle/>
-    <movement_class>Wheeled</movement_class>
-    <size_class>Normal</size_class>
-    <weapon>vehicle_aa_hmg</weapon>
-    <op_value>17</op_value>
-  </unit_def>
-  
-  <!-- Guns and Gun Teams -->
-  
-  <unit_def>
-    <id>37mm_wz_36</id>
-    <name>37mm wz. 36</name>
-    <portrait>unit_37mm_gun.xp</portrait>
-    <gun/>
-    <movement_class>Gun</movement_class>
-    <size_class>Very Small</size_class>
-    <weapon>37L</weapon>
-    <gun_shield/>
-    <op_value>20</op_value>
-  </unit_def>
-  
-  <unit_def>
-    <id>ur_wz_35</id>
-    <name>Ur. wz. 35</name>
-    <infantry/>
-    <movement_class>Infantry</movement_class>
-    <weapon>at_rifle</weapon>
-    <op_value>5</op_value>
-  </unit_def>
-  
-  
-  <!-- German Units -->
-  
-  <unit_def>
-    <infantry/>
-    <id>german_schutzen</id>
-    <name>Schützen Squad</name>
-    <movement_class>Infantry</movement_class>
-    <weapon>rifles_mgs</weapon>
-  </unit_def>
-
   <unit_def>
     <vehicle/>
-    <id>Panzer I B</id>
-    <name>Panzer I(B)</name>
-    <size_class>Small</size_class>
-    <movement_class>Fast Tank</movement_class>
-    <armour>
-      <front>1</front>
-      <side>1</side>
-    </armour>
-    <weapon>twin_vehicle_mgs</weapon>
-    
-  </unit_def>
-  
-  <unit_def>
-    <vehicle/>
-    <id>Panzer II A</id>
-    <name>Panzer II(A)</name>
-    <portrait>unit_pz_II.xp</portrait>
-    <size_class>Small</size_class>
-    <movement_class>Fast Tank</movement_class>
-    <armour>
-      <front>1</front>
-      <side>1</side>
-    </armour>
-    <weapon>20L</weapon>
-    <weapon>vehicle_mg</weapon>
-  </unit_def>
-
-  <unit_def>
-    <vehicle/>
+    <turret/>
     <id>Panzer 35t</id>
     <name>Panzer 35(t)</name>
     <portrait>unit_pz_35t.xp</portrait>
@@ -273,23 +12,30 @@
       <front>3</front>
       <side>1</side>
     </armour>
-    <weapon>37</weapon>
-    <weapon>vehicle_mg</weapon>
-  </unit_def>
-  
-  <unit_def>
-    <vehicle/>
-    <id>psw_221</id>
-    <name>PSW 221</name>
-    <portrait>unit_sd_kfz_221.xp</portrait>
-    <movement_class>Wheeled</movement_class>
-    <size_class>Small</size_class>
-    <armour>
-      <front>1</front>
-      <side>1</side>
-    </armour>
-    <weapon>vehicle_mg</weapon>
-    <recce/>
+    <weapon>
+      <type>gun</type>
+      <calibre>37</calibre>
+      <mount>Turret</mount>
+      <fired_by>Commander/Gunner</fired_by>
+    </weapon>
+    <weapon>
+      <type>vehicle_mg</type>
+      <fp>4</fp>
+      <mount>turret</mount>
+      <fired_by>Commander/Gunner</fired_by>
+      <fired_by>Loader</fired_by>
+    </weapon>
+    <weapon>
+      <type>vehicle_mg</type>
+      <fp>4</fp>
+      <mount>hull</mount>
+      <fired_by>Driver</fired_by>
+      <fired_by>Assistant Driver</fired_by>
+    </weapon>
+    <crew_position>Commander/Gunner</crew_position>
+    <crew_position>Loader</crew_position>
+    <crew_position>Driver</crew_position>
+    <crew_position>Assistant Driver</crew_position>
   </unit_def>
   
 </root>

@@ -1,5 +1,40 @@
 <root>
 
+  <!-- Polish Units -->
+  <unit_def>
+    <vehicle/>
+    <turret/>
+    <id>7TP</id>
+    <name>7TP</name>
+    <size_class>Normal</size_class>
+    <movement_class>Tank</movement_class>
+    <armour>
+      <front>2</front>
+      <side>1</side>
+    </armour>
+    <weapon>
+      <type>gun</type>
+      <calibre>37</calibre>
+      <long_range>L</long_range>
+      <mount>Turret</mount>
+      <fired_by>Gunner</fired_by>
+      <rr_size>4</rr_size>
+    </weapon>
+    <weapon>
+      <type>coax_mg</type>
+      <fp>4</fp>
+      <mount>turret</mount>
+      <fired_by>Gunner</fired_by>
+    </weapon>
+    <max_ammo>80</max_ammo>
+    <crew_position>Commander</crew_position>
+    <crew_position>Gunner</crew_position>
+    <crew_position>Driver</crew_position>
+  </unit_def>
+  
+
+  <!-- German Units -->
+
   <unit_def>
     <vehicle/>
     <turret/>
@@ -17,21 +52,23 @@
       <calibre>37</calibre>
       <mount>Turret</mount>
       <fired_by>Commander/Gunner</fired_by>
+      <rr_size>6</rr_size>
     </weapon>
     <weapon>
-      <type>vehicle_mg</type>
+      <type>coax_mg</type>
       <fp>4</fp>
       <mount>turret</mount>
       <fired_by>Commander/Gunner</fired_by>
       <fired_by>Loader</fired_by>
     </weapon>
     <weapon>
-      <type>vehicle_mg</type>
+      <type>hull_mg</type>
       <fp>4</fp>
       <mount>hull</mount>
       <fired_by>Driver</fired_by>
       <fired_by>Assistant Driver</fired_by>
     </weapon>
+    <max_ammo>66</max_ammo>
     <crew_position>Commander/Gunner</crew_position>
     <crew_position>Loader</crew_position>
     <crew_position>Driver</crew_position>

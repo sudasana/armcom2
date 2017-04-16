@@ -103,28 +103,13 @@ CREW_POSITION_ABB = {
 	'Assistant Driver' : 'AD'
 }
 
+# order in which to display crew positions
 CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Loader', 'Driver',
 	'Assistant Driver'
 ]
 
-# Weapon stat constants, will be tweaked for realism and balance
-# id : display name, long range rating, maximum range, area fire strength, point fire strength
-WEAPON_STATS = {
-	'rifles': ['Rifles', '', 2, 1, 0, 'small_arms'],
-	'rifles_mgs': ['Rifles and MGs', '', 2, 4, 0, 'small_arms'],
-	'at_rifle': ['AT Rifle', '', 3, 0, 2, 'gun'],
-	'hmg': ['HMG', '', 3, 6, 2, 'mg'],
-	'vehicle_mg': ['MG', '', 2, 4, 0, 'mg'],
-	'vehicle_mgs' : ['MGs', '', 2, 6, 0, 'mg'],
-	'twin_vehicle_mgs' : ['Twin MGs', '', 2, 8, 0, 'mg'],
-	'vehicle_aa_mg': ['AA MG', '', 2, 4, 0, 'mg'],
-	'vehicle_aa_hmg': ['AA HMG', '', 3, 8, 2, 'mg'],
-	'20L' : ['20mm', 'L', 4, 2, 4, 'gun'],
-	'37' : ['37mm', '', 4, 4, 4, 'gun'],
-	'37L' : ['37mm', 'L', 5, 2, 6, 'gun'],
-	'47' : ['47mm', '', 6, 3, 8, 'gun']
-}
-
+# order in which to display ammo types
+AMMO_TYPE_ORDER = ['HE', 'AP']
 
 # turn phases, in order
 PHASE_LIST = ['Movement', 'Shooting', 'Close Combat']
@@ -285,7 +270,7 @@ class Unit:
 		self.owning_player = None		# player that controls this unit
 		
 		# location coordinates
-		self.hx = -1				# hex location of this PSG, will be set
+		self.hx = -1				# hex location of this unit, will be set
 		self.hy = -1				#   by PlaceAt()
 		self.screen_x = 0			# draw location on the screen
 		self.screen_y = 0			#   set by DrawMe()
@@ -299,11 +284,14 @@ class Unit:
 		self.max_mp = MP_ALLOWANCE		# movement points
 		self.mp = self.max_mp			
 		self.known = False			# unit is known to the opposing side
+		# TEMP
+		self.known = True
 		self.facing = None			# facing direction: guns and vehicles must have this set
 		self.movement_class = ''		# movement class
 		self.armour = None			# armour factors if any
+		self.max_ammo = 0			# maximum number of gun ammo carried
 		self.weapon_list = []			# list of weapons
-		self.active_weapon = None		# currently active weapon
+		
 		self.acquired_target = None		# PSG has acquired this unit as target
 		self.acquired_by = []			# PSG has been acquired by this/these unit(s)
 		self.display_char = ''			# character to display on map, set below
@@ -324,8 +312,6 @@ class Unit:
 		
 		self.LoadStats()				# load stats from unit_defs.xml
 		self.display_char = self.GetDisplayChar()	# set initial display character
-		# activate first weapon by default
-		if len(self.weapon_list) > 0: self.selected_weapon = self.weapon_list[0]
 
 	# load the baseline stats for this unit from data file
 	def LoadStats(self):
@@ -356,9 +342,9 @@ class Unit:
 			self.mp = self.max_mp
 				
 		# weapon info
-		weapon_list = item.findall('weapon')
-		if weapon_list:
-			for weapon_item in weapon_list:
+		xml_weapon_list = item.findall('weapon')
+		if xml_weapon_list is not None:
+			for weapon_item in xml_weapon_list:
 				self.weapon_list.append(Weapon(weapon_item))
 				
 		# infantry stats if any
@@ -379,6 +365,10 @@ class Unit:
 				self.armour['side'] = int(armour_ratings.find('side').text)
 			if item.find('recce') is not None: self.recce = True
 			if item.find('unreliable') is not None: self.unreliable = True
+			
+			# maximum total gun ammo load
+			if item.find('max_ammo') is not None:
+				self.max_ammo = int(item.find('max_ammo').text)
 			
 			# set up crew positions
 			self.crew_positions = None
@@ -472,65 +462,6 @@ class Unit:
 	def GetStepName(self):
 		return self.step_name.decode('utf8').encode('IBM850')
 
-	# cycle selected weapon in list
-	def SelectNextWeapon(self):
-		if len(self.weapon_list) == 0: return
-		if self.selected_weapon is None:
-			self.selected_weapon = self.weapon_list[0]
-			return
-		if self.selected_weapon == self.weapon_list[-1]:
-			self.selected_weapon = self.weapon_list[0]
-			return
-		n = self.weapon_list.index(self.selected_weapon)
-		self.selected_weapon = self.weapon_list[n+1]
-
-	# select next possible target for shooting
-	def SelectNextTarget(self):
-		# if no target list yet, try to build one
-		if len(self.target_list) == 0:
-			
-			if self.selected_weapon is None:
-				print 'ERROR: tried to build a target list but no weapon selected!'
-				return
-			
-			for psg in scenario.unit_list:
-				if psg.owning_player == 0: continue
-				
-				# check assaults in progress
-				if self.assault_target:
-					(hx, hy) = self.assault_target
-					if psg.hx != hx or psg.hy != hy:
-						continue
-				
-				# check range
-				max_range = self.selected_weapon.stats['max_range']
-				if GetHexDistance(self.hx, self.hy, psg.hx, psg.hy) > max_range:
-					continue
-				# check LoS
-				visible_hexes = GetLoS(self.hx, self.hy, psg.hx, psg.hy)
-				if (psg.hx, psg.hy) not in visible_hexes:
-					continue
-				# add target to list
-				self.target_list.append(psg)
-		
-		# no possible targets
-		if len(self.target_list) == 0:
-			return
-
-		# no target selected yet, select the first one
-		if self.target_psg is None:
-			self.target_psg = self.target_list[0]
-			return
-		
-		# last target in list selected, select the first one
-		if self.target_psg == self.target_list[-1]:
-			self.target_psg = self.target_list[0]
-			return
-		
-		# select next target
-		n = self.target_list.index(self.target_psg)
-		self.target_psg = self.target_list[n+1]
-
 	# clear any acquired target links between this PSG and any other
 	def ClearAcquiredTargets(self):
 		self.acquired_target = None
@@ -579,7 +510,6 @@ class Unit:
 		# start of shooting phase
 		elif scenario.GetCurrentPhase() == 'Shooting':
 			self.fired = False
-			self.SelectNextWeapon()
 
 	# roll for recovery from negative statuses
 	# TODO: move into its own phase eventually
@@ -841,15 +771,15 @@ class Unit:
 		
 		return True
 	
-	# resolve an attack against this PSG
+	# resolve an attack against this unit
 	def ResolveAttack(self, attack_obj):
 		
-		# clear and "Backspace to Cancel" and "Enter to Roll" line
+		# clear "Backspace to Cancel" and "Enter to Roll" line
 		libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
 			libtcod.CENTER, '                   ')
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, '             ')
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 3)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 		
@@ -859,7 +789,7 @@ class Unit:
 			d1, d2, roll = Roll2D6()
 			DrawDie(attack_con, 9, 42, d1)
 			DrawDie(attack_con, 14, 42, d2)
-			libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 3)
+			libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
 			Wait(pause_time)
@@ -869,89 +799,76 @@ class Unit:
 			libtcod.CENTER, 'Roll: ' + str(roll))
 		
 		# determine result
-		result_row = None
-		for score in reversed(attack_obj.final_column):
-			if score == 0: continue
-			if score <= roll:
-				result_row = attack_obj.final_column.index(score)
-				break
-		
-		if attack_obj.at_attack:
-			if 2 <= roll <= 3:
-				text = 'Attacking Step Lost'
-			elif result_row is None:
-				text = 'No Effect'
-			else:
-				if result_row == 0:
-					text = 'No Effect'
-				else:
-					text = str(result_row) + ' step loss'
+		if roll <= attack_obj.final_to_hit:
+			text = 'Shot hit!'
 		else:
-			if result_row is None:
-				text = 'No Effect'
-			elif result_row == 0:
-				text = '+1 Pin Point'	
-			else:
-				text = str(result_row) + ' step loss'
+			text = 'Shot missed'
 			
 		libtcod.console_print_ex(attack_con, 13, 50, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Enter to Continue')
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 3)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		WaitForEnter()
+		
+		# no result
+		if roll > attack_obj.final_to_hit:
+			return
+		
+		# calculate and save armour penetration roll
+		(base_ap, modifiers, final_ap) = CalcAPRoll(attack_obj)
+		attack_obj.base_ap = base_ap
+		attack_obj.modifiers = modifiers
+		attack_obj.final_ap = final_ap
+		
+		# display AP roll
+		DisplayAttack(attack_obj, ap_roll=True)
+		WaitForEnter()
+		
+		# clear "Enter to Roll" line
+		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
+			libtcod.CENTER, '             ')
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		
+		# do dice roll and display animation
+		pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
+		for i in range(5):
+			d1, d2, roll = Roll2D6()
+			DrawDie(attack_con, 9, 42, d1)
+			DrawDie(attack_con, 14, 42, d2)
+			libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(pause_time)
+		
+		# display roll result on attack console
+		libtcod.console_print_ex(attack_con, 13, 48, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Roll: ' + str(roll))
+		
+		# determine result
+		if roll <= attack_obj.final_ap:
+			text = 'Shot penetrated armour!'
+		else:
+			text = 'Shot bounced off armour!'
+			
+		libtcod.console_print_ex(attack_con, 13, 50, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Enter to Continue')
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 		WaitForEnter()
 		
 		# no effect
-		if result_row is None: return
-		
-		# AT attack: apply attacker step loss result or no result
-		if attack_obj.at_attack:
-			if 2 <= roll <= 3:
-				attack_obj.RemoveStep()
-				return
-			elif result_row == 0:
-				return
-		
-		# check for AF attack on suspected PF target
-		if attack_obj.target.suspected and not attack_obj.target.af_target:
-			text = 'Target cannot be harmed by Area Fire attacks'
-			Message(text, self.screen_x, self.screen_y)
+		if roll > attack_obj.final_ap:
 			return
 		
-		# result was at least a pin point: check for target reveal
-		if attack_obj.target.suspected:
-			attack_obj.target.SpotMe()
-		
-		# apply result to target: step loss
-		if result_row >= 1:
-			for i in range(result_row):
-				self.RemoveStep()
-				# PSG has been destroyed
-				if self not in scenario.unit_list:
-					return
-			
-			text = self.GetName() + ' has been reduced to ' + str(self.num_steps) + ' step'
-			if self.num_steps > 1: text += 's'
-			Message(text, self.screen_x, self.screen_y)
-		
-		# apply pin point
-		self.pin_points += 1
-		text = self.GetName() + ' now has ' + str(self.pin_points) + ' pin point'
-		if self.pin_points > 1: text += 's'
-		Message(text, self.screen_x, self.screen_y)
-		
-		# already suppressed
-		if self.suppressed: return
-		
-		# never suppressed in close combat
-		if GetHexDistance(self.hx, self.hy, attack_obj.attacker.hx, attack_obj.attacker.hy) == 0:
-			return
-
-		# test for suppression
-		if not self.MoraleCheck(0):
-			self.SuppressMe()
+		# TODO: resolve effect on target
 		
 	
 	# perform a morale check for this PSG
@@ -1048,9 +965,27 @@ class Weapon:
 		# gun stats
 		if self.weapon_type == 'gun':
 			self.stats['calibre'] = int(item.find('calibre').text)
+			if item.find('long_range') is not None:
+				self.stats['long_range'] = item.find('long_range').text
+			else:
+				self.stats['long_range'] = ''
 			self.stats['max_range'] = 6
+			
+			self.stats['rr_size'] = 0
+			self.stats['use_ready_rack'] = None
+			if item.find('rr_size') is not None:
+				self.stats['rr_size'] = int(item.find('rr_size').text)
+				self.stats['use_ready_rack'] = True
+			
+			# ammo load stats: current selections are TEMP
+			self.stats['loaded_ammo'] = 'AP'
+			self.stats['reload_ammo'] = 'AP'
+			# starting amounts are TEMP
+			self.stats['HE'] = (26, 3)
+			self.stats['AP'] = (40, 3)
+		
 		# vehicle mg stats
-		elif self.weapon_type == 'vehicle_mg':
+		elif self.weapon_type in ['coax_mg', 'hull_mg']:
 			self.stats['max_range'] = 3
 			self.stats['fp'] = int(item.find('fp').text)
 		
@@ -1065,6 +1000,20 @@ class Weapon:
 			for i in item_list:
 				fired_by.append(i.text)
 			self.stats['fired_by'] = fired_by
+	
+	# return a short display name for this weapon
+	def GetName(self):
+		if self.weapon_type == 'gun':
+			text = str(self.stats['calibre']) + 'mm'
+			if self.stats['long_range'] != '':
+				text += '(' + self.stats['long_range'] + ')'
+		elif self.weapon_type == 'coax_mg':
+			text = 'Co-ax MG'
+		elif self.weapon_type == 'hull_mg':
+			text = 'Hull MG'
+		else:
+			text = 'ERROR'
+		return text
 
 
 # animation handler
@@ -1084,7 +1033,7 @@ class AnimHandler:
 			self.raindrops.append([x, y, lifetime])
 		self.rain_timer = time.time()
 		# TEMP - FUTURE: will be set by weather handler
-		self.rain_active = True
+		self.rain_active = False
 		
 		# gun weapon attack effect
 		self.gun_line = []			# path of projectile on screen
@@ -1328,6 +1277,9 @@ class AI:
 	# randomly determine action for this turn
 	def GenerateAction(self):
 		
+		# TEMP - no actions
+		return
+		
 		# TEMP: assume a defensive attitude
 		d1, d2, roll = Roll2D6()
 		
@@ -1518,8 +1470,7 @@ class TerrainType:
 		self.display_name = ''
 		self.los_height = 0
 		self.base_image = ''
-		self.af_modifier = 0
-		self.pf_modifier = 0
+		self.terrain_mod = 0
 		self.water = False
 		self.difficult = False
 		self.very_difficult = False
@@ -1554,13 +1505,13 @@ class Attack:
 		self.attacker = attacker
 		self.weapon = weapon
 		self.target = target
-		self.area_fire = False
-		self.point_fire = False
-		self.at_attack = False
-		self.attack_strength = 0
-		self.column_modifiers = []
-		self.final_column = 0
-		self.outcome_list = []
+		
+		self.base_to_hit = 0		# base score required to hit
+		self.modifiers = []		# list of dice roll modifiers
+		self.final_to_hit = 0		# final to-hit score required
+		
+		self.base_ap = 0		# base armour-penetration roll required
+		self.final_ap = 0		# final "
 
 
 # a single option in a CommandMenu list
@@ -1617,7 +1568,7 @@ class CommandMenu:
 				return option
 			if option.key_code == 'Space' and key.vk == libtcod.KEY_SPACE:
 				return option
-			if option.key_code == 'Backspace' and key.vk == libtcod.KEY_BACKSPACE:
+			if option.key_code == 'Bksp' and key.vk == libtcod.KEY_BACKSPACE:
 				return option
 			if option.key_code == 'Esc' and key.vk == libtcod.KEY_ESCAPE:
 				return option
@@ -1881,6 +1832,7 @@ class HexMap:
 
 # holds information about a scenario in progress
 # on creation, also set the map size
+# TODO: change to BattleEncounter ?
 class Scenario:
 	def __init__(self, map_w, map_h):
 		
@@ -1906,7 +1858,7 @@ class Scenario:
 		self.unit_list = []			# list of all units in play
 		self.active_unit = None			# currently active unit
 		self.player_unit = None			# pointer to player-controlled unit
-		self.player_target = None		# current player unit target
+		self.player_target = None		# unit currently being targeted by player unit
 		
 		self.player_direction = 3		# direction of player-friendly forces
 		self.enemy_direction = 0		# direction of enemy forces
@@ -1924,6 +1876,36 @@ class Scenario:
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
+	
+	# select next possible player target for shooting
+	def SelectNextPlayerTarget(self):
+		
+		# build a list of possible targets
+		target_list = []
+		for unit in scenario.unit_list:
+			if unit.owning_player == 0: continue
+			map_hex = GetHexAt(unit.hx, unit.hy)
+			if not map_hex.vis_to_player: continue
+			target_list.append(unit)
+		
+		# no possible targets
+		if len(target_list) == 0:
+			return
+		
+		# no target selected yet, select the first one
+		if self.player_target is None:
+			self.player_target = target_list[0]
+			return
+		
+		# last target in list selected, select the first one
+		if self.player_target == target_list[-1]:
+			self.player_target = target_list[0]
+			return
+		
+		# select next target in list
+		n = target_list.index(self.player_target)
+		self.player_target = target_list[n+1]
+	
 	
 	# procedurally generate an Order of Battle for the AI player
 	def GenerateEnemyOOB(self):
@@ -2313,6 +2295,10 @@ class Scenario:
 	
 	# do enemy AI actions for this phase
 	def DoAIPhase(self):
+		
+		# TEMP
+		return
+		
 		# build a list of units that can be activated this phase
 		activate_list = []
 		for psg in self.unit_list:
@@ -2557,12 +2543,25 @@ class Scenario:
 			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
-			if not scenario.player_unit.fired:
-				self.cmd_menu.AddOption('next_weapon', 'W', 'Next Weapon')
+			# no target selected yet
+			if not scenario.player_target:
+				self.cmd_menu.AddOption('next_target', 'T', 'Select Target')
+			# already have a target
+			else:
 				self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
-				menu_option = self.cmd_menu.AddOption('fire_area', 'A', 'Area Fire')
+				self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
 				
-				# TODO: disable attack option if not possible
+				# add commands to try to fire weapons
+				n = 0
+				for weapon in scenario.player_unit.weapon_list:
+					cmd = 'fire_' + str(n)
+					desc = 'Fire ' + weapon.GetName()
+					menu_option = self.cmd_menu.AddOption(cmd, str(n+1), desc)
+					
+					# TODO: check that weapon can fire
+					# TODO: disable attack option if not possible
+					
+					n += 1
 			
 		# all root menus get this command
 		self.cmd_menu.AddOption('next_phase', 'Space', 'Next Phase')
@@ -2585,8 +2584,8 @@ def LoadTerrainTypes():
 		new_type.display_name = item.find('display_name').text
 		new_type.los_height = int(item.find('los_height').text)
 		new_type.base_image = item.find('base_image').text
-		new_type.af_modifier = int(item.find('af_modifier').text)
-		new_type.pf_modifier = int(item.find('pf_modifier').text)
+		if item.find('terrain_mod') is not None:
+			new_type.terrain_mod = int(item.find('terrain_mod').text)
 		if item.find('water') is not None:
 			new_type.water = True
 		if item.find('difficult') is not None:
@@ -2619,217 +2618,126 @@ def EraseGame():
 	os.remove('savegame')
 
 
-# calculate an area or point fire attack
-#   if at_attack is true, this is a close combat infantry attack on an armoured vehicle target,
-#   and weapon is not used in calculation
-def CalcAttack(attacker, weapon, target, area_fire, assume_pivot=False, at_attack=False):
+# calculate an attack
+def CalcAttack(attacker, weapon, target, assume_pivot=False):
 	# create a new attack object
 	attack_obj = Attack(attacker, weapon, target)
 	
-	# determine if this is an area or point fire attack
-	if area_fire:
-		attack_obj.area_fire = True
-	else:
-		attack_obj.point_fire = True
-	if at_attack:
-		attack_obj.at_attack = True
+	# TEMP: assume gun AP attack
 	
-	# determine distance to target
+	# calculate base to-hit roll required
+	
+	# get distance to target
 	distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 	
-	# determine base attack strength or steps firing
-	if area_fire:
-		attack_strength = weapon.stats['area_strength']
-		if attacker.infantry:
-			if distance == 1:
-				attack_strength += int(ceil(attacker.num_steps / 2))
-			elif distance == 0:
-				attack_strength += attacker.num_steps
-		else:
-			attack_strength = attack_strength * attacker.num_steps
-		
-	else:
-		attack_strength = attacker.num_steps
-		if at_attack:
-			attack_strength = int(ceil(attack_strength / 2))
-		
-	attack_obj.attack_strength = attack_strength
+	BASE_TO_HIT = [
+		[10,8,7],		# <= 1 hex range
+		[9,7,7],		# 2 hex range
+		[9,7,7],		# 3 "
+		[8,6,8],		# 4 "
+		[7,5,8],		# 5 "
+		[6,4,7]			# 6 "
+	]
 	
-	# determine starting column
-	column = 0
-	for (af, pf) in FIRE_TABLE_ROWS:
-		# last column
-		if (af, pf) == FIRE_TABLE_ROWS[-1]:
-			break
-		
-		# check next column
-		(af2, pf2) = FIRE_TABLE_ROWS[column+1]
-		
-		if area_fire:
-			if af2 > attack_strength:
-				break
-		else:
-			if pf2 > attack_strength:
-				break
-		column += 1
-	
-	###################################
-	# Calculate and apply column shifts
-	###################################
-	
-	# Range Modifiers
-	
-	# AF range modifiers
-	if attack_obj.area_fire:
-		if distance == 0:
-			attack_obj.column_modifiers.append(('Close Combat Range', 4))
-		elif distance == 1:
-			attack_obj.column_modifiers.append(('Very Close Range', 2))
-		elif distance == 2:
-			attack_obj.column_modifiers.append(('Close Range', 1))
-		elif distance == 4:
-			attack_obj.column_modifiers.append(('Normal Range', -1))
-		elif distance <= 6:
-			attack_obj.column_modifiers.append(('Long Range', -2))
-		elif distance <= 8:
-			attack_obj.column_modifiers.append(('Very Long Range', -3))
-		else:
-			attack_obj.column_modifiers.append(('Extreme Range', -6))
-	
-	# PF range modifier
-	elif not attack_obj.at_attack:
-		max_range = weapon.stats['max_range']
-		multipler = 0.5	
-		if weapon.stats['long_range'] == 'L':
-			multipler = 0.75
-		elif weapon.stats['long_range'] == 'LL':
-			multipler = 1.0
-		normal_range = int(ceil(float(max_range) * multipler))
-		close_range = int(ceil(float(normal_range) * 0.5))
-		
-		if distance == 0:
-			attack_obj.column_modifiers.append(('Close Combat Range', 4))
-		elif distance <= close_range:
-			attack_obj.column_modifiers.append(('Close Range', 2))
-		elif distance > normal_range:
-			attack_obj.column_modifiers.append(('Long Range', -2))
-	
-	# get target terrain info
-	map_hex = GetHexAt(target.hx, target.hy)
-	af_modifier = map_hex.terrain_type.af_modifier
-	pf_modifier = map_hex.terrain_type.pf_modifier
-	
-	# following only apply if not in CC
-	if distance > 0:
-		
-		# applies to both suspected and known targets
-		if attacker.suppressed:
-			attack_obj.column_modifiers.append(('Attacker Suppressed', -3))	
-		
-		if attacker.moved:
-			attack_obj.column_modifiers.append(('Attacker Moved', -2))
-		elif assume_pivot or attacker.changed_facing:
-			attack_obj.column_modifiers.append(('Attacker Pivoted', -1))
-		
-		# suspected targets only
-		if target.suspected:
-			attack_obj.column_modifiers.append(('Suspected Target', -3))
-		
-		# known targets only
-		else:
-	
-			# PF acquired target
-			if attack_obj.point_fire and attacker.acquired_target is not None:
-				if attacker.acquired_target == target:
-					attack_obj.column_modifiers.append(('Acquired Target', 1))
-			
-			# infantry movement in no cover
-			if target.infantry and target.moved and pf_modifier == 0:
-				attack_obj.column_modifiers.append(('Target Moved, No Protective Cover', 2))
-			
-			# vehicle movement
-			if target.vehicle and target.moved:
-				attack_obj.column_modifiers.append(('Target Vehicle Moved', -2))
-			
-			# PF attack, target size modifier
-			if attack_obj.point_fire:
-				if target.size_class != 'Normal':
-					if target.size_class == 'Very Small':
-						attack_obj.column_modifiers.append(('Very Small Target', -4))
-					elif target.size_class == 'Small':
-						attack_obj.column_modifiers.append(('Small Target', -2))
-			
-			# AF attack, target has gun shield, attack in front facing
-			if attack_obj.area_fire and target.gun and target.gun_shield:
-				if GetFacing(attacker, target) == 'front':
-					attack_obj.column_modifiers.append(('Gun Shield', -2))
-	
-	# AT attack modifiers
-	if attack_obj.at_attack:
-		# dense terrain helps infantry attacking AFVs
-		if pf_modifier != 0:
-			attack_obj.column_modifiers.append(('AT Attack in ' + map_hex.terrain_type.display_name,
-				0 - pf_modifier))
-	
-	# modifiers only used in non-AT attacks
-	else:
-		# target terrain modifiers
-		if attack_obj.area_fire:
-			if af_modifier != 0:
-				attack_obj.column_modifiers.append((map_hex.terrain_type.display_name,
-					af_modifier))
-		else:
-			if pf_modifier != 0:
-				attack_obj.column_modifiers.append((map_hex.terrain_type.display_name,
-					pf_modifier))
-	
-		# Armour Modifier
-		if attack_obj.point_fire and target.vehicle:
-			if target.armour is not None:
-				ap = weapon.stats['point_strength']
-				if distance > normal_range:
-					ap = int(ceil(ap / 2))
-				facing = GetFacing(attacker, target)
-				ap_diff = ap - target.armour[facing]
-				if ap_diff > MAX_AP_DIFF: ap_diff = MAX_AP_DIFF
-				if ap_diff < MIN_AP_DIFF: ap_diff = MIN_AP_DIFF
-				mod = AP_MODS[ap_diff]
-				text = 'AP ' + str(ap) + ' vs Armour ' + str(target.armour[facing])
-				attack_obj.column_modifiers.append((text, mod))
-			else:
-				attack_obj.column_modifiers.append(('Unarmoured', 2))
-	
-	# apply column modifiers
-	for (text, mod) in attack_obj.column_modifiers:
-		column += mod
-	
-	# normalize final column
-	# FUTURE: if column is less than 0, no chance of effect
-	if column < 0:
+	if distance <= 1:
 		column = 0
-		print 'DEBUG: attack column was less than zero'
-	elif column > MAX_FIRE_TABLE_COLUMN - 1:
-		column = MAX_FIRE_TABLE_COLUMN - 1
-		print 'DEBUG: exceeded highest attack column'
-		
-	final_column = FIRE_TABLE[column]
-	attack_obj.final_column = final_column
-	
-	# build list of possible final outcomes
-	if attack_obj.at_attack:
-		attack_obj.outcome_list.append(('2-3', 'Attacker Step Lost'))
 	else:
-		attack_obj.outcome_list.append((str(final_column[0]) + '+', 'Morale Check'))
-	n = 1
-	for result in final_column[1:]:
-		# if result not possible, stop building list
-		if result == 0: break
-		text1 = str(result) + '+'
-		text2 = str(n) + ' step loss'
-		attack_obj.outcome_list.append((text1, text2))
-		n+=1
+		column = distance - 1
+	to_hit_list = BASE_TO_HIT[column]
+	
+	if target.vehicle:
+		attack_obj.base_to_hit = to_hit_list[0]
+	else:
+		attack_obj.base_to_hit = to_hit_list[1]
+	
+	#################################
+	# Calculate dice roll modifiers
+	#################################
+	
+	# Long Range gun Modifiers
+	if weapon.stats['long_range'] == 'L':
+		if 4 <= distance <= 6:
+			attack_obj.modifiers.append(('L Weapon', -1))
+	elif weapon.stats['long_range'] == 'LL':
+		if 4 <= distance <= 5:
+			attack_obj.modifiers.append(('LL Weapon', -1))
+		elif distance == 6:
+			attack_obj.modifiers.append(('LL Weapon', -2))
+	
+	# calibre range modifiers
+	if weapon.stats['calibre'] <= 40:
+		if 4 <= distance <= 6:
+			attack_obj.modifiers.append(('<=40mm', 1))
+	elif weapon.stats['calibre'] <= 57:
+		if 4 <= distance <= 5:
+			attack_obj.modifiers.append(('<=57mm', 1))
+		elif distance == 6:
+			attack_obj.modifiers.append(('<=57mm', 2))
+	
+	# moving vehicle target
+	if target.vehicle and target.moved:
+		attack_obj.modifiers.append(('Target vehicle moved', 2))
+	
+	# target terrain modifier
+	map_hex = GetHexAt(target.hx, target.hy)
+	if map_hex.terrain_type.terrain_mod != 0:
+		attack_obj.modifiers.append(('Target terrain', 0-map_hex.terrain_type.terrain_mod))
+	
+	# apply modifiers to calculate final to-hit score required 
+	attack_obj.final_to_hit = attack_obj.base_to_hit
+	for (text, mod) in attack_obj.modifiers:
+		attack_obj.final_to_hit += mod
+	
+	# normalize final to-hit required
+	# FUTURE: if < 2 required, attack not possible
+	if attack_obj.final_to_hit > 11:
+		attack_obj.final_to_hit = 11
 
 	return attack_obj
+
+
+# calculate a armour penetration roll
+def CalcAPRoll(attack_obj):
+	
+	# calculate base AP score required
+	gun_rating = str(attack_obj.weapon.stats['calibre']) + attack_obj.weapon.stats['long_range']
+	
+	if gun_rating == '37L':
+		base_ap = 9
+	elif gun_rating == '37':
+		base_ap = 8
+	
+	# calculate modifiers
+	modifiers = []
+	
+	# calibre/range modifier
+	distance = GetHexDistance(attack_obj.attacker.hx, attack_obj.attacker.hy,
+		attack_obj.target.hx, attack_obj.target.hy)
+	if distance <= 1:
+		if attack_obj.weapon.stats['calibre'] <= 57:
+			modifiers.append(('Close Range', 1))
+	elif distance == 5:
+		modifiers.append(('800 m. Range', -1))
+	elif distance == 6:
+		if attack_obj.weapon.stats['calibre'] < 65:
+			modifiers.append(('960 m. Range', -2))
+		else:
+			modifiers.append(('960 m. Range', -1))
+	
+	# target armour modifier
+	if attack_obj.target.armour:
+		facing = GetFacing(attack_obj.attacker, attack_obj.target)
+		target_armour = attack_obj.target.armour[facing]
+		if target_armour > 0:
+			modifiers.append(('Target Armour', 0-target_armour))
+	
+	# calculate final AP score required
+	final_ap = base_ap
+	for (text, mod) in modifiers:
+		final_ap += mod
+	
+	return (base_ap, modifiers, final_ap)
+
 
 # load a console image from an .xp file
 def LoadXP(filename):
@@ -3538,8 +3446,8 @@ def GetFacing(attacker, target):
 	return 'side'
 
 
-# initiate an attack by one PSG on another
-def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
+# initiate an attack by one unit on another
+def InitAttack(attacker, weapon, target):
 	
 	distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 	
@@ -3552,8 +3460,7 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 
 	# send information to CalcAttack, which will return an Attack object with the
 	#   calculated stats to use for the attack
-	attack_obj = CalcAttack(attacker, weapon, target, area_fire,
-		assume_pivot=pivot_required, at_attack=at_attack)
+	attack_obj = CalcAttack(attacker, weapon, target, assume_pivot=pivot_required)
 	
 	# do the pivot if it was required
 	if pivot_required:
@@ -3562,7 +3469,7 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 		attacker.PivotToFace(direction)
 		UpdateUnitConsole()
 		DrawScreenConsoles()
-		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 3)
+		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 	
@@ -3578,61 +3485,45 @@ def InitAttack(attacker, weapon, target, area_fire, at_attack=False):
 			Wait(5)
 	
 	# display attack console and wait for confirmation before proceeding
+	# player has chance to cancel a ranged attack at this point
 	DisplayAttack(attack_obj)
 	cancel_attack = WaitForEnter(allow_cancel=True)
-	
-	# player has chance to cancel a ranged attack at this point
-	if attacker.owning_player == 0 and distance > 0 and cancel_attack:
+	if attacker == scenario.player_unit and cancel_attack:
 		DrawScreenConsoles()
 		return
 	
-	# set fired flag and clear the selected target
+	# set fired flag
 	attacker.fired = True
-	attacker.target_psg = None
 	
 	# clear any LoS drawn above from screen
 	DrawScreenConsoles()
-	libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 3)
+	libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
 	
 	# display appropriate attack animation
-	if not at_attack and distance > 0:
-		if weapon.stats['class'] == 'gun':
-			x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
-			x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
-			scenario.anim.InitGunEffect(x1, y1, x2, y2)
-			WaitForAnimation()
-		elif weapon.stats['class'] == 'mg':
-			pass
-			#MGAttackAnimation(attack_obj)
+	if weapon.weapon_type == 'gun':
+		x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
+		x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
+		scenario.anim.InitGunEffect(x1, y1, x2, y2)
+		WaitForAnimation()
+	elif weapon.weapon_type in ['coax_mg', 'hull_mg']:
+		pass
+		#MGAttackAnimation(attack_obj)
 	
 	# resolve attack
 	target.ResolveAttack(attack_obj)
 	
-	# clear attacker's selected weapon
-	attacker.selected_weapon = None
+	# TODO: handle newly acquired target
 	
-	# handle newly acquired target
-	if distance > 0 and not area_fire:
-		if attacker.acquired_target is None:
-			attacker.acquired_target = target
-			target.acquired_by.append(attacker)
-		else:
-			# attacker had a different acquired target
-			if attacker.acquired_target != target:
-				for psg in scenario.unit_list:
-					if attacker in psg.acquired_by:
-						psg.acquired_by.remove(attacker)
-				attacker.acquired_target = target
-				target.acquired_by.append(attacker)
 	
 	# check for spotting changes as a result of this attack
-	scenario.DoSpotCheck()
+	#scenario.DoSpotCheck()
 
 
 # display the factors and odds for an attack on the screen
-def DisplayAttack(attack_obj):
+# can also display armour penetration roll
+def DisplayAttack(attack_obj, ap_roll=False):
 	libtcod.console_clear(attack_con)
 	
 	# display the background outline
@@ -3643,52 +3534,48 @@ def DisplayAttack(attack_obj):
 	# title
 	libtcod.console_set_default_background(attack_con, TITLE_BG_COL)
 	libtcod.console_rect(attack_con, 1, 1, 24, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Attack Resolution')
-	
-	if attack_obj.at_attack:
-		text = 'Anti-Tank'
-	elif attack_obj.area_fire:
-		text = 'Area Fire'
+	if ap_roll:
+		text = 'Armour Penetration'
 	else:
-		text = 'Point Fire'
-	text += ' attack by'
+		text = 'Attack Roll'
+	libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE,
+		libtcod.CENTER, text)
+	
+	# attacker, weapon, and target info
+	if ap_roll:
+		text = 'Resolving hit by'
+	else:
+		text = attack_obj.attacker.GetName()
 	libtcod.console_print_ex(attack_con, 13, 3, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
-	text = attack_obj.attacker.GetName()
+	if ap_roll:
+		text = attack_obj.weapon.GetName() + ' on'
+	else:
+		text = 'firing ' + attack_obj.weapon.GetName() + ' at'
 	libtcod.console_print_ex(attack_con, 13, 4, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
-	if attack_obj.at_attack:
-		text = 'against'
-	else:
-		text = 'firing ' + attack_obj.weapon.stats['name'] + ' at'
 	libtcod.console_print_ex(attack_con, 13, 5, libtcod.BKGND_NONE,
-		libtcod.CENTER, text)
-	
-	libtcod.console_print_ex(attack_con, 13, 6, libtcod.BKGND_NONE,
 		libtcod.CENTER, attack_obj.target.GetName())
 	
-	# base firepower or steps firing
-	libtcod.console_rect(attack_con, 1, 8, 24, 1, False, libtcod.BKGND_SET)
-	if attack_obj.area_fire:
-		text = 'Total Firepower: '
+	# base to-hit / AP roll
+	if ap_roll:
+		text = 'Base AP roll: ' + str(attack_obj.base_ap)
 	else:
-		text = 'Steps Firing: '
-	text += str(attack_obj.attack_strength)
-	libtcod.console_print_ex(attack_con, 13, 8, libtcod.BKGND_NONE,
+		text = 'Base to-hit: ' + str(attack_obj.base_to_hit)
+	libtcod.console_print_ex(attack_con, 13, 7, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
-	# list of column shift modifiers
-	libtcod.console_rect(attack_con, 1, 10, 24, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Attack Modifiers')
-	y = 12
-	if len(attack_obj.column_modifiers) == 0:
+	# list of roll modifiers
+	libtcod.console_rect(attack_con, 1, 9, 24, 1, False, libtcod.BKGND_SET)
+	libtcod.console_print_ex(attack_con, 13, 9, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Roll Modifiers')
+	y = 11
+	if len(attack_obj.modifiers) == 0:
 		libtcod.console_print_ex(attack_con, 13, y, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'None')
-	for (text, mod) in attack_obj.column_modifiers:
+	for (text, mod) in attack_obj.modifiers:
 		
 		lines = wrap(text, 18, subsequent_indent = ' ')
 		for line in lines:
@@ -3701,21 +3588,17 @@ def DisplayAttack(attack_obj):
 			libtcod.RIGHT, mod_text)
 		y += 1
 	
-	# list of final possible outcomes
+	# final to-hit/AP roll required
 	libtcod.console_rect(attack_con, 1, 31, 24, 1, False, libtcod.BKGND_SET)
+	if ap_roll:
+		text = 'Final AP roll: ' + str(attack_obj.final_ap)
+	else:
+		text = 'Final to-hit: ' + str(attack_obj.final_to_hit)
 	libtcod.console_print_ex(attack_con, 13, 31, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Possible Results')
+		libtcod.CENTER, text)
 	
-	y = 33
-	for (text1, text2) in attack_obj.outcome_list:
-		libtcod.console_print(attack_con, 2, y, text1)
-		libtcod.console_print_ex(attack_con, 23, y, libtcod.BKGND_NONE,
-			libtcod.RIGHT, text2)
-		y += 1
-	
-	distance = GetHexDistance(attack_obj.attacker.hx, attack_obj.attacker.hy,
-		attack_obj.target.hx, attack_obj.target.hy)
-	if attack_obj.attacker.owning_player == 0 and distance > 0:
+	# player attacks have chance to cancel
+	if not ap_roll and attack_obj.attacker == scenario.player_unit:
 		libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Backspace to Cancel')
 	libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
@@ -3724,7 +3607,7 @@ def DisplayAttack(attack_obj):
 	libtcod.console_set_default_background(attack_con, libtcod.black)
 	
 	# display console on screen
-	libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 3)
+	libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
 
@@ -4010,7 +3893,7 @@ def GunAttackAnimation(attack_obj):
 		UpdateGUIConsole()
 		libtcod.console_put_char_ex(map_gui_con, x, y, 250, libtcod.white, libtcod.black)
 		DrawScreenConsoles()
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 		libtcod.console_flush()
 		Wait(pause_time)
 	
@@ -4022,7 +3905,7 @@ def GunAttackAnimation(attack_obj):
 		libtcod.console_put_char_ex(map_gui_con, x, y, '*',
 			col, libtcod.black)
 		DrawScreenConsoles()
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 		libtcod.console_flush()
 		Wait(pause_time2)
 		
@@ -4047,13 +3930,13 @@ def MGAttackAnimation(attack_obj):
 		libtcod.console_clear(map_gui_con)
 		libtcod.console_put_char_ex(map_gui_con, x, y, 250, libtcod.red, libtcod.black)
 		DrawScreenConsoles()
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 		libtcod.console_flush()
 		Wait(pause_time)
 	
 	libtcod.console_clear(map_gui_con)
 	DrawScreenConsoles()
-	libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 3)
+	libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
 	libtcod.console_flush()
 
 
@@ -4188,33 +4071,91 @@ def UpdatePlayerUnitConsole():
 	
 	# section title backgrounds
 	libtcod.console_set_default_background(player_unit_con, SECTION_BG_COL)
-	libtcod.console_rect(player_unit_con, 0, 3, 24, 1, False, libtcod.BKGND_SET)
+	libtcod.console_rect(player_unit_con, 0, 2, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_rect(player_unit_con, 0, 6, 11, 1, False, libtcod.BKGND_SET)
-	libtcod.console_rect(player_unit_con, 13, 7, 11, 1, False, libtcod.BKGND_SET)
+	libtcod.console_rect(player_unit_con, 13, 6, 11, 1, False, libtcod.BKGND_SET)
 	libtcod.console_rect(player_unit_con, 0, 13, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_set_default_background(player_unit_con, libtcod.black)
 	
 	# section titles
 	libtcod.console_set_default_foreground(player_unit_con, TITLE_COL)
-	libtcod.console_print(player_unit_con, 0, 3, 'Main Gun    Load Next RR')
+	libtcod.console_print(player_unit_con, 0, 2, 'Gun         Load Next RR')
 	libtcod.console_print(player_unit_con, 0, 6, 'Rounds  RR')
-	libtcod.console_print(player_unit_con, 18, 7, 'Status')
+	libtcod.console_print(player_unit_con, 18, 6, 'Status')
 	libtcod.console_print(player_unit_con, 0, 13, 'Crew')
 	libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
 	
 	# main armament info
+	if len(scenario.player_unit.weapon_list) > 0:
+		weapon = scenario.player_unit.weapon_list[0]
+		libtcod.console_print(player_unit_con, 0, 3, weapon.GetName())
 	
-	# main armament ammo
+		# main armament ammo
+		if weapon.stats['loaded_ammo'] is None:
+			text = 'None'
+		else:
+			text = weapon.stats['loaded_ammo']
+		libtcod.console_print_ex(player_unit_con, 14, 3, libtcod.BKGND_NONE, libtcod.CENTER,
+			text)
+		if weapon.stats['reload_ammo'] is None:
+			text = 'None'
+		else:
+			text = weapon.stats['reload_ammo']
+		libtcod.console_print_ex(player_unit_con, 19, 3, libtcod.BKGND_NONE, libtcod.CENTER,
+			text)
+		if weapon.stats['use_ready_rack'] is None:
+			text = 'NA'
+		else:
+			if weapon.stats['use_ready_rack']:
+				text = 'Y'
+			else:
+				text = 'N'
+		libtcod.console_print_ex(player_unit_con, 23, 3, libtcod.BKGND_NONE, libtcod.RIGHT,
+			text)
+		
+		y = 7
+		for ammo_type in AMMO_TYPE_ORDER:
+			if weapon.stats[ammo_type] is not None:
+				libtcod.console_print(player_unit_con, 0, y, ammo_type)
+				(ammo, rr_ammo) = weapon.stats[ammo_type]
+				libtcod.console_print_ex(player_unit_con, 6, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(ammo))
+				libtcod.console_print_ex(player_unit_con, 9, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(rr_ammo))
+				y+=1
+		y+=1
+		libtcod.console_print(player_unit_con, 0, y, 'Max')
+		libtcod.console_print_ex(player_unit_con, 6, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, str(scenario.player_unit.max_ammo))
+		if weapon.stats['rr_size'] == 0:
+			text = '--'
+		else:
+			text = str(weapon.stats['rr_size'])
+		libtcod.console_print_ex(player_unit_con, 9, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, text)
+		
+	# unit statuses
+	if scenario.player_unit.moved:
+		text = 'Moving'
+	else:
+		text = 'Stopped'
+	libtcod.console_print_ex(player_unit_con, 23, 7, libtcod.BKGND_NONE, libtcod.RIGHT,
+		text)
+	if scenario.player_unit.fired:
+		text = 'Fired'
+	else:
+		text = ''
+	libtcod.console_print_ex(player_unit_con, 23, 8, libtcod.BKGND_NONE, libtcod.RIGHT,
+		text)
 	
 	# MP
 	if scenario.GetCurrentPhase() == 'Movement':
 		text = str(unit.mp) + '/' + str(unit.max_mp) + ' MP'
 		libtcod.console_set_default_foreground(player_unit_con, libtcod.light_green)
-		libtcod.console_print_ex(player_unit_con, 23, 6, libtcod.BKGND_NONE, libtcod.RIGHT,
+		libtcod.console_print_ex(player_unit_con, 23, 12, libtcod.BKGND_NONE, libtcod.RIGHT,
 			text)
 		libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
 	
-	# unit statuses
 	
 	# list of crew and crew positions
 	if unit.crew_positions:
@@ -4405,12 +4346,7 @@ def UpdateCmdConsole():
 	
 	libtcod.console_set_default_foreground(cmd_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
-	if scenario.active_player == 0:
-		text = 'Player '
-	else:
-		text = 'Enemy '
-	text += scenario.GetCurrentPhase()
-	libtcod.console_print(cmd_con, 0, 1, text)
+	libtcod.console_print(cmd_con, 0, 1, scenario.GetCurrentPhase() + ' Phase')
 	
 	scenario.cmd_menu.DisplayMe(cmd_con, 0, 3, 24)
 
@@ -4418,18 +4354,6 @@ def UpdateCmdConsole():
 # draw scenario info to the scenario info console
 def UpdateScenInfoConsole():
 	libtcod.console_clear(scen_info_con)
-	
-	# scenario name and time remaining
-	#libtcod.console_set_default_foreground(scen_info_con, HIGHLIGHT_COLOR)
-	#libtcod.console_print(scen_info_con, 0, 0, scenario.name)
-	#libtcod.console_set_default_foreground(scen_info_con, libtcod.light_grey)
-	#hr = scenario.hour_limit - scenario.hour
-	#mr = scenario.minute_limit - scenario.minute
-	#if mr < 0:
-	#	hr -= 1
-	#	mr += 60
-	#text = '-' + str(hr) + ':' + str(mr).zfill(2)
-	#libtcod.console_print(scen_info_con, 0, 1, text)
 	
 	# scenario battlefront, current and time
 	libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
@@ -4443,13 +4367,15 @@ def UpdateScenInfoConsole():
 		text)
 	
 	# TODO: pull wind and weather info from scenario object
-	text = 'No Wind, Light Rain'
+	text = 'No Wind'
 	libtcod.console_print_ex(scen_info_con, 56, 0, libtcod.BKGND_NONE, libtcod.RIGHT,
 		text)
-	
+	text = 'Clear'
+	libtcod.console_print_ex(scen_info_con, 56, 1, libtcod.BKGND_NONE, libtcod.RIGHT,
+		text)
 	# FUTURE: pull light and visibility info from scenario object
 	text = ''
-	libtcod.console_print_ex(scen_info_con, 56, 1, libtcod.BKGND_NONE, libtcod.RIGHT,
+	libtcod.console_print_ex(scen_info_con, 56, 2, libtcod.BKGND_NONE, libtcod.RIGHT,
 		text)
 
 
@@ -4597,9 +4523,19 @@ def DrawScreenConsoles():
 	# scenario info
 	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 26, 0)
 
-	# highlight selected PSG if any
-	if scenario.active_unit:
-		DrawHighlights()
+	# highlight player's targeted unit if any
+	if scenario.player_target:
+		libtcod.console_set_char_background(con, scenario.player_target.screen_x,
+			scenario.player_target.screen_y, TARGET_HL_COL, flag=libtcod.BKGND_SET)
+		# draw LoS line
+		line = GetLine(scenario.player_unit.screen_x, scenario.player_unit.screen_y,
+			scenario.player_target.screen_x, scenario.player_target.screen_y)
+		for (x, y) in line[2:-1]:
+			libtcod.console_set_char(con, x, y, 250)
+			libtcod.console_set_char_foreground(con, x, y, libtcod.red)
+	
+	#if scenario.active_unit:
+	#	DrawHighlights()
 		
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)	# animation layer
@@ -4852,7 +4788,7 @@ def DoScenario(load_savegame=False):
 	libtcod.console_clear(hex_info_con)
 	
 	# attack resolution console
-	attack_con = libtcod.console_new(26, 57)
+	attack_con = libtcod.console_new(26, 60)
 	libtcod.console_set_default_background(attack_con, libtcod.black)
 	libtcod.console_set_default_foreground(attack_con, libtcod.white)
 	libtcod.console_clear(attack_con)
@@ -4952,6 +4888,14 @@ def DoScenario(load_savegame=False):
 		# do initial objective capture
 		#for map_hex in scenario.objective_hexes:
 		#	map_hex.CheckCapture(no_message=True)
+		
+		# TEMP set up test enemy unit
+		new_unit = Unit('7TP')
+		scenario.unit_list.append(new_unit)
+		new_unit.owning_player = 1
+		new_unit.facing = 3
+		new_unit.hx = 6
+		new_unit.hy = 7
 	
 		# draw map terrain
 		UpdateMapTerrainConsole()
@@ -5109,6 +5053,7 @@ def DoScenario(load_savegame=False):
 		##################################################################
 		if option.option_id == 'next_phase':
 			scenario.NextPhase()
+			UpdatePlayerUnitConsole()
 			DrawScreenConsoles()
 		
 		##################################################################
@@ -5132,26 +5077,21 @@ def DoScenario(load_savegame=False):
 		##################################################################
 		# Shooting Phase Actions
 		##################################################################
-		elif option.option_id == 'next_weapon':
-			scenario.player_unit.SelectNextWeapon()
-			# clear target list
-			scenario.player_unit.target_list = []
-			scenario.player_unit.target_psg = None
-			UpdatePlayerUnitConsole()
-			# rebuild command menu for newly selected weapon
+		elif option.option_id == 'next_target':
+			scenario.SelectNextPlayerTarget()
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
-		elif option.option_id == 'next_target':
-			scenario.player_unit.SelectNextTarget()
+		elif option.option_id == 'clear_target':
+			scenario.player_target = None
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
 		elif option.option_id[:5] == 'fire_':
-			area_fire = False
-			if option.option_id[5:] == 'area':
-				area_fire = True
-			InitAttack(scenario.player_unit, scenario.player_unit.selected_weapon,
-				scenario.player_unit.target_psg, area_fire)
+			# get number of weapon from rest of string
+			n = int(option.option_id[5])
+			weapon = scenario.player_unit.weapon_list[n]
+			InitAttack(scenario.player_unit, weapon, scenario.player_target)
 			UpdatePlayerUnitConsole()
+			scenario.player_target = None
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
 

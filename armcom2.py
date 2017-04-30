@@ -90,8 +90,8 @@ GRADIENT = [
 
 # Game engine constants, can be tweaked for slightly different results
 MAX_LOS_DISTANCE = 13				# maximum distance that a Line of Sight can be drawn
+MAX_BU_LOS_DISTANCE = 4				# " for buttoned-up crewmen
 ELEVATION_M = 20.0				# each elevation level represents x meters of height
-MP_ALLOWANCE = 12				# how many MP each unit has for each Movement phase
 
 # short forms for crew positions, used to fit information into player unit info console, etc.
 CREW_POSITION_ABB = {
@@ -112,7 +112,7 @@ CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Loader', 'Dri
 AMMO_TYPE_ORDER = ['HE', 'AP']
 
 # turn phases, in order
-PHASE_LIST = ['Movement', 'Shooting', 'Close Combat']
+PHASE_LIST = ['Crew Actions', 'Movement', 'Shooting', 'Close Combat']
 
 # Colour definitions
 RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
@@ -186,48 +186,6 @@ MOVE_COMMANDS_UIO = [
 	(3, 'K', chr(25)), (2, 'L', chr(229))
 ]
 
-# fire table values
-# highest column that is not more than attack strength is used
-# number is the final dice roll to equal or beat for: Morale Check, -1 Step, -2 Steps, etc.
-# if 0, then not possible
-
-FIRE_TABLE = [
-	[11, 12, 0, 0, 0, 0, 0, 0, 0, 0],		# AF 0
-	[10, 11, 0, 0, 0, 0, 0, 0, 0, 0],		# AF 1
-	[9, 11, 0, 0, 0, 0, 0, 0, 0, 0],		# AF 2
-	[9, 10, 0, 0, 0, 0, 0, 0, 0, 0],		# AF 3
-	[8, 10, 0, 0, 0, 0, 0, 0, 0, 0],		# AF 4 / PF 1
-	[8, 9, 0, 0, 0, 0, 0, 0, 0, 0],			# AF 5 
-	[7, 9, 12, 0, 0, 0, 0, 0, 0, 0],		# AF 6
-	[6, 9, 12, 0, 0, 0, 0, 0, 0, 0],		# AF 7 / PF 2
-	[6, 9, 11, 12, 0, 0, 0, 0, 0, 0],		# AF 9
-	[6, 8, 11, 12, 0, 0, 0, 0, 0, 0],		# AF 11 / PF 3
-	[5, 8, 10, 11, 0, 0, 0, 0, 0, 0],		# AF 14 / PF 4
-	[4, 7, 9, 11, 12, 0, 0, 0, 0, 0],		# AF 17 / PF 5
-	[3, 7, 9, 10, 11, 12, 0, 0, 0, 0]		# AF 21 / PF 6
-]                                                   
-MAX_FIRE_TABLE_COLUMN = len(FIRE_TABLE)
-
-# AF, PF strengths to use for each column above
-FIRE_TABLE_ROWS = [
-	(0,0),(1,0),(2,0),(3,0),(4,1),(5,0),(6,0),(7,2),(9,0),(11,3),(14,4),(17,5),(21,6)
-]
-
-# column shifts for differentials in point strength vs. armour rating
-# FUTURE: will need to adjust to that they are fair
-AP_MODS = {
-	5:3,
-	4:2,
-	3:1,
-	2:0,
-	1:-1,
-	0:-2,
-	-1:-4,
-	-2:-8
-}
-MAX_AP_DIFF = 5
-MIN_AP_DIFF = -2
-
 
 
 ##########################################################################################
@@ -256,6 +214,30 @@ class Crewman:
 		else:
 			text = self.name[0] + ' ' + self.name[1]
 		return text.decode('utf8').encode('IBM850')
+
+
+# represents a single position in a vehicle that can be occupied by a crewman
+class CrewPosition:
+	def __init__(self, name, turret, hatch, open_visible, closed_visible):
+		
+		self.name = name		# name of this position
+		self.crewman = None		# pointer to crewman currently occupying this position
+		self.turret = turret		# True if position is in turret, otherwise it's in hull
+		self.hatch = hatch		# None if no hatch, otherwise 'Closed' or 'Open'
+		self.large_hatch = False	# Later set to True if crewman is especially exposed when hatch is open
+		self.player_position = False	# position occupied by player character
+		
+		# note: the following visble hextants are relative to the hull/turret facing of the vehicle
+		self.closed_visible = closed_visible	# set of visible hextants when hatch is closed
+		self.open_visible = open_visible	# " open
+	
+	# toggle hatch status
+	def ToggleHatch(self):
+		if self.hatch is None: return
+		if self.hatch == 'Closed':
+			self.hatch = 'Open'
+		else:
+			self.hatch = 'Closed'
 		
 
 # Unit: represents a single vehicle, squad, gun, or small team
@@ -280,21 +262,22 @@ class Unit:
 		# basic unit stats
 		self.infantry = False			# unit type flags
 		self.gun = False
-		self.vehicle = False
-		self.max_mp = MP_ALLOWANCE		# movement points
-		self.mp = self.max_mp			
+		self.vehicle = False			
 		self.known = False			# unit is known to the opposing side
-		# TEMP
-		self.known = True
+		self.identified = False			# unit has been identified by the opposing side
+		
 		self.facing = None			# facing direction: guns and vehicles must have this set
 		self.movement_class = ''		# movement class
+		self.max_mp = (0,0,0)			# maximum movement in rough/open/road terrain
+		self.mp = (0,0,0)			# current movement in "
+		
 		self.armour = None			# armour factors if any
 		self.max_ammo = 0			# maximum number of gun ammo carried
 		self.weapon_list = []			# list of weapons
 		
 		self.acquired_target = None		# PSG has acquired this unit as target
 		self.acquired_by = []			# PSG has been acquired by this/these unit(s)
-		self.display_char = ''			# character to display on map, set below
+		self.rof_target = None			# target for maintaining RoF
 		
 		# action flags
 		self.moved = False
@@ -331,16 +314,7 @@ class Unit:
 		self.unit_name = item.find('name').text
 		if item.find('portrait') is not None:
 			self.portrait = item.find('portrait').text
-		self.movement_class = item.find('movement_class').text
 		
-		# adjust maximum MP for slow and fast vehicles
-		if self.movement_class == 'Slow Tank':
-			self.max_mp -= 4
-			self.mp = self.max_mp
-		elif self.movement_class == 'Fast Tank':
-			self.max_mp += 4
-			self.mp = self.max_mp
-				
 		# weapon info
 		xml_weapon_list = item.findall('weapon')
 		if xml_weapon_list is not None:
@@ -373,10 +347,38 @@ class Unit:
 			# set up crew positions
 			self.crew_positions = None
 			if item.find('crew_position') is not None:
-				self.crew_positions = {}
+				self.crew_positions = []
 				item_list = item.findall('crew_position')
 				for i in item_list:
-					self.crew_positions[i.text] = None
+					name = i.find('name').text
+					turret = False
+					if i.find('turret') is not None:
+						turret = True
+					hatch = None
+					if i.find('hatch') is not None:
+						hatch = 'Closed'
+					open_visible = set()
+					if i.find('open_visible') is not None:
+						string = i.find('open_visible').text
+						for c in string:
+							open_visible.add(int(c))
+					closed_visible = set()
+					if i.find('closed_visible') is not None:
+						string = i.find('closed_visible').text
+						for c in string:
+							closed_visible.add(int(c))
+					
+					new_position = CrewPosition(name, turret,
+						hatch, open_visible, closed_visible)
+					
+					# check for special statuses
+					if i.find('large_hatch') is not None:
+						new_position.large_hatch = True
+					
+					self.crew_positions.append(new_position)
+				
+				# TODO: sort crew_positions by name based on CREW_POSITION_ORDER?
+				
 		
 		# gun stats
 		elif item.find('gun') is not None:
@@ -388,6 +390,17 @@ class Unit:
 				self.size_class = 'Normal'
 			if item.find('gun_shield') is not None:
 				self.gun_shield = True
+		
+		self.movement_class = item.find('movement_class').text
+		
+		# set up maximum movement for each of three types of terrain
+		if self.movement_class == 'Infantry':
+			self.max_mp = (1,1,1)
+		elif self.movement_class == 'Tank':
+			self.max_mp = (1,2,2)
+		elif self.movement_class == 'Fast Tank':
+			self.max_mp = (1,3,3)
+		self.mp = self.max_mp
 	
 	# return a description of this unit
 	# if using real name, transcode it to handle any special characters in it
@@ -399,12 +412,19 @@ class Unit:
 		return self.unit_name.decode('utf8').encode('IBM850')
 	
 	# assign a crewmember to a crew position
-	def SetCrew(self, position, crewman):
-		if position not in self.crew_positions:
-			print ('ERROR: tried to assign crew to ' + position + ' position but ' +
-				'no such position exists!')
-			return
-		self.crew_positions[position] = crewman
+	def SetCrew(self, position_name, crewman, player=False):
+		
+		for position in self.crew_positions:
+			if position.name == position_name:
+				position.crewman = crewman
+				# position is occupied by player character
+				if player:
+					position.player_position = True
+				return
+		
+		print ('ERROR: tried to assign crew to ' + position_name + ' position but ' +
+			'no such position exists!')
+			
 
 ##########################################################################################
 
@@ -501,7 +521,6 @@ class Unit:
 			self.mp = self.max_mp
 			self.moved = False
 			self.changed_facing = False
-			self.assault_target = None
 			
 			# if enemy player, roll for action this turn
 			if self.owning_player == 1:
@@ -510,6 +529,63 @@ class Unit:
 		# start of shooting phase
 		elif scenario.GetCurrentPhase() == 'Shooting':
 			self.fired = False
+			self.DoSpotChecks()
+
+	# do spot checks from this unit to enemy units
+	def DoSpotChecks(self):
+		
+		# build a list of enemy units that can be spotted and/or identified
+		target_list = []
+		for unit in scenario.unit_list:
+			if unit.owning_player == self.owning_player: continue
+			if unit.known and unit.identified: continue
+			los = GetLoS(self.hx, self.hy, unit.hx, unit.hy)
+			if (unit.hx, unit.hy) not in los: continue
+			target_list.append(unit)
+		
+		if len(target_list) == 0:
+			print 'DEBUG: no units to spot for ' + self.GetName(true_name=True)
+			return
+		
+		# if unit is fully crewed, use more complex spotting procedure
+		if self.crew_positions is not None:
+			for crew_position in self.crew_positions:
+				# no crew present
+				if crew_position.crewman is None: continue
+				# TODO: check that crewman status and action allows spot check
+				
+				if crew_position.hatch is None:
+					visible_hextants = crew_position.closed_visible
+					max_distance = MAX_BU_LOS_DISTANCE
+				else:
+					if crew_position.hatch == 'Closed':
+						visible_hextants = crew_position.closed_visible
+						max_distance = MAX_BU_LOS_DISTANCE
+					else:
+						visible_hextants = crew_position.open_visible
+						max_distance = MAX_LOS_DISTANCE
+				
+				shuffle(target_list)
+				for unit in target_list:
+					distance = GetHexDistance(self.hx, self.hy,
+						unit.hx, unit.hy)
+					if distance > max_distance:
+						continue
+					
+					direction = GetDirectionToward(self.hx, self.hy,
+						unit.hx, unit.hy)
+					
+					# TODO: rotate visible hextants based on turret/hull direction
+					
+					if direction not in visible_hextants:
+						continue
+					
+					# found a viable spot target, do the roll
+					
+					
+		
+		pass
+
 
 	# roll for recovery from negative statuses
 	# TODO: move into its own phase eventually
@@ -551,7 +627,7 @@ class Unit:
 		# test failed, unit is suppressed
 		self.SuppressMe()
 			
-	# this PSG has been revealed 
+	# this PSG has been spotted by an enemy unit
 	def SpotMe(self):
 		
 		self.suspected = False
@@ -694,26 +770,35 @@ class Unit:
 		map_hex2 = GetHexAt(new_hx, new_hy)
 		
 		if not free_move:
-			# get MP cost of move, return false if not enough
-			mp_cost = GetMPCostToMove(self, map_hex1, map_hex2)
-			if mp_cost > self.mp: return False
 			
-			# check for unreliable effect
-			if self.unreliable:
-				d1, d2, roll = Roll2D6()
-				if roll <= 3:
-					extra_cost = libtcod.random_get_int(0, 1, 6)
-					if mp_cost + extra_cost > self.mp:
-						extra_cost = self.mp - mp_cost
-					if mp_cost > 0:
-						mp_cost += extra_cost
-						if not (self.owning_player == 1 and self.suspected):
-							text = self.GetName() + ' suffers a breakdown, +'
-							text += str(extra_cost) + 'MP cost!'
-							Message(text, self.screen_x, self.screen_y)
-						
-			# spend the mp
-			self.mp -= mp_cost
+			# check cost of move
+			(cost1, cost2, cost3) = GetMPCostToMove(self, map_hex1, map_hex2)
+			(m1, m2, m3) = self.mp
+			
+			# not enough MP for this move
+			if (m1-cost1<0) or (m2-cost2<0) or (m3-cost3<0):
+				return False
+			
+			# apply MP point loss
+			if cost1 > 0:
+				# difficult terrain
+				m1 -= 1
+				m2 -= 1
+				m3 = 0
+			elif cost2 > 0:
+				# open terrain
+				m1 = 0
+				m2 -= 1
+				m3 -= 1
+				if m3 > m2: m3 -= 1
+			else:
+				# road terrain
+				m1 = 0
+				m2 -= 2
+				if m2 < 0: m2 = 0
+				m3 -= 1
+			
+			self.mp = (m1, m2, m3)
 		
 		# see if a pivot is required
 		if self.movement_class != 'Infantry':
@@ -758,8 +843,6 @@ class Unit:
 		if self.owning_player == 0:
 			scenario.hex_map.CalcFoV()
 			UpdateMapFoVConsole()
-		# do a spot check
-		scenario.DoSpotCheck()
 		
 		UpdateUnitConsole()
 		UpdateHexInfoConsole()
@@ -957,6 +1040,8 @@ class Unit:
 class Weapon:
 	def __init__(self, item):
 		
+		self.fired = False		# weapon has fired this turn and did not maintain RoF
+		
 		self.stats = {}
 		
 		# load weapon stats from xml item
@@ -976,6 +1061,10 @@ class Weapon:
 			if item.find('rr_size') is not None:
 				self.stats['rr_size'] = int(item.find('rr_size').text)
 				self.stats['use_ready_rack'] = True
+			
+			self.stats['rof'] = 0
+			if item.find('rof') is not None:
+				self.stats['rof'] = int(item.find('rof').text)
 			
 			# ammo load stats: current selections are TEMP
 			self.stats['loaded_ammo'] = 'AP'
@@ -1813,11 +1902,35 @@ class HexMap:
 		# set hex location of player unit to visible
 		scenario.hex_map.hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].vis_to_player = True
 		
-		# raycast from player unit to each map hex
+		# check visible hextants for commander crew position
+		crew_position = scenario.player_unit.crew_positions[0]
+		if crew_position.hatch is None:
+			visible_hextants = crew_position.closed_visible
+			max_distance = MAX_BU_LOS_DISTANCE
+		else:
+			if crew_position.hatch == 'Closed':
+				visible_hextants = crew_position.closed_visible
+				max_distance = MAX_BU_LOS_DISTANCE
+			else:
+				visible_hextants = crew_position.open_visible
+				max_distance = MAX_LOS_DISTANCE
+		
+		# TODO: rotate visible hextants based on turret/hull direction
+		
+		# raycast from crewman position to each map hex
 		#start_time = time.time()
 		for (hx, hy) in scenario.hex_map.hexes:
 			# skip already visible hexes
 			if scenario.hex_map.hexes[(hx, hy)].vis_to_player: continue
+			
+			# skip hexes not visible to crew position
+			direction = GetDirectionToward(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy)
+			if direction not in visible_hextants: continue
+			
+			# get max LoS distance
+			distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy)
+			if distance > max_distance: continue
+			
 			los_line = GetLoS(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy)
 			if (hx, hy) in los_line:
 				scenario.hex_map.hexes[(hx, hy)].vis_to_player = True
@@ -1858,6 +1971,7 @@ class Scenario:
 		self.unit_list = []			# list of all units in play
 		self.active_unit = None			# currently active unit
 		self.player_unit = None			# pointer to player-controlled unit
+		self.selected_crew_position = None	# selected crew position in player unit
 		self.player_target = None		# unit currently being targeted by player unit
 		
 		self.player_direction = 3		# direction of player-friendly forces
@@ -2084,211 +2198,6 @@ class Scenario:
 		libtcod.console_flush()
 		WaitForEnter()
 	
-	# resolve all close combats for this phase
-	def ResolveCloseCombats(self):
-		
-		# TEMP
-		return
-		
-		
-		cc_unit_list = []
-		
-		for psg in self.unit_list:
-			if psg.owning_player != self.active_player: continue
-			if psg.assault_target is not None:
-				cc_unit_list.append(psg)
-		
-		# no combats to resolve
-		if len(cc_unit_list) == 0: return
-		
-		# FUTURE: sort list by MP remaining
-		for attacker in cc_unit_list:
-			
-			# get target psg, clear assault target
-			(hx, hy) = attacker.assault_target
-			target = GetPSGAt(hx, hy)
-			attacker.assault_target = None
-			UpdateGUIConsole()
-			DrawScreenConsoles()
-			libtcod.console_flush()
-			
-			# clear both units' acquired targets
-			attacker.ClearAcquiredTargets()
-			if target:
-				target.ClearAcquiredTargets()
-			
-			# if target has been destroyed, take location
-			if not target:
-				attacker.MoveInto(hx, hy, free_move=True)
-				continue
-			else:
-				# if target location now occupied by an ally, cancel attack
-				if target.owning_player == attacker.owning_player:
-					continue
-			
-			# show message
-			text = attacker.GetName() + ' assaults ' + target.GetName()
-			Message(text, attacker.screen_x, attacker.screen_y)
-			
-			# do initial half-move animation
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
-			(x1,y1) = PlotHex(attacker.hx, attacker.hy)
-			(x2,y2) = PlotHex(target.hx, target.hy)
-			line = GetLine(x1,y1,x2,y2)
-			for (x,y) in line[1:2]:
-				attacker.anim_x = x
-				attacker.anim_y = y
-				UpdateUnitConsole()
-				DrawScreenConsoles()
-				libtcod.console_flush()
-				Wait(pause_time)
-			
-			# defensive fire: automatically choose best attack possible
-			attack_list = target.ai.GetBestAttacks(attacker)
-			if attack_list is None:
-				text = 'No defensive fire possible'
-				Message(text, target.screen_x, target.screen_y)
-			else:
-				sorted(attack_list,key=itemgetter(0))
-				(final_column, weapon, null, area_fire, at_attack) = attack_list[0]
-				text = target.GetName() + ' conducts defensive fire'
-				Message(text, target.screen_x, target.screen_y)
-				InitAttack(target, weapon, attacker, area_fire, at_attack=at_attack)
-			
-			# attacker was destroyed by defensive fire
-			if attacker not in scenario.unit_list:
-				continue
-			
-			# record original position and move attacker to target hex
-			attacker_retreat_hx = attacker.hx
-			attacker_retreat_hy = attacker.hy
-			attacker.hx = target.hx
-			attacker.hy = target.hy
-			
-			# if attacker has been Suppressed, it must fall back; skip attack loop
-			if attacker.suppressed:
-				text = attacker.GetName() + ' must break off attack'
-				Message(text, attacker.screen_x, attacker.screen_y)
-				attacker_won = False
-				exit_attack = True
-			else:
-				
-				# attacker and defender are spotted if not already
-				if target.suspected:
-					target.SpotMe()
-				if attacker.suspected:
-					attacker.SpotMe()
-				
-				# set flags to start attack loop
-				exit_attack = False
-				attacker_won = True
-				attacker_steps = attacker.num_steps
-				target_steps = target.num_steps
-				
-			while not exit_attack:
-				
-				# assaulting platoon attacks
-				text = attacker.GetName() + ' attacks in close combat'
-				Message(text, attacker.screen_x, attacker.screen_y)
-				attack_list = attacker.ai.GetBestAttacks(target)
-				
-				if attack_list is None:
-					text = 'Attacker cannot damage ' + target.GetName() + ' and must break off'
-					Message(text, attacker.screen_x, attacker.screen_y)
-					attacker_won = False
-					exit_attack = True
-					continue
-				
-				# pick best attack and do it
-				sorted(attack_list,key=itemgetter(0))
-				(final_column, weapon, null, area_fire, at_attack) = attack_list[0]
-				InitAttack(attacker, weapon, target, area_fire, at_attack=at_attack)
-				
-				# if defender is dead, exit
-				if target not in scenario.unit_list:
-					exit_attack = True
-					continue
-				
-				# defender is still alive, must pass a morale check to continue if has lost any steps
-				if target.num_steps < target_steps:
-					target_steps = target.num_steps
-					if not target.MoraleCheck(0):
-						text = target.GetName() + ' fails its morale check and must withdraw'
-						Message(text, target.screen_x, target.screen_y)
-						target.RetreatToSafety()
-						exit_attack = True
-						continue
-				
-				# defender gets an attack
-				text = target.GetName() + ' attacks in close combat'
-				Message(text, target.screen_x, target.screen_y)
-				attack_list = target.ai.GetBestAttacks(attacker)
-				
-				if attack_list is None:
-					text = target.GetName() + ' cannot damage attacker and must withdraw'
-					Message(text, target.screen_x, target.screen_y)
-					target.RetreatToSafety()
-					exit_attack = True
-					continue
-				
-				# pick best attack and do it
-				sorted(attack_list,key=itemgetter(0))
-				(final_column, weapon, null, area_fire, at_attack) = attack_list[0]
-				InitAttack(target, weapon, attacker, area_fire, at_attack=at_attack)
-				
-				# if attacker is dead, exit
-				if attacker not in scenario.unit_list:
-					attacker_won = False
-					exit_attack = True
-					continue
-				
-				# attacker is still alive, must pass a morale check to continue if lost any steps
-				if attacker.num_steps < attacker_steps:
-					attacker_steps = attacker.num_steps
-					if not attacker.MoraleCheck(0):
-						text = attacker.GetName() + ' fails its morale check and must break off attack'
-						Message(text, attacker.screen_x, attacker.screen_y)
-						attacker_won = False
-						exit_attack = True
-						continue
-			
-			# attacker is dead, nothing more to do here
-			if attacker not in scenario.unit_list:
-				continue
-			
-			# move attacker into centre of new hex or into retreat area
-			if not attacker_won:
-				attacker.hx = attacker_retreat_hx
-				attacker.hy = attacker_retreat_hy
-				# TODO: pivot if required?
-				
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
-			(x2,y2) = PlotHex(attacker.hx, attacker.hy)
-			line = GetLine(attacker.anim_x,attacker.anim_y,x2,y2)
-			for (x,y) in line[1:]:
-				attacker.anim_x = x
-				attacker.anim_y = y
-				UpdateUnitConsole()
-				DrawScreenConsoles()
-				libtcod.console_flush()
-				Wait(pause_time)
-			
-			# reset attacker's animation location
-			attacker.anim_x = 0
-			attacker.anim_y = 0
-			UpdateUnitConsole()
-			DrawScreenConsoles()
-			libtcod.console_flush()
-			
-			# recalculate FoV if needed
-			if attacker.owning_player == 0:
-				scenario.hex_map.CalcFoV()
-				UpdateMapFoVConsole()
-				scenario.DoSpotCheck()
-			
-			# check for objective capture
-			GetHexAt(attacker.hx, attacker.hy).CheckCapture()
-	
 	# return a text string for the current turn phase
 	def GetCurrentPhase(self):
 		return PHASE_LIST[self.current_phase]
@@ -2326,8 +2235,14 @@ class Scenario:
 	# finish up current phase, start new phase (and possibly new turn as well)
 	def NextPhase(self):
 		
+		# crew actions -> Movement
+		if self.GetCurrentPhase() == 'Crew Actions':
+			self.SetPhase('Movement')
+			self.active_cmd_menu = 'movement_root'
+			self.selected_crew_position = None
+		
 		# Movement -> Shooting Phase
-		if self.GetCurrentPhase() == 'Movement':
+		elif self.GetCurrentPhase() == 'Movement':
 			self.SetPhase('Shooting')
 			self.active_cmd_menu = 'shooting_root'
 		
@@ -2338,7 +2253,7 @@ class Scenario:
 			self.active_cmd_menu = 'cc_root'
 			self.active_unit = None
 			
-		# Close Combat Phase -> New Active Player and Movement Phase
+		# Close Combat Phase -> New Active Player and Crew Actions Phase
 		elif self.GetCurrentPhase() == 'Close Combat':
 			
 			if self.active_player == 0:
@@ -2360,79 +2275,27 @@ class Scenario:
 				self.active_unit = None
 				scenario.SelectNextPSG()
 				UpdatePlayerUnitConsole()
-			self.SetPhase('Movement')
-			self.active_cmd_menu = 'movement_root'
+			self.SetPhase('Crew Actions')
+			self.active_cmd_menu = 'crew_actions'
+			# select first crew position in player unit
+			self.selected_crew_position = self.player_unit.crew_positions[0]
+			
 			for psg in self.unit_list:
 				if psg.owning_player == self.active_player:
 					psg.DoRecoveryTests()
+		
+		#UpdateUnitConsole()
+		self.BuildCmdMenu()
+		DrawScreenConsoles()
+		libtcod.console_flush()
+		SaveGame()
 		
 		# do automatic actions for active player's units for this phase
 		for psg in self.unit_list:
 			if psg.owning_player == self.active_player:
 				psg.ResetForPhase()
 		
-		UpdateUnitConsole()
-		self.BuildCmdMenu()
 		SaveGame()
-	
-	# check to see if any units are spotted by enemy forces or regain unspotted status
-	def DoSpotCheck(self):
-		
-		# TEMP
-		return
-		
-		spotted_psgs = []
-		unspotted_psgs = []
-		
-		# assume that all PSGs should be unspotted
-		for psg in self.unit_list:
-			unspotted_psgs.append(psg)
-		
-		# check all possible enemy pairs
-		for psg1 in self.unit_list:
-			psg1.visible_enemies = []
-			for psg2 in self.unit_list:
-				# both units are on same side
-				if psg1.owning_player == psg2.owning_player:
-					continue
-				
-				# DEBUG
-				if VIEW_ALL and psg2.owning_player == 1 and psg2 in unspotted_psgs:
-					unspotted_psgs.remove(psg2)
-					spotted_psgs.append(psg2)
-					continue
-				
-				# no LoS
-				if (psg2.hx, psg2.hy) not in GetLoS(psg1.hx, psg1.hy, psg2.hx, psg2.hy):
-					continue
-				
-				psg1.visible_enemies.append(psg2)
-				
-				# if psg2 was spotted, it won't lose this status if any enemy unit is in LoS
-				if not psg2.suspected and psg2 in unspotted_psgs:
-					unspotted_psgs.remove(psg2)
-					spotted_psgs.append(psg2)
-					continue
-				
-				# calculate spot range for psg2
-				spot_range = psg2.GetSpotRange()
-				# add any bonuses for spotting unit
-				if psg1.recce: spot_range += 2
-				
-				if GetHexDistance(psg1.hx, psg1.hy, psg2.hx, psg2.hy) <= spot_range:
-				
-					# psg2 has been spotted by psg1
-					if psg2 in unspotted_psgs:
-						unspotted_psgs.remove(psg2)
-						spotted_psgs.append(psg2)
-		
-		# finally, go through lists and check for any changes in status
-		for psg in spotted_psgs:
-			if psg.suspected:
-				psg.SpotMe()
-		for psg in unspotted_psgs:
-			if not psg.suspected:
-				psg.HideMe()
 	
 	# select the next player PSG; or the first one in the list if none selected
 	def SelectNextPSG(self):
@@ -2486,8 +2349,21 @@ class Scenario:
 			UpdateCmdConsole()
 			return
 		
-		# movement phase menu
-		if self.active_cmd_menu == 'movement_root':
+		# crew actions
+		if self.active_cmd_menu == 'crew_actions':
+			movement_keys = config.get('ArmCom2', 'movement_keys')
+			key_code = movement_keys[1].capitalize()
+			self.cmd_menu.AddOption('previous_crew_position', key_code, 'Previous Crew Position')
+			key_code = movement_keys[4].capitalize()
+			self.cmd_menu.AddOption('next_crew_position', key_code, 'Next Crew Position')
+			
+			menu_option = self.cmd_menu.AddOption('toggle_hatch', 'H', 'Toggle Hatch')
+			if self.selected_crew_position.hatch is None:
+				menu_option.inactive = True
+				menu_option.desc = 'Crew position has no hatch'
+		
+		# movement phase
+		elif self.active_cmd_menu == 'movement_root':
 			
 			# run through six possible rotate/move directions and build commands
 			movement_keys = config.get('ArmCom2', 'movement_keys')
@@ -2534,8 +2410,9 @@ class Scenario:
 					menu_option.desc = 'Cannot move into this hex'
 					continue
 				
-				mp_cost = GetMPCostToMove(scenario.player_unit, map_hex1, map_hex2)
-				if mp_cost > scenario.player_unit.mp:
+				(cost1, cost2, cost3) = GetMPCostToMove(scenario.player_unit, map_hex1, map_hex2)
+				(m1, m2, m3) = scenario.player_unit.mp
+				if (m1-cost1<0) or (m2-cost2<0) or (m3-cost3<0):
 					menu_option.inactive = True
 					menu_option.desc = 'Not enough MP'
 					
@@ -3001,42 +2878,19 @@ def GetHexRect(hx, hy, w, h):
 
 
 # calculate the MP required to move into the target hex
-# most units have 12 MP max, fast tanks have 16
-def GetMPCostToMove(psg, map_hex1, map_hex2):
-	
-	# check if linked by road
-	road = False
+def GetMPCostToMove(unit, map_hex1, map_hex2):
+
 	direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, map_hex2.hx, map_hex2.hy)
 	if direction in map_hex1.dirt_road_links:
-		road = True
+		# road movement
+		return (0,0,1)
 	
-	if psg.movement_class == 'Infantry':
-		if road:
-			cost = 4
-		else:
-			cost = 6
+	if map_hex2.terrain_type.difficult:
+		# movement in difficult terrain
+		return (1,0,0)
 	
-	elif psg.movement_class == 'Wheeled':
-		if road:
-			cost = 2
-		elif map_hex2.terrain_type.difficult:
-			cost = 12
-		else:
-			cost = 4
-	
-	elif psg.movement_class in ['Tank', 'Fast Tank']:
-		if road:
-			cost = 3
-		elif map_hex2.terrain_type.difficult:
-			cost = 6
-		else:
-			cost = 4
-	
-	elif psg.movement_class == 'Slow Tank':
-		cost = 6
-
-	return cost
-	
+	# movement in open terrain
+	return (0,1,0)
 
 
 # returns a path from one hex to another, avoiding impassible and difficult terrain
@@ -3107,7 +2961,8 @@ def GetHexPath(hx1, hy1, hx2, hy2, psg=None, road_path=False):
 				# can't move into an occupied location unless it's our destination
 				if node != node2 and node.IsOccupied() != -1:
 					continue
-				cost = GetMPCostToMove(psg, current, node)
+				# TEMP
+				cost = 1
 			
 			# we're creating a path for a road
 			elif road_path:
@@ -3512,13 +3367,45 @@ def InitAttack(attacker, weapon, target):
 		#MGAttackAnimation(attack_obj)
 	
 	# resolve attack
+	# TODO: change to CalcPointFire
 	target.ResolveAttack(attack_obj)
 	
 	# TODO: handle newly acquired target
 	
-	
-	# check for spotting changes as a result of this attack
-	#scenario.DoSpotCheck()
+	# handle reloading procedure for gun
+	if weapon.weapon_type == 'gun':
+		# 'unload' fired shell
+		weapon.stats['loaded_ammo'] = None
+		
+		# check for ready rack use
+		use_rr = False
+		if weapon.stats['use_ready_rack'] is not None:
+			if weapon.stats['use_ready_rack']:
+				use_rr = True
+		
+		# check for new shell of reload type and load it if possible
+		(main_ammo, rr_ammo) = weapon.stats[weapon.stats['reload_ammo']]
+		if use_rr:
+			if rr_ammo > 0:
+				rr_ammo -= 1
+				weapon.stats['loaded_ammo'] = weapon.stats['reload_ammo']
+			else:
+				# no shell of the right type in the ready rack, but we can
+				#   default to general stores
+				weapon.stats['use_ready_rack'] = False
+				use_rr = False
+		
+		if not use_rr:
+			if main_ammo > 0:
+				main_ammo -= 1
+				weapon.stats['loaded_ammo'] = weapon.stats['reload_ammo']
+		
+		# update new ammo amounts
+		weapon.stats[weapon.stats['reload_ammo']] = (main_ammo, rr_ammo)
+		
+		# TODO: check for RoF if gun was reloaded
+		
+		weapon.fired = True
 
 
 # display the factors and odds for an attack on the screen
@@ -4034,18 +3921,6 @@ def UpdateGUIConsole():
 		for (xm,ym) in [(-2, -1),(-2, 1),(2, -1),(2, 1)]:
 			libtcod.console_put_char_ex(map_gui_con, x+xm, y+ym, 249, col,
 				libtcod.black)
-	
-	# show assaults
-	#for psg in scenario.unit_list:
-	#	if psg.assault_target is not None:
-	#		(hx, hy) = psg.assault_target
-	#		direction = GetDirectionToAdjacent(psg.hx, psg.hy, hx, hy)
-	#		char = GetDirectionalArrow(direction)
-	#		(x, y) = PlotHex(psg.hx, psg.hy)
-	#		tile_list = GetEdgeTiles(x, y, direction)
-	#		for (x,y) in tile_list:
-	#			libtcod.console_put_char_ex(map_gui_con, x, y, char,
-	#				libtcod.red, libtcod.black)
 		
 
 # run through active PSGs and draw them to the unit console
@@ -4148,36 +4023,56 @@ def UpdatePlayerUnitConsole():
 	libtcod.console_print_ex(player_unit_con, 23, 8, libtcod.BKGND_NONE, libtcod.RIGHT,
 		text)
 	
-	# MP
+	# Movement Class and moves remaining
+	libtcod.console_set_default_foreground(player_unit_con, libtcod.light_green)
+	libtcod.console_print(player_unit_con, 0, 12, scenario.player_unit.movement_class)
 	if scenario.GetCurrentPhase() == 'Movement':
-		text = str(unit.mp) + '/' + str(unit.max_mp) + ' MP'
-		libtcod.console_set_default_foreground(player_unit_con, libtcod.light_green)
-		libtcod.console_print_ex(player_unit_con, 23, 12, libtcod.BKGND_NONE, libtcod.RIGHT,
-			text)
-		libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
-	
+		(m1, m2, m3) = scenario.player_unit.mp
+		text = str(m1) + '/' + str(m2) + '/' + str(m3)
+		libtcod.console_print_ex(player_unit_con, 23, 12, libtcod.BKGND_NONE,
+			libtcod.RIGHT, text)
+	libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
 	
 	# list of crew and crew positions
-	if unit.crew_positions:
+	if unit.crew_positions is not None:
 		y = 14
-		for position_name in CREW_POSITION_ORDER:
-			if position_name in unit.crew_positions:
-				libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
-				text = CREW_POSITION_ABB[position_name]
-				libtcod.console_print(player_unit_con, 0, y, text)
-				
-				crewman = unit.crew_positions[position_name]
-				if crewman is None:
-					libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
-					text = '[Empty]'
-				else:
-					text = crewman.GetName(lastname=True)
-				libtcod.console_print(player_unit_con, 5, y, text)
-				
+		for position in unit.crew_positions:
+			
+			# highlight if selected
+			if scenario.selected_crew_position is not None:
+				if scenario.selected_crew_position == position:
+					libtcod.console_set_default_background(player_unit_con, SELECTED_WEAPON_COLOR)
+					libtcod.console_rect(player_unit_con, 0, y, 24,
+						2, True, libtcod.BKGND_SET)
+					libtcod.console_set_default_background(player_unit_con, libtcod.black)
+		
+			libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
+			text = CREW_POSITION_ABB[position.name]
+			libtcod.console_print(player_unit_con, 0, y, text)
+			
+			if position.crewman is None:
 				libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
-				libtcod.console_hline(player_unit_con, 0, y+2, 24)
-				
-				y += 3
+				text = '[Empty]'
+			else:
+				text = position.crewman.GetName(lastname=True)
+			libtcod.console_print(player_unit_con, 5, y, text)
+			
+			libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
+			
+			# hatch status
+			if position.hatch is None:
+				text = '--'
+			else:
+				if position.hatch == 'Closed':
+					text = 'BU'
+				else:
+					text = 'CE'
+			libtcod.console_print_ex(player_unit_con, 23, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
+			
+			libtcod.console_hline(player_unit_con, 0, y+2, 24)
+			
+			y += 3
 	
 	# TEMP
 	return
@@ -4342,13 +4237,10 @@ def UpdateCmdConsole():
 	libtcod.console_set_default_background(cmd_con, TITLE_BG_COL)
 	libtcod.console_rect(cmd_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(cmd_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-		'Command Menu')
-	
+		scenario.GetCurrentPhase())
 	libtcod.console_set_default_foreground(cmd_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
-	libtcod.console_print(cmd_con, 0, 1, scenario.GetCurrentPhase() + ' Phase')
-	
-	scenario.cmd_menu.DisplayMe(cmd_con, 0, 3, 24)
+	scenario.cmd_menu.DisplayMe(cmd_con, 0, 2, 24)
 
 
 # draw scenario info to the scenario info console
@@ -4858,7 +4750,7 @@ def DoScenario(load_savegame=False):
 		new_crew = Crewman()
 		new_crew.name = ['Günter', 'Bauer']
 		new_crew.position_training['Commander/Gunner'] = 30
-		new_unit.SetCrew('Commander/Gunner', new_crew)
+		new_unit.SetCrew('Commander/Gunner', new_crew, player=True)
 		
 		new_crew = Crewman()
 		new_crew.name = ['Hans', 'Eichelberger']
@@ -4903,14 +4795,13 @@ def DoScenario(load_savegame=False):
 		scenario.hex_map.CalcFoV()
 		UpdateMapFoVConsole()
 		
+		# select first crew position in player unit
+		scenario.selected_crew_position = scenario.player_unit.crew_positions[0]
 		# build initial command menu
-		scenario.active_cmd_menu = 'movement_root'
+		scenario.active_cmd_menu = 'crew_actions'
 		scenario.BuildCmdMenu()
 		
 		UpdateScreen()
-		
-		# do initial spot check
-		#scenario.DoSpotCheck()
 		
 		
 	
@@ -4994,7 +4885,7 @@ def DoScenario(load_savegame=False):
 		
 		##### Automatic Phase Actions #####
 		if scenario.GetCurrentPhase() == 'Close Combat':
-			scenario.ResolveCloseCombats()
+			# TEMP - nothing happens in this phase yet
 			scenario.NextPhase()
 			UpdateScreen()
 			continue
@@ -5054,6 +4945,20 @@ def DoScenario(load_savegame=False):
 		if option.option_id == 'next_phase':
 			scenario.NextPhase()
 			UpdatePlayerUnitConsole()
+			DrawScreenConsoles()
+		
+		##################################################################
+		# Crew Action Phase Actions
+		##################################################################
+		elif option.option_id == 'toggle_hatch':
+			scenario.selected_crew_position.ToggleHatch()
+			UpdatePlayerUnitConsole()
+			
+			# update FoV if required
+			if scenario.selected_crew_position.player_position:
+				scenario.hex_map.CalcFoV()
+				UpdateMapFoVConsole()
+			
 			DrawScreenConsoles()
 		
 		##################################################################

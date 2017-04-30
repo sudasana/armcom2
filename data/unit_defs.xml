@@ -19,6 +19,7 @@
       <mount>Turret</mount>
       <fired_by>Gunner</fired_by>
       <rr_size>4</rr_size>
+      <rof>4</rof>
     </weapon>
     <weapon>
       <type>coax_mg</type>
@@ -27,9 +28,24 @@
       <fired_by>Gunner</fired_by>
     </weapon>
     <max_ammo>80</max_ammo>
-    <crew_position>Commander</crew_position>
-    <crew_position>Gunner</crew_position>
-    <crew_position>Driver</crew_position>
+    <crew_position>
+      <name>Commander</name>
+      <turret/>
+      <open_visible>012345</open_visible>
+      <closed_visible>012345</closed_visible>	<!-- Hatch was fitted with an advanced periscope -->
+    </crew_position>
+    <crew_position>
+      <name>Gunner</name>
+      <turret/>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <large_hatch/>
+      <open_visible>015</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
   </unit_def>
   
 
@@ -53,6 +69,7 @@
       <mount>Turret</mount>
       <fired_by>Commander/Gunner</fired_by>
       <rr_size>6</rr_size>
+      <rof>4</rof>
     </weapon>
     <weapon>
       <type>coax_mg</type>
@@ -69,10 +86,28 @@
       <fired_by>Assistant Driver</fired_by>
     </weapon>
     <max_ammo>66</max_ammo>
-    <crew_position>Commander/Gunner</crew_position>
-    <crew_position>Loader</crew_position>
-    <crew_position>Driver</crew_position>
-    <crew_position>Assistant Driver</crew_position>
+    <crew_position>
+      <name>Commander/Gunner</name>
+      <turret/>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>012345</closed_visible>	<!-- Hatch was fitted with a cupola and a periscope -->
+    </crew_position>
+    <crew_position>
+      <name>Loader</name>
+      <turret/>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <open_visible>015</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Assistant Driver</name>
+      <closed_visible>0</closed_visible>
+    </crew_position>
   </unit_def>
   
 </root>

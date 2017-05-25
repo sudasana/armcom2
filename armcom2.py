@@ -92,6 +92,14 @@ MAX_LOS_DISTANCE = 13				# maximum distance that a Line of Sight can be drawn
 MAX_BU_LOS_DISTANCE = 4				# " for buttoned-up crewmen
 ELEVATION_M = 20.0				# each elevation level represents x meters of height
 BASE_SPOT_SCORE = 5				# base score required to spot unknown enemy unit
+HEX_STACK_LIMIT = 6				# maximum number of units in a map hex stack
+
+MP_COSTS = [
+	[1,1,1],				# infantry
+	[3,6,3],				# tank
+	[3,6,3]					# fast tank
+]
+
 
 # short forms for crew positions, used to fit information into player unit info console, etc.
 CREW_POSITION_ABB = {
@@ -255,6 +263,7 @@ class Unit:
 		self.portrait = None
 		self.ai = AI(self)			# pointer to AI instance
 		self.owning_player = None		# player that controls this unit
+		self.squadron_leader = None		# used for player squadron
 		
 		# location coordinates
 		self.hx = -1				# hex location of this unit, will be set
@@ -276,8 +285,8 @@ class Unit:
 		self.facing = None			# facing direction: guns and vehicles must have this set
 		self.turret_facing = None		# facing of main turret on unit
 		self.movement_class = ''		# movement class
-		self.max_mp = (0,0,0)			# maximum movement in rough/open/road terrain
-		self.mp = (0,0,0)			# current movement in "
+		self.max_mp = 0				# maximum movement points per turn
+		self.mp = 0				# current " remaining
 		
 		self.armour = None			# armour factors if any
 		self.max_ammo = 0			# maximum number of gun ammo carried
@@ -303,6 +312,26 @@ class Unit:
 		
 		self.LoadStats()				# load stats from unit_defs.xml
 		self.display_char = self.GetDisplayChar()	# set initial display character
+
+	# attempt to place this unit into the map at hx, hy
+	# if this location is impassible to unit, try adjacent hexes as well
+	def PlaceAt(self, hx, hy):
+		hex_list = [(hx, hy)]
+		hex_list.extend(GetAdjacentHexesOnMap(hx, hy))
+		for (hx1, hy1) in hex_list:
+			map_hex = GetHexAt(hx1, hy1)
+			if map_hex.terrain_type.water: continue
+			if len(map_hex.unit_stack) > HEX_STACK_LIMIT: continue
+			if len(map_hex.unit_stack) > 0:
+				if map_hex.unit_stack[0].owning_player != self.owning_player: continue
+			# found a good target location
+			self.hx = hx1
+			self.hy = hy1
+			map_hex.unit_stack.append(self)
+			return
+		
+		print ('ERROR: Could not place ' + GetName(self, true_name=True) +
+			' into map at ' + str(hx) + ',' + str(hy))
 
 	# load the baseline stats for this unit from data file
 	def LoadStats(self):
@@ -401,13 +430,13 @@ class Unit:
 		
 		self.movement_class = item.find('movement_class').text
 		
-		# set up maximum movement for each of three types of terrain
+		# set up maximum mp for each movement class
 		if self.movement_class == 'Infantry':
-			self.max_mp = (1,1,1)
+			self.max_mp = 1
 		elif self.movement_class == 'Tank':
-			self.max_mp = (1,2,2)
+			self.max_mp = 6
 		elif self.movement_class == 'Fast Tank':
-			self.max_mp = (1,3,3)
+			self.max_mp = 9
 		self.mp = self.max_mp
 	
 	# return a description of this unit
@@ -468,24 +497,6 @@ class Unit:
 		
 		return spot_range
 
-	# try to place this PSG into the target hex, if not possible, place in random adjacent hex
-	def PlaceAt(self, hx, hy):
-		hex_list = [(hx, hy)]
-		adjacent_list = GetAdjacentHexesOnMap(hx, hy)
-		shuffle(adjacent_list)
-		hex_list.extend(adjacent_list)
-		for (hx1, hy1) in hex_list:
-			map_hex = GetHexAt(hx1, hy1)
-			if map_hex is None: continue
-			if map_hex.IsOccupied() > -1: continue
-			if map_hex.terrain_type.water: continue
-			self.hx = hx1
-			self.hy = hy1
-			return
-		print 'ERROR: unable to place PSG into or near ' + str(hx) + ',' + str(hy)
-
-	
-
 	# return the name of a single step within this PSG
 	def GetStepName(self):
 		return self.step_name.decode('utf8').encode('IBM850')
@@ -510,13 +521,13 @@ class Unit:
 	# remove this PSG from the game
 	def DestroyMe(self):
 		text = self.GetName() + ' has been destroyed!'
-		Message(text, self.screen_x, self.screen_y)
+		Message(text, target_unit=self)
 		scenario.unit_list.remove(self)
 		# clear acquired target records
 		self.ClearAcquiredTargets()
 		UpdateUnitConsole()
 
-	# do any automatic actions for start of current phase
+	# do any automatic actions for this unit for start of current phase
 	def ResetForPhase(self):
 		
 		# clear any targets and selected weapon
@@ -530,6 +541,8 @@ class Unit:
 			self.moved = False
 			self.changed_facing = False
 			
+			scenario.DoAutomaticSpotCheck()
+			
 			# if enemy player, roll for action this turn
 			if self.owning_player == 1:
 				self.ai.GenerateAction()
@@ -537,7 +550,6 @@ class Unit:
 		# start of shooting phase
 		elif scenario.GetCurrentPhase() == 'Shooting':
 			self.fired = False
-			self.DoSpotChecks()
 
 	# do spot checks from this unit to enemy units
 	def DoSpotChecks(self):
@@ -551,8 +563,8 @@ class Unit:
 			if (unit.hx, unit.hy) not in los: continue
 			target_list.append(unit)
 		
+		# no units to spot
 		if len(target_list) == 0:
-			print 'DEBUG: no units to spot for ' + self.GetName(true_name=True)
 			return
 		
 		# if unit is fully crewed, use more complex spotting procedure
@@ -616,9 +628,6 @@ class Unit:
 						unit.SpotMe()
 						target_list.remove(unit)
 						break
-						
-					
-					
 		
 		else:
 			# TODO: simplified spotting procedure for units without crew?
@@ -646,7 +655,7 @@ class Unit:
 			self.pin_points -= 1
 			text = self.GetName() + ' now has ' + str(self.pin_points) + ' pin point'
 			if self.pin_points != 1: text += 's'
-			Message(text, self.screen_x, self.screen_y)
+			Message(text, target_unit=self)
 			return
 		
 		if self.pin_points == 0:
@@ -662,7 +671,7 @@ class Unit:
 			self.pin_points -= lost_points
 			text = self.GetName() + ' loses ' + str(lost_points) + ' pin point'
 			if lost_points != 1: text += 's'
-			Message(text, self.screen_x, self.screen_y)
+			Message(text, target_unit=self)
 			return
 		
 		# test failed, unit is suppressed
@@ -671,6 +680,8 @@ class Unit:
 	# this PSG has been spotted by an enemy unit
 	def SpotMe(self):
 		
+		if self.known: return
+		
 		self.known = True
 
 		# update unit console
@@ -678,13 +689,24 @@ class Unit:
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		
+		# don't display any message for squadron members
+		if self.squadron_leader is not None: return
+		
 		# show message
 		if self.owning_player == 0:
 			text = 'Your '
 		else:
 			text = 'Enemy '
 		text += self.GetName() + ' has been spotted!'
-		Message(text, self.screen_x, self.screen_y)
+		Message(text, target_unit=self)
+	
+	# identify this unit to the enemy player
+	def IdentifyMe(self):
+		
+		if self.identified: return
+		
+		pass
+	
 	
 	# regain unspotted status for this PSG
 	# TODO: update, not used right now
@@ -697,7 +719,7 @@ class Unit:
 			text = self.GetName() + ' is now unseen by the enemy'
 		else:
 			text = 'Lost contact with ' + self.GetName()
-		Message(text, self.screen_x, self.screen_y)
+		Message(text, target_unit=self)
 		self.suspected = True
 		UpdateUnitConsole()
 		if scenario.active_unit == self:
@@ -742,9 +764,12 @@ class Unit:
 
 		# default
 		return '!'
+	
+	
 
 	# draw this PSG to the unit console in the given viewport hx, hy location
-	def DrawMe(self, hx, hy):
+	# if stack_size > 1, indicate total number of units in hex stack
+	def DrawMe(self, hx, hy, stack_size):
 		
 		# calculate draw position
 		if self.anim_x == 0 or self.anim_y == 0:
@@ -774,6 +799,24 @@ class Unit:
 		libtcod.console_put_char_ex(unit_con, x, y, self.display_char, col,
 			libtcod.black)
 		
+		# display stack size if required
+		if stack_size > 1:
+			if self.facing is None:
+				direction = 0
+			elif self.turret_facing is not None:
+				direction = self.turret_facing
+			else:
+				direction = self.facing
+			direction = ConstrainDir(direction - scenario.player_unit.facing + 3)
+			if direction in [5, 0, 1]:
+				direction = 0
+			else:
+				direction = 3
+			
+			x_mod, y_mod = PLOT_DIR[direction]
+			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, str(stack_size),
+				libtcod.dark_grey, libtcod.black)
+		
 		# determine if we need to display a turret
 		if not self.gun and not self.vehicle: return
 		if self.owning_player == 1 and not self.known: return
@@ -785,15 +828,16 @@ class Unit:
 		char = TURRET_CHAR[direction]
 		libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
 		
-	# determine if this PSG is able to move into the target hex
+	# determine if this unit is able to move into the target hex
 	def CheckMoveInto(self, new_hx, new_hy):
 		if self.movement_class == 'Gun': return False
 		if (new_hx, new_hy) not in scenario.hex_map.hexes: return False
-		direction = GetDirectionToAdjacent(self.hx, self.hy, new_hx, new_hy)
-		if direction < 0: return False
+		if GetDirectionToAdjacent(self.hx, self.hy, new_hx, new_hy) < 0: return False
 		map_hex = GetHexAt(new_hx, new_hy)
-		#if map_hex.IsOccupied() == self.owning_player: return False
 		if map_hex.terrain_type.water: return False
+		if len(map_hex.unit_stack) > HEX_STACK_LIMIT: return False
+		if len(map_hex.unit_stack) > 0:
+			if map_hex.unit_stack[0].owning_player != self.owning_player: return False
 		return True
 	
 	# try to move this PSG into the target hex
@@ -811,45 +855,42 @@ class Unit:
 		map_hex2 = GetHexAt(new_hx, new_hy)
 		
 		# TEMP
-		free_move = True
+		#free_move = True
 		
 		if not free_move:
 			
 			# check cost of move
-			(cost1, cost2, cost3) = GetMPCostToMove(self, map_hex1, map_hex2)
-			(m1, m2, m3) = self.mp
+			mp_cost = GetMPCostToMove(self, map_hex1, map_hex2)
 			
 			# not enough MP for this move
-			if (m1-cost1<0) or (m2-cost2<0) or (m3-cost3<0):
+			if mp_cost > self.mp:
 				return False
-			
-			# apply MP point loss
-			if cost1 > 0:
-				# difficult terrain
-				m1 -= 1
-				m2 -= 1
-				m3 = 0
-			elif cost2 > 0:
-				# open terrain
-				m1 = 0
-				m2 -= 1
-				m3 -= 1
-				if m3 > m2: m3 -= 1
+			# spend mp
+			self.mp -= mp_cost
+		
+		# check for squadron movement
+		unit_list = [self]
+		for unit in map_hex1.unit_stack:
+			if unit.squadron_leader == self:
+				unit_list.append(unit)
+		
+		# set location in new hex for all moving units
+		for unit in unit_list:
+			map_hex1.unit_stack.remove(unit)
+			unit.hx = new_hx
+			unit.hy = new_hy
+			# player units always get bumped to top of stack
+			if scenario.player_unit == unit:
+				map_hex2.unit_stack.insert(0, unit)
 			else:
-				# road terrain
-				m1 = 0
-				m2 -= 2
-				if m2 < 0: m2 = 0
-				m3 -= 1
-			
-			self.mp = (m1, m2, m3)
+				map_hex2.unit_stack.append(unit)
 		
 		# display movement animation
 		if not (self.owning_player == 1 and self.suspected):
 			
 			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
 			(x1,y1) = PlotHex(self.vp_hx, self.vp_hy)
-			direction = GetDirectionToAdjacent(self.hx, self.hy, new_hx, new_hy)
+			direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, new_hx, new_hy)
 			# modify by player unit facing?
 			direction = ConstrainDir(direction - scenario.player_unit.facing)
 			(new_vp_hx, new_vp_hy) = GetAdjacentHex(self.vp_hx, self.vp_hy, direction)
@@ -864,10 +905,6 @@ class Unit:
 				Wait(pause_time)
 			self.anim_x = 0
 			self.anim_y = 0
-		
-		# set location in new hex
-		self.hx = new_hx
-		self.hy = new_hy
 		
 		# set action flag for next activation
 		self.moved = True
@@ -887,6 +924,9 @@ class Unit:
 		
 		# check for objective capture
 		#map_hex2.CheckCapture()
+		
+		# check for automatic spot
+		scenario.DoAutomaticSpotCheck()
 		
 		return True
 	
@@ -1055,13 +1095,13 @@ class Unit:
 	def SuppressMe(self):
 		self.suppressed = True
 		text = self.GetName() + ' has failed its morale check and is suppressed.'
-		Message(text, self.screen_x, self.screen_y)
+		Message(text, target_unit=self)
 	
 	# unit recovers from being suppressed
 	def UnSuppressMe(self):
 		self.suppressed = False
 		text = self.GetName() + ' has rallied and recovers from being suppressed.'
-		Message(text, self.screen_x, self.screen_y)
+		Message(text, target_unit=self)
 	
 	# take a skill test, returning True if passed
 	def SkillTest(self, modifier):
@@ -1077,7 +1117,7 @@ class Unit:
 		# guns cannot retreat
 		if self.movement_class == 'Gun':
 			text = self.GetName() + ' cannot retreat!'
-			Message(text, self.screen_x, self.screen_y)
+			Message(text, target_unit=self)
 			self.DestroyMe()
 			return
 		
@@ -1094,7 +1134,7 @@ class Unit:
 		# no possible place to go
 		if len(hex_list) == 0:
 			text = self.GetName() + ' has no place to retreat!'
-			Message(text, self.screen_x, self.screen_y)
+			Message(text, target_unit=self)
 			self.DestroyMe()
 			return
 		
@@ -1823,6 +1863,9 @@ class MapHex:
 	def __init__(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
+		
+		self.unit_stack = []			# list of units in this hex
+		
 		self.elevation = None
 		self.terrain_type = None
 		
@@ -1900,7 +1943,7 @@ class MapHex:
 				text = 'The enemy has'
 			text += ' captured an objective!'
 			(x,y) = PlotHex(self.hx, self.hy)
-			Message(text, x+26, y+2)
+			#Message(text, x+26, y+2)
 		
 		UpdateGUIConsole()
 
@@ -2061,6 +2104,28 @@ class Scenario:
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
+	
+	# check for automatic spotting and identification of units
+	def DoAutomaticSpotCheck(self):
+		for unit in self.unit_list:
+			if unit.known and unit.identified: continue
+			map_hex = GetHexAt(unit.hx, unit.hy)
+			if map_hex.terrain_type.terrain_mod != 0: continue
+			
+			# unit is in open terrain
+			for unit2 in self.unit_list:
+				# check for adjacent enemies
+				if unit2.owning_player == unit.owning_player: continue
+				if GetHexDistance(unit.hx, unit.hy, unit2.hx, unit2.hy) == 1:
+					unit.SpotMe()
+					unit.IdentifyMe()
+					break
+				
+				# check for enemy in LoS
+				if (unit.hx, unit.hy) in GetLoS(unit2.hx, unit2.hy, unit.hx, unit.hy):
+					unit.SpotMe()
+					unit.IdentifyMe()
+					break
 	
 	# set up map viewport hexes based on current player tank position and facing
 	def SetVPHexes(self):
@@ -2367,16 +2432,16 @@ class Scenario:
 				if psg.owning_player == self.active_player:
 					psg.DoRecoveryTests()
 		
-		#UpdateUnitConsole()
+		# do automatic actions for active player's units for this phase
+		for psg in self.unit_list:
+			if psg.owning_player == self.active_player:
+				psg.ResetForPhase()
+		
 		self.BuildCmdMenu()
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		SaveGame()
 		
-		# do automatic actions for active player's units for this phase
-		for psg in self.unit_list:
-			if psg.owning_player == self.active_player:
-				psg.ResetForPhase()
 		
 		SaveGame()
 	
@@ -2447,8 +2512,33 @@ class Scenario:
 			self.cmd_menu.AddOption('rotate_turret_cw', 'E', 'Turret Clockwise')
 			self.cmd_menu.AddOption('pivot_hull_port', 'A', 'Pivot to Port')
 			self.cmd_menu.AddOption('pivot_hull_stb', 'D', 'Pivot to Starboard')
-			self.cmd_menu.AddOption('move_forward', 'W', 'Move Forward')
-			self.cmd_menu.AddOption('move_backward', 'S', 'Move Backward')
+			
+			map_hex1 = GetHexAt(scenario.player_unit.hx, scenario.player_unit.hy)
+			
+			menu_option = self.cmd_menu.AddOption('move_forward', 'W', 'Forward')
+			(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
+				scenario.player_unit.hy, scenario.player_unit.facing)
+			if not scenario.player_unit.CheckMoveInto(hx, hy):
+				menu_option.inactive = True
+			else:
+				map_hex2 = GetHexAt(hx, hy)
+				mp_cost = GetMPCostToMove(scenario.player_unit, map_hex1, map_hex2)
+				if mp_cost > scenario.player_unit.mp:
+					menu_option.inactive = True
+					menu_option.desc = str(mp_cost) + ' MP required'
+			
+			menu_option = self.cmd_menu.AddOption('move_backward', 'S', 'Backward')
+			(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
+				scenario.player_unit.hy,
+				CombineDirs(scenario.player_unit.facing, 3))
+			if not scenario.player_unit.CheckMoveInto(hx, hy):
+				menu_option.inactive = True
+			else:
+				map_hex2 = GetHexAt(hx, hy)
+				mp_cost = GetMPCostToMove(scenario.player_unit, map_hex1, map_hex2)
+				if mp_cost > scenario.player_unit.mp:
+					menu_option.inactive = True
+					menu_option.desc = str(mp_cost) + ' MP required'
 			
 		# shooting phase menu
 		elif self.active_cmd_menu == 'shooting_root':
@@ -2916,14 +3006,22 @@ def GetMPCostToMove(unit, map_hex1, map_hex2):
 	direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, map_hex2.hx, map_hex2.hy)
 	if direction in map_hex1.dirt_road_links:
 		# road movement
-		return (0,0,1)
-	
-	if map_hex2.terrain_type.difficult:
+		column = 2
+	elif map_hex2.terrain_type.difficult:
 		# movement in difficult terrain
-		return (1,0,0)
+		column = 1
+	else:
+		# open terrain
+		column = 0
 	
-	# movement in open terrain
-	return (0,1,0)
+	if unit.movement_class == 'Infantry':
+		table = 0
+	elif unit.movement_class == 'Tank':
+		table = 1
+	elif unit.movement_class == 'Fast Tank':
+		table = 2
+	
+	return MP_COSTS[table][column]
 
 
 # returns a path from one hex to another, avoiding impassible and difficult terrain
@@ -3858,17 +3956,24 @@ def MGAttackAnimation(attack_obj):
 	libtcod.console_flush()
 
 
-# add a new message to the message log and displays it on the map at the given screen location
-def Message(text, x, y):
-	scenario.messages.append(text)
-	scenario.anim.InitMessage(x, y, text)
-	DrawScreenConsoles()
-	WaitForAnimation()
-	DrawScreenConsoles()
-	libtcod.console_flush()
-
-
-# draw the map terrain console
+# add a new message to the message log and displays it on the map
+# for now, a unit must be specified
+def Message(text, target_unit=None):
+	if target_unit is None: return
+	for (hx, hy) in VP_HEXES:
+		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
+		if map_hx == target_unit.hx and map_hy == target_unit.hy:
+			(x,y) = PlotHex(hx, hy)
+			x += 27
+			y += 4
+			scenario.messages.append(text)
+			scenario.anim.InitMessage(x, y, text)
+			DrawScreenConsoles()
+			WaitForAnimation()
+			DrawScreenConsoles()
+			libtcod.console_flush()
+			return
+	print 'ERROR: unit for message not on viewport'
 
 
 # draw the map viewport console
@@ -3878,6 +3983,7 @@ def UpdateVPConsole():
 
 	libtcod.console_set_default_background(map_vp_con, libtcod.black)
 	libtcod.console_clear(map_vp_con)
+	scenario.map_index = {}
 	
 	for elevation in range(4):
 		for (hx, hy) in VP_HEXES:
@@ -3893,12 +3999,12 @@ def UpdateVPConsole():
 			if not map_hex.vis_to_player:
 				libtcod.console_blit(fov_hex_con, 0, 0, 0, 0, map_vp_con, x-3, y-2, 0.4, 0.4)
 			
-			# TODO: add back in
-			#for x1 in range(x-1, x+2):
-			#	scenario.map_index[(x1,y-1)] = (map_hx, map_hy)
-			#	scenario.map_index[(x1,y+1)] = (map_hx, map_hy)
-			#for x1 in range(x-2, x+3):
-			#	scenario.map_index[(x1,y)] = (map_hx, map_hy)
+			# record map hexes of screen locations
+			for x1 in range(x-1, x+2):
+				scenario.map_index[(x1,y-1)] = (map_hx, map_hy)
+				scenario.map_index[(x1,y+1)] = (map_hx, map_hy)
+			for x1 in range(x-2, x+3):
+				scenario.map_index[(x1,y)] = (map_hx, map_hy)
 	
 	# TODO: draw roads and rivers overtop
 	return
@@ -3930,21 +4036,6 @@ def UpdateVPConsole():
 					# if character is not blank or hex edge, remove it
 					if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
 						libtcod.console_set_char(map_vp_con, x, y, 0)
-	
-
-
-
-# draw the Field of View overlay for the player, darkening map hexes that are not currently visible
-def UpdateMapFoVConsole():
-	libtcod.console_clear(map_fov_con)
-	temp = LoadXP('ArmCom2_tile_fov.xp')
-	libtcod.console_set_key_color(temp, libtcod.black)
-	for (hx, hy) in scenario.hex_map.hexes:
-		map_hex = GetHexAt(hx, hy)
-		if map_hex.vis_to_player:
-			(x,y) = PlotHex(hx, hy)
-			libtcod.console_blit(temp, 0, 0, 0, 0, map_fov_con, x-3, y-2)
-	del temp
 
 
 # updates the map viewport gui layer
@@ -3973,13 +4064,9 @@ def UpdateUnitConsole():
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
 		map_hex = GetHexAt(map_hx, map_hy)
 		if map_hex is None: continue
-		
-		# FUTURE: check hex stack to see if there are 1+ units here
-		for unit in scenario.unit_list:
-			if unit.hx != map_hx or unit.hy != map_hy:
-				continue
-			unit.DrawMe(hx, hy)
-
+		if len(map_hex.unit_stack) == 0: continue
+		# draw the top unit in the stack
+		map_hex.unit_stack[0].DrawMe(hx, hy, len(map_hex.unit_stack))
 
 # updates the player unit info console
 # displays essential info about the player's current vehicle and crew
@@ -4075,12 +4162,11 @@ def UpdatePlayerUnitConsole():
 	libtcod.console_print_ex(player_unit_con, 23, 8, libtcod.BKGND_NONE, libtcod.RIGHT,
 		text)
 	
-	# Movement Class and moves remaining
+	# Movement Class and mp
 	libtcod.console_set_default_foreground(player_unit_con, libtcod.light_green)
 	libtcod.console_print(player_unit_con, 0, 12, scenario.player_unit.movement_class)
 	if scenario.GetCurrentPhase() == 'Movement':
-		(m1, m2, m3) = scenario.player_unit.mp
-		text = str(m1) + '/' + str(m2) + '/' + str(m3)
+		text = 'MP: ' + str(scenario.player_unit.mp) + '/' + str(scenario.player_unit.max_mp)
 		libtcod.console_print_ex(player_unit_con, 23, 12, libtcod.BKGND_NONE,
 			libtcod.RIGHT, text)
 	libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
@@ -4339,14 +4425,11 @@ def UpdateHexInfoConsole():
 	# see if we can display info about a map hex
 	
 	# mouse cursor outside of map area
-	if mouse.cx < 26: return
+	if mouse.cx < 27: return
 	
-	x = mouse.cx - 26
-	y = mouse.cy - 3
-	
-	# TEMP
-	return
-	
+	x = mouse.cx - 27
+	y = mouse.cy - 4
+
 	if (x,y) in scenario.map_index:
 		(hx, hy) = scenario.map_index[(x,y)]
 		map_hex = GetHexAt(hx, hy)
@@ -4370,7 +4453,9 @@ def UpdateHexInfoConsole():
 			libtcod.console_print_ex(hex_info_con, 23, 3, libtcod.BKGND_NONE,
 				libtcod.RIGHT, 'Dirt Road')
 		
-		# PSG present
+		return
+		
+		# TODO: unit(s) present
 		for psg in scenario.unit_list:
 			if psg.hx == map_hex.hx and psg.hy == map_hex.hy:
 				if psg.owning_player == 1:
@@ -4384,10 +4469,6 @@ def UpdateHexInfoConsole():
 					libtcod.console_print(hex_info_con, 0, 4+n, line)
 					n += 1
 				libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
-				
-				# TEMP
-				return
-				
 				
 				if psg.owning_player == 1 and psg.suspected:
 					return
@@ -4797,12 +4878,10 @@ def DoScenario(load_savegame=False):
 		new_unit.vehicle_name = 'Gretchen'
 		new_unit.facing = 0
 		new_unit.turret_facing = 0
-		new_unit.hx = 6
-		new_unit.hy = 9
-		# record the player unit
-		scenario.player_unit = new_unit
+		scenario.player_unit = new_unit		# record this as the player unit
+		new_unit.PlaceAt(6, 9)
 		
-		# set up crew
+		# set up player tank crew
 		new_crew = Crewman()
 		new_crew.name = ['Günter', 'Bauer']
 		new_crew.position_training['Commander/Gunner'] = 30
@@ -4823,6 +4902,15 @@ def DoScenario(load_savegame=False):
 		new_crew.position_training['Assistant Driver'] = 10
 		new_unit.SetCrew('Assistant Driver', new_crew)
 		
+		# spawn player squadron
+		for i in range(4):
+			new_unit = Unit('Panzer 35t')
+			scenario.unit_list.append(new_unit)
+			new_unit.owning_player = 0
+			new_unit.facing = 0
+			new_unit.turret_facing = 0
+			new_unit.squadron_leader = scenario.player_unit
+			new_unit.PlaceAt(6, 9)
 		
 		UpdatePlayerUnitConsole()
 		
@@ -4843,8 +4931,7 @@ def DoScenario(load_savegame=False):
 		new_unit.owning_player = 1
 		new_unit.facing = 3
 		new_unit.turret_facing = 3
-		new_unit.hx = 6
-		new_unit.hy = 7
+		new_unit.PlaceAt(6, 7)
 		
 		# set up map viewport
 		scenario.SetVPHexes()
@@ -4859,7 +4946,7 @@ def DoScenario(load_savegame=False):
 		scenario.active_cmd_menu = 'crew_actions'
 		scenario.BuildCmdMenu()
 		
-		UpdateScreen()
+		#UpdateScreen()
 		
 		
 	

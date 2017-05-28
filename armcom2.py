@@ -88,18 +88,16 @@ GRADIENT = [
 ]
 
 # Game engine constants, can be tweaked for slightly different results
-MAX_LOS_DISTANCE = 13				# maximum distance that a Line of Sight can be drawn
+MAX_LOS_DISTANCE = 6				# maximum distance that a Line of Sight can be drawn
 MAX_BU_LOS_DISTANCE = 4				# " for buttoned-up crewmen
 ELEVATION_M = 20.0				# each elevation level represents x meters of height
 BASE_SPOT_SCORE = 5				# base score required to spot unknown enemy unit
 HEX_STACK_LIMIT = 6				# maximum number of units in a map hex stack
-
 MP_COSTS = [
 	[1,1,1],				# infantry
 	[3,6,3],				# tank
 	[3,6,3]					# fast tank
 ]
-
 
 # short forms for crew positions, used to fit information into player unit info console, etc.
 CREW_POSITION_ABB = {
@@ -511,14 +509,7 @@ class Unit:
 			if psg.acquired_target == self:
 				psg.acquired_target = None
 
-	# remove one step from this PSG
-	def RemoveStep(self):
-		self.num_steps -= 1
-		if self.num_steps == 0:
-			self.DestroyMe()
-			UpdateUnitConsole()
-
-	# remove this PSG from the game
+	# remove this unit from the game
 	def DestroyMe(self):
 		text = self.GetName() + ' has been destroyed!'
 		Message(text, target_unit=self)
@@ -550,6 +541,8 @@ class Unit:
 		# start of shooting phase
 		elif scenario.GetCurrentPhase() == 'Shooting':
 			self.fired = False
+			for weapon in self.weapon_list:
+				weapon.fired = False
 
 	# do spot checks from this unit to enemy units
 	def DoSpotChecks(self):
@@ -691,6 +684,9 @@ class Unit:
 		
 		# don't display any message for squadron members
 		if self.squadron_leader is not None: return
+		
+		# TEMP - disabled
+		return
 		
 		# show message
 		if self.owning_player == 0:
@@ -855,7 +851,7 @@ class Unit:
 		map_hex2 = GetHexAt(new_hx, new_hy)
 		
 		# TEMP
-		#free_move = True
+		free_move = True
 		
 		if not free_move:
 			
@@ -1147,12 +1143,14 @@ class Unit:
 class Weapon:
 	def __init__(self, item):
 		
-		self.fired = False		# weapon has fired this turn and did not maintain RoF
+		self.fired = False		# weapon has fired this turn
+		self.rof_target = None		# RoF pointer to target, None if no RoF maintained
 		
 		self.stats = {}
 		
 		# load weapon stats from xml item
 		self.weapon_type = item.find('type').text
+		self.firing_group = int(item.find('firing_group').text)
 		
 		# gun stats
 		if self.weapon_type == 'gun':
@@ -2132,11 +2130,8 @@ class Scenario:
 		for (hx, hy) in VP_HEXES:
 			map_hx = hx + scenario.player_unit.hx
 			map_hy = hy + scenario.player_unit.hy
-			
 			# rotate based on player tank facing
 			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - scenario.player_unit.facing))
-			
-			
 			self.map_vp[(hx, hy)] = (map_hx, map_hy)
 	
 	# select next possible player target for shooting
@@ -2557,8 +2552,16 @@ class Scenario:
 					desc = 'Fire ' + weapon.GetName()
 					menu_option = self.cmd_menu.AddOption(cmd, str(n+1), desc)
 					
-					# TODO: check that weapon can fire
-					# TODO: disable attack option if not possible
+					# check that weapon can fire
+					if weapon.fired:
+						menu_option.inactive = True
+						menu_option.desc = 'Cannot fire this weapon group again this turn'
+					
+					# check for RoF exception
+					if weapon.rof_target is not None:
+						if weapon.rof_target == scenario.player_target:
+							menu_option.inactive = False
+							menu_option.desc = 'Maintained RoF against this target'
 					
 					n += 1
 			
@@ -3478,8 +3481,12 @@ def InitAttack(attacker, weapon, target):
 		DrawScreenConsoles()
 		return
 	
-	# set fired flag
+	# set unit fired flag
 	attacker.fired = True
+	# mark this weapon and all others in same group as having fired
+	for check_weapon in attacker.weapon_list:
+		if check_weapon.firing_group == weapon.firing_group:
+			check_weapon.fired = True
 	
 	# clear player target so that LoS display is removed
 	if attacker == scenario.player_unit:
@@ -3502,7 +3509,7 @@ def InitAttack(attacker, weapon, target):
 		#MGAttackAnimation(attack_obj)
 	
 	# resolve attack
-	# TODO: change to CalcPointFire
+	# TODO: change to CalcPointFire?
 	target.ResolveAttack(attack_obj)
 	
 	# TODO: handle newly acquired target
@@ -3538,9 +3545,33 @@ def InitAttack(attacker, weapon, target):
 		# update new ammo amounts
 		weapon.stats[weapon.stats['reload_ammo']] = (main_ammo, rr_ammo)
 		
-		# TODO: check for RoF if gun was reloaded
+		# no shell loaded, can't maintain RoF
+		if weapon.stats['loaded_ammo'] == None:
+			return
 		
-		weapon.fired = True
+	# check for RoF; first clear any previous stored RoF target
+	weapon.rof_target = None
+	
+	# no RoF possible
+	if weapon.stats['rof'] == 0:
+		return
+	if target not in scenario.unit_list:
+		return
+	
+	roll_required = weapon.stats['rof']
+	if weapon.weapon_type == 'gun':
+		if use_rr:
+			roll_required += 2
+	if roll_required > 10:
+		roll_required = 10
+	elif roll_required < 2:
+		roll_required = 2
+	
+	d1, d2, roll = Roll2D6()
+	if roll <= roll_required:
+		weapon.rof_target = target
+		if attacker == scenario.player_unit:
+			Message('Maintained Rate of Fire', target_unit=attacker)
 
 
 # display the factors and odds for an attack on the screen
@@ -3717,6 +3748,8 @@ def GenerateTerrain():
 	map_hex_list = []
 	for key, map_hex in scenario.hex_map.hexes.iteritems():
 		map_hex_list.append((map_hex.hx, map_hex.hy))
+	hex_num = len(map_hex_list)				# total number of map hexes
+	print 'Terrain Generation: ' + str(hex_num) + ' map hexes'
 	
 	# clear map
 	for (hx, hy) in map_hex_list:
@@ -3725,20 +3758,37 @@ def GenerateTerrain():
 		map_hex.SetElevation(1)
 		map_hex.dirt_road_links = []
 	
+	# terrain settings
+	# FUTURE: will be supplied by battleground settings
+	hill_num = int(hex_num / 80)		# number of hills to generate
+	hill_min_size = 3			# minimum width/height of hill area
+	hill_max_size = 6			# maximum "
+	
+	forest_num = int(hex_num / 70)		# number of forest areas to generate
+	forest_size = 6				# total maximum height + width of areas
+	
+	village_max = int(hex_num / 100)	# maximum number of villages to generate
+	village_min = int(hex_num / 50)		# minimum "
+	
+	fields_num = int(hex_num / 50)		# number of tall field areas to generate
+	field_min_size = 3			# minimum width/height of field area
+	field_max_size = 6			# maximum "
+	
+	ponds_min = 0				# minimum number of ponds to generate
+	ponds_max = int(hex_num / 70)		# maximum "
+	
 	##################################################################################
-	#                                 Elevation                                      #
+	#                             Elevation / Hills                                  #
 	##################################################################################
 	
-	# FUTURE: will used and will be supplied by battleground settings
-	#smoothness = 0.9
-	
-	for terrain_pass in range(3):
+	print 'Terrain Generation: Generating ' + str(hill_num) + ' hills'
+	for terrain_pass in range(hill_num):
 		hex_list = []
 		
 		# determine upper left corner, width, and height of hill area
 		(hx_start, hy_start) = choice(map_hex_list)
-		hill_width = libtcod.random_get_int(0, 3, 6)
-		hill_height = libtcod.random_get_int(0, 3, 6)
+		hill_width = libtcod.random_get_int(0, hill_min_size, hill_max_size)
+		hill_height = libtcod.random_get_int(0, hill_min_size, hill_max_size)
 		hx_start -= int(hill_width / 2)
 		hy_start -= int(hill_height / 2)
 		
@@ -3767,10 +3817,10 @@ def GenerateTerrain():
 	#                                  Forests                                       #
 	##################################################################################
 	
-	# must be 2+
-	forest_size = 6
-	
-	for terrain_pass in range(4):
+	print 'Terrain Generation: Generating ' + str(forest_num) + ' forest areas'
+	if forest_size < 2:
+		forest_size = 2
+	for terrain_pass in range(forest_num):
 		hex_list = []
 		(hx_start, hy_start) = choice(map_hex_list)
 		width = libtcod.random_get_int(0, 1, forest_size-1)
@@ -3794,19 +3844,8 @@ def GenerateTerrain():
 	#                                 Villages                                       #
 	##################################################################################
 	
-	d1, d2, roll = Roll2D6()
-	
-	if roll <= 3:
-		num_villages = 4
-	elif roll <= 5:
-		num_villages = 3
-	elif roll <= 7:
-		num_villages = 2
-	elif roll <= 10:
-		num_villages = 1
-	else:
-		num_villages = 0
-	
+	num_villages = libtcod.random_get_int(0, village_min, village_max)
+	print 'Terrain Generation: Generating ' + str(num_villages) + ' villages'
 	for terrain_pass in range(num_villages):
 		# determine size of village in hexes: 1,1,1,2,3 hexes total
 		village_size = libtcod.random_get_int(0, 1, 5) - 2
@@ -3835,11 +3874,12 @@ def GenerateTerrain():
 	#                                Tall Fields                                     #
 	##################################################################################
 	
-	for terrain_pass in range(4):
+	print 'Terrain Generation: Generating ' + str(fields_num) + ' tall field areas'
+	for terrain_pass in range(fields_num):
 		hex_list = []
 		(hx_start, hy_start) = choice(map_hex_list)
-		width = libtcod.random_get_int(0, 2, 4)
-		height = libtcod.random_get_int(0, 2, 4)
+		width = libtcod.random_get_int(0, field_min_size, field_max_size)
+		height = libtcod.random_get_int(0, field_min_size, field_max_size)
 		hx_start -= int(width / 2)
 		hy_start -= int(height / 2)
 		
@@ -3864,7 +3904,8 @@ def GenerateTerrain():
 	#                                   Ponds                                        #
 	##################################################################################
 	
-	num_ponds = libtcod.random_get_int(0, 0, 4)
+	num_ponds = libtcod.random_get_int(0, ponds_min, ponds_max)
+	print 'Terrain Generation: Generating ' + str(num_ponds) + ' ponds'
 	for terrain_pass in range(num_ponds):
 		shuffle(map_hex_list)
 		for (hx, hy) in map_hex_list:
@@ -3978,7 +4019,6 @@ def Message(text, target_unit=None):
 
 # draw the map viewport console
 # each hex is 5x5 cells, but edges overlap with adjacent hexes
-# TODO: also record the console cells covered by this hex depiction
 def UpdateVPConsole():
 
 	libtcod.console_set_default_background(map_vp_con, libtcod.black)
@@ -4006,36 +4046,29 @@ def UpdateVPConsole():
 			for x1 in range(x-2, x+3):
 				scenario.map_index[(x1,y)] = (map_hx, map_hy)
 	
-	# TODO: draw roads and rivers overtop
-	return
-	for key, map_hex in scenario.hex_map.hexes.items():
-		
-		# river edges		
-		#if map_hex.river_edges:
-	
-		#	(x,y) = PlotHex(map_hex.hx, map_hex.hy)
+	# draw roads and rivers overtop
+	for (hx, hy), (map_hx, map_hy) in scenario.map_vp.items():
+		# no map hex here
+		if (map_hx, map_hy) not in scenario.hex_map.hexes: continue
+		map_hex = scenario.hex_map.hexes[(map_hx, map_hy)]
+		# no road here
+		if len(map_hex.dirt_road_links) == 0: continue
+		for direction in map_hex.dirt_road_links:
+			# only draw each road link once
+			if 3 <= direction <= 5: continue
 			
-		#	for map_hex2 in map_hex.river_edges:
-		#		direction = GetDirectionToAdjacent(map_hex.hx, map_hex.hy, map_hex2.hx, map_hex2.hy)
-		#		for (rx,ry) in GetEdgeTiles(x, y, direction):
-		#			libtcod.console_set_char_background(map_vp_con, rx, ry, RIVER_BG_COL, flag=libtcod.BKGND_SET)
-		
-		# dirt roads
-		if len(map_hex.dirt_road_links) > 0:
-			
-			for direction in map_hex.dirt_road_links:
+			# paint road
+			(x1, y1) = PlotHex(hx, hy)
+			(hx2, hy2) = GetAdjacentHex(hx, hy, ConstrainDir(direction - scenario.player_unit.facing))
+			(x2, y2) = PlotHex(hx2, hy2)
+			line = GetLine(x1, y1, x2, y2)
+			for (x, y) in line:
+				libtcod.console_set_char_background(map_vp_con, x, y,
+					DIRT_ROAD_COL, libtcod.BKGND_SET)
 				
-				# paint road
-				(x1, y1) = PlotHex(map_hex.hx, map_hex.hy)
-				(x2, y2) = GetEdgeTiles(x1, y1, direction)[1]
-				
-				line = GetLine(x1, y1, x2, y2)
-				for (x, y) in line:
-					libtcod.console_set_char_background(map_vp_con, x, y, DIRT_ROAD_COL, libtcod.BKGND_SET)
-					
-					# if character is not blank or hex edge, remove it
-					if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
-						libtcod.console_set_char(map_vp_con, x, y, 0)
+				# if character is not blank or hex edge, remove it
+				if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
+					libtcod.console_set_char(map_vp_con, x, y, 0)
 
 
 # updates the map viewport gui layer
@@ -4166,7 +4199,7 @@ def UpdatePlayerUnitConsole():
 	libtcod.console_set_default_foreground(player_unit_con, libtcod.light_green)
 	libtcod.console_print(player_unit_con, 0, 12, scenario.player_unit.movement_class)
 	if scenario.GetCurrentPhase() == 'Movement':
-		text = 'MP: ' + str(scenario.player_unit.mp) + '/' + str(scenario.player_unit.max_mp)
+		text = str(scenario.player_unit.mp) + '/' + str(scenario.player_unit.max_mp) + ' MP'
 		libtcod.console_print_ex(player_unit_con, 23, 12, libtcod.BKGND_NONE,
 			libtcod.RIGHT, text)
 	libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
@@ -4846,7 +4879,7 @@ def DoScenario(load_savegame=False):
 		##################################################################################
 		
 		# create a new campaign day object and hex map
-		scenario = Scenario(13, 13)
+		scenario = Scenario(26, 26)
 		
 		GenerateTerrain()
 		
@@ -4879,7 +4912,7 @@ def DoScenario(load_savegame=False):
 		new_unit.facing = 0
 		new_unit.turret_facing = 0
 		scenario.player_unit = new_unit		# record this as the player unit
-		new_unit.PlaceAt(6, 9)
+		new_unit.PlaceAt(6, 22)
 		
 		# set up player tank crew
 		new_crew = Crewman()
@@ -4910,7 +4943,7 @@ def DoScenario(load_savegame=False):
 			new_unit.facing = 0
 			new_unit.turret_facing = 0
 			new_unit.squadron_leader = scenario.player_unit
-			new_unit.PlaceAt(6, 9)
+			new_unit.PlaceAt(6, 22)
 		
 		UpdatePlayerUnitConsole()
 		
@@ -4931,7 +4964,7 @@ def DoScenario(load_savegame=False):
 		new_unit.owning_player = 1
 		new_unit.facing = 3
 		new_unit.turret_facing = 3
-		new_unit.PlaceAt(6, 7)
+		new_unit.PlaceAt(6, 15)
 		
 		# set up map viewport
 		scenario.SetVPHexes()

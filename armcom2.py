@@ -4025,6 +4025,12 @@ def UpdateVPConsole():
 	libtcod.console_clear(map_vp_con)
 	scenario.map_index = {}
 	
+	# off-map hexes first
+	for (hx, hy), (map_hx, map_hy) in scenario.map_vp.items():
+		if (map_hx, map_hy) not in scenario.hex_map.hexes:
+			(x,y) = PlotHex(hx, hy)
+			libtcod.console_blit(tile_offmap, 0, 0, 0, 0, map_vp_con, x-3, y-2)
+	
 	for elevation in range(4):
 		for (hx, hy) in VP_HEXES:
 			(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
@@ -4766,7 +4772,7 @@ def DoScenario(load_savegame=False):
 	# screen consoles
 	global scen_menu_con, bkg_console, map_vp_con, map_fov_con, map_gui_con
 	global unit_con, player_unit_con, anim_con, cmd_con, attack_con, scen_info_con
-	global hex_info_con, fov_hex_con
+	global hex_info_con, fov_hex_con, tile_offmap
 	global dice
 	
 	# TODO: change to UpdateConsoles()
@@ -4856,6 +4862,9 @@ def DoScenario(load_savegame=False):
 	# load dark tile to indicate tiles that aren't visible to the player
 	fov_hex_con = LoadXP('ArmCom2_tile_fov.xp')
 	libtcod.console_set_key_color(fov_hex_con, KEY_COLOR)
+	# indicator for off-map tiles on viewport
+	tile_offmap = LoadXP('ArmCom2_tile_offmap.xp')
+	libtcod.console_set_key_color(tile_offmap, KEY_COLOR)
 
 	# die face image
 	dice = LoadXP('dice.xp')

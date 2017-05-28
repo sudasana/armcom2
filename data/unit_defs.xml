@@ -6,6 +6,7 @@
     <turret/>
     <id>7TP</id>
     <name>7TP</name>
+    <portrait>unit_7TP.xp</portrait>
     <size_class>Normal</size_class>
     <movement_class>Tank</movement_class>
     <armour>
@@ -20,12 +21,14 @@
       <fired_by>Gunner</fired_by>
       <rr_size>4</rr_size>
       <rof>4</rof>
+      <firing_group>0</firing_group>	<!-- only one weapon in each group can fire per turn -->
     </weapon>
     <weapon>
       <type>coax_mg</type>
       <fp>4</fp>
       <mount>turret</mount>
       <fired_by>Gunner</fired_by>
+      <firing_group>0</firing_group>
     </weapon>
     <max_ammo>80</max_ammo>
     <crew_position>
@@ -70,6 +73,7 @@
       <fired_by>Commander/Gunner</fired_by>
       <rr_size>6</rr_size>
       <rof>4</rof>
+      <firing_group>0</firing_group>
     </weapon>
     <weapon>
       <type>coax_mg</type>
@@ -77,6 +81,7 @@
       <mount>turret</mount>
       <fired_by>Commander/Gunner</fired_by>
       <fired_by>Loader</fired_by>
+      <firing_group>0</firing_group>
     </weapon>
     <weapon>
       <type>hull_mg</type>
@@ -84,6 +89,7 @@
       <mount>hull</mount>
       <fired_by>Driver</fired_by>
       <fired_by>Assistant Driver</fired_by>
+      <firing_group>1</firing_group>
     </weapon>
     <max_ammo>66</max_ammo>
     <crew_position>

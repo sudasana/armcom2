@@ -4577,7 +4577,8 @@ def DrawScreenConsoles():
 	
 	# map viewport layers
 	libtcod.console_blit(bkg_console, 0, 0, 0, 0, con, 0, 0)		# grey outline
-	libtcod.console_blit(map_vp_con, 0, 0, 0, 0, con, 27, 4)		# map terrain
+	libtcod.console_blit(map_vp_con, 0, 0, 0, 0, con, 27, 4)		# map viewport
+	libtcod.console_blit(vp_mask, 0, 0, 0, 0, con, 27, 4)			# map viewport mask
 	libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 27, 4, 1.0, 0.0)	# map unit layer
 	libtcod.console_blit(map_gui_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# map GUI layer
 
@@ -4770,7 +4771,7 @@ def DoScenario(load_savegame=False):
 	
 	global scenario, terrain_types
 	# screen consoles
-	global scen_menu_con, bkg_console, map_vp_con, map_fov_con, map_gui_con
+	global scen_menu_con, bkg_console, map_vp_con, vp_mask, map_fov_con, map_gui_con
 	global unit_con, player_unit_con, anim_con, cmd_con, attack_con, scen_info_con
 	global hex_info_con, fov_hex_con, tile_offmap
 	global dice
@@ -4783,7 +4784,7 @@ def DoScenario(load_savegame=False):
 		UpdateCmdConsole()
 		DrawScreenConsoles()
 	
-	# create screen consoles
+	# generate screen consoles
 	
 	# background console
 	bkg_console = LoadXP('ArmCom2_bkg.xp')
@@ -4795,11 +4796,15 @@ def DoScenario(load_savegame=False):
 	libtcod.console_print_ex(scen_menu_con, 37, 2, libtcod.BKGND_NONE, libtcod.CENTER,
 		VERSION + SUBVERSION)
 	
-	# map terrain console
-	map_vp_con = libtcod.console_new(55, 52)
+	# map viewport console
+	map_vp_con = libtcod.console_new(55, 53)
 	libtcod.console_set_default_background(map_vp_con, libtcod.black)
 	libtcod.console_set_default_foreground(map_vp_con, libtcod.white)
 	libtcod.console_clear(map_vp_con)
+	
+	# map viewport mask
+	vp_mask = LoadXP('vp_mask.xp')
+	libtcod.console_set_key_color(vp_mask, KEY_COLOR)
 	
 	# field of view overlay console
 	map_fov_con = libtcod.console_new(57, 57)

@@ -87,16 +87,42 @@ GRADIENT = [
 ]
 
 # Game engine constants, can be tweaked for slightly different results
-MAX_LOS_DISTANCE = 6				# maximum distance that a Line of Sight can be drawn
-MAX_BU_LOS_DISTANCE = 4				# " for buttoned-up crewmen
-ELEVATION_M = 20.0				# each elevation level represents x meters of height
-BASE_SPOT_SCORE = 5				# base score required to spot unknown enemy unit
-HEX_STACK_LIMIT = 6				# maximum number of units in a map hex stack
+
+MAX_LOS_DISTANCE = 6			# maximum distance that a Line of Sight can be drawn
+MAX_BU_LOS_DISTANCE = 4			# " for buttoned-up crewmen
+ELEVATION_M = 20.0			# each elevation level represents x meters of height
+BASE_SPOT_SCORE = 5			# base score required to spot unknown enemy unit
+HEX_STACK_LIMIT = 6			# maximum number of units in a map hex stack
 MP_COSTS = [
 	[1,1,1],				# infantry
 	[3,6,3],				# tank
 	[3,6,3]					# fast tank
 ]
+
+# base to-hit scores required for Point Fire attacks
+BASE_TO_HIT = [
+	[10,8,7],		# <= 1 hex range
+	[9,7,7],		# 2 hex range
+	[9,7,7],		# 3 "
+	[8,6,8],		# 4 "
+	[7,5,8],		# 5 "
+	[6,4,7]			# 6 "
+]
+
+# Area Fire result chart
+# N - no effect; P - Pin Test; B - Break Test; K - unit destroyed
+# if a number follows a P/B code, this is added to the motivation test
+# Final Roll of <=0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, >=14
+AF_CHART = [
+	['K', 'K', 'B1', 'B1', 'B0', 'P0', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N'],	# 1 FP
+	['K', 'K', 'K', 'B1', 'B1', 'B0', 'P0', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N'],	# 2 FP
+	['K', 'K', 'K', 'B2', 'B1', 'B1', 'B0', 'P0', 'N', 'N', 'N', 'N', 'N', 'N', 'N'],	# 4 FP
+	['K', 'K', 'K', 'K', 'B2', 'B1', 'B1', 'B0', 'P0', 'N', 'N', 'N', 'N', 'N', 'N'],	# 6 FP
+	['K', 'K', 'K', 'K', 'B2', 'B2', 'B1', 'B1', 'B0', 'P0', 'N', 'N', 'N', 'N', 'N'],	# 8 FP
+	['K', 'K', 'K', 'K', 'B3', 'B2', 'B2', 'B1', 'B1', 'B0', 'P0', 'N', 'N', 'N', 'N'],	# 12 FP
+	['K', 'K', 'K', 'K', 'K', 'B3', 'B2', 'B2', 'B1', 'B1', 'B0', 'P0', 'N', 'N', 'N']	# 16 FP
+]
+
 
 # short forms for crew positions, used to fit information into player unit info console, etc.
 CREW_POSITION_ABB = {
@@ -718,6 +744,8 @@ class Unit:
 		
 		# gun, set according to deployed status / hull facing
 		if self.gun:
+			if self.facing is None:		# facing not yet set
+				return '!'
 			direction = CombineDirs(scenario.player_unit.facing, self.facing)
 			if not self.deployed:
 				return 124
@@ -1679,10 +1707,18 @@ class Attack:
 		self.weapon = weapon
 		self.target = target
 		
-		self.base_to_hit = 0		# base score required to hit
 		self.modifiers = []		# list of dice roll modifiers
+		
+		# Point Fire variables
+		self.base_to_hit = 0		# base score required to hit
 		self.final_to_hit = 0		# final to-hit score required
 		
+		# Area Fire variables
+		self.base_fp = 0		# base attack firepower
+		self.fp_mods = []		# list of firepower modifiers
+		self.final_fp = 0		# final firepower
+		
+		# AP variables
 		self.base_ap = 0		# base armour-penetration roll required
 		self.final_ap = 0		# final "
 
@@ -2467,86 +2503,95 @@ def EraseGame():
 
 
 # calculate an attack
-def CalcAttack(attacker, weapon, target, assume_pivot=False):
+def CalcAttack(attacker, weapon, target):
+	
 	# create a new attack object
 	attack_obj = Attack(attacker, weapon, target)
-	
-	# TEMP: assume gun AP attack
-	
-	# calculate base to-hit roll required
 	
 	# get distance to target
 	distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 	
-	BASE_TO_HIT = [
-		[10,8,7],		# <= 1 hex range
-		[9,7,7],		# 2 hex range
-		[9,7,7],		# 3 "
-		[8,6,8],		# 4 "
-		[7,5,8],		# 5 "
-		[6,4,7]			# 6 "
-	]
+	# determine whether this is a Point Fire or Area Fire attack
+	pf_attack = False
+	if weapon.weapon_type == 'gun':
+		pf_attack = True
 	
-	if distance <= 1:
-		column = 0
+	######################
+	# Point Fire Attacks #
+	######################
+	
+	if pf_attack:
+	
+		# calculate base to-hit roll required
+		if distance <= 1:
+			column = 0
+		else:
+			column = distance - 1
+		to_hit_list = BASE_TO_HIT[column]
+		
+		if target.vehicle:
+			attack_obj.base_to_hit = to_hit_list[0]
+		else:
+			attack_obj.base_to_hit = to_hit_list[1]
+		
+		# Calculate Dice roll modifiers
+		
+		# Long Range gun Modifiers
+		if weapon.stats['long_range'] == 'L':
+			if 4 <= distance <= 6:
+				attack_obj.modifiers.append(('L Weapon', -1))
+		elif weapon.stats['long_range'] == 'LL':
+			if 4 <= distance <= 5:
+				attack_obj.modifiers.append(('LL Weapon', -1))
+			elif distance == 6:
+				attack_obj.modifiers.append(('LL Weapon', -2))
+		
+		# calibre range modifiers
+		if weapon.stats['calibre'] <= 40:
+			if 4 <= distance <= 6:
+				attack_obj.modifiers.append(('<=40mm', 1))
+		elif weapon.stats['calibre'] <= 57:
+			if 4 <= distance <= 5:
+				attack_obj.modifiers.append(('<=57mm', 1))
+			elif distance == 6:
+				attack_obj.modifiers.append(('<=57mm', 2))
+		
+		# moving vehicle target
+		if target.vehicle and target.moved:
+			attack_obj.modifiers.append(('Target vehicle moved', 2))
+		
+		# size class
+		if target.size_class != 'Normal':
+			if target.size_class == 'Small':
+				attack_obj.modifiers.append(('Small Target', 1))
+			elif target.size_class == 'Very Small':
+				attack_obj.modifiers.append(('Very Small Target', 2))
+		
+		# target terrain modifier
+		map_hex = GetHexAt(target.hx, target.hy)
+		if map_hex.terrain_type.terrain_mod != 0:
+			attack_obj.modifiers.append(('Target terrain', 0-map_hex.terrain_type.terrain_mod))
+		
+		# apply modifiers to calculate final to-hit score required 
+		attack_obj.final_to_hit = attack_obj.base_to_hit
+		for (text, mod) in attack_obj.modifiers:
+			attack_obj.final_to_hit += mod
+		
+		# normalize final to-hit required
+		# FUTURE: if < 2 required, attack not possible
+		if attack_obj.final_to_hit > 11:
+			attack_obj.final_to_hit = 11
+
+	#####################
+	# Area Fire Attacks #
+	#####################
+
 	else:
-		column = distance - 1
-	to_hit_list = BASE_TO_HIT[column]
-	
-	if target.vehicle:
-		attack_obj.base_to_hit = to_hit_list[0]
-	else:
-		attack_obj.base_to_hit = to_hit_list[1]
-	
-	#################################
-	# Calculate dice roll modifiers
-	#################################
-	
-	# Long Range gun Modifiers
-	if weapon.stats['long_range'] == 'L':
-		if 4 <= distance <= 6:
-			attack_obj.modifiers.append(('L Weapon', -1))
-	elif weapon.stats['long_range'] == 'LL':
-		if 4 <= distance <= 5:
-			attack_obj.modifiers.append(('LL Weapon', -1))
-		elif distance == 6:
-			attack_obj.modifiers.append(('LL Weapon', -2))
-	
-	# calibre range modifiers
-	if weapon.stats['calibre'] <= 40:
-		if 4 <= distance <= 6:
-			attack_obj.modifiers.append(('<=40mm', 1))
-	elif weapon.stats['calibre'] <= 57:
-		if 4 <= distance <= 5:
-			attack_obj.modifiers.append(('<=57mm', 1))
-		elif distance == 6:
-			attack_obj.modifiers.append(('<=57mm', 2))
-	
-	# moving vehicle target
-	if target.vehicle and target.moved:
-		attack_obj.modifiers.append(('Target vehicle moved', 2))
-	
-	# size class
-	if target.size_class != 'Normal':
-		if target.size_class == 'Small':
-			attack_obj.modifiers.append(('Small Target', 1))
-		elif target.size_class == 'Very Small':
-			attack_obj.modifiers.append(('Very Small Target', 2))
-	
-	# target terrain modifier
-	map_hex = GetHexAt(target.hx, target.hy)
-	if map_hex.terrain_type.terrain_mod != 0:
-		attack_obj.modifiers.append(('Target terrain', 0-map_hex.terrain_type.terrain_mod))
-	
-	# apply modifiers to calculate final to-hit score required 
-	attack_obj.final_to_hit = attack_obj.base_to_hit
-	for (text, mod) in attack_obj.modifiers:
-		attack_obj.final_to_hit += mod
-	
-	# normalize final to-hit required
-	# FUTURE: if < 2 required, attack not possible
-	if attack_obj.final_to_hit > 11:
-		attack_obj.final_to_hit = 11
+		pass
+
+
+
+
 
 	return attack_obj
 
@@ -3291,33 +3336,11 @@ def GetFacing(attacker, target):
 # initiate an attack by one unit on another
 def InitAttack(attacker, weapon, target):
 	
-	distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+	# send information to CalcAttack, which will return an Attack object
+	attack_obj = CalcAttack(attacker, weapon, target)
 	
-	# determine if a pivot would be required
-	# TODO: remove
-	pivot_required = False
-	if not attacker.infantry and distance > 0:
-		bearing = GetRelativeBearing(attacker, target)
-		if 30 < bearing < 330:
-			pivot_required = True
-
-	# send information to CalcAttack, which will return an Attack object with the
-	#   calculated stats to use for the attack
-	attack_obj = CalcAttack(attacker, weapon, target, assume_pivot=pivot_required)
-	
-	# do the pivot if it was required
-	if pivot_required:
-		direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx,
-			target.hy)
-		attacker.PivotToFace(direction)
-		UpdateUnitConsole()
-		DrawScreenConsoles()
-		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
-	
-	# if not close combat and player wasn't attacker, display LoS from attacker to target
-	if distance > 0 and attacker.owning_player == 1:
+	# if player wasn't attacker, display LoS from attacker to target
+	if attacker.owning_player == 1:
 		line = GetLine(attacker.screen_x, attacker.screen_y, target.screen_x,
 			target.screen_y)
 		for (x,y) in line[2:-2]:
@@ -3363,7 +3386,6 @@ def InitAttack(attacker, weapon, target):
 		#MGAttackAnimation(attack_obj)
 	
 	# resolve attack
-	# TODO: change to CalcPointFire?
 	target.ResolveAttack(attack_obj)
 	
 	# check for concealment loss

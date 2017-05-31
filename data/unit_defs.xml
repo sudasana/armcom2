@@ -51,6 +51,23 @@
     </crew_position>
   </unit_def>
   
+  <unit_def>
+    <gun/>
+    <id>37mm_wz_36</id>
+    <name>37mm wz. 36</name>
+    <portrait>unit_37mm_gun.xp</portrait>
+    <size_class>Small</size_class>
+    <movement_class>Gun</movement_class>
+    <weapon>
+      <type>gun</type>
+      <calibre>37</calibre>
+      <long_range>L</long_range>
+      <mount>Hull</mount>
+      <rof>4</rof>
+      <firing_group>0</firing_group>
+    </weapon>
+    <gun_shield/>
+  </unit_def>
 
   <!-- German Units -->
 

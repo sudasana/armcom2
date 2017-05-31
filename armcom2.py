@@ -66,8 +66,7 @@ from encodings import hex_codec, ascii, utf_8, cp850
 ##########################################################################################
 
 # debug constants: should all be set to False in any distribution version
-VIEW_ALL = False				# human player can see all hexes on viewport
-SHOW_TERRAIN_GEN = False			# display terrain generation in progress
+VIEW_ALL = False				# human player can see all hexes in viewport
 
 NAME = 'Armoured Commander II'
 VERSION = 'PoC 4'					# determines saved game compatability
@@ -278,7 +277,6 @@ class Unit:
 		self.gun = False
 		self.vehicle = False			
 		self.known = False			# unit is known to the opposing side
-		self.identified = False			# unit has been identified by the opposing side
 		
 		self.facing = None			# facing direction: guns and vehicles must have this set
 		self.turret_facing = None		# facing of main turret on unit
@@ -532,8 +530,6 @@ class Unit:
 			self.moved = False
 			self.changed_facing = False
 			
-			scenario.DoAutomaticSpotCheck()
-			
 			# if enemy player, roll for action this turn
 			if self.owning_player == 1:
 				self.ai.GenerateAction()
@@ -544,91 +540,84 @@ class Unit:
 			for weapon in self.weapon_list:
 				weapon.fired = False
 
-	# do spot checks from this unit to enemy units
-	def DoSpotChecks(self):
+	# check to see if this unit is spotted
+	# if pin_test is True, unit was just subject to an area fire attack that would have
+	# resulted in at least a pin test
+	# if just_moved is True, the unit just now completed a move action
+	# if just_fired is True, the unit just now completed an attack action
+	def DoSpotCheck(self, pin_test=False, just_moved=False, just_fired=False):
 		
-		# build a list of enemy units that can be spotted and/or identified
-		target_list = []
+		# unit is already spotted, no need to test
+		if self.known: return
+		
+		# get current terrain status
+		open_ground = False
+		if GetHexAt(self.hx, self.hy).terrain_type.terrain_mod == 0:
+			open_ground = True
+		
+		# get list of enemy units in LoS
+		enemy_list = []
 		for unit in scenario.unit_list:
 			if unit.owning_player == self.owning_player: continue
-			if unit.known and unit.identified: continue
-			los = GetLoS(self.hx, self.hy, unit.hx, unit.hy)
-			if (unit.hx, unit.hy) not in los: continue
-			target_list.append(unit)
+			# FUTURE: check LoS for each crewmember in enemy unit
+			if (self.hx, self.hy) not in GetLoS(unit.hx, unit.hy, self.hx, self.hy): continue
+			distance = GetHexDistance(unit.hx, unit.hy, self.hx, self.hy)
+			# recce units count as being in close range up to 5 hexes
+			if 3 < distance <= 5 and unit.recce:
+				distance = 3
+			enemy_list.append((distance, unit))
+			
+			# check for enemy unit's loss of concealment
+			if not unit.known and not unit.infantry and not unit.gun:
+				if GetHexAt(unit.hx, unit.hy).terrain_type.terrain_mod == 0:
+					print 'DEBUG: spotted unit was in open ground'
+					unit.SpotMe()
 		
-		# no units to spot
-		if len(target_list) == 0:
-			return
+		# no enemies in LoS
+		if len(enemy_list) == 0: return
 		
-		# if unit is fully crewed, use more complex spotting procedure
-		if self.crew_positions is not None:
-			for crew_position in self.crew_positions:
-				# no crew present
-				if crew_position.crewman is None: continue
-				# TODO: check that crewman status and action allows spot check
-				
-				if crew_position.hatch is None:
-					visible_hextants = crew_position.closed_visible
-					max_distance = MAX_BU_LOS_DISTANCE
-				else:
-					if crew_position.hatch == 'Closed':
-						visible_hextants = crew_position.closed_visible
-						max_distance = MAX_BU_LOS_DISTANCE
-					else:
-						visible_hextants = crew_position.open_visible
-						max_distance = MAX_LOS_DISTANCE
-				
-				shuffle(target_list)
-				for unit in reversed(target_list):
-					distance = GetHexDistance(self.hx, self.hy,
-						unit.hx, unit.hy)
-					if distance > max_distance:
-						continue
-					
-					direction = GetDirectionToward(self.hx, self.hy,
-						unit.hx, unit.hy)
-					
-					# TODO: rotate visible hextants based on turret/hull direction
-					
-					if direction not in visible_hextants:
-						continue
-					
-					# found a viable spot target, do the roll
-					score = BASE_SPOT_SCORE
-					
-					# apply modifiers
-					if distance >= 10:
-						score -= 3
-					elif distance >= 7:
-						score -= 2
-					elif distance >= 4:
-						score -= 1
-					
-					if unit.size_class == 'Small':
-						score -= 1
-					
-					map_hex = GetHexAt(unit.hx, unit.hy)
-					if map_hex.terrain_type.terrain_mod != 0:
-						score -= map_hex.terrain_type.terrain_mod
-					
-					# normalize final score required
-					if score < 2:
-						score = 2
-					
-					d1, d2, roll = Roll2D6()
-					
-					if roll <= score:
-						unit.SpotMe()
-						target_list.remove(unit)
-						break
+		# get range of nearest enemy unit with LoS
+		enemy_list.sort(key=lambda x: x[0])
+		(distance, unit) = enemy_list[0]
+		close_range = False
+		if distance <= 3:
+			close_range = True
 		
+		if self.infantry:
+			if pin_test:
+				print 'DEBUG: spotted unit was attacked'
+				self.SpotMe()
+			elif not (not close_range and not open_ground) and just_fired:
+				print 'DEBUG: spotted unit just fired'
+				self.SpotMe()
+			elif open_ground and close_range and just_moved:
+				print 'DEBUG: spotted unit just moved'
+				self.SpotMe()
+		
+		# emplaced guns
+		# FUTURE: distinguish when a gun is being towed vs. emplaced
+		elif self.gun:
+			if close_range and just_fired:
+				print 'DEBUG: spotted unit just fired'
+				self.SpotMe()
+			elif pin_test:
+				print 'DEBUG: spotted unit was attacked'
+				self.SpotMe()
+		
+		# vehicles, etc.
 		else:
-			# TODO: simplified spotting procedure for units without crew?
-			pass
-					
-		
-		pass
-
+			if open_ground:
+				print 'DEBUG: spotted unit was in open ground'
+				self.SpotMe()
+			elif pin_test:
+				print 'DEBUG: spotted unit was attacked'
+				self.SpotMe()
+			elif close_range and just_fired:
+				print 'DEBUG: spotted unit just fired'
+				self.SpotMe()
+			elif close_range and just_moved:
+				print 'DEBUG: spotted unit just moved'
+				self.SpotMe()
 
 	# roll for recovery from negative statuses
 	# TODO: move into its own phase eventually
@@ -685,9 +674,6 @@ class Unit:
 		# don't display any message for squadron members
 		if self.squadron_leader is not None: return
 		
-		# TEMP - disabled
-		return
-		
 		# show message
 		if self.owning_player == 0:
 			text = 'Your '
@@ -695,14 +681,6 @@ class Unit:
 			text = 'Enemy '
 		text += self.GetName() + ' has been spotted!'
 		Message(text, target_unit=self)
-	
-	# identify this unit to the enemy player
-	def IdentifyMe(self):
-		
-		if self.identified: return
-		
-		pass
-	
 	
 	# regain unspotted status for this PSG
 	# TODO: update, not used right now
@@ -740,11 +718,12 @@ class Unit:
 		
 		# gun, set according to deployed status / hull facing
 		if self.gun:
+			direction = CombineDirs(scenario.player_unit.facing, self.facing)
 			if not self.deployed:
 				return 124
-			elif self.facing in [5, 0, 1]:
+			elif direction in [5, 0, 1]:
 				return 232
-			elif self.facing in [2, 3, 4]:
+			elif direction in [2, 3, 4]:
 				return 233
 			else:
 				return '!'		# should not happen
@@ -850,7 +829,7 @@ class Unit:
 		map_hex1 = GetHexAt(self.hx, self.hy)
 		map_hex2 = GetHexAt(new_hx, new_hy)
 		
-		# TEMP
+		# TEMP - no MP required
 		free_move = True
 		
 		if not free_move:
@@ -918,11 +897,11 @@ class Unit:
 		
 		UpdateUnitConsole()
 		
-		# check for objective capture
-		#map_hex2.CheckCapture()
+		# check for concealment loss
+		self.DoSpotCheck(just_moved=True)
 		
-		# check for automatic spot
-		scenario.DoAutomaticSpotCheck()
+		# FUTURE: check for objective capture
+		#map_hex2.CheckCapture()
 		
 		return True
 	
@@ -1471,7 +1450,7 @@ class AI:
 	# randomly determine action for this turn
 	def GenerateAction(self):
 		
-		# TEMP - no actions
+		# TEMP - no AI actions
 		return
 		
 		# TEMP: assume a defensive attitude
@@ -2101,29 +2080,7 @@ class Scenario:
 		
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
-		self.objective_hexes = []			# list of objective hexes
-	
-	# check for automatic spotting and identification of units
-	def DoAutomaticSpotCheck(self):
-		for unit in self.unit_list:
-			if unit.known and unit.identified: continue
-			map_hex = GetHexAt(unit.hx, unit.hy)
-			if map_hex.terrain_type.terrain_mod != 0: continue
-			
-			# unit is in open terrain
-			for unit2 in self.unit_list:
-				# check for adjacent enemies
-				if unit2.owning_player == unit.owning_player: continue
-				if GetHexDistance(unit.hx, unit.hy, unit2.hx, unit2.hy) == 1:
-					unit.SpotMe()
-					unit.IdentifyMe()
-					break
-				
-				# check for enemy in LoS
-				if (unit.hx, unit.hy) in GetLoS(unit2.hx, unit2.hy, unit.hx, unit.hy):
-					unit.SpotMe()
-					unit.IdentifyMe()
-					break
+		self.objective_hexes = []			# list of objective hexesdef DoSpo
 	
 	# set up map viewport hexes based on current player tank position and facing
 	def SetVPHexes(self):
@@ -2162,117 +2119,6 @@ class Scenario:
 		# select next target in list
 		n = target_list.index(self.player_target)
 		self.player_target = target_list[n+1]
-	
-	
-	# procedurally generate an Order of Battle for the AI player
-	def GenerateEnemyOOB(self):
-		
-		psg_type_lists = {
-			'Tank': [],
-			'Gun': [],
-			'Infantry': [],
-			'Armoured Car': []
-		}
-		enemy_oob = []
-		
-		# TEMP - hardcoded
-		enemy_nation = 'Poland'
-		oob_op_budget = 400
-		spawn_chances = {
-			'Tank': 40,
-			'Gun': 20,
-			'Infantry': 30,
-			'Armoured Car': 10
-		}
-		
-		# load the order of battle definitions XML and build a list of possible PSG types
-		#  for this nation
-		psg_defs_item = None
-		root = xml.parse(DATAPATH + 'oob_defs.xml')
-		nation_list = root.findall('nation')
-		for item in nation_list:
-			if item.find('name').text == enemy_nation:
-				psg_defs_item = item.find('psg_defs')
-				break
-		
-		# could not find nation
-		if psg_defs_item is None:
-			print 'ERROR: Could not find PSG type definitions for nation: ' + enemy_nation
-			return
-		
-		for item in psg_defs_item.findall('psg'):
-			new_psg = {}
-			new_psg['name'] = item.find('name').text
-			category = item.find('category').text
-			new_psg['category'] = category
-			new_psg['unit_id'] = item.find('unit_id').text
-			new_psg['min_steps'] = int(item.find('min_steps').text)
-			new_psg['max_steps'] = int(item.find('max_steps').text)
-			new_psg['skill_lvl'] = int(item.find('skill_lvl').text)
-			new_psg['morale_lvl'] = int(item.find('morale_lvl').text)
-			psg_type_lists[category].append(new_psg)
-		
-		# start selecting units until point limit is reached
-		for tries in range(100):
-			
-			# randomly select a category of unit
-			roll = libtcod.random_get_int(0, 1, 100)
-			for key, value in spawn_chances.iteritems():
-				if roll <= value:
-					category = key
-					break
-				roll -= value
-			
-			psg_type = choice(psg_type_lists[category])
-			
-			num_steps = libtcod.random_get_int(0, psg_type['min_steps'],
-				psg_type['max_steps'])
-			
-			new_psg = PSG(psg_type['name'], psg_type['unit_id'], num_steps)
-			
-			# not enough points remaining for this unit, skip
-			if oob_op_budget < new_psg.op_value:
-				del new_psg
-				continue
-			
-			new_psg.owning_player = 1
-			new_psg.facing = 3
-			new_psg.skill_lvl = psg_type['skill_lvl']
-			new_psg.morale_lvl = psg_type['morale_lvl']
-			
-			enemy_oob.append(new_psg)
-			
-			oob_op_budget -= new_psg.op_value
-			
-			#print ('DEBUG: spawned a ' + psg_type['name'] + ' unit with ' + 
-			#	str(num_steps) + ' steps worth ' + str(new_psg.op_value) +
-			#	' points')
-		
-		# add the list of enemy units into the scenario
-		self.unit_list.extend(enemy_oob)
-		
-		# place units into map w/ PlaceAt()
-		for psg in enemy_oob:
-			
-			# if infantry or gun, try to place into an objective first
-			if psg.infantry or psg.gun:
-				for map_hex in self.objective_hexes:
-					if map_hex.IsOccupied() == -1:
-						psg.PlaceAt(map_hex.hx, map_hex.hy)
-						break
-			# placment on objective was a success
-			if psg.hx != -1 or psg.hy != -1:
-				continue
-			
-			# choose a random map hex
-			for tries in range(300):
-				(hx, hy) = choice(self.hex_map.hexes.keys())
-				# too close to bottom edge
-				if hy + 6 >= 0 - hx//2 + self.hex_map.h:
-					continue
-				psg.PlaceAt(hx, hy)
-				break
-	
 	
 	# check for scenario end and set up data if so
 	def CheckForEnd(self):
@@ -2679,6 +2525,13 @@ def CalcAttack(attacker, weapon, target, assume_pivot=False):
 	# moving vehicle target
 	if target.vehicle and target.moved:
 		attack_obj.modifiers.append(('Target vehicle moved', 2))
+	
+	# size class
+	if target.size_class != 'Normal':
+		if target.size_class == 'Small':
+			attack_obj.modifiers.append(('Small Target', 1))
+		elif target.size_class == 'Very Small':
+			attack_obj.modifiers.append(('Very Small Target', 2))
 	
 	# target terrain modifier
 	map_hex = GetHexAt(target.hx, target.hy)
@@ -3441,6 +3294,7 @@ def InitAttack(attacker, weapon, target):
 	distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 	
 	# determine if a pivot would be required
+	# TODO: remove
 	pivot_required = False
 	if not attacker.infantry and distance > 0:
 		bearing = GetRelativeBearing(attacker, target)
@@ -3511,6 +3365,9 @@ def InitAttack(attacker, weapon, target):
 	# resolve attack
 	# TODO: change to CalcPointFire?
 	target.ResolveAttack(attack_obj)
+	
+	# check for concealment loss
+	self.DoSpotCheck(just_fired=True)
 	
 	# TODO: handle newly acquired target
 	
@@ -4965,9 +4822,6 @@ def DoScenario(load_savegame=False):
 		#scenario.hex_map.AddObjectiveAt(5, 4)
 		#scenario.hex_map.AddObjectiveAt(6, -2)
 		
-		# generate enemy OOB and spawn into map
-		#scenario.GenerateEnemyOOB()
-		
 		# do initial objective capture
 		#for map_hex in scenario.objective_hexes:
 		#	map_hex.CheckCapture(no_message=True)
@@ -4979,6 +4833,14 @@ def DoScenario(load_savegame=False):
 		new_unit.facing = 3
 		new_unit.turret_facing = 3
 		new_unit.PlaceAt(6, 15)
+		
+		# TEMP set up test enemy unit
+		new_unit = Unit('37mm_wz_36')
+		scenario.unit_list.append(new_unit)
+		new_unit.owning_player = 1
+		new_unit.facing = 3
+		new_unit.turret_facing = 3
+		new_unit.PlaceAt(8, 13)
 		
 		# set up map viewport
 		scenario.SetVPHexes()
@@ -5086,19 +4948,6 @@ def DoScenario(load_savegame=False):
 		
 		# skip this section if no commands in buffer
 		if key is None: continue
-		
-		##################################################################
-		
-		# DEBUG command
-		if SHOW_TERRAIN_GEN:
-			key_char = chr(key.c).lower()
-			if key_char == 'g':
-				GenerateTerrain()
-				scenario.hex_map.CalcFoV()
-				UpdateScreen()
-				continue
-		
-		##################################################################
 		
 		# select previous or next menu option
 		if key.vk == libtcod.KEY_UP:

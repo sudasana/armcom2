@@ -9,7 +9,7 @@
     <display_name>Sparse Forest</display_name>
     <los_height>10</los_height>
     <base_image>hex_forest.xp</base_image>
-    <terrain_mod>1</terrain_mod>
+    <terrain_mod>2</terrain_mod>
     <difficult/>
   </terrain_def>
   <terrain_def>
@@ -22,7 +22,7 @@
     <display_name>Wooden Village</display_name>
     <los_height>5</los_height>
     <base_image>hex_village.xp</base_image>
-    <terrain_mod>2</terrain_mod>
+    <terrain_mod>3</terrain_mod>
   </terrain_def>
   <terrain_def>
     <display_name>Pond</display_name>

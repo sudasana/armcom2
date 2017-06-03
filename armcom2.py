@@ -89,6 +89,7 @@ GRADIENT = [
 # Game engine constants, can be tweaked for slightly different results
 
 MAX_LOS_DISTANCE = 6			# maximum distance that a Line of Sight can be drawn
+MAX_LOS_MOD = 6				# maximum total terrain modifier along a LoS before it is blocked
 MAX_BU_LOS_DISTANCE = 4			# " for buttoned-up crewmen
 ELEVATION_M = 20.0			# each elevation level represents x meters of height
 BASE_SPOT_SCORE = 5			# base score required to spot unknown enemy unit
@@ -169,6 +170,7 @@ ACTIVE_MSG_COL = libtcod.Color(0, 210, 0)		# active message colour
 TARGET_HL_COL = libtcod.Color(55, 0, 0)			# target highlight background color 
 SELECTED_HL_COL = libtcod.Color(100, 255, 255)		# selected PSG highlight colour
 ENEMY_HL_COL = libtcod.Color(40, 0, 0)
+ENEMY_UNIT_COL = libtcod.Color(255, 0, 64)		# enemy unit and name colour
 INACTIVE_COL = libtcod.Color(100, 100, 100)		# inactive option color
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
 
@@ -556,7 +558,8 @@ class Unit:
 		for unit in scenario.unit_list:
 			if unit.owning_player == self.owning_player: continue
 			# FUTURE: check LoS for each crewmember in enemy unit
-			if (self.hx, self.hy) not in GetLoS(unit.hx, unit.hy, self.hx, self.hy): continue
+			los = GetLoS(unit.hx, unit.hy, self.hx, self.hy)
+			if los == -1 or los > MAX_LOS_MOD: continue
 			distance = GetHexDistance(unit.hx, unit.hy, self.hx, self.hy)
 			# recce units count as being in close range up to 5 hexes
 			if 3 < distance <= 5 and unit.recce:
@@ -776,7 +779,7 @@ class Unit:
 			if not self.known:
 				col = libtcod.dark_red
 			else:
-				col = libtcod.red
+				col = ENEMY_UNIT_COL
 		else:	
 			col = libtcod.white
 		libtcod.console_put_char_ex(unit_con, x, y, self.display_char, col,
@@ -1063,12 +1066,12 @@ class Weapon:
 		self.rof_target = None		# RoF pointer to target, None if no RoF maintained
 		
 		self.stats = {}
-		self.stats['rof'] = 0
 		
 		# load weapon stats from xml item
 		self.weapon_type = item.find('type').text
 		self.firing_group = int(item.find('firing_group').text)
 		
+		self.stats['rof'] = 0
 		if item.find('rof') is not None:
 			self.stats['rof'] = int(item.find('rof').text)
 		
@@ -1350,9 +1353,8 @@ class AI:
 					continue
 			
 			# not in LoS
-			visible_hexes = GetLoS(self.owner.hx, self.owner.hy, target.hx, target.hy)
-			if (target.hx, target.hy) not in visible_hexes:
-				continue
+			los = GetLoS(self.owner.hx, self.owner.hy, target.hx, target.hy)
+			if los == -1 or los > MAX_LOS_MOD: continue
 			
 			# determine if a pivot would be required
 			pivot_required = False
@@ -1540,7 +1542,8 @@ class AI:
 				if psg.owning_player == self.owner.owning_player: continue
 				
 				# no line of sight
-				if (psg.hx, psg.hy) not in GetLoS(self.owner.hx, self.owner.hy, psg.hx, psg.hy): continue
+				los = GetLoS(self.owner.hx, self.owner.hy, psg.hx, psg.hy)
+				if los == -1 or los > MAX_LOS_MOD: continue
 				
 				target_list.append(psg)
 			
@@ -1968,8 +1971,8 @@ class HexMap:
 			distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy)
 			if distance > max_distance: continue
 			
-			los_line = GetLoS(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy)
-			if (hx, hy) in los_line:
+			los = GetLoS(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy)
+			if -1 < los <= MAX_LOS_MOD:
 				scenario.hex_map.hexes[(hx, hy)].vis_to_player = True
 		#end_time = time.time()
 		#time_taken = round((end_time - start_time) * 1000, 3) 
@@ -2354,12 +2357,20 @@ class Scenario:
 						menu_option.inactive = True
 						menu_option.desc = 'Cannot fire this weapon group again this turn'
 					
-					# check for RoF exception
-					if weapon.rof_target is not None:
-						if weapon.rof_target == scenario.player_target:
-							menu_option.inactive = False
-							menu_option.desc = 'Maintained RoF against this target'
+						# check for RoF exception
+						if weapon.rof_target is not None:
+							if weapon.rof_target == scenario.player_target:
+								menu_option.inactive = False
+								menu_option.desc = 'Maintained RoF against this target'
 					
+					# check weapon range
+					distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
+						scenario.player_target.hx, scenario.player_target.hy)
+					if distance > weapon.stats['max_range']:
+						menu_option.inactive = True
+						menu_option.desc = 'Further than maximum weapon range'
+					
+					# Point Fire attacks must be against spotted target
 					if weapon.weapon_type == 'gun' and not scenario.player_target.known:
 						menu_option.inactive = True
 						menu_option.desc = 'AP attacks against spotted targets only'
@@ -2489,10 +2500,10 @@ def CalcAttack(attacker, weapon, target):
 			elif target.size_class == 'Very Small':
 				attack_obj.modifiers.append(('Very Small Target', 2))
 		
-		# target terrain modifier
-		map_hex = GetHexAt(target.hx, target.hy)
-		if map_hex.terrain_type.terrain_mod != 0:
-			attack_obj.modifiers.append(('Target terrain', 0-map_hex.terrain_type.terrain_mod))
+		# LoS terrain modifier
+		los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
+		if los > 0:
+			attack_obj.modifiers.append(('LoS Terrain', 0-los))
 		
 		# apply modifiers to calculate final to-hit score required 
 		attack_obj.final_to_hit = attack_obj.base_to_hit
@@ -2525,7 +2536,9 @@ def CalcAttack(attacker, weapon, target):
 		float_final_fp = float(attack_obj.base_fp)
 		for (desc, mod) in attack_obj.fp_mods:
 			if mod == '/2':
-				float_final_ap = float_final_fp * 0.5
+				float_final_fp = float_final_fp * 0.5
+			elif mod == '*2':
+				float_final_fp = float_final_fp * 2.0
 		
 		# round down and convert back to int
 		attack_obj.final_fp = int(floor(float_final_fp))
@@ -2545,10 +2558,10 @@ def CalcAttack(attacker, weapon, target):
 		
 		# calculate dice roll modifiers
 		
-		# target terrain modifier
-		map_hex = GetHexAt(target.hx, target.hy)
-		if map_hex.terrain_type.terrain_mod != 0:
-			attack_obj.modifiers.append(('Target terrain', 0-map_hex.terrain_type.terrain_mod))
+		# LoS terrain modifier
+		los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
+		if los > 0:
+			attack_obj.modifiers.append(('LoS Terrain', 0-los))
 		
 		# total up modifiers
 		total_modifiers = 0
@@ -3180,17 +3193,18 @@ def GetBearing(x1, y1, x2, y2):
 	return int((degrees(atan2((y2 - y1), (x2 - x1))) + 90.0) % 360)
 
 
-# assuming an observer in hx1, hy1 looking at hx2, hy2, returns a list of visible hexes
-# along this line of sight
-# used in HexMap.CalcFoV() and psg.SelectNextTarget()
+# returns -1 if there is no clear LoS from hx1, hy1 to hx2, hy2, otherwise returns the
+# total terrain modifier for the line
 def GetLoS(hx1, hy1, hx2, hy2):
 	
-	# handle same hex and adjacent hex cases first
+	# same hex and adjacent hex cases first
 	if hx1 == hx2 and hy1 == hy2:
-		return [(hx1, hy1)]
+		return scenario.hex_map.hexes[(hx, hy)].terrain_type.terrain_mod
+
 	distance = GetHexDistance(hx1, hy1, hx2, hy2)
+	# adjacent hex
 	if distance == 1:
-		return [(hx1, hy1), (hx2, hy2)]
+		return scenario.hex_map.hexes[(hx2, hy2)].terrain_type.terrain_mod
 	
 	# build list of hexes along LoS first
 	hex_list = []
@@ -3236,15 +3250,21 @@ def GetLoS(hx1, hy1, hx2, hy2):
 	# run through the list of hexes, starting with the first adjacent one from observer
 	hexpair = None
 	hexpair_elevation = 0
+	hexpair_terrain_mod = 0
+	total_mod = 0
 	for (hx, hy) in hex_list:
 		
+		# off map
 		if (hx, hy) not in scenario.hex_map.hexes:
 			continue
+		
+		# gone beyond maximum LoS distance
 		if GetHexDistance(hx1, hy1, hx, hy) > MAX_LOS_DISTANCE:
 			continue
 		
 		map_hex = scenario.hex_map.hexes[(hx, hy)]
 		elevation = (float(map_hex.elevation) - observer_elevation) * ELEVATION_M
+		terrain_mod = scenario.hex_map.hexes[(hx, hy)].terrain_type.terrain_mod
 		
 		# if we're on a hexspine, we need to compare some pairs of hexes
 		if mod_list is not None:
@@ -3253,11 +3273,13 @@ def GetLoS(hx1, hy1, hx2, hy2):
 			if index % 3 == 0:
 				hexpair = (hx, hy)
 				hexpair_elevation = elevation
+				hexpair_terrain_mod = terrain_mod
 				continue
 			# hexes 1,4,7... are compared with stored value
 			elif (index - 1) % 4 == 0:
 				if hexpair_elevation < elevation:
 					elevation = hexpair_elevation
+					terrain_mod = hexpair_terrain_mod
 		
 		# calculate slope from observer to floor of this hex and to terrain top
 		floor_slope = elevation / float(GetHexDistance(hx1, hy1, hx, hy)) * 160.0
@@ -3268,8 +3290,13 @@ def GetLoS(hx1, hy1, hx2, hy2):
 		# if this is an adjacent hex, it's automatically visible
 		if los_slope is None:
 			visible_hexes.append((hx, hy))
+			if hexpair is not None:
+				visible_hexes.append(hexpair)
+				hexpair = None
 			# use the terrain top for future visibility
 			los_slope = terrain_top_slope
+			# add terrain modifier to total
+			total_mod += terrain_mod
 		
 		# otherwise, compare against current LoS slope
 		else:
@@ -3280,12 +3307,17 @@ def GetLoS(hx1, hy1, hx2, hy2):
 				if hexpair is not None:
 					visible_hexes.append(hexpair)
 					hexpair = None
+				# add terrain modifier to total
+				total_mod += terrain_mod
 		
 			# if terrain top slope is larger than previous los_slope, replace
 			if terrain_top_slope > los_slope:
 				los_slope = terrain_top_slope
 
-	return visible_hexes
+	if (hx2, hy2) not in visible_hexes:
+		return -1
+
+	return total_mod
 
 
 # get the bearing from psg1 to psg2, rotated for psg1's facing
@@ -3529,6 +3561,24 @@ def DisplayAttack(attack_obj, ap_roll=False):
 			if temp is not None:
 				libtcod.console_blit(temp, 0, 0, 0, 0, attack_con, 1, 13)
 				del temp
+				
+	# firepower and modifiers
+	if not ap_roll and not attack_obj.pf_attack:
+		
+		text = 'Base FP: ' + str(attack_obj.base_fp)
+		libtcod.console_print_ex(attack_con, 13, 21, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+		y = 22
+		libtcod.console_set_default_foreground(attack_con, INFO_TEXT_COL)
+		for (text, mod_text) in attack_obj.fp_mods:
+			libtcod.console_print(attack_con, 2, y, text)
+			libtcod.console_print_ex(attack_con, 23, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, mod_text)
+			y+=1
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		text = 'Final FP: ' + str(attack_obj.final_fp)
+		libtcod.console_print_ex(attack_con, 13, 24, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
 
 	# base to-hit / AP roll
 	if ap_roll:
@@ -3540,7 +3590,7 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	
 	# list of roll modifiers
 	libtcod.console_set_default_background(attack_con, TITLE_BG_COL)
-	libtcod.console_rect(attack_con, 1, 27, 27, 1, False, libtcod.BKGND_SET)
+	libtcod.console_rect(attack_con, 1, 27, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(attack_con, 13, 27, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Roll Modifiers')
 	y = 29
@@ -4229,9 +4279,7 @@ def UpdateHexInfoConsole():
 	libtcod.console_set_default_background(hex_info_con, TITLE_BG_COL)
 	libtcod.console_rect(hex_info_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(hex_info_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-		'Map Hex & Unit Info')
-	libtcod.console_print(hex_info_con, 0, 13, '[M]essage Log')
-	libtcod.console_put_char_ex(hex_info_con, 1, 13, 'M', ACTION_KEY_COL, libtcod.black)
+		'Hex Info')
 	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(hex_info_con, libtcod.black)
 	
@@ -4263,10 +4311,38 @@ def UpdateHexInfoConsole():
 
 		# road status
 		if len(map_hex.dirt_road_links) > 0:
-			libtcod.console_print_ex(hex_info_con, 23, 3, libtcod.BKGND_NONE,
-				libtcod.RIGHT, 'Dirt Road')
+			libtcod.console_print(hex_info_con, 0, 4, 'Dirt Road')
 		
-		# TODO: display info on unit(s) present
+		# no units present
+		unit_num = len(map_hex.unit_stack)
+		if unit_num == 0: return
+		
+		# top unit in stack
+		unit = map_hex.unit_stack[0]
+		if unit.owning_player == 1:
+			libtcod.console_set_default_foreground(hex_info_con, ENEMY_UNIT_COL)
+		else:
+			libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
+		libtcod.console_print(hex_info_con, 0, 6, unit.GetName())
+		
+		# note if additional units in stack
+		if unit_num > 1:
+			libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
+			text = '+' + str(unit_num-1) + ' more unit'
+			if unit_num > 2: text += 's'
+			libtcod.console_print(hex_info_con, 0, 8, text)
+		
+		# display unresolved hits on top unit in stack
+		if unit.unresolved_fp == 0 and len(unit.unresolved_ap) == 0: return
+		libtcod.console_set_default_foreground(hex_info_con, libtcod.red)
+		text = 'Hit by '
+		if unit.unresolved_fp > 0:
+			text += str(unit.unresolved_fp) + ' FP'
+		if len(unit.unresolved_ap) > 0:
+			if unit.unresolved_fp > 0:
+				text += '; '
+			text += str(len(unit.unresolved_ap)) + ' AP'
+		libtcod.console_print(hex_info_con, 1, 7, text)
 		
 
 # layer the display consoles onto the screen
@@ -4297,17 +4373,6 @@ def DrawScreenConsoles():
 		if psg:
 			libtcod.console_set_char_background(con, psg.screen_x, psg.screen_y,
 				TARGET_HL_COL, flag=libtcod.BKGND_SET)
-			
-			# TEMP - show LoS hexes
-			#los_line = GetLoS(scenario.active_unit.hx, scenario.active_unit.hy,
-			#	psg.hx, psg.hy)
-			
-			#for (hx, hy) in los_line:
-			#	(x,y) = PlotHex(hx, hy)
-			#	x += 26
-			#	y += 3
-			#	libtcod.console_set_char(con, x, y, 250)
-			#	libtcod.console_set_char_foreground(con, x, y, libtcod.red)
 			
 			# draw LoS line
 			line = GetLine(scenario.active_unit.screen_x, scenario.active_unit.screen_y,

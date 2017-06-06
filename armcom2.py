@@ -149,7 +149,7 @@ CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Loader', 'Dri
 AMMO_TYPE_ORDER = ['HE', 'AP']
 
 # turn phases, in order
-PHASE_LIST = ['Command', 'Movement', 'Shooting', 'Close Combat']
+PHASE_LIST = ['Movement', 'Shooting', 'Close Combat']
 
 # Colour definitions
 
@@ -2206,14 +2206,8 @@ class Scenario:
 	# finish up current phase, start new phase (and possibly new turn as well)
 	def NextPhase(self):
 		
-		# crew actions -> Movement
-		if self.GetCurrentPhase() == 'Command':
-			self.SetPhase('Movement')
-			self.active_cmd_menu = 'movement_root'
-			self.selected_crew_position = None
-		
 		# Movement -> Shooting Phase
-		elif self.GetCurrentPhase() == 'Movement':
+		if self.GetCurrentPhase() == 'Movement':
 			self.SetPhase('Shooting')
 			self.active_cmd_menu = 'shooting_root'
 		
@@ -2228,7 +2222,7 @@ class Scenario:
 			self.active_cmd_menu = 'cc_root'
 			self.active_unit = None
 			
-		# Close Combat Phase -> New Active Player and Command Phase
+		# Close Combat Phase -> New Active Player and Movement Phase
 		elif self.GetCurrentPhase() == 'Close Combat':
 			
 			if self.active_player == 0:
@@ -2250,14 +2244,14 @@ class Scenario:
 				self.active_unit = None
 				scenario.SelectNextPSG()
 				UpdatePlayerUnitConsole()
-			self.SetPhase('Command')
-			self.active_cmd_menu = 'command'
+			self.SetPhase('Movement')
+			self.active_cmd_menu = 'movement_root'
 			# select first crew position in player unit
-			self.selected_crew_position = self.player_unit.crew_positions[0]
+			#self.selected_crew_position = self.player_unit.crew_positions[0]
 			
-			for psg in self.unit_list:
-				if psg.owning_player == self.active_player:
-					psg.DoRecoveryTests()
+			for unit in self.unit_list:
+				if unit.owning_player == self.active_player:
+					unit.DoRecoveryTests()
 		
 		# do automatic actions for active player's units for this phase
 		for psg in self.unit_list:
@@ -2539,7 +2533,7 @@ def CalcAttack(attacker, weapon, target):
 		# LoS terrain modifier
 		los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 		if los > 0:
-			attack_obj.modifiers.append(('LoS Terrain', 0-los))
+			attack_obj.modifiers.append(('Terrain', 0-los))
 		
 		# apply modifiers to calculate final to-hit score required 
 		attack_obj.final_to_hit = attack_obj.base_to_hit
@@ -2597,7 +2591,7 @@ def CalcAttack(attacker, weapon, target):
 		# LoS terrain modifier
 		los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 		if los > 0:
-			attack_obj.modifiers.append(('LoS Terrain', 0-los))
+			attack_obj.modifiers.append(('Terrain', 0-los))
 		
 		# total up modifiers
 		total_modifiers = 0
@@ -4012,6 +4006,8 @@ def PopUpMessage(text, target_unit=None):
 def UpdateContextCon():
 	libtcod.console_clear(context_con)
 	
+	if scenario.active_player != 0: return
+	
 	# Movement Phase
 	if scenario.GetCurrentPhase() == 'Movement':
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
@@ -4903,7 +4899,7 @@ def DoScenario(load_savegame=False):
 		# select first crew position in player unit
 		scenario.selected_crew_position = scenario.player_unit.crew_positions[0]
 		# build initial command menu
-		scenario.active_cmd_menu = 'command'
+		scenario.active_cmd_menu = 'movement_root'
 		scenario.BuildCmdMenu()
 		
 		#UpdateScreen()
@@ -5246,9 +5242,7 @@ libtcod.console_set_default_foreground(main_menu_con, libtcod.white)
 menus = []
 
 cmd_menu = CommandMenu('main_menu')
-menu_option = cmd_menu.AddOption('continue_scenario', 'C', GetMsg('continue_game'))
-if not os.path.exists('savegame'):
-	menu_option.inactive = True
+cmd_menu.AddOption('continue_scenario', 'C', GetMsg('continue_game'))
 cmd_menu.AddOption('new_scenario', 'N', GetMsg('new_game'))
 cmd_menu.AddOption('options', 'O', GetMsg('game_options'))
 cmd_menu.AddOption('quit', 'Q', GetMsg('quit_game'))
@@ -5328,6 +5322,16 @@ UpdateMainMenu()
 time_click = time.time()
 gradient_x = WINDOW_WIDTH + 20
 
+def CheckSavedGame(menu):
+	for menu_option in menu.cmd_list:
+		if menu_option.option_id != 'continue_scenario': continue
+		if os.path.exists('savegame'):
+			menu_option.inactive = False
+		else:
+			menu_option.inactive = True
+		return
+
+CheckSavedGame(cmd_menu)
 
 
 # jump right into a new scenario

@@ -170,6 +170,7 @@ SECTION_BG_COL = libtcod.Color(0, 32, 64)		# darker bg colour for sections
 INFO_TEXT_COL = libtcod.Color(190, 190, 190)		# informational text colour
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 HIGHLIGHT_COLOR = libtcod.Color(51, 153, 255)		# colour for highlighted text 
+HIGHLIGHT_COLOR2 = libtcod.Color(0, 64, 0)		# alternate "
 WEAPON_LIST_COLOR = libtcod.Color(25, 25, 90)		# background for weapon list in PSG console
 SELECTED_WEAPON_COLOR = libtcod.Color(50, 50, 150)	# " selected weapon
 ACTIVE_MSG_COL = libtcod.Color(0, 210, 0)		# active message colour
@@ -181,7 +182,7 @@ ENEMY_UNIT_COL = libtcod.Color(255, 0, 64)		# enemy unit and name colour
 INACTIVE_COL = libtcod.Color(100, 100, 100)		# inactive option color
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
 
-HIGHLIGHT_CHARS = [250, 249, 7, 7, 7, 7, 249, 250]
+HIGHLIGHT_CHARS = [250, 249, 7, 7, 7, 7, 249, 250]	# used for unit highlight animation
 
 
 # Descriptor definitions
@@ -349,6 +350,7 @@ class Unit:
 		self.changed_facing = False
 		
 		# status flags
+		self.pinned = False
 		self.broken = False
 		self.shocked = False
 		self.bogged = False
@@ -371,10 +373,9 @@ class Unit:
 		# unresolved area fire hits to resolve
 		if self.unresolved_fp > 0:
 		
-			# TODO: highlight unit on map
-			
-			text = 'Resolving ' + str(self.unresolved_fp) + ' fp of attacks'
-			PopUpMessage(text, target_unit=self)
+			text = ('Resolving ' + str(self.unresolved_fp) + ' fp of attacks on ' +
+				self.GetName())
+			scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 			
 			# get base score to equal/beat
 			for (chart_fp, inf_score, veh_score) in reversed(AF_CHART):
@@ -390,15 +391,22 @@ class Unit:
 			print 'DEBUG: score to beat is ' + str(score) + ', roll was ' + str(roll)
 			
 			if roll == 2 or float(roll) < float(score) * 0.5:
-				PopUpMessage('Unit is destroyed!', target_unit=self)
+				text = self.GetName() + ' is destroyed!'
+				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 				self.DestroyMe()
 				return
 			elif roll <= score:
-				PopUpMessage('Unit must take a Break Test', target_unit=self)
-				pass
+				text = self.GetName() + ' must take a Morale Test'
+				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+				if not self.MoraleCheck():
+					# failed
+					self.BreakMe()
+				else:
+					# passed
+					self.PinMe()
 			else:
-				PopUpMessage('Unit must take a Pin Test', target_unit=self)
-				pass
+				text = 'Attack had no effect on ' + self.GetName()
+				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 			
 			# reset unresolved fp
 			self.unresolved_fp = 0
@@ -406,9 +414,69 @@ class Unit:
 		if len(self.unresolved_ap) == 0: return
 		
 		# TEMP - only one outcome possible
-		PopUpMessage('Unit is destroyed!', target_unit=self)
+		text = self.GetName() + ' is destroyed!'
+		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 		self.DestroyMe()
+	
+	# perform a morale check for this unit
+	def MoraleCheck(self, modifier):
 		
+		# calculate effective morale level
+		morale_lvl = self.morale_lvl
+		
+		# modifier provided by test conditions
+		morale_lvl += modifier
+		
+		# protective terrain
+		map_hex = GetHexAt(self.hx, self.hy)
+		if map_hex.terrain_type.terrain_mod > 0:
+			morale_lvl += map_hex.terrain_type.terrain_mod
+		
+		# normalize
+		if morale_lvl < 3:
+			morale_lvl = 3
+		elif morale_lvl > 10:
+			morale_lvl = 10
+		
+		# do the roll
+		d1, d2, roll = Roll2D6()
+		
+		if roll <= morale_lvl:
+			return True
+		return False
+	
+	# break this unit
+	def BreakMe(self):
+		# double break, destroy instead
+		if self.broken:
+			text = self.GetName() + ' failed a Break test while broken and is destroyed!'
+			scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+			self.DestroyMe()
+			return
+		self.broken = True
+		text = self.GetName() + ' is Broken'
+		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+	
+	# pin this unit
+	def PinMe(self):
+		# already pinned
+		if self.pinned:
+			text = 'Attack had no further effect on ' + self.GetName()
+		else:
+			self.pinned = True
+			text = self.GetName() + ' is Pinned'
+		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+	
+	# remove this unit from the game
+	def DestroyMe(self):
+		# remove from map hex
+		map_hex = GetHexAt(self.hx, self.hy)
+		map_hex.unit_stack.remove(self)
+		# remove from scenario
+		scenario.unit_list.remove(self)
+		# clear acquired target records
+		self.ClearAcquiredTargets()
+		UpdateUnitConsole()
 
 	# attempt to place this unit into the map at hx, hy
 	# if this location is impassible to unit, try adjacent hexes as well
@@ -539,7 +607,7 @@ class Unit:
 		self.mp = self.max_mp
 	
 	# return a description of this unit
-	# if using real name, transcode it to handle any special characters in it
+	# if using true name, transcode it to handle any special characters in it
 	# if true_name, return the real identity of this PSG no matter what
 	def GetName(self, true_name=False):
 		if not true_name:
@@ -649,7 +717,7 @@ class Unit:
 		else:
 			text = 'Enemy '
 		text += self.GetName() + ' has been spotted!'
-		PopUpMessage(text, target_unit=self)
+		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 	
 	# get display character to be used on hex map
 	def GetDisplayChar(self):
@@ -706,20 +774,6 @@ class Unit:
 			if psg.acquired_target == self:
 				psg.acquired_target = None
 
-	# remove this unit from the game
-	def DestroyMe(self):
-		
-		# remove from map hex
-		map_hex = GetHexAt(self.hx, self.hy)
-		map_hex.unit_stack.remove(self)
-		
-		# remove from scenario
-		scenario.unit_list.remove(self)
-		
-		# clear acquired target records
-		self.ClearAcquiredTargets()
-		UpdateUnitConsole()
-
 	# do any automatic actions for this unit for start of current phase
 	def ResetForPhase(self):
 		
@@ -762,17 +816,13 @@ class Unit:
 			text = self.GetName() + ' is now unseen by the enemy'
 		else:
 			text = 'Lost contact with ' + self.GetName()
-		PopUpMessage(text, target_unit=self)
+		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 		self.suspected = True
 		UpdateUnitConsole()
 		if scenario.active_unit == self:
 			UpdatePlayerUnitConsole()
 		DrawScreenConsoles()
 		libtcod.console_flush()
-	
-	
-	
-	
 
 	# draw this unit to the unit console in the given viewport hx, hy location
 	# if stack_size > 1, indicate total number of units in hex stack
@@ -1039,37 +1089,10 @@ class Unit:
 		# add details of hit to be resolved at end of phase
 		if roll <= attack_obj.final_ap:
 			self.unresolved_ap.append(attack_obj.weapon.stats['calibre'])
-			print 'DEBUG: added ' + str(attack_obj.weapon.stats['calibre']) + ' calibre unresolved ap hit to target'
-	
-	# perform a morale check for this PSG
-	def MoraleCheck(self, modifier):
-		
-		# calculate effective morale level
-		morale_lvl = self.morale_lvl
-		
-		# modifier provided by test conditions
-		morale_lvl += modifier
-		
-		# protective terrain
-		map_hex = GetHexAt(self.hx, self.hy)
-		if map_hex.terrain_type.af_modifier > 0 or map_hex.terrain_type.pf_modifier > 0:
-			morale_lvl -= 1
-		
-		# normalize
-		if morale_lvl < 3:
-			morale_lvl = 3
-		elif morale_lvl > 10:
-			morale_lvl = 10
-		
-		# do the roll
-		d1, d2, roll = Roll2D6()
-		
-		# apply pin points
-		roll -= self.pin_points
-		
-		if roll >= morale_lvl:
-			return True
-		return False
+			text = ('Added a ' + str(attack_obj.weapon.stats['calibre']) + 
+				' calibre hit to ' + attack_obj.target.GetName())
+			scenario.AddMessage(text, highlight_hex=(attack_obj.target.hx,
+				attack_obj.target.hy))
 	
 	# take a skill test, returning True if passed
 	def SkillTest(self, modifier):
@@ -1184,14 +1207,6 @@ class AnimHandler:
 		self.highlight_timer = time.time()	# animation timer
 		self.highlight_click = 0		# time between animation updates
 		self.highlight_char = 0			# current character of animation
-		
-		# on-map message
-		self.message_lines = None		# lines of message text
-		self.message_started = False		# flag that message has been drawn once
-		self.message_x = 0			# location on which message is centered
-		self.message_y = 0
-		self.message_timer = time.time()
-		self.message_lifetime = 0
 	
 	# start a gun projectile animation
 	def InitGunEffect(self, x1, y1, x2, y2):
@@ -1207,24 +1222,6 @@ class AnimHandler:
 		self.highlight_timer = time.time()
 		self.highlight_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.003
 		self.highlight_char = 0
-	
-	# display a pop-up message on the scenario map
-	def InitPopUpMessage(self, x, y, text):
-		self.message_lines = wrap(text, 16)
-		self.message_started = False
-		self.message_x = x - 26
-		self.message_y = y - 2
-		# reposition messages that would appear off-screen
-		if self.message_x < 8:
-			self.message_x = 8
-		elif self.message_x > WINDOW_WIDTH - 8:
-			self.message_x = WINDOW_WIDTH - 8
-		if self.message_y < 3:
-			self.message_y = 3
-		elif self.message_y + len(self.message_lines) > 56:
-			self.message_y = 56 - len(self.message_lines)
-		# TEMP - need to set according to cfg file
-		self.message_lifetime = 1.2
 	
 	# stop all animations in progress
 	def StopAll(self):
@@ -1281,25 +1278,6 @@ class AnimHandler:
 					self.highlight_psg = None
 				self.highlight_char += 1
 		
-		# on-map message
-		if self.message_lines:
-			
-			# first appearance
-			if not self.message_started:
-				self.message_started = True
-				self.message_timer = time.time()
-				updated_animation = True
-				
-				# bit of a kludge but might work
-				libtcod.console_rect(con, self.message_x+18, self.message_y+3,
-					16, len(self.message_lines), True, libtcod.BKGND_SET)
-			
-			# remove if expired
-			if self.message_timer + self.message_lifetime <= time.time():
-				self.message_lines = None
-				updated_animation = True
-				self.anim_finished = True
-				
 		# if we updated any animations, draw all of them to the screen
 		if updated_animation:
 			libtcod.console_clear(anim_con)
@@ -1322,15 +1300,6 @@ class AnimHandler:
 					libtcod.console_put_char_ex(anim_con, x+xm, y+ym,
 						HIGHLIGHT_CHARS[self.highlight_char],
 						ACTIVE_MSG_COL, libtcod.black)
-			if self.message_lines:
-				n=0
-				libtcod.console_set_default_background(anim_con, libtcod.black)
-				for line in self.message_lines:
-					libtcod.console_print_ex(anim_con, self.message_x,
-						self.message_y+n, libtcod.BKGND_SET,
-						libtcod.CENTER, line)
-					n+=1
-				libtcod.console_set_default_background(anim_con, KEY_COLOR)
 		
 		return updated_animation
 
@@ -1892,9 +1861,8 @@ class MapHex:
 				text = 'You have'
 			else:
 				text = 'The enemy has'
-			text += ' captured an objective!'
-			(x,y) = PlotHex(self.hx, self.hy)
-			#PopUpMessage(text, x+26, y+2)
+			text += ' captured this objective!'
+			scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 		
 		UpdateGUIConsole()
 
@@ -2060,8 +2028,11 @@ class Scenario:
 		self.objective_hexes = []			# list of objective hexesdef DoSpo
 	
 	# add a new message to the log, and display it on the current message console
-	def AddMessage(self, text):
+	# FUTURE: option to highlight an on-map hex and pause
+	def AddMessage(self, text, highlight_hex=None):
 		self.messages.append(text)
+		# TEMP: display messages in console too
+		print '  ' + text
 		UpdateMsgConsole()
 	
 	# set up map viewport hexes based on current player tank position and facing
@@ -2535,6 +2506,10 @@ def CalcAttack(attacker, weapon, target):
 		if los > 0:
 			attack_obj.modifiers.append(('Terrain', 0-los))
 		
+		# pinned modifier
+		if attacker.pinned:
+			attack_obj.modifiers.append(('Attacker Pinned', 2))
+		
 		# apply modifiers to calculate final to-hit score required 
 		attack_obj.final_to_hit = attack_obj.base_to_hit
 		for (text, mod) in attack_obj.modifiers:
@@ -2561,6 +2536,9 @@ def CalcAttack(attacker, weapon, target):
 		
 		if attacker.moved:
 			attack_obj.fp_mods.append(('Attacker Moved', '/2'))
+		
+		if attacker.pinned:
+			attack_obj.fp_mods.append(('Attacker Pinned', '/2'))
 		
 		# calculate final fp
 		float_final_fp = float(attack_obj.base_fp)
@@ -3472,7 +3450,8 @@ def InitAttack(attacker, weapon, target):
 		else:
 			# AF attack, save attack details to target, to be resolved at end of phase
 			target.unresolved_fp += attack_obj.final_fp
-			print 'DEBUG: added ' + str(attack_obj.final_fp) + ' unresolved fp to target'
+			text = 'Added ' + str(attack_obj.final_fp) + ' unresolved fp to ' + target.GetName()
+			scenario.AddMessage(text, highlight_hex=(target.hx, target.hy))
 	
 		# target spotted
 		if not target.known:
@@ -3541,7 +3520,7 @@ def InitAttack(attacker, weapon, target):
 	if roll <= roll_required:
 		weapon.rof_target = target
 		if attacker == scenario.player_unit:
-			PopUpMessage('Maintained Rate of Fire', target_unit=attacker)
+			scenario.AddMessage("You maintained your gun's Rate of Fire")
 
 
 # display the factors and odds for an attack on the screen
@@ -3620,7 +3599,7 @@ def DisplayAttack(attack_obj, ap_roll=False):
 			y+=1
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		text = 'Final FP: ' + str(attack_obj.final_fp)
-		libtcod.console_print_ex(attack_con, 13, 24, libtcod.BKGND_NONE,
+		libtcod.console_print_ex(attack_con, 13, 25, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 
 	# base to-hit / AP roll
@@ -3628,7 +3607,7 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		text = 'Base roll required: ' + str(attack_obj.base_ap)
 	else:
 		text = 'Base to-hit: ' + str(attack_obj.base_to_hit)
-	libtcod.console_print_ex(attack_con, 13, 25, libtcod.BKGND_NONE,
+	libtcod.console_print_ex(attack_con, 13, 26, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
 	# list of roll modifiers
@@ -3982,26 +3961,6 @@ def GunAttackAnimation(attack_obj):
 	libtcod.console_flush()
 
 
-# display a pop-up message on the map, located near a unit
-# also adds message to log and displays at bottom of screen
-def PopUpMessage(text, target_unit=None):
-	if target_unit is None: return
-	for (hx, hy) in VP_HEXES:
-		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
-		if map_hx == target_unit.hx and map_hy == target_unit.hy:
-			(x,y) = PlotHex(hx, hy)
-			x += 27
-			y += 4
-			scenario.AddMessage(text)
-			scenario.anim.InitPopUpMessage(x, y, text)
-			DrawScreenConsoles()
-			WaitForAnimation()
-			DrawScreenConsoles()
-			libtcod.console_flush()
-			return
-	print 'ERROR: unit for message not on viewport'
-
-
 # update the phase-contextual info console
 def UpdateContextCon():
 	libtcod.console_clear(context_con)
@@ -4346,8 +4305,7 @@ def UpdateHexInfoConsole():
 	libtcod.console_set_default_foreground(hex_info_con, TITLE_COL)
 	libtcod.console_set_default_background(hex_info_con, TITLE_BG_COL)
 	libtcod.console_rect(hex_info_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print_ex(hex_info_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-		'Hex Info')
+	libtcod.console_print(hex_info_con, 0, 0, 'Hex Info')
 	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(hex_info_con, libtcod.black)
 	
@@ -4355,54 +4313,53 @@ def UpdateHexInfoConsole():
 	
 	# mouse cursor outside of map area
 	if mouse.cx < 27: return
-	
 	x = mouse.cx - 27
 	y = mouse.cy - 4
-
-	if (x,y) in scenario.map_index:
-		(hx, hy) = scenario.map_index[(x,y)]
-		map_hex = GetHexAt(hx, hy)
-		
-		# coordinates and elevation
-		text = str(map_hex.hx) + ',' + str(map_hex.hy) + ':'
-		elevation = int(map_hex.terrain_type.los_height + (map_hex.elevation * ELEVATION_M))
-		text += str(elevation) + 'm'
-		libtcod.console_print(hex_info_con, 0, 2, text)
-		
-		# objective status
-		if map_hex.objective:
-			libtcod.console_print_ex(hex_info_con, 23, 2, libtcod.BKGND_NONE,
-				libtcod.RIGHT, 'Objective')
-
-		# hex terrain type
-		libtcod.console_print(hex_info_con, 0, 3, map_hex.terrain_type.display_name)
-
-		# road status
-		if len(map_hex.dirt_road_links) > 0:
-			libtcod.console_print(hex_info_con, 0, 4, 'Dirt Road')
-		
-		# no units present
-		unit_num = len(map_hex.unit_stack)
-		if unit_num == 0: return
-		
-		# top unit in stack
-		unit = map_hex.unit_stack[0]
-		if unit.owning_player == 1:
-			libtcod.console_set_default_foreground(hex_info_con, ENEMY_UNIT_COL)
-		else:
-			libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
-		libtcod.console_print(hex_info_con, 0, 6, unit.GetName())
-		
-		# note if additional units in stack
-		if unit_num > 1:
-			libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
-			text = '+' + str(unit_num-1) + ' more unit'
-			if unit_num > 2: text += 's'
-			libtcod.console_print(hex_info_con, 0, 8, text)
-		
-		# display unresolved hits on top unit in stack
-		if unit.unresolved_fp == 0 and len(unit.unresolved_ap) == 0: return
-		libtcod.console_set_default_foreground(hex_info_con, libtcod.red)
+	if (x,y) not in scenario.map_index: return
+	
+	(hx, hy) = scenario.map_index[(x,y)]
+	map_hex = GetHexAt(hx, hy)
+	
+	# coordinates
+	libtcod.console_print_ex(hex_info_con, 23, 0, libtcod.BKGND_NONE,
+		libtcod.RIGHT, str(map_hex.hx) + ',' + str(map_hex.hy))
+	
+	# terrain and elevation
+	libtcod.console_set_default_background(hex_info_con, HIGHLIGHT_COLOR2)
+	libtcod.console_rect(hex_info_con, 0, 1, 24, 1, False, libtcod.BKGND_SET)
+	libtcod.console_set_default_background(hex_info_con, libtcod.black)
+	libtcod.console_print(hex_info_con, 0, 1, map_hex.terrain_type.display_name)
+	libtcod.console_print_ex(hex_info_con, 23, 1, libtcod.BKGND_NONE, libtcod.RIGHT,
+		str(int(map_hex.elevation * ELEVATION_M)) + 'm')
+	# FUTURE: ground conditions
+	
+	# road and objective status
+	if len(map_hex.dirt_road_links) > 0:
+		libtcod.console_print(hex_info_con, 0, 3, 'Dirt Road')
+	if map_hex.objective:
+		libtcod.console_set_default_foreground(hex_info_con, NEUTRAL_OBJ_COL)
+		libtcod.console_print_ex(hex_info_con, 23, 3, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'Objective')
+		libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
+	
+	
+	# no units present
+	unit_num = len(map_hex.unit_stack)
+	if unit_num == 0: return
+	
+	# top unit in stack
+	unit = map_hex.unit_stack[0]
+	if unit.owning_player == 1:
+		libtcod.console_set_default_foreground(hex_info_con, ENEMY_UNIT_COL)
+	else:
+		libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
+	libtcod.console_print(hex_info_con, 0, 5, unit.GetName())
+	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
+	
+	# TODO unit status
+	
+	# unresolved hits on top unit in stack
+	if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
 		text = 'Hit by '
 		if unit.unresolved_fp > 0:
 			text += str(unit.unresolved_fp) + ' FP'
@@ -4411,6 +4368,14 @@ def UpdateHexInfoConsole():
 				text += '; '
 			text += str(len(unit.unresolved_ap)) + ' AP'
 		libtcod.console_print(hex_info_con, 1, 7, text)
+	
+	# note if additional units in stack
+	if unit_num > 1:
+		text = '+' + str(unit_num-1) + ' more unit'
+		if unit_num > 2: text += 's'
+		libtcod.console_print(hex_info_con, 0, 8, text)
+	
+	
 		
 
 # layer the display consoles onto the screen

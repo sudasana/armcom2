@@ -1,6 +1,46 @@
 <root>
 
   <!-- Polish Units -->
+  
+  <!-- Polish Tanks -->
+  
+  <unit_def>
+    <vehicle/>
+    <unreliable/>
+    <id>TK_3</id>
+    <name>TK-3</name>
+    <portrait>unit_TK_3.xp</portrait>
+    <size_class>Very Small</size_class>
+    <movement_class>Fast Tank</movement_class>
+    <armour>
+      <turret_front>0</turret_front>
+      <turret_side>0</turret_side>
+      <hull_front>0</hull_front>
+      <hull_side>0</hull_side>
+    </armour>
+    <weapon>
+      <type>hull_mg</type>
+      <fp>4</fp>
+      <mount>hull</mount>
+      <fired_by>Commander/Gunner</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <!-- Note: both hatches are connected across the width of the tank -->
+    <crew_position>
+      <name>Commander/Gunner</name>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <large_hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
+  
   <unit_def>
     <vehicle/>
     <turret/>
@@ -10,8 +50,10 @@
     <size_class>Normal</size_class>
     <movement_class>Tank</movement_class>
     <armour>
-      <front>2</front>
-      <side>1</side>
+      <turret_front>2</turret_front>
+      <turret_side>1</turret_side>
+      <hull_front>2</hull_front>
+      <hull_side>1</hull_side>
     </armour>
     <weapon>
       <type>gun</type>
@@ -51,6 +93,8 @@
     </crew_position>
   </unit_def>
   
+  <!-- Polish Guns -->
+  
   <unit_def>
     <gun/>
     <id>37mm_wz_36</id>
@@ -70,6 +114,8 @@
   </unit_def>
 
   <!-- German Units -->
+  
+  <!-- German Tanks -->
 
   <unit_def>
     <vehicle/>
@@ -80,13 +126,15 @@
     <size_class>Small</size_class>
     <movement_class>Fast Tank</movement_class>
     <armour>
-      <front>3</front>
-      <side>1</side>
+      <turret_front>3</turret_front>
+      <turret_side>1</turret_side>
+      <hull_front>3</hull_front>
+      <hull_side>1</hull_side>
     </armour>
     <weapon>
       <type>gun</type>
       <calibre>37</calibre>
-      <mount>Turret</mount>
+      <mount>turret</mount>
       <fired_by>Commander/Gunner</fired_by>
       <rr_size>6</rr_size>
       <rof>4</rof>

@@ -395,7 +395,15 @@ class Unit:
 				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 				self.DestroyMe()
 				return
-			elif roll <= score:
+			
+			elif roll == score:
+				if not self.MoraleCheck():
+					self.PinMe()
+				else:
+					text = 'Attack had no effect on ' + self.GetName()
+					scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+			
+			elif roll < score:
 				text = self.GetName() + ' must take a Morale Test'
 				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 				if not self.MoraleCheck():
@@ -2185,6 +2193,9 @@ class Scenario:
 		# Shooting -> Close Combat
 		elif self.GetCurrentPhase() == 'Shooting':
 			
+			# clear any player target
+			scenario.player_target = None
+			
 			# resolve any outstanding hits
 			for unit in self.unit_list:
 				unit.ResolveHits()
@@ -2349,6 +2360,9 @@ class Scenario:
 					menu_option = self.cmd_menu.AddOption(cmd, str(n+1), desc)
 					
 					# check that weapon can fire
+					
+					# TODO: make these more generic so can be used for AI as well
+					
 					if weapon.fired:
 						menu_option.inactive = True
 						menu_option.desc = 'Cannot fire this weapon group again this turn'
@@ -2358,6 +2372,39 @@ class Scenario:
 							if weapon.rof_target == scenario.player_target:
 								menu_option.inactive = False
 								menu_option.desc = 'Maintained RoF against this target'
+					
+					# check weapon arc
+					
+					# calculate target location as if attacker is in 0,0 and facing 0
+					hx = scenario.player_target.hx - scenario.player_unit.hx
+					hy = scenario.player_target.hy - scenario.player_unit.hy
+					
+					if weapon.stats['mount'] == 'turret':
+						(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - scenario.player_unit.turret_facing))
+					else:
+						(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - scenario.player_unit.facing))
+					#print 'DEBUG: target is in ' + str(hx) + ',' + str(hy) + ' relative to ' + weapon.GetName()
+					in_arc = True
+					if hx == 0 and hy >= 0:
+						in_arc = False
+					elif hx == -1 and hy >= 0:
+						in_arc = False
+					elif hx == 1 and hy >= -1:
+						in_arc = False
+					elif hx == -2 and hy >= -1:
+						in_arc = False
+					elif hx == 2 and hy >= -3:
+						in_arc = False
+					elif hx == -3 and hy >= -2:
+						in_arc = False
+					elif hx == 3 and hy >= -5:
+						in_arc = False
+					elif hx <= -4 or hx >= 4:
+						in_arc = False
+					
+					if not in_arc:
+						menu_option.inactive = True
+						menu_option.desc = 'Outside weapon firing arc'
 					
 					# check weapon range
 					distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
@@ -4813,16 +4860,16 @@ def DoScenario(load_savegame=False):
 		new_unit.SetCrew('Assistant Driver', new_crew)
 		
 		# spawn player squadron
-		for i in range(4):
-			new_unit = Unit('Panzer 35t')
-			scenario.unit_list.append(new_unit)
-			new_unit.owning_player = 0
-			new_unit.facing = 0
-			new_unit.turret_facing = 0
-			new_unit.morale_lvl = 8
-			new_unit.skill_lvl = 8
-			new_unit.squadron_leader = scenario.player_unit
-			new_unit.PlaceAt(6, 22)
+		#for i in range(4):
+		#	new_unit = Unit('Panzer 35t')
+		#	scenario.unit_list.append(new_unit)
+		#	new_unit.owning_player = 0
+		#	new_unit.facing = 0
+		#	new_unit.turret_facing = 0
+		#	new_unit.morale_lvl = 8
+		#	new_unit.skill_lvl = 8
+		#	new_unit.squadron_leader = scenario.player_unit
+		#	new_unit.PlaceAt(6, 22)
 		
 		UpdatePlayerUnitConsole()
 		

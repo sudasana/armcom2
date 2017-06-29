@@ -148,9 +148,6 @@ CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Loader', 'Dri
 # order in which to display ammo types
 AMMO_TYPE_ORDER = ['HE', 'AP']
 
-# turn phases, in order
-PHASE_LIST = ['Movement', 'Shooting', 'Close Combat']
-
 # Colour definitions
 
 ELEVATION_SHADE = 0.15					# difference in shading for map hexes of
@@ -330,8 +327,6 @@ class Unit:
 		self.facing = None			# facing direction: guns and vehicles must have this set
 		self.turret_facing = None		# facing of main turret on unit
 		self.movement_class = ''		# movement class
-		self.max_mp = 0				# maximum movement points per turn
-		self.mp = 0				# current " remaining
 		
 		self.armour = None			# armour factors if any
 		self.max_ammo = 0			# maximum number of gun ammo carried
@@ -341,7 +336,7 @@ class Unit:
 		self.acquired_by = []			# PSG has been acquired by this/these unit(s)
 		self.rof_target = None			# target for maintaining RoF
 		
-		self.unresolved_fp = 0			# fp from attacks to be resolved at end of phase
+		self.unresolved_fp = 0			# fp from attacks to be resolved at end of action
 		self.unresolved_ap = []			# list of unsolved penetrating AP hits
 		
 		# action flags
@@ -362,7 +357,21 @@ class Unit:
 		self.LoadStats()				# load stats from unit_defs.xml
 		self.display_char = self.GetDisplayChar()	# set initial display character
 
-	# resolve any outstanding hits at the end of a phase
+	# perform pre-activation automatic actions
+	def DoPreActivation(self):
+		self.moved = False
+		self.fired = False
+		self.changed_facing = False
+		self.RecoveryCheck()
+	
+	# perform post-activation automatic actions
+	def DoPostActivation(self):
+		for unit in scenario.unit_list:
+			if unit.owning_player == self.owning_player: continue
+			if unit.unresolved_fp > 0 or unit.unresolved_ap > 0:
+				unit.ResolveHits()
+
+	# resolve any outstanding hits at the end of an action
 	def ResolveHits(self):
 		
 		# TEMP armoured units are not affected at all by fp attacks
@@ -464,11 +473,14 @@ class Unit:
 		self.broken = True
 		text = self.GetName() + ' is Broken'
 		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+		# any pinned status is cancelled
+		if self.pinned:
+			self.pinned = False
 	
 	# pin this unit
 	def PinMe(self):
-		# already pinned
-		if self.pinned:
+		# already pinned or broken
+		if self.pinned or self.broken:
 			text = 'Attack had no further effect on ' + self.GetName()
 		else:
 			self.pinned = True
@@ -485,6 +497,23 @@ class Unit:
 		# clear acquired target records
 		self.ClearAcquiredTargets()
 		UpdateUnitConsole()
+
+	# roll for recovery from negative statuses
+	def RecoveryCheck(self):
+		
+		if self.pinned:
+			if self.MoraleCheck():
+				self.pinned = False
+				text = self.GetName() + ' recovers from being Pinned'
+				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+			return
+		
+		if self.broken:
+			if self.MoraleCheck():
+				self.broken = False
+				self.pinned = True
+				text = self.GetName() + ' recovers from being Broken and is now Pinned'
+				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 
 	# attempt to place this unit into the map at hx, hy
 	# if this location is impassible to unit, try adjacent hexes as well
@@ -604,15 +633,6 @@ class Unit:
 				self.gun_shield = True
 		
 		self.movement_class = item.find('movement_class').text
-		
-		# set up maximum mp for each movement class
-		if self.movement_class == 'Infantry':
-			self.max_mp = 1
-		elif self.movement_class == 'Tank':
-			self.max_mp = 6
-		elif self.movement_class == 'Fast Tank':
-			self.max_mp = 9
-		self.mp = self.max_mp
 	
 	# return a description of this unit
 	# if using true name, transcode it to handle any special characters in it
@@ -781,37 +801,6 @@ class Unit:
 				psg.acquired_by.remove(self)
 			if psg.acquired_target == self:
 				psg.acquired_target = None
-
-	# do any automatic actions for this unit for start of current phase
-	def ResetForPhase(self):
-		
-		# clear any targets and selected weapon
-		self.target_list = []
-		self.target_psg = None
-		self.selected_weapon = None
-		
-		# start of movement phase (and new player turn)
-		if scenario.GetCurrentPhase() == 'Movement':
-			self.mp = self.max_mp
-			self.moved = False
-			self.changed_facing = False
-			
-			# if enemy player, roll for action this turn
-			if self.owning_player == 1:
-				self.ai.GenerateAction()
-			
-		# start of shooting phase
-		elif scenario.GetCurrentPhase() == 'Shooting':
-			self.fired = False
-			for weapon in self.weapon_list:
-				weapon.fired = False
-
-	# roll for recovery from negative statuses
-	# TODO: move into its own phase eventually
-	def DoRecoveryTests(self):
-		
-		# TEMP
-		return
 			
 	# regain unspotted status for this PSG
 	# TODO: update, not used right now
@@ -911,12 +900,12 @@ class Unit:
 				return False
 		return True
 	
-	# try to move this PSG into the target hex
+	# try to move this unit into the target hex
 	# vehicles must be facing this direction to move, or can do a reverse move
 	# returns True if the move was successful
 	
 	# TODO: check for reverse move and apply modifiers if so
-	def MoveInto(self, new_hx, new_hy, free_move=False):
+	def MoveInto(self, new_hx, new_hy):
 		
 		# make sure move is allowed
 		if not self.CheckMoveInto(new_hx, new_hy):
@@ -925,22 +914,8 @@ class Unit:
 		map_hex1 = GetHexAt(self.hx, self.hy)
 		map_hex2 = GetHexAt(new_hx, new_hy)
 		
-		# TEMP - no MP required
-		#free_move = True
-		
-		if not free_move:
-			
-			# check cost of move
-			mp_cost = GetMPCostToMove(self, map_hex1, map_hex2)
-			
-			# not enough MP for this move
-			if mp_cost > self.mp:
-				return False
-			# spend mp
-			self.mp -= mp_cost
-		
 		# check for unspotted enemy in target hex
-		# if so, MP is spent and all units in target hex are spotted
+		# if so, all units in target hex are spotted and action ends
 		if len(map_hex2.unit_stack) > 0:
 			spotted_enemy = False
 			for unit in map_hex2.unit_stack:
@@ -1094,20 +1069,13 @@ class Unit:
 		libtcod.console_flush()
 		WaitForEnter()
 		
-		# add details of hit to be resolved at end of phase
+		# add details of hit to be resolved at end of action
 		if roll <= attack_obj.final_ap:
 			self.unresolved_ap.append(attack_obj.weapon.stats['calibre'])
 			text = ('Added a ' + str(attack_obj.weapon.stats['calibre']) + 
 				' calibre hit to ' + attack_obj.target.GetName())
 			scenario.AddMessage(text, highlight_hex=(attack_obj.target.hx,
 				attack_obj.target.hy))
-	
-	# take a skill test, returning True if passed
-	def SkillTest(self, modifier):
-		d1, d2, roll = Roll2D6()
-		if roll <= self.skill_lvl - modifier:
-			return True
-		return False
 
 
 # Weapon class: represents a weapon carried by or mounted on a unit
@@ -1315,8 +1283,53 @@ class AnimHandler:
 # AI: used to determine actions of non-player-controlled units
 class AI:
 	def __init__(self, owner):
-		self.owner = owner			# the PSG for whom this AI instance is
-		self.turn_action = ''			# PSG action for this turn
+		self.owner = owner			# the unit to whom this AI instance belongs
+	
+	# randomly determine an action for this unit and do it
+	def DoAction(self):
+		
+		# TEMP - no AI actions
+		return
+		
+		# 1) Check for automatic actions based on current situation
+		
+		# TEMP: assume that the AI side is taking a defensive attitude
+		d1, d2, roll = Roll2D6()
+		
+		# re-roll move result if we have an acquired target
+		if roll <= 5 and self.owner.acquired_target:
+			d1, d2, roll = Roll2D6()
+		
+		# modify result if infantry in open
+		map_hex = GetHexAt(self.owner.hx, self.owner.hy)
+		if self.owner.infantry and map_hex.terrain_type.af_modifier >= 0:
+			roll -= 3
+		
+		if self.owner.vehicle:
+			if len(self.owner.visible_enemies) == 0:
+				self.turn_action = 'Move'
+				print ('AI: no visible targets for ' + self.owner.GetName(true_name=True) +
+					', moving automatically')
+				return
+			has_attack = False
+			for psg in self.owner.visible_enemies:
+				if self.GetBestAttacks(psg):
+					has_attack = True
+					break
+			if not has_attack:
+				self.turn_action = 'Move'
+				print 'AI: No possible attacks from current position, moving'
+				return
+		
+		if roll <= 5:
+			self.turn_action = 'Move'
+			if self.owner.gun:
+				self.turn_action = 'Shoot'
+		else:
+			self.turn_action = 'Shoot'
+		print 'AI: set turn action for ' + self.owner.GetName(true_name=True) + ' to ' + self.turn_action
+	
+	
 	
 	# return a scored list of best possible attacks on this target
 	def GetBestAttacks(self, target):
@@ -1386,195 +1399,7 @@ class AI:
 			return None
 		
 		return attack_list
-	
-	# randomly determine action for this turn
-	def GenerateAction(self):
-		
-		# TEMP - no AI actions
-		return
-		
-		# TEMP: assume a defensive attitude
-		d1, d2, roll = Roll2D6()
-		
-		# re-roll move result if we have an acquired target
-		if roll <= 5 and self.owner.acquired_target:
-			d1, d2, roll = Roll2D6()
-		
-		# modify result if infantry in open
-		map_hex = GetHexAt(self.owner.hx, self.owner.hy)
-		if self.owner.infantry and map_hex.terrain_type.af_modifier >= 0:
-			roll -= 3
-		
-		if self.owner.vehicle:
-			if len(self.owner.visible_enemies) == 0:
-				self.turn_action = 'Move'
-				print ('AI: no visible targets for ' + self.owner.GetName(true_name=True) +
-					', moving automatically')
-				return
-			has_attack = False
-			for psg in self.owner.visible_enemies:
-				if self.GetBestAttacks(psg):
-					has_attack = True
-					break
-			if not has_attack:
-				self.turn_action = 'Move'
-				print 'AI: No possible attacks from current position, moving'
-				return
-		
-		if roll <= 5:
-			self.turn_action = 'Move'
-			if self.owner.gun:
-				self.turn_action = 'Shoot'
-		else:
-			self.turn_action = 'Shoot'
-		print 'AI: set turn action for ' + self.owner.GetName(true_name=True) + ' to ' + self.turn_action
-	
-	# execute an action for the current phase
-	def DoPhaseAction(self):
-		
-		# Movement Phase actions
-		if scenario.GetCurrentPhase() == 'Movement':
-			
-			# unit is not moving this turn
-			if self.turn_action != 'Move':
-				return
-			print ('AI: Starting move action for ' + self.owner.GetName(true_name=True) +
-				' at ' + str(self.owner.hx) + ',' + str(self.owner.hy))
-			current_hex = GetHexAt(self.owner.hx, self.owner.hy)
-			
-			# Infantry
-			if self.owner.infantry:
-			
-				# stay put if on objective
-				if current_hex.objective:
-					print 'AI: Already on objective, not moving'
-					return
-				
-				# try to move to better terrain if possible
-				move_paths = []
-				current_modifier = current_hex.terrain_type.af_modifier
-				
-				# check paths to all hexes within 4
-				hex_list = GetHexesWithin(current_hex.hx, current_hex.hy, 4)
-				for (hx, hy) in hex_list:
-					map_hex = GetHexAt(hx, hy)
-					if map_hex.IsOccupied() > -1:
-						continue
-					if map_hex.terrain_type.af_modifier >= current_modifier:
-						continue
-					hex_path = GetHexPath(current_hex.hx, current_hex.hy,
-						hx, hy, psg=self.owner)
-					# no move path possible
-					if len(hex_path) == 0:
-						continue
-					move_paths.append((map_hex.terrain_type.af_modifier, hex_path))
-				
-				if len(move_paths) == 0:
-					print 'AI: No move paths to a better location, not moving'
-					return
-				
-				sorted(move_paths,key=itemgetter(0))
-				
-				# try to move along best path in list
-				(af_modifier, hex_path) = move_paths[0]
-				(hx, hy) = hex_path[-1]
-				print 'AI: Moving along path to ' + str(hx) + ',' + str(hy)
-				for (hx, hy) in hex_path[1:-1]:
-					print 'AI: Trying to move to ' + str(hx) + ',' + str(hy)
-					if not self.owner.CheckMoveInto(hx, hy):
-						print 'AI: Move along path was not possible, stopping here'
-						return
-					self.owner.MoveInto(hx, hy)
-				print 'AI: Move completed'
-			
-			# Vehicles - if no valid target within range, move toward closest target
-			if self.owner.vehicle:
-				
-				if len(self.owner.visible_enemies) > 0:
-					for psg in self.owner.visible_enemies:
-						if self.GetBestAttacks(psg):
-							print 'AI: Have a possible attack, not moving'
-							return
-				
-				move_targets = []
-				for psg in scenario.unit_list:
-					if psg.owning_player == self.owner.owning_player:
-						continue
-					distance = GetHexDistance(self.owner.hx, self.owner.hy,
-						psg.hx, psg.hy)
-					move_targets.append((distance, psg))
-				
-				# sort by nearest to unit at top
-				reversed(sorted(move_targets,key=itemgetter(0)))
-				
-				for (distance, psg) in move_targets:
-					print 'AI: Found an enemy at ' + str(psg.hx) + ',' + str(psg.hy)
-					hex_path = GetHexPath(self.owner.hx, self.owner.hy,
-						psg.hx, psg.hy, psg=self.owner)
-					# no move path possible
-					if len(hex_path) == 0:
-						print 'AI: No path to ' + str(psg.hx) + ',' + str(psg.hy)
-						continue
-					for (hx, hy) in hex_path[1:-1]:
-						print 'AI: Trying to move to ' + str(hx) + ',' + str(hy)
-						if not self.owner.CheckMoveInto(hx, hy):
-							print 'AI: Move along path was not possible, stopping here'
-							return
-						self.owner.MoveInto(hx, hy)
-					print 'AI: Move completed'
-					return
-				
-				print 'AI: Could not find a path to an enemy, not moving'
-			
-			# TEMP - no other move actions
-		
-		# Shooting Phase actions
-		elif scenario.GetCurrentPhase() == 'Shooting':
-			
-			print 'AI: Starting shoot action for ' + self.owner.GetName(true_name=True)
-			
-			# build list of possible targets
-			target_list = []
-			for psg in scenario.unit_list:
-				# same team!
-				if psg.owning_player == self.owner.owning_player: continue
-				
-				# no line of sight
-				los = GetLoS(self.owner.hx, self.owner.hy, psg.hx, psg.hy)
-				if los == -1: continue
-				
-				target_list.append(psg)
-			
-			if len(target_list) == 0:
-				print 'AI: No possible targets'
-				return
-			
-			text = 'AI: Found ' + str(len(target_list)) + ' possible target'
-			if len(target_list) > 1: text += 's'
-			print text
-			
-			# select best attacks
-			attack_list = []
-			for psg in target_list:
-				target_attack_list = self.GetBestAttacks(psg)
-				if target_attack_list:
-					attack_list.extend(target_attack_list)
-			
-			# could not find any attacks
-			if len(attack_list) == 0:
-				print 'AI: No attacks possible'
-				return
-			
-			text = 'AI: got a list of ' + str(len(attack_list)) + ' possible attack'
-			if len(attack_list) > 1: text += 's'
-			print text
-			
-			sorted(attack_list,key=itemgetter(0))
-			
-			# choose best attack and initiate it
-			(final_column, weapon, target, area_fire, at_attack) = attack_list[0]
-			
-			InitAttack(self.owner, weapon, target, area_fire, at_attack=at_attack)
+
 		
 
 # terrain type: determines effect of different types of map hex terrain
@@ -2006,9 +1831,6 @@ class Scenario:
 		self.minute_limit = 0
 		self.time_limit_winner = 1		# player who wins if time limit is reached
 		
-		self.active_player = 0			# currently active player (0 or 1)
-		self.current_phase = 0			# current action phase (full list defined by PHASE_LIST)
-		
 		self.unit_list = []			# list of all units in play
 		self.active_unit = None			# currently active unit
 		self.player_unit = None			# pointer to player-controlled unit
@@ -2033,7 +1855,33 @@ class Scenario:
 		
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
-		self.objective_hexes = []			# list of objective hexesdef DoSpo
+		self.objective_hexes = []			# list of objective hexes
+	
+	# randomize the order of units in unit_list to reflect activation order in each turn
+	def GenerateUnitOrder(self):
+		shuffle(self.unit_list)
+	
+	# activate the next unit in the list, or start a new turn
+	def ActivateNextUnit(self):
+		
+		# TODO: chance that currently active unit gets a free turn
+		
+		# do post-activation actions for currently active unit
+		self.active_unit.DoPostActivation()
+		
+		i = self.unit_list.index(self.active_unit)
+		if i == len(self.unit_list) - 1:
+			# new turn
+			self.AdvanceClock()
+			self.active_unit = self.unit_list[0]
+			print 'DEBUG: New scenario turn'
+			print 'DEBUG: ' + self.active_unit.GetName(true_name=True) + ' now active'
+		else:
+			self.active_unit = self.unit_list[i+1]
+			print 'DEBUG: ' + self.active_unit.GetName(true_name=True) + ' now active'
+		# do pre-activation actions for newly activated unit
+		self.active_unit.DoPreActivation()
+		scenario.BuildCmdMenu()
 	
 	# add a new message to the log, and display it on the current message console
 	# FUTURE: option to highlight an on-map hex and pause
@@ -2148,170 +1996,37 @@ class Scenario:
 		libtcod.console_flush()
 		WaitForEnter()
 	
-	# return a text string for the current turn phase
-	def GetCurrentPhase(self):
-		return PHASE_LIST[self.current_phase]
-	
-	# do enemy AI actions for this phase
-	def DoAIPhase(self):
-		
-		# TEMP
-		return
-		
-		# build a list of units that can be activated this phase
-		activate_list = []
-		for psg in self.unit_list:
-			if psg.owning_player == 0: continue
-			activate_list.append(psg)
-		shuffle(activate_list)
-		for psg in activate_list:
-			scenario.active_unit = psg
-			UpdateUnitConsole()
-			DrawScreenConsoles()
-			libtcod.console_flush()
-			psg.ai.DoPhaseAction()
-	
 	# end of turn, advance the scenario clock by one turn
 	def AdvanceClock(self):
 		self.minute += 15
 		if self.minute >= 60:
 			self.minute -= 60
 			self.hour += 1
-	
-	# set current turn phase
-	def SetPhase(self, new_phase):
-		self.current_phase = PHASE_LIST.index(new_phase)
-	
-	# finish up current phase, start new phase (and possibly new turn as well)
-	def NextPhase(self):
-		
-		# Movement -> Shooting Phase
-		if self.GetCurrentPhase() == 'Movement':
-			self.SetPhase('Shooting')
-			self.active_cmd_menu = 'shooting_root'
-		
-		# Shooting -> Close Combat
-		elif self.GetCurrentPhase() == 'Shooting':
-			
-			# clear any player target
-			scenario.player_target = None
-			
-			# resolve any outstanding hits
-			for unit in self.unit_list:
-				unit.ResolveHits()
-			
-			self.SetPhase('Close Combat')
-			self.active_cmd_menu = 'cc_root'
-			self.active_unit = None
-			
-		# Close Combat Phase -> New Active Player and Movement Phase
-		elif self.GetCurrentPhase() == 'Close Combat':
-			
-			if self.active_player == 0:
-				self.active_player = 1
-				# clear active PSG
-				self.active_unit = None
-			else:
-				# end of turn, check for scenario end
-				#self.CheckForEnd()
-				if self.winner is not None:
-					# display scenario report
-					self.DisplayEndScreen()
-					# delete saved game
-					EraseGame()
-					return
-				self.AdvanceClock()
-				UpdateScenInfoConsole()
-				self.active_player = 0
-				self.active_unit = None
-				scenario.SelectNextPSG()
-				UpdatePlayerUnitConsole()
-			self.SetPhase('Movement')
-			self.active_cmd_menu = 'movement_root'
-			# select first crew position in player unit
-			#self.selected_crew_position = self.player_unit.crew_positions[0]
-			
-			for unit in self.unit_list:
-				if unit.owning_player == self.active_player:
-					unit.DoRecoveryTests()
-		
-		# do automatic actions for active player's units for this phase
-		for psg in self.unit_list:
-			if psg.owning_player == self.active_player:
-				psg.ResetForPhase()
-		
-		self.BuildCmdMenu()
-		UpdateContextCon()
-		DrawScreenConsoles()
-		libtcod.console_flush()
-		SaveGame()
-		
-		
-		SaveGame()
-	
-	# select the next player PSG; or the first one in the list if none selected
-	def SelectNextPSG(self):
-		
-		reverse = False
-		if libtcod.console_is_key_pressed(libtcod.KEY_SHIFT):
-			reverse = True
-		
-		player_psgs = []
-		for psg in self.unit_list:
-			if psg.owning_player == 0: player_psgs.append(psg)
-		
-		if len(player_psgs) == 0:
-			print 'ERROR: No player PSGs to select!'
-			return
-		
-		# none selected yet, select the first one in the list
-		if self.active_unit is None:
-			self.active_unit = player_psgs[0]
-			return
-		
-		n = 0
-		for psg in player_psgs:
-			if psg == self.active_unit:
-				# try to select the previous unit in the list
-				if reverse:
-					if n > 0:
-						self.active_unit = player_psgs[n-1]
-					else:
-						self.active_unit = player_psgs[-1]
-					return
-				# try to select the next unit in the list
-				else:
-					if n < len(player_psgs) - 1:
-						self.active_unit = player_psgs[n+1]
-					else:
-						self.active_unit = player_psgs[0]
-					return
-			n += 1
-		
-	
-	# rebuild a list of commands for the command menu based on current phase and
-	#   game state
+
+	# rebuild a list of commands for the command menu based on current active menu
 	def BuildCmdMenu(self):
 		
 		# clear any existing command menu
 		self.cmd_menu.Clear()
 		
 		# don't display anything if human player is not active
-		if scenario.active_player != 0:
+		if scenario.active_unit.owning_player == 1:
 			UpdateCmdConsole()
 			return
 		
-		# crew actions
-		if self.active_cmd_menu == 'command':
-			# TODO: add options back in
-			
-			menu_option = self.cmd_menu.AddOption('toggle_hatch', 'H', 'Toggle Hatch')
-			if self.selected_crew_position.hatch is None:
-				menu_option.inactive = True
-				menu_option.desc = 'Crew position has no hatch'
+		# root menu
+		if self.active_cmd_menu == 'root':
+			menu_option = self.cmd_menu.AddOption('command_menu', '1', 'Command')
+			menu_option.inactive = True
+			menu_option = self.cmd_menu.AddOption('tank_menu', '2', 'Tank and Crew')
+			menu_option.inactive = True
+			self.cmd_menu.AddOption('movement_menu', '3', 'Movement')
+			self.cmd_menu.AddOption('weapons_menu', '4', 'Weapons')
+			menu_option = self.cmd_menu.AddOption('assault_menu', '5', 'Assault')
+			menu_option.inactive = True
 		
-		# movement phase
-		elif self.active_cmd_menu == 'movement_root':
+		# movement menu
+		elif self.active_cmd_menu == 'movement':
 			self.cmd_menu.AddOption('rotate_turret_cc', 'Q', 'Turret C/clockwise')
 			self.cmd_menu.AddOption('rotate_turret_cw', 'E', 'Turret Clockwise')
 			self.cmd_menu.AddOption('pivot_hull_port', 'A', 'Pivot to Port')
@@ -2324,12 +2039,6 @@ class Scenario:
 				scenario.player_unit.hy, scenario.player_unit.facing)
 			if not scenario.player_unit.CheckMoveInto(hx, hy):
 				menu_option.inactive = True
-			else:
-				map_hex2 = GetHexAt(hx, hy)
-				mp_cost = GetMPCostToMove(scenario.player_unit, map_hex1, map_hex2)
-				if mp_cost > scenario.player_unit.mp:
-					menu_option.inactive = True
-					menu_option.desc = str(mp_cost) + ' MP required'
 			
 			menu_option = self.cmd_menu.AddOption('move_backward', 'S', 'Backward')
 			(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
@@ -2337,94 +2046,90 @@ class Scenario:
 				CombineDirs(scenario.player_unit.facing, 3))
 			if not scenario.player_unit.CheckMoveInto(hx, hy):
 				menu_option.inactive = True
-			else:
-				map_hex2 = GetHexAt(hx, hy)
-				mp_cost = GetMPCostToMove(scenario.player_unit, map_hex1, map_hex2)
-				if mp_cost > scenario.player_unit.mp:
-					menu_option.inactive = True
-					menu_option.desc = str(mp_cost) + ' MP required'
 			
-		# shooting phase menu
-		elif self.active_cmd_menu == 'shooting_root':
-			# no target selected yet
-			if not scenario.player_target:
-				self.cmd_menu.AddOption('next_target', 'T', 'Select Target')
-			# already have a target
-			else:
+			self.cmd_menu.AddOption('return_to_root', 'Tab', 'Root Menu')
+			
+		# weapons menu
+		elif self.active_cmd_menu == 'weapons':
+			
+			# add commands to try to fire weapons
+			n = 0
+			for weapon in scenario.player_unit.weapon_list:
+				cmd = 'fire_' + str(n)
+				desc = 'Fire ' + weapon.GetName()
+				menu_option = self.cmd_menu.AddOption(cmd, str(n+1), desc)
+				n += 1
 				
-				# add commands to try to fire weapons
-				n = 0
-				for weapon in scenario.player_unit.weapon_list:
-					cmd = 'fire_' + str(n)
-					desc = 'Fire ' + weapon.GetName()
-					menu_option = self.cmd_menu.AddOption(cmd, str(n+1), desc)
-					
-					# check that weapon can fire
-					
-					# TODO: make these more generic so can be used for AI as well
-					
-					if weapon.fired:
-						menu_option.inactive = True
-						menu_option.desc = 'Cannot fire this weapon group again this turn'
-					
-						# check for RoF exception
-						if weapon.rof_target is not None:
-							if weapon.rof_target == scenario.player_target:
-								menu_option.inactive = False
-								menu_option.desc = 'Maintained RoF against this target'
-					
-					# check weapon arc
-					
-					# calculate target location as if attacker is in 0,0 and facing 0
-					hx = scenario.player_target.hx - scenario.player_unit.hx
-					hy = scenario.player_target.hy - scenario.player_unit.hy
-					
-					if weapon.stats['mount'] == 'turret':
-						(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - scenario.player_unit.turret_facing))
-					else:
-						(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - scenario.player_unit.facing))
-					#print 'DEBUG: target is in ' + str(hx) + ',' + str(hy) + ' relative to ' + weapon.GetName()
-					in_arc = True
-					if hx == 0 and hy >= 0:
-						in_arc = False
-					elif hx == -1 and hy >= 0:
-						in_arc = False
-					elif hx == 1 and hy >= -1:
-						in_arc = False
-					elif hx == -2 and hy >= -1:
-						in_arc = False
-					elif hx == 2 and hy >= -3:
-						in_arc = False
-					elif hx == -3 and hy >= -2:
-						in_arc = False
-					elif hx == 3 and hy >= -5:
-						in_arc = False
-					elif hx <= -4 or hx >= 4:
-						in_arc = False
-					
-					if not in_arc:
-						menu_option.inactive = True
-						menu_option.desc = 'Outside weapon firing arc'
-					
-					# check weapon range
-					distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
-						scenario.player_target.hx, scenario.player_target.hy)
-					if distance > weapon.stats['max_range']:
-						menu_option.inactive = True
-						menu_option.desc = 'Further than maximum weapon range'
-					
-					# Point Fire attacks must be against spotted target
-					if weapon.weapon_type == 'gun' and not scenario.player_target.known:
-						menu_option.inactive = True
-						menu_option.desc = 'AP attacks against spotted targets only'
-					
-					
-					n += 1
-				self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
-				self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
+				# no target selected
+				if scenario.player_target is None:
+					menu_option.inactive = True
+					continue
+				
+				# check that weapon can fire
+				
+				# TODO: make these more generic so can be used for AI as well
+				
+				if weapon.fired:
+					menu_option.inactive = True
+					menu_option.desc = 'Cannot fire this weapon group again this turn'
+				
+					# check for RoF exception
+					if weapon.rof_target is not None:
+						if weapon.rof_target == scenario.player_target:
+							menu_option.inactive = False
+							menu_option.desc = 'Maintained RoF against this target'
+				
+				# check weapon arc
+				
+				# calculate target location as if attacker is in 0,0 and facing 0
+				hx = scenario.player_target.hx - scenario.player_unit.hx
+				hy = scenario.player_target.hy - scenario.player_unit.hy
+				
+				if weapon.stats['mount'] == 'turret':
+					(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - scenario.player_unit.turret_facing))
+				else:
+					(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - scenario.player_unit.facing))
+				#print 'DEBUG: target is in ' + str(hx) + ',' + str(hy) + ' relative to ' + weapon.GetName()
+				in_arc = True
+				if hx == 0 and hy >= 0:
+					in_arc = False
+				elif hx == -1 and hy >= 0:
+					in_arc = False
+				elif hx == 1 and hy >= -1:
+					in_arc = False
+				elif hx == -2 and hy >= -1:
+					in_arc = False
+				elif hx == 2 and hy >= -3:
+					in_arc = False
+				elif hx == -3 and hy >= -2:
+					in_arc = False
+				elif hx == 3 and hy >= -5:
+					in_arc = False
+				elif hx <= -4 or hx >= 4:
+					in_arc = False
+				
+				if not in_arc:
+					menu_option.inactive = True
+					menu_option.desc = 'Outside weapon firing arc'
+				
+				# check weapon range
+				distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
+					scenario.player_target.hx, scenario.player_target.hy)
+				if distance > weapon.stats['max_range']:
+					menu_option.inactive = True
+					menu_option.desc = 'Further than maximum weapon range'
+				
+				# Point Fire attacks must be against spotted target
+				if weapon.weapon_type == 'gun' and not scenario.player_target.known:
+					menu_option.inactive = True
+					menu_option.desc = 'AP attacks against spotted targets only'
+				
+			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
+			self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
+			self.cmd_menu.AddOption('return_to_root', 'Tab', 'Root Menu')
 			
-		# all root menus get this command
-		self.cmd_menu.AddOption('next_phase', 'Space', 'Next Phase')
+		# all menus get this command
+		self.cmd_menu.AddOption('end_action', 'Space', 'End Action')
 		
 		UpdateCmdConsole()
 
@@ -3495,7 +3200,7 @@ def InitAttack(attacker, weapon, target):
 			# do AP roll
 			target.ResolveAPHit(attack_obj)
 		else:
-			# AF attack, save attack details to target, to be resolved at end of phase
+			# AF attack, save attack details to target, to be resolved at end of action
 			target.unresolved_fp += attack_obj.final_fp
 			text = 'Added ' + str(attack_obj.final_fp) + ' unresolved fp to ' + target.GetName()
 			scenario.AddMessage(text, highlight_hex=(target.hx, target.hy))
@@ -4008,21 +3713,19 @@ def GunAttackAnimation(attack_obj):
 	libtcod.console_flush()
 
 
-# update the phase-contextual info console
+# update the contextual info console
 def UpdateContextCon():
 	libtcod.console_clear(context_con)
 	
-	if scenario.active_player != 0: return
+	if scenario.active_unit.owning_player != 0: return
 	
-	# Movement Phase
-	if scenario.GetCurrentPhase() == 'Movement':
+	# Movement Menu
+	if scenario.active_cmd_menu == 'movement':
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
 		libtcod.console_print(context_con, 0, 0, scenario.player_unit.movement_class)
-		text = str(scenario.player_unit.mp) + '/' + str(scenario.player_unit.max_mp) + ' MP'
-		libtcod.console_print(context_con, 0, 1, text)
 	
-	# Shooting Phase
-	elif scenario.GetCurrentPhase() == 'Shooting':
+	# Weapons Menu
+	elif scenario.active_cmd_menu == 'weapons':
 		libtcod.console_set_default_foreground(context_con, libtcod.white)
 		weapon = scenario.player_unit.weapon_list[0]
 		libtcod.console_print(context_con, 0, 0, weapon.GetName())
@@ -4312,7 +4015,7 @@ def UpdateCmdConsole():
 	libtcod.console_set_default_background(cmd_con, TITLE_BG_COL)
 	libtcod.console_rect(cmd_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(cmd_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-		scenario.GetCurrentPhase())
+		'Actions')
 	libtcod.console_set_default_foreground(cmd_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
 	scenario.cmd_menu.DisplayMe(cmd_con, 0, 2, 24)
@@ -4907,17 +4610,26 @@ def DoScenario(load_savegame=False):
 		scenario.hex_map.CalcFoV()
 		# draw viewport console for first time
 		UpdateVPConsole()
-	
+		
+		# generate action order for all units in the scenario
+		scenario.GenerateUnitOrder()
+		# activate first unit in list
+		scenario.active_unit = scenario.unit_list[0]
+		print 'DEBUG: ' + scenario.active_unit.GetName(true_name=True) + ' now active'
+		scenario.active_unit.DoPreActivation()
+		
 		# select first crew position in player unit
 		scenario.selected_crew_position = scenario.player_unit.crew_positions[0]
 		# build initial command menu
-		scenario.active_cmd_menu = 'movement_root'
+		scenario.active_cmd_menu = 'root'
 		scenario.BuildCmdMenu()
 		
 		#UpdateScreen()
 		text = str(scenario.hour) + ':' + str(scenario.minute).zfill(2)
 		text += ' - Scenario Begins'
 		scenario.AddMessage(text)
+		
+		
 		
 		
 	
@@ -4993,16 +4705,9 @@ def DoScenario(load_savegame=False):
 		#	continue
 		
 		##### AI Actions #####
-		if scenario.active_player == 1:
-			scenario.DoAIPhase()
-			scenario.NextPhase()
-			UpdateScreen()
-			continue
-		
-		##### Automatic Phase Actions #####
-		if scenario.GetCurrentPhase() == 'Close Combat':
-			# TEMP - nothing happens in this phase yet
-			scenario.NextPhase()
+		if scenario.active_unit.owning_player == 1:
+			scenario.active_unit.ai.DoAction()
+			scenario.ActivateNextUnit()
 			UpdateScreen()
 			continue
 		
@@ -5042,29 +4747,31 @@ def DoScenario(load_savegame=False):
 		if option.inactive: continue
 		
 		##################################################################
-		# Root Menu Actions
+		# Generic and Root Menu Actions
 		##################################################################
-		if option.option_id == 'next_phase':
-			scenario.NextPhase()
-			UpdatePlayerUnitConsole()
-			DrawScreenConsoles()
+		if option.option_id == 'end_action':
+			scenario.ActivateNextUnit()
+			UpdateScreen()
+			continue
+		elif option.option_id == 'return_to_root':
+			scenario.active_cmd_menu = 'root'
+			scenario.BuildCmdMenu()
+			UpdateScreen()
+			continue
+		
+		elif option.option_id == 'movement_menu':
+			scenario.active_cmd_menu = 'movement'
+			scenario.BuildCmdMenu()
+			UpdateScreen()
+			continue
+		elif option.option_id == 'weapons_menu':
+			scenario.active_cmd_menu = 'weapons'
+			scenario.BuildCmdMenu()
+			UpdateScreen()
+			continue
 		
 		##################################################################
-		# Crew Action Phase Actions
-		##################################################################
-		elif option.option_id == 'toggle_hatch':
-			scenario.selected_crew_position.ToggleHatch()
-			UpdatePlayerUnitConsole()
-			
-			# update FoV if required
-			if scenario.selected_crew_position.player_position:
-				scenario.hex_map.CalcFoV()
-				UpdateVPConsole()
-			
-			DrawScreenConsoles()
-		
-		##################################################################
-		# Movement Phase Actions
+		# Movement Actions
 		##################################################################
 		elif option.option_id in ['move_forward', 'move_backward']:
 			if option.option_id == 'move_forward':

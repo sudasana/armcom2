@@ -332,12 +332,13 @@ class Unit:
 		self.max_ammo = 0			# maximum number of gun ammo carried
 		self.weapon_list = []			# list of weapons
 		
-		self.acquired_target = None		# PSG has acquired this unit as target
-		self.acquired_by = []			# PSG has been acquired by this/these unit(s)
-		self.rof_target = None			# target for maintaining RoF
-		
 		self.unresolved_fp = 0			# fp from attacks to be resolved at end of action
 		self.unresolved_ap = []			# list of unsolved penetrating AP hits
+		
+		# TODO: not used yet
+		self.acquired_target = None		# PSG has acquired this unit as target
+		self.acquired_by = []			# PSG has been acquired by this/these unit(s)
+		
 		
 		# action flags
 		self.moved = False
@@ -361,6 +362,9 @@ class Unit:
 	def DoPreActivation(self):
 		self.moved = False
 		self.fired = False
+		for weapon in self.weapon_list:
+			weapon.fired = False
+			weapon.rof_target = None
 		self.changed_facing = False
 		self.RecoveryCheck()
 	
@@ -406,7 +410,7 @@ class Unit:
 				return
 			
 			elif roll == score:
-				if not self.MoraleCheck():
+				if not self.MoraleCheck(0):
 					self.PinMe()
 				else:
 					text = 'Attack had no effect on ' + self.GetName()
@@ -415,7 +419,7 @@ class Unit:
 			elif roll < score:
 				text = self.GetName() + ' must take a Morale Test'
 				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
-				if not self.MoraleCheck():
+				if not self.MoraleCheck(0):
 					# failed
 					self.BreakMe()
 				else:
@@ -502,14 +506,14 @@ class Unit:
 	def RecoveryCheck(self):
 		
 		if self.pinned:
-			if self.MoraleCheck():
+			if self.MoraleCheck(0):
 				self.pinned = False
 				text = self.GetName() + ' recovers from being Pinned'
 				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 			return
 		
 		if self.broken:
-			if self.MoraleCheck():
+			if self.MoraleCheck(0):
 				self.broken = False
 				self.pinned = True
 				text = self.GetName() + ' recovers from being Broken and is now Pinned'
@@ -1882,6 +1886,9 @@ class Scenario:
 		# do pre-activation actions for newly activated unit
 		self.active_unit.DoPreActivation()
 		scenario.BuildCmdMenu()
+		
+		if self.active_unit == self.player_unit:
+			SaveGame()
 	
 	# add a new message to the log, and display it on the current message console
 	# FUTURE: option to highlight an on-map hex and pause
@@ -1998,10 +2005,11 @@ class Scenario:
 	
 	# end of turn, advance the scenario clock by one turn
 	def AdvanceClock(self):
-		self.minute += 15
+		self.minute += 2
 		if self.minute >= 60:
 			self.minute -= 60
 			self.hour += 1
+		UpdateScenInfoConsole()
 
 	# rebuild a list of commands for the command menu based on current active menu
 	def BuildCmdMenu(self):
@@ -2126,7 +2134,12 @@ class Scenario:
 				
 			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
 			self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
-			self.cmd_menu.AddOption('return_to_root', 'Tab', 'Root Menu')
+			
+			menu_option = self.cmd_menu.AddOption('return_to_root', 'Tab', 'Root Menu')
+			# can't return to root menu if already fired
+			if scenario.player_unit.fired:
+				menu_option.inactive = True
+				menu_option.desc = 'You have already fired a weapon this action'
 			
 		# all menus get this command
 		self.cmd_menu.AddOption('end_action', 'Space', 'End Action')
@@ -4187,8 +4200,8 @@ def DrawScreenConsoles():
 	#libtcod.console_print(con, 71, 58, 'Message Log')
 	#libtcod.console_set_char_foreground(con, 71, 58, ACTION_KEY_COL)
 
-	# highlight player's targeted unit if any
-	if scenario.player_target:
+	# highlight player's currently targeted unit if any
+	if scenario.player_target and scenario.active_cmd_menu == 'weapons':
 		libtcod.console_set_char_background(con, scenario.player_target.screen_x,
 			scenario.player_target.screen_y, TARGET_HL_COL, flag=libtcod.BKGND_SET)
 		# draw LoS line
@@ -4784,6 +4797,9 @@ def DoScenario(load_savegame=False):
 			if scenario.player_unit.MoveInto(hx, hy):
 				scenario.BuildCmdMenu()
 				DrawScreenConsoles()
+				# TEMP: no chance of extra turn or missed turn
+				scenario.ActivateNextUnit()
+				continue
 		
 		elif option.option_id in ['pivot_hull_port', 'pivot_hull_stb']:
 			if option.option_id == 'pivot_hull_port':
@@ -4819,8 +4835,9 @@ def DoScenario(load_savegame=False):
 			n = int(option.option_id[5])
 			weapon = scenario.player_unit.weapon_list[n]
 			InitAttack(scenario.player_unit, weapon, scenario.player_target)
-			UpdatePlayerUnitConsole()
-			scenario.player_target = None
+			UpdateContextCon()
+			#UpdatePlayerUnitConsole()
+			#scenario.player_target = None
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
 
@@ -4843,7 +4860,6 @@ def LoadCFG():
 		config.add_section('ArmCom2')
 		config.set('ArmCom2', 'language', 'English')
 		config.set('ArmCom2', 'large_display_font', 'true')
-		config.set('ArmCom2', 'message_pause_time', '700')
 		config.set('ArmCom2', 'animation_speed', '30')
 		
 		# write to disk
@@ -4972,8 +4988,6 @@ cmd_menu.AddOption('switch_language', 'L', 'Language',
 	desc='Cycle between in-game languages')
 cmd_menu.AddOption('toggle_font_size', 'F', 'Font Size',
 	desc='Switch between 12px and 16px font size')
-cmd_menu.AddOption('select_msg_speed', 'M', 'Pop-up Message Pause',
-	desc='Change how long pop-up messages are displayed before being cleared')
 cmd_menu.AddOption('select_ani_speed', 'A', 'Animation Speed',
 	desc='Change the display speed of in-game animations')
 cmd_menu.AddOption('return_to_main', '0', 'Main Menu')
@@ -5013,16 +5027,6 @@ def UpdateMainMenu():
 		text = 'Language: ' + config.get('ArmCom2', 'language').decode('utf8').encode('IBM850')
 		libtcod.console_print(0, WINDOW_XM-12, 49, text)
 		
-		text = 'Pop-up Message Pause Time: '
-		msg_time = config.getint('ArmCom2', 'message_pause_time')
-		if msg_time == 500:
-			text += 'Short'
-		elif msg_time == 700:
-			text += 'Medium'
-		else:
-			text += 'Long'
-		libtcod.console_print(0, WINDOW_XM-12, 50, text)
-		
 		text = 'Animation Speed: '
 		ani_time = config.getint('ArmCom2', 'animation_speed')
 		if ani_time == 16:
@@ -5031,7 +5035,7 @@ def UpdateMainMenu():
 			text += 'Normal'
 		else:
 			text += 'Slow'
-		libtcod.console_print(0, WINDOW_XM-12, 51, text)
+		libtcod.console_print(0, WINDOW_XM-12, 50, text)
 		
 		libtcod.console_set_default_foreground(0, libtcod.white)
 	
@@ -5155,17 +5159,6 @@ while not exit_game:
 		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
 			NAME + ' - ' + VERSION + SUBVERSION, fullscreen = False,
 			renderer = libtcod.RENDERER_GLSL)
-		SaveCFG()
-		UpdateMainMenu()
-	
-	elif option.option_id == 'select_msg_speed':
-		msg_time = config.getint('ArmCom2', 'message_pause_time')
-		if msg_time == 500:
-			config.set('ArmCom2', 'message_pause_time', 700)
-		elif msg_time == 700:
-			config.set('ArmCom2', 'message_pause_time', 900)
-		else:
-			config.set('ArmCom2', 'message_pause_time', 500)
 		SaveCFG()
 		UpdateMainMenu()
 	

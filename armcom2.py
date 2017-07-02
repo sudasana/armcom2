@@ -341,8 +341,9 @@ class Unit:
 		
 		
 		# action flags
-		self.moved = False
-		self.fired = False
+		self.moved = False			# unit moved or pivoted in this turn
+		self.moved_last_action = False		# unit moved or pivoted in its previous turn
+		self.fired = False			# unit fired 1+ weapons this turn
 		self.changed_facing = False
 		
 		# status flags
@@ -374,6 +375,7 @@ class Unit:
 			if unit.owning_player == self.owning_player: continue
 			if unit.unresolved_fp > 0 or unit.unresolved_ap > 0:
 				unit.ResolveHits()
+		self.moved_last_action = self.moved
 
 	# resolve any outstanding hits at the end of an action
 	def ResolveHits(self):
@@ -1316,13 +1318,16 @@ class AI:
 		
 		print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + " wasn't able to do any AI actions"
 		
-	
 	# do a move action
 	def DoMoveAction(self):
 		return False
 	
 	# do a fire weapons action
 	def DoFireAction(self):
+		
+		# build a list of possible attacks
+		
+		
 		return False
 
 		
@@ -1782,6 +1787,70 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
+	# calculate the likely effectiveness of a fire attack between two units
+	# returns (bool, int), where bool is true if a turret rotation or facing change would
+	#   if move_allowed / pivot_allowed are false, then turret rotation / hull pivot are
+	#   not permitted before the attack
+	#   if returned value == -1, attack is not possible, and the reason is returned as desc
+	def GetAttackScore(self, attacker, weapon, target, rotate_allowed=True, pivot_allowed=True):
+		
+		# weapon has already fired and didn't maintain RoF against this target
+		if weapon.fired and weapon.rof_target != target:
+			return (-1, 'Cannot fire this weapon group again this turn')
+		
+		# check range
+		if GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy) > weapon.stats['max_range']:
+			return (-1, 'Target beyond maximum weapon range')
+		
+		# Point Fire attacks must be against spotted target
+		if weapon.weapon_type == 'gun' and not target.known:
+			return (-1, 'Point Fire attacks against spotted targets only')
+		
+		# see if target must current be in weapon arc
+		arc_check = False
+		if weapon.stats['mount'] == 'turret':
+			if not rotate_allowed and not pivot_allowed:
+				arc_check = True
+		else:
+			if not pivot_allowed:
+				arc_check = True
+		if arc_check:
+			# check weapon arc
+				
+			# calculate target location as if attacker is in 0,0 and facing 0
+			hx = target.hx - attacker.hx
+			hy = target.hy - attacker.hy
+			
+			if weapon.stats['mount'] == 'turret':
+				(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.turret_facing))
+			else:
+				(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.facing))
+			
+			in_arc = True
+			if hx == 0 and hy >= 0:
+				in_arc = False
+			elif hx == -1 and hy >= 0:
+				in_arc = False
+			elif hx == 1 and hy >= -1:
+				in_arc = False
+			elif hx == -2 and hy >= -1:
+				in_arc = False
+			elif hx == 2 and hy >= -3:
+				in_arc = False
+			elif hx == -3 and hy >= -2:
+				in_arc = False
+			elif hx == 3 and hy >= -5:
+				in_arc = False
+			elif hx <= -4 or hx >= 4:
+				in_arc = False
+			
+			if not in_arc:
+				return (-1, 'Target outside weapon firing arc')
+			 
+		# TEMP - FUTURE: calculate a score for this attack
+		return (1, '')
+		
+	
 	# randomize the order of units in unit_list to reflect activation order in each turn
 	def GenerateUnitOrder(self):
 		shuffle(self.unit_list)
@@ -1992,67 +2061,17 @@ class Scenario:
 				# no target selected
 				if scenario.player_target is None:
 					menu_option.inactive = True
+					menu_option.desc = 'No target selected'
 					continue
 				
 				# check that weapon can fire
-				
-				# TODO: make these more generic so can be used for AI as well
-				
-				if weapon.fired:
+				(score, desc) = scenario.GetAttackScore(scenario.player_unit,
+					weapon, scenario.player_target, rotate_allowed=False,
+					pivot_allowed=False)
+				if score == -1:
 					menu_option.inactive = True
-					menu_option.desc = 'Cannot fire this weapon group again this turn'
-				
-					# check for RoF exception
-					if weapon.rof_target is not None:
-						if weapon.rof_target == scenario.player_target:
-							menu_option.inactive = False
-							menu_option.desc = 'Maintained RoF against this target'
-				
-				# check weapon arc
-				
-				# calculate target location as if attacker is in 0,0 and facing 0
-				hx = scenario.player_target.hx - scenario.player_unit.hx
-				hy = scenario.player_target.hy - scenario.player_unit.hy
-				
-				if weapon.stats['mount'] == 'turret':
-					(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - scenario.player_unit.turret_facing))
-				else:
-					(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - scenario.player_unit.facing))
-				#print 'DEBUG: target is in ' + str(hx) + ',' + str(hy) + ' relative to ' + weapon.GetName()
-				in_arc = True
-				if hx == 0 and hy >= 0:
-					in_arc = False
-				elif hx == -1 and hy >= 0:
-					in_arc = False
-				elif hx == 1 and hy >= -1:
-					in_arc = False
-				elif hx == -2 and hy >= -1:
-					in_arc = False
-				elif hx == 2 and hy >= -3:
-					in_arc = False
-				elif hx == -3 and hy >= -2:
-					in_arc = False
-				elif hx == 3 and hy >= -5:
-					in_arc = False
-				elif hx <= -4 or hx >= 4:
-					in_arc = False
-				
-				if not in_arc:
-					menu_option.inactive = True
-					menu_option.desc = 'Outside weapon firing arc'
-				
-				# check weapon range
-				distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
-					scenario.player_target.hx, scenario.player_target.hy)
-				if distance > weapon.stats['max_range']:
-					menu_option.inactive = True
-					menu_option.desc = 'Further than maximum weapon range'
-				
-				# Point Fire attacks must be against spotted target
-				if weapon.weapon_type == 'gun' and not scenario.player_target.known:
-					menu_option.inactive = True
-					menu_option.desc = 'AP attacks against spotted targets only'
-				
+					menu_option.desc = desc
+					
 			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
 			self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
 			
@@ -2217,14 +2236,14 @@ def CalcAttack(attacker, weapon, target):
 		attack_obj.base_fp = weapon.stats['fp']
 		
 		# calculate fp modifiers (multipliers)
-		if not target.known:
-			attack_obj.fp_mods.append(('Target Concealed', '/2'))
-		
-		if attacker.moved:
-			attack_obj.fp_mods.append(('Attacker Moved', '/2'))
+		if attacker.moved_last_action:
+			attack_obj.fp_mods.append(('Moved Last Action', '/2'))
 		
 		if attacker.pinned:
-			attack_obj.fp_mods.append(('Attacker Pinned', '/2'))
+			attack_obj.fp_mods.append(('Pinned', '/2'))
+		
+		if not target.known:
+			attack_obj.fp_mods.append(('Target Concealed', '/2'))
 		
 		# calculate final fp
 		float_final_fp = float(attack_obj.base_fp)
@@ -3330,7 +3349,7 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	# final roll required
 	libtcod.console_rect(attack_con, 1, 41, 24, 1, False, libtcod.BKGND_SET)
 	if ap_roll:
-		text = 'To destroy:'
+		text = 'To penetrate:'
 	else:
 		text = 'To hit:'
 	libtcod.console_print_ex(attack_con, 13, 41, libtcod.BKGND_NONE,
@@ -3894,6 +3913,8 @@ def UpdatePlayerUnitConsole():
 	libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
 	if scenario.player_unit.moved:
 		text = 'Moving'
+	elif scenario.player_unit.moved_last_action:
+		text = 'Moved'
 	else:
 		text = 'Stopped'
 	libtcod.console_print_ex(player_unit_con, 23, 21, libtcod.BKGND_NONE, libtcod.RIGHT,

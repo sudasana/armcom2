@@ -1292,117 +1292,38 @@ class AI:
 	# randomly determine an action for this unit and do it
 	def DoAction(self):
 		
-		# TEMP - no AI actions
-		return
+		# FUTURE: Check for automatic actions based on current situation
 		
-		# 1) Check for automatic actions based on current situation
-		
+		# roll for basic action
 		# TEMP: assume that the AI side is taking a defensive attitude
 		d1, d2, roll = Roll2D6()
 		
-		# re-roll move result if we have an acquired target
-		if roll <= 5 and self.owner.acquired_target:
-			d1, d2, roll = Roll2D6()
+		# doubles 6 or over: no action
+		if d1 == d2 and roll >= 6:
+			print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' does nothing'
+			return
 		
-		# modify result if infantry in open
-		map_hex = GetHexAt(self.owner.hx, self.owner.hy)
-		if self.owner.infantry and map_hex.terrain_type.af_modifier >= 0:
-			roll -= 3
-		
-		if self.owner.vehicle:
-			if len(self.owner.visible_enemies) == 0:
-				self.turn_action = 'Move'
-				print ('AI: no visible targets for ' + self.owner.GetName(true_name=True) +
-					', moving automatically')
-				return
-			has_attack = False
-			for psg in self.owner.visible_enemies:
-				if self.GetBestAttacks(psg):
-					has_attack = True
-					break
-			if not has_attack:
-				self.turn_action = 'Move'
-				print 'AI: No possible attacks from current position, moving'
+		# try a move action (guns can't move yet)
+		if roll <= 4 and not self.owner.gun:
+			print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' tries a move action'
+			if self.DoMoveAction():
 				return
 		
-		if roll <= 5:
-			self.turn_action = 'Move'
-			if self.owner.gun:
-				self.turn_action = 'Shoot'
-		else:
-			self.turn_action = 'Shoot'
-		print 'AI: set turn action for ' + self.owner.GetName(true_name=True) + ' to ' + self.turn_action
-	
-	
-	
-	# return a scored list of best possible attacks on this target
-	def GetBestAttacks(self, target):
+		# try to fire weapons at an enemy target
+		if self.DoFireAction():
+			print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' tries a fire action'
+			return
 		
-		distance = GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy)
+		print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + " wasn't able to do any AI actions"
 		
-		# will hold list of following: (final column, weapon, target, area_fire, at_attack)
-		attack_list = []
-		
-		# run through available weapons
-		for weapon in self.owner.weapon_list:
-			# out of range
-			if distance > weapon.stats['max_range']:
-				continue
-			
-			# suspected target
-			if target.suspected:
-				
-				# no AF attack possible
-				if weapon.stats['area_strength'] == 0:
-					continue
-			
-			# known target
-			else:
-			
-				# area fire target only but no area fire possible
-				if target.af_target and not target.pf_target and weapon.stats['area_strength'] == 0:
-					continue
-				
-				# point fire target only but no point fire possible
-				if target.pf_target and not target.af_target and weapon.stats['point_strength'] == 0:
-					continue
-			
-			# not in LoS
-			los = GetLoS(self.owner.hx, self.owner.hy, target.hx, target.hy)
-			if los == -1: continue
-			
-			# determine if a pivot would be required
-			pivot_required = False
-			if not self.owner.infantry:
-				bearing = GetRelativeBearing(self.owner, target)
-				if 30 < bearing < 330:
-					pivot_required = True
-			
-			# calculate column of attack and add to attack list
-			if weapon.stats['area_strength'] > 0 and target.af_target:
-				attack_obj = CalcAttack(self.owner, weapon, target, True,
-					assume_pivot=pivot_required)
-				attack_list.append((attack_obj.final_column, weapon, target,
-					True, False))
-			
-			if weapon.stats['point_strength'] > 0 and target.pf_target:
-				attack_obj = CalcAttack(self.owner, weapon, target, False,
-					assume_pivot=pivot_required)
-				attack_list.append((attack_obj.final_column, weapon, target,
-					False, False))
 	
-			del attack_obj
+	# do a move action
+	def DoMoveAction(self):
+		return False
 	
-		# check for possible anti-tank attack
-		if self.owner.infantry and target.vehicle and target.armour and distance == 0:
-			attack_obj = CalcAttack(self.owner, None, target, False, at_attack=True)
-			attack_list.append((attack_obj.final_column, None, target, False, True))
-		
-		# no attacks possible
-		if len(attack_list) == 0:
-			return None
-		
-		return attack_list
+	# do a fire weapons action
+	def DoFireAction(self):
+		return False
 
 		
 

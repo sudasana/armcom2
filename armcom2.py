@@ -156,8 +156,8 @@ ELEVATION_SHADE = 0.15					# difference in shading for map hexes of
 RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
 
-NEUTRAL_OBJ_COL = libtcod.Color(0, 255, 255)		# neutral objective color
-ENEMY_OBJ_COL = libtcod.Color(255, 31, 0)		# enemy-held "
+NEUTRAL_OBJ_COL = libtcod.Color(0, 50, 255)		# neutral objective color
+ENEMY_OBJ_COL = libtcod.Color(255, 50, 0)		# enemy-held "
 FRIENDLY_OBJ_COL = libtcod.Color(50, 255, 0)		# friendly-held "
 
 ACTION_KEY_COL = libtcod.Color(70, 170, 255)		# colour for key commands
@@ -646,7 +646,7 @@ class Unit:
 	def GetName(self, true_name=False):
 		if not true_name:
 			if self.owning_player == 1 and not self.known:
-				return 'Suspected Enemy'
+				return 'Possible Enemy'
 		return self.unit_name.decode('utf8').encode('IBM850')
 	
 	# assign a crewmember to a crew position
@@ -851,7 +851,7 @@ class Unit:
 		# determine foreground color to use
 		if self.owning_player == 1:
 			if not self.known:
-				col = libtcod.dark_red
+				col = libtcod.light_grey
 			else:
 				col = ENEMY_UNIT_COL
 		else:	
@@ -986,14 +986,12 @@ class Unit:
 			scenario.hex_map.CalcFoV()
 			UpdateVPConsole()
 			UpdateHexInfoConsole()
+			UpdateObjectiveConsole()
 		
 		UpdateUnitConsole()
 		
 		# check for concealment loss
 		self.DoSpotCheck(just_moved=True)
-		
-		# FUTURE: check for objective capture
-		#map_hex2.CheckCapture()
 		
 		return True
 	
@@ -1016,6 +1014,7 @@ class Unit:
 			scenario.hex_map.CalcFoV()
 			UpdateVPConsole()
 			UpdateHexInfoConsole()
+			UpdateObjectiveConsole()
 		
 		UpdateUnitConsole()
 		
@@ -1552,7 +1551,7 @@ class MapHex:
 		self.elevation = None
 		self.terrain_type = None
 		
-		self.objective = False			# hex is an objecrtive
+		self.objective = False			# hex is an objective
 		self.held_by = None			# if objective, currently held by this player
 		
 		self.river_edges = []			# list of adjacent hexes with
@@ -1597,37 +1596,39 @@ class MapHex:
 		self.h = 0
 		self.f = 0
 	
-	# check to see if this hex has been captured
-	def CheckCapture(self, no_message=False):
-		# this hex is not an objective
-		if self.objective is False: return
+	# check to see if the objective in this hex has changed status
+	def CheckObjectiveStatus(self):
 		
-		resident_psg = None
-		for psg in scenario.unit_list:
-			if psg.hx == self.hx and psg.hy == self.hy:
-				resident_psg = psg
-				break
+		holding_player = None
 		
-		# no PSG in this hex
-		if resident_psg is None: return
+		# 1+ units here
+		# FUTURE: unit must be unbroken to hold objective
+		if len(self.unit_stack) > 0:
+			holding_player = self.unit_stack[0].owning_player
 		
-		# already held by this player
-		if self.held_by is not None:
-			if self.held_by == resident_psg.owning_player:
-				return
+		# not held, and no unit here to hold it: no change
+		if self.held_by is None and holding_player is None:
+			return
 		
-		# captured!
-		self.held_by = resident_psg.owning_player
+		# held by player that is here: no change
+		if self.held_by == holding_player:
+			return
 		
-		if not no_message:
-			if self.held_by == 0:
-				text = 'You have'
+		# change in status: lost control or gained control
+		self.held_by = holding_player
+		UpdateVPConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
+		
+		if holding_player is None:
+			text = 'Objective control lost'
+		else:
+			if holding_player == 0:
+				text = 'You have captured an objective!'
 			else:
-				text = 'The enemy has'
-			text += ' captured this objective!'
-			scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
-		
-		UpdateGUIConsole()
+				text = 'The enemy has captured an objective.'
+			
+		scenario.AddMessage(text, highlight_hex = self)
 
 
 # a map of hexes for use in a campaign day
@@ -1787,6 +1788,28 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
+	# do the automatic actions to start a new game turn
+	def StartNewTurn(self):
+		
+		# end of old turn
+		
+		# check objective status change
+		for map_hex in self.objective_hexes:
+			map_hex.CheckObjectiveStatus()
+		
+		# start of new turn
+		print 'DEBUG: New scenario turn'
+		
+		# advance the game clock
+		self.AdvanceClock()
+		
+		# activate first unit in list
+		self.active_unit = self.unit_list[0]
+		print 'DEBUG: ' + self.active_unit.GetName(true_name=True) + ' now active'
+		
+		pass
+	
+	
 	# calculate the likely effectiveness of a fire attack between two units
 	# returns (bool, int), where bool is true if a turret rotation or facing change would
 	#   if move_allowed / pivot_allowed are false, then turret rotation / hull pivot are
@@ -1865,12 +1888,9 @@ class Scenario:
 		
 		i = self.unit_list.index(self.active_unit)
 		if i == len(self.unit_list) - 1:
-			# new turn
-			self.AdvanceClock()
-			self.active_unit = self.unit_list[0]
-			print 'DEBUG: New scenario turn'
-			print 'DEBUG: ' + self.active_unit.GetName(true_name=True) + ' now active'
+			self.StartNewTurn()
 		else:
+			# activate next unit in list
 			self.active_unit = self.unit_list[i+1]
 			print 'DEBUG: ' + self.active_unit.GetName(true_name=True) + ' now active'
 		# do pre-activation actions for newly activated unit
@@ -1930,19 +1950,20 @@ class Scenario:
 	def CheckForEnd(self):
 		
 		# objective capture win
-		all_objectives_captured = True
-		for map_hex in self.objective_hexes:
-			if map_hex.held_by is None:
-				all_objectives_captured = False
-				break
-			if map_hex.held_by == 1:
-				all_objectives_captured = False
-				break
+		# TEMP - disabled
+		#all_objectives_captured = True
+		#for map_hex in self.objective_hexes:
+		#	if map_hex.held_by is None:
+		#		all_objectives_captured = False
+		#		break
+		#	if map_hex.held_by == 1:
+		#		all_objectives_captured = False
+		#		break
 		
-		if all_objectives_captured:
-			self.winner = 0
-			self.end_text = 'You have captured all objectives and won this scenario.'
-			return
+		#if all_objectives_captured:
+		#	self.winner = 0
+		#	self.end_text = 'You have captured all objectives and won this scenario.'
+		#	return
 		
 		# one side has no PSGs in play
 		psgs_in_play = [0,0]
@@ -2050,6 +2071,9 @@ class Scenario:
 		# weapons menu
 		elif self.active_cmd_menu == 'weapons':
 			
+			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
+			self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
+			
 			# add commands to try to fire weapons
 			n = 0
 			for weapon in scenario.player_unit.weapon_list:
@@ -2071,10 +2095,7 @@ class Scenario:
 				if score == -1:
 					menu_option.inactive = True
 					menu_option.desc = desc
-					
-			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
-			self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
-			
+				
 			menu_option = self.cmd_menu.AddOption('return_to_root', 'Tab', 'Root Menu')
 			# can't return to root menu if already fired
 			if scenario.player_unit.fired:
@@ -2178,33 +2199,33 @@ def CalcAttack(attacker, weapon, target):
 		# Long Range gun Modifiers
 		if weapon.stats['long_range'] == 'L':
 			if 4 <= distance <= 6:
-				attack_obj.modifiers.append(('L Weapon', -1))
+				attack_obj.modifiers.append(('L Weapon', 1))
 		elif weapon.stats['long_range'] == 'LL':
 			if 4 <= distance <= 5:
-				attack_obj.modifiers.append(('LL Weapon', -1))
+				attack_obj.modifiers.append(('LL Weapon', 1))
 			elif distance == 6:
-				attack_obj.modifiers.append(('LL Weapon', -2))
+				attack_obj.modifiers.append(('LL Weapon', 2))
 		
 		# calibre range modifiers
 		if weapon.stats['calibre'] <= 40:
 			if 4 <= distance <= 6:
-				attack_obj.modifiers.append(('<=40mm', 1))
+				attack_obj.modifiers.append(('Small Calibre', -1))
 		elif weapon.stats['calibre'] <= 57:
 			if 4 <= distance <= 5:
-				attack_obj.modifiers.append(('<=57mm', 1))
+				attack_obj.modifiers.append(('Medium Calibre', -1))
 			elif distance == 6:
-				attack_obj.modifiers.append(('<=57mm', 2))
+				attack_obj.modifiers.append(('Medium Calibre', -2))
 		
 		# moving vehicle target
 		if target.vehicle and target.moved:
-			attack_obj.modifiers.append(('Target vehicle moved', 2))
+			attack_obj.modifiers.append(('Target vehicle moved', -2))
 		
 		# size class
 		if target.size_class != 'Normal':
 			if target.size_class == 'Small':
-				attack_obj.modifiers.append(('Small Target', 1))
+				attack_obj.modifiers.append(('Small Target', -1))
 			elif target.size_class == 'Very Small':
-				attack_obj.modifiers.append(('Very Small Target', 2))
+				attack_obj.modifiers.append(('Very Small Target', -2))
 		
 		# LoS terrain modifier
 		los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
@@ -2213,7 +2234,7 @@ def CalcAttack(attacker, weapon, target):
 		
 		# pinned modifier
 		if attacker.pinned:
-			attack_obj.modifiers.append(('Attacker Pinned', 2))
+			attack_obj.modifiers.append(('Attacker Pinned', -2))
 		
 		# apply modifiers to calculate final to-hit score required 
 		attack_obj.final_to_hit = attack_obj.base_to_hit
@@ -3621,51 +3642,6 @@ def GenerateTerrain():
 	CreateRoad(vertical=False)
 
 
-
-##########################################################################################
-#                                 Scenario Animations                                    #
-##########################################################################################
-
-# TODO: combine into one function
-
-# display a gun projectile fire animation
-def GunAttackAnimation(attack_obj):
-	
-	# use draw locations, but we'll be drawing to the GUI console so modify
-	x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
-	x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
-	
-	# projectile animation
-	line = GetLine(x1, y1, x2, y2, los=True)
-	
-	pause_time = config.getint('ArmCom2', 'animation_speed') * 3
-	pause_time2 = int(pause_time / 2)
-	
-	for (x, y) in line:
-		UpdateGUIConsole()
-		libtcod.console_put_char_ex(map_gui_con, x, y, 250, libtcod.white, libtcod.black)
-		DrawScreenConsoles()
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
-		libtcod.console_flush()
-		Wait(pause_time)
-	
-	# final explosion animation
-	(x,y) = line[-1]
-	for i in range(10):
-		UpdateGUIConsole()
-		col = choice([libtcod.red, libtcod.yellow, libtcod.grey])
-		libtcod.console_put_char_ex(map_gui_con, x, y, '*',
-			col, libtcod.black)
-		DrawScreenConsoles()
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, 0, 0, 0)
-		libtcod.console_flush()
-		Wait(pause_time2)
-		
-	libtcod.console_clear(map_gui_con)
-	DrawScreenConsoles()
-	libtcod.console_flush()
-
-
 # update the contextual info console
 def UpdateContextCon():
 	libtcod.console_clear(context_con)
@@ -3718,7 +3694,47 @@ def UpdateContextCon():
 		text = str(scenario.player_unit.max_ammo) + '+' + str(weapon.stats['rr_size'])
 		libtcod.console_print_ex(context_con, 8, 8, libtcod.BKGND_NONE,
 			libtcod.RIGHT, text)
+
+
+# update the objective info console
+def UpdateObjectiveConsole():
+	libtcod.console_clear(objective_con)
+	libtcod.console_set_default_foreground(objective_con, libtcod.white)
+	libtcod.console_print(objective_con, 0, 0, 'Objectives')
+	
+	y = 2
+	for map_hex in scenario.objective_hexes:
 		
+		# display colour
+		if map_hex.held_by is None:
+			col = NEUTRAL_OBJ_COL
+		else:
+			if map_hex.held_by == 0:
+				col = FRIENDLY_OBJ_COL
+			else:
+				col = ENEMY_OBJ_COL
+		libtcod.console_set_default_foreground(objective_con, col)
+		
+		# distance to objective
+		distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
+			map_hex.hx, map_hex.hy)
+		distance = distance * 160
+		if distance > 1000:
+			text = str(float(distance) / 1000.0) + ' km.'
+		else:
+			text = str(distance) + ' m.'
+		libtcod.console_print_ex(objective_con, 9, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, text)
+		
+		# directional arrow if required
+		if distance > 0:
+			direction = GetDirectionToward(scenario.player_unit.hx, scenario.player_unit.hy,
+				map_hex.hx, map_hex.hy)
+			direction = CombineDirs(direction, 0 - scenario.player_unit.facing)
+			char = GetDirectionalArrow(direction)
+			libtcod.console_put_char_ex(objective_con, 11, y, char, col, libtcod.black)
+		y += 1
+
 
 # update the current message console with the most recent game message
 # truncated if too long to display (43x2)
@@ -3741,11 +3757,13 @@ def UpdateVPConsole():
 	libtcod.console_clear(map_vp_con)
 	scenario.map_index = {}
 	
-	# off-map hexes first
+	# draw off-map hexes first
 	for (hx, hy), (map_hx, map_hy) in scenario.map_vp.items():
 		if (map_hx, map_hy) not in scenario.hex_map.hexes:
 			(x,y) = PlotHex(hx, hy)
 			libtcod.console_blit(tile_offmap, 0, 0, 0, 0, map_vp_con, x-3, y-2)
+	
+	obj_hexes = []
 	
 	for elevation in range(4):
 		for (hx, hy) in VP_HEXES:
@@ -3767,6 +3785,10 @@ def UpdateVPConsole():
 				scenario.map_index[(x1,y+1)] = (map_hx, map_hy)
 			for x1 in range(x-2, x+3):
 				scenario.map_index[(x1,y)] = (map_hx, map_hy)
+			
+			# mark objective hexes for display on viewport later
+			if map_hex in scenario.objective_hexes:
+				obj_hexes.append((hx, hy, map_hex))
 	
 	# draw roads and rivers overtop
 	for (hx, hy), (map_hx, map_hy) in scenario.map_vp.items():
@@ -3791,15 +3813,9 @@ def UpdateVPConsole():
 				# if character is not blank or hex edge, remove it
 				if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
 					libtcod.console_set_char(map_vp_con, x, y, 0)
-
-
-# updates the map viewport gui layer
-def UpdateGUIConsole():
-	libtcod.console_clear(map_gui_con)
 	
 	# highlight objective hexes
-	for map_hex in scenario.objective_hexes:
-		(x,y) = PlotHex(map_hex.hx, map_hex.hy)
+	for (hx, hy, map_hex) in obj_hexes:
 		if map_hex.held_by is None:
 			col = NEUTRAL_OBJ_COL
 		else:
@@ -3807,10 +3823,10 @@ def UpdateGUIConsole():
 				col = FRIENDLY_OBJ_COL
 			else:
 				col = ENEMY_OBJ_COL
-		for (xm,ym) in [(-2, -1),(-2, 1),(2, -1),(2, 1)]:
-			libtcod.console_put_char_ex(map_gui_con, x+xm, y+ym, 249, col,
-				libtcod.black)
-		
+		(x, y) = PlotHex(hx, hy)
+		for (xm, ym) in HEX_EDGE_TILES:
+			libtcod.console_set_char_foreground(map_vp_con, x+xm, y+ym, col)
+
 
 # run through active PSGs and draw them to the unit console
 def UpdateUnitConsole():
@@ -3822,6 +3838,7 @@ def UpdateUnitConsole():
 		if len(map_hex.unit_stack) == 0: continue
 		# draw the top unit in the stack
 		map_hex.unit_stack[0].DrawMe(hx, hy, len(map_hex.unit_stack))
+
 
 # updates the player unit info console
 # displays essential info about the player's current vehicle and crew
@@ -4054,8 +4071,13 @@ def UpdateHexInfoConsole():
 	
 	# top unit in stack
 	unit = map_hex.unit_stack[0]
+	
+	
 	if unit.owning_player == 1:
-		libtcod.console_set_default_foreground(hex_info_con, ENEMY_UNIT_COL)
+		if unit.known:
+			libtcod.console_set_default_foreground(hex_info_con, ENEMY_UNIT_COL)
+		else:
+			libtcod.console_set_default_foreground(hex_info_con, libtcod.light_grey)
 	else:
 		libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
 	libtcod.console_print(hex_info_con, 0, 5, unit.GetName())
@@ -4127,16 +4149,16 @@ def DrawScreenConsoles():
 	libtcod.console_blit(map_vp_con, 0, 0, 0, 0, con, 27, 4)		# map viewport
 	libtcod.console_blit(vp_mask, 0, 0, 0, 0, con, 27, 4)			# map viewport mask
 	libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 27, 4, 1.0, 0.0)	# map unit layer
-	libtcod.console_blit(map_gui_con, 0, 0, 0, 0, con, 26, 3, 1.0, 0.0)	# map GUI layer
 
 	# left column consoles
 	libtcod.console_blit(player_unit_con, 0, 0, 0, 0, con, 1, 1)
 	libtcod.console_blit(cmd_con, 0, 0, 0, 0, con, 1, 33)
 	libtcod.console_blit(hex_info_con, 0, 0, 0, 0, con, 1, 50)
 	
-	# scenario info, contextual info, and most recent message if any
+	# scenario info, contextual info, objective info, and most recent message if any
 	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 40, 0)
 	libtcod.console_blit(context_con, 0, 0, 0, 0, con, 27, 1)
+	libtcod.console_blit(objective_con, 0, 0, 0, 0, con, 70, 50)
 	libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 27, 58)
 	# TODO: add back in after message log window has been added
 	#libtcod.console_print(con, 71, 58, 'Message Log')
@@ -4323,18 +4345,18 @@ def DoScenario(load_savegame=False):
 	
 	global scenario, terrain_types
 	# screen consoles
-	global scen_menu_con, bkg_console, map_vp_con, vp_mask, map_fov_con, map_gui_con
+	global scen_menu_con, bkg_console, map_vp_con, vp_mask, map_fov_con
 	global unit_con, player_unit_con, anim_con, cmd_con, attack_con, scen_info_con
-	global context_con, hex_info_con, fov_hex_con, msg_con, tile_offmap
+	global context_con, objective_con, hex_info_con, fov_hex_con, msg_con, tile_offmap
 	global dice
 	
 	# TODO: change to UpdateConsoles()
 	def UpdateScreen():
 		UpdateUnitConsole()
-		UpdateGUIConsole()
 		UpdatePlayerUnitConsole()
 		UpdateCmdConsole()
 		UpdateContextCon()
+		UpdateObjectiveConsole()
 		UpdateMsgConsole()
 		DrawScreenConsoles()
 	
@@ -4367,13 +4389,6 @@ def DoScenario(load_savegame=False):
 	libtcod.console_set_key_color(map_fov_con, KEY_COLOR)
 	libtcod.console_clear(map_fov_con)
 	
-	# map gui console
-	map_gui_con = libtcod.console_new(57, 57)
-	libtcod.console_set_default_background(map_gui_con, KEY_COLOR)
-	libtcod.console_set_default_foreground(map_gui_con, libtcod.white)
-	libtcod.console_set_key_color(map_gui_con, KEY_COLOR)
-	libtcod.console_clear(map_gui_con)
-	
 	# unit layer console
 	unit_con = libtcod.console_new(55, 52)
 	libtcod.console_set_default_background(unit_con, KEY_COLOR)
@@ -4399,6 +4414,12 @@ def DoScenario(load_savegame=False):
 	libtcod.console_set_default_background(context_con, libtcod.black)
 	libtcod.console_set_default_foreground(context_con, libtcod.white)
 	libtcod.console_clear(context_con)
+	
+	# objective info console
+	objective_con = libtcod.console_new(12, 7)
+	libtcod.console_set_default_background(objective_con, libtcod.black)
+	libtcod.console_set_default_foreground(objective_con, libtcod.white)
+	libtcod.console_clear(objective_con)
 	
 	# player unit info console
 	player_unit_con = libtcod.console_new(24, 31)
@@ -4461,8 +4482,6 @@ def DoScenario(load_savegame=False):
 		# create a new campaign day object and hex map
 		scenario = Scenario(26, 26)
 		
-		GenerateTerrain()
-		
 		# FUTURE: following will be handled by a Scenario Generator
 		# for now, things are set up manually
 		scenario.battlefront = 'Western Poland'
@@ -4477,6 +4496,8 @@ def DoScenario(load_savegame=False):
 		scenario.minute = 0
 		scenario.hour_limit = 9
 		scenario.minute_limit = 0
+		
+		GenerateTerrain()
 		
 		# display scenario info: chance to cancel scenario start
 		# TEMP disabled
@@ -4531,9 +4552,8 @@ def DoScenario(load_savegame=False):
 		
 		UpdatePlayerUnitConsole()
 		
-		# set up our objectives
-		#scenario.hex_map.AddObjectiveAt(5, 4)
-		#scenario.hex_map.AddObjectiveAt(6, -2)
+		# set up our objective
+		scenario.hex_map.AddObjectiveAt(6, 0)
 		
 		# do initial objective capture
 		#for map_hex in scenario.objective_hexes:
@@ -4550,7 +4570,7 @@ def DoScenario(load_savegame=False):
 		new_unit.PlaceAt(7, 13)
 		
 		# TEMP set up test enemy unit
-		new_unit = Unit('37mm_wz_36')
+		new_unit = Unit('TK_3')
 		scenario.unit_list.append(new_unit)
 		new_unit.owning_player = 1
 		new_unit.facing = 3

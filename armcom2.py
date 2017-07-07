@@ -179,6 +179,8 @@ ENEMY_UNIT_COL = libtcod.Color(255, 0, 64)		# enemy unit and name colour
 INACTIVE_COL = libtcod.Color(100, 100, 100)		# inactive option color
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
 
+SMALL_CON_BKG = libtcod.Color(25, 25, 25)		# background colour for small info consoles
+
 HIGHLIGHT_CHARS = [250, 249, 7, 7, 7, 7, 249, 250]	# used for unit highlight animation
 
 
@@ -955,11 +957,11 @@ class Unit:
 				map_hex2.unit_stack.append(unit)
 		
 		# display movement animation if on viewport
-		direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, new_hx, new_hy)
-		direction = ConstrainDir(direction - scenario.player_unit.facing)
-		(new_vp_hx, new_vp_hy) = GetAdjacentHex(self.vp_hx, self.vp_hy, direction)
+		if self.vp_hx is not None and self.vp_hy is not None:
 		
-		if (self.vp_hx, self.vp_hy) in VP_HEXES or (new_vp_hx, new_vp_hy) in VP_HEXES:
+			direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, new_hx, new_hy)
+			direction = ConstrainDir(direction - scenario.player_unit.facing)
+			(new_vp_hx, new_vp_hy) = GetAdjacentHex(self.vp_hx, self.vp_hy, direction)
 		
 			(x1,y1) = PlotHex(self.vp_hx, self.vp_hy)
 			(x2,y2) = PlotHex(new_vp_hx, new_vp_hy)
@@ -989,9 +991,6 @@ class Unit:
 			UpdateVPConsole()
 			UpdateHexInfoConsole()
 			UpdateObjectiveConsole()
-		else:
-			# TEMP
-			print 'DEBUG: ' + self.GetName(true_name=True) + ' moved into a new hex'
 		
 		UpdateUnitConsole()
 		
@@ -1319,14 +1318,18 @@ class AI:
 		
 		# try a move action (guns can't move yet)
 		if roll <= 4 and not self.owner.gun:
-			print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' tries a move action'
 			if self.DoMoveAction():
 				return
 		
 		# try to fire weapons at an enemy target
-		print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' tries a fire action'
 		if self.DoFireAction():
 			return
+		
+		# final chance to do a move action
+		d1, d2, roll = Roll2D6()
+		if roll <= 6:
+			if self.DoMoveAction():
+				return
 		
 		print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + " wasn't able to do any AI actions"
 		
@@ -1347,6 +1350,14 @@ class AI:
 
 		# TEMP: randomly choose destination
 		map_hex = choice(hex_list)
+		
+		# pivot to face new target hex
+		direction = GetDirectionToAdjacent(self.owner.hx, self.owner.hy, map_hex.hx, map_hex.hy)
+		if self.owner.facing != direction:
+			self.owner.PivotToFace(direction)
+		if self.owner.turret_facing is not None:
+			if self.owner.turret_facing != direction:
+				self.owner.RotateTurret(direction)
 		
 		# try to do move
 		return self.owner.MoveInto(map_hex.hx, map_hex.hy)
@@ -1616,10 +1627,12 @@ class MapHex:
 		self.hx = hx
 		self.hy = hy
 		
+		self.score = 0				# tactical score for AI, set by HexMap.GenerateTacticalMap()
+		
 		self.unit_stack = []			# list of units in this hex
 		
-		self.elevation = None
-		self.terrain_type = None
+		self.elevation = None			# elevation in steps above baseline
+		self.terrain_type = None		# pointer to type of terrain in the hex
 		
 		self.objective = False			# hex is an objective
 		self.held_by = None			# if objective, currently held by this player
@@ -1731,6 +1744,31 @@ class HexMap:
 					self.bottom_edge_hexes.append((hx, hy))
 				
 		self.vp_matrix = {}			# map viewport matrix
+	
+	# for AI side, generate a Dijkstra map of tactical scores for each map hex
+	# based on terrain, visibility, and proximity to objectives
+	def GenerateTacticalMap(self):
+		
+		for (hx, hy) in self.hexes:
+			
+			map_hex = self.hexes[(hx, hy)]
+			
+			# clear any old score
+			map_hex.score = 1
+		
+			# calculate new score
+			if map_hex.terrain_type.terrain_mod > 0:
+				map_hex.score = map_hex.score * map_hex.terrain_type.terrain_mod
+			
+			# TODO: visible hexes towards player map edge
+			
+			if map_hex.objective:
+				map_hex.score = map_hex.score * 20
+				continue
+			
+			# TODO: proximity to objectives
+		
+		print 'Generated tactical scores for map hexes'
 	
 	# try to place an objective in the given hex, and place it nearby if this hex
 	#   is impassible
@@ -1872,18 +1910,11 @@ class Scenario:
 		if self.winner is not None:
 			return
 		
-		# start of new turn
-		print 'DEBUG: New scenario turn'
-		
 		# advance the game clock
 		self.AdvanceClock()
 		
 		# activate first unit in list
 		self.active_unit = self.unit_list[0]
-		print 'DEBUG: ' + self.active_unit.GetName(true_name=True) + ' now active'
-		
-		pass
-	
 	
 	# calculate the likely effectiveness of a fire attack between two units
 	# returns (bool, int), where bool is true if a turret rotation or facing change would
@@ -1970,7 +2001,6 @@ class Scenario:
 		else:
 			# activate next unit in list
 			self.active_unit = self.unit_list[i+1]
-			print 'DEBUG: ' + self.active_unit.GetName(true_name=True) + ' now active'
 		# do pre-activation actions for newly activated unit
 		self.active_unit.DoPreActivation()
 		scenario.BuildCmdMenu()
@@ -2243,7 +2273,7 @@ def CalcAttack(attacker, weapon, target):
 		
 		# calculate dice roll modifiers
 		if attacker.moved_last_action:
-			attack_obj.fp_mods.append(('Moved Last Action', -2))
+			attack_obj.modifiers.append(('Moved Last Action', -2))
 
 		if attacker.pinned:
 			attack_obj.modifiers.append(('Attacker Pinned', -2))
@@ -3295,6 +3325,9 @@ def InitAttack(attacker, weapon, target):
 		weapon.rof_target = target
 		if attacker == scenario.player_unit:
 			scenario.AddMessage("You maintained your gun's Rate of Fire")
+	else:
+		if attacker == scenario.player_unit:
+			scenario.AddMessage("You did not maintain your gun's Rate of Fire")
 
 
 # display the factors and odds for an attack on the screen
@@ -3782,7 +3815,7 @@ def UpdateObjectiveConsole():
 				map_hex.hx, map_hex.hy)
 			direction = CombineDirs(direction, 0 - scenario.player_unit.facing)
 			char = GetDirectionalArrow(direction)
-			libtcod.console_put_char_ex(objective_con, 11, y, char, col, libtcod.black)
+			libtcod.console_put_char_ex(objective_con, 11, y, char, col, SMALL_CON_BKG)
 		y += 1
 
 
@@ -4104,6 +4137,9 @@ def UpdateHexInfoConsole():
 	libtcod.console_print_ex(hex_info_con, 23, 1, libtcod.BKGND_NONE, libtcod.RIGHT,
 		str(int(map_hex.elevation * ELEVATION_M)) + 'm')
 	# FUTURE: ground conditions
+	
+	# TEMP: tactical score
+	libtcod.console_print(hex_info_con, 0, 2, 'Score: ' + str(map_hex.score))
 	
 	# road and objective status
 	if len(map_hex.dirt_road_links) > 0:
@@ -4461,13 +4497,13 @@ def DoScenario(load_savegame=False):
 	
 	# contextual info console
 	context_con = libtcod.console_new(12, 10)
-	libtcod.console_set_default_background(context_con, libtcod.black)
+	libtcod.console_set_default_background(context_con, SMALL_CON_BKG)
 	libtcod.console_set_default_foreground(context_con, libtcod.white)
 	libtcod.console_clear(context_con)
 	
 	# objective info console
 	objective_con = libtcod.console_new(12, 7)
-	libtcod.console_set_default_background(objective_con, libtcod.black)
+	libtcod.console_set_default_background(objective_con, SMALL_CON_BKG)
 	libtcod.console_set_default_foreground(objective_con, libtcod.white)
 	libtcod.console_clear(objective_con)
 	
@@ -4605,6 +4641,9 @@ def DoScenario(load_savegame=False):
 		# set up our objective
 		scenario.hex_map.AddObjectiveAt(6, 0)
 		
+		# generate tactical scores for map hexes for AI
+		scenario.hex_map.GenerateTacticalMap()
+		
 		# do initial objective capture
 		#for map_hex in scenario.objective_hexes:
 		#	map_hex.CheckCapture(no_message=True)
@@ -4640,7 +4679,6 @@ def DoScenario(load_savegame=False):
 		scenario.GenerateUnitOrder()
 		# activate first unit in list
 		scenario.active_unit = scenario.unit_list[0]
-		print 'DEBUG: ' + scenario.active_unit.GetName(true_name=True) + ' now active'
 		scenario.active_unit.DoPreActivation()
 		
 		# select first crew position in player unit

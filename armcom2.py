@@ -382,7 +382,9 @@ class Unit:
 		
 		# TEMP armoured units are not affected at all by fp attacks
 		# FUTURE: possible damage to unprotected crew
-		if self.armour is not None:
+		if self.unresolved_fp > 0 and self.armour is not None:
+			text = 'Firepower attack has no effect on ' + self.GetName()
+			scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 			self.unresolved_fp = 0
 		
 		# unresolved area fire hits to resolve
@@ -820,7 +822,7 @@ class Unit:
 		else:
 			text = 'Lost contact with ' + self.GetName()
 		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
-		self.suspected = True
+		self.known = False
 		UpdateUnitConsole()
 		if scenario.active_unit == self:
 			UpdatePlayerUnitConsole()
@@ -952,17 +954,17 @@ class Unit:
 			else:
 				map_hex2.unit_stack.append(unit)
 		
-		# display movement animation
-		if not (self.owning_player == 1 and self.suspected):
-			
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
+		# display movement animation if on viewport
+		direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, new_hx, new_hy)
+		direction = ConstrainDir(direction - scenario.player_unit.facing)
+		(new_vp_hx, new_vp_hy) = GetAdjacentHex(self.vp_hx, self.vp_hy, direction)
+		
+		if (self.vp_hx, self.vp_hy) in VP_HEXES or (new_vp_hx, new_vp_hy) in VP_HEXES:
+		
 			(x1,y1) = PlotHex(self.vp_hx, self.vp_hy)
-			direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, new_hx, new_hy)
-			# modify by player unit facing?
-			direction = ConstrainDir(direction - scenario.player_unit.facing)
-			(new_vp_hx, new_vp_hy) = GetAdjacentHex(self.vp_hx, self.vp_hy, direction)
 			(x2,y2) = PlotHex(new_vp_hx, new_vp_hy)
 			line = GetLine(x1,y1,x2,y2)
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
 			for (x,y) in line[1:-1]:
 				self.anim_x = x
 				self.anim_y = y
@@ -987,6 +989,9 @@ class Unit:
 			UpdateVPConsole()
 			UpdateHexInfoConsole()
 			UpdateObjectiveConsole()
+		else:
+			# TEMP
+			print 'DEBUG: ' + self.GetName(true_name=True) + ' moved into a new hex'
 		
 		UpdateUnitConsole()
 		
@@ -1304,6 +1309,14 @@ class AI:
 			print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' does nothing'
 			return
 		
+		# enemy in LoS, greater chance of attacking
+		for unit in scenario.unit_list:
+			if unit.owning_player == 1: continue
+			if GetLoS(self.owner.hx, self.owner.hy, unit.hx, unit.hy) > -1:
+				print 'AI DEBUG: player unit in LoS'
+				roll += 2
+				break
+		
 		# try a move action (guns can't move yet)
 		if roll <= 4 and not self.owner.gun:
 			print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' tries a move action'
@@ -1311,23 +1324,80 @@ class AI:
 				return
 		
 		# try to fire weapons at an enemy target
+		print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' tries a fire action'
 		if self.DoFireAction():
-			print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' tries a fire action'
 			return
 		
 		print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + " wasn't able to do any AI actions"
 		
 	# do a move action
 	def DoMoveAction(self):
-		return False
+		
+		# build a list of adjacent hexes
+		hex_list = []
+		for (hx, hy) in GetAdjacentHexesOnMap(self.owner.hx, self.owner.hy):
+			map_hex = GetHexAt(hx, hy)
+			# see if a move into this hex is possible
+			if self.owner.CheckMoveInto(hx, hy):
+				hex_list.append(map_hex)
+		
+		# no possible move destinations
+		if len(hex_list) == 0:
+			return False
+
+		# TEMP: randomly choose destination
+		map_hex = choice(hex_list)
+		
+		# try to do move
+		return self.owner.MoveInto(map_hex.hx, map_hex.hy)
 	
 	# do a fire weapons action
 	def DoFireAction(self):
 		
-		# build a list of possible attacks
+		# build a list of possible targets
+		target_list = []
+		for unit in scenario.unit_list:
+			if unit.owning_player == 1: continue
+			if GetLoS(self.owner.hx, self.owner.hy, unit.hx, unit.hy) > -1:
+				
+				# check attack odds
+				attack_obj = CalcAttack(self.owner, self.owner.weapon_list[0], unit)
+				
+				# area fire attack against armoured target
+				if not attack_obj.pf_attack and unit.armour is not None:
+					continue
+				
+				# too difficult to hit/affect
+				if attack_obj.final_to_hit < 2:
+					continue
+				
+				target_list.append(unit)
 		
+		if len(target_list) == 0:
+			return False
 		
-		return False
+		target = choice(target_list)
+		
+		# pivot and/or rotate turret if required
+		direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
+			target.hy)
+		if self.owner.facing != direction:
+			self.owner.PivotToFace(direction)
+		if self.owner.turret_facing is not None:
+			if self.owner.turret_facing != direction:
+				self.owner.RotateTurret(direction)
+		
+		if target == scenario.player_unit:
+			text = 'you'
+		else:
+			text = target.GetName()
+		scenario.AddMessage(self.owner.GetName() + ' fires at ' + text + '!',
+			highlight_hex=(self.owner.hx, self.owner.hy))
+		DrawScreenConsoles()
+		
+		InitAttack(self.owner, self.owner.weapon_list[0], target)
+		
+		return True
 
 		
 
@@ -1797,6 +1867,11 @@ class Scenario:
 		for map_hex in self.objective_hexes:
 			map_hex.CheckObjectiveStatus()
 		
+		# check for scenario end
+		self.CheckForEnd()
+		if self.winner is not None:
+			return
+		
 		# start of new turn
 		print 'DEBUG: New scenario turn'
 		
@@ -1889,6 +1964,9 @@ class Scenario:
 		i = self.unit_list.index(self.active_unit)
 		if i == len(self.unit_list) - 1:
 			self.StartNewTurn()
+			# scenario is over
+			if self.winner is not None:
+				return
 		else:
 			# activate next unit in list
 			self.active_unit = self.unit_list[i+1]
@@ -1949,47 +2027,16 @@ class Scenario:
 	# check for scenario end and set up data if so
 	def CheckForEnd(self):
 		
-		# objective capture win
-		# TEMP - disabled
-		#all_objectives_captured = True
-		#for map_hex in self.objective_hexes:
-		#	if map_hex.held_by is None:
-		#		all_objectives_captured = False
-		#		break
-		#	if map_hex.held_by == 1:
-		#		all_objectives_captured = False
-		#		break
-		
-		#if all_objectives_captured:
-		#	self.winner = 0
-		#	self.end_text = 'You have captured all objectives and won this scenario.'
-		#	return
-		
-		# one side has no PSGs in play
-		psgs_in_play = [0,0]
-		for psg in self.unit_list:
-			psgs_in_play[psg.owning_player] += 1
-		if psgs_in_play[0] == 0:
+		# player has died
+		if self.player_unit not in self.unit_list:
 			self.winner = 1
-		elif psgs_in_play[1] == 0:
-			self.winner = 0
-		if self.winner is not None:
-			if self.winner == 0:
-				self.end_text += 'The enemy has no units remaining, you have'
-			else:
-				self.end_text += 'You have no units remaining, the enemy has'
-			self.end_text += ' won this scenario.'
+			self.end_text = 'Your tank has been destroyed.'
 			return
 		
-		# time limit has been reached
-		if self.minute == self.minute_limit and self.hour == self.hour_limit:
-			self.winner = self.time_limit_winner
-			self.end_text = 'The time limit for this scenario has been reached. '
-			if self.winner == 0:
-				self.end_text += 'You have'
-			else:
-				self.end_text += 'The enemy has'
-			self.end_text += ' won this scenario.'
+		# TODO: objective capture win
+
+		# TODO: time limit has been reached
+		
 	
 	# display a screen of info about a completed scenario
 	def DisplayEndScreen(self):
@@ -2195,6 +2242,11 @@ def CalcAttack(attacker, weapon, target):
 			attack_obj.base_to_hit = to_hit_list[1]
 		
 		# calculate dice roll modifiers
+		if attacker.moved_last_action:
+			attack_obj.fp_mods.append(('Moved Last Action', -2))
+
+		if attacker.pinned:
+			attack_obj.modifiers.append(('Attacker Pinned', -2))
 		
 		# Long Range gun Modifiers
 		if weapon.stats['long_range'] == 'L':
@@ -2231,10 +2283,6 @@ def CalcAttack(attacker, weapon, target):
 		los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 		if los > 0:
 			attack_obj.modifiers.append(('Terrain', 0-los))
-		
-		# pinned modifier
-		if attacker.pinned:
-			attack_obj.modifiers.append(('Attacker Pinned', -2))
 		
 		# apply modifiers to calculate final to-hit score required 
 		attack_obj.final_to_hit = attack_obj.base_to_hit
@@ -3276,12 +3324,13 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		unit = attack_obj.attacker
 	libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
 	libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
-	#libtcod.console_set_default_background(attack_con, libtcod.black)
-	if unit.portrait is not None:
-		temp = LoadXP(unit.portrait)
-		if temp is not None:
-			libtcod.console_blit(temp, 0, 0, 0, 0, attack_con, 1, 2)
-			del temp
+	
+	if not (unit.owning_player == 1 and not unit.known):
+		if unit.portrait is not None:
+			temp = LoadXP(unit.portrait)
+			if temp is not None:
+				libtcod.console_blit(temp, 0, 0, 0, 0, attack_con, 1, 2)
+				del temp
 	libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE,
 		libtcod.CENTER, unit.GetName())
 	
@@ -3300,11 +3349,12 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
 		libtcod.console_rect(attack_con, 1, 13, 24, 8, False, libtcod.BKGND_SET)
 		
-		if attack_obj.target.known and attack_obj.target.portrait is not None:
-			temp = LoadXP(attack_obj.target.portrait)
-			if temp is not None:
-				libtcod.console_blit(temp, 0, 0, 0, 0, attack_con, 1, 13)
-				del temp
+		if not (attack_obj.target.owning_player == 1 and not attack_obj.target.known):
+			if attack_obj.target.portrait is not None:
+				temp = LoadXP(attack_obj.target.portrait)
+				if temp is not None:
+					libtcod.console_blit(temp, 0, 0, 0, 0, attack_con, 1, 13)
+					del temp
 	else:
 		# location hit in AP roll
 		libtcod.console_print_ex(attack_con, 13, 12, libtcod.BKGND_NONE,
@@ -4605,9 +4655,6 @@ def DoScenario(load_savegame=False):
 		scenario.AddMessage(text)
 		
 		
-		
-		
-	
 	# TODO: End new game set-up
 	
 	UpdateScenInfoConsole()
@@ -4633,6 +4680,12 @@ def DoScenario(load_savegame=False):
 	
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
 			key, mouse)
+		
+		# end of scenario
+		if scenario.winner is not None:
+			DisplayEndScreen()
+			exit_scenario = True
+			continue
 		
 		# emergency loop escape
 		if libtcod.console_is_window_closed(): sys.exit()
@@ -4662,7 +4715,7 @@ def DoScenario(load_savegame=False):
 		#					break
 						
 						# right button: display PSG info window
-						#elif mouse.rbutton and not (psg.suspected and psg.owning_player == 1):
+						#elif mouse.rbutton and not (psg.owning_player == 1 and not psg.known):
 						#	DisplayPSGInfoWindow(psg)
 						#	break
 		
@@ -4673,11 +4726,6 @@ def DoScenario(load_savegame=False):
 			else:
 				DrawScreenConsoles()
 			continue
-		
-		# check for scenario end
-		#if scenario.winner is not None:
-		#	exit_scenario = True
-		#	continue
 		
 		##### AI Actions #####
 		if scenario.active_unit.owning_player == 1:

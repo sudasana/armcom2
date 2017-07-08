@@ -69,10 +69,10 @@ from encodings import hex_codec, ascii, utf_8, cp850
 ##########################################################################################
 
 # debug constants: should all be set to False in any distribution version
-VIEW_ALL = False				# human player can see all hexes in viewport
+VIEW_ALL = False					# human player can see all hexes in viewport
 
 NAME = 'Armoured Commander II'
-VERSION = 'PoC 4'					# determines saved game compatability
+VERSION = 'Final PoC'					# game version: determines saved game compatability
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -90,27 +90,20 @@ GRADIENT = [
 ]
 
 # Game engine constants, can be tweaked for slightly different results
-
 MAX_LOS_DISTANCE = 6			# maximum distance that a Line of Sight can be drawn
 MAX_LOS_MOD = 6				# maximum total terrain modifier along a LoS before it is blocked
 MAX_BU_LOS_DISTANCE = 4			# " for buttoned-up crewmen
 ELEVATION_M = 20.0			# each elevation level represents x meters of height
 BASE_SPOT_SCORE = 5			# base score required to spot unknown enemy unit
 HEX_STACK_LIMIT = 6			# maximum number of units in a map hex stack
-MP_COSTS = [
-	[1,1,1],				# infantry
-	[3,6,3],				# tank
-	[3,6,3]					# fast tank
-]
 
-# base to-hit scores required for Point Fire attacks
-BASE_TO_HIT = [
-	[10,8,7],		# <= 1 hex range
-	[9,7,7],		# 2 hex range
-	[9,7,7],		# 3 "
-	[8,6,8],		# 4 "
-	[7,5,8],		# 5 "
-	[6,4,7]			# 6 "
+BASE_TO_HIT = [				# base to-hit scores required for Point Fire attacks
+	[10,8,7],			# <= 1 hex range
+	[9,7,7],			# 2 hex range
+	[9,7,7],			# 3 "
+	[8,6,8],			# 4 "
+	[7,5,8],			# 5 "
+	[6,4,7]				# 6 "
 ]
 
 # Area Fire attack chart
@@ -149,7 +142,6 @@ CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Loader', 'Dri
 AMMO_TYPE_ORDER = ['HE', 'AP']
 
 # Colour definitions
-
 ELEVATION_SHADE = 0.15					# difference in shading for map hexes of
 							#   different elevations
 
@@ -222,7 +214,7 @@ HEXSPINES = {
 	5: [(-1,0), (0,-1), (-1,-1)]
 }
 
-# tile locations of hex edges
+# tile locations of hex depiction edges
 HEX_EDGE_TILES = [(-1,-2), (0,-2), (1,-2), (2,-1), (3,0), (2,1), (1,2), (0,2), (-1,2),
 	(-2,1), (-3,0), (-2,-1)]
 
@@ -621,7 +613,7 @@ class Unit:
 						turret = True
 					hatch = None
 					if i.find('hatch') is not None:
-						hatch = 'Closed'
+						hatch = 'Open'
 					open_visible = set()
 					if i.find('open_visible') is not None:
 						string = i.find('open_visible').text
@@ -1350,6 +1342,8 @@ class AI:
 	# do a move action
 	def DoMoveAction(self):
 		
+		# FUTURE: add ability to look in radius and choose target destination
+		
 		# build a list of adjacent hexes
 		hex_list = []
 		for (hx, hy) in GetAdjacentHexesOnMap(self.owner.hx, self.owner.hy):
@@ -1361,10 +1355,18 @@ class AI:
 		# no possible move destinations
 		if len(hex_list) == 0:
 			return False
-
-		# TEMP: randomly choose destination
-		map_hex = choice(hex_list)
 		
+		# sort list by tactical scores
+		hex_list.sort(key=lambda x: x.score, reverse=True)
+		map_hex = hex_list[0]
+		
+		# chance of not moving if score is lower than that of current location
+		current_hex = GetHexAt(self.owner.hx, self.owner.hy)
+		if map_hex.score < current_hex.score:
+			d1, d2, roll = Roll2D6()
+			if roll > 7:
+				return False
+
 		# pivot to face new target hex
 		direction = GetDirectionToAdjacent(self.owner.hx, self.owner.hy, map_hex.hx, map_hex.hy)
 		if self.owner.facing != direction:
@@ -1772,26 +1774,55 @@ class HexMap:
 	# based on terrain, visibility, and proximity to objectives
 	def GenerateTacticalMap(self):
 		
+		start_time = time.time()
+		
 		for (hx, hy) in self.hexes:
 			
 			map_hex = self.hexes[(hx, hy)]
 			
 			# clear any old score
-			map_hex.score = 1
+			map_hex.score = 0
+			
+			# skip water hexes
+			if map_hex.terrain_type.water: continue
 		
 			# calculate new score
+			
+			# visible hexes
+			hex_list = GetHexesWithin(hx, hy, 6)
+			for (hx2, hy2) in hex_list:
+				
+				if (hx2, hy2) == (hx, hy): continue
+				
+				direction = GetDirectionToward(hx, hy, hx2, hy2)
+				if not scenario.player_direction - 1 <= direction <= scenario.player_direction + 1:
+					continue
+				
+				if GetLoS(hx, hy, hx2, hy2) > 0:
+					map_hex.score += 1
+				
+				# added this to stop window from freezing
+				libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+					key, mouse)
+				# FUTURE: update a progress bar on loading screen?
+			
+			# terrain in hex
 			if map_hex.terrain_type.terrain_mod > 0:
 				map_hex.score = map_hex.score * map_hex.terrain_type.terrain_mod
-			
-			# TODO: visible hexes towards player map edge
 			
 			if map_hex.objective:
 				map_hex.score = map_hex.score * 20
 				continue
 			
-			# TODO: proximity to objectives
+			# proximity to objectives
+			for (hx2, hy2) in hex_list:
+				map_hex = GetHexAt(hx2, hy2)
+				if not map_hex.objective: continue
+				distance = GetHexDistance(hx, hy, hx2, hy2)
+				map_hex.score = map_hex.score * (8 - distance)
 		
-		print 'Generated tactical scores for map hexes'
+		time_taken = round((time.time() - start_time), 1)
+		print 'Generated tactical scores for map hexes in ' + str(time_taken) + ' seconds.'
 	
 	# place an objective in the given hex
 	def AddObjectiveAt(self, hx, hy, objective_type):
@@ -1922,6 +1953,7 @@ class Scenario:
 		# check objective status change
 		for map_hex in self.objective_hexes:
 			map_hex.CheckObjectiveStatus()
+		UpdateObjectiveConsole()
 		
 		# check for scenario end
 		self.CheckForEnd()
@@ -2754,30 +2786,6 @@ def GetHexRect(hx, hy, w, h):
 			direction = 1
 		(hx, hy) = GetAdjacentHex(hx, hy, direction)
 	return hex_list
-
-
-# calculate the MP required to move into the target hex
-def GetMPCostToMove(unit, map_hex1, map_hex2):
-
-	direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, map_hex2.hx, map_hex2.hy)
-	if direction in map_hex1.dirt_road_links:
-		# road movement
-		column = 2
-	elif map_hex2.terrain_type.difficult:
-		# movement in difficult terrain
-		column = 1
-	else:
-		# open terrain
-		column = 0
-	
-	if unit.movement_class == 'Infantry':
-		table = 0
-	elif unit.movement_class == 'Tank':
-		table = 1
-	elif unit.movement_class == 'Fast Tank':
-		table = 2
-	
-	return MP_COSTS[table][column]
 
 
 # returns a path from one hex to another, avoiding impassible and difficult terrain
@@ -3819,8 +3827,21 @@ def UpdateObjectiveConsole():
 	libtcod.console_set_default_foreground(objective_con, libtcod.white)
 	libtcod.console_print(objective_con, 0, 0, 'Objectives')
 	
-	y = 2
+	# sort objectives by distance to player
+	obj_list = []
 	for map_hex in scenario.objective_hexes:
+		distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
+			map_hex.hx, map_hex.hy)
+		# convert to meters
+		distance = distance * 160
+		obj_list.append((distance, map_hex))
+	
+	if len(obj_list) == 0: return
+	
+	obj_list.sort(key=lambda x: x[0])
+	
+	y = 2
+	for (distance, map_hex) in obj_list:
 		
 		# display colour
 		if map_hex.held_by is None:
@@ -3832,10 +3853,7 @@ def UpdateObjectiveConsole():
 				col = ENEMY_OBJ_COL
 		libtcod.console_set_default_foreground(objective_con, col)
 		
-		# distance to objective
-		distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
-			map_hex.hx, map_hex.hy)
-		distance = distance * 160
+		# display distance to objective
 		if distance > 1000:
 			text = str(float(distance) / 1000.0) + ' km.'
 		else:
@@ -4561,6 +4579,11 @@ def DoScenario(load_savegame=False):
 		#                            Start a new Scenario                                #
 		##################################################################################
 		
+		libtcod.console_clear(0)
+		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Generating map...')
+		libtcod.console_flush()
+		
 		# create a new campaign day object and hex map
 		scenario = Scenario(26, 26)
 		
@@ -4738,7 +4761,8 @@ def DoScenario(load_savegame=False):
 		
 		# end of scenario
 		if scenario.winner is not None:
-			DisplayEndScreen()
+			scenario.DisplayEndScreen()
+			EraseGame()
 			exit_scenario = True
 			continue
 		
@@ -4850,7 +4874,7 @@ def DoScenario(load_savegame=False):
 			continue
 		
 		##################################################################
-		# Movement Actions
+		# Movement Menu Actions
 		##################################################################
 		elif option.option_id in ['move_forward', 'move_backward']:
 			if option.option_id == 'move_forward':
@@ -4886,7 +4910,7 @@ def DoScenario(load_savegame=False):
 				DrawScreenConsoles()
 		
 		##################################################################
-		# Shooting Phase Actions
+		# Weapons Menu Actions
 		##################################################################
 		elif option.option_id == 'next_target':
 			scenario.SelectNextPlayerTarget()
@@ -4919,9 +4943,7 @@ def LoadCFG():
 	
 	# create a new config file
 	if not os.path.exists(DATAPATH + 'armcom2.cfg'):
-		
 		print 'No config file found, creating a new one'
-		
 		config.add_section('ArmCom2')
 		config.set('ArmCom2', 'language', 'English')
 		config.set('ArmCom2', 'large_display_font', 'true')
@@ -4930,15 +4952,16 @@ def LoadCFG():
 		# write to disk
 		with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
 			config.write(configfile)
-	
 	else:
 		# load config file
 		config.read(DATAPATH + 'armcom2.cfg')
+
 
 # save current config to file
 def SaveCFG():
 	with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
 		config.write(configfile)
+
 
 
 ##########################################################################################

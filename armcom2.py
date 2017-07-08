@@ -128,14 +128,15 @@ CREW_POSITION_ABB = {
 	'Commander' : 'C',
 	'Commander/Gunner' : 'C/G',
 	'Gunner' : 'G',
+	'Gunner/Loader' : 'G/L',
 	'Loader' : 'L',
 	'Driver' : 'D',
 	'Assistant Driver' : 'AD'
 }
 
 # order in which to display crew positions
-CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Loader', 'Driver',
-	'Assistant Driver'
+CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Gunner/Loader', 'Loader',
+	'Driver', 'Assistant Driver'
 ]
 
 # order in which to display ammo types
@@ -1935,6 +1936,14 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
+	# load unit portraits for all active units into a dictionary
+	def LoadUnitPortraits(self):
+		for unit in self.unit_list:
+			if unit.portrait is None: continue
+			if unit.unit_id not in unit_portraits.keys():
+				unit_portraits[unit.unit_id] = LoadXP(unit.portrait)
+		print 'Loaded unit portraits'
+	
 	# spawn a given enemy unit into the map at a random location
 	def SpawnEnemy(self, unit_id, morale_lvl, skill_lvl):
 		new_unit = Unit(unit_id)
@@ -2316,6 +2325,8 @@ def LoadGame():
 	save = shelve.open('savegame')
 	scenario = save['scenario']
 	save.close()
+	# load unit portraits
+	scenario.LoadUnitPortraits()
 
 
 # remove a saved game, either because the scenario is over or the player abandoned it
@@ -2363,7 +2374,10 @@ def CalcAttack(attacker, weapon, target):
 			attack_obj.modifiers.append(('Attacker Pinned', -2))
 		
 		# Long Range gun Modifiers
-		if weapon.stats['long_range'] == 'L':
+		if weapon.stats['long_range'] == 'S':
+			if distance >= 4:
+				attack_obj.modifiers.append(('Low Muzzle Velocity', -1))
+		elif weapon.stats['long_range'] == 'L':
 			if 4 <= distance <= 6:
 				attack_obj.modifiers.append(('L Weapon', 1))
 		elif weapon.stats['long_range'] == 'LL':
@@ -2501,7 +2515,7 @@ def CalcAPRoll(attack_obj):
 	
 	if gun_rating == '37L':
 		base_ap = 9
-	elif gun_rating == '37':
+	elif gun_rating in ['37', '47*']:
 		base_ap = 8
 	elif gun_rating == '20L':
 		base_ap = 6
@@ -3422,13 +3436,10 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
 	
 	if not (unit.owning_player == 1 and not unit.known):
-		if unit.portrait is not None:
-			temp = LoadXP(unit.portrait)
-			if temp is not None:
-				libtcod.console_blit(temp, 0, 0, 0, 0, attack_con, 1, 2)
-				del temp
-	libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE,
-		libtcod.CENTER, unit.GetName())
+		if unit.unit_id in unit_portraits:
+			libtcod.console_blit(unit_portraits[unit.unit_id], 0, 0, 0, 0, attack_con, 1, 2)
+	libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE, libtcod.CENTER,
+		unit.GetName())
 	
 	# roll description
 	if ap_roll:
@@ -3446,11 +3457,8 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		libtcod.console_rect(attack_con, 1, 13, 24, 8, False, libtcod.BKGND_SET)
 		
 		if not (attack_obj.target.owning_player == 1 and not attack_obj.target.known):
-			if attack_obj.target.portrait is not None:
-				temp = LoadXP(attack_obj.target.portrait)
-				if temp is not None:
-					libtcod.console_blit(temp, 0, 0, 0, 0, attack_con, 1, 13)
-					del temp
+			if attack_obj.target.unit_id in unit_portraits:
+				libtcod.console_blit(unit_portraits[attack_obj.target.unit_id], 0, 0, 0, 0, attack_con, 1, 13)
 	else:
 		# location hit in AP roll
 		libtcod.console_print_ex(attack_con, 13, 12, libtcod.BKGND_NONE,
@@ -4721,10 +4729,13 @@ def DoScenario(load_savegame=False):
 		
 		# TEMP spawn enemy units
 		# FUTURE: use a more complex deployment table
-		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm']
+		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw']
 		for i in range(6):
 			unit_id = choice(ENEMY_LIST)
 			scenario.SpawnEnemy(unit_id, 9, 9)
+		
+		# all units spawned, load unit portraits into consoles
+		scenario.LoadUnitPortraits()
 		
 		# set up map viewport
 		scenario.SetVPHexes()
@@ -4735,11 +4746,6 @@ def DoScenario(load_savegame=False):
 		
 		# generate action order for all units in the scenario
 		scenario.GenerateUnitOrder()
-		
-		# TEMP
-		print 'Unit List:'
-		for unit in scenario.unit_list:
-			print unit.GetName(true_name=True)
 		
 		# activate first unit in list
 		scenario.active_unit = scenario.unit_list[0]
@@ -4994,10 +5000,13 @@ def SaveCFG():
 #                                                                                        #
 ##########################################################################################
 
-global config
+global config, unit_portraits
 global mouse, key, con, darken_con
 global lang_dict			# pointer to the current language dictionary of game msgs
 global gradient_x			# for main menu animation
+
+# dictionary of unit portraits
+unit_portraits = {}
 
 # try to load game settings from config file, will create a new file if none present
 LoadCFG()

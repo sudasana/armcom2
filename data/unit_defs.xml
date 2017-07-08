@@ -83,6 +83,58 @@
   
   <unit_def>
     <vehicle/>
+    <unreliable/>
+    <turret/>
+    <id>vickers_ejw</id>
+    <name>Vickers 6-Ton Mark E</name>
+    <portrait>unit_vickers_ejw.xp</portrait>
+    <size_class>Small</size_class>
+    <movement_class>Fast Tank</movement_class>
+    <armour>
+      <turret_front>1</turret_front>
+      <turret_side>1</turret_side>
+      <hull_front>2</hull_front>
+      <hull_side>1</hull_side>
+    </armour>
+    <weapon>
+      <type>gun</type>
+      <calibre>47</calibre>
+      <long_range>S</long_range>
+      <mount>Turret</mount>
+      <fired_by>Gunner</fired_by>
+      <rr_size>4</rr_size>
+      <rof>4</rof>
+      <firing_group>0</firing_group>
+    </weapon>
+    <weapon>
+      <type>coax_mg</type>
+      <fp>6</fp>
+      <mount>turret</mount>
+      <fired_by>Gunner</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <crew_position>
+      <name>Commander</name>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Gunner/Loader</name>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <large_hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
+  
+  <unit_def>
+    <vehicle/>
     <turret/>
     <id>7TP</id>
     <name>7TP</name>

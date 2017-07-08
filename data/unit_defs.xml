@@ -9,7 +9,7 @@
     <unreliable/>
     <id>TK_3</id>
     <name>TK-3</name>
-    <portrait>unit_TK_3.xp</portrait>
+    <portrait>unit_TK3.xp</portrait>
     <size_class>Very Small</size_class>
     <movement_class>Fast Tank</movement_class>
     <armour>
@@ -23,6 +23,46 @@
       <fp>4</fp>
       <mount>hull</mount>
       <fired_by>Commander/Gunner</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <!-- Note: both hatches are connected across the width of the tank -->
+    <crew_position>
+      <name>Commander/Gunner</name>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <large_hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
+  
+  <unit_def>
+    <vehicle/>
+    <unreliable/>
+    <id>TKS_20mm</id>
+    <name>TKS (20mm)</name>
+    <portrait>unit_TKS_20mm.xp</portrait>
+    <size_class>Very Small</size_class>
+    <movement_class>Fast Tank</movement_class>
+    <armour>
+      <turret_front>0</turret_front>
+      <turret_side>0</turret_side>
+      <hull_front>1</hull_front>
+      <hull_side>0</hull_side>
+    </armour>
+    <weapon>
+      <type>gun</type>
+      <calibre>20</calibre>
+      <long_range>L</long_range>
+      <mount>Hull</mount>
+      <fired_by>Commander/Gunner</fired_by>
+      <rr_size>4</rr_size>
+      <rof>4</rof>
       <firing_group>0</firing_group>
     </weapon>
     <!-- Note: both hatches are connected across the width of the tank -->

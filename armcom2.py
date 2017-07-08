@@ -780,12 +780,11 @@ class Unit:
 		
 		# vehicle
 		if self.vehicle:
-			# tank
-			if self.movement_class in ['Slow Tank', 'Tank', 'Fast Tank']:
-				return 9
-			# other, eg. armoured car
-			else:
-				return 7
+			
+			# turretless vehicle
+			if self.turret_facing is None:
+				return 249
+			return 9
 
 		# default
 		return '!'
@@ -873,13 +872,18 @@ class Unit:
 			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, str(stack_size),
 				libtcod.dark_grey, libtcod.black)
 		
-		# determine if we need to display a turret
-		if not self.gun and not self.vehicle: return
+		# determine if we need to display a turret / gun depiction
+		if self.infantry: return
 		if self.owning_player == 1 and not self.known: return
-		if self.turret_facing is None: return
 		
-		# determine location to draw turret character
-		direction = ConstrainDir(self.turret_facing - scenario.player_unit.facing)
+		# use turret facing if present, otherwise hull facing
+		if self.turret_facing is not None:
+			facing = self.turret_facing
+		else:
+			facing = self.facing
+		
+		# determine location to draw character
+		direction = ConstrainDir(facing - scenario.player_unit.facing)
 		x_mod, y_mod = PLOT_DIR[direction]
 		char = TURRET_CHAR[direction]
 		libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
@@ -2499,6 +2503,8 @@ def CalcAPRoll(attack_obj):
 		base_ap = 9
 	elif gun_rating == '37':
 		base_ap = 8
+	elif gun_rating == '20L':
+		base_ap = 6
 	
 	# calculate modifiers
 	modifiers = []

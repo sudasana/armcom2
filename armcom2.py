@@ -353,6 +353,108 @@ class Unit:
 		self.LoadStats()				# load stats from unit_defs.xml
 		self.display_char = self.GetDisplayChar()	# set initial display character
 
+	# load the baseline stats for this unit from data file
+	def LoadStats(self):
+		# find the unit type entry in the data file
+		root = xml.parse(DATAPATH + 'unit_defs.xml')
+		item_list = root.findall('unit_def')
+		found = False
+		for item in item_list:
+			if item.find('id').text == self.unit_id:	# this is the one we need
+				found = True
+				break
+		if not found:
+			print 'ERROR: Could not find unit stats for: ' + self.unit_id
+			return
+		
+		# load stats from item
+		self.unit_name = item.find('name').text
+		if item.find('portrait') is not None:
+			self.portrait = item.find('portrait').text
+		
+		# weapon info
+		xml_weapon_list = item.findall('weapon')
+		if xml_weapon_list is not None:
+			for weapon_item in xml_weapon_list:
+				self.weapon_list.append(Weapon(weapon_item))
+				
+		# infantry stats if any
+		if item.find('infantry') is not None:
+			self.infantry = True
+		
+		# vehicle stats if any
+		if item.find('vehicle') is not None:
+			self.vehicle = True
+			if item.find('turret') is not None:
+				self.turret_facing = 0		# will later be set by scenario.SpawnEnemy()
+			if item.find('size_class') is not None:
+				self.size_class = item.find('size_class').text
+			else:
+				self.size_class = 'Normal'
+			if item.find('armour') is not None:
+				self.armour = {}
+				armour_ratings = item.find('armour')
+				self.armour['turret_front'] = int(armour_ratings.find('turret_front').text)
+				self.armour['turret_side'] = int(armour_ratings.find('turret_side').text)
+				self.armour['hull_front'] = int(armour_ratings.find('hull_front').text)
+				self.armour['hull_side'] = int(armour_ratings.find('hull_side').text)
+			if item.find('recce') is not None: self.recce = True
+			if item.find('unreliable') is not None: self.unreliable = True
+			
+			# maximum total gun ammo load
+			if item.find('max_ammo') is not None:
+				self.max_ammo = int(item.find('max_ammo').text)
+			
+			# set up crew positions
+			self.crew_positions = None
+			if item.find('crew_position') is not None:
+				self.crew_positions = []
+				item_list = item.findall('crew_position')
+				for i in item_list:
+					name = i.find('name').text
+					turret = False
+					if i.find('turret') is not None:
+						turret = True
+					hatch = None
+					if i.find('hatch') is not None:
+						hatch = 'Open'
+					open_visible = set()
+					if i.find('open_visible') is not None:
+						string = i.find('open_visible').text
+						for c in string:
+							open_visible.add(int(c))
+					closed_visible = set()
+					if i.find('closed_visible') is not None:
+						string = i.find('closed_visible').text
+						for c in string:
+							closed_visible.add(int(c))
+					
+					new_position = CrewPosition(name, turret,
+						hatch, open_visible, closed_visible)
+					
+					# check for special statuses
+					if i.find('large_hatch') is not None:
+						new_position.large_hatch = True
+					
+					self.crew_positions.append(new_position)
+				
+				# TODO: sort crew_positions by name based on CREW_POSITION_ORDER?
+				
+		
+		# gun stats
+		elif item.find('gun') is not None:
+			self.gun = True
+			self.deployed = True
+			if item.find('size_class') is not None:
+				self.size_class = item.find('size_class').text
+			else:
+				self.size_class = 'Normal'
+			if item.find('gun_shield') is not None:
+				self.gun_shield = True
+		
+		self.movement_class = item.find('movement_class').text
+
+
 	# perform pre-activation automatic actions
 	def DoPreActivation(self):
 		self.moved = False
@@ -531,124 +633,8 @@ class Unit:
 				text = self.GetName() + ' recovers from being Broken and is now Pinned'
 				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
 
-	# attempt to place this unit into the map at hx, hy
-	# if this location is impassible to unit, try adjacent hexes as well
-	def PlaceAt(self, hx, hy):
-		hex_list = [(hx, hy)]
-		hex_list.extend(GetAdjacentHexesOnMap(hx, hy))
-		for (hx1, hy1) in hex_list:
-			map_hex = GetHexAt(hx1, hy1)
-			if map_hex.terrain_type.water: continue
-			if len(map_hex.unit_stack) > HEX_STACK_LIMIT: continue
-			if len(map_hex.unit_stack) > 0:
-				if map_hex.unit_stack[0].owning_player != self.owning_player: continue
-			# found a good target location
-			self.hx = hx1
-			self.hy = hy1
-			map_hex.unit_stack.append(self)
-			return
-		
-		print ('ERROR: Could not place ' + GetName(self, true_name=True) +
-			' into map at ' + str(hx) + ',' + str(hy))
-
-	# load the baseline stats for this unit from data file
-	def LoadStats(self):
-		# find the unit type entry in the data file
-		root = xml.parse(DATAPATH + 'unit_defs.xml')
-		item_list = root.findall('unit_def')
-		found = False
-		for item in item_list:
-			if item.find('id').text == self.unit_id:	# this is the one we need
-				found = True
-				break
-		if not found:
-			print 'ERROR: Could not find unit stats for: ' + self.unit_id
-			return
-		
-		# load stats from item
-		self.unit_name = item.find('name').text
-		if item.find('portrait') is not None:
-			self.portrait = item.find('portrait').text
-		
-		# weapon info
-		xml_weapon_list = item.findall('weapon')
-		if xml_weapon_list is not None:
-			for weapon_item in xml_weapon_list:
-				self.weapon_list.append(Weapon(weapon_item))
-				
-		# infantry stats if any
-		if item.find('infantry') is not None:
-			self.infantry = True
-		
-		# vehicle stats if any
-		if item.find('vehicle') is not None:
-			self.vehicle = True
-			if item.find('size_class') is not None:
-				self.size_class = item.find('size_class').text
-			else:
-				self.size_class = 'Normal'
-			if item.find('armour') is not None:
-				self.armour = {}
-				armour_ratings = item.find('armour')
-				self.armour['turret_front'] = int(armour_ratings.find('turret_front').text)
-				self.armour['turret_side'] = int(armour_ratings.find('turret_side').text)
-				self.armour['hull_front'] = int(armour_ratings.find('hull_front').text)
-				self.armour['hull_side'] = int(armour_ratings.find('hull_side').text)
-			if item.find('recce') is not None: self.recce = True
-			if item.find('unreliable') is not None: self.unreliable = True
-			
-			# maximum total gun ammo load
-			if item.find('max_ammo') is not None:
-				self.max_ammo = int(item.find('max_ammo').text)
-			
-			# set up crew positions
-			self.crew_positions = None
-			if item.find('crew_position') is not None:
-				self.crew_positions = []
-				item_list = item.findall('crew_position')
-				for i in item_list:
-					name = i.find('name').text
-					turret = False
-					if i.find('turret') is not None:
-						turret = True
-					hatch = None
-					if i.find('hatch') is not None:
-						hatch = 'Open'
-					open_visible = set()
-					if i.find('open_visible') is not None:
-						string = i.find('open_visible').text
-						for c in string:
-							open_visible.add(int(c))
-					closed_visible = set()
-					if i.find('closed_visible') is not None:
-						string = i.find('closed_visible').text
-						for c in string:
-							closed_visible.add(int(c))
-					
-					new_position = CrewPosition(name, turret,
-						hatch, open_visible, closed_visible)
-					
-					# check for special statuses
-					if i.find('large_hatch') is not None:
-						new_position.large_hatch = True
-					
-					self.crew_positions.append(new_position)
-				
-				# TODO: sort crew_positions by name based on CREW_POSITION_ORDER?
-				
-		
-		# gun stats
-		elif item.find('gun') is not None:
-			self.gun = True
-			self.deployed = True
-			if item.find('size_class') is not None:
-				self.size_class = item.find('size_class').text
-			else:
-				self.size_class = 'Normal'
-			if item.find('gun_shield') is not None:
-				self.gun_shield = True
-		
-		self.movement_class = item.find('movement_class').text
+	
+	
 	
 	# return a description of this unit
 	# if using true name, transcode it to handle any special characters in it
@@ -1944,6 +1930,35 @@ class Scenario:
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
+	
+	# spawn a given enemy unit into the map at a random location
+	def SpawnEnemy(self, unit_id, morale_lvl, skill_lvl):
+		new_unit = Unit(unit_id)
+		new_unit.owning_player = 1
+		new_unit.facing = self.player_direction
+		if new_unit.turret_facing is not None:
+			new_unit.turret_facing = self.player_direction
+		new_unit.morale_lvl = morale_lvl
+		new_unit.skill_lvl = skill_lvl
+		
+		# try to find a suitable place to spawn this unit
+		for tries in range(300):
+			(hx, hy) = choice(scenario.hex_map.hexes.keys())
+			map_hex = GetHexAt(hx, hy)
+			if map_hex.terrain_type.water: continue
+			if len(map_hex.unit_stack) > HEX_STACK_LIMIT: continue
+			if len(map_hex.unit_stack) > 0:
+				if map_hex.unit_stack[0].owning_player != 1: continue
+			if self.player_unit is not None:
+				distance = GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy)
+				if distance <= 6: continue
+			
+			# place unit here
+			new_unit.hx = hx
+			new_unit.hy = hy
+			map_hex.unit_stack.append(new_unit)
+			break
+		self.unit_list.append(new_unit)
 	
 	# do the automatic actions to start a new game turn
 	def StartNewTurn(self):
@@ -4611,8 +4626,9 @@ def DoScenario(load_savegame=False):
 		#	return
 		
 		# spawn the player unit
+		# TEMP - should be integrated into a single spawn function with deployment zones
+		#  for each side
 		new_unit = Unit('Panzer 35t')
-		scenario.unit_list.append(new_unit)
 		new_unit.owning_player = 0
 		new_unit.vehicle_name = 'Gretchen'
 		new_unit.facing = 0
@@ -4620,7 +4636,16 @@ def DoScenario(load_savegame=False):
 		new_unit.morale_lvl = 8
 		new_unit.skill_lvl = 8
 		scenario.player_unit = new_unit		# record this as the player unit
-		new_unit.PlaceAt(6, 22)
+		map_hex = GetHexAt(6, 22)
+		if not map_hex.terrain_type.water:
+			new_unit.hx = 6
+			new_unit.hy = 22
+		else:
+			map_hex = GetHexAt(7, 22)
+			new_unit.hx = 7
+			new_unit.hy = 22
+		map_hex.unit_stack.append(new_unit)
+		scenario.unit_list.append(new_unit)
 		
 		# set up player tank crew
 		new_crew = Crewman()
@@ -4653,7 +4678,6 @@ def DoScenario(load_savegame=False):
 		#	new_unit.morale_lvl = 8
 		#	new_unit.skill_lvl = 8
 		#	new_unit.squadron_leader = scenario.player_unit
-		#	new_unit.PlaceAt(6, 22)
 		
 		UpdatePlayerUnitConsole()
 		
@@ -4689,24 +4713,12 @@ def DoScenario(load_savegame=False):
 		for map_hex in scenario.objective_hexes:
 			map_hex.CheckObjectiveStatus(no_message=True)
 		
-		# TEMP set up test enemy units
-		new_unit = Unit('7TP')
-		scenario.unit_list.append(new_unit)
-		new_unit.owning_player = 1
-		new_unit.facing = 3
-		new_unit.turret_facing = 3  
-		new_unit.morale_lvl = 9
-		new_unit.skill_lvl = 9
-		new_unit.PlaceAt(7, 13)
-		
-		new_unit = Unit('TK_3')
-		scenario.unit_list.append(new_unit)
-		new_unit.owning_player = 1
-		new_unit.facing = 3
-		new_unit.turret_facing = 3
-		new_unit.morale_lvl = 9
-		new_unit.skill_lvl = 9
-		new_unit.PlaceAt(6, 15)
+		# TEMP spawn enemy units
+		# FUTURE: use a more complex deployment table
+		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm']
+		for i in range(6):
+			unit_id = choice(ENEMY_LIST)
+			scenario.SpawnEnemy(unit_id, 9, 9)
 		
 		# set up map viewport
 		scenario.SetVPHexes()
@@ -4717,6 +4729,12 @@ def DoScenario(load_savegame=False):
 		
 		# generate action order for all units in the scenario
 		scenario.GenerateUnitOrder()
+		
+		# TEMP
+		print 'Unit List:'
+		for unit in scenario.unit_list:
+			print unit.GetName(true_name=True)
+		
 		# activate first unit in list
 		scenario.active_unit = scenario.unit_list[0]
 		scenario.active_unit.DoPreActivation()

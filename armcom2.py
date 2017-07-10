@@ -460,7 +460,6 @@ class Unit:
 		
 		self.movement_class = item.find('movement_class').text
 
-
 	# perform pre-activation automatic actions
 	def DoPreActivation(self):
 		self.moved = False
@@ -473,7 +472,11 @@ class Unit:
 		# turn on LoS display if this is player and we're in shooting menu
 		if self == scenario.player_unit and scenario.active_cmd_menu == 'weapons':
 			scenario.display_los = True
-	
+		# move to top of hex stack
+		map_hex = GetHexAt(self.hx, self.hy)
+		if len(map_hex.unit_stack) > 1:
+			self.MoveToTopOfStack(map_hex)
+			
 	# perform post-activation automatic actions
 	def DoPostActivation(self):
 		
@@ -489,6 +492,13 @@ class Unit:
 		
 		# set moved flag for next activation
 		self.moved_last_action = self.moved
+
+	# move this unit to the top of its map hex stack
+	def MoveToTopOfStack(self, map_hex):
+		map_hex.unit_stack.remove(self)
+		map_hex.unit_stack.insert(0, self)
+		UpdateUnitConsole()
+		UpdateHexInfoConsole()
 
 	# resolve any outstanding hits at the end of an action
 	def ResolveHits(self):
@@ -983,6 +993,10 @@ class Unit:
 		
 		# clear any acquired targets
 		self.ClearAcquiredTargets()
+		
+		# if player was targeting this unit, clear the player's target
+		if scenario.player_target == self:
+			scenario.player_target = None
 		
 		# recalculate viewport and update consoles for player movement
 		if scenario.player_unit == self:
@@ -1491,8 +1505,7 @@ class AI:
 			text = 'you'
 		else:
 			text = target.GetName()
-		scenario.AddMessage(self.owner.GetName() + ' fires at ' + text + '!',
-			(self.owner.hx, self.owner.hy))
+		scenario.AddMessage(self.owner.GetName() + ' fires at ' + text + '!', None)
 		DrawScreenConsoles()
 		
 		InitAttack(self.owner, self.owner.weapon_list[0], target)
@@ -1866,23 +1879,24 @@ class HexMap:
 			if map_hex.terrain_type.water: continue
 		
 			# calculate new score
+			map_hex.score = 1
 			
-			# visible hexes
-			hex_list = GetHexesWithin(hx, hy, 6)
-			for (hx2, hy2) in hex_list:
+			# FUTURE: visible hexes
+			#hex_list = GetHexesWithin(hx, hy, 6)
+			#for (hx2, hy2) in hex_list:
 				
-				if (hx2, hy2) == (hx, hy): continue
+			#	if (hx2, hy2) == (hx, hy): continue
 				
-				direction = GetDirectionToward(hx, hy, hx2, hy2)
-				if not scenario.player_direction - 1 <= direction <= scenario.player_direction + 1:
-					continue
+			#	direction = GetDirectionToward(hx, hy, hx2, hy2)
+			#	if not scenario.player_direction - 1 <= direction <= scenario.player_direction + 1:
+			#		continue
 				
-				if GetLoS(hx, hy, hx2, hy2) > 0:
-					map_hex.score += 1
+			#	if GetLoS(hx, hy, hx2, hy2) > 0:
+			#		map_hex.score += 1
 				
 				# added this to stop window from freezing
-				libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-					key, mouse)
+			#	libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			#		key, mouse)
 				# FUTURE: update a progress bar on loading screen?
 			
 			# terrain in hex
@@ -1893,12 +1907,12 @@ class HexMap:
 				map_hex.score = map_hex.score * 20
 				continue
 			
-			# proximity to objectives
-			for (hx2, hy2) in hex_list:
-				map_hex = GetHexAt(hx2, hy2)
-				if not map_hex.objective: continue
-				distance = GetHexDistance(hx, hy, hx2, hy2)
-				map_hex.score = map_hex.score * (8 - distance)
+			# FUTURE: proximity to objectives
+			#for (hx2, hy2) in hex_list:
+			#	map_hex2 = GetHexAt(hx2, hy2)
+			#	if not map_hex2.objective: continue
+			#	distance = GetHexDistance(hx, hy, hx2, hy2)
+			#	map_hex.score = map_hex.score * (8 - distance)
 		
 		time_taken = round((time.time() - start_time), 1)
 		print 'Generated tactical scores for map hexes in ' + str(time_taken) + ' seconds.'
@@ -2173,11 +2187,8 @@ class Scenario:
 			SaveGame()
 	
 	# add a new message to the log, and display it on the current message console
-	# FUTURE: option to highlight an on-map hex and pause
 	def AddMessage(self, text, highlight_hex):
 		self.messages.append(text)
-		# TEMP: display messages in console too
-		print '  ' + text
 		UpdateMsgConsole()
 		DrawScreenConsoles()
 		if highlight_hex is not None:
@@ -2215,16 +2226,22 @@ class Scenario:
 		# no target selected yet, select the first one
 		if self.player_target is None:
 			self.player_target = target_list[0]
-			return
 		
 		# last target in list selected, select the first one
-		if self.player_target == target_list[-1]:
+		elif self.player_target == target_list[-1]:
 			self.player_target = target_list[0]
-			return
 		
 		# select next target in list
-		n = target_list.index(self.player_target)
-		self.player_target = target_list[n+1]
+		else:
+			n = target_list.index(self.player_target)
+			self.player_target = target_list[n+1]
+		
+		# move target to top of unuit stack
+		# move to top of hex stack
+		map_hex = GetHexAt(self.player_target.hx, self.player_target.hy)
+		if len(map_hex.unit_stack) > 1:
+			self.player_target.MoveToTopOfStack(map_hex)
+		scenario.AddMessage('Now targeting ' + self.player_target.GetName(), None)
 	
 	# check for scenario end and set up data if so
 	def CheckForEnd(self):
@@ -2606,13 +2623,13 @@ def CalcAPRoll(attack_obj):
 	attack_obj.location_desc = location + ' ' + facing
 	
 	# calculate base AP score required
-	if attack_obj.weapon.name == 'Anti-Tank Rifle':
+	if attack_obj.weapon.name == 'AT Rifle':
 		base_ap = 5
 	else:
 		gun_rating = str(attack_obj.weapon.stats['calibre']) + attack_obj.weapon.stats['long_range']
 		if gun_rating == '37L':
 			base_ap = 9
-		elif gun_rating in ['37', '47*']:
+		elif gun_rating in ['37', '47S']:
 			base_ap = 8
 		elif gun_rating == '20L':
 			base_ap = 6
@@ -5293,12 +5310,8 @@ def CheckSavedGame(menu):
 			menu_option.inactive = True
 		return
 
-CheckSavedGame(cmd_menu)
+CheckSavedGame(active_menu)
 
-
-# jump right into a new scenario
-#exit_game = True
-#DoScenario()
 exit_game = False
 
 while not exit_game:

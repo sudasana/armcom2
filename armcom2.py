@@ -3922,34 +3922,39 @@ def UpdateContextCon():
 	
 	# Movement Menu
 	if scenario.active_cmd_menu == 'movement':
+		libtcod.console_set_default_foreground(context_con, libtcod.white)
+		libtcod.console_print(context_con, 0, 0, 'Movement')
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
-		libtcod.console_print(context_con, 0, 0, scenario.player_unit.movement_class)
+		libtcod.console_print(context_con, 0, 1, scenario.player_unit.movement_class)
 	
 	# Weapons Menu
 	elif scenario.active_cmd_menu == 'weapons':
 		libtcod.console_set_default_foreground(context_con, libtcod.white)
+		libtcod.console_print(context_con, 0, 0, 'Main Gun')
+		
+		libtcod.console_set_default_foreground(context_con, INFO_TEXT_COL)
 		weapon = scenario.player_unit.weapon_list[0]
-		libtcod.console_print(context_con, 0, 0, weapon.GetName())
-		libtcod.console_print(context_con, 0, 1, 'Load')
-		libtcod.console_print(context_con, 0, 2, 'Next')
+		libtcod.console_print(context_con, 0, 1, weapon.GetName())
+		libtcod.console_print(context_con, 0, 2, 'Load')
+		libtcod.console_print(context_con, 0, 3, 'Next')
 		
 		libtcod.console_set_default_foreground(context_con, INFO_TEXT_COL)
 		if weapon.stats['loaded_ammo'] is None:
 			text = 'None'
 		else:
 			text = weapon.stats['loaded_ammo']
-		libtcod.console_print(context_con, 5, 1, text)
+		libtcod.console_print(context_con, 5, 2, text)
 		if weapon.stats['reload_ammo'] is None:
 			text = 'None'
 		else:
 			text = weapon.stats['reload_ammo']
-		libtcod.console_print(context_con, 5, 2, text)
+		libtcod.console_print(context_con, 5, 3, text)
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.white)
 		if weapon.stats['use_ready_rack']:
-			libtcod.console_print(context_con, 10, 2, 'RR')
+			libtcod.console_print(context_con, 10, 3, 'RR')
 		
-		y = 4
+		y = 5
 		for ammo_type in AMMO_TYPE_ORDER:
 			if weapon.stats[ammo_type] is not None:
 				libtcod.console_set_default_foreground(context_con, libtcod.white)
@@ -3961,10 +3966,10 @@ def UpdateContextCon():
 				y+=1
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.white)
-		libtcod.console_print(context_con, 0, 8, 'Max')
+		libtcod.console_print(context_con, 0, 9, 'Max')
 		libtcod.console_set_default_foreground(context_con, INFO_TEXT_COL)
 		text = str(scenario.player_unit.max_ammo) + '+' + str(weapon.stats['rr_size'])
-		libtcod.console_print_ex(context_con, 8, 8, libtcod.BKGND_NONE,
+		libtcod.console_print_ex(context_con, 8, 9, libtcod.BKGND_NONE,
 			libtcod.RIGHT, text)
 
 

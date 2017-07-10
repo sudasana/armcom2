@@ -335,7 +335,7 @@ class Unit:
 		self.unresolved_fp = 0			# fp from attacks to be resolved at end of action
 		self.unresolved_ap = []			# list of unsolved penetrating AP hits
 		
-		# TODO: not used yet
+		# FUTURE: not used yet
 		self.acquired_target = None		# PSG has acquired this unit as target
 		self.acquired_by = []			# PSG has been acquired by this/these unit(s)
 		
@@ -444,7 +444,7 @@ class Unit:
 					
 					self.crew_positions.append(new_position)
 				
-				# TODO: sort crew_positions by name based on CREW_POSITION_ORDER?
+				# FUTURE: sort crew_positions by name based on CREW_POSITION_ORDER?
 				
 		
 		# gun stats
@@ -493,7 +493,6 @@ class Unit:
 	# resolve any outstanding hits at the end of an action
 	def ResolveHits(self):
 		
-		# TEMP armoured units are not affected at all by fp attacks
 		# FUTURE: possible damage to unprotected crew
 		if self.unresolved_fp > 0 and self.armour is not None:
 			text = 'Firepower attack has no effect on ' + self.GetName()
@@ -551,7 +550,7 @@ class Unit:
 		
 		if len(self.unresolved_ap) == 0: return
 		
-		# TEMP - only one outcome possible
+		# FUTURE: different outcomes possible
 		text = self.GetName() + ' is destroyed!'
 		scenario.AddMessage(text, (self.hx, self.hy))
 		self.DestroyMe()
@@ -810,7 +809,7 @@ class Unit:
 				psg.acquired_target = None
 			
 	# regain unspotted status for this PSG
-	# TODO: update, not used right now
+	# FUTURE: update this, not used right now
 	def HideMe(self):
 		# update console and screen to make sure unit has finished move animation
 		UpdateUnitConsole()
@@ -916,7 +915,7 @@ class Unit:
 	# vehicles must be facing this direction to move, or can do a reverse move
 	# returns True if the move was successful
 	
-	# TODO: check for reverse move and apply modifiers if so
+	# FUTURE: check for reverse move and apply modifiers if so
 	def MoveInto(self, new_hx, new_hy):
 		
 		# make sure move is allowed
@@ -1002,7 +1001,7 @@ class Unit:
 		return True
 	
 	# attempt to pivot this unit to face the given direction
-	# TODO: first check if possible, might be immobilized, etc.
+	# FUTURE: first check if possible, might be immobilized, etc.
 	def PivotToFace(self, direction):
 		if self.facing is None: return False
 		facing_change = direction - self.facing
@@ -1197,7 +1196,7 @@ class AnimHandler:
 			lifetime = libtcod.random_get_int(0, 4, 7)
 			self.raindrops.append([x, y, lifetime])
 		self.rain_timer = time.time()
-		# TEMP - FUTURE: will be set by weather handler
+		# FUTURE: will be set by weather handler
 		self.rain_active = False
 		
 		# gun weapon attack effect
@@ -1207,11 +1206,27 @@ class AnimHandler:
 		self.gun_click = 0			# time between animation updates
 		self.gun_active = False
 		
+		# MG / small arms attack effect
+		self.af_attack_line = []		# path of attack on screen
+		self.af_attack_timer = time.time()	# animation timer
+		self.af_attack_click = 0		# time between animation updates
+		self.af_attack_remaining = 0		# remaining number of updates before end
+		self.af_attack_active = False
+		
 		# map hex highlight effect
 		self.highlight_vp_hex = None
 		self.highlight_timer = time.time()	# animation timer
 		self.highlight_click = 0		# time between animation updates
 		self.highlight_char = 0			# current character of animation
+	
+	# start an MG / small arms attack effect
+	def InitAFAttackEffect(self, x1, y1, x2, y2):
+		self.af_attack_line = GetLine(x1, y1, x2, y2, los=True)
+		self.af_attack_timer = time.time()
+		self.af_attack_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.001
+		self.af_attack_positions = sample(self.af_attack_line, int(len(self.af_attack_line) / 5))
+		self.af_attack_remaining = 20
+		self.af_attack_active = True
 	
 	# start a gun projectile animation
 	def InitGunEffect(self, x1, y1, x2, y2):
@@ -1286,6 +1301,20 @@ class AnimHandler:
 				else:
 					self.gun_location += 1
 		
+		# AF attack effect
+		if self.af_attack_active:
+			if time.time() - self.af_attack_timer >= self.af_attack_click:
+				updated_animation = True
+				self.af_attack_timer = time.time()
+				# remove animation if it's reached its end
+				if self.af_attack_remaining == 0:
+					self.af_attack_active = False
+					self.anim_finished = True
+				else:
+					# randomly choose character positions along line
+					self.af_attack_positions = sample(self.af_attack_line, int(len(self.af_attack_line) / 5))
+					self.af_attack_remaining -= 1
+		
 		# map hex highlight
 		if self.highlight_vp_hex:
 			if time.time() - self.highlight_timer >= self.highlight_click:
@@ -1308,9 +1337,13 @@ class AnimHandler:
 						char = chr(92)
 					libtcod.console_put_char_ex(anim_con, drop[0], drop[1], char,
 						libtcod.light_blue, libtcod.black)
+			if self.af_attack_active:
+				for (x,y) in self.af_attack_positions:
+					libtcod.console_put_char_ex(anim_con, x, y, 250,
+						libtcod.yellow, libtcod.black)
 			if self.gun_active:
 				(x,y) = self.gun_line[self.gun_location]
-				libtcod.console_put_char_ex(anim_con, x, y, 250, libtcod.white,
+				libtcod.console_put_char_ex(anim_con, x, y, 249, libtcod.white,
 					libtcod.black)
 			if self.highlight_vp_hex:
 				(hx, hy) = self.highlight_vp_hex
@@ -1412,7 +1445,7 @@ class AI:
 	def DoFireAction(self):
 		
 		# build a list of possible targets
-		# TODO: check each weapon separately
+		# FUTURE: check each weapon separately
 		
 		target_list = []
 		for unit in scenario.unit_list:
@@ -1616,7 +1649,7 @@ class CommandMenu:
 		return option
 	
 	# display the menu to the specified console
-	# TODO: add maximum height
+	# FUTURE: add maximum height
 	def DisplayMe(self, console, x, y, w):
 		original_fg = libtcod.console_get_default_foreground(console)
 		original_bg = libtcod.console_get_default_background(console)
@@ -1909,7 +1942,7 @@ class HexMap:
 				visible_hextants = crew_position.open_visible
 				max_distance = MAX_LOS_DISTANCE
 		
-		# TODO: rotate visible hextants based on turret/hull direction
+		# FUTURE: rotate visible hextants based on turret/hull direction
 		
 		# raycast from crewman position to each map hex
 		#start_time = time.time()
@@ -1939,7 +1972,6 @@ class HexMap:
 
 # holds information about a scenario in progress
 # on creation, also set the map size
-# TODO: change to BattleEncounter ?
 class Scenario:
 	def __init__(self, map_w, map_h):
 		
@@ -2109,7 +2141,7 @@ class Scenario:
 			if not in_arc:
 				return (-1, 'Target outside weapon firing arc')
 			 
-		# TEMP - FUTURE: calculate a score for this attack
+		# FUTURE: calculate a better score for this attack
 		return (1, '')
 		
 	# randomize the order of units in unit_list to reflect activation order in each turn
@@ -2119,7 +2151,7 @@ class Scenario:
 	# activate the next unit in the list, or start a new turn
 	def ActivateNextUnit(self):
 		
-		# TODO: chance that currently active unit gets a free turn
+		# FUTURE: check for currently active unit getting a free turn
 		
 		# do post-activation actions for currently active unit
 		self.active_unit.DoPostActivation()
@@ -2217,7 +2249,11 @@ class Scenario:
 			self.end_text = 'You have captured all the objectives!'
 			return
 
-		# TODO: time limit has been reached
+		# time limit has been reached
+		if self.hour == self.hour_limit and self.minute >= self.minute_limit:
+			self.winner = 1
+			self.end_text = 'You have run out of time to complete the mission.'
+			return
 		
 	
 	# display a screen of info about a completed scenario
@@ -2790,7 +2826,6 @@ def GetHexDistance(hx1, hy1, hx2, hy2):
 
 # return a list of hexes along a line from hex1 to hex2
 # adapted from http://www.redblobgames.com/grids/hexagons/implementation.html#line-drawing
-# TODO: not used at present, might be useful later on?
 def GetHexLine(hx1, hy1, hx2, hy2):
 	
 	def Lerp(a, b, t):
@@ -2835,7 +2870,7 @@ def GetHexLine(hx1, hy1, hx2, hy2):
 
 # returns a ring of hexes around a center point for a given radius
 # NOTE: may include hex locations that are not actually part of the game map
-# TODO: improve this
+# FUTURE: find way to improve this function?
 def GetHexRing(hx, hy, radius):
 	hex_list = []
 	if radius == 0: return hex_list
@@ -3341,8 +3376,11 @@ def InitAttack(attacker, weapon, target):
 		x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
 		scenario.anim.InitGunEffect(x1, y1, x2, y2)
 		WaitForAnimation()
-	elif weapon.weapon_type in ['coax_mg', 'hull_mg']:
-		pass
+	elif weapon.weapon_type in ['small_arms', 'coax_mg', 'hull_mg']:
+		x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
+		x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
+		scenario.anim.InitAFAttackEffect(x1, y1, x2, y2)
+		WaitForAnimation()
 	
 	# do to-hit roll
 	# clear "Enter to Roll" and "Backspace to Cancel" lines
@@ -3405,7 +3443,7 @@ def InitAttack(attacker, weapon, target):
 	if attacker == scenario.player_unit:
 		scenario.display_los = True
 	
-	# TODO: handle newly acquired target
+	# FUTURE: handle newly acquired target
 	
 	# handle reloading procedure for gun
 	if weapon.weapon_type == 'gun':
@@ -4235,7 +4273,7 @@ def UpdateScenInfoConsole():
 	libtcod.console_print_ex(scen_info_con, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	
-	# TODO: move wind and weather info to own console
+	# FUTURE: move wind and weather info to own console
 	#text = 'No Wind'
 	#libtcod.console_print_ex(scen_info_con, 56, 0, libtcod.BKGND_NONE, libtcod.RIGHT,
 	#	text)
@@ -4330,7 +4368,7 @@ def UpdateHexInfoConsole():
 	libtcod.console_print(hex_info_con, 0, 4, unit.GetName())
 	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	
-	# TODO unit status on line 5
+	# FUTURE: display unit statuses on line 5
 	
 	# unresolved hits on top unit in stack
 	if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
@@ -4428,7 +4466,7 @@ def ScenarioSummary():
 		text)
 	
 	# forces on both sides
-	# TODO: this info should be part of scenario object as well
+	# FUTURE: this info should be part of scenario object as well
 	libtcod.console_set_default_foreground(temp, HIGHLIGHT_COLOR)
 	libtcod.console_print(temp, 2, 25, 'Your Forces')
 	libtcod.console_print(temp, 2, 31, 'Expected Resistance')
@@ -4556,7 +4594,7 @@ def DoScenario(load_savegame=False):
 	global dice
 	
 	# update every display console and draw everything to screen
-	# TODO: change to UpdateConsoles()
+	# FUTURE: change to UpdateConsoles()
 	def UpdateScreen():
 		UpdateUnitConsole()
 		UpdatePlayerUnitConsole()
@@ -4685,11 +4723,6 @@ def DoScenario(load_savegame=False):
 		#                            Start a new Scenario                                #
 		##################################################################################
 		
-		libtcod.console_clear(0)
-		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Generating map...')
-		libtcod.console_flush()
-		
 		# create a new campaign day object and hex map
 		scenario = Scenario(26, 26)
 		
@@ -4708,13 +4741,17 @@ def DoScenario(load_savegame=False):
 		scenario.hour_limit = 9
 		scenario.minute_limit = 0
 		
-		GenerateTerrain()
-		
 		# display scenario info: chance to cancel scenario start
-		# TEMP disabled
-		#if not ScenarioSummary():
-		#	del scenario
-		#	return
+		if not ScenarioSummary():
+			del scenario
+			return
+		
+		libtcod.console_clear(0)
+		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Generating map...')
+		libtcod.console_flush()
+		
+		GenerateTerrain()
 		
 		# spawn the player unit
 		# TEMP - should be integrated into a single spawn function with deployment zones
@@ -4774,7 +4811,7 @@ def DoScenario(load_savegame=False):
 		
 		# set up our objectives: 3 distributed randomly but not too close to the player
 		#   and not too close to another objective
-		# TODO: move to its own fuction within Scenario class
+		# FUTURE: move to its own function within Scenario class
 		total_objectives = 3
 		for tries in range(300):
 			if total_objectives == 0: break
@@ -4804,11 +4841,10 @@ def DoScenario(load_savegame=False):
 		for map_hex in scenario.objective_hexes:
 			map_hex.CheckObjectiveStatus(no_message=True)
 		
-		# TEMP spawn enemy units
+		# spawn enemy units
 		# FUTURE: use a more complex deployment table
-		#ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw']
-		ENEMY_LIST = ['rifle_squad_atr']
-		for i in range(6):
+		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw', 'rifle_squad_atr']
+		for i in range(8):
 			unit_id = choice(ENEMY_LIST)
 			scenario.SpawnEnemy(unit_id, 9, 9)
 		
@@ -4835,18 +4871,12 @@ def DoScenario(load_savegame=False):
 		scenario.active_cmd_menu = 'root'
 		scenario.BuildCmdMenu()
 		
-		#UpdateScreen()
 		text = str(scenario.hour) + ':' + str(scenario.minute).zfill(2)
 		text += ' - Scenario Begins'
 		scenario.AddMessage(text, None)
 		
-		# TEMP test message
-		UpdateScreen()
-		libtcod.console_flush()
-		scenario.AddMessage('Player unit spawned', (scenario.player_unit.hx, scenario.player_unit.hy))
 		
-		
-	# TODO: End new game set-up
+	# End of new/continued game set-up
 	
 	UpdateScenInfoConsole()
 	UpdateScreen()
@@ -5000,7 +5030,7 @@ def DoScenario(load_savegame=False):
 			if scenario.player_unit.MoveInto(hx, hy):
 				scenario.BuildCmdMenu()
 				DrawScreenConsoles()
-				# TEMP: no chance of extra turn or missed turn
+				# FUTURE: chance of extra turn or missed turn
 				scenario.ActivateNextUnit()
 				continue
 		
@@ -5143,7 +5173,7 @@ key = libtcod.Key()
 #                                        Main Menu                                       #
 ##########################################################################################
 
-# TODO: put into its own function so can be re-called after language change
+# FUTURE: put into its own function so can be re-called after language change
 
 # generate main menu console
 main_menu_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)

@@ -273,4 +273,24 @@
     </crew_position>
   </unit_def>
   
+  <!-- Generic Infantry -->
+  
+  <unit_def>
+    <infantry/>
+    <id>rifle_squad_atr</id>
+    <name>Rifle Squad w/ AT Rifles</name>
+    <movement_class>Infantry</movement_class>
+    <weapon>
+      <type>gun</type>
+      <name>Anti-Tank Rifle</name>
+      <max_range>3</max_range>
+    </weapon>
+    <weapon>
+      <type>small_arms</type>
+      <name>Rifles</name>
+      <fp>4</fp>
+      <max_range>1</max_range>
+    </weapon>
+  </unit_def>
+  
 </root>

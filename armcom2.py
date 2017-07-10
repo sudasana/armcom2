@@ -165,17 +165,22 @@ WEAPON_LIST_COLOR = libtcod.Color(25, 25, 90)		# background for weapon list in P
 SELECTED_WEAPON_COLOR = libtcod.Color(50, 50, 150)	# " selected weapon
 ACTIVE_MSG_COL = libtcod.Color(0, 210, 0)		# active message colour
 
-TARGET_HL_COL = libtcod.Color(55, 0, 0)			# target highlight background color 
-SELECTED_HL_COL = libtcod.Color(100, 255, 255)		# selected PSG highlight colour
-ENEMY_HL_COL = libtcod.Color(40, 0, 0)
-ENEMY_UNIT_COL = libtcod.Color(255, 0, 64)		# enemy unit and name colour
+FRIENDLY_UNIT_COL = libtcod.Color(64, 0, 255)		# friendly unit and name color
+FRIENDLY_HL_COL = libtcod.Color(0, 0, 60)		# " highlight background color
+ENEMY_UNIT_COL = libtcod.Color(255, 0, 64)		# enemy unit and name color
+ENEMY_HL_COL = libtcod.Color(60, 0, 0)			# " highlight background color
+UNKNOWN_UNIT_COL = libtcod.Color(200, 200, 200)		# unknown unit and name color
+UNKNOWN_HL_COL = libtcod.Color(40, 40, 0)		# " highlight background color
+
+TARGET_HL_COL = libtcod.Color(55, 0, 0)			# target unit highlight background color 
+
 INACTIVE_COL = libtcod.Color(100, 100, 100)		# inactive option color
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
 
 SMALL_CON_BKG = libtcod.Color(25, 25, 25)		# background colour for small info consoles
 
-HIGHLIGHT_CHARS = [250, 249, 7, 7, 7, 7, 249, 250]	# used for unit highlight animation
-
+HIGHLIGHT_CHARS = [249, 7, 7, 7, 7, 249]		# characters for hex highlight animation
+HEX_HIGHLIGHT_COL = libtcod.Color(100, 255, 100)	# color for hex highlight animation
 
 # Descriptor definitions
 MORALE_DESC = {
@@ -492,7 +497,7 @@ class Unit:
 		# FUTURE: possible damage to unprotected crew
 		if self.unresolved_fp > 0 and self.armour is not None:
 			text = 'Firepower attack has no effect on ' + self.GetName()
-			scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+			scenario.AddMessage(text, (self.hx, self.hy))
 			self.unresolved_fp = 0
 		
 		# unresolved area fire hits to resolve
@@ -500,7 +505,7 @@ class Unit:
 		
 			text = ('Resolving ' + str(self.unresolved_fp) + ' fp of attacks on ' +
 				self.GetName())
-			scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+			scenario.AddMessage(text, (self.hx, self.hy))
 			
 			# get base score to equal/beat
 			for (chart_fp, inf_score, veh_score) in reversed(AF_CHART):
@@ -517,7 +522,7 @@ class Unit:
 			
 			if roll == 2 or float(roll) < float(score) * 0.5:
 				text = self.GetName() + ' is destroyed!'
-				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+				scenario.AddMessage(text, (self.hx, self.hy))
 				self.DestroyMe()
 				return
 			
@@ -526,11 +531,11 @@ class Unit:
 					self.PinMe()
 				else:
 					text = 'Attack had no effect on ' + self.GetName()
-					scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+					scenario.AddMessage(text, (self.hx, self.hy))
 			
 			elif roll < score:
 				text = self.GetName() + ' must take a Morale Test'
-				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+				scenario.AddMessage(text, (self.hx, self.hy))
 				if not self.MoraleCheck(0):
 					# failed
 					self.BreakMe()
@@ -539,7 +544,7 @@ class Unit:
 					self.PinMe()
 			else:
 				text = 'Attack had no effect on ' + self.GetName()
-				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+				scenario.AddMessage(text, (self.hx, self.hy))
 			
 			# reset unresolved fp
 			self.unresolved_fp = 0
@@ -548,7 +553,7 @@ class Unit:
 		
 		# TEMP - only one outcome possible
 		text = self.GetName() + ' is destroyed!'
-		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+		scenario.AddMessage(text, (self.hx, self.hy))
 		self.DestroyMe()
 	
 	# perform a morale check for this unit
@@ -583,12 +588,12 @@ class Unit:
 		# double break, destroy instead
 		if self.broken:
 			text = self.GetName() + ' failed a Break test while broken and is destroyed!'
-			scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+			scenario.AddMessage(text, (self.hx, self.hy))
 			self.DestroyMe()
 			return
 		self.broken = True
 		text = self.GetName() + ' is Broken'
-		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+		scenario.AddMessage(text, (self.hx, self.hy))
 		# any pinned status is cancelled
 		if self.pinned:
 			self.pinned = False
@@ -601,7 +606,7 @@ class Unit:
 		else:
 			self.pinned = True
 			text = self.GetName() + ' is Pinned'
-		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+		scenario.AddMessage(text, (self.hx, self.hy))
 	
 	# remove this unit from the game
 	def DestroyMe(self):
@@ -624,7 +629,7 @@ class Unit:
 			if self.MoraleCheck(0):
 				self.pinned = False
 				text = self.GetName() + ' recovers from being Pinned'
-				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+				scenario.AddMessage(text, (self.hx, self.hy))
 			return
 		
 		if self.broken:
@@ -632,7 +637,7 @@ class Unit:
 				self.broken = False
 				self.pinned = True
 				text = self.GetName() + ' recovers from being Broken and is now Pinned'
-				scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+				scenario.AddMessage(text, (self.hx, self.hy))
 
 	
 	
@@ -748,7 +753,7 @@ class Unit:
 		else:
 			text = 'Enemy '
 		text += self.GetName() + ' has been spotted!'
-		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+		scenario.AddMessage(text, (self.hx, self.hy))
 	
 	# get display character to be used on hex map
 	def GetDisplayChar(self):
@@ -769,7 +774,7 @@ class Unit:
 		if self.gun:
 			if self.facing is None:		# facing not yet set
 				return '!'
-			direction = CombineDirs(scenario.player_unit.facing, self.facing)
+			direction = ConstrainDir(self.facing - scenario.player_unit.facing)
 			if not self.deployed:
 				return 124
 			elif direction in [5, 0, 1]:
@@ -815,7 +820,7 @@ class Unit:
 			text = self.GetName() + ' is now unseen by the enemy'
 		else:
 			text = 'Lost contact with ' + self.GetName()
-		scenario.AddMessage(text, highlight_hex=(self.hx, self.hy))
+		scenario.AddMessage(text, (self.hx, self.hy))
 		self.known = False
 		UpdateUnitConsole()
 		if scenario.active_unit == self:
@@ -847,7 +852,7 @@ class Unit:
 		# determine foreground color to use
 		if self.owning_player == 1:
 			if not self.known:
-				col = libtcod.light_grey
+				col = UNKNOWN_UNIT_COL
 			else:
 				col = ENEMY_UNIT_COL
 		else:	
@@ -1080,7 +1085,7 @@ class Unit:
 			self.unresolved_ap.append(attack_obj.weapon.stats['calibre'])
 			text = ('Added a ' + str(attack_obj.weapon.stats['calibre']) + 
 				' calibre hit to ' + attack_obj.target.GetName())
-			scenario.AddMessage(text, highlight_hex=(attack_obj.target.hx,
+			scenario.AddMessage(text, (attack_obj.target.hx,
 				attack_obj.target.hy))
 
 
@@ -1088,14 +1093,20 @@ class Unit:
 class Weapon:
 	def __init__(self, item):
 		
+		self.name = ''			# name of this weapon if not automatically generated
 		self.fired = False		# weapon has fired this turn
 		self.rof_target = None		# RoF pointer to target, None if no RoF maintained
+		self.firing_group = None
 		
 		self.stats = {}
 		
 		# load weapon stats from xml item
 		self.weapon_type = item.find('type').text
-		self.firing_group = int(item.find('firing_group').text)
+		if item.find('name') is not None:
+			self.name = item.find('name').text
+		
+		if item.find('firing_group') is not None:
+			self.firing_group = int(item.find('firing_group').text)
 		
 		self.stats['rof'] = 0
 		if item.find('rof') is not None:
@@ -1103,12 +1114,17 @@ class Weapon:
 		
 		# gun stats
 		if self.weapon_type == 'gun':
-			self.stats['calibre'] = int(item.find('calibre').text)
+			self.stats['calibre'] = 0
+			if item.find('calibre') is not None:
+				self.stats['calibre'] = int(item.find('calibre').text)
+			
+			self.stats['long_range'] = ''
 			if item.find('long_range') is not None:
 				self.stats['long_range'] = item.find('long_range').text
-			else:
-				self.stats['long_range'] = ''
+			
 			self.stats['max_range'] = 6
+			if item.find('max_range') is not None:
+				self.stats['max_range'] = int(item.find('max_range').text)
 			
 			self.stats['rr_size'] = 0
 			self.stats['use_ready_rack'] = None
@@ -1123,13 +1139,18 @@ class Weapon:
 			self.stats['HE'] = (26, 3)
 			self.stats['AP'] = (40, 3)
 		
-		# vehicle mg stats
-		elif self.weapon_type in ['coax_mg', 'hull_mg']:
+		# area fire weapon stats
+		elif self.weapon_type in ['small_arms', 'coax_mg', 'hull_mg']:
 			self.stats['fp'] = int(item.find('fp').text)
-			if self.weapon_type == 'coax_mg':
-				self.stats['max_range'] = 4
+			if item.find('max_range') is not None:
+				self.stats['max_range'] = int(item.find('max_range').text)
 			else:
-				self.stats['max_range'] = 2
+				if self.weapon_type == 'small_arms':
+					self.stats['max_range'] = 1
+				elif self.weapon_type == 'coax_mg':
+					self.stats['max_range'] = 4
+				else:
+					self.stats['max_range'] = 2
 			
 		# weapon mount
 		if item.find('mount') is not None:
@@ -1145,6 +1166,8 @@ class Weapon:
 	
 	# return a short display name for this weapon
 	def GetName(self):
+		if self.name != '':
+			return self.name
 		if self.weapon_type == 'gun':
 			text = str(self.stats['calibre']) + 'mm'
 			if self.stats['long_range'] != '':
@@ -1184,8 +1207,8 @@ class AnimHandler:
 		self.gun_click = 0			# time between animation updates
 		self.gun_active = False
 		
-		# PSG highlight effect
-		self.highlight_psg = None
+		# map hex highlight effect
+		self.highlight_vp_hex = None
 		self.highlight_timer = time.time()	# animation timer
 		self.highlight_click = 0		# time between animation updates
 		self.highlight_char = 0			# current character of animation
@@ -1198,11 +1221,24 @@ class AnimHandler:
 		self.gun_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.001
 		self.gun_active = True
 	
-	# start a PSG highlight animation
-	def InitHighlight(self, psg):
-		self.highlight_psg = psg
+	# start a map hex highlight animation
+	def InitHexHighlight(self, (hx, hy)):
+		
+		map_hex = GetHexAt(hx, hy)
+		
+		# do not init if this hex is off the current map viewport
+		if not map_hex.IsOnViewport():
+			self.anim_finished = True
+			return
+		
+		# get its viewport location
+		for (vp_hx, vp_hy) in VP_HEXES:
+			if scenario.map_vp[(vp_hx, vp_hy)] == (hx, hy):
+				break
+		
+		self.highlight_vp_hex = (vp_hx, vp_hy)
 		self.highlight_timer = time.time()
-		self.highlight_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.003
+		self.highlight_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.004
 		self.highlight_char = 0
 	
 	# stop all animations in progress
@@ -1250,14 +1286,15 @@ class AnimHandler:
 				else:
 					self.gun_location += 1
 		
-		# PSG highlight
-		if self.highlight_psg:
+		# map hex highlight
+		if self.highlight_vp_hex:
 			if time.time() - self.highlight_timer >= self.highlight_click:
 				updated_animation = True
 				self.highlight_timer =  time.time()
 				# remove animation if it's reached its end
 				if self.highlight_char == len(HIGHLIGHT_CHARS) - 1:
-					self.highlight_psg = None
+					self.highlight_vp_hex = None
+					self.anim_finished = True
 				self.highlight_char += 1
 		
 		# if we updated any animations, draw all of them to the screen
@@ -1275,13 +1312,15 @@ class AnimHandler:
 				(x,y) = self.gun_line[self.gun_location]
 				libtcod.console_put_char_ex(anim_con, x, y, 250, libtcod.white,
 					libtcod.black)
-			if self.highlight_psg:
-				x = self.highlight_psg.screen_x - 26
-				y = self.highlight_psg.screen_y - 3
+			if self.highlight_vp_hex:
+				(hx, hy) = self.highlight_vp_hex
+				(x,y) = PlotHex(hx, hy)
+				x += 1
+				y += 1
 				for (xm, ym) in HEX_EDGE_TILES:
 					libtcod.console_put_char_ex(anim_con, x+xm, y+ym,
 						HIGHLIGHT_CHARS[self.highlight_char],
-						ACTIVE_MSG_COL, libtcod.black)
+						HEX_HIGHLIGHT_COL, libtcod.black)
 		
 		return updated_animation
 
@@ -1373,23 +1412,33 @@ class AI:
 	def DoFireAction(self):
 		
 		# build a list of possible targets
+		# TODO: check each weapon separately
+		
 		target_list = []
 		for unit in scenario.unit_list:
 			if unit.owning_player == 1: continue
-			if GetLoS(self.owner.hx, self.owner.hy, unit.hx, unit.hy) > -1:
+			
+			# check range
+			distance = GetHexDistance(self.owner.hx, self.owner.hy, unit.hx, unit.hy)
+			if distance > self.owner.weapon_list[0].stats['max_range']:
+				continue
+			
+			# check LoS
+			if GetLoS(self.owner.hx, self.owner.hy, unit.hx, unit.hy) == -1:
+				continue
 				
-				# check attack odds
-				attack_obj = CalcAttack(self.owner, self.owner.weapon_list[0], unit)
-				
-				# area fire attack against armoured target
-				if not attack_obj.pf_attack and unit.armour is not None:
-					continue
-				
-				# too difficult to hit/affect
-				if attack_obj.final_to_hit < 2:
-					continue
-				
-				target_list.append(unit)
+			# check attack odds
+			attack_obj = CalcAttack(self.owner, self.owner.weapon_list[0], unit)
+			
+			# area fire attack against armoured target
+			if not attack_obj.pf_attack and unit.armour is not None:
+				continue
+			
+			# too difficult to hit/affect
+			if attack_obj.final_to_hit < 2:
+				continue
+			
+			target_list.append(unit)
 		
 		if len(target_list) == 0:
 			return False
@@ -1410,7 +1459,7 @@ class AI:
 		else:
 			text = target.GetName()
 		scenario.AddMessage(self.owner.GetName() + ' fires at ' + text + '!',
-			highlight_hex=(self.owner.hx, self.owner.hy))
+			(self.owner.hx, self.owner.hy))
 		DrawScreenConsoles()
 		
 		InitAttack(self.owner, self.owner.weapon_list[0], target)
@@ -1658,6 +1707,12 @@ class MapHex:
 		self.h = 0
 		self.f = 0
 	
+	# return True if this hex is currently within the player's map viewport
+	def IsOnViewport(self):
+		if GetHexDistance(self.hx, self.hy, scenario.player_unit.hx, scenario.player_unit.hy) > 6:
+			return False
+		return True
+	
 	# set hex elevation
 	# FUTURE: set up impassible cliff edges in this and adjacent hexes if required
 	def SetElevation(self, new_elevation):
@@ -1727,7 +1782,7 @@ class MapHex:
 			else:
 				text = 'The enemy has captured an objective.'
 			
-		scenario.AddMessage(text, highlight_hex = self)
+		scenario.AddMessage(text, (self.hx, self.hy))
 
 
 # a map of hexes for use in a campaign day
@@ -2087,11 +2142,15 @@ class Scenario:
 	
 	# add a new message to the log, and display it on the current message console
 	# FUTURE: option to highlight an on-map hex and pause
-	def AddMessage(self, text, highlight_hex=None):
+	def AddMessage(self, text, highlight_hex):
 		self.messages.append(text)
 		# TEMP: display messages in console too
 		print '  ' + text
 		UpdateMsgConsole()
+		DrawScreenConsoles()
+		if highlight_hex is not None:
+			scenario.anim.InitHexHighlight(highlight_hex)
+			WaitForAnimation()
 	
 	# set up map viewport hexes based on current player tank position and facing
 	def SetVPHexes(self):
@@ -2511,14 +2570,16 @@ def CalcAPRoll(attack_obj):
 	attack_obj.location_desc = location + ' ' + facing
 	
 	# calculate base AP score required
-	gun_rating = str(attack_obj.weapon.stats['calibre']) + attack_obj.weapon.stats['long_range']
-	
-	if gun_rating == '37L':
-		base_ap = 9
-	elif gun_rating in ['37', '47*']:
-		base_ap = 8
-	elif gun_rating == '20L':
-		base_ap = 6
+	if attack_obj.weapon.name == 'Anti-Tank Rifle':
+		base_ap = 5
+	else:
+		gun_rating = str(attack_obj.weapon.stats['calibre']) + attack_obj.weapon.stats['long_range']
+		if gun_rating == '37L':
+			base_ap = 9
+		elif gun_rating in ['37', '47*']:
+			base_ap = 8
+		elif gun_rating == '20L':
+			base_ap = 6
 	
 	# calculate modifiers
 	modifiers = []
@@ -3261,9 +3322,11 @@ def InitAttack(attacker, weapon, target):
 	# set unit fired flag
 	attacker.fired = True
 	# mark this weapon and all others in same group as having fired
-	for check_weapon in attacker.weapon_list:
-		if check_weapon.firing_group == weapon.firing_group:
-			check_weapon.fired = True
+	if weapon.firing_group is not None:
+		for check_weapon in attacker.weapon_list:
+			if check_weapon.firing_group is not None:
+				if check_weapon.firing_group == weapon.firing_group:
+					check_weapon.fired = True
 	
 	# turn off LoS display and clear any LoS drawn above from screen for animation
 	scenario.display_los = False
@@ -3328,7 +3391,7 @@ def InitAttack(attacker, weapon, target):
 			# AF attack, save attack details to target, to be resolved at end of action
 			target.unresolved_fp += attack_obj.final_fp
 			text = 'Added ' + str(attack_obj.final_fp) + ' unresolved fp to ' + target.GetName()
-			scenario.AddMessage(text, highlight_hex=(target.hx, target.hy))
+			scenario.AddMessage(text, (target.hx, target.hy))
 	
 		# target spotted
 		if not target.known:
@@ -3401,10 +3464,10 @@ def InitAttack(attacker, weapon, target):
 	if roll <= roll_required:
 		weapon.rof_target = target
 		if attacker == scenario.player_unit:
-			scenario.AddMessage("You maintained your gun's Rate of Fire")
+			scenario.AddMessage("You maintained your gun's Rate of Fire", None)
 	else:
 		if attacker == scenario.player_unit:
-			scenario.AddMessage("You did not maintain your gun's Rate of Fire")
+			scenario.AddMessage("You did not maintain your gun's Rate of Fire", None)
 
 
 # display the factors and odds for an attack on the screen
@@ -4187,13 +4250,12 @@ def UpdateScenInfoConsole():
 
 # update the map hex info console
 def UpdateHexInfoConsole():
+	libtcod.console_set_default_background(hex_info_con, libtcod.black)
 	libtcod.console_clear(hex_info_con)
 	libtcod.console_set_default_foreground(hex_info_con, TITLE_COL)
 	libtcod.console_set_default_background(hex_info_con, TITLE_BG_COL)
 	libtcod.console_rect(hex_info_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print(hex_info_con, 0, 0, 'Hex Info')
-	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
-	libtcod.console_set_default_background(hex_info_con, libtcod.black)
 	
 	# see if we can display info about a map hex
 	
@@ -4206,54 +4268,69 @@ def UpdateHexInfoConsole():
 	(hx, hy) = scenario.map_index[(x,y)]
 	map_hex = GetHexAt(hx, hy)
 	
-	# coordinates
+	# replace window title with terrain type
+	libtcod.console_rect(hex_info_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
+	libtcod.console_print(hex_info_con, 0, 0, map_hex.terrain_type.display_name)
+	
+	# DEBUG: display coordinates; disable in distribution version?
+	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	libtcod.console_print_ex(hex_info_con, 23, 0, libtcod.BKGND_NONE,
 		libtcod.RIGHT, str(map_hex.hx) + ',' + str(map_hex.hy))
 	
-	# terrain and elevation
-	libtcod.console_set_default_background(hex_info_con, HIGHLIGHT_COLOR2)
-	libtcod.console_rect(hex_info_con, 0, 1, 24, 1, False, libtcod.BKGND_SET)
-	libtcod.console_set_default_background(hex_info_con, libtcod.black)
-	libtcod.console_print(hex_info_con, 0, 1, map_hex.terrain_type.display_name)
+	# road
+	if len(map_hex.dirt_road_links) > 0:
+		libtcod.console_set_default_foreground(hex_info_con, DIRT_ROAD_COL)
+		libtcod.console_print(hex_info_con, 0, 1, 'Road')
+		libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
+	
+	# FUTURE: stone road, rail, river
+	
+	# elevation
 	libtcod.console_print_ex(hex_info_con, 23, 1, libtcod.BKGND_NONE, libtcod.RIGHT,
 		str(int(map_hex.elevation * ELEVATION_M)) + 'm')
 	
 	# objective status
 	if map_hex.objective:
-		libtcod.console_set_default_foreground(hex_info_con, NEUTRAL_OBJ_COL)
+		if map_hex.held_by is None:
+			col = NEUTRAL_OBJ_COL
+		else:
+			if map_hex.held_by == 0:
+				col = FRIENDLY_OBJ_COL
+			else:
+				col = ENEMY_OBJ_COL
+		libtcod.console_set_default_foreground(hex_info_con, col)
 		text = 'Objective: ' + map_hex.objective
-		libtcod.console_print(hex_info_con, 0, 2, text)
+		libtcod.console_print_ex(hex_info_con, 23, 2, libtcod.BKGND_NONE, libtcod.RIGHT,
+			text)
 		libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	
-	# road status
-	if len(map_hex.dirt_road_links) > 0:
-		libtcod.console_print(hex_info_con, 0, 3, 'Dirt Road')
-	
-	# FUTURE: ground conditions on line 3, right justified
-	
-	# TEMP: tactical score
-	libtcod.console_print(hex_info_con, 0, 3, 'Score: ' + str(map_hex.score))
-	
+	# FUTURE: display ground conditions here
+	# DEBUG: tactical score
+	libtcod.console_print(hex_info_con, 0, 2, 'AI Score: ' + str(map_hex.score))
 
 	# no units present
 	unit_num = len(map_hex.unit_stack)
 	if unit_num == 0: return
 	
-	# top unit in stack
+	# get top unit in stack
 	unit = map_hex.unit_stack[0]
 	
-	
-	if unit.owning_player == 1:
-		if unit.known:
-			libtcod.console_set_default_foreground(hex_info_con, ENEMY_UNIT_COL)
-		else:
-			libtcod.console_set_default_foreground(hex_info_con, libtcod.light_grey)
+	if unit.owning_player == 1 and not unit.known:
+		col = UNKNOWN_HL_COL
 	else:
-		libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
-	libtcod.console_print(hex_info_con, 0, 5, unit.GetName())
+		if unit.owning_player == 1:
+			col = ENEMY_HL_COL
+		else:
+			col = FRIENDLY_HL_COL
+	libtcod.console_set_default_background(hex_info_con, col)
+	libtcod.console_rect(hex_info_con, 0, 4, 24, 1, False, libtcod.BKGND_SET)
+	#libtcod.console_set_default_background(hex_info_con, libtcod.black)
+	
+	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
+	libtcod.console_print(hex_info_con, 0, 4, unit.GetName())
 	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	
-	# TODO unit status
+	# TODO unit status on line 5
 	
 	# unresolved hits on top unit in stack
 	if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
@@ -4264,13 +4341,13 @@ def UpdateHexInfoConsole():
 			if unit.unresolved_fp > 0:
 				text += '; '
 			text += str(len(unit.unresolved_ap)) + ' AP'
-		libtcod.console_print(hex_info_con, 1, 7, text)
+		libtcod.console_print(hex_info_con, 1, 6, text)
 	
 	# note if additional units in stack
 	if unit_num > 1:
 		text = '+' + str(unit_num-1) + ' more unit'
 		if unit_num > 2: text += 's'
-		libtcod.console_print(hex_info_con, 0, 8, text)
+		libtcod.console_print(hex_info_con, 0, 7, text)
 	
 	
 # draw all the display consoles to the screen
@@ -4729,7 +4806,8 @@ def DoScenario(load_savegame=False):
 		
 		# TEMP spawn enemy units
 		# FUTURE: use a more complex deployment table
-		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw']
+		#ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw']
+		ENEMY_LIST = ['rifle_squad_atr']
 		for i in range(6):
 			unit_id = choice(ENEMY_LIST)
 			scenario.SpawnEnemy(unit_id, 9, 9)
@@ -4760,7 +4838,12 @@ def DoScenario(load_savegame=False):
 		#UpdateScreen()
 		text = str(scenario.hour) + ':' + str(scenario.minute).zfill(2)
 		text += ' - Scenario Begins'
-		scenario.AddMessage(text)
+		scenario.AddMessage(text, None)
+		
+		# TEMP test message
+		UpdateScreen()
+		libtcod.console_flush()
+		scenario.AddMessage('Player unit spawned', (scenario.player_unit.hx, scenario.player_unit.hy))
 		
 		
 	# TODO: End new game set-up

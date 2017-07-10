@@ -5196,6 +5196,11 @@ libtcod.console_set_default_foreground(main_menu_con, libtcod.black)
 libtcod.console_print_ex(main_menu_con, WINDOW_WIDTH-1, 0, libtcod.BKGND_NONE, libtcod.RIGHT,
 	VERSION + SUBVERSION)
 
+# TEMP: version warning
+libtcod.console_set_default_foreground(main_menu_con, libtcod.red)
+libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-8,
+	libtcod.BKGND_NONE, libtcod.CENTER, 'Incomplete Proof of Concept version for demonstration only')
+
 # program info
 libtcod.console_set_default_foreground(main_menu_con, libtcod.light_grey)
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-4,

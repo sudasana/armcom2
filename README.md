@@ -1,8 +1,8 @@
 # Armoured Commander II
 
-This is the work-in-progress version of Armoured Commander II.
+This is the in-progress Alpha 1.0 version of Armoured Commander II.
 
-![screenshot 1](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_10.png "Armoured Commander II Screenshot")
+![screenshot 1](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_14.png "Armoured Commander II Screenshot")
 ![screenshot 2](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_11.png "Armoured Commander II Screenshot")
 ![screenshot 3](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_13.png "Armoured Commander II Screenshot")
 

@@ -338,10 +338,7 @@ class Unit:
 		self.unresolved_fp = 0			# fp from attacks to be resolved at end of action
 		self.unresolved_ap = []			# list of unsolved penetrating AP hits
 		
-		# FUTURE: not used yet
-		self.acquired_target = None		# PSG has acquired this unit as target
-		self.acquired_by = []			# PSG has been acquired by this/these unit(s)
-		
+		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
 		
 		# action flags
 		self.moved = False			# unit moved or pivoted in this turn
@@ -564,6 +561,14 @@ class Unit:
 		if len(self.unresolved_ap) == 0: return
 		
 		# FUTURE: different outcomes possible
+		# handle ATR hits
+		
+		# DEBUG - player cannot be killed
+		#if self == scenario.player_unit:
+		#	text = 'Your magical armour protects you.'
+		#	scenario.AddMessage(text, None)
+		#	return
+		
 		text = self.GetName() + ' is destroyed!'
 		scenario.AddMessage(text, (self.hx, self.hy))
 		self.DestroyMe()
@@ -820,15 +825,14 @@ class Unit:
 
 ##########################################################################################
 
-	# clear any acquired target links between this PSG and any other
+	# clear any acquired target links between this unit and any other
 	def ClearAcquiredTargets(self):
 		self.acquired_target = None
-		self.acquired_by = []
-		for psg in scenario.unit_list:
-			if self in psg.acquired_by:
-				psg.acquired_by.remove(self)
-			if psg.acquired_target == self:
-				psg.acquired_target = None
+		for unit in scenario.unit_list:
+			if unit.acquired_target is None: continue
+			(ac_target, ac_level) = unit.acquired_target
+			if ac_target == self:
+				unit.acquired_target = None
 			
 	# regain unspotted status for this PSG
 	# FUTURE: update this, not used right now
@@ -1106,9 +1110,14 @@ class Unit:
 		
 		# add details of hit to be resolved at end of action
 		if roll <= attack_obj.final_ap:
-			self.unresolved_ap.append(attack_obj.weapon.stats['calibre'])
-			text = ('Added a ' + str(attack_obj.weapon.stats['calibre']) + 
-				' calibre hit to ' + attack_obj.target.GetName())
+			if attack_obj.weapon.name == 'AT Rifle':
+				calibre = 8
+				text = 'AT Rifle'
+			else:
+				calibre = attack_obj.weapon.stats['calibre']
+				text = str(calibre) + ' calibre'
+			self.unresolved_ap.append(calibre)
+			text = 'Added one ' + text + ' hit to ' + attack_obj.target.GetName()
 			scenario.AddMessage(text, (attack_obj.target.hx,
 				attack_obj.target.hy))
 
@@ -2511,6 +2520,11 @@ def CalcAttack(attacker, weapon, target):
 		if attacker.pinned:
 			attack_obj.modifiers.append(('Attacker Pinned', -2))
 		
+		if attacker.acquired_target is not None:
+			(ac_target, ac_level) = attacker.acquired_target
+			if ac_target == target:
+				attack_obj.modifiers.append(('Acquired Target', int(ac_level)))
+		
 		# Long Range gun Modifiers
 		if weapon.stats['long_range'] == 'S':
 			if distance >= 4:
@@ -3500,7 +3514,19 @@ def InitAttack(attacker, weapon, target):
 	if attacker == scenario.player_unit:
 		scenario.display_los = True
 	
-	# FUTURE: handle newly acquired target
+	# newly acquired target
+	if attacker.acquired_target is None:
+		attacker.acquired_target = (target, 1)
+	else:
+		(ac_target, ac_level) = attacker.acquired_target
+		# new target
+		if ac_target != target:
+			attacker.ClearAcquiredTargets()
+			attacker.acquired_target = (target, 1)
+		else:
+			# additional level
+			if ac_level < 2:
+				attacker.acquired_target = (target, 2)
 	
 	# handle reloading procedure for gun
 	if weapon.weapon_type == 'gun':
@@ -4453,6 +4479,28 @@ def UpdateHexInfoConsole():
 				text += '; '
 			text += str(len(unit.unresolved_ap)) + ' AP'
 		libtcod.console_print(hex_info_con, 1, 6, text)
+	
+	# acquired target status of top unit in stack
+	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
+	libtcod.console_set_default_background(hex_info_con, INFO_TEXT_COL)
+	if scenario.player_unit.acquired_target is not None:
+		(ac_target, ac_level) = scenario.player_unit.acquired_target
+		if ac_target == unit:
+			text = 'AC'
+			if ac_level > 1: text += '2'
+			libtcod.console_print_ex(hex_info_con, 0, 7, libtcod.BKGND_SET,
+				libtcod.LEFT, text)
+	if unit.acquired_target is not None:
+		(ac_target, ac_level) = unit.acquired_target
+		if ac_target == scenario.player_unit:
+			text = 'AC'
+			if ac_level > 1: text += '2'
+			libtcod.console_set_default_foreground(hex_info_con, ENEMY_UNIT_COL)
+			libtcod.console_print_ex(hex_info_con, 4, 7, libtcod.BKGND_SET,
+				libtcod.LEFT, text)
+	
+	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
+	libtcod.console_set_default_background(hex_info_con, libtcod.black)
 	
 	# note if additional units in stack
 	if unit_num > 1:

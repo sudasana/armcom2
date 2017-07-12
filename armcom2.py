@@ -296,6 +296,9 @@ class CrewPosition:
 # Unit: represents a single vehicle, squad, gun, or small team
 class Unit:
 	def __init__(self, unit_id):
+		self.alive = True			# unit is not out of action yet
+		self.dummy = False			# unit is not a real one and will disappear
+							#   when spotted - AI units only
 		self.unit_id = unit_id			# unique ID for unit type, used to
 							#   load basic stats from unit_defs.xml
 		self.unit_name = ''			# descriptive name of unit type
@@ -622,8 +625,8 @@ class Unit:
 		# remove from map hex
 		map_hex = GetHexAt(self.hx, self.hy)
 		map_hex.unit_stack.remove(self)
-		# remove from scenario
-		scenario.unit_list.remove(self)
+		# change alive flag, ActivateNextUnit() will remove it from unit_list
+		self.alive = False
 		# clear acquired target records
 		self.ClearAcquiredTargets()
 		# clear player's target if it was this unit
@@ -691,6 +694,7 @@ class Unit:
 		enemy_list = []
 		for unit in scenario.unit_list:
 			if unit.owning_player == self.owning_player: continue
+			if unit.dummy: continue
 			# FUTURE: check LoS for each crewmember in enemy unit
 			los = GetLoS(unit.hx, unit.hy, self.hx, self.hy)
 			if los == -1: continue
@@ -701,9 +705,9 @@ class Unit:
 			enemy_list.append((distance, unit))
 			
 			# check for enemy unit's loss of concealment
+			if self.dummy: continue
 			if not unit.known and not unit.infantry and not unit.gun:
 				if GetHexAt(unit.hx, unit.hy).terrain_type.terrain_mod == 0:
-					print 'DEBUG: spotted unit was in open ground'
 					unit.SpotMe()
 		
 		# no enemies in LoS
@@ -746,6 +750,14 @@ class Unit:
 	# this unit has been spotted by an enemy unit
 	def SpotMe(self):
 		if self.known: return
+		
+		# dummy unit reveal
+		if self.dummy:
+			text = 'No enemy unit actually spotted there.'
+			scenario.AddMessage(text, (self.hx, self.hy))
+			self.DestroyMe()
+			return
+		
 		self.known = True
 
 		# update unit console
@@ -939,13 +951,12 @@ class Unit:
 		# if so, all units in target hex are spotted and action ends
 		if len(map_hex2.unit_stack) > 0:
 			spotted_enemy = False
-			for unit in map_hex2.unit_stack:
+			for unit in reversed(map_hex2.unit_stack):
 				if unit.owning_player != self.owning_player and not unit.known:
 					spotted_enemy = True
-					print 'DEBUG: enemy unit tried to move into hex'
 					unit.SpotMe()
 			if spotted_enemy:
-				# rebuild menu since move no longer possible into this hex
+				# rebuild menu since move may no longer possible into this hex
 				scenario.BuildCmdMenu()
 				DrawScreenConsoles()
 				return False
@@ -1388,14 +1399,14 @@ class AI:
 		
 		# doubles 6 or over: no action
 		if d1 == d2 and roll >= 6:
-			print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' does nothing'
+			#print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' does nothing'
 			return
 		
 		# enemy in LoS, greater chance of attacking
 		for unit in scenario.unit_list:
 			if unit.owning_player == 1: continue
 			if GetLoS(self.owner.hx, self.owner.hy, unit.hx, unit.hy) > -1:
-				print 'AI DEBUG: player unit in LoS'
+				#print 'AI DEBUG: player unit in LoS'
 				roll += 2
 				break
 		
@@ -1414,7 +1425,7 @@ class AI:
 			if self.DoMoveAction():
 				return
 		
-		print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + " wasn't able to do any AI actions"
+		#print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + " wasn't able to do any AI actions"
 		
 	# do a move action
 	def DoMoveAction(self):
@@ -1457,6 +1468,10 @@ class AI:
 	
 	# do a fire weapons action
 	def DoFireAction(self):
+		
+		# dummy units can't fire!
+		if self.owner.dummy:
+			return False
 		
 		# build a list of possible targets
 		# FUTURE: check each weapon separately
@@ -1989,6 +2004,8 @@ class HexMap:
 class Scenario:
 	def __init__(self, map_w, map_h):
 		
+		self.game_version = VERSION		# record game version for compatibility
+		
 		self.map_vp = {}			# dictionary of map viewport hexes and
 							#   their corresponding map hexes
 		
@@ -2046,7 +2063,7 @@ class Scenario:
 		print 'Loaded unit portraits'
 	
 	# spawn a given enemy unit into the map at a random location
-	def SpawnEnemy(self, unit_id, morale_lvl, skill_lvl):
+	def SpawnEnemy(self, unit_id, morale_lvl, skill_lvl, dummy=False):
 		new_unit = Unit(unit_id)
 		new_unit.owning_player = 1
 		new_unit.facing = self.player_direction
@@ -2054,6 +2071,7 @@ class Scenario:
 			new_unit.turret_facing = self.player_direction
 		new_unit.morale_lvl = morale_lvl
 		new_unit.skill_lvl = skill_lvl
+		new_unit.dummy = dummy			# used to set dummy AI units
 		
 		# try to find a suitable place to spawn this unit
 		for tries in range(300):
@@ -2170,15 +2188,23 @@ class Scenario:
 		# do post-activation actions for currently active unit
 		self.active_unit.DoPostActivation()
 		
+		# get index number of unit about to end activation
 		i = self.unit_list.index(self.active_unit)
+		
+		# start a new turn or activate next unit in list
 		if i == len(self.unit_list) - 1:
 			self.StartNewTurn()
 			# scenario is over
 			if self.winner is not None:
 				return
 		else:
-			# activate next unit in list
 			self.active_unit = self.unit_list[i+1]
+		
+		# check for dead unit removal
+		for unit in reversed(self.unit_list):
+			if not unit.alive:
+				self.unit_list.remove(unit)
+		
 		# do pre-activation actions for newly activated unit
 		self.active_unit.DoPreActivation()
 		scenario.BuildCmdMenu()
@@ -3168,7 +3194,8 @@ def WaitForEnter(allow_cancel=False):
 
 
 # get a confirmation from the player that they really want to do this
-def GetConfirmation(text):
+# can also display a warning/error without asking for yes/no input
+def GetConfirmation(text, warning_only=False):
 	
 	lines = wrap(text, 20)
 	y = WINDOW_YM - int(len(lines) / 2)
@@ -3180,12 +3207,20 @@ def GetConfirmation(text):
 			libtcod.CENTER, line)
 		y += 1
 	y += 1
-	libtcod.console_set_default_foreground(0, HIGHLIGHT_COLOR)
-	libtcod.console_print(0, 32, y, 'Enter')
-	libtcod.console_print(0, 43, y, 'ESC')
-	libtcod.console_set_default_foreground(0, libtcod.white)
-	libtcod.console_print(0, 38, y, 'Yes')
-	libtcod.console_print(0, 47, y, 'No')
+	
+	if warning_only:
+		libtcod.console_set_default_foreground(0, HIGHLIGHT_COLOR)
+		libtcod.console_print_ex(0, WINDOW_XM-2, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'Enter')
+		libtcod.console_set_default_foreground(0, libtcod.white)
+		libtcod.console_print(0, WINDOW_XM, y, 'Continue')
+	else:
+		libtcod.console_set_default_foreground(0, HIGHLIGHT_COLOR)
+		libtcod.console_print(0, 32, y, 'Enter')
+		libtcod.console_print(0, 43, y, 'ESC')
+		libtcod.console_set_default_foreground(0, libtcod.white)
+		libtcod.console_print(0, 38, y, 'Yes')
+		libtcod.console_print(0, 47, y, 'No')
 	
 	exit_menu = False
 	while not exit_menu:
@@ -3194,10 +3229,15 @@ def GetConfirmation(text):
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
 		if libtcod.console_is_window_closed(): return False
 		if key is None: continue
-		if key.vk == libtcod.KEY_ENTER:
-			return True
-		elif key.vk == libtcod.KEY_ESCAPE:
-			return False
+		
+		if warning_only:
+			if key.vk == libtcod.KEY_ENTER:
+				return
+		else:
+			if key.vk == libtcod.KEY_ENTER:
+				return True
+			elif key.vk == libtcod.KEY_ESCAPE:
+				return False
 
 
 # return the result of a 2D6 roll
@@ -4377,7 +4417,7 @@ def UpdateHexInfoConsole():
 	
 	# FUTURE: display ground conditions here
 	# DEBUG: tactical score
-	libtcod.console_print(hex_info_con, 0, 2, 'AI Score: ' + str(map_hex.score))
+	#libtcod.console_print(hex_info_con, 0, 2, 'AI Score: ' + str(map_hex.score))
 
 	# no units present
 	unit_num = len(map_hex.unit_stack)
@@ -4744,6 +4784,15 @@ def DoScenario(load_savegame=False):
 	# here is where a saved game in-progress would be loaded
 	if load_savegame:
 		LoadGame()
+		
+		# check for saved game compatibility
+		if scenario.game_version != VERSION:
+			text = ('This save was created with version ' + scenario.game_version +
+				' of the game. It is not compatible with the current version.')
+			GetConfirmation(text, warning_only=True)
+			del scenario
+			return
+		
 		# reset pointers to terrain consoles for each map hex
 		# (needed because consoles can't be pickled)
 		for map_key, map_hex in scenario.hex_map.hexes.iteritems():
@@ -4775,9 +4824,9 @@ def DoScenario(load_savegame=False):
 		scenario.minute_limit = 0
 		
 		# display scenario info: chance to cancel scenario start
-		if not ScenarioSummary():
-			del scenario
-			return
+		#if not ScenarioSummary():
+		#	del scenario
+		#	return
 		
 		libtcod.console_clear(0)
 		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE,
@@ -4874,12 +4923,16 @@ def DoScenario(load_savegame=False):
 		for map_hex in scenario.objective_hexes:
 			map_hex.CheckObjectiveStatus(no_message=True)
 		
-		# spawn enemy units
+		# spawn enemy units and dummy unit
 		# FUTURE: use a more complex deployment table
-		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw', 'rifle_squad_atr']
-		for i in range(8):
+		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw',
+			'rifle_squad_atr']
+		for i in range(10):
 			unit_id = choice(ENEMY_LIST)
 			scenario.SpawnEnemy(unit_id, 9, 9)
+		for i in range(5):
+			unit_id = choice(ENEMY_LIST)
+			scenario.SpawnEnemy(unit_id, 9, 9, dummy=True)
 		
 		# all units spawned, load unit portraits into consoles
 		scenario.LoadUnitPortraits()
@@ -5257,6 +5310,8 @@ menus.append(cmd_menu)
 
 active_menu = menus[0]
 
+# Main Menu functions
+
 def AnimateMainMenu():
 	
 	global gradient_x
@@ -5276,7 +5331,6 @@ def AnimateMainMenu():
 	if gradient_x <= 0:
 		gradient_x = WINDOW_WIDTH + 20
 	
-
 def UpdateMainMenu():
 	libtcod.console_blit(main_menu_con, 0, 0, 88, 60, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
@@ -5300,12 +5354,8 @@ def UpdateMainMenu():
 		libtcod.console_print(0, WINDOW_XM-12, 50, text)
 		
 		libtcod.console_set_default_foreground(0, libtcod.white)
-	
 
-# animation timing
-time_click = time.time()
-gradient_x = WINDOW_WIDTH + 20
-
+# check for presence of a saved game file and disable the 'continue' menu option if not present
 def CheckSavedGame(menu):
 	for menu_option in menu.cmd_list:
 		if menu_option.option_id != 'continue_scenario': continue
@@ -5315,10 +5365,14 @@ def CheckSavedGame(menu):
 			menu_option.inactive = True
 		return
 
+
+# set up animation timing
+time_click = time.time()
+gradient_x = WINDOW_WIDTH + 20
+
 CheckSavedGame(active_menu)
 
 UpdateMainMenu()
-
 
 exit_game = False
 

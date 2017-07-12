@@ -97,7 +97,17 @@ ELEVATION_M = 20.0			# each elevation level represents x meters of height
 BASE_SPOT_SCORE = 5			# base score required to spot unknown enemy unit
 HEX_STACK_LIMIT = 6			# maximum number of units in a map hex stack
 
-BASE_TO_HIT = [				# base to-hit scores required for Point Fire attacks
+# chance of extra turn / missed turn when moving in:
+# Open Ground, Road, Difficult Terrain
+# if negative, it's a chance to miss a turn; 0 means no chance, do not roll
+MOVE_TURN_CHANCE = [
+	[0, 7, -11],			# Infantry
+	[4, 8, -10],			# Tank
+	[-12, 9, -8]			# Wheeled
+]
+
+# base to-hit scores required for Point Fire attacks
+BASE_TO_HIT = [
 	[10,8,7],			# <= 1 hex range
 	[9,7,7],			# 2 hex range
 	[9,7,7],			# 3 "
@@ -306,7 +316,8 @@ class Unit:
 		self.portrait = None
 		self.ai = AI(self)			# pointer to AI instance
 		self.owning_player = None		# player that controls this unit
-		self.squadron_leader = None		# used for player squadron
+		#self.squadron_leader = None		# used for player squadron
+							# Not used yet
 		
 		self.morale_lvl = 0			# morale rating, set during unit spawn
 		self.skill_lvl = 0			# skill rating, "
@@ -330,6 +341,8 @@ class Unit:
 		self.facing = None			# facing direction: guns and vehicles must have this set
 		self.turret_facing = None		# facing of main turret on unit
 		self.movement_class = ''		# movement class
+		self.extra_turns = 0			# number of extra turns (positive) or missed
+							#   turns (negative) this unit has coming to it
 		
 		self.armour = None			# armour factors if any
 		self.max_ammo = 0			# maximum number of gun ammo carried
@@ -492,6 +505,41 @@ class Unit:
 		
 		# set moved flag for next activation
 		self.moved_last_action = self.moved
+
+	# return the chance of getting an extra turn / missing a turn if unit moves into target hex
+	def GetMovementTurnChance(self, hx, hy):
+		# move not possible
+		if not self.CheckMoveInto(hx, hy): return 0
+		if self.infantry:
+			row = MOVE_TURN_CHANCE[0]
+		elif self.movement_class in ['Tank', 'Fast Tank']:
+			row = MOVE_TURN_CHANCE[1]
+		elif self.movement_class == 'Wheeled':
+			row = MOVE_TURN_CHANCE[2]
+		else:
+			# movement class not recognized
+			return 0
+		map_hex2 = GetHexAt(hx, hy)
+		if map_hex2.terrain_type.difficult:
+			score = row[2]
+		else:
+			map_hex1 = GetHexAt(self.hx, self.hy)
+			if GetDirectionToAdjacent(self.hx, self.hy, hx, hy) in map_hex1.dirt_road_links:
+				score = row[1]
+			else:
+				score = row[0]
+		
+		# apply modifiers to base score
+		if self.movement_class == 'Fast Tank':
+			if score > 0:
+				score += 1
+			else:
+				score -= 1
+			
+		# ignore impossible rolls
+		if score < -12: return 0
+		
+		return score
 
 	# move this unit to the top of its map hex stack
 	def MoveToTopOfStack(self, map_hex):
@@ -743,13 +791,13 @@ class Unit:
 		# vehicles, etc.
 		else:
 			if open_ground:
-				print 'DEBUG: spotted unit was in open ground'
+				#print 'DEBUG: spotted unit was in open ground'
 				self.SpotMe()
 			elif close_range and just_fired:
-				print 'DEBUG: spotted unit just fired'
+				#print 'DEBUG: spotted unit just fired'
 				self.SpotMe()
 			elif close_range and just_moved:
-				print 'DEBUG: spotted unit just moved'
+				#print 'DEBUG: spotted unit just moved'
 				self.SpotMe()
 	
 	# this unit has been spotted by an enemy unit
@@ -758,7 +806,7 @@ class Unit:
 		
 		# dummy unit reveal
 		if self.dummy:
-			text = 'No enemy unit actually spotted there.'
+			text = 'No enemy unit actually there.'
 			scenario.AddMessage(text, (self.hx, self.hy))
 			self.DestroyMe()
 			return
@@ -771,7 +819,7 @@ class Unit:
 		libtcod.console_flush()
 		
 		# don't display any message for squadron members
-		if self.squadron_leader is not None: return
+		#if self.squadron_leader is not None: return
 		
 		# show message
 		if self.owning_player == 0:
@@ -965,11 +1013,14 @@ class Unit:
 				DrawScreenConsoles()
 				return False
 		
+		# record score for extra/missed turn if applicable
+		extra_turn_score = self.GetMovementTurnChance(new_hx, new_hy)
+		
 		# check for squadron movement
 		unit_list = [self]
-		for unit in map_hex1.unit_stack:
-			if unit.squadron_leader == self:
-				unit_list.append(unit)
+		#for unit in map_hex1.unit_stack:
+		#	if unit.squadron_leader == self:
+		#		unit_list.append(unit)
 		
 		# set location in new hex for all moving units
 		for unit in unit_list:
@@ -1027,6 +1078,26 @@ class Unit:
 		# check for concealment loss
 		self.DoSpotCheck(just_moved=True)
 		
+		# do extra/missed turn roll if any
+		if extra_turn_score != 0:
+			d1, d2, roll = Roll2D6()
+			if extra_turn_score > 0:
+				if roll <= extra_turn_score:
+					# extra turn!
+					self.extra_turns += 1
+					if scenario.player_unit == self:
+						scenario.AddMessage('You have moved swiftly enough to take another action', None)
+			else:
+				if roll >= abs(extra_turn_score):
+					# missed turn!
+					self.extra_turns -= 1
+					if scenario.player_unit == self:
+						scenario.AddMessage('You have been delayed by difficult terrain and will miss your next action', None)
+		
+		# default movement message
+		if scenario.player_unit == self and self.extra_turns == 0:
+			scenario.AddMessage('You move into a new area.', None)
+		
 		return True
 	
 	# attempt to pivot this unit to face the given direction
@@ -1046,6 +1117,7 @@ class Unit:
 			UpdatePlayerUnitConsole()
 			scenario.SetVPHexes()
 			scenario.hex_map.CalcFoV()
+			UpdateContextCon()
 			UpdateVPConsole()
 			UpdateHexInfoConsole()
 			UpdateObjectiveConsole()
@@ -2192,34 +2264,53 @@ class Scenario:
 	# activate the next unit in the list, or start a new turn
 	def ActivateNextUnit(self):
 		
-		# FUTURE: check for currently active unit getting a free turn
-		
 		# do post-activation actions for currently active unit
 		self.active_unit.DoPostActivation()
 		
-		# get index number of unit about to end activation
-		i = self.unit_list.index(self.active_unit)
+		# check for extra turn for currently activated unit
+		if self.active_unit.extra_turns > 0:
+			self.active_unit.extra_turns -= 1
+			self.active_unit.DoPreActivation()
+			scenario.BuildCmdMenu()
+			if self.active_unit == self.player_unit:
+				SaveGame()
+			return
 		
-		# start a new turn or activate next unit in list
-		if i == len(self.unit_list) - 1:
-			self.StartNewTurn()
-			# scenario is over
-			if self.winner is not None:
-				return
-		else:
-			self.active_unit = self.unit_list[i+1]
+		unit_activated = False
+		while not unit_activated:
 		
-		# check for dead unit removal
-		for unit in reversed(self.unit_list):
-			if not unit.alive:
-				self.unit_list.remove(unit)
+			# get index number of previous unit
+			i = self.unit_list.index(self.active_unit)
+			
+			# start a new turn or activate next unit in list
+			if i == len(self.unit_list) - 1:
+				self.StartNewTurn()
+				# scenario is over
+				if self.winner is not None:
+					return
+			else:
+				self.active_unit = self.unit_list[i+1]
+			
+			# check for dead unit removal
+			for unit in reversed(self.unit_list):
+				if not unit.alive:
+					self.unit_list.remove(unit)
+			
+			# check for missed turn
+			if self.active_unit.extra_turns < 0:
+				self.active_unit.extra_turns += 1
+				print 'DEBUG: unit missed a turn'
+				continue
+			
+			# do pre-activation actions for newly activated unit
+			self.active_unit.DoPreActivation()
+			scenario.BuildCmdMenu()
+			
+			if self.active_unit == self.player_unit:
+				SaveGame()
+			
+			unit_activated = True
 		
-		# do pre-activation actions for newly activated unit
-		self.active_unit.DoPreActivation()
-		scenario.BuildCmdMenu()
-		
-		if self.active_unit == self.player_unit:
-			SaveGame()
 	
 	# add a new message to the log, and display it on the current message console
 	def AddMessage(self, text, highlight_hex):
@@ -2367,8 +2458,6 @@ class Scenario:
 			self.cmd_menu.AddOption('rotate_turret_cw', 'E', 'Turret Clockwise')
 			self.cmd_menu.AddOption('pivot_hull_port', 'A', 'Pivot to Port')
 			self.cmd_menu.AddOption('pivot_hull_stb', 'D', 'Pivot to Starboard')
-			
-			map_hex1 = GetHexAt(scenario.player_unit.hx, scenario.player_unit.hy)
 			
 			menu_option = self.cmd_menu.AddOption('move_forward', 'W', 'Forward')
 			(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
@@ -3992,6 +4081,18 @@ def UpdateContextCon():
 		libtcod.console_print(context_con, 0, 0, 'Movement')
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
 		libtcod.console_print(context_con, 0, 1, scenario.player_unit.movement_class)
+		
+		# display chance of extra/missed turn
+		(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
+			scenario.player_unit.hy, scenario.player_unit.facing)
+		chance = scenario.player_unit.GetMovementTurnChance(hx, hy)
+		# move not possible or no chance of extra/missed turn
+		if chance == 0: return
+		if chance < 0:
+			text = '-1 turn: ' + chr(242) + str(abs(chance))
+		else:
+			text = '+1 turn: ' + chr(243) + str(chance)
+		libtcod.console_print(context_con, 0, 2, text)
 	
 	# Weapons Menu
 	elif scenario.active_cmd_menu == 'weapons':
@@ -5162,7 +5263,6 @@ def DoScenario(load_savegame=False):
 			if scenario.player_unit.MoveInto(hx, hy):
 				scenario.BuildCmdMenu()
 				DrawScreenConsoles()
-				# FUTURE: chance of extra turn or missed turn
 				scenario.ActivateNextUnit()
 				continue
 		

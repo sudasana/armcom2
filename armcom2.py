@@ -527,7 +527,10 @@ class Unit:
 			if GetDirectionToAdjacent(self.hx, self.hy, hx, hy) in map_hex1.dirt_road_links:
 				score = row[1]
 			else:
-				score = row[0]
+				if map_hex2.terrain_type.terrain_mod == 0:
+					score = row[0]
+				else:
+					return 0
 		
 		# apply modifiers to base score
 		if self.movement_class == 'Fast Tank':
@@ -2212,6 +2215,10 @@ class Scenario:
 		# Point Fire attacks must be against spotted target
 		if weapon.weapon_type == 'gun' and not target.known:
 			return (-1, 'Point Fire attacks against spotted targets only')
+		
+		# PF attack against infantry
+		if weapon.weapon_type == 'gun' and target.infantry:
+			return (-1, 'Point Fire attacks have no effect on infantry')
 		
 		# see if target must current be in weapon arc
 		arc_check = False

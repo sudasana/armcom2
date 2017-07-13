@@ -256,6 +256,7 @@ VP_HEXES = [
 ]
 
 
+
 ##########################################################################################
 #                                         Classes                                        #
 ##########################################################################################
@@ -296,8 +297,8 @@ class CrewPosition:
 		self.large_hatch = False	# Later set to True if crewman is especially exposed when hatch is open
 		
 		# visible hextants, relative to hull/turret facing of the vehicle
-		self.closed_visible = closed_visible	# set of visible hextants when hatch is closed
-		self.open_visible = open_visible	# " open
+		self.open_visible = open_visible	# list of visible hextants when hatch is open
+		self.closed_visible = closed_visible	# " closed
 		
 		# set up list of possible crew actions
 		self.actions = []
@@ -453,16 +454,19 @@ class Unit:
 					hatch = None
 					if i.find('hatch') is not None:
 						hatch = 'Open'
-					open_visible = set()
+					
+					# lists of hextants visible when hatch is open/closed
+					open_visible = []
 					if i.find('open_visible') is not None:
 						string = i.find('open_visible').text
 						for c in string:
-							open_visible.add(int(c))
-					closed_visible = set()
+							open_visible.append(int(c))
+					
+					closed_visible = []
 					if i.find('closed_visible') is not None:
 						string = i.find('closed_visible').text
 						for c in string:
-							closed_visible.add(int(c))
+							closed_visible.append(int(c))
 					
 					new_position = CrewPosition(name, turret,
 						hatch, open_visible, closed_visible)
@@ -2070,54 +2074,66 @@ class HexMap:
 		# set hex location of player unit to visible
 		scenario.hex_map.hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].vis_to_player = True
 		
-		# TODO: build list of hextants and distances to check based on crew who can spot
-		
-		# TEMP: use driver only to spot
-		for crew_position in scenario.player_unit.crew_positions:
-			if crew_position.name == 'Driver':
-				if crew_position.crewman is None: return
-				if crew_position.crewman.action != 'Spot': return
-				break
-		
-		visible_hextants = crew_position.open_visible
-		max_distance = MAX_LOS_DISTANCE
-		
-		# check visible hextants for commander crew position
-		#crew_position = scenario.player_unit.crew_positions[0]
-		#if crew_position.hatch is None:
-		#	visible_hextants = crew_position.closed_visible
-		#	max_distance = MAX_BU_LOS_DISTANCE
-		#else:
-		#	if crew_position.hatch == 'Closed':
-		#		visible_hextants = crew_position.closed_visible
-		#		max_distance = MAX_BU_LOS_DISTANCE
-		#	else:
-		#		visible_hextants = crew_position.open_visible
-		#		max_distance = MAX_LOS_DISTANCE
-		
-		# FUTURE: rotate visible hextants based on turret/hull direction
-		
-		# raycast from crewman position to each map hex
+		# start field of view calculations
 		#start_time = time.time()
-		for (hx, hy) in scenario.hex_map.hexes:
+		
+		# build list of hexes to check based on crew who are able to spot
+		hex_list = []
+
+		for crew_position in scenario.player_unit.crew_positions:
+			if crew_position.crewman is None: continue
+			if crew_position.crewman.action != 'Spot': continue
+			
+			if crew_position.hatch is None:
+				visible_hextants = crew_position.closed_visible
+				max_distance = MAX_BU_LOS_DISTANCE
+			else:
+				if crew_position.hatch == 'Closed':
+					visible_hextants = crew_position.closed_visible
+					max_distance = MAX_BU_LOS_DISTANCE
+				else:
+					visible_hextants = crew_position.open_visible
+					max_distance = MAX_LOS_DISTANCE
+			
+			# rotate visible hextants based on current turret/hull facing
+			if crew_position.turret:
+				direction = scenario.player_unit.turret_facing
+			else:
+				direction = scenario.player_unit.facing
+			if direction != 0:
+				for i, hextant in enumerate(visible_hextants):
+					visible_hextants[i] = ConstrainDir(hextant - direction)
+			
+			# go through hexes in each hextant and add to spotting list if within max distance
+			for hextant in visible_hextants:
+				for (hxm, hym) in HEXTANTS[hextant]:
+					
+					hx = scenario.player_unit.hx + hxm
+					hy = scenario.player_unit.hy + hym
+					
+					# check that it's on the map
+					if (hx, hy) not in scenario.hex_map.hexes:
+						continue
+					
+					# check that it's within range
+					if GetHexDistance(0, 0, hxm, hym) > max_distance:
+						continue
+					
+					if (hx, hy) not in hex_list:
+						hex_list.append((hx, hy))
+		
+		# raycast from player unit to each visible map hex
+		for (hx, hy) in hex_list:
 			# skip already visible hexes
 			if scenario.hex_map.hexes[(hx, hy)].vis_to_player: continue
 			
-			# skip hexes not visible to crew position
-			direction = GetDirectionToward(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy)
-			if direction not in visible_hextants: continue
-			
-			# get max LoS distance
-			distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy)
-			if distance > max_distance: continue
-			
-			los = GetLoS(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy)
-			if los != -1:
+			if GetLoS(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy) != -1:
 				scenario.hex_map.hexes[(hx, hy)].vis_to_player = True
+		
 		#end_time = time.time()
 		#time_taken = round((end_time - start_time) * 1000, 3) 
-		#print 'DEBUG: FoV raycasting finished, took ' + str(time_taken) + ' ms.'
-
+		#print 'FoV raycasting finished, took ' + str(time_taken) + ' ms.'
+		
 	# set a given hex on the campaign day map to a terrain type
 	def SetHexTerrainType(self, hx, hy, terrain_type):
 		self.hexes[(hx,hy)].terrain_type = terrain_type
@@ -5431,6 +5447,11 @@ libtcod.console_set_default_background(0, libtcod.black)
 libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
 
+# display loading screen
+libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+	GetMsg('loading'))
+libtcod.console_flush()
+
 # main double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
 libtcod.console_set_default_background(con, libtcod.black)
@@ -5443,13 +5464,27 @@ libtcod.console_set_default_background(darken_con, libtcod.black)
 libtcod.console_set_default_foreground(darken_con, libtcod.black)
 libtcod.console_clear(darken_con)
 
-libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
-	GetMsg('loading'))
-libtcod.console_flush()
-
 # create mouse and key event holders
 mouse = libtcod.Mouse()
 key = libtcod.Key()
+
+
+# for a unit in 0,0 facing direction 0, the location of map hexes in each sextant, up to range 6
+# used for checking field of view for the player, covered arcs for weapons, etc.
+HEXTANTS = []
+for direction in range(6):
+	hex_list = [
+		(0,-1),								# range 1
+		(1,-2), (0,-2), (-1,-1),					# range 2
+		(1,-3), (0,-3), (-1,-2),					# range 3
+		(2,-4), (1,-4), (0,-4), (-1,-3), (-2,-2),			# range 4
+		(2,-5), (1,-5), (0,-5), (-1,-4), (-2,-3),			# range 5
+		(3,-6), (2,-6), (1,-6), (0,-6), (-1,-5), (-2,-4), (-3,-3)	# range 6
+	]
+	if direction != 0:
+		for i, (hx, hy) in enumerate(hex_list):
+			hex_list[i] = RotateHex(hx, hy, direction)
+	HEXTANTS.append(hex_list)
 
 
 ##########################################################################################

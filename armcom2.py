@@ -81,6 +81,11 @@ WINDOW_HEIGHT = 60					# height "
 WINDOW_XM = int(WINDOW_WIDTH/2)				# horizontal center of game window
 WINDOW_YM = int(WINDOW_HEIGHT/2)			# vertical "
 
+# list of unit images to display on main menu
+TANK_IMAGES = ['unit_TK3.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp', 'unit_7TP.xp',
+	'unit_pz_35t.xp', 'unit_pz_II.xp'
+]
+
 # gradient animated effect for main menu
 GRADIENT = [
 	libtcod.Color(51, 51, 51), libtcod.Color(64, 64, 64), libtcod.Color(128, 128, 128),
@@ -266,6 +271,7 @@ class Crewman:
 			'Driver' : 0,
 			'Assistant Driver' : 0
 		}
+		self.action = ''			# current action
 	
 	def GetName(self, shortname=False, lastname=False):
 		if shortname:
@@ -288,12 +294,22 @@ class CrewPosition:
 		self.turret = turret		# True if position is in turret, otherwise it's in hull
 		self.hatch = hatch		# None if no hatch, otherwise 'Closed' or 'Open'
 		self.large_hatch = False	# Later set to True if crewman is especially exposed when hatch is open
-		self.player_position = False	# position occupied by player character
 		
-		# note: the following visble hextants are relative to the hull/turret facing of the vehicle
+		# visible hextants, relative to hull/turret facing of the vehicle
 		self.closed_visible = closed_visible	# set of visible hextants when hatch is closed
 		self.open_visible = open_visible	# " open
-	
+		
+		# set up list of possible crew actions
+		self.actions = []
+		self.default_action = 'Spot'	# crew action for this position if no other is triggered
+		
+		# all positions can spot
+		self.actions.append(('Spot', 'Try to spot and identify enemy units'))
+		
+		# Driver actions
+		if self.name == 'Driver':
+			self.actions.append(('Drive', 'Drive the vehicle to a new map hex location'))
+		
 	# toggle hatch status
 	def ToggleHatch(self):
 		if self.hatch is None: return
@@ -489,6 +505,16 @@ class Unit:
 		map_hex = GetHexAt(self.hx, self.hy)
 		if len(map_hex.unit_stack) > 1:
 			self.MoveToTopOfStack(map_hex)
+		# if player unit, update FoV now
+		if self == scenario.player_unit:
+			scenario.hex_map.CalcFoV()
+			UpdateVPConsole()
+			
+			# reset crew actions, TEMP: player only
+			for crew_position in scenario.player_unit.crew_positions:
+				if crew_position.crewman is None: continue
+				crew_position.crewman.action = crew_position.default_action
+		
 			
 	# perform post-activation automatic actions
 	def DoPostActivation(self):
@@ -707,11 +733,7 @@ class Unit:
 				text = self.GetName() + ' recovers from being Broken and is now Pinned'
 				scenario.AddMessage(text, (self.hx, self.hy))
 
-	
-	
-	
 	# return a description of this unit
-	# if using true name, transcode it to handle any special characters in it
 	# if true_name, return the real identity of this PSG no matter what
 	def GetName(self, true_name=False):
 		if not true_name:
@@ -725,9 +747,6 @@ class Unit:
 		for position in self.crew_positions:
 			if position.name == position_name:
 				position.crewman = crewman
-				# position is occupied by player character
-				if player:
-					position.player_position = True
 				return
 		
 		print ('ERROR: tried to assign crew to ' + position_name + ' position but ' +
@@ -998,6 +1017,15 @@ class Unit:
 		# make sure move is allowed
 		if not self.CheckMoveInto(new_hx, new_hy):
 			return False
+		
+		# set driver crew action - TEMP player only
+		if self == scenario.player_unit:
+			for crew_position in scenario.player_unit.crew_positions:
+				if crew_position.crewman is None: continue
+				if crew_position.name == 'Driver':
+					crew_position.crewman.action = 'Drive'
+					UpdatePlayerUnitConsole()
+					break
 		
 		map_hex1 = GetHexAt(self.hx, self.hy)
 		map_hex2 = GetHexAt(new_hx, new_hy)
@@ -2042,18 +2070,30 @@ class HexMap:
 		# set hex location of player unit to visible
 		scenario.hex_map.hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].vis_to_player = True
 		
+		# TODO: build list of hextants and distances to check based on crew who can spot
+		
+		# TEMP: use driver only to spot
+		for crew_position in scenario.player_unit.crew_positions:
+			if crew_position.name == 'Driver':
+				if crew_position.crewman is None: return
+				if crew_position.crewman.action != 'Spot': return
+				break
+		
+		visible_hextants = crew_position.open_visible
+		max_distance = MAX_LOS_DISTANCE
+		
 		# check visible hextants for commander crew position
-		crew_position = scenario.player_unit.crew_positions[0]
-		if crew_position.hatch is None:
-			visible_hextants = crew_position.closed_visible
-			max_distance = MAX_BU_LOS_DISTANCE
-		else:
-			if crew_position.hatch == 'Closed':
-				visible_hextants = crew_position.closed_visible
-				max_distance = MAX_BU_LOS_DISTANCE
-			else:
-				visible_hextants = crew_position.open_visible
-				max_distance = MAX_LOS_DISTANCE
+		#crew_position = scenario.player_unit.crew_positions[0]
+		#if crew_position.hatch is None:
+		#	visible_hextants = crew_position.closed_visible
+		#	max_distance = MAX_BU_LOS_DISTANCE
+		#else:
+		#	if crew_position.hatch == 'Closed':
+		#		visible_hextants = crew_position.closed_visible
+		#		max_distance = MAX_BU_LOS_DISTANCE
+		#	else:
+		#		visible_hextants = crew_position.open_visible
+		#		max_distance = MAX_LOS_DISTANCE
 		
 		# FUTURE: rotate visible hextants based on turret/hull direction
 		
@@ -4362,9 +4402,9 @@ def UpdatePlayerUnitConsole():
 			if position.crewman is None:
 				text = '[Position Empty]'
 			else:
-				# FUTURE: current action if any
+				# current action if any
 				libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
-				text = ''
+				text = position.crewman.action
 			libtcod.console_print_ex(player_unit_con, 23, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
 			
@@ -5034,6 +5074,10 @@ def DoScenario(load_savegame=False):
 		new_crew.position_training['Assistant Driver'] = 10
 		new_unit.SetCrew('Assistant Driver', new_crew)
 		
+		# set crew actions to default
+		for crew_position in scenario.player_unit.crew_positions:
+			crew_position.crewman.action = crew_position.default_action
+		
 		# spawn player squadron
 		#for i in range(4):
 		#	new_unit = Unit('Panzer 35t')
@@ -5095,9 +5139,9 @@ def DoScenario(load_savegame=False):
 		
 		# set up map viewport
 		scenario.SetVPHexes()
-		# calculate initial field of view for player
+		
+		# calculate initial field of view for player and draw viewport console for first time
 		scenario.hex_map.CalcFoV()
-		# draw viewport console for first time
 		UpdateVPConsole()
 		
 		# generate action order for all units in the scenario
@@ -5420,7 +5464,8 @@ libtcod.console_set_default_background(main_menu_con, libtcod.black)
 libtcod.console_set_default_foreground(main_menu_con, libtcod.white)
 libtcod.console_clear(main_menu_con)
 main_menu_image = LoadXP('ArmCom2_title.xp')
-tank_image = LoadXP('unit_pz_II.xp')
+# randomly load a tank image to use for this session
+tank_image = LoadXP(choice(TANK_IMAGES))
 libtcod.console_blit(tank_image, 0, 0, 20, 8, main_menu_image, 5, 6)
 del tank_image
 

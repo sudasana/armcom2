@@ -72,7 +72,8 @@ from encodings import hex_codec, ascii, utf_8, cp850
 VIEW_ALL = False					# human player can see all hexes in viewport
 
 NAME = 'Armoured Commander II'
-VERSION = 'Alpha 1.0'					# game version: determines saved game compatability
+#VERSION = 'Alpha 1.0'					# game version: determines saved game compatability
+VERSION = 'July 14 2017'			
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -307,9 +308,6 @@ class CrewPosition:
 		# all positions can spot
 		self.actions.append(('Spot', 'Try to spot and identify enemy units'))
 		
-		# Driver actions
-		if self.name == 'Driver':
-			self.actions.append(('Drive', 'Drive the vehicle to a new map hex location'))
 		
 	# toggle hatch status
 	def ToggleHatch(self):
@@ -502,8 +500,8 @@ class Unit:
 			weapon.rof_target = None
 		self.changed_facing = False
 		self.RecoveryCheck()
-		# turn on LoS display if this is player and we're in shooting menu
-		if self == scenario.player_unit and scenario.active_cmd_menu == 'weapons':
+		# turn on LoS display if this is player and we have a weapon active
+		if self == scenario.player_unit and scenario.selected_weapon is not None:
 			scenario.display_los = True
 		# move to top of hex stack
 		map_hex = GetHexAt(self.hx, self.hy)
@@ -523,8 +521,9 @@ class Unit:
 	# perform post-activation automatic actions
 	def DoPostActivation(self):
 		
-		# turn off LoS display if player unit
+		# player unit only
 		if self == scenario.player_unit:
+			# turn off LoS display
 			scenario.display_los = False
 		
 		# resolve any hits
@@ -1507,6 +1506,9 @@ class AI:
 	# randomly determine an action for this unit and do it
 	def DoAction(self):
 		
+		# don't do anything if we're going to be removed at end of turn
+		if not self.owner.alive: return
+		
 		# FUTURE: Check for automatic actions based on current situation
 		
 		# roll for basic action
@@ -1836,10 +1838,7 @@ class CommandMenu:
 				libtcod.console_set_default_background(console, original_bg)
 				
 				if menu_option.desc:
-					if menu_option.inactive:
-						libtcod.console_set_default_foreground(console, libtcod.dark_grey)
-					else:
-						libtcod.console_set_default_foreground(console, libtcod.white)
+					libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
 					lines = wrap(menu_option.desc, w)
 					# we re-use n here since we don't need it anymore
 					n = 0
@@ -2172,6 +2171,7 @@ class Scenario:
 		self.messages = []			# log of game messages
 		
 		self.selected_crew_position = None	# selected crew position in player unit
+		self.selected_weapon = None		# currently active weapon for player
 		self.player_target = None		# unit currently being targeted by player unit
 		
 		self.player_direction = 3		# direction of player-friendly forces
@@ -2508,12 +2508,29 @@ class Scenario:
 		if self.active_cmd_menu == 'root':
 			menu_option = self.cmd_menu.AddOption('command_menu', '1', 'Command')
 			menu_option.inactive = True
-			menu_option = self.cmd_menu.AddOption('tank_menu', '2', 'Tank and Crew')
+			menu_option = self.cmd_menu.AddOption('crew_menu', '2', 'Crew')
 			menu_option.inactive = True
 			self.cmd_menu.AddOption('movement_menu', '3', 'Movement')
 			self.cmd_menu.AddOption('weapons_menu', '4', 'Weapons')
-			menu_option = self.cmd_menu.AddOption('assault_menu', '5', 'Assault')
-			menu_option.inactive = True
+		
+		# crew menu
+		elif self.active_cmd_menu == 'crew':
+			
+			# generate one command per crew position
+			n = 0
+			for crew_position in scenario.player_unit.crew_positions:
+				cmd = 'crewposition_' + str(n)
+				menu_option = self.cmd_menu.AddOption(cmd, str(n+1), crew_position.name)
+				if crew_position.crewman is None:
+					text = '[Position empty]'
+					menu_option.inactive = True
+				else:
+					text = 'Actions for ' + crew_position.crewman.GetName()
+				menu_option.desc = text
+				n += 1
+			
+			self.cmd_menu.AddOption('return_to_root', 'Bksp', 'Root Menu',
+				desc='Return to root command menu')
 		
 		# movement menu
 		elif self.active_cmd_menu == 'movement':
@@ -2535,44 +2552,51 @@ class Scenario:
 			if not scenario.player_unit.CheckMoveInto(hx, hy):
 				menu_option.inactive = True
 			
-			self.cmd_menu.AddOption('return_to_root', 'Tab', 'Root Menu')
+			self.cmd_menu.AddOption('return_to_root', 'Bksp', 'Root Menu',
+				desc='Return to root command menu')
 			
 		# weapons menu
 		elif self.active_cmd_menu == 'weapons':
 			
-			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
-			self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
-			
-			# add commands to try to fire weapons
+			# list all weapon systems
 			n = 0
 			for weapon in scenario.player_unit.weapon_list:
-				cmd = 'fire_' + str(n)
-				desc = 'Fire ' + weapon.GetName()
-				menu_option = self.cmd_menu.AddOption(cmd, str(n+1), desc)
+				cmd = 'weapon_menu_' + str(n)
+				self.cmd_menu.AddOption(cmd, str(n+1), weapon.GetName(), 
+					desc='Actions for this weapon')
 				n += 1
-				
-				# no target selected
-				if scenario.player_target is None:
-					menu_option.inactive = True
-					menu_option.desc = 'No target selected'
-					continue
-				
-				# check that weapon can fire
-				(score, desc) = scenario.GetAttackScore(scenario.player_unit,
-					weapon, scenario.player_target, rotate_allowed=False,
-					pivot_allowed=False)
-				if score == -1:
-					menu_option.inactive = True
-					menu_option.desc = desc
-				
-			menu_option = self.cmd_menu.AddOption('return_to_root', 'Tab', 'Root Menu')
+			menu_option = self.cmd_menu.AddOption('return_to_root', 'Bksp',
+				'Root Menu', desc='Return to root command menu')
 			# can't return to root menu if already fired
 			if scenario.player_unit.fired:
 				menu_option.inactive = True
 				menu_option.desc = 'You have already fired a weapon this action'
+		
+		# menu for a specific weapon
+		elif self.active_cmd_menu[:12] == 'weapon_menu_':
+			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
+			#self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
+			# see if we can fire this weapon at current target
+			menu_option = self.cmd_menu.AddOption('fire_weapon', 'F',
+				'Fire ' + scenario.selected_weapon.GetName())
+			if scenario.player_target is None:
+				menu_option.inactive = True
+				menu_option.desc = 'No target selected'
+			else:
+				(score, desc) = scenario.GetAttackScore(scenario.player_unit,
+					scenario.selected_weapon, scenario.player_target,
+					rotate_allowed=False, pivot_allowed=False)
+				if score == -1:
+					menu_option.inactive = True
+					menu_option.desc = desc
+				else:
+					menu_option.desc = 'Fire at ' + scenario.player_target.GetName()
 			
+			self.cmd_menu.AddOption('return_to_weapons', 'Bksp', 'Return to Weapons')
+
 		# all menus get this command
-		self.cmd_menu.AddOption('end_action', 'Space', 'End Action')
+		self.cmd_menu.AddOption('end_action', 'Space', 'End Action',
+			desc='End your current activation')
 		
 		UpdateCmdConsole()
 
@@ -5304,7 +5328,11 @@ def DoScenario(load_savegame=False):
 			scenario.display_los = False
 			UpdateScreen()
 			continue
-		
+		elif option.option_id == 'crew_menu':
+			scenario.active_cmd_menu = 'crew'
+			scenario.BuildCmdMenu()
+			UpdateScreen()
+			continue
 		elif option.option_id == 'movement_menu':
 			scenario.active_cmd_menu = 'movement'
 			scenario.BuildCmdMenu()
@@ -5354,21 +5382,36 @@ def DoScenario(load_savegame=False):
 		##################################################################
 		# Weapons Menu Actions
 		##################################################################
+		elif option.option_id[:12] == 'weapon_menu_':
+			scenario.active_cmd_menu = option.option_id
+			i = int(option.option_id[12])
+			scenario.selected_weapon = scenario.player_unit.weapon_list[i]
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
+		
+		##################################################################
+		# Individual Weapon Actions
+		##################################################################
 		elif option.option_id == 'next_target':
 			scenario.SelectNextPlayerTarget()
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
-		elif option.option_id == 'clear_target':
-			scenario.player_target = None
-			scenario.BuildCmdMenu()
-			DrawScreenConsoles()
-		elif option.option_id[:5] == 'fire_':
-			# get number of weapon from rest of string
-			n = int(option.option_id[5])
-			weapon = scenario.player_unit.weapon_list[n]
-			InitAttack(scenario.player_unit, weapon, scenario.player_target)
+		
+		#elif option.option_id == 'clear_target':
+		#	scenario.player_target = None
+		#	scenario.BuildCmdMenu()
+		#	DrawScreenConsoles()
+
+		elif option.option_id == 'fire_weapon':
+			InitAttack(scenario.player_unit, scenario.selected_weapon, scenario.player_target)
 			UpdateContextCon()
 			UpdatePlayerUnitConsole()
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
+		
+		elif option.option_id == 'return_to_weapons':
+			scenario.active_cmd_menu = 'weapons'
+			scenario.selected_weapon = None
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
 
@@ -5511,6 +5554,10 @@ libtcod.console_print_ex(main_menu_con, WINDOW_XM, 35, libtcod.BKGND_NONE,
 	libtcod.CENTER, GetMsg('title'))
 
 # version number and program info
+libtcod.console_set_default_foreground(main_menu_con, libtcod.red)
+libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-8, libtcod.BKGND_NONE,
+	libtcod.CENTER, 'Weekly Development Build: Has bugs and incomplete features')
+
 libtcod.console_set_default_foreground(main_menu_con, libtcod.light_grey)
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
 	libtcod.CENTER, VERSION + SUBVERSION)

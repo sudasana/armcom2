@@ -512,7 +512,7 @@ class Unit:
 			scenario.hex_map.CalcFoV()
 			UpdateVPConsole()
 			
-			# reset crew actions, TEMP: player only
+			# reset crew actions, for now, player unit only
 			for crew_position in scenario.player_unit.crew_positions:
 				if crew_position.crewman is None: continue
 				crew_position.crewman.action = crew_position.default_action
@@ -607,7 +607,7 @@ class Unit:
 			
 			d1, d2, roll = Roll2D6()
 			
-			print 'DEBUG: score to beat is ' + str(score) + ', roll was ' + str(roll)
+			#print 'DEBUG: score to beat is ' + str(score) + ', roll was ' + str(roll)
 			
 			if roll == 2 or float(roll) < float(score) * 0.5:
 				text = self.GetName() + ' is destroyed!'
@@ -800,17 +800,17 @@ class Unit:
 		
 		if self.infantry:
 			if not (not close_range and not open_ground) and just_fired:
-				print 'DEBUG: spotted unit just fired'
+				#print 'DEBUG: spotted unit just fired'
 				self.SpotMe()
 			elif open_ground and close_range and just_moved:
-				print 'DEBUG: spotted unit just moved'
+				#print 'DEBUG: spotted unit just moved'
 				self.SpotMe()
 		
 		# emplaced guns
 		# FUTURE: distinguish when a gun is being towed vs. emplaced
 		elif self.gun:
 			if close_range and just_fired:
-				print 'DEBUG: spotted unit just fired'
+				#print 'DEBUG: spotted unit just fired'
 				self.SpotMe()
 		
 		# vehicles, etc.
@@ -1021,7 +1021,7 @@ class Unit:
 		if not self.CheckMoveInto(new_hx, new_hy):
 			return False
 		
-		# set driver crew action - TEMP player only
+		# set driver crew action - for now, player only
 		if self == scenario.player_unit:
 			for crew_position in scenario.player_unit.crew_positions:
 				if crew_position.crewman is None: continue
@@ -2341,9 +2341,16 @@ class Scenario:
 		
 		unit_activated = False
 		while not unit_activated:
+			
+			# if previous unit has been removed, start at
 		
 			# get index number of previous unit
 			i = self.unit_list.index(self.active_unit)
+			
+			# check for dead unit removal
+			for unit in reversed(self.unit_list):
+				if not unit.alive:
+					self.unit_list.remove(unit)
 			
 			# start a new turn or activate next unit in list
 			if i == len(self.unit_list) - 1:
@@ -2354,15 +2361,9 @@ class Scenario:
 			else:
 				self.active_unit = self.unit_list[i+1]
 			
-			# check for dead unit removal
-			for unit in reversed(self.unit_list):
-				if not unit.alive:
-					self.unit_list.remove(unit)
-			
 			# check for missed turn
 			if self.active_unit.extra_turns < 0:
 				self.active_unit.extra_turns += 1
-				print 'DEBUG: unit missed a turn'
 				continue
 			
 			# do pre-activation actions for newly activated unit
@@ -2403,6 +2404,11 @@ class Scenario:
 			map_hex = GetHexAt(unit.hx, unit.hy)
 			if not map_hex.vis_to_player: continue
 			target_list.append(unit)
+		
+		# old target no longer allowed
+		if self.player_target is not None:
+			if self.player_target not in target_list:
+				self.player_target = None
 		
 		# no possible targets
 		if len(target_list) == 0:
@@ -2513,7 +2519,7 @@ class Scenario:
 			self.cmd_menu.AddOption('movement_menu', '3', 'Movement')
 			self.cmd_menu.AddOption('weapons_menu', '4', 'Weapons')
 		
-		# crew menu
+		# crew menu (not used yet)
 		elif self.active_cmd_menu == 'crew':
 			
 			# generate one command per crew position
@@ -2575,7 +2581,7 @@ class Scenario:
 		# menu for a specific weapon
 		elif self.active_cmd_menu[:12] == 'weapon_menu_':
 			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
-			#self.cmd_menu.AddOption('clear_target', 'Bksp', 'Clear Target')
+			
 			# see if we can fire this weapon at current target
 			menu_option = self.cmd_menu.AddOption('fire_weapon', 'F',
 				'Fire ' + scenario.selected_weapon.GetName())
@@ -2592,7 +2598,10 @@ class Scenario:
 				else:
 					menu_option.desc = 'Fire at ' + scenario.player_target.GetName()
 			
-			self.cmd_menu.AddOption('return_to_weapons', 'Bksp', 'Return to Weapons')
+			self.cmd_menu.AddOption('next_weapon', 'Tab', 'Next weapon',
+				desc='Quickly switch to next weapon')
+			self.cmd_menu.AddOption('return_to_weapons', 'Bksp',
+				'Return to Weapons', desc='Return to main Weapons menu')
 
 		# all menus get this command
 		self.cmd_menu.AddOption('end_action', 'Space', 'End Action',
@@ -3522,7 +3531,7 @@ def GetLoS(hx1, hy1, hx2, hy2):
 		elevation = (float(map_hex.elevation) - start_elevation) * ELEVATION_M
 		distance = float(GetHexDistance(hx1, hy1, hx, hy))
 		floor_slope = elevation / (distance * 160.0)
-		terrain_slope = (elevation + float(map_hex.terrain_type.los_height)) / distance * 160.0
+		terrain_slope = (elevation + float(map_hex.terrain_type.los_height)) / (distance * 160.0)
 		terrain_mod = map_hex.terrain_type.terrain_mod
 		
 		# if we're on a hexspine, we need to compare some pairs of hexes
@@ -3583,6 +3592,7 @@ def InitAttack(attacker, weapon, target):
 	attack_obj = CalcAttack(attacker, weapon, target)
 	
 	# if player wasn't attacker, display LoS from attacker to target
+	# TODO: this will pause any ongoing animations, need to integrate into animation handler
 	if attacker.owning_player == 1:
 		line = GetLine(attacker.screen_x, attacker.screen_y, target.screen_x,
 			target.screen_y)
@@ -3591,7 +3601,7 @@ def InitAttack(attacker, weapon, target):
 			libtcod.console_set_char_foreground(con, x, y, libtcod.red)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
-			Wait(5)
+			Wait(3)
 	
 	# display attack console and wait for confirmation before proceeding
 	# player has chance to cancel a ranged attack at this point
@@ -3680,7 +3690,7 @@ def InitAttack(attacker, weapon, target):
 	
 		# target spotted
 		if not target.known:
-			print 'DEBUG: spotted unit was hit by an attack'
+			#print 'DEBUG: spotted unit was hit by an attack'
 			target.SpotMe()
 	
 	# check for concealment loss for attacker
@@ -4182,7 +4192,8 @@ def UpdateContextCon():
 		libtcod.console_print(context_con, 0, 2, text)
 	
 	# Weapons Menu
-	elif scenario.active_cmd_menu == 'weapons':
+	# TODO: display contextual info for this particular weapon
+	elif scenario.active_cmd_menu[:12] == 'weapon_menu_':
 		libtcod.console_set_default_foreground(context_con, libtcod.white)
 		libtcod.console_print(context_con, 0, 0, 'Main Gun')
 		
@@ -5387,6 +5398,7 @@ def DoScenario(load_savegame=False):
 			i = int(option.option_id[12])
 			scenario.selected_weapon = scenario.player_unit.weapon_list[i]
 			scenario.BuildCmdMenu()
+			scenario.display_los = True
 			DrawScreenConsoles()
 		
 		##################################################################
@@ -5396,11 +5408,6 @@ def DoScenario(load_savegame=False):
 			scenario.SelectNextPlayerTarget()
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
-		
-		#elif option.option_id == 'clear_target':
-		#	scenario.player_target = None
-		#	scenario.BuildCmdMenu()
-		#	DrawScreenConsoles()
 
 		elif option.option_id == 'fire_weapon':
 			InitAttack(scenario.player_unit, scenario.selected_weapon, scenario.player_target)
@@ -5409,10 +5416,23 @@ def DoScenario(load_savegame=False):
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
 		
+		elif option.option_id == 'next_weapon':
+			i = scenario.player_unit.weapon_list.index(scenario.selected_weapon)
+			if i == len(scenario.player_unit.weapon_list) - 1:
+				i = 0
+			else:
+				i += 1
+			scenario.selected_weapon = scenario.player_unit.weapon_list[i]
+			UpdateContextCon()
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
+		
 		elif option.option_id == 'return_to_weapons':
 			scenario.active_cmd_menu = 'weapons'
 			scenario.selected_weapon = None
+			UpdateContextCon()
 			scenario.BuildCmdMenu()
+			scenario.display_los = False
 			DrawScreenConsoles()
 
 	# we're exiting back to the main menu, so delete the scenario object
@@ -5581,13 +5601,15 @@ cmd_menu.AddOption('quit', 'Q', GetMsg('quit_game'))
 menus.append(cmd_menu)
 
 cmd_menu = CommandMenu('settings_menu')
-cmd_menu.AddOption('switch_language', 'L', 'Language',
+menu_option = cmd_menu.AddOption('switch_language', 'L', 'Language',
 	desc='Cycle between in-game languages')
+menu_option.inactive = True
 cmd_menu.AddOption('toggle_font_size', 'F', 'Font Size',
 	desc='Switch between 12px and 16px font size')
 cmd_menu.AddOption('select_ani_speed', 'A', 'Animation Speed',
 	desc='Change the display speed of in-game animations')
-cmd_menu.AddOption('return_to_main', '0', 'Main Menu')
+cmd_menu.AddOption('return_to_main', 'Bksp', 'Main Menu',
+	desc='Return to main menu')
 menus.append(cmd_menu)
 
 active_menu = menus[0]

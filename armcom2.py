@@ -4705,7 +4705,7 @@ def UpdateHexInfoConsole():
 	if unit_num > 1:
 		text = '+' + str(unit_num-1) + ' more unit'
 		if unit_num > 2: text += 's'
-		libtcod.console_print(hex_info_con, 0, 7, text)
+		libtcod.console_print(hex_info_con, 0, 8, text)
 	
 	
 # draw all the display consoles to the screen

@@ -282,7 +282,7 @@
     <movement_class>Infantry</movement_class>
     <weapon>
       <type>gun</type>
-      <name>Anti-Tank Rifle</name>
+      <name>AT Rifle</name>
       <max_range>3</max_range>
     </weapon>
     <weapon>

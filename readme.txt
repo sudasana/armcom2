@@ -1,5 +1,5 @@
 Armoured Commander II
-Proof of Concept
+Alpha 1.0 In Progress Version
 
 Copyright (c) 2016-2017 Gregory Adam Scott (sudasana@gmail.com)
 This file is part of Armoured Commander II.

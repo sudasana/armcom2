@@ -1,22 +1,21 @@
 from distutils.core import setup
 import py2exe, sys, os
 import glob, shutil
-import pygame
+#import pygame
 sys.argv.append('py2exe')
 
 # constant defs
-VERSION = 'Proof of Concept 2'
+VERSION = 'weekly'
 AUTHOR_NAME = 'Gregory Adam Scott'
 AUTHOR_EMAIL = 'armouredcommander@gmail.com'
 AUTHOR_URL = 'http://www.armouredcommander.com'
 PRODUCT_NAME = 'Armoured Commander II'
 SCRIPT_MAIN = 'armcom2.py'
 VERSIONSTRING = PRODUCT_NAME + VERSION
-#ICONFILE = 'icon.ico'
 
 REMOVE_BUILD_ON_EXIT = False				# remove build tree on exit
 
-PYGAMEDIR = os.path.split(pygame.base.__file__)[0]
+#PYGAMEDIR = os.path.split(pygame.base.__file__)[0]
 
 DLLS = ['libtcod-mingw.dll', 'python27.dll', 'SDL.dll']
 
@@ -40,13 +39,13 @@ MODULE_EXCLUDES = [
 INCLUDE_STUFF = ['encodings',"encodings.latin_1"]
 
 #hack which fixes the pygame mixer and pygame font
-origIsSystemDLL = py2exe.build_exe.isSystemDLL	# save the orginal before we edit it
-def isSystemDLL(pathname):
+#origIsSystemDLL = py2exe.build_exe.isSystemDLL	# save the orginal before we edit it
+#def isSystemDLL(pathname):
     # checks if the freetype and ogg dll files are being included
-    if os.path.basename(pathname).lower() in ("libogg-0.dll"):
-            return 0
-    return origIsSystemDLL(pathname)		# return the orginal function
-py2exe.build_exe.isSystemDLL = isSystemDLL	# override the default function with this one
+#    if os.path.basename(pathname).lower() in ("libogg-0.dll"):
+#            return 0
+#    return origIsSystemDLL(pathname)		# return the orginal function
+#py2exe.build_exe.isSystemDLL = isSystemDLL	# override the default function with this one
 
 setup(windows = [
 	{'script': SCRIPT_MAIN,

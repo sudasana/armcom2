@@ -275,6 +275,7 @@ class Crewman:
 		}
 		self.action = None			# current action, if None then
 							#   crewman is spotting
+		self.acted_this_turn = False		# crewman did an action this turn
 	
 	def GetName(self, shortname=False, lastname=False):
 		if shortname:
@@ -384,11 +385,8 @@ class Unit:
 		self.recce = False
 		self.unreliable = False
 		
-		self.LoadStats()				# load stats from unit_defs.xml
-		self.display_char = self.GetDisplayChar()	# set initial display character
-
-	# load the baseline stats for this unit from data file
-	def LoadStats(self):
+		# load the baseline stats for this unit from data file
+	
 		# find the unit type entry in the data file
 		root = xml.parse(DATAPATH + 'unit_defs.xml')
 		item_list = root.findall('unit_def')
@@ -490,6 +488,7 @@ class Unit:
 				self.gun_shield = True
 		
 		self.movement_class = item.find('movement_class').text
+		self.display_char = self.GetDisplayChar()	# set initial display character
 
 	# perform pre-activation automatic actions
 	def DoPreActivation(self):
@@ -514,10 +513,10 @@ class Unit:
 			scenario.hex_map.CalcFoV()
 			UpdateVPConsole()
 			
-			# reset player crew actions
+			# reset player crew flags
 			for crew_position in scenario.player_unit.crew_positions:
 				if crew_position.crewman is None: continue
-				crew_position.crewman.action = None
+				crew_position.crewman.acted_this_turn = False
 		
 			
 	# perform post-activation automatic actions
@@ -525,8 +524,19 @@ class Unit:
 		
 		# player unit only
 		if self == scenario.player_unit:
-			# turn off LoS display
+			
+			# turn off any LoS display
 			scenario.display_los = False
+			
+			# reset crew actions if didn't act this turn
+			for crew_position in scenario.player_unit.crew_positions:
+				if crew_position.crewman is None: continue
+				if not crew_position.crewman.acted_this_turn:
+					crew_position.crewman.action = None
+			
+			# recalculate FoV
+			scenario.hex_map.CalcFoV()
+			UpdateVPConsole()
 			DrawScreenConsoles()
 		
 		# resolve any hits
@@ -539,6 +549,21 @@ class Unit:
 		# set moved flag for next activation
 		self.moved_last_action = self.moved
 
+	# find the crewman in the given position and set their current action
+	# returns False if no such position, position is empty, or crewman already has a different action
+	def SetCrewmanAction(self, position_name, action):
+		for position in self.crew_positions:
+			if position.name == position_name:
+				if position.crewman is None:
+					return False
+				if position.crewman.action is not None:
+					if position.crewman.action != action:
+						return False
+				position.crewman.action = action
+				position.crewman.acted_this_turn = True
+				return True
+		return False
+		
 	# return the chance of getting an extra turn / missing a turn if unit moves into target hex
 	def GetMovementTurnChance(self, hx, hy):
 		# move not possible
@@ -1029,12 +1054,8 @@ class Unit:
 		
 		# set driver crew action - for now, player only
 		if self == scenario.player_unit:
-			for crew_position in scenario.player_unit.crew_positions:
-				if crew_position.crewman is None: continue
-				if crew_position.name == 'Driver':
-					crew_position.crewman.action = 'Drive'
-					UpdatePlayerUnitConsole()
-					break
+			self.SetCrewmanAction('Driver', 'Drive')
+			UpdatePlayerUnitConsole()	
 		
 		map_hex1 = GetHexAt(self.hx, self.hy)
 		map_hex2 = GetHexAt(new_hx, new_hy)
@@ -1173,6 +1194,12 @@ class Unit:
 		if self.turret_facing is None: return False
 		self.turret_facing = direction
 		UpdateUnitConsole()
+		
+		# recalculate viewport
+		if scenario.player_unit == self:
+			scenario.hex_map.CalcFoV()
+			UpdateVPConsole()
+		
 		return True
 	
 	# resolve an AP hit on this unit
@@ -1315,6 +1342,16 @@ class Weapon:
 		else:
 			text = 'ERROR'
 		return text
+	
+	# find an appropriate crewman and set the action to fire this weapon
+	def SetFiredAction(self, unit):
+		# no such stat for this weapon
+		if 'fired_by' not in self.stats:
+			return
+		for position_name in self.stats['fired_by']:
+			if unit.SetCrewmanAction(position_name, 'Fire ' + self.GetName()):
+				return
+		print 'ERROR: Could not find a crewman to fire ' + self.GetName()
 
 
 # animation handler
@@ -2083,15 +2120,17 @@ class HexMap:
 			# crewman must not being doing another action to spot
 			if crew_position.crewman.action is not None: continue
 			
+			# visible_hextants is a slice of the original since we want a local copy and
+			#   don't want to change the original values
 			if crew_position.hatch is None:
-				visible_hextants = crew_position.closed_visible
+				visible_hextants = crew_position.closed_visible[:]
 				max_distance = MAX_BU_LOS_DISTANCE
 			else:
 				if crew_position.hatch == 'Closed':
-					visible_hextants = crew_position.closed_visible
+					visible_hextants = crew_position.closed_visible[:]
 					max_distance = MAX_BU_LOS_DISTANCE
 				else:
-					visible_hextants = crew_position.open_visible
+					visible_hextants = crew_position.open_visible[:]
 					max_distance = MAX_LOS_DISTANCE
 			
 			# rotate visible hextants based on current turret/hull facing
@@ -2101,7 +2140,8 @@ class HexMap:
 				direction = scenario.player_unit.facing
 			if direction != 0:
 				for i, hextant in enumerate(visible_hextants):
-					visible_hextants[i] = ConstrainDir(hextant - direction)
+					visible_hextants[i] = ConstrainDir(hextant + direction)
+					
 			
 			# go through hexes in each hextant and add to spotting list if within max distance
 			for hextant in visible_hextants:
@@ -2198,7 +2238,7 @@ class Scenario:
 	def LoadUnitPortraits(self):
 		for unit in self.unit_list:
 			if unit.portrait is None: continue
-			if unit.unit_id not in unit_portraits.keys():
+			if unit.unit_id not in unit_portraits:
 				unit_portraits[unit.unit_id] = LoadXP(unit.portrait)
 		print 'Loaded unit portraits'
 	
@@ -3614,11 +3654,9 @@ def InitAttack(attacker, weapon, target):
 			Wait(3)
 	
 	# display attack console
-	
-	
-	# player has chance to cancel; wait for confirmation before proceeding
 	DisplayAttack(attack_obj)
 	
+	# player has chance to cancel; wait for confirmation before proceeding
 	if attacker == scenario.player_unit:
 		if WaitForEnter(allow_cancel=True):
 			DrawScreenConsoles()
@@ -3635,6 +3673,10 @@ def InitAttack(attacker, weapon, target):
 			if check_weapon.firing_group is not None:
 				if check_weapon.firing_group == weapon.firing_group:
 					check_weapon.fired = True
+	
+	# if player is attacking, set action for crewman firing this weapon
+	if attacker == scenario.player_unit:
+		weapon.SetFiredAction(scenario.player_unit)
 	
 	# turn off LoS display and clear any LoS drawn above from screen for animation
 	scenario.display_los = False
@@ -3727,6 +3769,11 @@ def InitAttack(attacker, weapon, target):
 		if weapon.stats['use_ready_rack'] is not None:
 			if weapon.stats['use_ready_rack']:
 				use_rr = True
+		
+		# for player unit: set loader action
+		# FUTURE: check for failure
+		if attacker == scenario.player_unit:
+			scenario.player_unit.SetCrewmanAction('Loader', 'Reload')
 		
 		# check for new shell of reload type and load it if possible
 		(main_ammo, rr_ammo) = weapon.stats[weapon.stats['reload_ammo']]
@@ -4492,7 +4539,11 @@ def UpdatePlayerUnitConsole():
 					libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
 					text = 'Spot'
 				else:
-					libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
+					if position.crewman.acted_this_turn:
+						col = libtcod.white
+					else:
+						col = libtcod.dark_grey
+					libtcod.console_set_default_foreground(player_unit_con, col)
 					text = position.crewman.action
 			libtcod.console_print_ex(player_unit_con, 23, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
@@ -5421,7 +5472,6 @@ def DoScenario(load_savegame=False):
 			else:
 				new_direction = CombineDirs(scenario.player_unit.turret_facing, 1)
 			if scenario.player_unit.RotateTurret(new_direction):
-				scenario.BuildCmdMenu()
 				DrawScreenConsoles()
 		
 		##################################################################

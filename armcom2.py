@@ -73,7 +73,7 @@ VIEW_ALL = False					# human player can see all hexes in viewport
 
 NAME = 'Armoured Commander II'
 #VERSION = 'Alpha 1.0'					# game version: determines saved game compatability
-VERSION = 'July 14 2017'			
+VERSION = 'July 21 2017'			
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -273,7 +273,8 @@ class Crewman:
 			'Driver' : 0,
 			'Assistant Driver' : 0
 		}
-		self.action = ''			# current action
+		self.action = None			# current action, if None then
+							#   crewman is spotting
 	
 	def GetName(self, shortname=False, lastname=False):
 		if shortname:
@@ -303,7 +304,6 @@ class CrewPosition:
 		
 		# set up list of possible crew actions
 		self.actions = []
-		self.default_action = 'Spot'	# crew action for this position if no other is triggered
 		
 		# all positions can spot
 		self.actions.append(('Spot', 'Try to spot and identify enemy units'))
@@ -364,7 +364,7 @@ class Unit:
 		self.weapon_list = []			# list of weapons
 		
 		self.unresolved_fp = 0			# fp from attacks to be resolved at end of action
-		self.unresolved_ap = []			# list of unsolved penetrating AP hits
+		self.unresolved_ap = []			# list of unsolved AP hits
 		
 		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
 		
@@ -507,15 +507,17 @@ class Unit:
 		map_hex = GetHexAt(self.hx, self.hy)
 		if len(map_hex.unit_stack) > 1:
 			self.MoveToTopOfStack(map_hex)
-		# if player unit, update FoV now
+		
+		# player unit
 		if self == scenario.player_unit:
+			# update FoV now
 			scenario.hex_map.CalcFoV()
 			UpdateVPConsole()
 			
-			# reset crew actions, for now, player unit only
+			# reset player crew actions
 			for crew_position in scenario.player_unit.crew_positions:
 				if crew_position.crewman is None: continue
-				crew_position.crewman.action = crew_position.default_action
+				crew_position.crewman.action = None
 		
 			
 	# perform post-activation automatic actions
@@ -525,11 +527,13 @@ class Unit:
 		if self == scenario.player_unit:
 			# turn off LoS display
 			scenario.display_los = False
+			DrawScreenConsoles()
 		
 		# resolve any hits
 		for unit in scenario.unit_list:
 			if unit.owning_player == self.owning_player: continue
-			if unit.unresolved_fp > 0 or unit.unresolved_ap > 0:
+			if not unit.alive: continue
+			if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
 				unit.ResolveHits()
 		
 		# set moved flag for next activation
@@ -607,8 +611,6 @@ class Unit:
 			
 			d1, d2, roll = Roll2D6()
 			
-			#print 'DEBUG: score to beat is ' + str(score) + ', roll was ' + str(roll)
-			
 			if roll == 2 or float(roll) < float(score) * 0.5:
 				text = self.GetName() + ' is destroyed!'
 				scenario.AddMessage(text, (self.hx, self.hy))
@@ -640,18 +642,22 @@ class Unit:
 		
 		if len(self.unresolved_ap) == 0: return
 		
-		# FUTURE: different outcomes possible
-		# handle ATR hits
-		
-		# DEBUG - player cannot be killed
-		#if self == scenario.player_unit:
-		#	text = 'Your magical armour protects you.'
-		#	scenario.AddMessage(text, None)
-		#	return
-		
-		text = self.GetName() + ' is destroyed!'
-		scenario.AddMessage(text, (self.hx, self.hy))
-		self.DestroyMe()
+		# do AP rolls for unresolved ap hits
+		for attack_obj in self.unresolved_ap:
+			if self.ResolveAPHit(attack_obj):
+				
+				# DEBUG - player cannot be killed
+				#if self == scenario.player_unit:
+				#	text = 'Your magical armour protects you.'
+				#	scenario.AddMessage(text, None)
+				#	return
+				
+				# FUTURE: different outcomes for penetrations possible
+				text = self.GetName() + ' is destroyed!'
+				scenario.AddMessage(text, (self.hx, self.hy))
+				self.DestroyMe()
+				return
+		self.unresolved_ap = []
 	
 	# perform a morale check for this unit
 	def MoraleCheck(self, modifier):
@@ -710,7 +716,7 @@ class Unit:
 		# remove from map hex
 		map_hex = GetHexAt(self.hx, self.hy)
 		map_hex.unit_stack.remove(self)
-		# change alive flag, ActivateNextUnit() will remove it from unit_list
+		# change alive flag, will no longer be activated
 		self.alive = False
 		# clear acquired target records
 		self.ClearAcquiredTargets()
@@ -840,8 +846,8 @@ class Unit:
 
 		# update unit console
 		UpdateUnitConsole()
-		DrawScreenConsoles()
-		libtcod.console_flush()
+		#DrawScreenConsoles()
+		#libtcod.console_flush()
 		
 		# don't display any message for squadron members
 		#if self.squadron_leader is not None: return
@@ -1108,6 +1114,8 @@ class Unit:
 			UpdateObjectiveConsole()
 		
 		UpdateUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
 		
 		# check for concealment loss
 		self.DoSpotCheck(just_moved=True)
@@ -1178,14 +1186,7 @@ class Unit:
 		
 		# display AP roll
 		DisplayAttack(attack_obj, ap_roll=True)
-		WaitForEnter()
-		
-		# clear "Enter to Roll" line
-		libtcod.console_print_ex(attack_con, 13, 56, libtcod.BKGND_NONE,
-			libtcod.CENTER, '             ')
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
+		Wait(config.getint('ArmCom2', 'animation_speed') * 5)
 		
 		# do dice roll and display animation
 		pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
@@ -1207,25 +1208,21 @@ class Unit:
 			
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
-		libtcod.console_print_ex(attack_con, 13, 56, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Enter to Continue')
+		if attack_obj.attacker == scenario.player_unit:
+			libtcod.console_print_ex(attack_con, 13, 56, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'Enter to Continue')
 		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
-		WaitForEnter()
 		
-		# add details of hit to be resolved at end of action
+		if attack_obj.attacker == scenario.player_unit:
+			WaitForEnter()
+		else:
+			Wait(config.getint('ArmCom2', 'animation_speed') * 5)
+		
 		if roll <= attack_obj.final_ap:
-			if attack_obj.weapon.name == 'AT Rifle':
-				calibre = 8
-				text = 'AT Rifle'
-			else:
-				calibre = attack_obj.weapon.stats['calibre']
-				text = str(calibre) + ' calibre'
-			self.unresolved_ap.append(calibre)
-			text = 'Added one ' + text + ' hit to ' + attack_obj.target.GetName()
-			scenario.AddMessage(text, (attack_obj.target.hx,
-				attack_obj.target.hy))
+			return True
+		return False
 
 
 # Weapon class: represents a weapon carried by or mounted on a unit
@@ -1271,10 +1268,10 @@ class Weapon:
 				self.stats['rr_size'] = int(item.find('rr_size').text)
 				self.stats['use_ready_rack'] = True
 			
-			# ammo load stats: current selections are TEMP
+			# ammo load stats
+			# FUTURE: these should be set to 0/empty and set by player
 			self.stats['loaded_ammo'] = 'AP'
 			self.stats['reload_ammo'] = 'AP'
-			# starting amounts are TEMP
 			self.stats['HE'] = (26, 3)
 			self.stats['AP'] = (40, 3)
 		
@@ -1512,19 +1509,20 @@ class AI:
 		# FUTURE: Check for automatic actions based on current situation
 		
 		# roll for basic action
-		# TEMP: assume that the AI side is taking a defensive attitude
+		# assume that the AI side is taking a defensive attitude
+		# FUTURE: different attitudes possible
 		d1, d2, roll = Roll2D6()
 		
 		# doubles 6 or over: no action
 		if d1 == d2 and roll >= 6:
-			#print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + ' does nothing'
+			#print 'AI: ' + self.owner.GetName(true_name=True) + ' does nothing'
 			return
 		
 		# enemy in LoS, greater chance of attacking
 		for unit in scenario.unit_list:
 			if unit.owning_player == 1: continue
 			if GetLoS(self.owner.hx, self.owner.hy, unit.hx, unit.hy) > -1:
-				#print 'AI DEBUG: player unit in LoS'
+				#print 'AI: player unit in LoS'
 				roll += 2
 				break
 		
@@ -1543,7 +1541,7 @@ class AI:
 			if self.DoMoveAction():
 				return
 		
-		#print 'AI DEBUG: ' + self.owner.GetName(true_name=True) + " wasn't able to do any AI actions"
+		#print 'AI: ' + self.owner.GetName(true_name=True) + " wasn't able to do any AI actions"
 		
 	# do a move action
 	def DoMoveAction(self):
@@ -1732,6 +1730,7 @@ class MenuOption:
 class CommandMenu:
 	def __init__(self, menu_id):
 		self.menu_id = menu_id			# a unique id for this menu
+		self.title = ''				# title for when the menu is displayed
 		self.cmd_list = []			# list of commands
 		self.selected_option = None		# currently selected command
 	
@@ -2081,7 +2080,8 @@ class HexMap:
 
 		for crew_position in scenario.player_unit.crew_positions:
 			if crew_position.crewman is None: continue
-			if crew_position.crewman.action != 'Spot': continue
+			# crewman must not being doing another action to spot
+			if crew_position.crewman.action is not None: continue
 			
 			if crew_position.hatch is None:
 				visible_hextants = crew_position.closed_visible
@@ -2249,9 +2249,6 @@ class Scenario:
 		
 		# advance the game clock
 		self.AdvanceClock()
-		
-		# activate first unit in list
-		self.active_unit = self.unit_list[0]
 	
 	# calculate the likely effectiveness of a fire attack between two units
 	# returns (bool, int), where bool is true if a turret rotation or facing change would
@@ -2260,8 +2257,8 @@ class Scenario:
 	#   if returned value == -1, attack is not possible, and the reason is returned as desc
 	def GetAttackScore(self, attacker, weapon, target, rotate_allowed=True, pivot_allowed=True):
 		
-		# weapon has already fired and didn't maintain RoF against this target
-		if weapon.fired and weapon.rof_target != target:
+		# weapon has already fired
+		if weapon.fired:
 			return (-1, 'Cannot fire this weapon group again this turn')
 		
 		# check range
@@ -2331,35 +2328,37 @@ class Scenario:
 		self.active_unit.DoPostActivation()
 		
 		# check for extra turn for currently activated unit
-		if self.active_unit.extra_turns > 0:
+		if self.active_unit.alive and self.active_unit.extra_turns > 0:
 			self.active_unit.extra_turns -= 1
 			self.active_unit.DoPreActivation()
 			scenario.BuildCmdMenu()
+			# save the game if the player has been activated
 			if self.active_unit == self.player_unit:
 				SaveGame()
 			return
 		
 		unit_activated = False
 		while not unit_activated:
-			
-			# if previous unit has been removed, start at
 		
-			# get index number of previous unit
+			# get index number of previously active unit
 			i = self.unit_list.index(self.active_unit)
-			
-			# check for dead unit removal
-			for unit in reversed(self.unit_list):
-				if not unit.alive:
-					self.unit_list.remove(unit)
 			
 			# start a new turn or activate next unit in list
 			if i == len(self.unit_list) - 1:
 				self.StartNewTurn()
+				
 				# scenario is over
 				if self.winner is not None:
 					return
+				
+				# activate first unit in list
+				self.active_unit = self.unit_list[0]
+				
 			else:
 				self.active_unit = self.unit_list[i+1]
+			
+			# skip dead units
+			if not self.active_unit.alive: continue
 			
 			# check for missed turn
 			if self.active_unit.extra_turns < 0:
@@ -2370,17 +2369,18 @@ class Scenario:
 			self.active_unit.DoPreActivation()
 			scenario.BuildCmdMenu()
 			
+			# save the game if the player has been activated
 			if self.active_unit == self.player_unit:
 				SaveGame()
 			
 			unit_activated = True
 		
-	
 	# add a new message to the log, and display it on the current message console
 	def AddMessage(self, text, highlight_hex):
 		self.messages.append(text)
 		UpdateMsgConsole()
-		DrawScreenConsoles()
+		# we do this so as not to mess up the attack console being displayed
+		libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 27, 58)
 		if highlight_hex is not None:
 			scenario.anim.InitHexHighlight(highlight_hex)
 			WaitForAnimation()
@@ -2401,6 +2401,7 @@ class Scenario:
 		target_list = []
 		for unit in scenario.unit_list:
 			if unit.owning_player == 0: continue
+			if not unit.alive: continue
 			map_hex = GetHexAt(unit.hx, unit.hy)
 			if not map_hex.vis_to_player: continue
 			target_list.append(unit)
@@ -2442,7 +2443,7 @@ class Scenario:
 	def CheckForEnd(self):
 		
 		# player has died
-		if self.player_unit not in self.unit_list:
+		if not self.player_unit.alive:
 			self.winner = 1
 			self.end_text = 'Your tank has been destroyed.'
 			return
@@ -2512,6 +2513,7 @@ class Scenario:
 		
 		# root menu
 		if self.active_cmd_menu == 'root':
+			self.cmd_menu.title = 'Commands'
 			menu_option = self.cmd_menu.AddOption('command_menu', '1', 'Command')
 			menu_option.inactive = True
 			menu_option = self.cmd_menu.AddOption('crew_menu', '2', 'Crew')
@@ -2521,7 +2523,7 @@ class Scenario:
 		
 		# crew menu (not used yet)
 		elif self.active_cmd_menu == 'crew':
-			
+			self.cmd_menu.title = 'Tank Crew'
 			# generate one command per crew position
 			n = 0
 			for crew_position in scenario.player_unit.crew_positions:
@@ -2540,6 +2542,8 @@ class Scenario:
 		
 		# movement menu
 		elif self.active_cmd_menu == 'movement':
+			self.cmd_menu.title = 'Movement'
+			
 			self.cmd_menu.AddOption('rotate_turret_cc', 'Q', 'Turret C/clockwise')
 			self.cmd_menu.AddOption('rotate_turret_cw', 'E', 'Turret Clockwise')
 			self.cmd_menu.AddOption('pivot_hull_port', 'A', 'Pivot to Port')
@@ -2564,11 +2568,15 @@ class Scenario:
 		# weapons menu
 		elif self.active_cmd_menu == 'weapons':
 			
+			self.cmd_menu.title = 'Weapons'
+			
 			# list all weapon systems
+			WEAPON_KEYS = ['Q', 'W', 'E', 'R', 'T', 'Y']
 			n = 0
 			for weapon in scenario.player_unit.weapon_list:
 				cmd = 'weapon_menu_' + str(n)
-				self.cmd_menu.AddOption(cmd, str(n+1), weapon.GetName(), 
+				cmd_key = WEAPON_KEYS[n]
+				self.cmd_menu.AddOption(cmd, cmd_key, weapon.GetName(), 
 					desc='Actions for this weapon')
 				n += 1
 			menu_option = self.cmd_menu.AddOption('return_to_root', 'Bksp',
@@ -2580,11 +2588,13 @@ class Scenario:
 		
 		# menu for a specific weapon
 		elif self.active_cmd_menu[:12] == 'weapon_menu_':
+			
+			self.cmd_menu.title = scenario.selected_weapon.GetName()
+			
 			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
 			
 			# see if we can fire this weapon at current target
-			menu_option = self.cmd_menu.AddOption('fire_weapon', 'F',
-				'Fire ' + scenario.selected_weapon.GetName())
+			menu_option = self.cmd_menu.AddOption('fire_weapon', 'F', 'Fire')
 			if scenario.player_target is None:
 				menu_option.inactive = True
 				menu_option.desc = 'No target selected'
@@ -2790,7 +2800,7 @@ def CalcAttack(attacker, weapon, target):
 		# round down and convert back to int
 		attack_obj.final_fp = int(floor(float_final_fp))
 		
-		# TEMP? how to handle attacks of FP 0?
+		# FUTURE: how to handle attacks of FP 0?
 		if attack_obj.final_fp < 1:
 			attack_obj.final_fp = 1
 		
@@ -3229,7 +3239,7 @@ def GetHexPath(hx1, hy1, hx2, hy2, psg=None, road_path=False):
 				# can't move into an occupied location unless it's our destination
 				if node != node2 and node.IsOccupied() != -1:
 					continue
-				# TEMP
+				# FUTURE: calculate cost based on odds of extra/missed turn
 				cost = 1
 			
 			# we're creating a path for a road
@@ -3603,13 +3613,19 @@ def InitAttack(attacker, weapon, target):
 			libtcod.console_flush()
 			Wait(3)
 	
-	# display attack console and wait for confirmation before proceeding
-	# player has chance to cancel a ranged attack at this point
+	# display attack console
+	
+	
+	# player has chance to cancel; wait for confirmation before proceeding
 	DisplayAttack(attack_obj)
-	cancel_attack = WaitForEnter(allow_cancel=True)
-	if attacker == scenario.player_unit and cancel_attack:
-		DrawScreenConsoles()
-		return
+	
+	if attacker == scenario.player_unit:
+		if WaitForEnter(allow_cancel=True):
+			DrawScreenConsoles()
+			return
+	else:
+		# otherwise pause for a moment
+		Wait(config.getint('ArmCom2', 'animation_speed') * 5)
 	
 	# set unit fired flag
 	attacker.fired = True
@@ -3666,39 +3682,23 @@ def InitAttack(attacker, weapon, target):
 		text += 'Attack hit!'
 	else:
 		text += 'Attack missed'
-		
 	libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
-	libtcod.console_print_ex(attack_con, 13, 56, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Enter to Continue')
-	libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
-	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-	libtcod.console_flush()
-	WaitForEnter()
 	
-	# if target was hit, apply effects
+	# if target was hit, save attack details to target to be resolved at end of attacker activation
 	if roll <= attack_obj.final_to_hit:
 		if attack_obj.pf_attack:
-			
-			# do AP roll
-			target.ResolveAPHit(attack_obj)
+			target.unresolved_ap.append(attack_obj)
 		else:
-			# AF attack, save attack details to target, to be resolved at end of action
 			target.unresolved_fp += attack_obj.final_fp
-			text = 'Added ' + str(attack_obj.final_fp) + ' unresolved fp to ' + target.GetName()
-			scenario.AddMessage(text, (target.hx, target.hy))
-	
-		# target spotted
+			
+		# target spotted if hit
 		if not target.known:
 			#print 'DEBUG: spotted unit was hit by an attack'
 			target.SpotMe()
 	
 	# check for concealment loss for attacker
 	attacker.DoSpotCheck(just_fired=True)
-	
-	# turn LoS display back on if the player attacked
-	if attacker == scenario.player_unit:
-		scenario.display_los = True
 	
 	# newly acquired target
 	if attacker.acquired_target is None:
@@ -3713,10 +3713,13 @@ def InitAttack(attacker, weapon, target):
 			# additional level
 			if ac_level < 2:
 				attacker.acquired_target = (target, 2)
+
+	# check for RoF and handle reloading gun
+	rof_possible = True
 	
-	# handle reloading procedure for gun
+	# reloading procedure for gun
 	if weapon.weapon_type == 'gun':
-		# 'unload' fired shell
+		# clear fired shell
 		weapon.stats['loaded_ammo'] = None
 		
 		# check for ready rack use
@@ -3747,34 +3750,65 @@ def InitAttack(attacker, weapon, target):
 		
 		# no shell loaded, can't maintain RoF
 		if weapon.stats['loaded_ammo'] == None:
-			return
-		
-	# check for RoF; first clear any previous stored RoF target
-	weapon.rof_target = None
+			rof_possible = False
 	
-	# no RoF possible
+	# weapon has no RoF capability
 	if weapon.stats['rof'] == 0:
-		return
-	if target not in scenario.unit_list:
-		return
+		rof_possible = False
 	
-	roll_required = weapon.stats['rof']
-	if weapon.weapon_type == 'gun':
-		if use_rr:
-			roll_required += 2
-	if roll_required > 10:
-		roll_required = 10
-	elif roll_required < 2:
-		roll_required = 2
+	# FUTURE: allow AI units to get RoF?
+	if attacker != scenario.player_unit:
+		rof_possible = False
 	
-	d1, d2, roll = Roll2D6()
-	if roll <= roll_required:
-		weapon.rof_target = target
-		if attacker == scenario.player_unit:
-			scenario.AddMessage("You maintained your gun's Rate of Fire", None)
+	rof_maintained = False
+	
+	# do RoF roll if possible
+	if rof_possible:
+		roll_required = weapon.stats['rof']
+		if weapon.weapon_type == 'gun':
+			if use_rr:
+				roll_required += 2
+		if roll_required > 10:
+			roll_required = 10
+		elif roll_required < 2:
+			roll_required = 2
+		d1, d2, roll = Roll2D6()
+		if roll <= roll_required:
+			rof_maintained = True
+			text = 'RoF maintained'
+		else:
+			text = 'RoF not maintained'
+		libtcod.console_print_ex(attack_con, 13, 55, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+	
+	# player maintained RoF
+	if attacker == scenario.player_unit and rof_maintained:
+		libtcod.console_print_ex(attack_con, 13, 57, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Enter to fire again')
+		libtcod.console_print_ex(attack_con, 13, 58, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Bksp to stop firing')
 	else:
-		if attacker == scenario.player_unit:
-			scenario.AddMessage("You did not maintain your gun's Rate of Fire", None)
+		libtcod.console_print_ex(attack_con, 13, 58, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Enter to Continue')
+	
+	libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	libtcod.console_flush()
+	
+	choice = WaitForEnter(allow_cancel=True)
+	
+	# player wasn't attacker, no choice to be made
+	if attacker != scenario.player_unit:
+		return True
+	
+	# player kept RoF and chose to keep firing, return False to start the function again
+	if rof_maintained and not choice:
+		return False
+	
+	# player either didn't keep RoF or chose not to continue firing
+	# turn LoS display back on
+	scenario.display_los = True
+	return True
 
 
 # display the factors and odds for an attack on the screen
@@ -3905,18 +3939,19 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		text = str(attack_obj.final_to_hit)
 	libtcod.console_print_ex(attack_con, 13, 43, libtcod.BKGND_NONE,
 		libtcod.CENTER, chr(243) + text)
-		
+	
 	# draw title line for where roll result will appear
 	libtcod.console_rect(attack_con, 1, 48, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(attack_con, 13, 48, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Roll')
 	
-	libtcod.console_print_ex(attack_con, 13, 56, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Enter to Roll')
-	# player attacks have chance to cancel
-	if not ap_roll and attack_obj.attacker == scenario.player_unit:
-		libtcod.console_print_ex(attack_con, 13, 57, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Backspace to Cancel')
+	# if player attack, display prompts to press enter or cancel
+	if attack_obj.attacker == scenario.player_unit:
+		libtcod.console_print_ex(attack_con, 13, 56, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Enter to Roll')
+		if not ap_roll:
+			libtcod.console_print_ex(attack_con, 13, 57, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'Backspace to Cancel')
 	
 	libtcod.console_set_default_background(attack_con, libtcod.black)
 	
@@ -3989,7 +4024,7 @@ def GenerateTerrain():
 	for key, map_hex in scenario.hex_map.hexes.iteritems():
 		map_hex_list.append((map_hex.hx, map_hex.hy))
 	hex_num = len(map_hex_list)				# total number of map hexes
-	print 'Terrain Generation: ' + str(hex_num) + ' map hexes'
+	#print 'Terrain Generation: ' + str(hex_num) + ' map hexes'
 	
 	# clear map
 	for (hx, hy) in map_hex_list:
@@ -4021,7 +4056,7 @@ def GenerateTerrain():
 	#                             Elevation / Hills                                  #
 	##################################################################################
 	
-	print 'Terrain Generation: Generating ' + str(hill_num) + ' hills'
+	#print 'Terrain Generation: Generating ' + str(hill_num) + ' hills'
 	for terrain_pass in range(hill_num):
 		hex_list = []
 		
@@ -4057,7 +4092,7 @@ def GenerateTerrain():
 	#                                  Forests                                       #
 	##################################################################################
 	
-	print 'Terrain Generation: Generating ' + str(forest_num) + ' forest areas'
+	#print 'Terrain Generation: Generating ' + str(forest_num) + ' forest areas'
 	if forest_size < 2:
 		forest_size = 2
 	for terrain_pass in range(forest_num):
@@ -4085,7 +4120,7 @@ def GenerateTerrain():
 	##################################################################################
 	
 	num_villages = libtcod.random_get_int(0, village_min, village_max)
-	print 'Terrain Generation: Generating ' + str(num_villages) + ' villages'
+	#print 'Terrain Generation: Generating ' + str(num_villages) + ' villages'
 	for terrain_pass in range(num_villages):
 		# determine size of village in hexes: 1,1,1,2,3 hexes total
 		village_size = libtcod.random_get_int(0, 1, 5) - 2
@@ -4114,7 +4149,7 @@ def GenerateTerrain():
 	#                                Tall Fields                                     #
 	##################################################################################
 	
-	print 'Terrain Generation: Generating ' + str(fields_num) + ' tall field areas'
+	#print 'Terrain Generation: Generating ' + str(fields_num) + ' tall field areas'
 	for terrain_pass in range(fields_num):
 		hex_list = []
 		(hx_start, hy_start) = choice(map_hex_list)
@@ -4145,7 +4180,7 @@ def GenerateTerrain():
 	##################################################################################
 	
 	num_ponds = libtcod.random_get_int(0, ponds_min, ponds_max)
-	print 'Terrain Generation: Generating ' + str(num_ponds) + ' ponds'
+	#print 'Terrain Generation: Generating ' + str(num_ponds) + ' ponds'
 	for terrain_pass in range(num_ponds):
 		shuffle(map_hex_list)
 		for (hx, hy) in map_hex_list:
@@ -4449,17 +4484,20 @@ def UpdatePlayerUnitConsole():
 			libtcod.console_set_default_foreground(player_unit_con, libtcod.dark_grey)
 			libtcod.console_print(player_unit_con, 4, y, text)
 			
-			# current action or other status
+			# current crewman action or other status
 			if position.crewman is None:
 				text = '[Position Empty]'
 			else:
-				# current action if any
-				libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
-				text = position.crewman.action
+				if position.crewman.action is None:
+					libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
+					text = 'Spot'
+				else:
+					libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
+					text = position.crewman.action
 			libtcod.console_print_ex(player_unit_con, 23, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
 			
-			# hatch status
+			# buttoned up / crew exposed hatch status
 			libtcod.console_set_default_foreground(player_unit_con, libtcod.dark_grey)
 			libtcod.console_hline(player_unit_con, 0, y+1, 24)
 			
@@ -4550,7 +4588,7 @@ def UpdateCmdConsole():
 	libtcod.console_set_default_background(cmd_con, TITLE_BG_COL)
 	libtcod.console_rect(cmd_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(cmd_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-		'Actions')
+		scenario.cmd_menu.title)
 	libtcod.console_set_default_foreground(cmd_con, INFO_TEXT_COL)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
 	scenario.cmd_menu.DisplayMe(cmd_con, 0, 2, 24)
@@ -5083,7 +5121,7 @@ def DoScenario(load_savegame=False):
 		GenerateTerrain()
 		
 		# spawn the player unit
-		# TEMP - should be integrated into a single spawn function with deployment zones
+		# FUTURE: integrate into a single spawn function with deployment zones
 		#  for each side
 		new_unit = Unit('Panzer 35t')
 		new_unit.owning_player = 0
@@ -5125,10 +5163,6 @@ def DoScenario(load_savegame=False):
 		new_crew.position_training['Assistant Driver'] = 10
 		new_unit.SetCrew('Assistant Driver', new_crew)
 		
-		# set crew actions to default
-		for crew_position in scenario.player_unit.crew_positions:
-			crew_position.crewman.action = crew_position.default_action
-		
 		# spawn player squadron
 		#for i in range(4):
 		#	new_unit = Unit('Panzer 35t')
@@ -5164,11 +5198,11 @@ def DoScenario(load_savegame=False):
 			scenario.hex_map.AddObjectiveAt(hx, hy, 'Capture')
 			total_objectives -= 1
 		
-		print 'Objectives placed: took ' + str(tries) + ' tries'
+		#print 'Objectives placed: took ' + str(tries) + ' tries'
 		
 		# generate tactical scores for map hexes for AI
 		# FUTURE - not used for anything yet
-		scenario.hex_map.GenerateTacticalMap()
+		#scenario.hex_map.GenerateTacticalMap()
 		
 		# do initial objective status check
 		for map_hex in scenario.objective_hexes:
@@ -5410,8 +5444,13 @@ def DoScenario(load_savegame=False):
 			DrawScreenConsoles()
 
 		elif option.option_id == 'fire_weapon':
-			InitAttack(scenario.player_unit, scenario.selected_weapon, scenario.player_target)
-			UpdateContextCon()
+			# loop for RoF maintained
+			result = False
+			while result is False:
+				result = InitAttack(scenario.player_unit, scenario.selected_weapon,
+					scenario.player_target)
+				UpdateContextCon()
+				libtcod.console_flush()
 			UpdatePlayerUnitConsole()
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
@@ -5479,6 +5518,8 @@ global config, unit_portraits
 global mouse, key, con, darken_con
 global lang_dict			# pointer to the current language dictionary of game msgs
 global gradient_x			# for main menu animation
+
+print 'Starting ' + NAME + ' version ' + VERSION
 
 # dictionary of unit portraits
 unit_portraits = {}

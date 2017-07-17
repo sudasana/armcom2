@@ -246,8 +246,8 @@
       <fp>4</fp>
       <mount>hull</mount>
       <rof>4</rof>
-      <fired_by>Driver</fired_by>
       <fired_by>Assistant Driver</fired_by>
+      <fired_by>Driver</fired_by>
       <firing_group>1</firing_group>
     </weapon>
     <max_ammo>66</max_ammo>

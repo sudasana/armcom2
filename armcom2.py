@@ -275,7 +275,6 @@ class Crewman:
 		}
 		self.action = None			# current action, if None then
 							#   crewman is spotting
-		self.acted_this_turn = False		# crewman did an action this turn
 	
 	def GetName(self, shortname=False, lastname=False):
 		if shortname:
@@ -510,13 +509,13 @@ class Unit:
 		# player unit
 		if self == scenario.player_unit:
 			# update FoV now
-			scenario.hex_map.CalcFoV()
-			UpdateVPConsole()
+			#scenario.hex_map.CalcFoV()
+			#UpdateVPConsole()
 			
 			# reset player crew flags
 			for crew_position in scenario.player_unit.crew_positions:
 				if crew_position.crewman is None: continue
-				crew_position.crewman.acted_this_turn = False
+				crew_position.crewman.action = None
 		
 			
 	# perform post-activation automatic actions
@@ -527,12 +526,6 @@ class Unit:
 			
 			# turn off any LoS display
 			scenario.display_los = False
-			
-			# reset crew actions if didn't act this turn
-			for crew_position in scenario.player_unit.crew_positions:
-				if crew_position.crewman is None: continue
-				if not crew_position.crewman.acted_this_turn:
-					crew_position.crewman.action = None
 			
 			# recalculate FoV
 			scenario.hex_map.CalcFoV()
@@ -560,7 +553,6 @@ class Unit:
 					if position.crewman.action != action:
 						return False
 				position.crewman.action = action
-				position.crewman.acted_this_turn = True
 				return True
 		return False
 		
@@ -1175,11 +1167,10 @@ class Unit:
 		if self.turret_facing is not None:
 			self.turret_facing = CombineDirs(self.turret_facing, facing_change)
 		
-		# recalculate viewport and update consoles for player pivot
+		# rotate viewport if player pivot
 		if scenario.player_unit == self:
 			UpdatePlayerUnitConsole()
 			scenario.SetVPHexes()
-			scenario.hex_map.CalcFoV()
 			UpdateContextCon()
 			UpdateVPConsole()
 			UpdateHexInfoConsole()
@@ -1194,12 +1185,6 @@ class Unit:
 		if self.turret_facing is None: return False
 		self.turret_facing = direction
 		UpdateUnitConsole()
-		
-		# recalculate viewport
-		if scenario.player_unit == self:
-			scenario.hex_map.CalcFoV()
-			UpdateVPConsole()
-		
 		return True
 	
 	# resolve an AP hit on this unit
@@ -4539,11 +4524,7 @@ def UpdatePlayerUnitConsole():
 					libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
 					text = 'Spot'
 				else:
-					if position.crewman.acted_this_turn:
-						col = libtcod.white
-					else:
-						col = libtcod.dark_grey
-					libtcod.console_set_default_foreground(player_unit_con, col)
+					libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
 					text = position.crewman.action
 			libtcod.console_print_ex(player_unit_con, 23, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)

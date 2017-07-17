@@ -508,15 +508,11 @@ class Unit:
 		
 		# player unit
 		if self == scenario.player_unit:
-			# update FoV now
-			#scenario.hex_map.CalcFoV()
-			#UpdateVPConsole()
-			
 			# reset player crew flags
 			for crew_position in scenario.player_unit.crew_positions:
 				if crew_position.crewman is None: continue
 				crew_position.crewman.action = None
-		
+			scenario.AddMessage('Your activation begins', None)
 			
 	# perform post-activation automatic actions
 	def DoPostActivation(self):
@@ -1221,8 +1217,10 @@ class Unit:
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 		if attack_obj.attacker == scenario.player_unit:
-			libtcod.console_print_ex(attack_con, 13, 56, libtcod.BKGND_NONE,
-				libtcod.CENTER, 'Enter to Continue')
+			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+			libtcod.console_print(attack_con, 6, 57, 'Enter')
+			libtcod.console_set_default_foreground(attack_con, libtcod.white)
+			libtcod.console_print(attack_con, 12, 57, 'Continue')
 		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()

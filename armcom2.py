@@ -495,7 +495,7 @@ class Unit:
 		self.fired = False
 		for weapon in self.weapon_list:
 			weapon.fired = False
-			weapon.rof_target = None
+			weapon.no_rof_this_turn = False
 		self.changed_facing = False
 		self.RecoveryCheck()
 		# turn on LoS display if this is player and we have a weapon active
@@ -1243,7 +1243,7 @@ class Weapon:
 		
 		self.name = ''			# name of this weapon if not automatically generated
 		self.fired = False		# weapon has fired this turn
-		self.rof_target = None		# RoF pointer to target, None if no RoF maintained
+		self.no_rof_this_turn = False	# RoF now allowed this turn
 		self.firing_group = None
 		
 		self.stats = {}
@@ -1280,12 +1280,26 @@ class Weapon:
 				self.stats['rr_size'] = int(item.find('rr_size').text)
 				self.stats['use_ready_rack'] = True
 			
+			# list of allowed ammo types
+			ammo_type_list = []
+			if item.find('ammo_type') is not None:
+				item_list = item.findall('ammo_type')
+				for i in item_list:
+					ammo_type_list.append(i.text)
+			self.stats['ammo_types'] = ammo_type_list[:]
+			
+			
 			# ammo load stats
 			# FUTURE: these should be set to 0/empty and set by player
 			self.stats['loaded_ammo'] = 'AP'
 			self.stats['reload_ammo'] = 'AP'
-			self.stats['HE'] = (26, 3)
-			self.stats['AP'] = (40, 3)
+			
+			self.stores = {}
+			self.stores['HE'] = 26
+			self.stores['AP'] = 40
+			self.ready_rack = {}
+			self.ready_rack['HE'] = 3
+			self.ready_rack['AP'] = 3
 		
 		# area fire weapon stats
 		elif self.weapon_type in ['small_arms', 'coax_mg', 'hull_mg']:
@@ -1337,7 +1351,78 @@ class Weapon:
 			if unit.SetCrewmanAction(position_name, 'Fire ' + self.GetName()):
 				return
 		print 'ERROR: Could not find a crewman to fire ' + self.GetName()
-
+	
+	# load ammo into an empty gun or switch out loaded ammo for different type
+	def CycleAmmoLoad(self):
+		if not self.weapon_type == 'gun':
+			return False
+		
+		# determine type of shell to try to load
+		if self.stats['loaded_ammo'] is None:
+			switch_type = self.stats['reload_ammo']
+		else:
+			ammo_types_list = self.stats['ammo_types']
+			i = ammo_types_list.index(self.stats['loaded_ammo'])
+			if i == len(self.stats['ammo_types']) - 1:
+				i = 0
+			else:
+				i += 1
+			switch_type = ammo_types_list[i]
+		
+		# see if a such a shell is available, and 
+		if self.stores[switch_type] > 0:
+			self.stores[switch_type] -= 1
+		elif self.ready_rack[switch_type] > 0:
+			self.ready_rack[switch_type] -= 1
+		else:
+			return False
+		
+		# put back the current shell if any
+		if self.stats['loaded_ammo'] is not None:
+			self.stores[self.stats['loaded_ammo']] += 1
+		
+		# load the new shell
+		self.stats['loaded_ammo'] = switch_type
+		
+		self.no_rof_this_turn = False
+		text = ('Your loader loads ' + self.GetName() + ' with a ' +
+			switch_type + ' shell.')
+		scenario.AddMessage(text, None)
+		
+		return True
+	
+	# toggle use of ready rack to reload next shell
+	def ToggleRR(self):
+		if not self.weapon_type == 'gun':
+			return False
+		if self.stats['use_ready_rack'] is None:
+			return False
+		self.stats['use_ready_rack'] = not self.stats['use_ready_rack']
+		
+		text = self.GetName() + ' will'
+		if not self.stats['use_ready_rack']:
+			text += ' not'
+		text += ' use the ready rack to reload.'
+		scenario.AddMessage(text, None)
+		
+		return True
+	
+	# cycle the type of ammo to reload next
+	def CycleAmmoReload(self):
+		if len(self.stats['ammo_types']) < 2:
+			return False
+		ammo_types_list = self.stats['ammo_types']
+		i = ammo_types_list.index(self.stats['reload_ammo'])
+		if i == len(self.stats['ammo_types']) - 1:
+			i = 0
+		else:
+			i += 1
+		self.stats['reload_ammo'] = ammo_types_list[i]
+		text = self.GetName() + ' will now be reloaded with ' + self.stats['reload_ammo']
+		text += ' ammo'
+		scenario.AddMessage(text, None)
+		return True
+		
 
 # animation handler
 # keeps track of animations in progress and updates the animation console layer
@@ -1524,7 +1609,7 @@ class AI:
 	
 	# randomly determine an action for this unit and do it
 	def DoAction(self):
-		
+
 		# don't do anything if we're going to be removed at end of turn
 		if not self.owner.alive: return
 		
@@ -1631,7 +1716,7 @@ class AI:
 			attack_obj = CalcAttack(self.owner, self.owner.weapon_list[0], unit)
 			
 			# area fire attack against armoured target
-			if not attack_obj.pf_attack and unit.armour is not None:
+			if not attack_obj.to_hit_attack and unit.armour is not None:
 				continue
 			
 			# too difficult to hit/affect
@@ -1711,7 +1796,7 @@ class Attack:
 		self.target = target
 		
 		self.modifiers = []		# list of dice roll modifiers
-		self.pf_attack = True		# attack is a point fire attack
+		self.to_hit_attack = True	# attack is a to-hit attack
 		
 		# Area Fire variables
 		self.base_fp = 0		# base attack firepower
@@ -2227,6 +2312,24 @@ class Scenario:
 				unit_portraits[unit.unit_id] = LoadXP(unit.portrait)
 		print 'Loaded unit portraits'
 	
+	# return the FP of an HE hit from a given calibre of gun
+	def GetGunHEFP(self, calibre):
+		
+		if calibre <= 60:
+			return 8
+		if calibre <= 57:
+			return 7
+		if calibre <= 50:
+			return 6
+		if calibre <= 45:
+			return 5
+		if calibre <= 37:
+			return 4
+		if calibre <= 30:
+			return 2
+		return 1
+	
+	
 	# spawn a given enemy unit into the map at a random location
 	def SpawnEnemy(self, unit_id, morale_lvl, skill_lvl, dummy=False):
 		new_unit = Unit(unit_id)
@@ -2290,13 +2393,13 @@ class Scenario:
 		if GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy) > weapon.stats['max_range']:
 			return (-1, 'Target beyond maximum weapon range')
 		
-		# Point Fire attacks must be against spotted target
-		if weapon.weapon_type == 'gun' and not target.known:
-			return (-1, 'Point Fire attacks against spotted targets only')
-		
-		# PF attack against infantry
-		if weapon.weapon_type == 'gun' and target.infantry:
-			return (-1, 'Point Fire attacks have no effect on infantry')
+		# gun specific checks
+		if weapon.weapon_type == 'gun':
+			if weapon.stats['loaded_ammo'] == 'AP':
+				if not target.known:
+					return (-1, 'AP attacks possible on known targets only.')
+				if target.infantry:
+					return (-1, 'AP attacks have no effect on infantry')	
 		
 		# see if target must current be in weapon arc
 		arc_check = False
@@ -2633,6 +2736,38 @@ class Scenario:
 				else:
 					menu_option.desc = 'Fire at ' + scenario.player_target.GetName()
 			
+			# load ammo into an empty gun or switch out loaded ammo for different type
+			if scenario.selected_weapon.weapon_type == 'gun':
+			
+				menu_option = self.cmd_menu.AddOption('cycle_weapon_load', 'L', 'Change Gun Load')
+				
+				if scenario.selected_weapon.stats['loaded_ammo'] is None:
+					# no shell loaded
+					menu_option.desc = 'Load a shell into the gun'
+				elif len(scenario.selected_weapon.stats['ammo_types']) > 1:
+					# can switch out for different type
+					menu_option.desc = ('Switch loaded shell for different ammo type. ' +
+						'If weapon is fired this turn, RoF is not possible.')
+				else:
+					# command not allowed
+					self.cmd_menu.remove(menu_option)
+				# TODO: check if loader can do this instant action
+			
+				# toggle use of ready rack to reload
+				if scenario.selected_weapon.stats['use_ready_rack'] is not None:
+					menu_option = self.cmd_menu.AddOption('toggle_rr', 'R', 'Toggle Ready Rack')
+					if scenario.selected_weapon.stats['use_ready_rack']:
+						text = "Don't use ready rack to reload"
+					else:
+						text = 'Use ready rack to reload'
+					menu_option.desc = text
+				
+				# cycle type of ammo to use to reload
+				if len(scenario.selected_weapon.stats['ammo_types']) > 1:
+					menu_option = self.cmd_menu.AddOption('cycle_weapon_reload',
+						'A', 'Cycle reload ammo',
+						desc='Cycle the type of ammo to use when reloading the gun')
+			
 			self.cmd_menu.AddOption('next_weapon', 'Tab', 'Next weapon',
 				desc='Quickly switch to next weapon')
 			self.cmd_menu.AddOption('return_to_weapons', 'Bksp',
@@ -2710,16 +2845,16 @@ def CalcAttack(attacker, weapon, target):
 	# get distance to target
 	distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 	
-	# determine whether this is a Point Fire or Area Fire attack
-	pf_attack = False
+	# determine whether this is a to-hit or a FP attack
+	to_hit_attack = False
 	if weapon.weapon_type == 'gun':
-		pf_attack = True
+		to_hit_attack = True
 	
 	######################
-	# Point Fire Attacks #
+	#   To-Hit Attacks   #
 	######################
 	
-	if pf_attack:
+	if to_hit_attack:
 	
 		# calculate base to-hit roll required
 		if distance <= 1:
@@ -2768,16 +2903,17 @@ def CalcAttack(attacker, weapon, target):
 			elif distance == 6:
 				attack_obj.modifiers.append(('Medium Calibre', -2))
 		
-		# moving vehicle target
-		if target.vehicle and target.moved:
-			attack_obj.modifiers.append(('Target vehicle moved', -2))
+		# vehicle targets
+		if target.vehicle:
+			if target.moved:
+				attack_obj.modifiers.append(('Target vehicle moved', -2))
 		
-		# size class
-		if target.size_class != 'Normal':
-			if target.size_class == 'Small':
-				attack_obj.modifiers.append(('Small Target', -1))
-			elif target.size_class == 'Very Small':
-				attack_obj.modifiers.append(('Very Small Target', -2))
+			# size class
+			if target.size_class != 'Normal':
+				if target.size_class == 'Small':
+					attack_obj.modifiers.append(('Small Target', -1))
+				elif target.size_class == 'Very Small':
+					attack_obj.modifiers.append(('Very Small Target', -2))
 		
 		# LoS terrain modifier
 		los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
@@ -2799,7 +2935,7 @@ def CalcAttack(attacker, weapon, target):
 	#####################
 
 	else:
-		attack_obj.pf_attack = False
+		attack_obj.to_hit_attack = False
 		
 		# get base firepower of weapon used
 		attack_obj.base_fp = weapon.stats['fp']
@@ -3684,10 +3820,8 @@ def InitAttack(attacker, weapon, target):
 	
 	# do to-hit roll
 	# clear "Enter to Roll" and "Backspace to Cancel" lines
-	libtcod.console_print_ex(attack_con, 13, 56, libtcod.BKGND_NONE,
-		libtcod.CENTER, '             ')
-	libtcod.console_print_ex(attack_con, 13, 57, libtcod.BKGND_NONE,
-		libtcod.CENTER, '                   ')
+	libtcod.console_rect(attack_con, 1, 57, 24, 1, True, libtcod.BKGND_NONE)
+	libtcod.console_rect(attack_con, 1, 58, 24, 1, True, libtcod.BKGND_NONE)
 	libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
@@ -3696,8 +3830,8 @@ def InitAttack(attacker, weapon, target):
 	pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
 	for i in range(5):
 		d1, d2, roll = Roll2D6()
-		DrawDie(attack_con, 9, 50, d1)
-		DrawDie(attack_con, 14, 50, d2)
+		DrawDie(attack_con, 9, 49, d1)
+		DrawDie(attack_con, 14, 49, d2)
 		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
@@ -3709,15 +3843,26 @@ def InitAttack(attacker, weapon, target):
 		text += 'Attack hit!'
 	else:
 		text += 'Attack missed'
-	libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
+	libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
 	# if target was hit, save attack details to target to be resolved at end of attacker activation
 	if roll <= attack_obj.final_to_hit:
-		if attack_obj.pf_attack:
-			target.unresolved_ap.append(attack_obj)
+		if attack_obj.to_hit_attack:
+			
+			# see if we apply an AP or a FP hit
+			if weapon.stats['loaded_ammo'] == 'AP':
+				target.unresolved_ap.append(attack_obj)
+				text = 'AP hit applied'
+			else:
+				fp = scenario.GetGunHEFP(weapon.stats['calibre'])
+				target.unresolved_fp += fp
+				text = str(fp) + ' FP applied'
 		else:
 			target.unresolved_fp += attack_obj.final_fp
+			text = str(attack_obj.final_fp) + ' FP applied'
+		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
 			
 		# target spotted if hit
 		if not target.known:
@@ -3761,10 +3906,10 @@ def InitAttack(attacker, weapon, target):
 			scenario.player_unit.SetCrewmanAction('Loader', 'Reload')
 		
 		# check for new shell of reload type and load it if possible
-		(main_ammo, rr_ammo) = weapon.stats[weapon.stats['reload_ammo']]
+		reload_type = weapon.stats['reload_ammo']
 		if use_rr:
-			if rr_ammo > 0:
-				rr_ammo -= 1
+			if weapon.ready_rack[reload_type] > 0:
+				weapon.ready_rack[reload_type] -= 1
 				weapon.stats['loaded_ammo'] = weapon.stats['reload_ammo']
 			else:
 				# no shell of the right type in the ready rack, but we can
@@ -3773,19 +3918,19 @@ def InitAttack(attacker, weapon, target):
 				use_rr = False
 		
 		if not use_rr:
-			if main_ammo > 0:
-				main_ammo -= 1
+			if weapon.stores[reload_type] > 0:
+				weapon.stores[reload_type] -= 1
 				weapon.stats['loaded_ammo'] = weapon.stats['reload_ammo']
 		
-		# update new ammo amounts
-		weapon.stats[weapon.stats['reload_ammo']] = (main_ammo, rr_ammo)
-		
-		# no shell loaded, can't maintain RoF
-		if weapon.stats['loaded_ammo'] == None:
+		# no shell could be loaded, can't maintain RoF
+		if weapon.stats['loaded_ammo'] is None:
 			rof_possible = False
 	
 	# weapon has no RoF capability
 	if weapon.stats['rof'] == 0:
+		rof_possible = False
+	# gun had shell switched out or loaded this turn
+	elif weapon.no_rof_this_turn:
 		rof_possible = False
 	
 	# FUTURE: allow AI units to get RoF?
@@ -3815,13 +3960,17 @@ def InitAttack(attacker, weapon, target):
 	
 	# player maintained RoF
 	if attacker == scenario.player_unit and rof_maintained:
-		libtcod.console_print_ex(attack_con, 13, 57, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Enter to fire again')
-		libtcod.console_print_ex(attack_con, 13, 58, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Bksp to stop firing')
+		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+		libtcod.console_print(attack_con, 5, 57, 'Enter')
+		libtcod.console_print(attack_con, 6, 58, 'Bksp')
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		libtcod.console_print(attack_con, 11, 57, 'Fire Again')
+		libtcod.console_print(attack_con, 11, 58, 'Stop Firing')
 	else:
-		libtcod.console_print_ex(attack_con, 13, 58, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Enter to Continue')
+		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+		libtcod.console_print(attack_con, 5, 57, 'Enter')
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		libtcod.console_print(attack_con, 11, 57, 'Continue')
 	
 	libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -3901,7 +4050,7 @@ def DisplayAttack(attack_obj, ap_roll=False):
 			libtcod.CENTER, 'in ' + attack_obj.location_desc)
 				
 	# firepower and modifiers
-	if not ap_roll and not attack_obj.pf_attack:
+	if not ap_roll and not attack_obj.to_hit_attack:
 		
 		text = 'Base FP: ' + str(attack_obj.base_fp)
 		libtcod.console_print_ex(attack_con, 13, 21, libtcod.BKGND_NONE,
@@ -3973,17 +4122,21 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		libtcod.CENTER, chr(243) + text)
 	
 	# draw title line for where roll result will appear
-	libtcod.console_rect(attack_con, 1, 48, 24, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print_ex(attack_con, 13, 48, libtcod.BKGND_NONE,
+	libtcod.console_rect(attack_con, 1, 47, 24, 1, False, libtcod.BKGND_SET)
+	libtcod.console_print_ex(attack_con, 13, 47, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Roll')
 	
 	# if player attack, display prompts to press enter or cancel
 	if attack_obj.attacker == scenario.player_unit:
-		libtcod.console_print_ex(attack_con, 13, 56, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Enter to Roll')
+		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+		libtcod.console_print(attack_con, 5, 57, 'Enter')
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		libtcod.console_print(attack_con, 11, 57, 'Roll')
 		if not ap_roll:
-			libtcod.console_print_ex(attack_con, 13, 57, libtcod.BKGND_NONE,
-				libtcod.CENTER, 'Backspace to Cancel')
+			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+			libtcod.console_print(attack_con, 6, 58, 'Bksp')
+			libtcod.console_set_default_foreground(attack_con, libtcod.white)
+			libtcod.console_print(attack_con, 11, 58, 'Cancel')
 	
 	libtcod.console_set_default_background(attack_con, libtcod.black)
 	
@@ -4282,27 +4435,34 @@ def UpdateContextCon():
 			text = weapon.stats['reload_ammo']
 		libtcod.console_print(context_con, 5, 3, text)
 		
-		libtcod.console_set_default_foreground(context_con, libtcod.white)
-		if weapon.stats['use_ready_rack']:
-			libtcod.console_print(context_con, 10, 3, 'RR')
+		if weapon.stats['use_ready_rack'] is not None:
+			if weapon.stats['use_ready_rack']:
+				col = libtcod.white
+			else:
+				col = libtcod.dark_grey
+			libtcod.console_set_default_foreground(context_con, col)
+			libtcod.console_print(context_con, 10, 4, 'RR')
 		
 		y = 5
 		for ammo_type in AMMO_TYPE_ORDER:
-			if weapon.stats[ammo_type] is not None:
+			if ammo_type in weapon.stats['ammo_types']:
+				
 				libtcod.console_set_default_foreground(context_con, libtcod.white)
-				libtcod.console_print(context_con, 0, y, ammo_type)
+				libtcod.console_print(context_con, 2, y, ammo_type)
 				libtcod.console_set_default_foreground(context_con, INFO_TEXT_COL)
-				(ammo, rr_ammo) = weapon.stats[ammo_type]
-				text = str(ammo) + '+' + str(rr_ammo)
-				libtcod.console_print(context_con, 5, y, text)
+				libtcod.console_print_ex(context_con, 8, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(weapon.stores[ammo_type]))
+				libtcod.console_print_ex(context_con, 11, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(weapon.ready_rack[ammo_type]))
 				y+=1
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.white)
-		libtcod.console_print(context_con, 0, 9, 'Max')
+		libtcod.console_print(context_con, 2, 9, 'Max')
 		libtcod.console_set_default_foreground(context_con, INFO_TEXT_COL)
-		text = str(scenario.player_unit.max_ammo) + '+' + str(weapon.stats['rr_size'])
 		libtcod.console_print_ex(context_con, 8, 9, libtcod.BKGND_NONE,
-			libtcod.RIGHT, text)
+			libtcod.RIGHT, str(scenario.player_unit.max_ammo))
+		libtcod.console_print_ex(context_con, 11, 9, libtcod.BKGND_NONE,
+			libtcod.RIGHT, str(weapon.stats['rr_size']))
 
 
 # update the objective info console
@@ -5244,10 +5404,10 @@ def DoScenario(load_savegame=False):
 		# FUTURE: use a more complex deployment table
 		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw',
 			'rifle_squad_atr']
-		for i in range(10):
+		for i in range(6):
 			unit_id = choice(ENEMY_LIST)
 			scenario.SpawnEnemy(unit_id, 9, 9)
-		for i in range(5):
+		for i in range(4):
 			unit_id = choice(ENEMY_LIST)
 			scenario.SpawnEnemy(unit_id, 9, 9, dummy=True)
 		
@@ -5463,6 +5623,7 @@ def DoScenario(load_savegame=False):
 			i = int(option.option_id[12])
 			scenario.selected_weapon = scenario.player_unit.weapon_list[i]
 			scenario.BuildCmdMenu()
+			UpdateContextCon()
 			scenario.display_los = True
 			DrawScreenConsoles()
 		
@@ -5486,6 +5647,27 @@ def DoScenario(load_savegame=False):
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
 		
+		elif option.option_id == 'cycle_weapon_load':
+			if scenario.selected_weapon.CycleAmmoLoad():
+				UpdateContextCon()
+				UpdatePlayerUnitConsole()
+				scenario.BuildCmdMenu()
+				DrawScreenConsoles()
+		
+		elif option.option_id == 'toggle_rr':
+			if scenario.selected_weapon.ToggleRR():
+				UpdateContextCon()
+				UpdatePlayerUnitConsole()
+				scenario.BuildCmdMenu()
+				DrawScreenConsoles()
+		
+		elif option.option_id == 'cycle_weapon_reload':
+			if scenario.selected_weapon.CycleAmmoReload():
+				UpdateContextCon()
+				UpdatePlayerUnitConsole()
+				scenario.BuildCmdMenu()
+				DrawScreenConsoles()
+	
 		elif option.option_id == 'next_weapon':
 			i = scenario.player_unit.weapon_list.index(scenario.selected_weapon)
 			if i == len(scenario.player_unit.weapon_list) - 1:

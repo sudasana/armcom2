@@ -4226,12 +4226,14 @@ def GenerateTerrain():
 	# clear map
 	for (hx, hy) in map_hex_list:
 		map_hex = GetHexAt(hx, hy)
-		map_hex.SetTerrainType('Fields')
+		map_hex.SetTerrainType('Open Ground')
 		map_hex.SetElevation(1)
 		map_hex.dirt_road_links = []
 	
 	# terrain settings
 	# FUTURE: will be supplied by battleground settings
+	rough_ground_num = int(hex_num / 50)
+	
 	hill_num = int(hex_num / 80)		# number of hills to generate
 	hill_min_size = 3			# minimum width/height of hill area
 	hill_max_size = 6			# maximum "
@@ -4248,6 +4250,16 @@ def GenerateTerrain():
 	
 	ponds_min = 0				# minimum number of ponds to generate
 	ponds_max = int(hex_num / 70)		# maximum "
+	
+	##################################################################################
+	#                                Rough Ground                                    #
+	##################################################################################
+	
+	for rough_ground_pass in range(rough_ground_num):
+		(hx, hy) = choice(map_hex_list)
+		map_hex = GetHexAt(hx, hy)
+		map_hex.SetTerrainType('Rough Ground')
+	
 	
 	##################################################################################
 	#                             Elevation / Hills                                  #
@@ -4382,7 +4394,7 @@ def GenerateTerrain():
 		shuffle(map_hex_list)
 		for (hx, hy) in map_hex_list:
 			map_hex = GetHexAt(hx, hy)
-			if map_hex.terrain_type.display_name != 'Fields':
+			if map_hex.terrain_type.display_name != 'Open Ground':
 				continue
 			if map_hex.elevation != 1:
 				continue

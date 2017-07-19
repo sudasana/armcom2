@@ -1,33 +1,39 @@
 <!-- Terrain Type Definitions-->
 <root>
   <terrain_def>
-    <display_name>Fields</display_name>
+    <display_name>Open Ground</display_name>
     <los_height>0</los_height>
     <base_image>hex_openground.xp</base_image>
+  </terrain_def>
+  <terrain_def>
+    <display_name>Tall Fields</display_name>
+    <los_height>1</los_height>
+    <base_image>hex_fields_in_season.xp</base_image>
+    <terrain_mod>2</terrain_mod>
   </terrain_def>
   <terrain_def>
     <display_name>Sparse Forest</display_name>
     <los_height>10</los_height>
     <base_image>hex_forest.xp</base_image>
-    <terrain_mod>2</terrain_mod>
+    <terrain_mod>3</terrain_mod>
     <difficult/>
-  </terrain_def>
-  <terrain_def>
-    <display_name>Tall Fields</display_name>
-    <los_height>0</los_height>
-    <base_image>hex_fields_in_season.xp</base_image>
-    <terrain_mod>1</terrain_mod>
   </terrain_def>
   <terrain_def>
     <display_name>Wooden Village</display_name>
     <los_height>5</los_height>
     <base_image>hex_village.xp</base_image>
-    <terrain_mod>3</terrain_mod>
+    <terrain_mod>4</terrain_mod>
   </terrain_def>
   <terrain_def>
     <display_name>Pond</display_name>
     <los_height>0</los_height>
     <base_image>hex_pond.xp</base_image>
     <water/>
+  </terrain_def>
+  <terrain_def>
+    <display_name>Rough Ground</display_name>
+    <los_height>0</los_height>
+    <base_image>hex_roughground.xp</base_image>
+    <difficult/>
   </terrain_def>
 </root>

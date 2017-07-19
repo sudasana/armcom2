@@ -1194,7 +1194,7 @@ class Unit:
 		
 		# display AP roll
 		DisplayAttack(attack_obj, ap_roll=True)
-		Wait(config.getint('ArmCom2', 'animation_speed') * 5)
+		WaitForEnter()
 		
 		# do dice roll and display animation
 		pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
@@ -1216,19 +1216,16 @@ class Unit:
 			
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
-		if attack_obj.attacker == scenario.player_unit:
-			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-			libtcod.console_print(attack_con, 6, 57, 'Enter')
-			libtcod.console_set_default_foreground(attack_con, libtcod.white)
-			libtcod.console_print(attack_con, 12, 57, 'Continue')
+		libtcod.console_rect(attack_con, 1, 57, 24, 1, True, libtcod.BKGND_NONE)
+		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+		libtcod.console_print(attack_con, 6, 57, 'Enter')
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		libtcod.console_print(attack_con, 12, 57, 'Continue')
 		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 		
-		if attack_obj.attacker == scenario.player_unit:
-			WaitForEnter()
-		else:
-			Wait(config.getint('ArmCom2', 'animation_speed') * 5)
+		WaitForEnter()
 		
 		if roll <= attack_obj.final_ap:
 			return True
@@ -1809,6 +1806,9 @@ class Attack:
 		self.location_desc = ''		# description of location hit
 		self.base_ap = 0		# base armour-penetration roll required
 		self.final_ap = 0		# final "
+		
+		# final roll variables
+		self.critical_hit = False	# roll was an original 2
 
 
 # a single option in a CommandMenu list
@@ -2625,6 +2625,8 @@ class Scenario:
 			self.minute -= 60
 			self.hour += 1
 		UpdateScenInfoConsole()
+		self.AddMessage('Time is now: ' + str(scenario.hour) + ':' + 
+			str(scenario.minute).zfill(2), None)
 
 	# rebuild a list of commands for the command menu based on current active menu
 	def BuildCmdMenu(self):
@@ -2973,6 +2975,7 @@ def CalcAttack(attacker, weapon, target):
 				break
 		
 		# calculate dice roll modifiers
+		# FUTURE: if target is not known, don't apply any target-specific modifiers?
 		
 		# LoS terrain modifier
 		los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
@@ -3027,6 +3030,10 @@ def CalcAPRoll(attack_obj):
 			base_ap = 8
 		elif gun_rating == '20L':
 			base_ap = 6
+	
+	# apply critical hit if any
+	if attack_obj.critical_hit:
+		base_ap = base_ap * 2
 	
 	# calculate modifiers
 	modifiers = []
@@ -3775,14 +3782,10 @@ def InitAttack(attacker, weapon, target):
 	# display attack console
 	DisplayAttack(attack_obj)
 	
-	# player has chance to cancel; wait for confirmation before proceeding
-	if attacker == scenario.player_unit:
-		if WaitForEnter(allow_cancel=True):
-			DrawScreenConsoles()
-			return
-	else:
-		# otherwise pause for a moment
-		Wait(config.getint('ArmCom2', 'animation_speed') * 5)
+	# if player is attacker, they have a chance to cancel
+	if WaitForEnter(allow_cancel = (attacker == scenario.player_unit)):
+		DrawScreenConsoles()
+		return
 	
 	# set unit fired flag
 	attacker.fired = True
@@ -3837,7 +3840,10 @@ def InitAttack(attacker, weapon, target):
 	
 	# display roll result
 	text = str(roll) + ': '
-	if roll <= attack_obj.final_to_hit:
+	if roll == 2 and roll <= attack_obj.final_to_hit:
+		text += 'Critical hit!'
+		attack_obj.critical_hit = True
+	elif roll <= attack_obj.final_to_hit:
 		text += 'Attack hit!'
 	else:
 		text += 'Attack missed'
@@ -3854,10 +3860,15 @@ def InitAttack(attacker, weapon, target):
 				text = 'AP hit applied'
 			else:
 				fp = scenario.GetGunHEFP(weapon.stats['calibre'])
+				if attack_obj.critical_hit:
+					fp = fp * 2
 				target.unresolved_fp += fp
 				text = str(fp) + ' FP applied'
 		else:
-			target.unresolved_fp += attack_obj.final_fp
+			fp = attack_obj.final_fp
+			if attack_obj.critical_hit:
+				fp = fp * 2
+			target.unresolved_fp += fp
 			text = str(attack_obj.final_fp) + ' FP applied'
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
@@ -4046,6 +4057,9 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		# location hit in AP roll
 		libtcod.console_print_ex(attack_con, 13, 12, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'in ' + attack_obj.location_desc)
+		if attack_obj.critical_hit:
+			libtcod.console_print_ex(attack_con, 13, 14, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'Critical Hit')
 				
 	# firepower and modifiers
 	if not ap_roll and not attack_obj.to_hit_attack:
@@ -4124,17 +4138,17 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	libtcod.console_print_ex(attack_con, 13, 47, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Roll')
 	
-	# if player attack, display prompts to press enter or cancel
-	if attack_obj.attacker == scenario.player_unit:
+	# display prompts
+	libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+	libtcod.console_print(attack_con, 7, 57, 'Enter')
+	libtcod.console_set_default_foreground(attack_con, libtcod.white)
+	libtcod.console_print(attack_con, 13, 57, 'Roll')
+		
+	if attack_obj.attacker == scenario.player_unit and not ap_roll:
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		libtcod.console_print(attack_con, 5, 57, 'Enter')
+		libtcod.console_print(attack_con, 6, 58, 'Bksp')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		libtcod.console_print(attack_con, 11, 57, 'Roll')
-		if not ap_roll:
-			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-			libtcod.console_print(attack_con, 6, 58, 'Bksp')
-			libtcod.console_set_default_foreground(attack_con, libtcod.white)
-			libtcod.console_print(attack_con, 11, 58, 'Cancel')
+		libtcod.console_print(attack_con, 11, 58, 'Cancel')
 	
 	libtcod.console_set_default_background(attack_con, libtcod.black)
 	
@@ -5430,9 +5444,8 @@ def DoScenario(load_savegame=False):
 		scenario.active_cmd_menu = 'root'
 		scenario.BuildCmdMenu()
 		
-		text = str(scenario.hour) + ':' + str(scenario.minute).zfill(2)
-		text += ' - Scenario Begins'
-		scenario.AddMessage(text, None)
+		scenario.AddMessage('Time is now: ' + str(scenario.hour) + ':' + 
+			str(scenario.minute).zfill(2), None)
 		
 		
 	# End of new/continued game set-up
@@ -5644,6 +5657,7 @@ def DoScenario(load_savegame=False):
 			UpdatePlayerUnitConsole()
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
+			SaveGame()
 		
 		elif option.option_id == 'cycle_weapon_load':
 			if scenario.selected_weapon.CycleAmmoLoad():

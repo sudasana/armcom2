@@ -513,6 +513,21 @@ class Unit:
 				if crew_position.crewman is None: continue
 				crew_position.crewman.action = None
 			scenario.AddMessage('Your activation begins', None)
+		
+		# check for regaining unknown status
+		if not self.known:
+			return
+		
+		for unit in scenario.unit_list:
+			if not unit.alive: continue
+			if unit.owning_player == self.owning_player: continue
+			if unit.dummy: continue
+			los = GetLoS(unit.hx, unit.hy, self.hx, self.hy)
+			if los != -1:
+				return
+		# no enemy units in LoS
+		self.HideMe()
+			
 			
 	# perform post-activation automatic actions
 	def DoPostActivation(self):
@@ -760,7 +775,7 @@ class Unit:
 	def GetName(self, true_name=False):
 		if not true_name:
 			if self.owning_player == 1 and not self.known:
-				return 'Possible Enemy'
+				return 'Unknown Unit'
 		return self.unit_name.decode('utf8').encode('IBM850')
 	
 	# assign a crewmember to a crew position
@@ -790,6 +805,7 @@ class Unit:
 		# get list of enemy units in LoS
 		enemy_list = []
 		for unit in scenario.unit_list:
+			if not unit.alive: continue
 			if unit.owning_player == self.owning_player: continue
 			if unit.dummy: continue
 			# FUTURE: check LoS for each crewmember in enemy unit
@@ -859,11 +875,8 @@ class Unit:
 
 		# update unit console
 		UpdateUnitConsole()
-		#DrawScreenConsoles()
-		#libtcod.console_flush()
-		
-		# don't display any message for squadron members
-		#if self.squadron_leader is not None: return
+		DrawScreenConsoles()
+		libtcod.console_flush()
 		
 		# show message
 		if self.owning_player == 0:
@@ -872,6 +885,28 @@ class Unit:
 			text = 'Enemy '
 		text += self.GetName() + ' has been spotted!'
 		scenario.AddMessage(text, (self.hx, self.hy))
+	
+	# regain unknown status for this unit
+	def HideMe(self):
+		# update console and screen to make sure unit has finished move animation
+		UpdateUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
+		if self.owning_player == 0:
+			if self == scenario.player_unit:
+				text = 'You are'
+			else:
+				text = self.GetName() + ' is'
+			text += ' now unseen by the enemy'
+		else:
+			text = 'Lost contact with ' + self.GetName()
+		scenario.AddMessage(text, (self.hx, self.hy))
+		self.known = False
+		UpdateUnitConsole()
+		if scenario.active_unit == self:
+			UpdatePlayerUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
 	
 	# get display character to be used on hex map
 	def GetDisplayChar(self):
@@ -925,29 +960,15 @@ class Unit:
 			(ac_target, ac_level) = unit.acquired_target
 			if ac_target == self:
 				unit.acquired_target = None
-			
-	# regain unspotted status for this PSG
-	# FUTURE: update this, not used right now
-	def HideMe(self):
-		# update console and screen to make sure unit has finished move animation
-		UpdateUnitConsole()
-		DrawScreenConsoles()
-		libtcod.console_flush()
-		if self.owning_player == 0:
-			text = self.GetName() + ' is now unseen by the enemy'
-		else:
-			text = 'Lost contact with ' + self.GetName()
-		scenario.AddMessage(text, (self.hx, self.hy))
-		self.known = False
-		UpdateUnitConsole()
-		if scenario.active_unit == self:
-			UpdatePlayerUnitConsole()
-		DrawScreenConsoles()
-		libtcod.console_flush()
 
 	# draw this unit to the unit console in the given viewport hx, hy location
 	# if stack_size > 1, indicate total number of units in hex stack
 	def DrawMe(self, hx, hy, stack_size):
+		
+		# don't draw if unknown enemy outside of FoV
+		if not self.known and self.owning_player == 1:
+			if not GetHexAt(self.hx, self.hy).vis_to_player:
+				return
 		
 		# calculate draw position
 		if self.anim_x == 0 or self.anim_y == 0:
@@ -3638,7 +3659,13 @@ def GetBearing(x1, y1, x2, y2):
 # total terrain modifier for the line
 def GetLoS(hx1, hy1, hx2, hy2):
 	
-	# handle the easy cases first: same hex and adjacent hex
+	# handle the easy cases first
+	
+	# too far away
+	if GetHexDistance(hx1, hy1, hx2, hy2) > MAX_LOS_DISTANCE:
+		return -1
+	
+	# same hex and adjacent hex
 	if hx1 == hx2 and hy1 == hy2:
 		return scenario.hex_map.hexes[(hx, hy)].terrain_type.terrain_mod
 	distance = GetHexDistance(hx1, hy1, hx2, hy2)
@@ -4036,10 +4063,14 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		unit.GetName())
 	
 	# roll description
-	if ap_roll:
-		text = ' hit by ' + attack_obj.weapon.GetName()
+	if attack_obj.attacker.owning_player == 1 and not attack_obj.attacker.known:
+		text = 'unknown weapon'
 	else:
-		text = 'firing ' + attack_obj.weapon.GetName() + ' at'
+		text = attack_obj.weapon.GetName()
+	if ap_roll:
+		text = ' hit by ' + text
+	else:
+		text = 'firing ' + text + ' at'
 	libtcod.console_print_ex(attack_con, 13, 11, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
@@ -4064,16 +4095,18 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	# firepower and modifiers
 	if not ap_roll and not attack_obj.to_hit_attack:
 		
-		text = 'Base FP: ' + str(attack_obj.base_fp)
-		libtcod.console_print_ex(attack_con, 13, 21, libtcod.BKGND_NONE,
-			libtcod.CENTER, text)
-		y = 22
-		libtcod.console_set_default_foreground(attack_con, INFO_TEXT_COL)
-		for (text, mod_text) in attack_obj.fp_mods:
-			libtcod.console_print(attack_con, 2, y, text)
-			libtcod.console_print_ex(attack_con, 23, y, libtcod.BKGND_NONE,
-				libtcod.RIGHT, mod_text)
-			y+=1
+		if not (attack_obj.attacker.owning_player == 1 and not attack_obj.attacker.known):
+			text = 'Base FP: ' + str(attack_obj.base_fp)
+			libtcod.console_print_ex(attack_con, 13, 21, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
+			y = 22
+			libtcod.console_set_default_foreground(attack_con, INFO_TEXT_COL)
+			for (text, mod_text) in attack_obj.fp_mods:
+				libtcod.console_print(attack_con, 2, y, text)
+				libtcod.console_print_ex(attack_con, 23, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, mod_text)
+				y+=1
+		
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		text = 'Final FP: ' + str(attack_obj.final_fp)
 		libtcod.console_print_ex(attack_con, 13, 25, libtcod.BKGND_NONE,
@@ -4093,9 +4126,15 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	libtcod.console_print_ex(attack_con, 13, 27, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Roll Modifiers')
 	y = 29
-	if len(attack_obj.modifiers) == 0:
+	
+	if attack_obj.attacker.owning_player == 1 and not attack_obj.attacker.known:
+		libtcod.console_print_ex(attack_con, 13, y, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Unknown')
+	
+	elif len(attack_obj.modifiers) == 0:
 		libtcod.console_print_ex(attack_con, 13, y, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'None')
+	
 	else:
 		total_mod = 0
 		for (text, mod) in attack_obj.modifiers:
@@ -4121,9 +4160,9 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	# final roll required
 	libtcod.console_rect(attack_con, 1, 41, 24, 1, False, libtcod.BKGND_SET)
 	if ap_roll:
-		text = 'To penetrate:'
+		text = 'Score to penetrate:'
 	else:
-		text = 'To hit:'
+		text = 'Score to hit:'
 	libtcod.console_print_ex(attack_con, 13, 41, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	if ap_roll:
@@ -4745,6 +4784,7 @@ def UpdatePlayerUnitConsole():
 	libtcod.console_print_ex(player_unit_con, 23, 22, libtcod.BKGND_NONE,
 		libtcod.RIGHT, 'Status')
 	libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
+	
 	if scenario.player_unit.moved:
 		text = 'Moving'
 	elif scenario.player_unit.moved_last_action:
@@ -4753,12 +4793,17 @@ def UpdatePlayerUnitConsole():
 		text = 'Stopped'
 	libtcod.console_print_ex(player_unit_con, 23, 23, libtcod.BKGND_NONE, libtcod.RIGHT,
 		text)
+	
 	if scenario.player_unit.fired:
 		text = 'Fired'
 	else:
 		text = ''
 	libtcod.console_print_ex(player_unit_con, 23, 24, libtcod.BKGND_NONE, libtcod.RIGHT,
 		text)
+	
+	if not scenario.player_unit.known:
+		libtcod.console_print_ex(player_unit_con, 23, 25, libtcod.BKGND_NONE, libtcod.RIGHT,
+			'Concealed')
 
 
 # displays a window with information about a particular PSG

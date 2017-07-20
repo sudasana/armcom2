@@ -5473,7 +5473,7 @@ def DoScenario(load_savegame=False):
 		# FUTURE: use a more complex deployment table
 		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw',
 			'rifle_squad_atr']
-		for i in range(6):
+		for i in range(8):
 			unit_id = choice(ENEMY_LIST)
 			scenario.SpawnEnemy(unit_id, 9, 9)
 		for i in range(4):

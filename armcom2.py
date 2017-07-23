@@ -497,6 +497,10 @@ class Unit:
 
 	# perform pre-activation automatic actions
 	def DoPreActivation(self):
+		
+		# do spot check
+		self.DoSpotCheck()
+		
 		self.moved = False
 		self.fired = False
 		for weapon in self.weapon_list:
@@ -558,6 +562,10 @@ class Unit:
 		
 		# set moved flag for next activation
 		self.moved_last_action = self.moved
+		
+		# do spot check
+		if self.alive:
+			self.DoSpotCheck()
 
 	# find the crewman in the given position and set their current action
 	# returns False if no such position, position is empty, or crewman already has a different action
@@ -782,7 +790,10 @@ class Unit:
 		if not true_name:
 			if self.owning_player == 1 and not self.known:
 				return 'Unknown Unit'
-		return self.unit_name.decode('utf8').encode('IBM850')
+		text = self.unit_name.decode('utf8').encode('IBM850')
+		if self.dummy:
+			text = 'Dummy ' + text
+		return text
 	
 	# assign a crewmember to a crew position
 	def SetCrew(self, position_name, crewman, player=False):
@@ -796,17 +807,10 @@ class Unit:
 			'no such position exists!')
 	
 	# check to see if this unit is spotted
-	# if just_moved is True, the unit just now completed a move action
-	# if just_fired is True, the unit just now completed an attack action
-	def DoSpotCheck(self, just_moved=False, just_fired=False):
+	def DoSpotCheck(self):
 		
 		# unit is already spotted, no need to test
 		if self.known: return
-		
-		# get current terrain status
-		open_ground = False
-		if GetHexAt(self.hx, self.hy).terrain_type.terrain_mod == 0:
-			open_ground = True
 		
 		# get list of enemy units in LoS
 		enemy_list = []
@@ -814,56 +818,87 @@ class Unit:
 			if not unit.alive: continue
 			if unit.owning_player == self.owning_player: continue
 			if unit.dummy: continue
-			# FUTURE: check LoS for each crewmember in enemy unit
-			los = GetLoS(unit.hx, unit.hy, self.hx, self.hy)
-			if los == -1: continue
-			distance = GetHexDistance(unit.hx, unit.hy, self.hx, self.hy)
-			# recce units count as being in close range up to 5 hexes
-			if 3 < distance <= 5 and unit.recce:
-				distance = 3
-			enemy_list.append((distance, unit))
 			
-			# check for enemy unit's loss of concealment
-			if self.dummy: continue
-			if not unit.known and not unit.infantry and not unit.gun:
-				if GetHexAt(unit.hx, unit.hy).terrain_type.terrain_mod == 0:
-					unit.SpotMe()
-		
+			# FUTURE: check LoS for each crewmember in enemy unit
+			
+			if unit == scenario.player_unit:
+				map_hex = GetHexAt(self.hx, self.hy)
+				if not map_hex.vis_to_player: continue
+			else:
+				if GetLoS(unit.hx, unit.hy, self.hx, self.hy) == -1: continue
+			
+			enemy_list.append(unit)
+			
 		# no enemies in LoS
 		if len(enemy_list) == 0: return
 		
-		# get range of nearest enemy unit with LoS
-		enemy_list.sort(key=lambda x: x[0])
-		(distance, unit) = enemy_list[0]
-		close_range = False
-		if distance <= 3:
-			close_range = True
-		
+		# calculate base spotting distance
 		if self.infantry:
-			if not (not close_range and not open_ground) and just_fired:
-				#print 'DEBUG: spotted unit just fired'
-				self.SpotMe()
-			elif open_ground and close_range and just_moved:
-				#print 'DEBUG: spotted unit just moved'
-				self.SpotMe()
-		
-		# emplaced guns
-		# FUTURE: distinguish when a gun is being towed vs. emplaced
+			spot_distance = 3
+			if self.moved:
+				spot_distance += 2
+			if self.fired:
+				spot_distance += 2
 		elif self.gun:
-			if close_range and just_fired:
-				#print 'DEBUG: spotted unit just fired'
-				self.SpotMe()
-		
-		# vehicles, etc.
+			spot_distance = 2
+			if self.fired:
+				spot_distance += 4
 		else:
-			if open_ground:
-				#print 'DEBUG: spotted unit was in open ground'
+			spot_distance = 4
+			if self.moved:
+				spot_distance += 1
+			if self.fired:
+				spot_distance += 2
+			
+		# test each enemy in LoS
+		for unit in enemy_list:
+			los_mod = GetLoS(unit.hx, unit.hy, self.hx, self.hy)
+			
+			if not unit.recce:
+			
+				if self.infantry:
+					if los_mod >= 5:
+						spot_distance -= 5
+					elif los_mod >= 3:
+						spot_distance -= 3
+					elif los_mod >= 1:
+						spot_distance -= 1
+				elif self.gun:
+					if los_mod >= 5:
+						spot_distance -= 6
+					elif los_mod >= 3:
+						spot_distance -= 4
+					elif los_mod >= 1:
+						spot_distance -= 2
+				else:
+					if los_mod >= 5:
+						spot_distance -= 3
+					elif los_mod >= 3:
+						spot_distance -= 2
+					elif los_mod >= 1:
+						spot_distance -= 1
+			
+			if self.recce:
+				if los_mod >= 5:
+					spot_distance -= 3
+				elif los_mod >= 3:
+					spot_distance -= 2
+				elif los_mod >= 1:
+					spot_distance -= 1
+			
+			print ('DEBUG: Spotting distance for ' + self.GetName(true_name=True) +
+				' to ' + unit.GetName(true_name=True) + ' is ' + 
+				str(spot_distance) + ' hexes')
+			
+			# impossible to spot
+			if spot_distance < 1:
+				continue
+			# automatically spotted
+			if spot_distance >= 6:
 				self.SpotMe()
-			elif close_range and just_fired:
-				#print 'DEBUG: spotted unit just fired'
-				self.SpotMe()
-			elif close_range and just_moved:
-				#print 'DEBUG: spotted unit just moved'
+			# spotted if distance is close enough
+			distance = GetHexDistance(unit.hx, unit.hy, self.hx, self.hy)
+			if distance <= spot_distance:
 				self.SpotMe()
 	
 	# this unit has been spotted by an enemy unit
@@ -1152,9 +1187,6 @@ class Unit:
 		UpdateUnitConsole()
 		DrawScreenConsoles()
 		libtcod.console_flush()
-		
-		# check for concealment loss
-		self.DoSpotCheck(just_moved=True)
 		
 		if DEBUG_MODE and scenario.debug_flags['fast_tank'] and scenario.player_unit == self:
 			self.extra_turns += 1
@@ -3947,9 +3979,6 @@ def InitAttack(attacker, weapon, target):
 			#print 'DEBUG: spotted unit was hit by an attack'
 			target.SpotMe()
 	
-	# check for concealment loss for attacker
-	attacker.DoSpotCheck(just_fired=True)
-	
 	# newly acquired target
 	if attacker.acquired_target is None:
 		attacker.acquired_target = (target, 1)
@@ -4315,22 +4344,22 @@ def GenerateTerrain():
 	# FUTURE: will be supplied by battleground settings
 	rough_ground_num = int(hex_num / 50)
 	
-	hill_num = int(hex_num / 80)		# number of hills to generate
+	hill_num = int(hex_num / 90)		# number of hills to generate
 	hill_min_size = 3			# minimum width/height of hill area
 	hill_max_size = 6			# maximum "
 	
 	forest_num = int(hex_num / 70)		# number of forest areas to generate
-	forest_size = 6				# total maximum height + width of areas
+	forest_size = 4				# total maximum height + width of areas
 	
 	village_max = int(hex_num / 100)	# maximum number of villages to generate
 	village_min = int(hex_num / 50)		# minimum "
 	
 	fields_num = int(hex_num / 50)		# number of tall field areas to generate
-	field_min_size = 3			# minimum width/height of field area
-	field_max_size = 6			# maximum "
+	field_min_size = 1			# minimum width/height of field area
+	field_max_size = 3			# maximum "
 	
 	ponds_min = 0				# minimum number of ponds to generate
-	ponds_max = int(hex_num / 70)		# maximum "
+	ponds_max = int(hex_num / 80)		# maximum "
 	
 	##################################################################################
 	#                                Rough Ground                                    #

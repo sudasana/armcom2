@@ -68,8 +68,8 @@ from encodings import hex_codec, ascii, utf_8, cp850
 #                                   You can rely on them                                 #
 ##########################################################################################
 
-# debug constants: should all be set to False in any distribution version
-VIEW_ALL = False					# human player can see all hexes in viewport
+# debug mode active: should set to False in any distribution version
+DEBUG_MODE = False
 
 NAME = 'Armoured Commander II'
 #VERSION = 'Alpha 1.0'					# game version: determines saved game compatability
@@ -256,6 +256,12 @@ VP_HEXES = [
 	(6,0), (5,1), (4,2), (3,3), (2,4), (1,5), (0,6), (-1,6), (-2,6), (-3,6), (-4,6), (-5,6)
 ]
 
+# list of possible debug flags
+DEBUG_FLAG_LIST = [
+	'view_all',		# player has LoS to every hex within a 6 hex range
+	'immortal',		# player unit cannot be destroyed
+	'fast_tank'			# player unit always gets an extra turn when moving
+]
 
 
 ##########################################################################################
@@ -675,10 +681,10 @@ class Unit:
 			if self.ResolveAPHit(attack_obj):
 				
 				# DEBUG - player cannot be killed
-				#if self == scenario.player_unit:
-				#	text = 'Your magical armour protects you.'
-				#	scenario.AddMessage(text, None)
-				#	return
+				if DEBUG_MODE and scenario.debug_flags['immortal']:
+					text = 'Your magical armour protects you.'
+					scenario.AddMessage(text, None)
+					return
 				
 				# FUTURE: different outcomes for penetrations possible
 				text = self.GetName() + ' is destroyed!'
@@ -1149,6 +1155,11 @@ class Unit:
 		
 		# check for concealment loss
 		self.DoSpotCheck(just_moved=True)
+		
+		if DEBUG_MODE and scenario.debug_flags['fast_tank'] and scenario.player_unit == self:
+			self.extra_turns += 1
+			scenario.AddMessage('Your debug powers give you another action', None)
+			return True
 		
 		# do extra/missed turn roll if any
 		if extra_turn_score != 0:
@@ -2182,7 +2193,7 @@ class HexMap:
 	def CalcFoV(self):
 		
 		# debug mode
-		if VIEW_ALL:
+		if DEBUG_MODE and scenario.debug_flags['view_all']:
 			for (hx, hy) in scenario.hex_map.hexes:
 				scenario.hex_map.hexes[(hx, hy)].vis_to_player = True
 			return
@@ -2273,6 +2284,11 @@ class Scenario:
 	def __init__(self, map_w, map_h):
 		
 		self.game_version = VERSION		# record game version for compatibility
+		
+		self.debug_flags = {}			# dictionary of active debug flags
+							# FUTURE: move to campaign object
+		for flag in DEBUG_FLAG_LIST:
+			self.debug_flags[flag] = False
 		
 		self.map_vp = {}			# dictionary of map viewport hexes and
 							#   their corresponding map hexes
@@ -2669,6 +2685,9 @@ class Scenario:
 			menu_option.inactive = True
 			self.cmd_menu.AddOption('movement_menu', '3', 'Movement')
 			self.cmd_menu.AddOption('weapons_menu', '4', 'Weapons')
+			
+			if DEBUG_MODE:
+				self.cmd_menu.AddOption('debug_menu', 'D', 'Debug')
 		
 		# crew menu (not used yet)
 		elif self.active_cmd_menu == 'crew':
@@ -2734,6 +2753,29 @@ class Scenario:
 			if scenario.player_unit.fired:
 				menu_option.inactive = True
 				menu_option.desc = 'You have already fired a weapon this action'
+		
+		# debug menu
+		elif self.active_cmd_menu == 'debug':
+			
+			self.cmd_menu.title = 'Debug'
+			
+			# list debug flags and current state
+			n = 0
+			for key in DEBUG_FLAG_LIST:
+				cmd = 'debug_toggle_' + str(n)
+				cmd_key = str(n+1)
+				value = scenario.debug_flags[key]
+				text = key + ' ('
+				if value:
+					text += 'on'
+				else:
+					text += 'off'
+				text += ')'
+				self.cmd_menu.AddOption(cmd, cmd_key, text)
+				n += 1
+			
+			self.cmd_menu.AddOption('return_to_root', 'Bksp', 'Root Menu',
+				desc='Return to root command menu')
 		
 		# menu for a specific weapon
 		elif self.active_cmd_menu[:12] == 'weapon_menu_':
@@ -5039,7 +5081,12 @@ def DrawScreenConsoles():
 		for (x, y) in line[2:-1]:
 			libtcod.console_set_char(con, x, y, 250)
 			libtcod.console_set_char_foreground(con, x, y, libtcod.red)
-		
+
+	if DEBUG_MODE:
+		libtcod.console_set_default_foreground(con, libtcod.red)
+		libtcod.console_print(con, 1, 0, 'DEBUG MODE')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+	
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)	# animation layer
 
@@ -5648,6 +5695,11 @@ def DoScenario(load_savegame=False):
 			scenario.BuildCmdMenu()
 			UpdateScreen()
 			continue
+		elif DEBUG_MODE and option.option_id == 'debug_menu':
+			scenario.active_cmd_menu = 'debug'
+			scenario.BuildCmdMenu()
+			UpdateScreen()
+			continue
 		
 		##################################################################
 		# Movement Menu Actions
@@ -5693,6 +5745,19 @@ def DoScenario(load_savegame=False):
 			scenario.BuildCmdMenu()
 			UpdateContextCon()
 			scenario.display_los = True
+			DrawScreenConsoles()
+		
+		##################################################################
+		# Debug Menu Actions
+		##################################################################
+		elif option.option_id[:13] == 'debug_toggle_':
+			i = int(option.option_id[13])
+			value = scenario.debug_flags[DEBUG_FLAG_LIST[i]]
+			scenario.debug_flags[DEBUG_FLAG_LIST[i]] = not value
+			scenario.BuildCmdMenu()
+			if DEBUG_FLAG_LIST[i] == 'view_all':
+				scenario.hex_map.CalcFoV()
+				UpdateVPConsole()
 			DrawScreenConsoles()
 		
 		##################################################################
@@ -5755,6 +5820,9 @@ def DoScenario(load_savegame=False):
 			scenario.BuildCmdMenu()
 			scenario.display_los = False
 			DrawScreenConsoles()
+		
+		
+		
 
 	# we're exiting back to the main menu, so delete the scenario object
 	del scenario

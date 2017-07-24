@@ -423,7 +423,7 @@ class Unit:
 		if item.find('vehicle') is not None:
 			self.vehicle = True
 			if item.find('turret') is not None:
-				self.turret_facing = 0		# will later be set by scenario.SpawnEnemy()
+				self.turret_facing = 0		# will be set later
 			if item.find('size_class') is not None:
 				self.size_class = item.find('size_class').text
 			else:
@@ -689,9 +689,10 @@ class Unit:
 			if self.ResolveAPHit(attack_obj):
 				
 				# DEBUG - player cannot be killed
-				if DEBUG_MODE and scenario.debug_flags['immortal']:
+				if DEBUG_MODE and self == scenario.player_unit and scenario.debug_flags['immortal']:
 					text = 'Your magical armour protects you.'
 					scenario.AddMessage(text, None)
+					self.unresolved_ap = []
 					return
 				
 				# FUTURE: different outcomes for penetrations possible
@@ -886,9 +887,9 @@ class Unit:
 				elif los_mod >= 1:
 					spot_distance -= 1
 			
-			print ('DEBUG: Spotting distance for ' + self.GetName(true_name=True) +
-				' to ' + unit.GetName(true_name=True) + ' is ' + 
-				str(spot_distance) + ' hexes')
+			#print ('DEBUG: Spotting distance for ' + self.GetName(true_name=True) +
+			#	' to ' + unit.GetName(true_name=True) + ' is ' + 
+			#	str(spot_distance) + ' hexes')
 			
 			# impossible to spot
 			if spot_distance < 1:
@@ -1760,6 +1761,7 @@ class AI:
 		
 		target_list = []
 		for unit in scenario.unit_list:
+			if not unit.alive: continue
 			if unit.owning_player == 1: continue
 			
 			# check range
@@ -2371,6 +2373,143 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
+	# generate an OOB for the AI side
+	def GenerateEnemyOOB(self):
+		
+		# FUTURE - will be integrated into national defs in a more generic way
+		dummy_number = 2
+		for i in range(8):
+			
+			dummy = False
+			if i + dummy_number >= 8:
+				dummy = True
+			
+			prefer_terrain = True
+			
+			unit_num = 1
+			d1, d2, roll = Roll2D6()
+			
+			# 2-4 Light Tank
+			if roll <= 4:
+				prefer_terrain = False
+				d1, d2, roll = Roll2D6()
+				if roll <= 5:
+					unit_id = '7TP'
+				else:
+					unit_id = 'vickers_ejw'
+					unit_num = 2
+			
+			# 5 Tankette
+			elif roll <= 5:
+				prefer_terrain = False
+				d1, d2, roll = Roll2D6()
+				if roll <= 5:
+					unit_id = 'TKS_20mm'
+					unit_num = 2
+				elif roll <= 8:
+					unit_id = 'TKS'
+					unit_num = 3
+				else:
+					unit_id = 'TK_3'
+					unit_num = 4
+			
+			# 6-8 Infantry
+			elif roll <= 8:
+				unit_id = 'rifle_squad_atr'
+				d1, d2, roll = Roll2D6()
+				if 5 <= roll <= 7:
+					unit_num = 2
+				elif roll <= 9:
+					unit_num = 3
+				else:
+					unit_num = 4
+			
+			# 9 Armoured Car
+			elif roll <= 9:
+				prefer_terrain = False
+				d1, d2, roll = Roll2D6()
+				if roll <= 9:
+					unit_id = 'wz_34_37'
+				else:
+					unit_id = 'wz_34_mg'
+				d1, d2, roll = Roll2D6()
+				if 7 <= roll <= 9:
+					unit_num = 2
+				else:
+					unit_num = 3
+			
+			# 10-12 Gun
+			else:
+				d1, d2, roll = Roll2D6()
+				if roll <= 4:
+					unit_id = '75mm_wz_9725'
+				elif roll <= 6:
+					unit_id = '75mm_wz_0226'
+				else:
+					unit_id = '37mm_wz_36'
+					d1, d2, roll = Roll2D6()
+					if roll <= 8:
+						unit_num = 2
+			
+			# find a suitable spawn location
+			suitable_location = None
+			for map_hex in self.objective_hexes:
+				if len(map_hex.unit_stack) > 0: continue
+				suitable_location = (map_hex.hx, map_hex.hy)
+				break
+			
+			if suitable_location is None:
+				for tries in range(300):
+					(hx, hy) = choice(self.hex_map.hexes.keys())
+					map_hex = GetHexAt(hx, hy)
+					if map_hex.terrain_type.water: continue
+					
+					if len(map_hex.unit_stack) > HEX_STACK_LIMIT: continue
+					if len(map_hex.unit_stack) > 0:
+						if map_hex.unit_stack[0].owning_player != 1: continue
+					
+					# make sure not w/in 6 hexes of bottom edge
+					(hx2, hy2) = GetHexInDirection(hx, hy, 3, 6)
+					if (hx2, hy2) not in self.hex_map.hexes: continue
+					
+					# chance of ignoring a hex if it's wrong type of terrain
+					terrain_mod = map_hex.terrain_type.terrain_mod
+					if prefer_terrain:
+						if terrain_mod == 0:
+							if libtcod.random_get_int(0, 1, 10) <= 8:
+								continue
+					else:
+						if terrain_mod != 0:
+							if libtcod.random_get_int(0, 1, 10) <= 8:
+								continue
+					
+					suitable_location = (hx, hy)
+					break
+			
+			if suitable_location is None:
+				print 'ERROR: Unable to find a location to spawn ' + unit_id
+				continue
+			
+			(hx, hy) = suitable_location
+			for u in range(unit_num):
+				new_unit = Unit(unit_id)
+				new_unit.owning_player = 1
+				new_unit.facing = self.player_direction
+				if new_unit.turret_facing is not None:
+					new_unit.turret_facing = self.player_direction
+				new_unit.morale_lvl = 9
+				new_unit.skill_lvl = 9
+				new_unit.dummy = dummy
+				new_unit.hx = hx
+				new_unit.hy = hy
+				map_hex.unit_stack.append(new_unit)
+				self.unit_list.append(new_unit)
+			
+			text = 'DEBUG: Spawned ' + unit_id + ' x ' + str(unit_num)
+			if dummy:
+				text += ' (dummy)'
+			print text
+	
 	# load unit portraits for all active units into a dictionary
 	def LoadUnitPortraits(self):
 		for unit in self.unit_list:
@@ -2395,37 +2534,6 @@ class Scenario:
 		if calibre <= 30:
 			return 2
 		return 1
-	
-	
-	# spawn a given enemy unit into the map at a random location
-	def SpawnEnemy(self, unit_id, morale_lvl, skill_lvl, dummy=False):
-		new_unit = Unit(unit_id)
-		new_unit.owning_player = 1
-		new_unit.facing = self.player_direction
-		if new_unit.turret_facing is not None:
-			new_unit.turret_facing = self.player_direction
-		new_unit.morale_lvl = morale_lvl
-		new_unit.skill_lvl = skill_lvl
-		new_unit.dummy = dummy			# used to set dummy AI units
-		
-		# try to find a suitable place to spawn this unit
-		for tries in range(300):
-			(hx, hy) = choice(scenario.hex_map.hexes.keys())
-			map_hex = GetHexAt(hx, hy)
-			if map_hex.terrain_type.water: continue
-			if len(map_hex.unit_stack) > HEX_STACK_LIMIT: continue
-			if len(map_hex.unit_stack) > 0:
-				if map_hex.unit_stack[0].owning_player != 1: continue
-			if self.player_unit is not None:
-				distance = GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy)
-				if distance <= 6: continue
-			
-			# place unit here
-			new_unit.hx = hx
-			new_unit.hy = hy
-			map_hex.unit_stack.append(new_unit)
-			break
-		self.unit_list.append(new_unit)
 	
 	# do the automatic actions to start a new game turn
 	def StartNewTurn(self):
@@ -3119,7 +3227,11 @@ def CalcAPRoll(attack_obj):
 		base_ap = 5
 	else:
 		gun_rating = str(attack_obj.weapon.stats['calibre']) + attack_obj.weapon.stats['long_range']
-		if gun_rating == '37L':
+		if gun_rating in ['75L', '76L']:
+			base_ap = 17
+		elif gun_rating in ['75', '105']:
+			base_ap = 14
+		elif gun_rating == '37L':
 			base_ap = 9
 		elif gun_rating in ['37', '47S']:
 			base_ap = 8
@@ -3178,6 +3290,15 @@ def GetHexAt(hx, hy):
 		return scenario.hex_map.hexes[(hx, hy)]
 	return None
 
+
+# returns the hex x steps in a given direction
+def GetHexInDirection(hx, hy, direction, distance):
+	(hx_mod, hy_mod) = DESTHEX[direction]
+	for i in range(distance):
+		hx += hx_mod
+		hy += hy_mod
+	return (hx, hy)
+	
 
 # returns the PSG located in this hex
 def GetPSGAt(hx, hy):
@@ -5541,26 +5662,19 @@ def DoScenario(load_savegame=False):
 		# FUTURE - not used for anything yet
 		#scenario.hex_map.GenerateTacticalMap()
 		
-		# do initial objective status check
-		for map_hex in scenario.objective_hexes:
-			map_hex.CheckObjectiveStatus(no_message=True)
-		
-		# spawn enemy units and dummy unit
-		# FUTURE: use a more complex deployment table
-		ENEMY_LIST = ['TK_3', '7TP', '37mm_wz_36', 'TKS_20mm', 'vickers_ejw',
-			'rifle_squad_atr']
-		for i in range(8):
-			unit_id = choice(ENEMY_LIST)
-			scenario.SpawnEnemy(unit_id, 9, 9)
-		for i in range(4):
-			unit_id = choice(ENEMY_LIST)
-			scenario.SpawnEnemy(unit_id, 9, 9, dummy=True)
+		# generate and spawn enemy OOB
+		scenario.GenerateEnemyOOB()
 		
 		# all units spawned, load unit portraits into consoles
 		scenario.LoadUnitPortraits()
 		
 		# set up map viewport
 		scenario.SetVPHexes()
+		
+		# do initial objective status check
+		for map_hex in scenario.objective_hexes:
+			map_hex.CheckObjectiveStatus(no_message=True)
+		
 		
 		# calculate initial field of view for player and draw viewport console for first time
 		scenario.hex_map.CalcFoV()

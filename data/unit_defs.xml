@@ -2,13 +2,14 @@
 
   <!-- Polish Units -->
   
-  <!-- Polish Tanks -->
+  <!-- Polish Vehicles -->
   
   <unit_def>
     <vehicle/>
     <unreliable/>
     <id>TK_3</id>
     <name>TK-3</name>
+    <unit_type>Tankette</unit_type>
     <portrait>unit_TK3.xp</portrait>
     <size_class>Very Small</size_class>
     <movement_class>Fast Tank</movement_class>
@@ -44,8 +45,47 @@
   <unit_def>
     <vehicle/>
     <unreliable/>
+    <id>TKS</id>
+    <name>TKS</name>
+    <unit_type>Tankette</unit_type>
+    <portrait>unit_TKS.xp</portrait>
+    <size_class>Very Small</size_class>
+    <movement_class>Fast Tank</movement_class>
+    <armour>
+      <turret_front>1</turret_front>
+      <turret_side>0</turret_side>
+      <hull_front>1</hull_front>
+      <hull_side>0</hull_side>
+    </armour>
+    <weapon>
+      <type>hull_mg</type>
+      <fp>4</fp>
+      <mount>hull</mount>
+      <fired_by>Commander/Gunner</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <!-- Note: both hatches are connected across the width of the tank -->
+    <crew_position>
+      <name>Commander/Gunner</name>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <large_hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
+  
+  <unit_def>
+    <vehicle/>
+    <unreliable/>
     <id>TKS_20mm</id>
     <name>TKS (20mm)</name>
+    <unit_type>Tankette</unit_type>
     <portrait>unit_TKS_20mm.xp</portrait>
     <size_class>Very Small</size_class>
     <movement_class>Fast Tank</movement_class>
@@ -87,6 +127,7 @@
     <turret/>
     <id>vickers_ejw</id>
     <name>Vickers 6-Ton Mark E</name>
+    <unit_type>Light Tank</unit_type>
     <portrait>unit_vickers_ejw.xp</portrait>
     <size_class>Small</size_class>
     <movement_class>Fast Tank</movement_class>
@@ -138,6 +179,7 @@
     <turret/>
     <id>7TP</id>
     <name>7TP</name>
+    <unit_type>Light Tank</unit_type>
     <portrait>unit_7TP.xp</portrait>
     <size_class>Normal</size_class>
     <movement_class>Tank</movement_class>
@@ -155,7 +197,7 @@
       <fired_by>Gunner</fired_by>
       <rr_size>4</rr_size>
       <rof>4</rof>
-      <firing_group>0</firing_group>	<!-- only one weapon in each group can fire per turn -->
+      <firing_group>0</firing_group>
     </weapon>
     <weapon>
       <type>coax_mg</type>
@@ -185,12 +227,83 @@
     </crew_position>
   </unit_def>
   
+  <unit_def>
+    <vehicle/>
+    <turret/>
+    <id>wz_34_mg</id>
+    <name>wz. 34 (MG)</name>
+    <unit_type>Armoured Car</unit_type>
+    <portrait>unit_wz_34_MG.xp</portrait>
+    <size_class>Small</size_class>
+    <movement_class>Wheeled</movement_class>
+    <armour>
+      <turret_front>0</turret_front>
+      <turret_side>0</turret_side>
+      <hull_front>1</hull_front>
+      <hull_side>0</hull_side>
+    </armour>
+    <weapon>
+      <type>coax_mg</type>
+      <fp>4</fp>
+      <rof>4</rof>
+      <mount>turret</mount>
+      <fired_by>Commander/Gunner</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <crew_position>
+      <name>Commander/Gunner</name>
+      <turret/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
+  
+  <unit_def>
+    <vehicle/>
+    <turret/>
+    <id>wz_34_37</id>
+    <name>wz. 34 (37mm)</name>
+    <unit_type>Armoured Car</unit_type>
+    <portrait>unit_wz_34_37.xp</portrait>
+    <size_class>Small</size_class>
+    <movement_class>Wheeled</movement_class>
+    <armour>
+      <turret_front>0</turret_front>
+      <turret_side>0</turret_side>
+      <hull_front>1</hull_front>
+      <hull_side>0</hull_side>
+    </armour>
+    <weapon>
+      <type>gun</type>
+      <calibre>37</calibre>
+      <long_range>S</long_range>
+      <mount>Turret</mount>
+      <fired_by>Commander/Gunner</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <crew_position>
+      <name>Commander/Gunner</name>
+      <turret/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
+  
   <!-- Polish Guns -->
   
   <unit_def>
     <gun/>
     <id>37mm_wz_36</id>
     <name>37mm wz. 36</name>
+    <unit_type>Anti-Tank Gun</unit_type>
     <portrait>unit_37mm_gun.xp</portrait>
     <size_class>Small</size_class>
     <movement_class>Gun</movement_class>
@@ -200,6 +313,42 @@
       <long_range>L</long_range>
       <mount>Hull</mount>
       <rof>4</rof>
+      <firing_group>0</firing_group>
+    </weapon>
+    <gun_shield/>
+  </unit_def>
+  
+  <unit_def>
+    <gun/>
+    <id>75mm_wz_0226</id>
+    <name>75mm wz. 02/26</name>
+    <unit_type>Infantry Gun</unit_type>
+    <size_class>Normal</size_class>
+    <movement_class>Gun</movement_class>
+    <weapon>
+      <type>gun</type>
+      <calibre>75</calibre>
+      <mount>Hull</mount>
+      <rof>4</rof>
+      <firing_group>0</firing_group>
+    </weapon>
+    <gun_shield/>
+  </unit_def>
+  
+  <unit_def>
+    <gun/>
+    <turret/>
+    <id>75mm_wz_9725</id>
+    <name>75mm wz. 97/25</name>
+    <unit_type>Anti-Aircraft Gun</unit_type>
+    <size_class>Normal</size_class>
+    <movement_class>Gun</movement_class>
+    <weapon>
+      <type>gun</type>
+      <calibre>75</calibre>
+      <long_range>L</long_range>
+      <mount>Turret</mount>
+      <rof>6</rof>
       <firing_group>0</firing_group>
     </weapon>
     <gun_shield/>
@@ -231,6 +380,8 @@
       <rr_size>6</rr_size>
       <rof>5</rof>
       <firing_group>0</firing_group>
+      <ammo_type>HE</ammo_type>
+      <ammo_type>AP</ammo_type>
     </weapon>
     <weapon>
       <type>coax_mg</type>

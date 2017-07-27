@@ -138,6 +138,20 @@ AF_CHART = [
 	(36, 15, 13)
 ]
 
+# percentage odds for 2D6 roll
+DICE_ODDS = {
+	2 : 2.77,
+	3 : 8.33,
+	4 : 16.66,
+	5 : 27.77,
+	6 : 41.66,
+	7 : 58.33,
+	8 : 72.22,
+	9 : 83.33,
+	10 : 91.66,
+	11 : 97.22,
+	12 : 100.0
+}
 
 # short forms for crew positions, used to fit information into player unit info console, etc.
 CREW_POSITION_ABB = {
@@ -332,7 +346,8 @@ class Unit:
 							#   when spotted - AI units only
 		self.unit_id = unit_id			# unique ID for unit type, used to
 							#   load basic stats from unit_defs.xml
-		self.unit_name = ''			# descriptive name of unit type
+		self.unit_name = ''			# generic name of unit
+		self.unit_type = ''			# description of the type of unit this is
 		self.vehicle_name = None		# tank or other vehicle name
 		self.portrait = None
 		self.ai = AI(self)			# pointer to AI instance
@@ -406,6 +421,10 @@ class Unit:
 		
 		# load stats from item
 		self.unit_name = item.find('name').text
+		
+		if item.find('unit_type') is not None:
+			self.unit_type = item.find('unit_type').text
+		
 		if item.find('portrait') is not None:
 			self.portrait = item.find('portrait').text
 		
@@ -887,9 +906,10 @@ class Unit:
 				elif los_mod >= 1:
 					spot_distance -= 1
 			
-			#print ('DEBUG: Spotting distance for ' + self.GetName(true_name=True) +
-			#	' to ' + unit.GetName(true_name=True) + ' is ' + 
-			#	str(spot_distance) + ' hexes')
+			#if DEBUG_MODE:
+			#	print ('Spotting distance for ' + self.GetName(true_name=True) +
+			#		' to ' + unit.GetName(true_name=True) + ' is ' + 
+			#		str(spot_distance) + ' hexes')
 			
 			# impossible to spot
 			if spot_distance < 1:
@@ -897,10 +917,12 @@ class Unit:
 			# automatically spotted
 			if spot_distance >= 6:
 				self.SpotMe()
+				return
 			# spotted if distance is close enough
 			distance = GetHexDistance(unit.hx, unit.hy, self.hx, self.hy)
 			if distance <= spot_distance:
 				self.SpotMe()
+				return
 	
 	# this unit has been spotted by an enemy unit
 	def SpotMe(self):
@@ -1007,11 +1029,6 @@ class Unit:
 	# if stack_size > 1, indicate total number of units in hex stack
 	def DrawMe(self, hx, hy, stack_size):
 		
-		# don't draw if unknown enemy outside of FoV
-		if not self.known and self.owning_player == 1:
-			if not GetHexAt(self.hx, self.hy).vis_to_player:
-				return
-		
 		# calculate draw position
 		if self.anim_x == 0 or self.anim_y == 0:
 			(x,y) = PlotHex(hx, hy)
@@ -1028,6 +1045,11 @@ class Unit:
 		self.vp_hy = hy
 		
 		self.display_char = self.GetDisplayChar()
+		
+		# don't actually draw if unknown enemy outside of FoV
+		if not self.known and self.owning_player == 1:
+			if not GetHexAt(self.hx, self.hy).vis_to_player:
+				return
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
@@ -1543,10 +1565,8 @@ class AnimHandler:
 	# start a map hex highlight animation
 	def InitHexHighlight(self, (hx, hy)):
 		
-		map_hex = GetHexAt(hx, hy)
-		
 		# do not init if this hex is off the current map viewport
-		if not map_hex.IsOnViewport():
+		if not scenario.IsOnViewport(hx, hy):
 			self.anim_finished = True
 			return
 		
@@ -1667,53 +1687,99 @@ class AI:
 	def __init__(self, owner):
 		self.owner = owner			# the unit to whom this AI instance belongs
 	
-	# randomly determine an action for this unit and do it
-	def DoAction(self):
+	# get a list of possible targets within x hexes
+	def GetEnemyTargetsWithin(self, distance, must_be_known=False):
+		target_list = []
+		for (hx, hy) in GetHexesWithin(self.owner.hx, self.owner.hy, distance):
+			map_hex = GetHexAt(hx, hy)
+			if len(map_hex.unit_stack) == 0: continue
+			for unit in map_hex.unit_stack:
+				if unit.owning_player == self.owner.owning_player: continue
+				if must_be_known and not unit.known: continue
+				target_list.append(unit)
+		return target_list
+	
+	# choose best weapon+target combination from a list of possible targets
+	def GetBestAttack(self, target_list):
+		# build a list of attack odds and targets
+		ranked_list = []
+		highest_score = 0
+		for target in target_list:
+			for weapon in self.owner.weapon_list:
+				(score, text) = scenario.GetAttackScore(self.owner, weapon, target,
+					rotate_allowed=True, pivot_allowed=True)
+				if score is not None:
+					if score == 0.0: continue
+					
+					print 'DEBUG: attack score is ' + str(score)
+					
+					ranked_list.append([score, weapon, target])
+					if score > highest_score:
+						highest_score = score
+			
+		# no effective attacks possible
+		if len(ranked_list) == 0: return (None, None)
+		
+		# prune all but best attacks
+		for item in reversed(ranked_list):
+			if item[0] < highest_score:
+				ranked_list.remove(item)
+				
+		# randomly pick from among remaining best attacks
+		item = choice(ranked_list)
+		return (item[1], item[2])
+	
+	# determine an action for this unit and do it
+	def DoAIAction(self):
 
-		# don't do anything if we're going to be removed at end of turn
+		# can't do anything if we're not alive!
 		if not self.owner.alive: return
 		
-		# FUTURE: Check for automatic actions based on current situation
+		#print ('DEBUG: ' + self.owner.GetName(true_name=True) + ' in ' + str(self.owner.hx) +
+		#	', ' + str(self.owner.hy) + ' is acting')
 		
-		# roll for basic action
-		# assume that the AI side is taking a defensive attitude
-		# FUTURE: different attitudes possible
+		# do initial action roll
 		d1, d2, roll = Roll2D6()
 		
-		# doubles 6 or over: no action
-		if d1 == d2 and roll >= 6:
-			#print 'AI: ' + self.owner.GetName(true_name=True) + ' does nothing'
+		# check for panic
+		if d1 == d2 and roll > self.owner.morale_lvl:
+			if scenario.IsOnViewport(self.owner.hx, self.owner.hy):
+				scenario.AddMessage(self.owner.GetName() + " doesn't appear to do " +
+					"anything.", (self.owner.hx, self.owner.hy))
 			return
 		
-		# enemy in LoS, greater chance of attacking
-		for unit in scenario.unit_list:
-			if unit.owning_player == 1: continue
-			if GetLoS(self.owner.hx, self.owner.hy, unit.hx, unit.hy) > -1:
-				#print 'AI: player unit in LoS'
-				roll += 2
-				break
+		# check for compulsary actions
+		if self.DoCompulsaryAction():
+			return
 		
-		# try a move action (guns can't move yet)
-		if roll <= 4 and not self.owner.gun:
+		# determine action type from initial roll
+		if roll <= 4:
 			if self.DoMoveAction():
 				return
 		
-		# try to fire weapons at an enemy target
-		if self.DoFireAction():
-			return
+		self.DoFireAction()
 		
-		# final chance to do a move action
-		d1, d2, roll = Roll2D6()
-		if roll <= 6:
-			if self.DoMoveAction():
-				return
+	# check for any compulsary actions, do them and return True if so
+	def DoCompulsaryAction(self):
 		
-		#print 'AI: ' + self.owner.GetName(true_name=True) + " wasn't able to do any AI actions"
+		# dummy units don't have any
+		if self.owner.dummy: return False
 		
-	# do a move action
+		# FUTURE: Broken units must try to rout to cover
+		
+		# Self Preservation:
+		# check for 1+ adjacent known enemy targets, must try to attack one if possible
+		target_list = self.GetEnemyTargetsWithin(1, must_be_known=True)
+		if len(target_list) > 0:
+			(weapon, target) = self.GetBestAttack(target_list)
+			if target is not None:
+				self.DoAttack(weapon, target)
+				return True
+	
+	# try do a random move action
 	def DoMoveAction(self):
 		
-		# FUTURE: add ability to look in radius and choose target destination
+		# FUTURE: add ability to look in radius and choose target destination?
 		
 		# build a list of adjacent hexes
 		hex_list = []
@@ -1727,16 +1793,7 @@ class AI:
 		if len(hex_list) == 0:
 			return False
 		
-		# sort list by tactical scores
-		hex_list.sort(key=lambda x: x.score, reverse=True)
-		map_hex = hex_list[0]
-		
-		# chance of not moving if score is lower than that of current location
-		current_hex = GetHexAt(self.owner.hx, self.owner.hy)
-		if map_hex.score < current_hex.score:
-			d1, d2, roll = Roll2D6()
-			if roll > 7:
-				return False
+		map_hex = choice(hex_list)
 
 		# pivot to face new target hex
 		direction = GetDirectionToAdjacent(self.owner.hx, self.owner.hy, map_hex.hx, map_hex.hy)
@@ -1749,56 +1806,25 @@ class AI:
 		# try to do move
 		return self.owner.MoveInto(map_hex.hx, map_hex.hy)
 	
-	# do a fire weapons action
+	# try to do an attack action
 	def DoFireAction(self):
+		target_list = self.GetEnemyTargetsWithin(6)
+		if len(target_list) == 0: return
+		(weapon, target) = self.GetBestAttack(target_list)
+		if target is None: return
+		self.DoAttack(weapon, target)
+	
+	# do a specific attack action with a given weapon against a given target
+	def DoAttack(self, weapon, target):
 		
-		# dummy units can't fire!
-		if self.owner.dummy:
-			return False
-		
-		# build a list of possible targets
-		# FUTURE: check each weapon separately
-		
-		target_list = []
-		for unit in scenario.unit_list:
-			if not unit.alive: continue
-			if unit.owning_player == 1: continue
-			
-			# check range
-			distance = GetHexDistance(self.owner.hx, self.owner.hy, unit.hx, unit.hy)
-			if distance > self.owner.weapon_list[0].stats['max_range']:
-				continue
-			
-			# check LoS
-			if GetLoS(self.owner.hx, self.owner.hy, unit.hx, unit.hy) == -1:
-				continue
-				
-			# check attack odds
-			attack_obj = CalcAttack(self.owner, self.owner.weapon_list[0], unit)
-			
-			# area fire attack against armoured target
-			if not attack_obj.to_hit_attack and unit.armour is not None:
-				continue
-			
-			# too difficult to hit/affect
-			if attack_obj.final_to_hit < 2:
-				continue
-			
-			target_list.append(unit)
-		
-		if len(target_list) == 0:
-			return False
-		
-		target = choice(target_list)
-		
-		# pivot and/or rotate turret if required
-		direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
-			target.hy)
-		if self.owner.facing != direction:
-			self.owner.PivotToFace(direction)
-		if self.owner.turret_facing is not None:
-			if self.owner.turret_facing != direction:
+		# pivot hull / rotate turret if required
+		if not scenario.TargetIsInArc(self.owner, weapon, target):
+			direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
+				target.hy)
+			if weapon.stats['mount'] == 'turret':
 				self.owner.RotateTurret(direction)
+			else:
+				self.owner.PivotToFace(direction)
 		
 		if target == scenario.player_unit:
 			text = 'you'
@@ -1807,9 +1833,7 @@ class AI:
 		scenario.AddMessage(self.owner.GetName() + ' fires at ' + text + '!', None)
 		DrawScreenConsoles()
 		
-		InitAttack(self.owner, self.owner.weapon_list[0], target)
-		
-		return True
+		InitAttack(self.owner, weapon, target)
 
 		
 
@@ -2052,12 +2076,6 @@ class MapHex:
 		self.g = 0
 		self.h = 0
 		self.f = 0
-	
-	# return True if this hex is currently within the player's map viewport
-	def IsOnViewport(self):
-		if GetHexDistance(self.hx, self.hy, scenario.player_unit.hx, scenario.player_unit.hy) > 6:
-			return False
-		return True
 	
 	# set hex elevation
 	# FUTURE: set up impassible cliff edges in this and adjacent hexes if required
@@ -2373,6 +2391,12 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
+	# returns True if given hex is currently within the player's map viewport
+	def IsOnViewport(self, hx, hy):
+		if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) > 6:
+			return False
+		return True
+	
 	# generate an OOB for the AI side
 	def GenerateEnemyOOB(self):
 		
@@ -2491,6 +2515,7 @@ class Scenario:
 				continue
 			
 			(hx, hy) = suitable_location
+			map_hex = GetHexAt(hx, hy)
 			for u in range(unit_num):
 				new_unit = Unit(unit_id)
 				new_unit.owning_player = 1
@@ -2505,10 +2530,10 @@ class Scenario:
 				map_hex.unit_stack.append(new_unit)
 				self.unit_list.append(new_unit)
 			
-			text = 'DEBUG: Spawned ' + unit_id + ' x ' + str(unit_num)
-			if dummy:
-				text += ' (dummy)'
-			print text
+			if DEBUG_MODE:
+				text = 'Spawned ' + unit_id + ' x ' + str(unit_num)
+				if dummy: text += ' (dummy)'
+				print text
 	
 	# load unit portraits for all active units into a dictionary
 	def LoadUnitPortraits(self):
@@ -2562,64 +2587,77 @@ class Scenario:
 		
 		# weapon has already fired
 		if weapon.fired:
-			return (-1, 'Cannot fire this weapon group again this turn')
+			return (None, 'Cannot fire this weapon group again this turn')
 		
 		# check range
 		if GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy) > weapon.stats['max_range']:
-			return (-1, 'Target beyond maximum weapon range')
+			return (None, 'Target beyond maximum weapon range')
 		
 		# gun specific checks
 		if weapon.weapon_type == 'gun':
 			if weapon.stats['loaded_ammo'] == 'AP':
 				if not target.known:
-					return (-1, 'AP attacks possible on known targets only.')
+					return (None, 'AP attacks possible on known targets only.')
 				if target.infantry:
-					return (-1, 'AP attacks have no effect on infantry')	
+					return (None, 'AP attacks have no effect on infantry')	
 		
 		# see if target must current be in weapon arc
-		arc_check = False
-		if weapon.stats['mount'] == 'turret':
-			if not rotate_allowed and not pivot_allowed:
-				arc_check = True
-		else:
-			if not pivot_allowed:
-				arc_check = True
-		if arc_check:
-			# check weapon arc
-				
-			# calculate target location as if attacker is in 0,0 and facing 0
-			hx = target.hx - attacker.hx
-			hy = target.hy - attacker.hy
-			
+		if not attacker.infantry:
+			arc_check = False
 			if weapon.stats['mount'] == 'turret':
-				(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.turret_facing))
+				if not rotate_allowed and not pivot_allowed:
+					arc_check = True
 			else:
-				(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.facing))
-			
-			in_arc = True
-			if hx == 0 and hy >= 0:
-				in_arc = False
-			elif hx == -1 and hy >= 0:
-				in_arc = False
-			elif hx == 1 and hy >= -1:
-				in_arc = False
-			elif hx == -2 and hy >= -1:
-				in_arc = False
-			elif hx == 2 and hy >= -3:
-				in_arc = False
-			elif hx == -3 and hy >= -2:
-				in_arc = False
-			elif hx == 3 and hy >= -5:
-				in_arc = False
-			elif hx <= -4 or hx >= 4:
-				in_arc = False
-			
-			if not in_arc:
-				return (-1, 'Target outside weapon firing arc')
-			 
-		# FUTURE: calculate a better score for this attack
-		return (1, '')
+				if not pivot_allowed:
+					arc_check = True
+			if arc_check:
+				# check weapon arc
+				if not self.TargetIsInArc(attacker, weapon, target):
+					return (None, 'Target outside weapon firing arc')
 		
+		# calculate the attack odds
+		attack_obj = CalcAttack(attacker, weapon, target)
+		if attack_obj.final_to_hit < 2:
+			return (0.0, '')
+		elif attack_obj.final_to_hit > 12:
+			return (100.0, '')
+		odds = DICE_ODDS[attack_obj.final_to_hit]
+		return (odds, '')
+
+	
+	# returns true of target is in weapon arc of unit
+	def TargetIsInArc(self, attacker, weapon, target):
+		
+		if attacker.infantry:
+			return True
+		
+		# calculate target location as if attacker is in 0,0 and facing 0
+		hx = target.hx - attacker.hx
+		hy = target.hy - attacker.hy
+		
+		if weapon.stats['mount'] == 'turret':
+			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.turret_facing))
+		else:
+			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.facing))
+		
+		if hx == 0 and hy >= 0:
+			return False
+		elif hx == -1 and hy >= 0:
+			return False
+		elif hx == 1 and hy >= -1:
+			return False
+		elif hx == -2 and hy >= -1:
+			return False
+		elif hx == 2 and hy >= -3:
+			return False
+		elif hx == -3 and hy >= -2:
+			return False
+		elif hx == 3 and hy >= -5:
+			return False
+		elif hx <= -4 or hx >= 4:
+			return False
+		return True
+	
 	# randomize the order of units in unit_list to reflect activation order in each turn
 	def GenerateUnitOrder(self):
 		shuffle(self.unit_list)
@@ -2933,11 +2971,12 @@ class Scenario:
 				(score, desc) = scenario.GetAttackScore(scenario.player_unit,
 					scenario.selected_weapon, scenario.player_target,
 					rotate_allowed=False, pivot_allowed=False)
-				if score == -1:
+				if score is None:
 					menu_option.inactive = True
 					menu_option.desc = desc
 				else:
 					menu_option.desc = 'Fire at ' + scenario.player_target.GetName()
+					menu_option.desc += ' (' + str(score) + '%)'
 			
 			# load ammo into an empty gun or switch out loaded ammo for different type
 			if scenario.selected_weapon.weapon_type == 'gun':
@@ -3040,6 +3079,7 @@ def EraseGame():
 
 
 # calculate an attack
+# TODO: allow passing other options, eg. assume that the attacker has pivoted / rotated turret
 def CalcAttack(attacker, weapon, target):
 	
 	# create a new attack object
@@ -4097,7 +4137,6 @@ def InitAttack(attacker, weapon, target):
 			
 		# target spotted if hit
 		if not target.known:
-			#print 'DEBUG: spotted unit was hit by an attack'
 			target.SpotMe()
 	
 	# newly acquired target
@@ -5099,10 +5138,11 @@ def UpdateHexInfoConsole():
 	libtcod.console_rect(hex_info_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
 	libtcod.console_print(hex_info_con, 0, 0, map_hex.terrain_type.display_name)
 	
-	# DEBUG: display coordinates; disable in distribution version?
-	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
-	libtcod.console_print_ex(hex_info_con, 23, 0, libtcod.BKGND_NONE,
-		libtcod.RIGHT, str(map_hex.hx) + ',' + str(map_hex.hy))
+	# display coordinates if in debug mode
+	if DEBUG_MODE:
+		libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
+		libtcod.console_print_ex(hex_info_con, 23, 0, libtcod.BKGND_NONE,
+			libtcod.RIGHT, str(map_hex.hx) + ',' + str(map_hex.hy))
 	
 	# road
 	if len(map_hex.dirt_road_links) > 0:
@@ -5132,7 +5172,7 @@ def UpdateHexInfoConsole():
 		libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	
 	# FUTURE: display ground conditions here
-	# DEBUG: tactical score
+	# tactical score (not used yet)
 	#libtcod.console_print(hex_info_con, 0, 2, 'AI Score: ' + str(map_hex.score))
 
 	# no units present
@@ -5157,9 +5197,10 @@ def UpdateHexInfoConsole():
 	libtcod.console_print(hex_info_con, 0, 4, unit.GetName())
 	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	
-	# FUTURE: display unit statuses on line 5
+	if not (unit.owning_player == 1 and not unit.known):
+		libtcod.console_print(hex_info_con, 0, 5, unit.unit_type)
 	
-	# unresolved hits on top unit in stack
+	# unresolved hits on this unit
 	if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
 		text = 'Hit by '
 		if unit.unresolved_fp > 0:
@@ -5188,6 +5229,8 @@ def UpdateHexInfoConsole():
 			libtcod.console_set_default_foreground(hex_info_con, ENEMY_UNIT_COL)
 			libtcod.console_print_ex(hex_info_con, 4, 7, libtcod.BKGND_SET,
 				libtcod.LEFT, text)
+	
+	# FUTURE: display unit statuses on line 7, to the right of acquired target status
 	
 	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
 	libtcod.console_set_default_background(hex_info_con, libtcod.black)
@@ -5770,7 +5813,7 @@ def DoScenario(load_savegame=False):
 		
 		##### AI Actions #####
 		if scenario.active_unit.owning_player == 1:
-			scenario.active_unit.ai.DoAction()
+			scenario.active_unit.ai.DoAIAction()
 			scenario.ActivateNextUnit()
 			UpdateScreen()
 			continue

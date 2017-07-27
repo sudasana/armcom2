@@ -1706,13 +1706,15 @@ class AI:
 		highest_score = 0
 		for target in target_list:
 			for weapon in self.owner.weapon_list:
+				
+				# don't bother with fp attacks on known armoured targets
+				if weapon.weapon_type != 'gun' and target.armour is not None and target.known:
+					continue
+				
 				(score, text) = scenario.GetAttackScore(self.owner, weapon, target,
 					rotate_allowed=True, pivot_allowed=True)
 				if score is not None:
 					if score == 0.0: continue
-					
-					print 'DEBUG: attack score is ' + str(score)
-					
 					ranked_list.append([score, weapon, target])
 					if score > highest_score:
 						highest_score = score
@@ -2402,10 +2404,11 @@ class Scenario:
 		
 		# FUTURE - will be integrated into national defs in a more generic way
 		dummy_number = 2
-		for i in range(8):
+		total_groups = 6
+		for i in range(total_groups):
 			
 			dummy = False
-			if i + dummy_number >= 8:
+			if i + dummy_number >= total_groups:
 				dummy = True
 			
 			prefer_terrain = True
@@ -2437,8 +2440,8 @@ class Scenario:
 					unit_id = 'TK_3'
 					unit_num = 4
 			
-			# 6-8 Infantry
-			elif roll <= 8:
+			# 6-7 Infantry
+			elif roll <= 7:
 				unit_id = 'rifle_squad_atr'
 				d1, d2, roll = Roll2D6()
 				if 5 <= roll <= 7:
@@ -2448,16 +2451,16 @@ class Scenario:
 				else:
 					unit_num = 4
 			
-			# 9 Armoured Car
+			# 8-9 Armoured Car
 			elif roll <= 9:
 				prefer_terrain = False
 				d1, d2, roll = Roll2D6()
-				if roll <= 9:
+				if roll <= 10:
 					unit_id = 'wz_34_37'
 				else:
 					unit_id = 'wz_34_mg'
 				d1, d2, roll = Roll2D6()
-				if 7 <= roll <= 9:
+				if 6 <= roll <= 9:
 					unit_num = 2
 				else:
 					unit_num = 3
@@ -4145,19 +4148,20 @@ def InitAttack(attacker, weapon, target):
 		if not target.known:
 			target.SpotMe()
 	
-	# newly acquired target
-	if attacker.acquired_target is None:
-		attacker.acquired_target = (target, 1)
-	else:
-		(ac_target, ac_level) = attacker.acquired_target
-		# new target
-		if ac_target != target:
-			attacker.ClearAcquiredTargets()
+	# newly acquired target for guns
+	if weapon.weapon_type == 'gun':
+		if attacker.acquired_target is None:
 			attacker.acquired_target = (target, 1)
 		else:
-			# additional level
-			if ac_level < 2:
-				attacker.acquired_target = (target, 2)
+			(ac_target, ac_level) = attacker.acquired_target
+			# new target
+			if ac_target != target:
+				attacker.ClearAcquiredTargets()
+				attacker.acquired_target = (target, 1)
+			else:
+				# additional level
+				if ac_level < 2:
+					attacker.acquired_target = (target, 2)
 
 	# check for RoF and handle reloading gun
 	rof_possible = True

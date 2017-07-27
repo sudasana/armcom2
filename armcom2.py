@@ -3263,6 +3263,7 @@ def CalcAPRoll(attack_obj):
 	attack_obj.location_desc = location + ' ' + facing
 	
 	# calculate base AP score required
+	base_ap = 0
 	if attack_obj.weapon.name == 'AT Rifle':
 		base_ap = 5
 	else:
@@ -3275,8 +3276,13 @@ def CalcAPRoll(attack_obj):
 			base_ap = 9
 		elif gun_rating in ['37', '47S']:
 			base_ap = 8
+		elif gun_rating == '37S':
+			base_ap = 7
 		elif gun_rating == '20L':
 			base_ap = 6
+	
+	if base_ap == 0:
+		print 'ERROR: No AP rating found for ' + gun_rating
 	
 	# apply critical hit if any
 	if attack_obj.critical_hit:

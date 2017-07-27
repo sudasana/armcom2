@@ -322,7 +322,8 @@
     <gun/>
     <id>75mm_wz_0226</id>
     <name>75mm wz. 02/26</name>
-    <unit_type>Infantry Gun</unit_type>
+    <unit_type>Field Gun</unit_type>
+    <portrait>unit_75mm_gun.xp</portrait>
     <size_class>Normal</size_class>
     <movement_class>Gun</movement_class>
     <weapon>
@@ -341,6 +342,7 @@
     <id>75mm_wz_9725</id>
     <name>75mm wz. 97/25</name>
     <unit_type>Anti-Aircraft Gun</unit_type>
+    <portrait>unit_75mm_aa_gun.xp</portrait>
     <size_class>Normal</size_class>
     <movement_class>Gun</movement_class>
     <weapon>
@@ -351,7 +353,6 @@
       <rof>6</rof>
       <firing_group>0</firing_group>
     </weapon>
-    <gun_shield/>
   </unit_def>
 
   <!-- German Units -->
@@ -363,6 +364,7 @@
     <turret/>
     <id>Panzer 35t</id>
     <name>Panzer 35(t)</name>
+    <unit_type>Light Tank</unit_type>
     <portrait>unit_pz_35t.xp</portrait>
     <size_class>Small</size_class>
     <movement_class>Fast Tank</movement_class>
@@ -431,7 +433,8 @@
   <unit_def>
     <infantry/>
     <id>rifle_squad_atr</id>
-    <name>Rifle Squad w/ AT Rifles</name>
+    <name>Rifle Squad + AT Rifles</name>
+    <unit_type>Infantry Squad</unit_type>
     <movement_class>Infantry</movement_class>
     <weapon>
       <type>gun</type>

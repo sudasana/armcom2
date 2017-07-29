@@ -373,7 +373,10 @@ class Unit:
 		# basic unit stats
 		self.infantry = False			# unit type flags
 		self.gun = False
-		self.vehicle = False			
+		self.vehicle = False
+		
+		self.crew_positions = None		# list of crew positions if any
+		
 		self.known = False			# unit is known to the opposing side
 		
 		self.facing = None			# facing direction: guns and vehicles must have this set
@@ -465,7 +468,6 @@ class Unit:
 				self.max_ammo = int(item.find('max_ammo').text)
 			
 			# set up crew positions
-			self.crew_positions = None
 			if item.find('crew_position') is not None:
 				self.crew_positions = []
 				item_list = item.findall('crew_position')
@@ -600,10 +602,16 @@ class Unit:
 		# current draw line relative to y start
 		y = y1
 		
-		# unit name and type
+		# unit name
 		libtcod.console_set_default_foreground(console, HIGHLIGHT_COLOR)
 		libtcod.console_print(console, x, y, self.GetName())
 		y += 1
+		
+		# don't display info for unknown enemy units
+		if self.owning_player == 1 and not self.known:
+			return
+		
+		# unit type
 		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
 		libtcod.console_print(console, x, y, self.unit_type)
 		y += 1
@@ -616,7 +624,7 @@ class Unit:
 		if self.vehicle_name is not None:
 			libtcod.console_set_default_foreground(console, libtcod.white)
 			libtcod.console_print_ex(console, x+12, y, libtcod.BKGND_NONE,
-			libtcod.CENTER, self.vehicle_name)
+				libtcod.CENTER, self.vehicle_name)
 		y += 8
 
 		# weapons
@@ -638,21 +646,22 @@ class Unit:
 
 		# armour
 		y += 2
-		libtcod.console_set_default_foreground(console, libtcod.white)
-		if self.armour is None:
-			libtcod.console_print(console, x, y, 'Unarmoured')
-		else:
-			libtcod.console_print(console, x, y, 'Armoured')
-			libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
-			# display armour for turret and hull
-			if self.turret_facing is None:
-				text = 'U '
+		if self.vehicle:
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			if self.armour is None:
+				libtcod.console_print(console, x, y, 'Unarmoured')
 			else:
-				text = 'T '
-			text += str(self.armour['turret_front']) + '/' + str(self.armour['turret_side'])
-			libtcod.console_print(console, x+1, y+1, text)
-			text = 'H ' + str(self.armour['hull_front']) + '/' + str(self.armour['hull_side'])
-			libtcod.console_print(console, x+1, y+2, text)
+				libtcod.console_print(console, x, y, 'Armoured')
+				libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+				# display armour for turret and hull
+				if self.turret_facing is None:
+					text = 'U '
+				else:
+					text = 'T '
+				text += str(self.armour['turret_front']) + '/' + str(self.armour['turret_side'])
+				libtcod.console_print(console, x+1, y+1, text)
+				text = 'H ' + str(self.armour['hull_front']) + '/' + str(self.armour['hull_side'])
+				libtcod.console_print(console, x+1, y+2, text)
 		
 		# movement class
 		libtcod.console_set_default_foreground(console, libtcod.light_green)
@@ -875,20 +884,15 @@ class Unit:
 		
 		# do AP rolls for unresolved ap hits
 		for attack_obj in self.unresolved_ap:
-			if self.ResolveAPHit(attack_obj):
+			result = self.ResolveAPHit(attack_obj)
+			if result is not None:
 				
-				# DEBUG - player cannot be killed
-				if DEBUG_MODE and self == scenario.player_unit and scenario.debug_flags['immortal']:
-					text = 'Your magical armour protects you.'
-					scenario.AddMessage(text, None)
-					self.unresolved_ap = []
+				# FUTURE: apply immobilization and minor damage effects
+				
+				# FUTURE: roll for effect on crew
+				if result in ['Knocked Out', 'Explodes']:
+					self.DestroyMe()
 					return
-				
-				# FUTURE: different outcomes for penetrations possible
-				text = self.GetName() + ' is destroyed!'
-				scenario.AddMessage(text, (self.hx, self.hy))
-				self.DestroyMe()
-				return
 		self.unresolved_ap = []
 	
 	# perform a morale check for this unit
@@ -1470,9 +1474,46 @@ class Unit:
 			text += 'Shot penetrated!'
 		else:
 			text += 'Shot bounced off!'
-			
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
+		
+		# determine penetration result
+		if roll <= attack_obj.final_ap:
+			
+			result = ''
+			d1, d2, roll2 = Roll2D6()
+			# critical penetration roll
+			if roll == 2:
+				roll2 += 3
+			
+			# roll equal to score required
+			if roll == attack_obj.final_ap:
+				if roll2 <= 7:
+					result = 'Immobilized'
+				else:
+					result = 'Minor Damage'
+			
+			# between 1/2 and required score -1
+			elif roll >= int(attack_obj.final_ap / 2):
+				if roll2 <= 7:
+					result = 'Minor Damage'
+				else:
+					result = 'Knocked Out'
+			
+			# less than 1/2 of required roll
+			else:
+				if roll2 <= 7:
+					result = 'Knocked Out'
+				else:
+					result = 'Explodes'
+			
+			# DEBUG - player cannot be killed
+			if DEBUG_MODE and self == scenario.player_unit and scenario.debug_flags['immortal']:
+				result = 'DEBUG: Immortality'
+			
+			libtcod.console_print_ex(attack_con, 13, 55, libtcod.BKGND_NONE,
+				libtcod.CENTER, result)
+
 		libtcod.console_rect(attack_con, 1, 57, 24, 1, True, libtcod.BKGND_NONE)
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
 		libtcod.console_print(attack_con, 6, 57, 'Enter')
@@ -1485,8 +1526,8 @@ class Unit:
 		WaitForEnter()
 		
 		if roll <= attack_obj.final_ap:
-			return True
-		return False
+			return result
+		return None
 
 
 # Weapon class: represents a weapon carried by or mounted on a unit
@@ -4869,6 +4910,35 @@ def GenerateTerrain():
 	CreateRoad(vertical=False)
 
 
+# display a window with info on units in a hex stack
+def DisplayHexStack(map_hex):
+	
+	# darken the screen background and draw a black frame
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, con, 0, 0, 0.0, 0.7)
+	
+	
+	libtcod.console_rect(con, WINDOW_XM-13, 7, 26, 33, True, libtcod.BKGND_SET)
+	
+	# TEMP - top unit only
+	unit = map_hex.unit_stack[0]
+	
+	unit.DisplayInfo(con, WINDOW_XM-12, 8)
+	libtcod.console_print_ex(con, WINDOW_XM, 39, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Enter to continue')
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
+	exit_menu = False
+	while not exit_menu:
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
+		if libtcod.console_is_window_closed(): sys.exit()
+		if key.vk == libtcod.KEY_ENTER:
+			exit_menu = True
+		libtcod.console_flush()
+	
+	
+
+
 # update the contextual info console
 def UpdateContextCon():
 	libtcod.console_clear(context_con)
@@ -5817,25 +5887,17 @@ def DoScenario(load_savegame=False):
 			DrawScreenConsoles()
 		
 		##### Mouse Commands #####
-		#if mouse.lbutton or mouse.rbutton:
-		#	x = mouse.cx - 26
-		#	y = mouse.cy - 3
-		#	if (x,y) in scenario.map_index:
-		#		(hx, hy) = scenario.map_index[(x,y)]
-		#		for psg in scenario.unit_list:
-		#			if psg.hx == hx and psg.hy == hy:
-						
-						# left button: select this PSG
-		#				if mouse.lbutton and psg.owning_player == 0:
-		#					scenario.active_unit = psg
-		#					UpdatePlayerUnitConsole()
-		#					scenario.BuildCmdMenu()
-		#					DrawScreenConsoles()
-		#					break
-						
-						# right button: display PSG info window
-						#elif mouse.rbutton and not (psg.owning_player == 1 and not psg.known):
-						#	break
+		if mouse.rbutton:
+			x = mouse.cx - 27
+			y = mouse.cy - 4
+			if (x,y) in scenario.map_index:
+				(hx, hy) = scenario.map_index[(x,y)]
+				map_hex = GetHexAt(hx, hy)
+				if len(map_hex.unit_stack) > 0:
+					DisplayHexStack(map_hex)
+					DrawScreenConsoles()
+				continue
+
 		
 		# open scenario menu screen
 		if key.vk == libtcod.KEY_ESCAPE:
@@ -6243,9 +6305,9 @@ def AnimateMainMenu():
 	
 	# decrease next gradient x location
 	gradient_x -= 2
-	if gradient_x <= 0:
-		gradient_x = WINDOW_WIDTH + 20
-	
+	if gradient_x <= 0: gradient_x = WINDOW_WIDTH + 20
+
+
 def UpdateMainMenu():
 	libtcod.console_blit(main_menu_con, 0, 0, 88, 60, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)

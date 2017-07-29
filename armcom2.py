@@ -73,7 +73,7 @@ DEBUG_MODE = False
 
 NAME = 'Armoured Commander II'
 #VERSION = 'Alpha 1.0'					# game version: determines saved game compatability
-VERSION = 'July 21 2017'			
+VERSION = 'August 4 2017'			
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -187,10 +187,12 @@ ACTION_KEY_COL = libtcod.Color(70, 170, 255)		# colour for key commands
 TITLE_COL = libtcod.white				# fore and background colours for
 TITLE_BG_COL = libtcod.Color(0, 50, 100)		#  console titles and highlighted options
 SECTION_BG_COL = libtcod.Color(0, 32, 64)		# darker bg colour for sections
+SECTION_BG_COL2 = libtcod.Color(0, 120, 120)		# lighter bg colour for sections
 INFO_TEXT_COL = libtcod.Color(190, 190, 190)		# informational text colour
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 HIGHLIGHT_COLOR = libtcod.Color(51, 153, 255)		# colour for highlighted text 
 HIGHLIGHT_COLOR2 = libtcod.Color(0, 64, 0)		# alternate "
+ROW_COLOR = libtcod.Color(30, 30, 30)			# background colour for list rows
 WEAPON_LIST_COLOR = libtcod.Color(25, 25, 90)		# background for weapon list in PSG console
 SELECTED_WEAPON_COLOR = libtcod.Color(50, 50, 150)	# " selected weapon
 ACTIVE_MSG_COL = libtcod.Color(0, 210, 0)		# active message colour
@@ -390,7 +392,7 @@ class Unit:
 		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
 		
 		# action flags
-		self.moved = False			# unit moved or pivoted in this turn
+		self.moved_this_action = False			# unit moved or pivoted in this turn
 		self.moved_last_action = False		# unit moved or pivoted in its previous turn
 		self.fired = False			# unit fired 1+ weapons this turn
 		self.changed_facing = False
@@ -398,8 +400,9 @@ class Unit:
 		# status flags
 		self.pinned = False
 		self.broken = False
-		self.shocked = False
-		self.bogged = False
+		#self.stunned = False
+		#self.bogged = False
+		#self.immobilized = False
 		
 		# special abilities or traits
 		self.recce = False
@@ -517,10 +520,15 @@ class Unit:
 	# perform pre-activation automatic actions
 	def DoPreActivation(self):
 		
+		# resolve any hits since last activation
+		if self.unresolved_fp > 0 or len(self.unresolved_ap) > 0:
+			self.ResolveHits()
+		if not self.alive: return
+		
 		# do spot check
 		self.DoSpotCheck()
 		
-		self.moved = False
+		self.moved_this_action = False
 		self.fired = False
 		for weapon in self.weapon_list:
 			weapon.fired = False
@@ -573,18 +581,180 @@ class Unit:
 			DrawScreenConsoles()
 		
 		# resolve any hits
-		for unit in scenario.unit_list:
-			if unit.owning_player == self.owning_player: continue
-			if not unit.alive: continue
-			if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
-				unit.ResolveHits()
+		#for unit in scenario.unit_list:
+		#	if unit.owning_player == self.owning_player: continue
+		#	if not unit.alive: continue
+		#	if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
+		#		unit.ResolveHits()
 		
 		# set moved flag for next activation
-		self.moved_last_action = self.moved
+		self.moved_last_action = self.moved_this_action
 		
 		# do spot check
 		if self.alive:
 			self.DoSpotCheck()
+
+	# display info about this individual unit or unit type to a console
+	# used in UpdatePlayerUnitConsole()
+	def DisplayInfo(self, console, x, y1):
+		# current draw line relative to y start
+		y = y1
+		
+		# unit name and type
+		libtcod.console_set_default_foreground(console, HIGHLIGHT_COLOR)
+		libtcod.console_print(console, x, y, self.GetName())
+		y += 1
+		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+		libtcod.console_print(console, x, y, self.unit_type)
+		y += 1
+		
+		# unit portrait if any
+		if self.unit_id in unit_portraits:
+			libtcod.console_blit(unit_portraits[self.unit_id], 0, 0, 0, 0, console, x, y)
+		
+		# vehicle name if any
+		if self.vehicle_name is not None:
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			libtcod.console_print_ex(console, x+12, y, libtcod.BKGND_NONE,
+			libtcod.CENTER, self.vehicle_name)
+		y += 8
+
+		# weapons
+		libtcod.console_set_default_background(console, TARGET_HL_COL)
+		libtcod.console_rect(console, x, y, 24, 2, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(console, libtcod.black)
+		text1 = ''
+		text2 = ''
+		for weapon in self.weapon_list:
+			if weapon.weapon_type == 'gun':
+				text1 += weapon.GetName() + ' '
+			else:
+				if text2 != '':
+					text2 += ', '
+				text2 += weapon.GetName()
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_print(console, x, y, text1)
+		libtcod.console_print(console, x, y+1, text2)
+
+		# armour
+		y += 2
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		if self.armour is None:
+			libtcod.console_print(console, x, y, 'Unarmoured')
+		else:
+			libtcod.console_print(console, x, y, 'Armoured')
+			libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+			# display armour for turret and hull
+			if self.turret_facing is None:
+				text = 'U '
+			else:
+				text = 'T '
+			text += str(self.armour['turret_front']) + '/' + str(self.armour['turret_side'])
+			libtcod.console_print(console, x+1, y+1, text)
+			text = 'H ' + str(self.armour['hull_front']) + '/' + str(self.armour['hull_side'])
+			libtcod.console_print(console, x+1, y+2, text)
+		
+		# movement class
+		libtcod.console_set_default_foreground(console, libtcod.light_green)
+		libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, self.movement_class)
+		# special movement abilities or restrictions
+		if self.recce:
+			libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Recce')
+		if self.unreliable:
+			libtcod.console_set_default_foreground(console, libtcod.red)
+			libtcod.console_print_ex(console, x+23, y+2, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Unreliable')
+		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+		
+		# unit statuses (console width = 24)
+		y += 3
+		libtcod.console_set_default_background(console, SECTION_BG_COL)
+		libtcod.console_rect(console, x, y, 24, 2, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(console, libtcod.black)
+		
+		# moving/moved/stopped (FUTURE: bogged/immobilized)
+		if self.moved_this_action:
+			text = 'Moving'
+		elif self.moved_last_action:
+			text = 'Moved'
+		else:
+			text = 'Stopped'
+			# FUTURE: different description for infantry/guns?
+		libtcod.console_print(console, x, y, text)
+
+		# concealed
+		if not self.known:
+			libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Concealed')
+
+		# fired
+		if self.fired:
+			libtcod.console_print(console, x, y+1, 'Fired')
+		
+		# pinned/broken (FUTURE: stunned)
+		text = ''
+		if self.broken:
+			text = 'Broken'
+		elif self.pinned:
+			text = 'Pinned'
+		libtcod.console_set_default_foreground(console, libtcod.red)
+		libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
+		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+		
+		# crew/infantry skill and morale ratings
+		y += 2
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_set_default_background(console, SECTION_BG_COL2)
+		libtcod.console_rect(console, x, y, 24, 1, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(console, libtcod.black)
+		libtcod.console_print(console, x, y, SKILL_DESC[self.skill_lvl])
+		libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, MORALE_DESC[self.morale_lvl])
+		
+		# list of crew if any
+		if self.crew_positions is None: return
+		
+		y += 2
+		for position in self.crew_positions:
+			
+			# background shading
+			if y % 2 == 0:
+				libtcod.console_set_default_background(console, ROW_COLOR)
+				libtcod.console_rect(console, x, y, 24, 1, False, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(console, libtcod.black)
+			
+			# abbreviated crew position name
+			libtcod.console_set_default_foreground(console, libtcod.light_grey)
+			libtcod.console_print(console, x, y, CREW_POSITION_ABB[position.name])
+			
+			# hatch status
+			if position.hatch is None:
+				text = '--'
+			else:
+				if position.hatch == 'Closed':
+					text = 'BU'
+				else:
+					text = 'CE'
+			libtcod.console_set_default_foreground(console, libtcod.dark_grey)
+			libtcod.console_print(console, x+4, y, text)
+			
+			# current crewman action or other status
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			if position.crewman is None:
+				text = '[Position Empty]'
+			else:
+				if position.crewman.action is None:
+					text = 'Spot'
+				else:
+					text = position.crewman.action
+			libtcod.console_print(console, x+7, y, text)
+			
+			y += 1
+		
+
 
 	# find the crewman in the given position and set their current action
 	# returns False if no such position, position is empty, or crewman already has a different action
@@ -855,7 +1025,7 @@ class Unit:
 		# calculate base spotting distance
 		if self.infantry:
 			spot_distance = 3
-			if self.moved:
+			if self.moved_this_action:
 				spot_distance += 2
 			if self.fired:
 				spot_distance += 2
@@ -865,7 +1035,7 @@ class Unit:
 				spot_distance += 4
 		else:
 			spot_distance = 4
-			if self.moved:
+			if self.moved_this_action:
 				spot_distance += 1
 			if self.fired:
 				spot_distance += 2
@@ -1189,7 +1359,7 @@ class Unit:
 			self.anim_y = 0
 		
 		# set action flag for next activation
-		self.moved = True
+		self.moved_this_action = True
 		
 		# clear any acquired targets
 		self.ClearAcquiredTargets()
@@ -2711,6 +2881,11 @@ class Scenario:
 			
 			# do pre-activation actions for newly activated unit
 			self.active_unit.DoPreActivation()
+			
+			# check for destruction as a result of hit resolution
+			if not self.active_unit.alive:
+				continue
+			
 			scenario.BuildCmdMenu()
 			
 			# save the game if the player has been activated
@@ -3151,7 +3326,7 @@ def CalcAttack(attacker, weapon, target):
 		
 		# vehicle targets
 		if target.vehicle:
-			if target.moved:
+			if target.moved_this_action:
 				attack_obj.modifiers.append(('Target vehicle moved', -2))
 		
 			# size class
@@ -4214,6 +4389,10 @@ def InitAttack(attacker, weapon, target):
 	if attacker != scenario.player_unit:
 		rof_possible = False
 	
+	# if unit was revealed as a dummy, don't bother with RoF
+	if target.dummy and target.known:
+		rof_possible = False
+	
 	rof_maintained = False
 	
 	# do RoF roll if possible
@@ -4924,164 +5103,10 @@ def UpdateUnitConsole():
 
 
 # updates the player unit info console
-# displays essential info about the player's current vehicle and crew
 def UpdatePlayerUnitConsole():
 	libtcod.console_clear(player_unit_con)
-	unit = scenario.player_unit
-	
-	# vehicle name if any
-	if unit.vehicle_name:
-		libtcod.console_set_default_foreground(player_unit_con, HIGHLIGHT_COLOR)
-		libtcod.console_print(player_unit_con, 0, 0, unit.vehicle_name)
-		
-	# unit type name
-	libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
-	libtcod.console_print(player_unit_con, 0, 1, unit.GetName())
-	
-	# unit portrait
-	if unit.unit_id in unit_portraits:
-		libtcod.console_blit(unit_portraits[unit.unit_id], 0, 0, 0, 0, player_unit_con, 0, 2)
-	
-	
-	# crew skill and morale ratings
-	libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
-	libtcod.console_set_default_background(player_unit_con, SECTION_BG_COL)
-	libtcod.console_rect(player_unit_con, 0, 10, 24, 1, True, libtcod.BKGND_SET)
-	libtcod.console_set_default_background(player_unit_con, libtcod.black)
-	libtcod.console_print(player_unit_con, 0, 10, SKILL_DESC[unit.skill_lvl])
-	libtcod.console_print_ex(player_unit_con, 23, 10, libtcod.BKGND_NONE,
-		libtcod.RIGHT, MORALE_DESC[unit.morale_lvl])
-	
-	# list of crew and crew positions
-	if unit.crew_positions is not None:
-		y = 12
-		for position in unit.crew_positions:
-			# highlight crew line if selected
-			if scenario.selected_crew_position is not None:
-				if scenario.selected_crew_position == position:
-					libtcod.console_set_default_background(player_unit_con, SELECTED_WEAPON_COLOR)
-					libtcod.console_rect(player_unit_con, 0, y, 24,
-						1, True, libtcod.BKGND_SET)
-					libtcod.console_set_default_background(player_unit_con, libtcod.black)
-			
-			# abbreviated crew position name
-			libtcod.console_set_default_foreground(player_unit_con, libtcod.light_grey)
-			text = CREW_POSITION_ABB[position.name]
-			libtcod.console_print(player_unit_con, 0, y, text)
-			
-			# hatch status
-			if position.hatch is None:
-				text = '--'
-			else:
-				if position.hatch == 'Closed':
-					text = 'BU'
-				else:
-					text = 'CE'
-			libtcod.console_set_default_foreground(player_unit_con, libtcod.dark_grey)
-			libtcod.console_print(player_unit_con, 4, y, text)
-			
-			# current crewman action or other status
-			if position.crewman is None:
-				text = '[Position Empty]'
-			else:
-				if position.crewman.action is None:
-					libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
-					text = 'Spot'
-				else:
-					libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
-					text = position.crewman.action
-			libtcod.console_print_ex(player_unit_con, 23, y, libtcod.BKGND_NONE,
-				libtcod.RIGHT, text)
-			
-			# buttoned up / crew exposed hatch status
-			libtcod.console_set_default_foreground(player_unit_con, libtcod.dark_grey)
-			libtcod.console_hline(player_unit_con, 0, y+1, 24)
-			
-			y += 2
+	scenario.player_unit.DisplayInfo(player_unit_con, 0, 0)
 
-	libtcod.console_set_default_background(player_unit_con, SECTION_BG_COL)
-	libtcod.console_rect(player_unit_con, 0, 22, 24, 1, True, libtcod.BKGND_SET)
-	libtcod.console_set_default_background(player_unit_con, libtcod.black)
-
-	# armour
-	libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
-	if scenario.player_unit.armour is None:
-		libtcod.console_print(player_unit_con, 0, 22, 'Unarmoured')
-	else:
-		libtcod.console_print(player_unit_con, 0, 22, 'Armour')
-		libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
-		# display armour for turret and hull
-		if scenario.player_unit.turret_facing is None:
-			text = 'U '
-		else:
-			text = 'T '
-		text += str(scenario.player_unit.armour['turret_front']) + '/' + str(scenario.player_unit.armour['turret_side'])
-		libtcod.console_print(player_unit_con, 0, 23, text)
-		text = 'H ' + str(scenario.player_unit.armour['hull_front']) + '/' + str(scenario.player_unit.armour['hull_side'])
-		libtcod.console_print(player_unit_con, 0, 24, text)
-		
-	# unit statuses
-	libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
-	libtcod.console_print_ex(player_unit_con, 23, 22, libtcod.BKGND_NONE,
-		libtcod.RIGHT, 'Status')
-	libtcod.console_set_default_foreground(player_unit_con, INFO_TEXT_COL)
-	
-	if scenario.player_unit.moved:
-		text = 'Moving'
-	elif scenario.player_unit.moved_last_action:
-		text = 'Moved'
-	else:
-		text = 'Stopped'
-	libtcod.console_print_ex(player_unit_con, 23, 23, libtcod.BKGND_NONE, libtcod.RIGHT,
-		text)
-	
-	if scenario.player_unit.fired:
-		text = 'Fired'
-	else:
-		text = ''
-	libtcod.console_print_ex(player_unit_con, 23, 24, libtcod.BKGND_NONE, libtcod.RIGHT,
-		text)
-	
-	if not scenario.player_unit.known:
-		libtcod.console_print_ex(player_unit_con, 23, 25, libtcod.BKGND_NONE, libtcod.RIGHT,
-			'Concealed')
-
-
-# displays a window with information about a particular PSG
-# (Not used any more)
-def DisplayPSGInfoWindow(psg):
-	
-	# darken the screen background
-	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
-	
-	# display PSG info in the centre of the screen
-	
-	UpdatePlayerUnitConsole(psg=psg)
-	y = 14
-	libtcod.console_rect(0, WINDOW_XM-12, y, 24, 23, True, libtcod.BKGND_SET)
-	libtcod.console_blit(player_unit_con, 0, 0, 0, 0, 0, WINDOW_XM-12, y)
-	
-	libtcod.console_print_ex(0, WINDOW_XM, y+22, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'X to Return')
-	
-	# Note: animations are paused while this window is active
-	exit_menu = False
-	while not exit_menu:
-		
-		libtcod.console_flush()
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
-		if key is None: continue
-		
-		key_char = chr(key.c).lower()
-		
-		if key_char == 'x':
-			exit_menu = True
-	
-	# restore the PSG console and blit the main console to the screen again
-	UpdatePlayerUnitConsole()
-	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-	libtcod.console_flush()
-	
 
 # updates the command console
 def UpdateCmdConsole():
@@ -5810,7 +5835,6 @@ def DoScenario(load_savegame=False):
 						
 						# right button: display PSG info window
 						#elif mouse.rbutton and not (psg.owning_player == 1 and not psg.known):
-						#	DisplayPSGInfoWindow(psg)
 						#	break
 		
 		# open scenario menu screen

@@ -33,12 +33,15 @@
 #    Sean Hagar; see XpLoader_LICENSE.txt for more info.
 #
 
-
 ##########################################################################################
 #                                                                                        #
 #       The author does not condone any of the events or ideologies depicted herein      #
 #                                                                                        #
 ##########################################################################################
+
+# debug mode active: should set to False in any distribution version
+DEBUG_MODE = True
+
 
 ##### External Scripts #####
 import languages
@@ -68,10 +71,7 @@ from encodings import hex_codec, ascii, utf_8, cp850
 #                                   You can rely on them                                 #
 ##########################################################################################
 
-# debug mode active: should set to False in any distribution version
-DEBUG_MODE = False
-
-NAME = 'Armoured Commander II'
+NAME = 'Armoured Commander II'				# game name
 #VERSION = 'Alpha 1.0'					# game version: determines saved game compatability
 VERSION = 'August 4 2017'			
 SUBVERSION = ''						# descriptive, no effect on compatability
@@ -382,8 +382,7 @@ class Unit:
 		self.facing = None			# facing direction: guns and vehicles must have this set
 		self.turret_facing = None		# facing of main turret on unit
 		self.movement_class = ''		# movement class
-		self.extra_turns = 0			# number of extra turns (positive) or missed
-							#   turns (negative) this unit has coming to it
+		self.misses_turns = 0			# turns outstanding left to be missed
 		
 		self.armour = None			# armour factors if any
 		self.max_ammo = 0			# maximum number of gun ammo carried
@@ -395,7 +394,8 @@ class Unit:
 		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
 		
 		# action flags
-		self.moved_this_action = False			# unit moved or pivoted in this turn
+		self.used_up_moves = False		# if true, unit has no move actions remaining this turn
+		self.moved_this_action = False		# unit moved or pivoted in this turn
 		self.moved_last_action = False		# unit moved or pivoted in its previous turn
 		self.fired = False			# unit fired 1+ weapons this turn
 		self.changed_facing = False
@@ -530,16 +530,22 @@ class Unit:
 		# do spot check
 		self.DoSpotCheck()
 		
+		# reset unit flags
 		self.moved_this_action = False
+		self.used_up_moves = False
 		self.fired = False
 		for weapon in self.weapon_list:
 			weapon.fired = False
 			weapon.no_rof_this_turn = False
 		self.changed_facing = False
+		
+		# check for recovering from negative statuses
 		self.RecoveryCheck()
+		
 		# turn on LoS display if this is player and we have a weapon active
 		if self == scenario.player_unit and scenario.selected_weapon is not None:
 			scenario.display_los = True
+		
 		# move to top of hex stack
 		map_hex = GetHexAt(self.hx, self.hy)
 		if len(map_hex.unit_stack) > 1:
@@ -1321,7 +1327,7 @@ class Unit:
 				DrawScreenConsoles()
 				return False
 		
-		# record score for extra/missed turn if applicable
+		# record score for extra move action / missed turn if applicable
 		extra_turn_score = self.GetMovementTurnChance(new_hx, new_hy)
 		
 		# check for squadron movement
@@ -1385,8 +1391,10 @@ class Unit:
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		
+		self.used_up_moves = True
+		
 		if DEBUG_MODE and scenario.debug_flags['fast_tank'] and scenario.player_unit == self:
-			self.extra_turns += 1
+			self.used_up_moves = False
 			scenario.AddMessage('Your debug powers give you another action', None)
 			return True
 		
@@ -1395,21 +1403,22 @@ class Unit:
 			d1, d2, roll = Roll2D6()
 			if extra_turn_score > 0:
 				if roll <= extra_turn_score:
-					# extra turn!
-					self.extra_turns += 1
+					# extra move action!
+					self.used_up_moves = False
 					if scenario.player_unit == self:
-						scenario.AddMessage('You have moved swiftly enough to take another action', None)
+						scenario.AddMessage('You have moved swiftly enough to take another move action', None)
+					return True
 			else:
 				if roll >= abs(extra_turn_score):
 					# missed turn!
-					self.extra_turns -= 1
+					self.misses_turns += 1
 					if scenario.player_unit == self:
 						scenario.AddMessage('You have been delayed by difficult terrain and will miss your next action', None)
+					return True
 		
 		# default movement message
-		if scenario.player_unit == self and self.extra_turns == 0:
+		if scenario.player_unit == self:
 			scenario.AddMessage('You move into a new area.', None)
-		
 		return True
 	
 	# attempt to pivot this unit to face the given direction
@@ -1967,9 +1976,11 @@ class AI:
 		
 		# determine action type from initial roll
 		if roll <= 4:
-			if self.DoMoveAction():
-				return
-		
+			move_result = True
+			while move_result and not self.owner.used_up_moves:
+				move_result = self.DoMoveAction()
+			return
+			
 		self.DoFireAction()
 		
 	# check for any compulsary actions, do them and return True if so
@@ -2882,16 +2893,6 @@ class Scenario:
 		# do post-activation actions for currently active unit
 		self.active_unit.DoPostActivation()
 		
-		# check for extra turn for currently activated unit
-		if self.active_unit.alive and self.active_unit.extra_turns > 0:
-			self.active_unit.extra_turns -= 1
-			self.active_unit.DoPreActivation()
-			scenario.BuildCmdMenu()
-			# save the game if the player has been activated
-			if self.active_unit == self.player_unit:
-				SaveGame()
-			return
-		
 		unit_activated = False
 		while not unit_activated:
 		
@@ -2916,8 +2917,8 @@ class Scenario:
 			if not self.active_unit.alive: continue
 			
 			# check for missed turn
-			if self.active_unit.extra_turns < 0:
-				self.active_unit.extra_turns += 1
+			if self.active_unit.misses_turns > 0:
+				self.active_unit.misses_turns -= 1
 				continue
 			
 			# do pre-activation actions for newly activated unit
@@ -3080,7 +3081,9 @@ class Scenario:
 			menu_option.inactive = True
 			menu_option = self.cmd_menu.AddOption('crew_menu', '2', 'Crew')
 			menu_option.inactive = True
-			self.cmd_menu.AddOption('movement_menu', '3', 'Movement')
+			
+			menu_option = self.cmd_menu.AddOption('movement_menu', '3', 'Movement')
+			
 			self.cmd_menu.AddOption('weapons_menu', '4', 'Weapons')
 			
 			if DEBUG_MODE:
@@ -3115,17 +3118,25 @@ class Scenario:
 			self.cmd_menu.AddOption('pivot_hull_stb', 'D', 'Pivot to Starboard')
 			
 			menu_option = self.cmd_menu.AddOption('move_forward', 'W', 'Forward')
-			(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
-				scenario.player_unit.hy, scenario.player_unit.facing)
-			if not scenario.player_unit.CheckMoveInto(hx, hy):
+			if scenario.player_unit.used_up_moves:
 				menu_option.inactive = True
+				menu_option.desc = 'You have already moved this turn'
+			else:
+				(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
+					scenario.player_unit.hy, scenario.player_unit.facing)
+				if not scenario.player_unit.CheckMoveInto(hx, hy):
+					menu_option.inactive = True
 			
 			menu_option = self.cmd_menu.AddOption('move_backward', 'S', 'Backward')
-			(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
-				scenario.player_unit.hy,
-				CombineDirs(scenario.player_unit.facing, 3))
-			if not scenario.player_unit.CheckMoveInto(hx, hy):
+			if scenario.player_unit.used_up_moves:
 				menu_option.inactive = True
+				menu_option.desc = 'You have already moved this turn'
+			else:
+				(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
+					scenario.player_unit.hy,
+					CombineDirs(scenario.player_unit.facing, 3))
+				if not scenario.player_unit.CheckMoveInto(hx, hy):
+					menu_option.inactive = True
 			
 			self.cmd_menu.AddOption('return_to_root', 'Bksp', 'Root Menu',
 				desc='Return to root command menu')
@@ -4950,7 +4961,6 @@ def UpdateContextCon():
 		libtcod.console_set_default_foreground(context_con, libtcod.white)
 		libtcod.console_print(context_con, 0, 0, 'Movement')
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
-		libtcod.console_print(context_con, 0, 1, scenario.player_unit.movement_class)
 		
 		# display chance of extra/missed turn
 		(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
@@ -4962,7 +4972,7 @@ def UpdateContextCon():
 			text = '-1 turn: ' + chr(242) + str(abs(chance))
 		else:
 			text = '+1 turn: ' + chr(243) + str(chance)
-		libtcod.console_print(context_con, 0, 2, text)
+		libtcod.console_print(context_con, 0, 1, text)
 	
 	# Weapons Menu
 	# TODO: display contextual info for this particular weapon
@@ -5360,8 +5370,8 @@ def DrawScreenConsoles():
 
 	# left column consoles
 	libtcod.console_blit(player_unit_con, 0, 0, 0, 0, con, 1, 1)
-	libtcod.console_blit(cmd_con, 0, 0, 0, 0, con, 1, 33)
-	libtcod.console_blit(hex_info_con, 0, 0, 0, 0, con, 1, 50)
+	libtcod.console_blit(cmd_con, 0, 0, 0, 0, con, 1, 26)
+	libtcod.console_blit(hex_info_con, 0, 0, 0, 0, con, 1, 45)
 	
 	# scenario info, contextual info, objective info, and most recent message if any
 	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 40, 0)
@@ -5630,19 +5640,19 @@ def DoScenario(load_savegame=False):
 	libtcod.console_clear(objective_con)
 	
 	# player unit info console
-	player_unit_con = libtcod.console_new(24, 31)
+	player_unit_con = libtcod.console_new(24, 24)
 	libtcod.console_set_default_background(player_unit_con, libtcod.black)
 	libtcod.console_set_default_foreground(player_unit_con, libtcod.white)
 	libtcod.console_clear(player_unit_con)
 	
 	# command menu console
-	cmd_con = libtcod.console_new(24, 16)
+	cmd_con = libtcod.console_new(24, 18)
 	libtcod.console_set_default_background(cmd_con, libtcod.black)
 	libtcod.console_set_default_foreground(cmd_con, libtcod.white)
 	libtcod.console_clear(cmd_con)
 	
 	# hex and unit info console
-	hex_info_con = libtcod.console_new(24, 9)
+	hex_info_con = libtcod.console_new(24, 14)
 	libtcod.console_set_default_background(hex_info_con, libtcod.black)
 	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
 	libtcod.console_clear(hex_info_con)
@@ -5997,7 +6007,10 @@ def DoScenario(load_savegame=False):
 			if scenario.player_unit.MoveInto(hx, hy):
 				scenario.BuildCmdMenu()
 				DrawScreenConsoles()
-				scenario.ActivateNextUnit()
+				# not sure if this should stay as is
+				if scenario.player_unit.used_up_moves:
+					scenario.ActivateNextUnit()
+					UpdateScreen()
 				continue
 		
 		elif option.option_id in ['pivot_hull_port', 'pivot_hull_stb']:

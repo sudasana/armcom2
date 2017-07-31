@@ -40,7 +40,7 @@
 ##########################################################################################
 
 # debug mode active: should set to False in any distribution version
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 ##### External Scripts #####
@@ -1191,10 +1191,6 @@ class Unit:
 
 		# default
 		return '!'
-	
-	
-
-##########################################################################################
 
 	# clear any acquired target links between this unit and any other
 	def ClearAcquiredTargets(self):
@@ -1493,6 +1489,9 @@ class Unit:
 			d1, d2, roll2 = Roll2D6()
 			# critical penetration roll
 			if roll == 2:
+				roll2 += 3
+			# guns have less protection
+			elif self.gun:
 				roll2 += 3
 			
 			# roll equal to score required
@@ -1956,6 +1955,9 @@ class AI:
 
 		# can't do anything if we're not alive!
 		if not self.owner.alive: return
+		
+		# for now, broken units just do nothing
+		if self.owner.broken: return
 		
 		#print ('DEBUG: ' + self.owner.GetName(true_name=True) + ' in ' + str(self.owner.hx) +
 		#	', ' + str(self.owner.hy) + ' is acting')
@@ -2652,10 +2654,10 @@ class Scenario:
 			elif roll <= 5:
 				prefer_terrain = False
 				d1, d2, roll = Roll2D6()
-				if roll <= 5:
+				if roll <= 8:
 					unit_id = 'TKS_20mm'
 					unit_num = 2
-				elif roll <= 8:
+				elif roll <= 10:
 					unit_id = 'TKS'
 					unit_num = 3
 				else:
@@ -2690,9 +2692,9 @@ class Scenario:
 			# 10-12 Gun
 			else:
 				d1, d2, roll = Roll2D6()
+				#if roll <= 4:
+				#	unit_id = '75mm_wz_9725'
 				if roll <= 4:
-					unit_id = '75mm_wz_9725'
-				elif roll <= 6:
 					unit_id = '75mm_wz_0226'
 				else:
 					unit_id = '37mm_wz_36'
@@ -3256,6 +3258,20 @@ class Scenario:
 ##########################################################################################
 #                                     General Functions                                  #
 ##########################################################################################
+
+# draw an ArmCom2-style frame to the given console
+def DrawFrame(console, x, y, w, h):
+	libtcod.console_put_char(console, x, y, 249)
+	libtcod.console_put_char(console, x+w-1, y, 249)
+	libtcod.console_put_char(console, x, y+h-1, 249)
+	libtcod.console_put_char(console, x+w-1, y+h-1, 249)
+	for x1 in range(x+1, x+w-1):
+		libtcod.console_put_char(console, x1, y, 196)
+		libtcod.console_put_char(console, x1, y+h-1, 196)
+	for y1 in range(y+1, y+h-1):
+		libtcod.console_put_char(console, x, y1, 179)
+		libtcod.console_put_char(console, x+w-1, y1, 179)
+
 
 # retrive the text of an in-game text from the languages data based on current game language
 def GetMsg(msg_id):
@@ -4924,31 +4940,108 @@ def GenerateTerrain():
 # display a window with info on units in a hex stack
 def DisplayHexStack(map_hex):
 	
-	# darken the screen background and draw a black frame
+	# darken the screen background, 
 	libtcod.console_blit(darken_con, 0, 0, 0, 0, con, 0, 0, 0.0, 0.7)
 	
+	# set up title
+	if len(map_hex.unit_stack) == 1:
+		title_text = '1 unit in hex'
+	else:
+		title_text = str(len(map_hex.unit_stack)) + ' units in hex'
 	
-	libtcod.console_rect(con, WINDOW_XM-13, 7, 26, 33, True, libtcod.BKGND_SET)
+	# set up menu
+	menu = CommandMenu('hex_stack_menu')
+	menu_option = menu.AddOption('previous_unit', 'W', 'View Previous Unit')
+	if len(map_hex.unit_stack) == 1:
+		menu_option.inactive = True
+	menu_option = menu.AddOption('next_unit', 'S', 'View Next Unit')
+	if len(map_hex.unit_stack) == 1:
+		menu_option.inactive = True
+	menu_option = menu.AddOption('exit_view', 'Esc', 'Exit View')
 	
-	# TEMP - top unit only
+	# start by viewing the top/only unit in the hex
 	unit = map_hex.unit_stack[0]
 	
-	unit.DisplayInfo(con, WINDOW_XM-12, 8)
-	libtcod.console_print_ex(con, WINDOW_XM, 39, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Enter to continue')
-	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	exit_view = False
+	while not exit_view:
+		
+		# draw a black box, a frame around it, and the view title
+		libtcod.console_rect(con, WINDOW_XM-13, 7, 26, 33, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		DrawFrame(con, WINDOW_XM-13, 7, 26, 33)
+		libtcod.console_print_ex(con, WINDOW_XM, 8, libtcod.BKGND_NONE,
+			libtcod.CENTER, title_text)
 	
-	exit_menu = False
-	while not exit_menu:
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-			key, mouse)
-		if libtcod.console_is_window_closed(): sys.exit()
-		if key.vk == libtcod.KEY_ENTER:
-			exit_menu = True
+		# display unit info
+		unit.DisplayInfo(con, WINDOW_XM-12, 9)
+		
+		# display menu
+		menu.DisplayMe(con, WINDOW_XM-12, 34, 24)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
+		
+		update_view = False
+		while not update_view:
 	
-	
-
+			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+				key, mouse)
+			if libtcod.console_is_window_closed(): sys.exit()
+			
+			if key is None: continue
+			
+			# select previous or next menu option
+			if key.vk == libtcod.KEY_UP:
+				menu.SelectNextOption(reverse=True)
+				update_view = True
+				continue
+				
+			elif key.vk == libtcod.KEY_DOWN:
+				menu.SelectNextOption()
+				update_view = True
+				continue
+			
+			# activate selected menu option
+			elif key.vk == libtcod.KEY_ENTER:
+				option = menu.GetSelectedOption()
+			
+			# see if we pressed a key associated with a menu option
+			else:
+				option = menu.GetOptionByKey()
+			
+			if option is None: continue
+			
+			# select this option and highlight it
+			menu.selected_option = option
+			menu.DisplayMe(con, WINDOW_XM-12, 34, 24)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			
+			# selected an inactive menu option
+			if option.inactive: continue
+			
+			if option.option_id == 'exit_view':
+				exit_view = True
+				update_view = True
+				continue
+			
+			if option.option_id == 'previous_unit':
+				i = map_hex.unit_stack.index(unit)
+				if i == 0:
+					i = len(map_hex.unit_stack) - 1
+				else:
+					i -= 1
+				unit = map_hex.unit_stack[i]
+				update_view = True
+			
+			elif option.option_id == 'next_unit':
+				i = map_hex.unit_stack.index(unit)
+				if i == len(map_hex.unit_stack) - 1:
+					i = 0
+				else:
+					i += 1
+				unit = map_hex.unit_stack[i]
+				update_view = True
+			
 
 # update the contextual info console
 def UpdateContextCon():
@@ -5297,6 +5390,7 @@ def UpdateHexInfoConsole():
 	# get top unit in stack
 	unit = map_hex.unit_stack[0]
 	
+	# unit type name
 	if unit.owning_player == 1 and not unit.known:
 		col = UNKNOWN_HL_COL
 	else:
@@ -5305,15 +5399,17 @@ def UpdateHexInfoConsole():
 		else:
 			col = FRIENDLY_HL_COL
 	libtcod.console_set_default_background(hex_info_con, col)
-	libtcod.console_rect(hex_info_con, 0, 4, 24, 1, False, libtcod.BKGND_SET)
+	libtcod.console_rect(hex_info_con, 0, 7, 24, 1, False, libtcod.BKGND_SET)
 	#libtcod.console_set_default_background(hex_info_con, libtcod.black)
 	
 	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
-	libtcod.console_print(hex_info_con, 0, 4, unit.GetName())
+	libtcod.console_print(hex_info_con, 0, 7, unit.GetName())
 	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	
+	# unit type
 	if not (unit.owning_player == 1 and not unit.known):
-		libtcod.console_print(hex_info_con, 0, 5, unit.unit_type)
+		# FUTURE: add nationality here
+		libtcod.console_print(hex_info_con, 0, 8, unit.unit_type)
 	
 	# unresolved hits on this unit
 	if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
@@ -5324,7 +5420,7 @@ def UpdateHexInfoConsole():
 			if unit.unresolved_fp > 0:
 				text += '; '
 			text += str(len(unit.unresolved_ap)) + ' AP'
-		libtcod.console_print(hex_info_con, 1, 6, text)
+		libtcod.console_print(hex_info_con, 1, 10, text)
 	
 	# acquired target status of top unit in stack
 	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
@@ -5334,7 +5430,7 @@ def UpdateHexInfoConsole():
 		if ac_target == unit:
 			text = 'AC'
 			if ac_level > 1: text += '2'
-			libtcod.console_print_ex(hex_info_con, 0, 7, libtcod.BKGND_SET,
+			libtcod.console_print_ex(hex_info_con, 0, 11, libtcod.BKGND_SET,
 				libtcod.LEFT, text)
 	if unit.acquired_target is not None:
 		(ac_target, ac_level) = unit.acquired_target
@@ -5342,10 +5438,10 @@ def UpdateHexInfoConsole():
 			text = 'AC'
 			if ac_level > 1: text += '2'
 			libtcod.console_set_default_foreground(hex_info_con, ENEMY_UNIT_COL)
-			libtcod.console_print_ex(hex_info_con, 4, 7, libtcod.BKGND_SET,
+			libtcod.console_print_ex(hex_info_con, 4, 11, libtcod.BKGND_SET,
 				libtcod.LEFT, text)
 	
-	# FUTURE: display unit statuses on line 7, to the right of acquired target status
+	# FUTURE: display unit statuses on line 11, to the right of acquired target status
 	
 	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
 	libtcod.console_set_default_background(hex_info_con, libtcod.black)
@@ -5354,7 +5450,7 @@ def UpdateHexInfoConsole():
 	if unit_num > 1:
 		text = '+' + str(unit_num-1) + ' more unit'
 		if unit_num > 2: text += 's'
-		libtcod.console_print(hex_info_con, 0, 8, text)
+		libtcod.console_print(hex_info_con, 0, 13, text)
 	
 	
 # draw all the display consoles to the screen
@@ -5832,7 +5928,6 @@ def DoScenario(load_savegame=False):
 		# do initial objective status check
 		for map_hex in scenario.objective_hexes:
 			map_hex.CheckObjectiveStatus(no_message=True)
-		
 		
 		# calculate initial field of view for player and draw viewport console for first time
 		scenario.hex_map.CalcFoV()

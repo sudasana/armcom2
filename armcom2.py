@@ -6,9 +6,7 @@
 #                                Armoured Commander II                                   #
 #                                                                                        #
 ##########################################################################################
-#                                                                                        #
 #             Project Started February 23, 2016; Restarted July 25, 2016                 #
-#                                                                                        #
 ##########################################################################################
 #
 #    Copyright (c) 2016-2017 Gregory Adam Scott (sudasana@gmail.com)
@@ -32,15 +30,12 @@
 #    xp_loader.py is covered under a MIT License (MIT) and is Copyright (c) 2015
 #    Sean Hagar; see XpLoader_LICENSE.txt for more info.
 #
-
 ##########################################################################################
-#                                                                                        #
 #       The author does not condone any of the events or ideologies depicted herein      #
-#                                                                                        #
 ##########################################################################################
 
 # debug mode active: should set to False in any distribution version
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 
 ##### External Scripts #####
@@ -403,9 +398,9 @@ class Unit:
 		# status flags
 		self.pinned = False
 		self.broken = False
+		self.immobilized = False
 		#self.stunned = False
 		#self.bogged = False
-		#self.immobilized = False
 		
 		# special abilities or traits
 		self.recce = False
@@ -573,7 +568,6 @@ class Unit:
 		# no enemy units in LoS
 		self.HideMe()
 			
-			
 	# perform post-activation automatic actions
 	def DoPostActivation(self):
 		
@@ -670,17 +664,22 @@ class Unit:
 				libtcod.console_print(console, x+1, y+2, text)
 		
 		# movement class
-		libtcod.console_set_default_foreground(console, libtcod.light_green)
-		libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
-			libtcod.RIGHT, self.movement_class)
-		# special movement abilities or restrictions
-		if self.recce:
-			libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE,
-				libtcod.RIGHT, 'Recce')
-		if self.unreliable:
-			libtcod.console_set_default_foreground(console, libtcod.red)
-			libtcod.console_print_ex(console, x+23, y+2, libtcod.BKGND_NONE,
-				libtcod.RIGHT, 'Unreliable')
+		if self.immobilized:
+			libtcod.console_set_default_foreground(console, INACTIVE_COL)
+			libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Immobilized')
+		else:
+			libtcod.console_set_default_foreground(console, libtcod.light_green)
+			libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, self.movement_class)
+			# special movement abilities or restrictions
+			if self.recce:
+				libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE,
+					libtcod.RIGHT, 'Recce')
+			if self.unreliable:
+				libtcod.console_set_default_foreground(console, libtcod.red)
+				libtcod.console_print_ex(console, x+23, y+2, libtcod.BKGND_NONE,
+					libtcod.RIGHT, 'Unreliable')
 		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
 		
 		# unit statuses (console width = 24)
@@ -689,8 +688,10 @@ class Unit:
 		libtcod.console_rect(console, x, y, 24, 2, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(console, libtcod.black)
 		
-		# moving/moved/stopped (FUTURE: bogged/immobilized)
-		if self.moved_this_action:
+		# moving/moved/stopped (FUTURE: bogged)
+		if self.immobilized:
+			text = 'Immobilized'
+		elif self.moved_this_action:
 			text = 'Moving'
 		elif self.moved_last_action:
 			text = 'Moved'
@@ -893,10 +894,19 @@ class Unit:
 			result = self.ResolveAPHit(attack_obj)
 			if result is not None:
 				
-				# FUTURE: apply immobilization and minor damage effects
+				# apply effects of result
+				if result == 'Immobilized':
+					if not self.immobilized:
+						self.immobilized = True
+						text = self.GetName() + ' is now immobilized!'
+					else:
+						text = 'Hit had no further effect on ' + self.GetName()
+					scenario.AddMessage(text, (self.hx, self.hy))
+				
+				# FUTURE: minor damage effects
 				
 				# FUTURE: roll for effect on crew
-				if result in ['Knocked Out', 'Explodes']:
+				elif result in ['Knocked Out', 'Explodes']:
 					self.DestroyMe()
 					return
 		self.unresolved_ap = []
@@ -1490,9 +1500,6 @@ class Unit:
 			# critical penetration roll
 			if roll == 2:
 				roll2 += 3
-			# guns have less protection
-			elif self.gun:
-				roll2 += 3
 			
 			# roll equal to score required
 			if roll == attack_obj.final_ap:
@@ -1514,6 +1521,11 @@ class Unit:
 					result = 'Knocked Out'
 				else:
 					result = 'Explodes'
+			
+			# guns have less protection
+			if self.gun:
+				if result in ['Immobilized', 'Minor Damage']:
+					result = 'Knocked Out'
 			
 			# DEBUG - player cannot be killed
 			if DEBUG_MODE and self == scenario.player_unit and scenario.debug_flags['immortal']:
@@ -1920,6 +1932,9 @@ class AI:
 	
 	# choose best weapon+target combination from a list of possible targets
 	def GetBestAttack(self, target_list):
+		
+		pivot_possible = not self.owner.immobilized
+		
 		# build a list of attack odds and targets
 		ranked_list = []
 		highest_score = 0
@@ -1931,7 +1946,7 @@ class AI:
 					continue
 				
 				(score, text) = scenario.GetAttackScore(self.owner, weapon, target,
-					rotate_allowed=True, pivot_allowed=True)
+					rotate_allowed=True, pivot_allowed=pivot_possible)
 				if score is not None:
 					if score == 0.0: continue
 					ranked_list.append([score, weapon, target])
@@ -1978,6 +1993,11 @@ class AI:
 		
 		# determine action type from initial roll
 		if roll <= 4:
+			
+			# do nothing if immobilized
+			if self.owner.immobilized:
+				return
+			
 			move_result = True
 			while move_result and not self.owner.used_up_moves:
 				move_result = self.DoMoveAction()
@@ -3116,11 +3136,22 @@ class Scenario:
 			
 			self.cmd_menu.AddOption('rotate_turret_cc', 'Q', 'Turret C/clockwise')
 			self.cmd_menu.AddOption('rotate_turret_cw', 'E', 'Turret Clockwise')
-			self.cmd_menu.AddOption('pivot_hull_port', 'A', 'Pivot to Port')
-			self.cmd_menu.AddOption('pivot_hull_stb', 'D', 'Pivot to Starboard')
+			
+			menu_option = self.cmd_menu.AddOption('pivot_hull_port', 'A', 'Pivot to Port')
+			if scenario.player_unit.immobilized:
+				menu_option.inactive = True
+				menu_option.desc = 'Your tank is immbolized'
+			
+			menu_option = self.cmd_menu.AddOption('pivot_hull_stb', 'D', 'Pivot to Starboard')
+			if scenario.player_unit.immobilized:
+				menu_option.inactive = True
+				menu_option.desc = 'Your tank is immbolized'
 			
 			menu_option = self.cmd_menu.AddOption('move_forward', 'W', 'Forward')
-			if scenario.player_unit.used_up_moves:
+			if scenario.player_unit.immobilized:
+				menu_option.inactive = True
+				menu_option.desc = 'Your tank is immbolized'
+			elif scenario.player_unit.used_up_moves:
 				menu_option.inactive = True
 				menu_option.desc = 'You have already moved this turn'
 			else:
@@ -3130,7 +3161,10 @@ class Scenario:
 					menu_option.inactive = True
 			
 			menu_option = self.cmd_menu.AddOption('move_backward', 'S', 'Backward')
-			if scenario.player_unit.used_up_moves:
+			if scenario.player_unit.immobilized:
+				menu_option.inactive = True
+				menu_option.desc = 'Your tank is immbolized'
+			elif scenario.player_unit.used_up_moves:
 				menu_option.inactive = True
 				menu_option.desc = 'You have already moved this turn'
 			else:

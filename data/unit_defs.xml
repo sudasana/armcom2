@@ -358,6 +358,98 @@
   <!-- German Units -->
   
   <!-- German Tanks -->
+  
+  <unit_def>
+    <vehicle/>
+    <turret/>
+    <id>panzer_i_b</id>
+    <name>Panzer I B</name>
+    <unit_type>Light Tank</unit_type>
+    <size_class>Small</size_class>
+    <movement_class>Fast Tank</movement_class>
+    <armour>
+      <turret_front>1</turret_front>
+      <turret_side>1</turret_side>
+      <hull_front>1</hull_front>
+      <hull_side>1</hull_side>
+    </armour>
+    <weapon>
+      <type>coax_mg</type>
+      <fp>6</fp>
+      <mount>turret</mount>
+      <rof>4</rof>
+      <fired_by>Commander/Gunner</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <crew_position>
+      <name>Commander/Gunner</name>
+      <turret/>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <open_visible>015</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
+  
+  <unit_def>
+    <vehicle/>
+    <turret/>
+    <id>panzer_ii_a</id>
+    <name>Panzer II A</name>
+    <unit_type>Light Tank</unit_type>
+    <portrait>unit_pz_II.xp</portrait>
+    <size_class>Small</size_class>
+    <movement_class>Fast Tank</movement_class>
+    <armour>
+      <turret_front>1</turret_front>
+      <turret_side>1</turret_side>
+      <hull_front>1</hull_front>
+      <hull_side>1</hull_side>
+    </armour>
+    <weapon>
+      <type>gun</type>
+      <calibre>20</calibre>
+      <long_range>L</long_range>
+      <mount>turret</mount>
+      <fired_by>Commander/Gunner</fired_by>
+      <rof>5</rof>
+      <firing_group>0</firing_group>
+      <ammo_type>HE</ammo_type>
+      <ammo_type>AP</ammo_type>
+    </weapon>
+    <max_ammo>180</max_ammo>
+    <weapon>
+      <type>coax_mg</type>
+      <fp>5</fp>
+      <mount>turret</mount>
+      <rof>4</rof>
+      <fired_by>Commander/Gunner</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <crew_position>
+      <name>Commander/Gunner</name>
+      <turret/>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Loader</name>
+      <turret/>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <open_visible>015</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
 
   <unit_def>
     <vehicle/>

@@ -520,6 +520,76 @@
     </crew_position>
   </unit_def>
   
+  <unit_def>
+    <vehicle/>
+    <turret/>
+    <id>panzer_38_t_a</id>
+    <name>Panzer 38(t) A</name>
+    <unit_type>Light Tank</unit_type>
+    <portrait>unit_pz_38t_a.xp</portrait>
+    <size_class>Small</size_class>
+    <movement_class>Fast Tank</movement_class>
+    <armour>
+      <turret_front>3</turret_front>
+      <turret_side>1</turret_side>
+      <hull_front>3</hull_front>
+      <hull_side>1</hull_side>
+    </armour>
+    <weapon>
+      <type>gun</type>
+      <calibre>37</calibre>
+      <long_range>L</long_range>
+      <mount>turret</mount>
+      <fired_by>Commander/Gunner</fired_by>
+      <rr_size>6</rr_size>
+      <rof>5</rof>
+      <firing_group>0</firing_group>
+      <ammo_type>HE</ammo_type>
+      <ammo_type>AP</ammo_type>
+    </weapon>
+    <weapon>
+      <type>coax_mg</type>
+      <fp>4</fp>
+      <mount>turret</mount>
+      <rof>4</rof>
+      <fired_by>Commander/Gunner</fired_by>
+      <fired_by>Loader</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <weapon>
+      <type>hull_mg</type>
+      <fp>4</fp>
+      <mount>hull</mount>
+      <rof>4</rof>
+      <fired_by>Assistant Driver</fired_by>
+      <fired_by>Driver</fired_by>
+      <firing_group>1</firing_group>
+    </weapon>
+    <max_ammo>66</max_ammo>
+    <crew_position>
+      <name>Commander/Gunner</name>
+      <turret/>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>012345</closed_visible>	<!-- Hatch was fitted with a cupola and a periscope -->
+    </crew_position>
+    <crew_position>
+      <name>Loader</name>
+      <turret/>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <open_visible>015</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Assistant Driver</name>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
+  
   <!-- Generic Infantry -->
   
   <unit_def>

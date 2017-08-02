@@ -3,8 +3,8 @@
 This is the in-progress Alpha 1.0 version of Armoured Commander II.
 
 ![screenshot 1](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_14.png "Armoured Commander II Screenshot")
-![screenshot 2](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_15.png "Armoured Commander II Screenshot")
-![screenshot 3](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_16.png "Armoured Commander II Screenshot")
+![screenshot 2](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_17.png "Armoured Commander II Screenshot")
+![screenshot 3](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_18.png "Armoured Commander II Screenshot")
 
 Copyright (c) 2016-2017 Gregory Adam Scott (sudasana@gmail.com)
 This file is part of Armoured Commander II.

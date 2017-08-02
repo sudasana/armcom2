@@ -94,7 +94,7 @@ GRADIENT = [
 MAX_LOS_DISTANCE = 6			# maximum distance that a Line of Sight can be drawn
 MAX_LOS_MOD = 6				# maximum total terrain modifier along a LoS before it is blocked
 MAX_BU_LOS_DISTANCE = 4			# " for buttoned-up crewmen
-ELEVATION_M = 20.0			# each elevation level represents x meters of height
+ELEVATION_M = 10.0			# each elevation level represents x meters of height
 BASE_SPOT_SCORE = 5			# base score required to spot unknown enemy unit
 HEX_STACK_LIMIT = 6			# maximum number of units in a map hex stack
 
@@ -1949,6 +1949,10 @@ class AI:
 			for unit in map_hex.unit_stack:
 				if unit.owning_player == self.owner.owning_player: continue
 				if must_be_known and not unit.known: continue
+				
+				if GetLoS(self.owner.hx, self.owner.hy, unit.hx, unit.hy) == -1:
+					continue
+				
 				target_list.append(unit)
 		return target_list
 	
@@ -2003,9 +2007,6 @@ class AI:
 		
 		# check for panic
 		if d1 == d2 and roll > self.owner.morale_lvl:
-			if scenario.IsOnViewport(self.owner.hx, self.owner.hy):
-				scenario.AddMessage(self.owner.GetName() + " doesn't appear to do " +
-					"anything.", self.owner)
 			return
 		
 		# check for compulsary actions
@@ -2077,6 +2078,10 @@ class AI:
 	
 	# try to do an attack action
 	def DoFireAction(self):
+		
+		# dummy units can't attack
+		if self.owner.dummy: return
+		
 		target_list = self.GetEnemyTargetsWithin(6)
 		
 		# no targets
@@ -2434,7 +2439,7 @@ class MapHex:
 			else:
 				text = 'The enemy has captured an objective.'
 			
-		scenario.AddMessage(text, self)
+		scenario.AddMessage(text, None)
 
 
 # a map of hexes for use in a campaign day
@@ -3564,6 +3569,10 @@ def CalcAttack(attacker, weapon, target):
 		los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 		if los > 0:
 			attack_obj.modifiers.append(('Terrain', 0-los))
+		
+		# target infantry moved in open
+		elif los == 0 and target.infantry and target.moved_last_action:
+			attack_obj.modifiers.append(('Infantry Moved in Open', 2))
 		
 		# total up modifiers
 		total_modifiers = 0

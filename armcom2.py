@@ -35,7 +35,7 @@
 ##########################################################################################
 
 # debug mode active: should set to False in any distribution version
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 ##### External Scripts #####
@@ -206,8 +206,7 @@ KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
 
 SMALL_CON_BKG = libtcod.Color(25, 25, 25)		# background colour for small info consoles
 
-HIGHLIGHT_CHARS = [249, 7, 7, 7, 7, 249]		# characters for hex highlight animation
-HEX_HIGHLIGHT_COL = libtcod.Color(100, 255, 100)	# color for hex highlight animation
+UNIT_HIGHLIGHT_COL = libtcod.Color(100, 255, 255)	# color for unit highlight animation
 
 # Descriptor definitions
 MORALE_DESC = {
@@ -733,6 +732,9 @@ class Unit:
 		# list of crew if any
 		if self.crew_positions is None: return
 		
+		# for now, only display if player unit, since only the player unit has any crew
+		if self != scenario.player_unit: return
+		
 		y += 2
 		for position in self.crew_positions:
 			
@@ -837,7 +839,7 @@ class Unit:
 		# FUTURE: possible damage to unprotected crew
 		if self.unresolved_fp > 0 and self.armour is not None:
 			text = 'Firepower attack has no effect on ' + self.GetName()
-			scenario.AddMessage(text, (self.hx, self.hy))
+			scenario.AddMessage(text, self)
 			self.unresolved_fp = 0
 		
 		# unresolved area fire hits to resolve
@@ -845,7 +847,7 @@ class Unit:
 		
 			text = ('Resolving ' + str(self.unresolved_fp) + ' fp of attacks on ' +
 				self.GetName())
-			scenario.AddMessage(text, (self.hx, self.hy))
+			scenario.AddMessage(text, self)
 			
 			# get base score to equal/beat
 			for (chart_fp, inf_score, veh_score) in reversed(AF_CHART):
@@ -860,7 +862,7 @@ class Unit:
 			
 			if roll == 2 or float(roll) < float(score) * 0.5:
 				text = self.GetName() + ' is destroyed!'
-				scenario.AddMessage(text, (self.hx, self.hy))
+				scenario.AddMessage(text, self)
 				self.DestroyMe()
 				return
 			
@@ -869,11 +871,11 @@ class Unit:
 					self.PinMe()
 				else:
 					text = 'Attack had no effect on ' + self.GetName()
-					scenario.AddMessage(text, (self.hx, self.hy))
+					scenario.AddMessage(text, self)
 			
 			elif roll < score:
 				text = self.GetName() + ' must take a Morale Test'
-				scenario.AddMessage(text, (self.hx, self.hy))
+				scenario.AddMessage(text, self)
 				if not self.MoraleCheck(0):
 					# failed
 					self.BreakMe()
@@ -882,7 +884,7 @@ class Unit:
 					self.PinMe()
 			else:
 				text = 'Attack had no effect on ' + self.GetName()
-				scenario.AddMessage(text, (self.hx, self.hy))
+				scenario.AddMessage(text, self)
 			
 			# reset unresolved fp
 			self.unresolved_fp = 0
@@ -891,6 +893,10 @@ class Unit:
 		
 		# do AP rolls for unresolved ap hits
 		for attack_obj in self.unresolved_ap:
+			
+			text = 'Resolving ' + attack_obj.weapon.GetName() + ' AP hit on ' + self.GetName()
+			scenario.AddMessage(text, self)
+			
 			result = self.ResolveAPHit(attack_obj)
 			if result is not None:
 				
@@ -901,7 +907,7 @@ class Unit:
 						text = self.GetName() + ' is now immobilized!'
 					else:
 						text = 'Hit had no further effect on ' + self.GetName()
-					scenario.AddMessage(text, (self.hx, self.hy))
+					scenario.AddMessage(text, self)
 				
 				# FUTURE: minor damage effects
 				
@@ -943,15 +949,14 @@ class Unit:
 		# double break, destroy instead
 		if self.broken:
 			text = self.GetName() + ' failed a Break test while broken and is destroyed!'
-			scenario.AddMessage(text, (self.hx, self.hy))
+			scenario.AddMessage(text, self)
 			self.DestroyMe()
 			return
 		self.broken = True
 		text = self.GetName() + ' is Broken'
-		scenario.AddMessage(text, (self.hx, self.hy))
+		scenario.AddMessage(text, self)
 		# any pinned status is cancelled
-		if self.pinned:
-			self.pinned = False
+		self.pinned = False
 	
 	# pin this unit
 	def PinMe(self):
@@ -961,7 +966,7 @@ class Unit:
 		else:
 			self.pinned = True
 			text = self.GetName() + ' is Pinned'
-		scenario.AddMessage(text, (self.hx, self.hy))
+		scenario.AddMessage(text, self)
 	
 	# remove this unit from the game
 	def DestroyMe(self):
@@ -984,7 +989,7 @@ class Unit:
 			if self.MoraleCheck(0):
 				self.pinned = False
 				text = self.GetName() + ' recovers from being Pinned'
-				scenario.AddMessage(text, (self.hx, self.hy))
+				scenario.AddMessage(text, self)
 			return
 		
 		if self.broken:
@@ -992,7 +997,7 @@ class Unit:
 				self.broken = False
 				self.pinned = True
 				text = self.GetName() + ' recovers from being Broken and is now Pinned'
-				scenario.AddMessage(text, (self.hx, self.hy))
+				scenario.AddMessage(text, self)
 
 	# return a description of this unit
 	# if true_name, return the real identity of this PSG no matter what
@@ -1121,7 +1126,7 @@ class Unit:
 		# dummy unit reveal
 		if self.dummy:
 			text = 'No enemy unit actually there.'
-			scenario.AddMessage(text, (self.hx, self.hy))
+			scenario.AddMessage(text, self)
 			self.DestroyMe()
 			return
 		
@@ -1138,7 +1143,7 @@ class Unit:
 		else:
 			text = 'Enemy '
 		text += self.GetName() + ' has been spotted!'
-		scenario.AddMessage(text, (self.hx, self.hy))
+		scenario.AddMessage(text, self)
 	
 	# regain unknown status for this unit
 	def HideMe(self):
@@ -1154,7 +1159,7 @@ class Unit:
 			text += ' now unseen by the enemy'
 		else:
 			text = 'Lost contact with ' + self.GetName()
-		scenario.AddMessage(text, (self.hx, self.hy))
+		scenario.AddMessage(text, self)
 		self.known = False
 		UpdateUnitConsole()
 		if scenario.active_unit == self:
@@ -1285,6 +1290,7 @@ class Unit:
 	# determine if this unit is able to move into the target hex
 	def CheckMoveInto(self, new_hx, new_hy):
 		if self.movement_class == 'Gun': return False
+		if self.immobilized: return False
 		if (new_hx, new_hy) not in scenario.hex_map.hexes: return False
 		if GetDirectionToAdjacent(self.hx, self.hy, new_hx, new_hy) < 0: return False
 		map_hex = GetHexAt(new_hx, new_hy)
@@ -1770,11 +1776,12 @@ class AnimHandler:
 		self.af_attack_remaining = 0		# remaining number of updates before end
 		self.af_attack_active = False
 		
-		# map hex highlight effect
-		self.highlight_vp_hex = None
+		# unit highlight effect
+		self.highlight_unit = None		# which unit we are
+		self.highlight_vp_hex = None		# which hex we are highlighting	
 		self.highlight_timer = time.time()	# animation timer
 		self.highlight_click = 0		# time between animation updates
-		self.highlight_char = 0			# current character of animation
+		self.highlight_lifetime = 0		# remaining updates before removal
 	
 	# start an MG / small arms attack effect
 	def InitAFAttackEffect(self, x1, y1, x2, y2):
@@ -1793,30 +1800,36 @@ class AnimHandler:
 		self.gun_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.001
 		self.gun_active = True
 	
-	# start a map hex highlight animation
-	def InitHexHighlight(self, (hx, hy)):
+	# start a unit highlight animation
+	def InitUnitHighlight(self, unit):
 		
-		# do not init if this hex is off the current map viewport
-		if not scenario.IsOnViewport(hx, hy):
+		# do not init if this unit is off the current map viewport
+		if not scenario.IsOnViewport(unit.hx, unit.hy):
 			self.anim_finished = True
 			return
 		
 		# get its viewport location
 		for (vp_hx, vp_hy) in VP_HEXES:
-			if scenario.map_vp[(vp_hx, vp_hy)] == (hx, hy):
+			if scenario.map_vp[(vp_hx, vp_hy)] == (unit.hx, unit.hy):
 				break
-		
+
+		# make the unit the top of its hex stack
+		map_hex = GetHexAt(unit.hx, unit.hy)
+		unit.MoveToTopOfStack(map_hex)
+
+		# set up the variables for this animation
+		self.highlight_unit = unit
 		self.highlight_vp_hex = (vp_hx, vp_hy)
 		self.highlight_timer = time.time()
 		self.highlight_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.004
-		self.highlight_char = 0
+		self.highlight_lifetime = 6
 	
 	# stop all animations in progress
 	def StopAll(self):
 		self.rain_active = False
 		self.gun_active = False
-		self.highlight_psg = None
-		self.message_lines = None
+		self.af_attack_active = False
+		self.highlight_unit = None
 		libtcod.console_clear(anim_con)
 	
 	# update animation statuses and animation console
@@ -1870,16 +1883,17 @@ class AnimHandler:
 					self.af_attack_positions = sample(self.af_attack_line, int(len(self.af_attack_line) / 5))
 					self.af_attack_remaining -= 1
 		
-		# map hex highlight
-		if self.highlight_vp_hex:
+		# unit highlight
+		if self.highlight_unit is not None:
 			if time.time() - self.highlight_timer >= self.highlight_click:
 				updated_animation = True
 				self.highlight_timer =  time.time()
 				# remove animation if it's reached its end
-				if self.highlight_char == len(HIGHLIGHT_CHARS) - 1:
+				if self.highlight_lifetime == 0:
+					self.highlight_unit = None
 					self.highlight_vp_hex = None
 					self.anim_finished = True
-				self.highlight_char += 1
+				self.highlight_lifetime -= 1
 		
 		# if we updated any animations, draw all of them to the screen
 		if updated_animation:
@@ -1900,16 +1914,24 @@ class AnimHandler:
 				(x,y) = self.gun_line[self.gun_location]
 				libtcod.console_put_char_ex(anim_con, x, y, 249, libtcod.white,
 					libtcod.black)
-			if self.highlight_vp_hex:
+			if self.highlight_unit is not None:
 				(hx, hy) = self.highlight_vp_hex
 				(x,y) = PlotHex(hx, hy)
 				x += 1
 				y += 1
-				for (xm, ym) in HEX_EDGE_TILES:
-					libtcod.console_put_char_ex(anim_con, x+xm, y+ym,
-						HIGHLIGHT_CHARS[self.highlight_char],
-						HEX_HIGHLIGHT_COL, libtcod.black)
-		
+				if self.highlight_lifetime % 3 == 0:
+					chars = [249,249,249,249]
+				else:
+					chars = [169,170,28,29]
+				libtcod.console_put_char_ex(anim_con, x-1, y-1,
+					chars[0], UNIT_HIGHLIGHT_COL, libtcod.black)
+				libtcod.console_put_char_ex(anim_con, x+1, y-1,
+					chars[1], UNIT_HIGHLIGHT_COL, libtcod.black)
+				libtcod.console_put_char_ex(anim_con, x-1, y+1,
+					chars[2], UNIT_HIGHLIGHT_COL, libtcod.black)
+				libtcod.console_put_char_ex(anim_con, x+1, y+1,
+					chars[3], UNIT_HIGHLIGHT_COL, libtcod.black)
+				
 		return updated_animation
 
 
@@ -1948,13 +1970,12 @@ class AI:
 				(score, text) = scenario.GetAttackScore(self.owner, weapon, target,
 					rotate_allowed=True, pivot_allowed=pivot_possible)
 				if score is not None:
-					if score == 0.0: continue
 					ranked_list.append([score, weapon, target])
 					if score > highest_score:
 						highest_score = score
 			
 		# no effective attacks possible
-		if len(ranked_list) == 0: return (None, None)
+		if len(ranked_list) == 0: return (None, None, None)
 		
 		# prune all but best attacks
 		for item in reversed(ranked_list):
@@ -1963,7 +1984,7 @@ class AI:
 				
 		# randomly pick from among remaining best attacks
 		item = choice(ranked_list)
-		return (item[1], item[2])
+		return (item[0], item[1], item[2])
 	
 	# determine an action for this unit and do it
 	def DoAIAction(self):
@@ -1984,7 +2005,7 @@ class AI:
 		if d1 == d2 and roll > self.owner.morale_lvl:
 			if scenario.IsOnViewport(self.owner.hx, self.owner.hy):
 				scenario.AddMessage(self.owner.GetName() + " doesn't appear to do " +
-					"anything.", (self.owner.hx, self.owner.hy))
+					"anything.", self.owner)
 			return
 		
 		# check for compulsary actions
@@ -2017,10 +2038,12 @@ class AI:
 		# check for 1+ adjacent known enemy targets, must try to attack one if possible
 		target_list = self.GetEnemyTargetsWithin(1, must_be_known=True)
 		if len(target_list) > 0:
-			(weapon, target) = self.GetBestAttack(target_list)
+			(score, weapon, target) = self.GetBestAttack(target_list)
 			if target is not None:
-				self.DoAttack(weapon, target)
+				if score > 0.0:
+					self.DoAttack(weapon, target)
 				return True
+		return False
 	
 	# try do a random move action
 	def DoMoveAction(self):
@@ -2055,9 +2078,31 @@ class AI:
 	# try to do an attack action
 	def DoFireAction(self):
 		target_list = self.GetEnemyTargetsWithin(6)
+		
+		# no targets
 		if len(target_list) == 0: return
-		(weapon, target) = self.GetBestAttack(target_list)
-		if target is None: return
+		
+		(score, weapon, target) = self.GetBestAttack(target_list)
+		
+		# no possible attacks
+		if score is None: return
+		
+		# there was a possible attack, but no chance to hit
+		if score == 0.0:
+			# guns might benefit from pivoting to face a target
+			if not self.owner.gun: return
+			
+			direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
+				target.hy)
+			if weapon.stats['mount'] == 'Turret':
+				self.owner.RotateTurret(direction)
+			else:
+				self.owner.PivotToFace(direction)
+			
+			print 'DEBUG: AI gun turned to face target but no point in firing'
+			
+			return
+		
 		self.DoAttack(weapon, target)
 	
 	# do a specific attack action with a given weapon against a given target
@@ -2067,16 +2112,13 @@ class AI:
 		if not scenario.TargetIsInArc(self.owner, weapon, target):
 			direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
 				target.hy)
-			if weapon.stats['mount'] == 'turret':
+			if weapon.stats['mount'] == 'Turret':
 				self.owner.RotateTurret(direction)
 			else:
 				self.owner.PivotToFace(direction)
 		
 		if target == scenario.player_unit:
-			text = 'you'
-		else:
-			text = target.GetName()
-		scenario.AddMessage(self.owner.GetName() + ' fires at ' + text + '!', None)
+			scenario.AddMessage(self.owner.GetName() + ' fires at you!', self.owner)
 		DrawScreenConsoles()
 		
 		InitAttack(self.owner, weapon, target)
@@ -2392,7 +2434,7 @@ class MapHex:
 			else:
 				text = 'The enemy has captured an objective.'
 			
-		scenario.AddMessage(text, (self.hx, self.hy))
+		scenario.AddMessage(text, self)
 
 
 # a map of hexes for use in a campaign day
@@ -2851,7 +2893,7 @@ class Scenario:
 		# see if target must current be in weapon arc
 		if not attacker.infantry:
 			arc_check = False
-			if weapon.stats['mount'] == 'turret':
+			if weapon.stats['mount'] == 'Turret':
 				if not rotate_allowed and not pivot_allowed:
 					arc_check = True
 			else:
@@ -2882,7 +2924,7 @@ class Scenario:
 		hx = target.hx - attacker.hx
 		hy = target.hy - attacker.hy
 		
-		if weapon.stats['mount'] == 'turret':
+		if weapon.stats['mount'] == 'Turret':
 			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.turret_facing))
 		else:
 			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.facing))
@@ -2959,13 +3001,13 @@ class Scenario:
 			unit_activated = True
 		
 	# add a new message to the log, and display it on the current message console
-	def AddMessage(self, text, highlight_hex):
+	def AddMessage(self, text, unit):
 		self.messages.append(text)
 		UpdateMsgConsole()
 		# we do this so as not to mess up the attack console being displayed
 		libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 27, 58)
-		if highlight_hex is not None:
-			scenario.anim.InitHexHighlight(highlight_hex)
+		if unit is not None:
+			scenario.anim.InitUnitHighlight(unit)
 			WaitForAnimation()
 	
 	# set up map viewport hexes based on current player tank position and facing
@@ -3392,6 +3434,12 @@ def CalcAttack(attacker, weapon, target):
 			attack_obj.base_to_hit = to_hit_list[1]
 		
 		# calculate dice roll modifiers
+		if attacker.gun and attacker.changed_facing:
+			if weapon.stats['mount'] == 'Turret':
+				attack_obj.modifiers.append(('Rotated Gun', -1))
+			else:
+				attack_obj.modifiers.append(('Pivoted Gun', -3))
+		
 		if attacker.moved_last_action:
 			attack_obj.modifiers.append(('Moved Last Action', -2))
 
@@ -5855,9 +5903,9 @@ def DoScenario(load_savegame=False):
 		scenario.minute_limit = 0
 		
 		# display scenario info: chance to cancel scenario start
-		#if not ScenarioSummary():
-		#	del scenario
-		#	return
+		if not ScenarioSummary():
+			del scenario
+			return
 		
 		libtcod.console_clear(0)
 		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE,
@@ -6245,9 +6293,6 @@ def DoScenario(load_savegame=False):
 			scenario.display_los = False
 			DrawScreenConsoles()
 		
-		
-		
-
 	# we're exiting back to the main menu, so delete the scenario object
 	del scenario
 

@@ -2689,14 +2689,10 @@ class Scenario:
 	def GenerateEnemyOOB(self):
 		
 		# FUTURE - will be integrated into national defs in a more generic way
-		dummy_number = 2
 		total_groups = 6
+		
+		total_units = 0
 		for i in range(total_groups):
-			
-			dummy = False
-			if i + dummy_number >= total_groups:
-				dummy = True
-			
 			prefer_terrain = True
 			
 			unit_num = 1
@@ -2813,16 +2809,31 @@ class Scenario:
 					new_unit.turret_facing = self.player_direction
 				new_unit.morale_lvl = 9
 				new_unit.skill_lvl = 9
-				new_unit.dummy = dummy
 				new_unit.hx = hx
 				new_unit.hy = hy
 				map_hex.unit_stack.append(new_unit)
 				self.unit_list.append(new_unit)
+				total_units += 1
 			
 			if DEBUG_MODE:
 				text = 'Spawned ' + unit_id + ' x ' + str(unit_num)
-				if dummy: text += ' (dummy)'
 				print text
+		
+		# set dummy flags
+		dummy_percent = 35
+		dummy_num = int(total_units * dummy_percent / 100)
+		
+		if DEBUG_MODE:
+			text = 'Setting ' + str(dummy_num) + ' dummy units out of ' + str(total_units)
+			print text
+		
+		shuffle(self.unit_list)
+		for unit in self.unit_list:
+			if unit.owning_player == 1:
+				unit.dummy = True
+				dummy_num -= 1
+			if dummy_num == 0: break
+		
 	
 	# load unit portraits for all active units into a dictionary
 	def LoadUnitPortraits(self):
@@ -2948,6 +2959,7 @@ class Scenario:
 		return True
 	
 	# randomize the order of units in unit_list to reflect activation order in each turn
+	# FUTURE: certain types of units might move forward in list?
 	def GenerateUnitOrder(self):
 		shuffle(self.unit_list)
 	
@@ -5917,7 +5929,7 @@ def DoScenario(load_savegame=False):
 		# spawn the player unit
 		# FUTURE: integrate into a single spawn function with deployment zones
 		#  for each side
-		new_unit = Unit('Panzer 35t')
+		new_unit = Unit('panzer_38_t_a')
 		new_unit.owning_player = 0
 		new_unit.vehicle_name = 'Gretchen'
 		new_unit.facing = 0

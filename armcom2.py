@@ -2123,7 +2123,7 @@ class AI:
 				self.owner.PivotToFace(direction)
 		
 		if target == scenario.player_unit:
-			scenario.AddMessage(self.owner.GetName() + ' fires at you!', self.owner)
+			scenario.AddMessage(self.owner.GetName() + ' fires at you!', None)
 		DrawScreenConsoles()
 		
 		InitAttack(self.owner, weapon, target)

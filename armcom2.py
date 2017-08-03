@@ -2127,7 +2127,6 @@ class AI:
 		DrawScreenConsoles()
 		
 		InitAttack(self.owner, weapon, target)
-
 		
 
 # terrain type: determines effect of different types of map hex terrain

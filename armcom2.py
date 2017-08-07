@@ -68,7 +68,7 @@ from encodings import hex_codec, ascii, utf_8, cp850
 
 NAME = 'Armoured Commander II'				# game name
 #VERSION = 'Alpha 1.0'					# game version: determines saved game compatability
-VERSION = 'August 4 2017'			
+VERSION = 'September 8 2017'			
 SUBVERSION = ''						# descriptive, no effect on compatability
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -2224,7 +2224,6 @@ class CommandMenu:
 	# clear any existing menu options
 	def Clear(self):
 		self.cmd_list = []
-		#self.selected_option = None
 	
 	# add an option to the menu
 	def AddOption(self, option_id, key_code, option_text, desc=None, inactive=False):
@@ -2251,7 +2250,13 @@ class CommandMenu:
 				return option
 			if option.key_code == 'Esc' and key.vk == libtcod.KEY_ESCAPE:
 				return option
+			if option.key_code == 'Home' and key.vk == libtcod.KEY_HOME:
+				return option
 			if option.key_code == 'End' and key.vk == libtcod.KEY_END:
+				return option
+			if option.key_code == 'PgUp' and key.vk == libtcod.KEY_PAGEUP:
+				return option
+			if option.key_code == 'PgDn' and key.vk == libtcod.KEY_PAGEDOWN:
 				return option
 		return None
 	
@@ -2683,6 +2688,135 @@ class Scenario:
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
 	
+	# display a window with the message history and allow the player to scroll through it
+	def DisplayMsgHistory(self):
+		
+		# calculate window size and position
+		w = WINDOW_WIDTH - 6
+		h = WINDOW_HEIGHT - 4
+		x = WINDOW_XM - int(w/2)
+		y = WINDOW_YM - int(h/2)
+		
+		# set up menu
+		menu = CommandMenu('message_history_menu')
+		menu.AddOption('line_up', 'W', 'Scroll Up')
+		menu.AddOption('line_dn', 'S', 'Scroll Down')
+		menu.AddOption('page_up', 'PgUp', 'Previous Turn')
+		menu.AddOption('page_dn', 'PgDn', 'Next Turn')
+		menu.AddOption('top', 'Home', 'Top')
+		menu.AddOption('bottom', 'End', 'Bottom')
+		menu.AddOption('exit_menu', 'Esc', 'Return to Game')
+		
+		# setup initial marker for last message to display
+		m = len(self.messages) - 1
+		
+		# current placeholder of last line in window
+		line_y = y+h-11
+		y1 = line_y
+		
+		# darken the screen background, 
+		libtcod.console_blit(darken_con, 0, 0, 0, 0, con, 0, 0, 0.0, 0.7)
+		
+		exit_view = False
+		while not exit_view:
+			
+			# draw a black box, a frame around it, and the view title
+			libtcod.console_rect(con, x, y, w, h, True, libtcod.BKGND_SET)
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			DrawFrame(con, x, y, w, h)
+			libtcod.console_print_ex(con, WINDOW_XM, y+1, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'Message History')
+			
+			# display messages
+			y1 = line_y
+			for i in range(m, -1, -1):
+				
+				# break the message into lines to fit the window
+				lines = wrap(self.messages[i], w-2, subsequent_indent = ' ')
+				
+				# message too long to fit in window
+				if y1 - (len(lines) - 1) < y + 2:
+					break
+				
+				# draw the message lines
+				for line in lines:
+					libtcod.console_print(con, x+1, y1, line)
+					y1 -= 1
+			
+			# display menu
+			menu.DisplayMe(con, WINDOW_XM-12, y+h-9, 24)
+			
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			
+			update_view = False
+			while not update_view:
+				
+				libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+					key, mouse)
+				if libtcod.console_is_window_closed(): sys.exit()
+			
+				if key is None: continue
+				
+				# select previous or next menu option
+				if key.vk == libtcod.KEY_UP:
+					menu.SelectNextOption(reverse=True)
+					update_view = True
+					continue
+					
+				elif key.vk == libtcod.KEY_DOWN:
+					menu.SelectNextOption()
+					update_view = True
+					continue
+				
+				# activate selected menu option
+				elif key.vk == libtcod.KEY_ENTER:
+					option = menu.GetSelectedOption()
+				
+				# see if we pressed a key associated with a menu option
+				else:
+					option = menu.GetOptionByKey()
+				
+				if option is None: continue
+				
+				# select this option and highlight it
+				menu.selected_option = option
+				menu.DisplayMe(con, WINDOW_XM-12, y+h-9, 24)
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_flush()
+				
+				update_view = True
+				
+				if option.option_id == 'exit_menu':
+					exit_view = True
+					
+				elif option.option_id == 'line_up':
+					if m > 0: m -= 1
+
+				elif option.option_id == 'line_dn':
+					if m < len(self.messages) - 1: m += 1
+
+				elif option.option_id == 'top':
+					m = 0
+
+				elif option.option_id == 'bottom':
+					m = len(self.messages) - 1
+				
+				elif option.option_id in ['page_up', 'page_dn']:
+					if option.option_id == 'page_up':
+						if m == 0: continue
+						step = -1
+						end = -1
+					else:
+						if m == len(self.messages) - 1: continue
+						step = 1
+						end = len(self.messages)
+					for s in range(m+step, end, step):
+						text = self.messages[s]
+						if text[:13] == 'Time is now: ':
+							m = s
+							break
+				
 	# returns True if given hex is currently within the player's map viewport
 	def IsOnViewport(self, hx, hy):
 		if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) > 6:
@@ -5576,6 +5710,11 @@ def DrawScreenConsoles():
 	libtcod.console_blit(context_con, 0, 0, 0, 0, con, 27, 1)
 	libtcod.console_blit(objective_con, 0, 0, 0, 0, con, 70, 50)
 	libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 27, 58)
+	libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+	libtcod.console_put_char(con, 27, 56, 'M')
+	libtcod.console_set_default_foreground(con, INFO_TEXT_COL)
+	libtcod.console_print(con, 28, 56, 'essage Log')
+	libtcod.console_set_default_foreground(con, libtcod.white)
 
 	# LoS display for player unit
 	if scenario.display_los and scenario.player_target is not None:
@@ -6049,7 +6188,6 @@ def DoScenario(load_savegame=False):
 		scenario.AddMessage('Time is now: ' + str(scenario.hour) + ':' + 
 			str(scenario.minute).zfill(2), None)
 		
-		
 	# End of new/continued game set-up
 	
 	UpdateScenInfoConsole()
@@ -6125,6 +6263,13 @@ def DoScenario(load_savegame=False):
 		
 		# skip this section if no commands in buffer
 		if key is None: continue
+		
+		# special reserved key commands
+		key_char = chr(key.c).lower()
+		if key_char == 'm':
+			scenario.DisplayMsgHistory()
+			DrawScreenConsoles()
+			continue
 		
 		# select previous or next menu option
 		if key.vk == libtcod.KEY_UP:

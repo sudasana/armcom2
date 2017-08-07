@@ -181,6 +181,7 @@ FRIENDLY_OBJ_COL = libtcod.Color(50, 255, 0)		# friendly-held "
 ACTION_KEY_COL = libtcod.Color(70, 170, 255)		# colour for key commands
 TITLE_COL = libtcod.white				# fore and background colours for
 TITLE_BG_COL = libtcod.Color(0, 50, 100)		#  console titles and highlighted options
+TITLE_BG_COL2 = libtcod.Color(150, 50, 0)
 SECTION_BG_COL = libtcod.Color(0, 32, 64)		# darker bg colour for sections
 SECTION_BG_COL2 = libtcod.Color(0, 120, 120)		# lighter bg colour for sections
 INFO_TEXT_COL = libtcod.Color(190, 190, 190)		# informational text colour
@@ -3426,7 +3427,12 @@ class Scenario:
 			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
 			
 			# see if we can fire this weapon at current target
-			menu_option = self.cmd_menu.AddOption('fire_weapon', 'F', 'Fire')
+			cmd_text = 'Fire'
+			if scenario.selected_weapon.weapon_type == 'gun':
+				if scenario.selected_weapon.stats['loaded_ammo'] is not None:
+					cmd_text += ' ' + scenario.selected_weapon.stats['loaded_ammo']
+			menu_option = self.cmd_menu.AddOption('fire_weapon', 'F', cmd_text)
+			
 			if scenario.player_target is None:
 				menu_option.inactive = True
 				menu_option.desc = 'No target selected'
@@ -4768,12 +4774,13 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	del temp
 	
 	# title
-	libtcod.console_set_default_background(attack_con, TITLE_BG_COL)
-	libtcod.console_rect(attack_con, 1, 1, 24, 1, False, libtcod.BKGND_SET)
 	if ap_roll:
 		text = 'Armour Penetration'
+		libtcod.console_set_default_background(attack_con, TITLE_BG_COL2)
 	else:
 		text = 'Attack Roll'
+		libtcod.console_set_default_background(attack_con, TITLE_BG_COL)
+	libtcod.console_rect(attack_con, 1, 1, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
@@ -4850,7 +4857,10 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		libtcod.CENTER, text)
 	
 	# list of roll modifiers
-	libtcod.console_set_default_background(attack_con, TITLE_BG_COL)
+	if ap_roll:
+		libtcod.console_set_default_background(attack_con, TITLE_BG_COL2)
+	else:
+		libtcod.console_set_default_background(attack_con, TITLE_BG_COL)
 	libtcod.console_rect(attack_con, 1, 27, 24, 1, False, libtcod.BKGND_SET)
 	libtcod.console_print_ex(attack_con, 13, 27, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Roll Modifiers')

@@ -403,6 +403,7 @@ class Unit:
 		
 		# special abilities or traits
 		self.recce = False
+		self.open_topped = False
 		self.unreliable = False
 		
 		# load the baseline stats for this unit from data file
@@ -455,6 +456,7 @@ class Unit:
 				self.armour['hull_front'] = int(armour_ratings.find('hull_front').text)
 				self.armour['hull_side'] = int(armour_ratings.find('hull_side').text)
 			if item.find('recce') is not None: self.recce = True
+			if item.find('open_topped') is not None: self.open_topped = True
 			if item.find('unreliable') is not None: self.unreliable = True
 			
 			# maximum total gun ammo load
@@ -650,7 +652,10 @@ class Unit:
 			if self.armour is None:
 				libtcod.console_print(console, x, y, 'Unarmoured')
 			else:
-				libtcod.console_print(console, x, y, 'Armoured')
+				text = 'Armoured'
+				if self.open_topped:
+					text += '(OT)'
+				libtcod.console_print(console, x, y, text)
 				libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
 				# display armour for turret and hull
 				if self.turret_facing is None:
@@ -2099,7 +2104,7 @@ class AI:
 			
 			direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
 				target.hy)
-			if weapon.stats['mount'] == 'Turret':
+			if weapon.stats['mount'] == 'turret':
 				self.owner.RotateTurret(direction)
 			else:
 				self.owner.PivotToFace(direction)
@@ -2117,7 +2122,7 @@ class AI:
 		if not scenario.TargetIsInArc(self.owner, weapon, target):
 			direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
 				target.hy)
-			if weapon.stats['mount'] == 'Turret':
+			if weapon.stats['mount'] == 'turret':
 				self.owner.RotateTurret(direction)
 			else:
 				self.owner.PivotToFace(direction)
@@ -3042,7 +3047,7 @@ class Scenario:
 		# see if target must current be in weapon arc
 		if not attacker.infantry:
 			arc_check = False
-			if weapon.stats['mount'] == 'Turret':
+			if weapon.stats['mount'] == 'turret':
 				if not rotate_allowed and not pivot_allowed:
 					arc_check = True
 			else:
@@ -3073,7 +3078,7 @@ class Scenario:
 		hx = target.hx - attacker.hx
 		hy = target.hy - attacker.hy
 		
-		if weapon.stats['mount'] == 'Turret':
+		if weapon.stats['mount'] == 'turret':
 			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.turret_facing))
 		else:
 			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.facing))
@@ -3585,7 +3590,7 @@ def CalcAttack(attacker, weapon, target):
 		
 		# calculate dice roll modifiers
 		if attacker.gun and attacker.changed_facing:
-			if weapon.stats['mount'] == 'Turret':
+			if weapon.stats['mount'] == 'turret':
 				attack_obj.modifiers.append(('Rotated Gun', -1))
 			else:
 				attack_obj.modifiers.append(('Pivoted Gun', -3))

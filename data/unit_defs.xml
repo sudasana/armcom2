@@ -141,7 +141,7 @@
       <type>gun</type>
       <calibre>47</calibre>
       <long_range>S</long_range>
-      <mount>Turret</mount>
+      <mount>turret</mount>
       <fired_by>Gunner</fired_by>
       <rr_size>4</rr_size>
       <rof>4</rof>
@@ -193,7 +193,7 @@
       <type>gun</type>
       <calibre>37</calibre>
       <long_range>L</long_range>
-      <mount>Turret</mount>
+      <mount>turret</mount>
       <fired_by>Gunner</fired_by>
       <rr_size>4</rr_size>
       <rof>4</rof>
@@ -230,6 +230,7 @@
   <unit_def>
     <vehicle/>
     <turret/>
+    <recce/>
     <id>wz_34_mg</id>
     <name>wz. 34 (MG)</name>
     <unit_type>Armoured Car</unit_type>
@@ -265,6 +266,7 @@
   <unit_def>
     <vehicle/>
     <turret/>
+    <recce/>
     <id>wz_34_37</id>
     <name>wz. 34 (37mm)</name>
     <unit_type>Armoured Car</unit_type>
@@ -281,7 +283,7 @@
       <type>gun</type>
       <calibre>37</calibre>
       <long_range>S</long_range>
-      <mount>Turret</mount>
+      <mount>turret</mount>
       <fired_by>Commander/Gunner</fired_by>
       <firing_group>0</firing_group>
     </weapon>
@@ -349,7 +351,7 @@
       <type>gun</type>
       <calibre>75</calibre>
       <long_range>L</long_range>
-      <mount>Turret</mount>
+      <mount>turret</mount>
       <rof>6</rof>
       <firing_group>0</firing_group>
     </weapon>
@@ -454,7 +456,7 @@
   <unit_def>
     <vehicle/>
     <turret/>
-    <id>Panzer 35t</id>
+    <id>panzer_35_t</id>
     <name>Panzer 35(t)</name>
     <unit_type>Light Tank</unit_type>
     <portrait>unit_pz_35t.xp</portrait>
@@ -586,6 +588,68 @@
     </crew_position>
     <crew_position>
       <name>Assistant Driver</name>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+  </unit_def>
+  
+  <!-- German Armoured Cars -->
+  
+  <unit_def>
+    <vehicle/>
+    <turret/>
+    <open_topped/>
+    <recce/>
+    <id>psw_222</id>
+    <name>PSW 222</name>
+    <unit_type>Armoured Car</unit_type>
+    <portrait>unit_psw_222.xp</portrait>
+    <size_class>Small</size_class>
+    <movement_class>Wheeled</movement_class>
+    <armour>
+      <turret_front>1</turret_front>
+      <turret_side>1</turret_side>
+      <hull_front>1</hull_front>
+      <hull_side>1</hull_side>
+    </armour>
+    <weapon>
+      <type>gun</type>
+      <calibre>20</calibre>
+      <long_range>L</long_range>
+      <mount>turret</mount>
+      <fired_by>Gunner/Loader</fired_by>
+      <rr_size>4</rr_size>
+      <rof>6</rof>
+      <firing_group>0</firing_group>
+      <ammo_type>HE</ammo_type>
+      <ammo_type>AP</ammo_type>
+    </weapon>
+    <weapon>
+      <type>coax_mg</type>
+      <fp>5</fp>
+      <mount>turret</mount>
+      <rof>4</rof>
+      <fired_by>Gunner/Loader</fired_by>
+      <firing_group>0</firing_group>
+    </weapon>
+    <max_ammo>66</max_ammo>			<!-- No idea how much this should be -->
+    <crew_position>
+      <name>Commander</name>
+      <turret/>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Gunner/Loader</name>
+      <turret/>
+      <hatch/>
+      <open_visible>012345</open_visible>
+      <closed_visible>0</closed_visible>
+    </crew_position>
+    <crew_position>
+      <name>Driver</name>
+      <hatch/>
+      <open_visible>015</open_visible>
       <closed_visible>0</closed_visible>
     </crew_position>
   </unit_def>

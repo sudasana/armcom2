@@ -21,7 +21,7 @@ DLLS = ['libtcod-mingw.dll', 'python27.dll', 'SDL.dll']
 
 if os.path.exists('dist/'): shutil.rmtree('dist/')	# remove last dist dir
 
-extra_files = [ ("",['readme.txt', 'gpl.txt']),
+extra_files = [ ("",['readme.txt', 'gpl.txt', 'license.txt']),
 	("data",glob.glob(os.path.join('data','c64_12x12.png'))),
 	("data",glob.glob(os.path.join('data','c64_16x16.png'))),
 	("data",glob.glob(os.path.join('data','*.xml'))),

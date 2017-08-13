@@ -347,10 +347,11 @@ class Unit:
 		self.unit_type = ''			# description of the type of unit this is
 		self.vehicle_name = None		# tank or other vehicle name
 		self.portrait = None
-		self.ai = AI(self)			# pointer to AI instance
 		self.owning_player = None		# player that controls this unit
-		#self.squadron_leader = None		# used for player squadron
-							# Not used yet
+		
+		self.ai = AI(self)			# pointer to AI instance
+		
+		self.squadron_leader = None		# pointer to squadron leader, used for AI
 		
 		self.morale_lvl = 0			# morale rating, set during unit spawn
 		self.skill_lvl = 0			# skill rating, "
@@ -1480,29 +1481,39 @@ class Unit:
 		attack_obj.modifiers = modifiers
 		attack_obj.final_ap = final_ap
 		
-		# display AP roll
-		DisplayAttack(attack_obj, ap_roll=True)
-		WaitForEnter()
+		# display AP roll if player is not involved
+
+		display_attack = True
+		if attack_obj.attacker != scenario.player_unit and self != scenario.player_unit:
+			display_attack = False
 		
-		# do dice roll and display animation
-		pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
-		for i in range(5):
-			d1, d2, roll = Roll2D6()
-			DrawDie(attack_con, 9, 50, d1)
-			DrawDie(attack_con, 14, 50, d2)
-			libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-			Wait(pause_time)
+		if display_attack:
 		
-		# display roll result
-		text = str(roll) + ': '
-		if roll <= attack_obj.final_ap:
-			text += 'Shot penetrated!'
+			DisplayAttack(attack_obj, ap_roll=True)
+			WaitForEnter()
+			
+			# do dice roll and display animation
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
+			for i in range(5):
+				d1, d2, roll = Roll2D6()
+				DrawDie(attack_con, 9, 50, d1)
+				DrawDie(attack_con, 14, 50, d2)
+				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_flush()
+				Wait(pause_time)
+			
+			# display roll result
+			text = str(roll) + ': '
+			if roll <= attack_obj.final_ap:
+				text += 'Shot penetrated!'
+			else:
+				text += 'Shot bounced off!'
+			libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
+		
 		else:
-			text += 'Shot bounced off!'
-		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
-			libtcod.CENTER, text)
+			d1, d2, roll = Roll2D6()
 		
 		# determine penetration result
 		if roll <= attack_obj.final_ap:
@@ -1543,19 +1554,21 @@ class Unit:
 			if DEBUG_MODE and self == scenario.player_unit and scenario.debug_flags['immortal']:
 				result = 'DEBUG: Immortality'
 			
-			libtcod.console_print_ex(attack_con, 13, 55, libtcod.BKGND_NONE,
-				libtcod.CENTER, result)
+			if display_attack:
+				libtcod.console_print_ex(attack_con, 13, 55, libtcod.BKGND_NONE,
+					libtcod.CENTER, result)
 
-		libtcod.console_rect(attack_con, 1, 57, 24, 1, True, libtcod.BKGND_NONE)
-		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		libtcod.console_print(attack_con, 6, 57, 'Enter')
-		libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		libtcod.console_print(attack_con, 12, 57, 'Continue')
-		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
-		
-		WaitForEnter()
+		if display_attack:
+			libtcod.console_rect(attack_con, 1, 57, 24, 1, True, libtcod.BKGND_NONE)
+			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+			libtcod.console_print(attack_con, 6, 57, 'Enter')
+			libtcod.console_set_default_foreground(attack_con, libtcod.white)
+			libtcod.console_print(attack_con, 12, 57, 'Continue')
+			libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			
+			WaitForEnter()
 		
 		if roll <= attack_obj.final_ap:
 			return result
@@ -2005,32 +2018,51 @@ class AI:
 		# for now, broken units just do nothing
 		if self.owner.broken: return
 		
-		#print ('DEBUG: ' + self.owner.GetName(true_name=True) + ' in ' + str(self.owner.hx) +
-		#	', ' + str(self.owner.hy) + ' is acting')
+		#debug_text = ('AI DEBUG: ' + self.owner.GetName(true_name=True) + ' in ' + str(self.owner.hx) +
+		#	', ' + str(self.owner.hy))
+		#print debug_text + ' is acting'
 		
 		# do initial action roll
 		d1, d2, roll = Roll2D6()
 		
-		# check for panic
-		if d1 == d2 and roll > self.owner.morale_lvl:
-			return
+		# check for panic (enemy units only)
+		if self.owner.owning_player == 1:
+			if d1 == d2 and roll > self.owner.morale_lvl:
+				#print debug_text + ' panicked and will do nothing this turn'
+				return
 		
 		# check for compulsary actions
 		if self.DoCompulsaryAction():
+			#print debug_text + ' did a compulsary action'
 			return
 		
+		# check for following/rejoining squadron leader
+		if self.owner.squadron_leader is not None:
+			if self.owner.hx != self.owner.squadron_leader.hx or self.owner.hy != self.owner.squadron_leader.hy:
+				#print debug_text + ' needs to rejoin its squadron leader'
+				roll = 2
+			else:
+				# don't move
+				roll = 12
+		
 		# determine action type from initial roll
-		if roll <= 4:
+		move_threshold = 4
+		
+		if roll <= move_threshold:
 			
 			# do nothing if immobilized
 			if self.owner.immobilized:
+				#print debug_text + ' is immobilized and will do nothing'
 				return
+			
+			#print debug_text + ' starting move actions'
 			
 			move_result = True
 			while move_result and not self.owner.used_up_moves:
 				move_result = self.DoMoveAction()
 			return
-			
+		
+		#print debug_text + ' starting fire action'
 		self.DoFireAction()
 		
 	# check for any compulsary actions, do them and return True if so
@@ -2057,20 +2089,42 @@ class AI:
 		
 		# FUTURE: add ability to look in radius and choose target destination?
 		
-		# build a list of adjacent hexes
-		hex_list = []
-		for (hx, hy) in GetAdjacentHexesOnMap(self.owner.hx, self.owner.hy):
-			map_hex = GetHexAt(hx, hy)
-			# see if a move into this hex is possible
-			if self.owner.CheckMoveInto(hx, hy):
-				hex_list.append(map_hex)
+		map_hex = None
 		
-		# no possible move destinations
-		if len(hex_list) == 0:
-			return False
+		# check for rejoining squadron leader
+		if self.owner.squadron_leader is not None:
+			
+			#print 'AI MOVE: ' + self.owner.GetName(true_name=True) + ' checking for rejoining squadron leader'
+			
+			if self.owner.hx != self.owner.squadron_leader.hx or self.owner.hy != self.owner.squadron_leader.hy:
+				
+				#print 'AI MOVE: ' + self.owner.GetName(true_name=True) + ' trying to rejoin squadron leader'
+				
+				hex_path = GetHexPath(self.owner.hx, self.owner.hy, self.owner.squadron_leader.hx, self.owner.squadron_leader.hy, unit=self.owner)
+				if len(hex_path) > 0:
+					(hx, hy) = hex_path[1]
+					map_hex = GetHexAt(hx,hy)
+					#print 'AI MOVE: Path plotted, next step is ' + str(hx) + ',' + str(hy)
+				else:
+					pass
+					#print 'AI MOVE: Could not find path to squadron leader'
 		
-		map_hex = choice(hex_list)
+		if map_hex is None:
 
+			# build a list of adjacent hexes
+			hex_list = []
+			for (hx, hy) in GetAdjacentHexesOnMap(self.owner.hx, self.owner.hy):
+				map_hex = GetHexAt(hx, hy)
+				# see if a move into this hex is possible
+				if self.owner.CheckMoveInto(hx, hy):
+					hex_list.append(map_hex)
+			
+			# no possible move destinations
+			if len(hex_list) == 0:
+				return False
+			
+			map_hex = choice(hex_list)
+		
 		# pivot to face new target hex
 		direction = GetDirectionToAdjacent(self.owner.hx, self.owner.hy, map_hex.hx, map_hex.hy)
 		if self.owner.facing != direction:
@@ -2110,7 +2164,7 @@ class AI:
 			else:
 				self.owner.PivotToFace(direction)
 			
-			print 'DEBUG: AI gun turned to face target but no point in firing'
+			#print 'AI FIRE: gun turned to face target but no point in firing'
 			
 			return
 		
@@ -2128,8 +2182,12 @@ class AI:
 			else:
 				self.owner.PivotToFace(direction)
 		
+		text = self.owner.GetName() + ' fires ' + weapon.GetName() + ' at '
 		if target == scenario.player_unit:
-			scenario.AddMessage(self.owner.GetName() + ' fires at you!', None)
+			text += 'you!'
+		else:
+			text += target.GetName() + '.'
+		scenario.AddMessage(text, None)
 		DrawScreenConsoles()
 		
 		InitAttack(self.owner, weapon, target)
@@ -2393,12 +2451,11 @@ class MapHex:
 				return
 		print 'ERROR: Terrain type not found: ' + new_terrain_type
 	
-	# returns owning player number if there is a PSG in this hex
+	# returns owning player number if there is a unit in this hex
 	# otherwise -1 if empty
 	def IsOccupied(self):
-		for psg in scenario.unit_list:
-			if psg.hx == self.hx and psg.hy == self.hy:
-				return psg.owning_player
+		if len(self.unit_stack) > 0:
+			return self.unit_stack[0].owning_player
 		return -1
 
 	# reset pathfinding info for this map hex
@@ -3275,7 +3332,7 @@ class Scenario:
 	
 	# end of turn, advance the scenario clock by one turn
 	def AdvanceClock(self):
-		self.minute += 2
+		self.minute += 1
 		if self.minute >= 60:
 			self.minute -= 60
 			self.hour += 1
@@ -4096,7 +4153,7 @@ def GetHexRect(hx, hy, w, h):
 # based on function from ArmCom 1, which was based on:
 # http://stackoverflow.com/questions/4159331/python-speed-up-an-a-star-pathfinding-algorithm
 # http://www.policyalmanac.org/games/aStarTutorial.htm
-def GetHexPath(hx1, hy1, hx2, hy2, psg=None, road_path=False):
+def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
 	
 	# retrace a set of nodes and return the best path
 	def RetracePath(end_node):
@@ -4155,10 +4212,11 @@ def GetHexPath(hx1, hy1, hx2, hy2, psg=None, road_path=False):
 			# ignore impassible nodes
 			if node.terrain_type.water: continue
 			
-			# calculate movement cost based on psg type
-			if psg:
-				# can't move into an occupied location unless it's our destination
-				if node != node2 and node.IsOccupied() != -1:
+			# calculate movement cost based on unit type
+			if unit is not None:
+				# can't move into an enemy-occupied location
+				occupied = node.IsOccupied()
+				if occupied > -1 and occupied != unit.owning_player:
 					continue
 				# FUTURE: calculate cost based on odds of extra/missed turn
 				cost = 1
@@ -4525,12 +4583,17 @@ def GetFacing(attacker, target, turret_facing=False):
 # initiate an attack by one unit on another
 def InitAttack(attacker, weapon, target):
 	
+	# if player is not involved, we display less information on the screen
+	display_attack = True
+	if attacker != scenario.player_unit and target != scenario.player_unit:
+		display_attack = False
+	
 	# send information to CalcAttack, which will return an Attack object
 	attack_obj = CalcAttack(attacker, weapon, target)
 	
 	# if player wasn't attacker, display LoS from attacker to target
 	# TODO: this will pause any ongoing animations, need to integrate into animation handler
-	if attacker.owning_player == 1:
+	if attacker != scenario.player_unit:
 		line = GetLine(attacker.screen_x, attacker.screen_y, target.screen_x,
 			target.screen_y)
 		for (x,y) in line[2:-2]:
@@ -4540,13 +4603,12 @@ def InitAttack(attacker, weapon, target):
 			libtcod.console_flush()
 			Wait(3)
 	
-	# display attack console
-	DisplayAttack(attack_obj)
-	
-	# if player is attacker, they have a chance to cancel
-	if WaitForEnter(allow_cancel = (attacker == scenario.player_unit)):
-		DrawScreenConsoles()
-		return
+	if display_attack:
+		DisplayAttack(attack_obj)
+		# if player is attacker, they have a chance to cancel
+		if WaitForEnter(allow_cancel = (attacker == scenario.player_unit)):
+			DrawScreenConsoles()
+			return
 	
 	# set unit fired flag
 	attacker.fired = True
@@ -4564,7 +4626,8 @@ def InitAttack(attacker, weapon, target):
 	# turn off LoS display and clear any LoS drawn above from screen for animation
 	scenario.display_los = False
 	DrawScreenConsoles()
-	libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+	if display_attack:
+		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
 	
@@ -4581,35 +4644,40 @@ def InitAttack(attacker, weapon, target):
 		WaitForAnimation()
 	
 	# do to-hit roll
-	# clear "Enter to Roll" and "Backspace to Cancel" lines
-	libtcod.console_rect(attack_con, 1, 57, 24, 1, True, libtcod.BKGND_NONE)
-	libtcod.console_rect(attack_con, 1, 58, 24, 1, True, libtcod.BKGND_NONE)
-	libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
-	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-	libtcod.console_flush()
+	if display_attack:
 	
-	# do dice roll and display animation
-	pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
-	for i in range(5):
-		d1, d2, roll = Roll2D6()
-		DrawDie(attack_con, 9, 49, d1)
-		DrawDie(attack_con, 14, 49, d2)
-		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+		# clear "Enter to Roll" and "Backspace to Cancel" lines
+		libtcod.console_rect(attack_con, 1, 57, 24, 1, True, libtcod.BKGND_NONE)
+		libtcod.console_rect(attack_con, 1, 58, 24, 1, True, libtcod.BKGND_NONE)
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
-		Wait(pause_time)
+		
+		# do dice roll and display animation
+		pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
+		for i in range(5):
+			d1, d2, roll = Roll2D6()
+			DrawDie(attack_con, 9, 49, d1)
+			DrawDie(attack_con, 14, 49, d2)
+			libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(pause_time)
+		
+		# display roll result
+		text = str(roll) + ': '
+		if roll == 2 and roll <= attack_obj.final_to_hit:
+			text += 'Critical hit!'
+			attack_obj.critical_hit = True
+		elif roll <= attack_obj.final_to_hit:
+			text += 'Attack hit!'
+		else:
+			text += 'Attack missed'
+		libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
 	
-	# display roll result
-	text = str(roll) + ': '
-	if roll == 2 and roll <= attack_obj.final_to_hit:
-		text += 'Critical hit!'
-		attack_obj.critical_hit = True
-	elif roll <= attack_obj.final_to_hit:
-		text += 'Attack hit!'
 	else:
-		text += 'Attack missed'
-	libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
-		libtcod.CENTER, text)
+		d1, d2, roll = Roll2D6()
 	
 	# if target was hit, save attack details to target to be resolved at end of attacker activation
 	if roll <= attack_obj.final_to_hit:
@@ -4726,36 +4794,39 @@ def InitAttack(attacker, weapon, target):
 			text = 'RoF maintained'
 		else:
 			text = 'RoF not maintained'
-		libtcod.console_print_ex(attack_con, 13, 55, libtcod.BKGND_NONE,
-			libtcod.CENTER, text)
+		if display_attack:
+			libtcod.console_print_ex(attack_con, 13, 55, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
 	
-	# player maintained RoF
-	if attacker == scenario.player_unit and rof_maintained:
-		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		libtcod.console_print(attack_con, 5, 57, 'Enter')
-		libtcod.console_print(attack_con, 6, 58, 'Bksp')
-		libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		libtcod.console_print(attack_con, 11, 57, 'Fire Again')
-		libtcod.console_print(attack_con, 11, 58, 'Stop Firing')
-	else:
-		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		libtcod.console_print(attack_con, 5, 57, 'Enter')
-		libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		libtcod.console_print(attack_con, 11, 57, 'Continue')
+	if display_attack:
 	
-	libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
-	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-	libtcod.console_flush()
-	
-	choice = WaitForEnter(allow_cancel=True)
-	
-	# player wasn't attacker, no choice to be made
-	if attacker != scenario.player_unit:
-		return True
-	
-	# player kept RoF and chose to keep firing, return False to start the function again
-	if rof_maintained and not choice:
-		return False
+		# player maintained RoF
+		if attacker == scenario.player_unit and rof_maintained:
+			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+			libtcod.console_print(attack_con, 5, 57, 'Enter')
+			libtcod.console_print(attack_con, 6, 58, 'Bksp')
+			libtcod.console_set_default_foreground(attack_con, libtcod.white)
+			libtcod.console_print(attack_con, 11, 57, 'Fire Again')
+			libtcod.console_print(attack_con, 11, 58, 'Stop Firing')
+		else:
+			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+			libtcod.console_print(attack_con, 5, 57, 'Enter')
+			libtcod.console_set_default_foreground(attack_con, libtcod.white)
+			libtcod.console_print(attack_con, 11, 57, 'Continue')
+		
+		libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		
+		choice = WaitForEnter(allow_cancel=True)
+		
+		# player wasn't attacker, no choice to be made
+		if attacker != scenario.player_unit:
+			return True
+		
+		# player kept RoF and chose to keep firing, return False to start the function again
+		if rof_maintained and not choice:
+			return False
 	
 	# player either didn't keep RoF or chose not to continue firing
 	# turn LoS display back on
@@ -6131,7 +6202,20 @@ def DoScenario(load_savegame=False):
 		new_crew.position_training['Assistant Driver'] = 10
 		new_unit.SetCrew('Assistant Driver', new_crew)
 		
-		# spawn player squadron
+		# spawn rest of player squadron
+		new_unit = Unit('psw_222')
+		new_unit.owning_player = 0
+		new_unit.facing = 0
+		new_unit.turret_facing = 0
+		new_unit.morale_lvl = 8
+		new_unit.skill_lvl = 8
+		new_unit.hx = scenario.player_unit.hx
+		new_unit.hy = scenario.player_unit.hy
+		new_unit.squadron_leader = scenario.player_unit
+		map_hex = GetHexAt(new_unit.hx, new_unit.hy)
+		map_hex.unit_stack.append(new_unit)
+		scenario.unit_list.append(new_unit)
+		
 		#for i in range(4):
 		#	new_unit = Unit('Panzer 35t')
 		#	scenario.unit_list.append(new_unit)
@@ -6268,7 +6352,7 @@ def DoScenario(load_savegame=False):
 			continue
 		
 		##### AI Actions #####
-		if scenario.active_unit.owning_player == 1:
+		if scenario.player_unit != scenario.active_unit:
 			scenario.active_unit.ai.DoAIAction()
 			scenario.ActivateNextUnit()
 			UpdateScreen()

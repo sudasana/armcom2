@@ -525,8 +525,9 @@ class Unit:
 			self.ResolveHits()
 		if not self.alive: return
 		
-		# do spot check
+		# do spot check and return if this was a dummy unit that was revealed
 		self.DoSpotCheck()
+		if not self.alive: return
 		
 		# reset unit flags
 		self.moved_this_action = False
@@ -1349,22 +1350,15 @@ class Unit:
 		# record score for extra move action / missed turn if applicable
 		extra_turn_score = self.GetMovementTurnChance(new_hx, new_hy)
 		
-		# check for squadron movement
-		unit_list = [self]
-		#for unit in map_hex1.unit_stack:
-		#	if unit.squadron_leader == self:
-		#		unit_list.append(unit)
-		
-		# set location in new hex for all moving units
-		for unit in unit_list:
-			map_hex1.unit_stack.remove(unit)
-			unit.hx = new_hx
-			unit.hy = new_hy
-			# player units always get bumped to top of stack
-			if scenario.player_unit == unit:
-				map_hex2.unit_stack.insert(0, unit)
-			else:
-				map_hex2.unit_stack.append(unit)
+		# set location in nex hex
+		map_hex1.unit_stack.remove(self)
+		self.hx = new_hx
+		self.hy = new_hy
+		# player units always get bumped to top of stack
+		if scenario.player_unit == self:
+			map_hex2.unit_stack.insert(0, self)
+		else:
+			map_hex2.unit_stack.append(self)
 		
 		# display movement animation if on viewport
 		if self.vp_hx is not None and self.vp_hy is not None:
@@ -3222,6 +3216,11 @@ class Scenario:
 		if unit is not None:
 			scenario.anim.InitUnitHighlight(unit)
 			WaitForAnimation()
+		else:
+			DrawScreenConsoles()
+			libtcod.console_flush()
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
+			Wait(pause_time)
 	
 	# set up map viewport hexes based on current player tank position and facing
 	def SetVPHexes(self):
@@ -3270,7 +3269,7 @@ class Scenario:
 			n = target_list.index(self.player_target)
 			self.player_target = target_list[n+1]
 		
-		# move target to top of unuit stack
+		# move target to top of unit stack
 		# move to top of hex stack
 		map_hex = GetHexAt(self.player_target.hx, self.player_target.hy)
 		if len(map_hex.unit_stack) > 1:
@@ -3361,7 +3360,10 @@ class Scenario:
 			
 			menu_option = self.cmd_menu.AddOption('movement_menu', '3', 'Movement')
 			
-			self.cmd_menu.AddOption('weapons_menu', '4', 'Weapons')
+			menu_option = self.cmd_menu.AddOption('weapons_menu', '4', 'Weapons')
+			if scenario.player_unit.moved_this_action:
+				menu_option.inactive = True
+				menu_option.desc = 'Alerady moved this activation'
 			
 			if DEBUG_MODE:
 				self.cmd_menu.AddOption('debug_menu', 'D', 'Debug')

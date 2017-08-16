@@ -377,6 +377,9 @@ class Unit:
 		
 		self.facing = None			# facing direction: guns and vehicles must have this set
 		self.turret_facing = None		# facing of main turret on unit
+		self.previous_facing = None		# hull facing before current action
+		self.previous_turret_facing = None	# turret facing before current action
+		
 		self.movement_class = ''		# movement class
 		self.misses_turns = 0			# turns outstanding left to be missed
 		
@@ -394,7 +397,6 @@ class Unit:
 		self.moved_this_action = False		# unit moved or pivoted in this turn
 		self.moved_last_action = False		# unit moved or pivoted in its previous turn
 		self.fired = False			# unit fired 1+ weapons this turn
-		self.changed_facing = False
 		
 		# status flags
 		self.pinned = False
@@ -536,7 +538,8 @@ class Unit:
 		for weapon in self.weapon_list:
 			weapon.fired = False
 			weapon.no_rof_this_turn = False
-		self.changed_facing = False
+		self.previous_facing = self.facing
+		self.previous_turret_facing = self.turret_facing
 		
 		# check for recovering from negative statuses
 		self.RecoveryCheck()
@@ -1440,7 +1443,6 @@ class Unit:
 		if self.facing is None: return False
 		facing_change = direction - self.facing
 		self.facing = direction
-		self.changed_facing = True
 		
 		# rotate turret facing direction if any
 		if self.turret_facing is not None:
@@ -3654,15 +3656,17 @@ def CalcAttack(attacker, weapon, target):
 			attack_obj.base_to_hit = to_hit_list[1]
 		
 		# calculate dice roll modifiers
-		if attacker.gun and attacker.changed_facing:
-			if weapon.stats['mount'] == 'turret':
-				attack_obj.modifiers.append(('Rotated Gun', -1))
-			else:
-				attack_obj.modifiers.append(('Pivoted Gun', -3))
+		if attacker.moved_this_action:
+			attack_obj.modifiers.append(('Moving', -4))
 		
-		if attacker.moved_last_action:
-			attack_obj.modifiers.append(('Moved Last Action', -2))
-
+		if attacker.facing != attacker.previous_facing:
+			diff = GetDirectionalDiff(attacker.facing, attacker.previous_facing)
+			attack_obj.modifiers.append(('Pivoted', 0 - (diff * 2)))
+		
+		if attacker.previous_turret_facing != attacker.turret_facing:
+			diff = GetDirectionalDiff(attacker.turret_facing, attacker.previous_turret_facing)
+			attack_obj.modifiers.append(('Rotated Turret', 0 - diff))
+		
 		if attacker.pinned:
 			attack_obj.modifiers.append(('Attacker Pinned', -2))
 		
@@ -3697,7 +3701,7 @@ def CalcAttack(attacker, weapon, target):
 		# vehicle targets
 		if target.vehicle:
 			if target.moved_this_action:
-				attack_obj.modifiers.append(('Target vehicle moved', -2))
+				attack_obj.modifiers.append(('Target Vehicle Moved', -2))
 		
 			# size class
 			if target.size_class != 'Normal':
@@ -3732,8 +3736,8 @@ def CalcAttack(attacker, weapon, target):
 		attack_obj.base_fp = weapon.stats['fp']
 		
 		# calculate fp modifiers (multipliers)
-		if attacker.moved_last_action:
-			attack_obj.fp_mods.append(('Moved Last Action', '/2'))
+		if attacker.moved_this_action:
+			attack_obj.fp_mods.append(('Moved', '/2'))
 		
 		if attacker.pinned:
 			attack_obj.fp_mods.append(('Pinned', '/2'))
@@ -3896,14 +3900,6 @@ def GetHexInDirection(hx, hy, direction, distance):
 		hx += hx_mod
 		hy += hy_mod
 	return (hx, hy)
-	
-
-# returns the PSG located in this hex
-def GetPSGAt(hx, hy):
-	for psg in scenario.unit_list:
-		if psg.hx == hx and psg.hy == hy:
-			return psg
-	return None
 
 
 # returns the three orthographic grid locations on given hex edge relative to x,y
@@ -4003,6 +3999,7 @@ def GetDirectionToward(hx1, hy1, hx2, hy2):
 		return 4
 	return 3
 
+
 # returns which hexspine hx,hy2 is along if the two hexes are along a hexspine
 # otherwise returns -1
 def GetHexSpine(hx1, hy1, hx2, hy2):
@@ -4039,6 +4036,16 @@ def GetDirectionalArrow(direction):
 		return chr(231)
 	print 'ERROR: Direction not recognized: ' + str(direction)
 	return ''
+
+
+# returns shortest difference between two directions
+def GetDirectionalDiff(d1, d2):
+	diff = abs(d1-d2)
+	if diff == 5:
+		diff = 1
+	elif diff == 4:
+		diff = 2
+	return diff
 
 
 # transforms an hx, hy hex location to cube coordinates
@@ -4259,6 +4266,7 @@ def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
 	
 	# no path possible
 	return []
+
 
 # Bresenham's Line Algorithm (based on an implementation on the roguebasin wiki)
 # returns a series of x, y points along a line
@@ -4800,9 +4808,12 @@ def InitAttack(attacker, weapon, target):
 			libtcod.console_print_ex(attack_con, 13, 55, libtcod.BKGND_NONE,
 				libtcod.CENTER, text)
 	
-	if display_attack:
+	# set flags for a future RoF shot
+	if rof_maintained:
+		attacker.previous_facing = attacker.facing
+		attacker.previous_turret_facing = attacker.turret_facing
 	
-		# player maintained RoF
+	if display_attack:
 		if attacker == scenario.player_unit and rof_maintained:
 			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
 			libtcod.console_print(attack_con, 5, 57, 'Enter')

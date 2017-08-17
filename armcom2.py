@@ -38,8 +38,8 @@
 DEBUG_MODE = False
 
 
-##### External Scripts #####
-import languages
+##### External Script Files #####
+import languages, nations
 
 ##### Libraries #####
 import libtcodpy as libtcod				# The Doryen Library
@@ -345,6 +345,9 @@ class Unit:
 							#   load basic stats from unit_defs.xml
 		self.unit_name = ''			# generic name of unit
 		self.unit_type = ''			# description of the type of unit this is
+		self.nation = ''			# which nation this unit belongs to
+		self.nation_desc = ''			# adjective description of nationality
+		
 		self.vehicle_name = None		# tank or other vehicle name
 		self.portrait = None
 		self.owning_player = None		# player that controls this unit
@@ -541,9 +544,6 @@ class Unit:
 		self.previous_facing = self.facing
 		self.previous_turret_facing = self.turret_facing
 		
-		# check for recovering from negative statuses
-		self.RecoveryCheck()
-		
 		# turn on LoS display if this is player and we have a weapon active
 		if self == scenario.player_unit and scenario.selected_weapon is not None:
 			scenario.display_los = True
@@ -589,12 +589,8 @@ class Unit:
 			UpdateVPConsole()
 			DrawScreenConsoles()
 		
-		# resolve any hits
-		#for unit in scenario.unit_list:
-		#	if unit.owning_player == self.owning_player: continue
-		#	if not unit.alive: continue
-		#	if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
-		#		unit.ResolveHits()
+		# check for recovering from negative statuses
+		self.RecoveryCheck()
 		
 		# set moved flag for next activation
 		self.moved_last_action = self.moved_this_action
@@ -602,6 +598,12 @@ class Unit:
 		# do spot check
 		if self.alive:
 			self.DoSpotCheck()
+
+	# set the nation for this unit
+	def SetNation(self, nation):
+		self.nation = nation
+		dictionary = nation_list[nation]
+		self.nation_desc = dictionary['adjective']
 
 	# display info about this individual unit or unit type to a console
 	# used in UpdatePlayerUnitConsole()
@@ -1469,6 +1471,8 @@ class Unit:
 		return True
 	
 	# resolve an AP hit on this unit
+	# if hit doesn't involve this player, display a message in the format:
+	# UNIT was (not) penetrated by a XXmm hit from ATTACKER
 	def ResolveAPHit(self, attack_obj):
 		
 		# calculate and save armour penetration roll
@@ -1510,6 +1514,11 @@ class Unit:
 		
 		else:
 			d1, d2, roll = Roll2D6()
+			message_text = attack_obj.target.GetName() + ' was '
+			if roll > attack_obj.final_ap:
+				text += 'not '
+			text + 'penetrated by a ' + attack_obj.weapon.GetName() + ' hit from '
+			text += attack_obj.attacker.GetName() + '.'
 		
 		# determine penetration result
 		if roll <= attack_obj.final_ap:
@@ -1563,8 +1572,11 @@ class Unit:
 			libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
-			
 			WaitForEnter()
+		else:
+			if result != '':
+				text += ' Result: ' + result
+				scenario.AddMessage(text, attack_obj.target)
 		
 		if roll <= attack_obj.final_ap:
 			return result
@@ -3001,6 +3013,7 @@ class Scenario:
 			for u in range(unit_num):
 				new_unit = Unit(unit_id)
 				new_unit.owning_player = 1
+				new_unit.SetNation('Poland')
 				new_unit.facing = self.player_direction
 				if new_unit.turret_facing is not None:
 					new_unit.turret_facing = self.player_direction
@@ -5735,16 +5748,18 @@ def UpdateHexInfoConsole():
 			col = FRIENDLY_HL_COL
 	libtcod.console_set_default_background(hex_info_con, col)
 	libtcod.console_rect(hex_info_con, 0, 7, 24, 1, False, libtcod.BKGND_SET)
-	#libtcod.console_set_default_background(hex_info_con, libtcod.black)
 	
 	libtcod.console_set_default_foreground(hex_info_con, libtcod.white)
 	libtcod.console_print(hex_info_con, 0, 7, unit.GetName())
 	libtcod.console_set_default_foreground(hex_info_con, INFO_TEXT_COL)
 	
-	# unit type
 	if not (unit.owning_player == 1 and not unit.known):
-		# FUTURE: add nationality here
-		libtcod.console_print(hex_info_con, 0, 8, unit.unit_type)
+	
+		# unit nation
+		libtcod.console_print(hex_info_con, 0, 8, unit.nation_desc)
+	
+		# unit type
+		libtcod.console_print(hex_info_con, 0, 9, unit.unit_type)
 	
 	# unresolved hits on this unit
 	if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
@@ -6177,6 +6192,7 @@ def DoScenario(load_savegame=False):
 		#  for each side
 		new_unit = Unit('panzer_38_t_a')
 		new_unit.owning_player = 0
+		new_unit.SetNation('Germany')
 		new_unit.vehicle_name = 'Gretchen'
 		new_unit.facing = 0
 		new_unit.turret_facing = 0
@@ -6218,6 +6234,7 @@ def DoScenario(load_savegame=False):
 		# spawn rest of player squadron
 		new_unit = Unit('psw_222')
 		new_unit.owning_player = 0
+		new_unit.SetNation('Germany')
 		new_unit.facing = 0
 		new_unit.turret_facing = 0
 		new_unit.morale_lvl = 8
@@ -6613,6 +6630,7 @@ def SaveCFG():
 global config, unit_portraits
 global mouse, key, con, darken_con
 global lang_dict			# pointer to the current language dictionary of game msgs
+global nation_list
 global gradient_x			# for main menu animation
 
 print 'Starting ' + NAME + ' version ' + VERSION
@@ -6622,6 +6640,9 @@ unit_portraits = {}
 
 # try to load game settings from config file, will create a new file if none present
 LoadCFG()
+
+# set up nation definitions
+nation_list = nations.nation_list
 
 # set up language dictionary pointer
 lang_dict = languages.game_msgs[config.get('ArmCom2', 'language')]

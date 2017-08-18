@@ -35,7 +35,7 @@
 ##########################################################################################
 
 # debug mode active: should set to False in any distribution version
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 
 ##### External Script Files #####
@@ -804,7 +804,7 @@ class Unit:
 	# return the chance of getting an extra turn / missing a turn if unit moves into target hex
 	def GetMovementTurnChance(self, hx, hy):
 		# move not possible
-		if not self.CheckMoveInto(hx, hy): return 0
+		if not self.CheckMoveInto(self.hx, self.hy, hx, hy): return 0
 		if self.infantry:
 			row = MOVE_TURN_CHANCE[0]
 		elif self.movement_class in ['Tank', 'Fast Tank']:
@@ -1300,13 +1300,13 @@ class Unit:
 		char = TURRET_CHAR[direction]
 		libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
 		
-	# determine if this unit is able to move into the target hex
-	def CheckMoveInto(self, new_hx, new_hy):
+	# determine if this unit would be able to move from one hex into another
+	def CheckMoveInto(self, hx1, hy1, hx2, hy2):
 		if self.movement_class == 'Gun': return False
 		if self.immobilized: return False
-		if (new_hx, new_hy) not in scenario.hex_map.hexes: return False
-		if GetDirectionToAdjacent(self.hx, self.hy, new_hx, new_hy) < 0: return False
-		map_hex = GetHexAt(new_hx, new_hy)
+		if (hx2, hy2) not in scenario.hex_map.hexes: return False
+		if GetDirectionToAdjacent(hx1, hy1, hx2, hy2) < 0: return False
+		map_hex = GetHexAt(hx2, hy2)
 		if map_hex.terrain_type.water: return False
 		if len(map_hex.unit_stack) > HEX_STACK_LIMIT: return False
 		if len(map_hex.unit_stack) > 0:
@@ -1327,7 +1327,7 @@ class Unit:
 	def MoveInto(self, new_hx, new_hy):
 		
 		# make sure move is allowed
-		if not self.CheckMoveInto(new_hx, new_hy):
+		if not self.CheckMoveInto(self.hx, self.hy, new_hx, new_hy):
 			return False
 		
 		# set driver crew action - for now, player only
@@ -1589,7 +1589,7 @@ class Weapon:
 		
 		self.name = ''			# name of this weapon if not automatically generated
 		self.fired = False		# weapon has fired this turn
-		self.no_rof_this_turn = False	# RoF now allowed this turn
+		self.no_rof_this_turn = False	# RoF not allowed this turn
 		self.firing_group = None
 		
 		self.stats = {}
@@ -1730,7 +1730,7 @@ class Weapon:
 		# load the new shell
 		self.stats['loaded_ammo'] = switch_type
 		
-		self.no_rof_this_turn = False
+		self.no_rof_this_turn = True
 		text = ('Your loader loads ' + self.GetName() + ' with a ' +
 			switch_type + ' shell.')
 		scenario.AddMessage(text, None)
@@ -2124,7 +2124,7 @@ class AI:
 			for (hx, hy) in GetAdjacentHexesOnMap(self.owner.hx, self.owner.hy):
 				map_hex = GetHexAt(hx, hy)
 				# see if a move into this hex is possible
-				if self.owner.CheckMoveInto(hx, hy):
+				if self.owner.CheckMoveInto(self.owner.hx, self.owner.hy, hx, hy):
 					hex_list.append(map_hex)
 			
 			# no possible move destinations
@@ -3429,7 +3429,7 @@ class Scenario:
 			else:
 				(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
 					scenario.player_unit.hy, scenario.player_unit.facing)
-				if not scenario.player_unit.CheckMoveInto(hx, hy):
+				if not scenario.player_unit.CheckMoveInto(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy):
 					menu_option.inactive = True
 			
 			menu_option = self.cmd_menu.AddOption('move_backward', 'S', 'Backward')
@@ -3443,7 +3443,7 @@ class Scenario:
 				(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
 					scenario.player_unit.hy,
 					CombineDirs(scenario.player_unit.facing, 3))
-				if not scenario.player_unit.CheckMoveInto(hx, hy):
+				if not scenario.player_unit.CheckMoveInto(scenario.player_unit.hx, scenario.player_unit.hy, hx, hy):
 					menu_option.inactive = True
 			
 			self.cmd_menu.AddOption('return_to_root', 'Bksp', 'Root Menu',
@@ -3521,7 +3521,7 @@ class Scenario:
 					menu_option.desc = 'Fire at ' + scenario.player_target.GetName()
 					menu_option.desc += ' (' + str(score) + '%)'
 			
-			# load ammo into an empty gun or switch out loaded ammo for different type
+			# actions for gun type weapons
 			if scenario.selected_weapon.weapon_type == 'gun':
 			
 				menu_option = self.cmd_menu.AddOption('cycle_weapon_load', 'L', 'Change Gun Load')
@@ -3547,6 +3547,10 @@ class Scenario:
 						text = 'Use ready rack to reload'
 					menu_option.desc = text
 				
+					# refill/empty ready rack submenu
+					self.cmd_menu.AddOption('manage_ready_rack', 'Y', 'Manage Ready Rack',
+						desc='Add shells to or remove from ready rack')
+				
 				# cycle type of ammo to use to reload
 				if len(scenario.selected_weapon.stats['ammo_types']) > 1:
 					menu_option = self.cmd_menu.AddOption('cycle_weapon_reload',
@@ -3557,6 +3561,52 @@ class Scenario:
 				desc='Quickly switch to next weapon')
 			self.cmd_menu.AddOption('return_to_weapons', 'Bksp',
 				'Return to Weapons', desc='Return to main Weapons menu')
+
+		# manage ready rack menu
+		elif self.active_cmd_menu == 'manage_rr_menu':
+			
+			self.cmd_menu.title = 'Ready Rack'
+			
+			type_list = scenario.selected_weapon.stats['ammo_types']
+			n = 0
+			for ammo_type in type_list:
+				option_id = 'rr_add_' + ammo_type
+				option_key = str(n+1)
+				option_text = 'Add ' + ammo_type
+				option_desc = 'Add one ' + ammo_type + ' shell to the ready rack'
+				menu_option = self.cmd_menu.AddOption(option_id, option_key,
+					option_text, desc=option_desc)
+				
+				# no more shells of this type
+				if scenario.selected_weapon.stores[ammo_type] <= 0:
+					menu_option.inactive = True
+					menu_option.desc = 'No shells of this type available'
+				else:
+					# rack is full
+					total = 0
+					for check_type in scenario.selected_weapon.stats['ammo_types']:
+						total += scenario.selected_weapon.ready_rack[check_type]
+					if total >= scenario.selected_weapon.stats['rr_size']:
+						menu_option.inactive = True
+						menu_option.desc = 'Ready rack is full'				
+				n+=1
+				
+				option_id = 'rr_remove_' + ammo_type
+				option_key = str(n+1)
+				option_text = 'Remove ' + ammo_type
+				option_desc = 'Remove one ' + ammo_type + ' shell from the ready rack'
+				menu_option = self.cmd_menu.AddOption(option_id, option_key, option_text,
+					desc=option_desc)
+				
+				# no shells of this type in rr
+				if scenario.selected_weapon.ready_rack[ammo_type] <= 0:
+					menu_option.inactive = True
+					menu_option.desc = 'No more shells of this type in ready rack'
+				
+				n+=1
+			
+			self.cmd_menu.AddOption('return_to_weapon_menu', 'Bksp',
+				'Return to Weapon menu')
 
 		# all menus get this command
 		self.cmd_menu.AddOption('end_action', 'Space', 'End Action',
@@ -4223,7 +4273,7 @@ def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
 			# get the hex coordinates in this direction
 			hx, hy = GetAdjacentHex(current.hx, current.hy, direction)
 			
-			# no map hex in this direction
+			# no map hex exists here, skip
 			if (hx, hy) not in scenario.hex_map.hexes: continue
 			
 			node = GetHexAt(hx, hy)
@@ -4234,11 +4284,10 @@ def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
 			# ignore impassible nodes
 			if node.terrain_type.water: continue
 			
-			# calculate movement cost based on unit type
+			# check that move into this new hex would be possible for unit
 			if unit is not None:
-				# can't move into an enemy-occupied location
-				occupied = node.IsOccupied()
-				if occupied > -1 and occupied != unit.owning_player:
+				
+				if not unit.CheckMoveInto(current.hx, current.hy, hx, hy):
 					continue
 				# FUTURE: calculate cost based on odds of extra/missed turn
 				cost = 1
@@ -4768,7 +4817,7 @@ def InitAttack(attacker, weapon, target):
 		if use_rr:
 			if weapon.ready_rack[reload_type] > 0:
 				weapon.ready_rack[reload_type] -= 1
-				weapon.stats['loaded_ammo'] = weapon.stats['reload_ammo']
+				weapon.stats['loaded_ammo'] = reload_type
 			else:
 				# no shell of the right type in the ready rack, but we can
 				#   default to general stores
@@ -4778,7 +4827,7 @@ def InitAttack(attacker, weapon, target):
 		if not use_rr:
 			if weapon.stores[reload_type] > 0:
 				weapon.stores[reload_type] -= 1
-				weapon.stats['loaded_ammo'] = weapon.stats['reload_ammo']
+				weapon.stats['loaded_ammo'] = reload_type
 		
 		# no shell could be loaded, can't maintain RoF
 		if weapon.stats['loaded_ammo'] is None:
@@ -4787,7 +4836,7 @@ def InitAttack(attacker, weapon, target):
 	# weapon has no RoF capability
 	if weapon.stats['rof'] == 0:
 		rof_possible = False
-	# gun had shell switched out or loaded this turn
+	# gun had shell switched out or loaded or loader managed ready rack this turn
 	elif weapon.no_rof_this_turn:
 		rof_possible = False
 	
@@ -5416,8 +5465,8 @@ def UpdateContextCon():
 		libtcod.console_print(context_con, 0, 1, text)
 	
 	# Weapons Menu
-	# TODO: display contextual info for this particular weapon
-	elif scenario.active_cmd_menu[:12] == 'weapon_menu_':
+	# TEMP: only displays info for main gun
+	elif scenario.active_cmd_menu == 'weapon_menu_0' or scenario.active_cmd_menu == 'manage_rr_menu':
 		libtcod.console_set_default_foreground(context_con, libtcod.white)
 		libtcod.console_print(context_con, 0, 0, 'Main Gun')
 		
@@ -5942,7 +5991,21 @@ def ScenarioMenu():
 	
 	def UpdateScreen():
 		libtcod.console_blit(scen_menu_con, 0, 0, 0, 0, con, 5, 3)
-		cmd_menu.DisplayMe(con, WINDOW_XM-12, 24, 25)
+		
+		# scenario information
+		libtcod.console_print_ex(con, WINDOW_XM, 14, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Scenario: ' + scenario.name)
+		
+		h = scenario.hour_limit - scenario.hour
+		m = scenario.minute_limit - scenario.minute
+		if m < 0:
+			h -= 1
+			m += 60
+		text = 'Time Remaining: ' + str(h) + ':' + str(m).zfill(2)
+		libtcod.console_print_ex(con, WINDOW_XM, 16, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+		
+		cmd_menu.DisplayMe(con, WINDOW_XM-12, 40, 25)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
 	# darken the screen background
@@ -6436,33 +6499,32 @@ def DoScenario(load_savegame=False):
 		if option.option_id == 'end_action':
 			scenario.ActivateNextUnit()
 			UpdateScreen()
-			continue
+		
 		elif option.option_id == 'return_to_root':
 			scenario.active_cmd_menu = 'root'
 			scenario.BuildCmdMenu()
 			scenario.display_los = False
 			UpdateScreen()
-			continue
+		
 		elif option.option_id == 'crew_menu':
 			scenario.active_cmd_menu = 'crew'
 			scenario.BuildCmdMenu()
 			UpdateScreen()
-			continue
+		
 		elif option.option_id == 'movement_menu':
 			scenario.active_cmd_menu = 'movement'
 			scenario.BuildCmdMenu()
 			UpdateScreen()
-			continue
+		
 		elif option.option_id == 'weapons_menu':
 			scenario.active_cmd_menu = 'weapons'
 			scenario.BuildCmdMenu()
 			UpdateScreen()
-			continue
+		
 		elif DEBUG_MODE and option.option_id == 'debug_menu':
 			scenario.active_cmd_menu = 'debug'
 			scenario.BuildCmdMenu()
 			UpdateScreen()
-			continue
 		
 		##################################################################
 		# Movement Menu Actions
@@ -6482,7 +6544,6 @@ def DoScenario(load_savegame=False):
 				if scenario.player_unit.used_up_moves:
 					scenario.ActivateNextUnit()
 					UpdateScreen()
-				continue
 		
 		elif option.option_id in ['pivot_hull_port', 'pivot_hull_stb']:
 			if option.option_id == 'pivot_hull_port':
@@ -6561,6 +6622,29 @@ def DoScenario(load_savegame=False):
 				scenario.BuildCmdMenu()
 				DrawScreenConsoles()
 		
+		elif option.option_id == 'manage_ready_rack':
+			scenario.active_cmd_menu = 'manage_rr_menu'
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
+		
+		elif option.option_id[:7] == 'rr_add_':
+			ammo_type = option.option_id[7:]
+			scenario.selected_weapon.stores[ammo_type] -= 1
+			scenario.selected_weapon.ready_rack[ammo_type] += 1
+			scenario.selected_weapon.no_rof_this_turn = True
+			scenario.BuildCmdMenu()
+			UpdateContextCon()
+			DrawScreenConsoles()
+		
+		elif option.option_id[:10] == 'rr_remove_':
+			ammo_type = option.option_id[10:]
+			scenario.selected_weapon.stores[ammo_type] += 1
+			scenario.selected_weapon.ready_rack[ammo_type] -= 1
+			scenario.selected_weapon.no_rof_this_turn = True
+			scenario.BuildCmdMenu()
+			UpdateContextCon()
+			DrawScreenConsoles()
+		
 		elif option.option_id == 'cycle_weapon_reload':
 			if scenario.selected_weapon.CycleAmmoReload():
 				UpdateContextCon()
@@ -6575,7 +6659,14 @@ def DoScenario(load_savegame=False):
 			else:
 				i += 1
 			scenario.selected_weapon = scenario.player_unit.weapon_list[i]
+			scenario.active_cmd_menu = 'weapon_menu_' + str(i)
+			scenario.BuildCmdMenu()
 			UpdateContextCon()
+			DrawScreenConsoles()
+		
+		elif option.option_id == 'return_to_weapon_menu':
+			i = scenario.player_unit.weapon_list.index(scenario.selected_weapon)
+			scenario.active_cmd_menu = 'weapon_menu_' + str(i)
 			scenario.BuildCmdMenu()
 			DrawScreenConsoles()
 		

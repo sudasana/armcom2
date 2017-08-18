@@ -4,10 +4,12 @@
 nation_list = {}
 nation_list['Germany'] = {
 	'short_code' : 'GER',
-	'adjective' : 'German'
+	'adjective' : 'German',
+	'flag_image' : 'flag_GER.xp'
 }
 
 nation_list['Poland'] = {
 	'short_code' : 'POL',
-	'adjective' : 'Polish'
+	'adjective' : 'Polish',
+	'flag_image' : 'flag_POL.xp'
 }

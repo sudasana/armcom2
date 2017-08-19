@@ -1514,7 +1514,7 @@ class Unit:
 		
 		else:
 			d1, d2, roll = Roll2D6()
-			message_text = attack_obj.target.GetName() + ' was '
+			text = attack_obj.target.GetName() + ' was '
 			if roll > attack_obj.final_ap:
 				text += 'not '
 			text += 'penetrated by a ' + attack_obj.weapon.GetName() + ' hit from '

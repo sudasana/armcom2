@@ -1520,10 +1520,11 @@ class Unit:
 			text += 'penetrated by a ' + attack_obj.weapon.GetName() + ' hit from '
 			text += attack_obj.attacker.GetName() + '.'
 		
+		
+		result = ''
 		# determine penetration result
 		if roll <= attack_obj.final_ap:
 			
-			result = ''
 			d1, d2, roll2 = Roll2D6()
 			# critical penetration roll
 			if roll == 2:
@@ -1576,7 +1577,7 @@ class Unit:
 		else:
 			if result != '':
 				text += ' Result: ' + result
-				scenario.AddMessage(text, attack_obj.target)
+			scenario.AddMessage(text, attack_obj.target)
 		
 		if roll <= attack_obj.final_ap:
 			return result

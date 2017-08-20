@@ -35,7 +35,7 @@
 ##########################################################################################
 
 # debug mode active: should set to False in any distribution version
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 ##### External Script Files #####

@@ -2062,6 +2062,10 @@ class AI:
 		# determine action type from initial roll
 		move_threshold = 4
 		
+		# for now, don't allow pinned AI units to move
+		if self.owner.pinned:
+			move_threshold = 1
+		
 		if roll <= move_threshold:
 			
 			# do nothing if immobilized
@@ -2464,6 +2468,16 @@ class MapHex:
 				self.terrain_type = terrain_type
 				return
 		print 'ERROR: Terrain type not found: ' + new_terrain_type
+	
+	# cycle the unit stack, changing the stack order and the top unit in the stack
+	def CycleUnitStack(self, direction):
+		# one or fewer units, no way to cycle the stack
+		if len(self.unit_stack) < 2: return
+		
+		if direction < 0:
+			self.unit_stack.append(self.unit_stack.pop(0))
+		else:
+			self.unit_stack.insert(0, self.unit_stack.pop(-1))
 	
 	# returns owning player number if there is a unit in this hex
 	# otherwise -1 if empty
@@ -4661,6 +4675,12 @@ def GetFacing(attacker, target, turret_facing=False):
 # initiate an attack by one unit on another
 def InitAttack(attacker, weapon, target):
 	
+	# make sure target is at top of its unit stack
+	map_hex = GetHexAt(target.hx, target.hy)
+	target.MoveToTopOfStack(map_hex)
+	DrawScreenConsoles()
+	libtcod.console_flush()
+	
 	# if player is not involved, we display less information on the screen
 	display_attack = True
 	if attacker != scenario.player_unit and target != scenario.player_unit:
@@ -5362,10 +5382,10 @@ def DisplayHexStack(map_hex):
 	
 	# set up menu
 	menu = CommandMenu('hex_stack_menu')
-	menu_option = menu.AddOption('previous_unit', 'W', 'View Previous Unit')
+	menu_option = menu.AddOption('previous_unit', 'W', 'Previous')
 	if len(map_hex.unit_stack) == 1:
 		menu_option.inactive = True
-	menu_option = menu.AddOption('next_unit', 'S', 'View Next Unit')
+	menu_option = menu.AddOption('next_unit', 'S', 'Next')
 	if len(map_hex.unit_stack) == 1:
 		menu_option.inactive = True
 	menu_option = menu.AddOption('exit_view', 'Esc', 'Exit View')
@@ -6309,19 +6329,20 @@ def DoScenario(load_savegame=False):
 		new_unit.SetCrew('Assistant Driver', new_crew)
 		
 		# spawn rest of player squadron
-		new_unit = Unit('psw_222')
-		new_unit.owning_player = 0
-		new_unit.SetNation('Germany')
-		new_unit.facing = 0
-		new_unit.turret_facing = 0
-		new_unit.morale_lvl = 8
-		new_unit.skill_lvl = 8
-		new_unit.hx = scenario.player_unit.hx
-		new_unit.hy = scenario.player_unit.hy
-		new_unit.squadron_leader = scenario.player_unit
-		map_hex = GetHexAt(new_unit.hx, new_unit.hy)
-		map_hex.unit_stack.append(new_unit)
-		scenario.unit_list.append(new_unit)
+		for i in range(2):
+			new_unit = Unit('psw_222')
+			new_unit.owning_player = 0
+			new_unit.SetNation('Germany')
+			new_unit.facing = 0
+			new_unit.turret_facing = 0
+			new_unit.morale_lvl = 8
+			new_unit.skill_lvl = 8
+			new_unit.hx = scenario.player_unit.hx
+			new_unit.hy = scenario.player_unit.hy
+			new_unit.squadron_leader = scenario.player_unit
+			map_hex = GetHexAt(new_unit.hx, new_unit.hy)
+			map_hex.unit_stack.append(new_unit)
+			scenario.unit_list.append(new_unit)
 		
 		#for i in range(4):
 		#	new_unit = Unit('Panzer 35t')
@@ -6437,19 +6458,31 @@ def DoScenario(load_savegame=False):
 			UpdateHexInfoConsole()
 			DrawScreenConsoles()
 		
-		##### Mouse Commands #####
-		if mouse.rbutton:
+		##### Map Hex Mouse Commands #####
+		if mouse.rbutton or mouse.wheel_up or mouse.wheel_down:
 			x = mouse.cx - 27
 			y = mouse.cy - 4
-			if (x,y) in scenario.map_index:
-				(hx, hy) = scenario.map_index[(x,y)]
-				map_hex = GetHexAt(hx, hy)
-				if len(map_hex.unit_stack) > 0:
-					DisplayHexStack(map_hex)
-					DrawScreenConsoles()
+			if (x,y) not in scenario.map_index:
 				continue
-
+			(hx, hy) = scenario.map_index[(x,y)]
+			map_hex = GetHexAt(hx, hy)
+			if len(map_hex.unit_stack) == 0:
+				continue
+			# display units in stack
+			if mouse.rbutton:
+				DisplayHexStack(map_hex)
+			# cycle unit stack order
+			else:
+				if mouse.wheel_up:
+					map_hex.CycleUnitStack(-1)
+				elif mouse.wheel_down:
+					map_hex.CycleUnitStack(1)
+				UpdateUnitConsole()
+				UpdateHexInfoConsole()
+			DrawScreenConsoles()
+			continue
 		
+
 		# open scenario menu screen
 		if key.vk == libtcod.KEY_ESCAPE:
 			if ScenarioMenu():

@@ -994,6 +994,8 @@ class Unit:
 		if scenario.player_target == self:
 			scenario.player_target = None
 		UpdateUnitConsole()
+		DrawScreenConsoles()
+		libtcod.console_flush()
 
 	# roll for recovery from negative statuses
 	def RecoveryCheck(self):
@@ -1385,6 +1387,9 @@ class Unit:
 				Wait(pause_time)
 			self.anim_x = 0
 			self.anim_y = 0
+		
+		# update unit console to set new draw location
+		UpdateUnitConsole()
 		
 		# set action flag for next activation
 		self.moved_this_action = True
@@ -3235,8 +3240,8 @@ class Scenario:
 		else:
 			DrawScreenConsoles()
 			libtcod.console_flush()
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
-			Wait(pause_time)
+			#pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
+			#Wait(pause_time)
 	
 	# set up map viewport hexes based on current player tank position and facing
 	def SetVPHexes(self):
@@ -4751,6 +4756,14 @@ def InitAttack(attacker, weapon, target):
 	
 	else:
 		d1, d2, roll = Roll2D6()
+		if roll == 2 and roll <= attack_obj.final_to_hit:
+			text = 'Critical hit on ' + target.GetName()
+			attack_obj.critical_hit = True
+		elif roll <= attack_obj.final_to_hit:
+			text = 'Attack hit ' + target.GetName()
+		else:
+			text = 'Attack missed'
+		scenario.AddMessage(text, None)
 	
 	# if target was hit, save attack details to target to be resolved at end of attacker activation
 	if roll <= attack_obj.final_to_hit:

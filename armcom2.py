@@ -38,7 +38,7 @@
 DEBUG_MODE = False
 
 ##### External Script Files #####
-import languages, nations, sounds
+import languages, nations
 
 ##### Libraries #####
 import libtcodpy as libtcod				# The Doryen Library

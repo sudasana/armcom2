@@ -25,7 +25,7 @@
 
 #    You should have received a copy of the GNU General Public License
 #    along with Armoured Commander II, in the form of a file named "gpl.txt".
-#    If not, see <http://www.gnu.org/licenses/>.
+#    If not, see <https://www.gnu.org/licenses/>.
 #
 #    xp_loader.py is covered under a MIT License (MIT) and is Copyright (c) 2015
 #    Sean Hagar; see XpLoader_LICENSE.txt for more info.
@@ -34,31 +34,30 @@
 #       The author does not condone any of the events or ideologies depicted herein      #
 ##########################################################################################
 
-# debug mode active: should set to False in any distribution version
+# in-game debug options active: should set to False in any distribution version
 DEBUG_MODE = False
 
-
 ##### External Script Files #####
-import languages, nations
+import languages, nations, sounds
 
 ##### Libraries #####
 import libtcodpy as libtcod				# The Doryen Library
-import ConfigParser					# for saving and loading settings
-import time						# for animation timing
+import ConfigParser					# saving and loading settings
+import time						# animation timing
 from random import choice, shuffle, sample
 from operator import itemgetter
-from textwrap import wrap				# for breaking up strings
-from math import floor, cos, sin, sqrt			# for math
-from math import degrees, atan2, ceil			# for heading calculation
-import shelve						# for saving and loading games
-import os, sys						# for OS-related stuff
-import xp_loader, gzip					# for loading xp image files
-import xml.etree.ElementTree as xml			# ElementTree library for xml
+from textwrap import wrap				# breaking up strings
+from math import floor, cos, sin, sqrt			# math
+from math import degrees, atan2, ceil			# heading calculation
+import shelve						# saving and loading games
+import os, sys, ctypes					# OS-related stuff
+import sdl2.sdlmixer as mixer				# sound effects
+import xp_loader, gzip					# loading xp image files
+import xml.etree.ElementTree as xml			# ElementTree library for XML
 
 # needed for py2exe
 import dbhash, anydbm					
 from encodings import hex_codec, ascii, utf_8, cp850
-
 
 
 ##########################################################################################
@@ -67,110 +66,22 @@ from encodings import hex_codec, ascii, utf_8, cp850
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-#VERSION = 'Alpha 1.0'					# game version: determines saved game compatability
-VERSION = 'September 8 2017'			
-SUBVERSION = ''						# descriptive, no effect on compatability
+VERSION = '0.1.0-2017-09-08'				# game version in Semantic Versioning format: http://semver.org/			
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
+SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
-WINDOW_WIDTH = 83					# width of game window in characters
-WINDOW_HEIGHT = 60					# height "
-WINDOW_XM = int(WINDOW_WIDTH/2)				# horizontal center of game window
-WINDOW_YM = int(WINDOW_HEIGHT/2)			# vertical "
-
-# list of unit images to display on main menu
-TANK_IMAGES = ['unit_TK3.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp', 'unit_7TP.xp',
-	'unit_pz_35t.xp', 'unit_pz_II.xp'
-]
-
-# gradient animated effect for main menu
-GRADIENT = [
-	libtcod.Color(51, 51, 51), libtcod.Color(64, 64, 64), libtcod.Color(128, 128, 128),
-	libtcod.Color(192, 192, 192), libtcod.Color(255, 255, 255), libtcod.Color(192, 192, 192),
-	libtcod.Color(128, 128, 128), libtcod.Color(64, 64, 64), libtcod.Color(51, 51, 51),
-	libtcod.Color(51, 51, 51)
-]
-
-# Game engine constants, can be tweaked for slightly different results
-MAX_LOS_DISTANCE = 6			# maximum distance that a Line of Sight can be drawn
-MAX_LOS_MOD = 6				# maximum total terrain modifier along a LoS before it is blocked
-MAX_BU_LOS_DISTANCE = 4			# " for buttoned-up crewmen
-ELEVATION_M = 10.0			# each elevation level represents x meters of height
-BASE_SPOT_SCORE = 5			# base score required to spot unknown enemy unit
-HEX_STACK_LIMIT = 6			# maximum number of units in a map hex stack
-
-# chance of extra turn / missed turn when moving in:
-# Open Ground, Road, Difficult Terrain
-# if negative, it's a chance to miss a turn; 0 means no chance, do not roll
-MOVE_TURN_CHANCE = [
-	[0, 7, -11],			# Infantry
-	[4, 8, -10],			# Tank
-	[-12, 9, -8]			# Wheeled
-]
-
-# base to-hit scores required for Point Fire attacks
-BASE_TO_HIT = [
-	[10,8,7],			# <= 1 hex range
-	[9,7,7],			# 2 hex range
-	[9,7,7],			# 3 "
-	[8,6,8],			# 4 "
-	[7,5,8],			# 5 "
-	[6,4,7]				# 6 "
-]
-
-# Area Fire attack chart
-# Final FP, infantry/gun score required, vehicle/other score required
-AF_CHART = [
-	(1, 5, 3),
-	(2, 6, 4),
-	(4, 7, 5),
-	(6, 8, 6),
-	(8, 9, 7),
-	(12, 10, 8),
-	(16, 11, 9),
-	(20, 12, 10),
-	(24, 13, 11),
-	(30, 14, 12),
-	(36, 15, 13)
-]
+WINDOW_WIDTH, WINDOW_HEIGHT = 83, 60			# size of game window in characters
+WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of game window
 
 # percentage odds for 2D6 roll
 DICE_ODDS = {
-	2 : 2.77,
-	3 : 8.33,
-	4 : 16.66,
-	5 : 27.77,
-	6 : 41.66,
-	7 : 58.33,
-	8 : 72.22,
-	9 : 83.33,
-	10 : 91.66,
-	11 : 97.22,
-	12 : 100.0
+	2 : 2.77, 3 : 8.33, 4 : 16.66, 5 : 27.77, 6 : 41.66, 7 : 58.33,
+	8 : 72.22, 9 : 83.33, 10 : 91.66, 11 : 97.22, 12 : 100.0
 }
-
-# short forms for crew positions, used to fit information into player unit info console, etc.
-CREW_POSITION_ABB = {
-	'Commander' : 'C',
-	'Commander/Gunner' : 'C/G',
-	'Gunner' : 'G',
-	'Gunner/Loader' : 'G/L',
-	'Loader' : 'L',
-	'Driver' : 'D',
-	'Assistant Driver' : 'AD'
-}
-
-# order in which to display crew positions
-CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Gunner/Loader', 'Loader',
-	'Driver', 'Assistant Driver'
-]
-
-# order in which to display ammo types
-AMMO_TYPE_ORDER = ['HE', 'AP']
 
 # Colour definitions
 ELEVATION_SHADE = 0.15					# difference in shading for map hexes of
 							#   different elevations
-
 RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
 
@@ -211,20 +122,11 @@ UNIT_HIGHLIGHT_COL = libtcod.Color(100, 255, 255)	# color for unit highlight ani
 
 # Descriptor definitions
 MORALE_DESC = {
-	6 : 'Reluctant',
-	7 : 'Regular',
-	8 : 'Confident',
-	9 : 'Fearless',
-	10 : 'Fanatic'
+	6 : 'Reluctant', 7 : 'Regular', 8 : 'Confident', 9 : 'Fearless', 10 : 'Fanatic'
 }
 SKILL_DESC = {
-	6 : 'Green',
-	7 : '2nd Line',
-	8 : '1st Line',
-	9 : 'Veteran',
-	10 : 'Elite'
+	6 : 'Green', 7 : '2nd Line', 8 : '1st Line', 9 : 'Veteran', 10 : 'Elite'
 }
-
 MONTH_NAMES = [
 	'', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
 	'September', 'October', 'November', 'December'
@@ -272,6 +174,94 @@ DEBUG_FLAG_LIST = [
 	'view_all',		# player has LoS to every hex within a 6 hex range
 	'immortal',		# player unit cannot be destroyed
 	'fast_tank'			# player unit always gets an extra turn when moving
+]
+
+# short forms for crew positions, used to fit information into player unit info console, etc.
+CREW_POSITION_ABB = {
+	'Commander' : 'C',
+	'Commander/Gunner' : 'C/G',
+	'Gunner' : 'G',
+	'Gunner/Loader' : 'G/L',
+	'Loader' : 'L',
+	'Driver' : 'D',
+	'Assistant Driver' : 'AD'
+}
+
+# order in which to display crew positions
+CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Gunner/Loader', 'Loader',
+	'Driver', 'Assistant Driver'
+]
+
+# order in which to display ammo types
+AMMO_TYPE_ORDER = ['HE', 'AP']
+
+# aliases for CalcAttack settings
+TO_HIT_MODE = 0
+FIREPOWER_MODE = 1
+ASSAULT_MODE = 2
+
+
+##########################################################################################
+#           Game engine constants, can be tweaked for slightly different results         #
+##########################################################################################
+
+MAX_LOS_DISTANCE = 6			# maximum distance that a Line of Sight can be drawn
+MAX_LOS_MOD = 6				# maximum total terrain modifier along a LoS before it is blocked
+MAX_BU_LOS_DISTANCE = 4			# " for buttoned-up crewmen
+ELEVATION_M = 10.0			# each elevation level represents x meters of height
+BASE_SPOT_SCORE = 5			# base score required to spot unknown enemy unit
+HEX_STACK_LIMIT = 6			# maximum number of units allowed in a map hex stack
+
+# chance of extra turn / missed turn when moving in:
+# Open Ground, Road, Difficult Terrain
+# if negative, it's a chance to miss a turn; 0 means no chance, do not roll
+MOVE_TURN_CHANCE = [
+	[0, 7, -11],			# Infantry
+	[4, 8, -10],			# Tank
+	[-12, 9, -8]			# Wheeled
+]
+
+# TODO: why list of lists and then tuples?
+
+# base to-hit scores required for Point Fire attacks
+BASE_TO_HIT = [
+	[10,8,7],			# <= 1 hex range
+	[9,7,7],			# 2 hex range
+	[9,7,7],			# 3 "
+	[8,6,8],			# 4 "
+	[7,5,8],			# 5 "
+	[6,4,7]				# 6 "
+]
+
+# Area Fire attack chart
+# Final FP, infantry/gun score required, vehicle/other score required
+AF_CHART = [
+	(1, 5, 3),
+	(2, 6, 4),
+	(4, 7, 5),
+	(6, 8, 6),
+	(8, 9, 7),
+	(12, 10, 8),
+	(16, 11, 9),
+	(20, 12, 10),
+	(24, 13, 11),
+	(30, 14, 12),
+	(36, 15, 13)
+]
+
+# to-destroy score required for different firepower totals in assault combat
+ASSAULT_SCORES = [
+	(1, 2),
+	(2, 3),
+	(4, 4),
+	(6, 5),
+	(8, 6),
+	(10, 7),
+	(14, 8),
+	(16, 9),
+	(20, 10),
+	(28, 11),
+	(36, 12)
 ]
 
 
@@ -400,6 +390,7 @@ class Unit:
 		self.moved_this_action = False		# unit moved or pivoted in this turn
 		self.moved_last_action = False		# unit moved or pivoted in its previous turn
 		self.fired = False			# unit fired 1+ weapons this turn
+		#self.in_assault = False			# unit is currently undertaking an assault
 		
 		# status flags
 		self.pinned = False
@@ -413,7 +404,9 @@ class Unit:
 		self.open_topped = False
 		self.unreliable = False
 		
-		# load the baseline stats for this unit from data file
+		#############################################
+		#  Load stats for this unit from data file  #
+		#############################################
 	
 		# find the unit type entry in the data file
 		root = xml.parse(DATAPATH + 'unit_defs.xml')
@@ -424,8 +417,7 @@ class Unit:
 				found = True
 				break
 		if not found:
-			print 'ERROR: Could not find unit stats for: ' + self.unit_id
-			return
+			FatalErrror('Could not find unit stats for: ' + self.unit_id)
 		
 		# load stats from item
 		self.unit_name = item.find('name').text
@@ -985,7 +977,8 @@ class Unit:
 	def DestroyMe(self):
 		# remove from map hex
 		map_hex = GetHexAt(self.hx, self.hy)
-		map_hex.unit_stack.remove(self)
+		if self in map_hex.unit_stack:
+			map_hex.unit_stack.remove(self)
 		# change alive flag, will no longer be activated
 		self.alive = False
 		# clear acquired target records
@@ -1307,18 +1300,26 @@ class Unit:
 		if self.movement_class == 'Gun': return False
 		if self.immobilized: return False
 		if (hx2, hy2) not in scenario.hex_map.hexes: return False
-		if GetDirectionToAdjacent(hx1, hy1, hx2, hy2) < 0: return False
+		direction = GetDirectionToAdjacent(hx1, hy1, hx2, hy2)
+		if direction < 0: return False
 		map_hex = GetHexAt(hx2, hy2)
 		if map_hex.terrain_type.water: return False
 		if len(map_hex.unit_stack) > HEX_STACK_LIMIT: return False
-		if len(map_hex.unit_stack) > 0:
-			for unit in map_hex.unit_stack:
-				# friendly unit
-				if unit.owning_player == self.owning_player: continue
-				# unspotted unit
-				if not unit.known: continue
-				# at least one known enemy unit here
-				return False
+		
+		# check for moving backward into enemy unit(s)
+		if self.facing is None:
+			return True
+		# forward move, no problem
+		if direction == self.facing:
+			return True
+		# no units here
+		if len(map_hex.unit_stack) == 0:
+			return True
+		
+		# 1+ enemy units in target hex, even unknown, can't reverse move
+		if map_hex.unit_stack[0].owning_player != self.owning_player:
+			return False
+
 		return True
 	
 	# try to move this unit into the target hex
@@ -1342,17 +1343,16 @@ class Unit:
 		
 		# check for unspotted enemy in target hex
 		# if so, all units in target hex are spotted and action ends
-		if len(map_hex2.unit_stack) > 0:
-			spotted_enemy = False
-			for unit in reversed(map_hex2.unit_stack):
-				if unit.owning_player != self.owning_player and not unit.known:
-					spotted_enemy = True
-					unit.SpotMe()
-			if spotted_enemy:
-				# rebuild menu since move may no longer possible into this hex
-				scenario.BuildCmdMenu()
-				DrawScreenConsoles()
-				return False
+		spotted_enemy = False
+		for unit in map_hex2.unit_stack:
+			if unit.owning_player != self.owning_player and not unit.known:
+				spotted_enemy = True
+				unit.SpotMe()
+		if spotted_enemy:
+			# rebuild menu since move may no longer possible into this hex
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
+			return False
 		
 		# record score for extra move action / missed turn if applicable
 		extra_turn_score = self.GetMovementTurnChance(new_hx, new_hy)
@@ -1391,15 +1391,13 @@ class Unit:
 		# update unit console to set new draw location
 		UpdateUnitConsole()
 		
-		# set action flag for next activation
+		# set movement statuses and effects
 		self.moved_this_action = True
-		
-		# clear any acquired targets
 		self.ClearAcquiredTargets()
 		
 		# if player was targeting this unit, clear the player's target
-		if scenario.player_target == self:
-			scenario.player_target = None
+		#if scenario.player_target == self:
+		#	scenario.player_target = None
 		
 		# recalculate viewport and update consoles for player movement
 		if scenario.player_unit == self:
@@ -1468,12 +1466,246 @@ class Unit:
 		
 		return True
 	
-	# rotate turret to face new direction
+	# rotate unit turret to face new direction
 	def RotateTurret(self, direction):
 		if self.turret_facing is None: return False
 		self.turret_facing = direction
 		UpdateUnitConsole()
 		return True
+	
+	# initiate an assault into the target adjacent hex
+	def AssaultInto(self, new_hx, new_hy):
+		
+		# do a round of attacks from an attacking group on a defending group
+		# for each attacker, find the first defender that they can attack
+		# defenders that have already been attacked are moved to the bottom of the
+		# defender list
+		def DoAssaultRound(attackers, defenders, attacker_hex, defender_hex):
+			for unit_entry in attackers:
+				
+				# no more targets alive
+				if len(defenders) == 0:
+					return
+				
+				# TODO: select target in list of defenders
+				# TEMP - first one in list always selected
+				target_entry = defenders[0]
+				(target, fp) = target_entry
+				
+				attack_obj = CalcAttack(unit_entry, None, target_entry, ASSAULT_MODE)
+			
+				# display attack
+				display_attack = True
+				if attack_obj.attacker != scenario.player_unit and self != scenario.player_unit:
+					display_attack = False
+				
+				if display_attack:
+					DisplayAttack(attack_obj)
+					WaitForEnter()
+					
+					# do dice roll and display animation
+					pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
+					for i in range(5):
+						d1, d2, roll = Roll2D6()
+						DrawDie(attack_con, 9, 50, d1)
+						DrawDie(attack_con, 14, 50, d2)
+						libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+						libtcod.console_flush()
+						Wait(pause_time)
+					
+					# display roll result
+					text = str(roll) + ': '
+					if roll <= attack_obj.final_roll:
+						text += 'Target destroyed!'
+					else:
+						text += 'No effect'
+					libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
+						libtcod.CENTER, text)
+					
+					libtcod.console_rect(attack_con, 1, 57, 24, 1, True, libtcod.BKGND_NONE)
+					libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+					libtcod.console_print(attack_con, 6, 57, 'Enter')
+					libtcod.console_set_default_foreground(attack_con, libtcod.white)
+					libtcod.console_print(attack_con, 12, 57, 'Continue')
+					libtcod.console_blit(attack_con, 0, 0, 30, 60, con, 0, 0)
+					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+					libtcod.console_flush()
+					WaitForEnter()
+				
+				# player is not involved so just display a message
+				else:
+					d1, d2, roll = Roll2D6()
+					text = attack_obj.target.GetName() + ' was '
+					if roll > attack_obj.final_roll:
+						text += 'not '
+					text += 'destroyed by an assault attack from '
+					text += attack_obj.attacker.GetName() + '.'
+					scenario.AddMessage(text, attack_obj.target)
+				
+				# resolve attack and delete the attack object
+				if roll <= attack_obj.final_roll:
+					# target destroyed
+					target.DestroyMe()
+					# since original attackers don't leave their stack,
+					# we may need to remove them manually
+					if target in defender_hex.unit_stack:
+						defender_hex.unit_stack.remove(target)
+					
+				del attack_obj
+				
+				# if target is dead, remove from list of defenders
+				# otherwise, move to bottom of list
+				defenders.remove(target_entry)
+				if target.alive:
+					defenders.insert(-1, target_entry)
+		
+		# set source and destination hexes
+		map_hex1 = GetHexAt(self.hx, self.hy)
+		map_hex2 = GetHexAt(new_hx, new_hy)
+		
+		# set flag to animate movement
+		display_movement = False
+		if scenario.IsOnViewport(self.hx, self.hy) or scenario.IsOnViewport(new_hx, new_hy):
+			display_movement = True
+		
+		# build list of attackers and defenders and their total available firepower
+		attackers = []
+		
+		for unit in map_hex1.unit_stack:
+			
+			if unit.pinned:
+				continue
+			
+			# try to face assault direction if required
+			if unit.facing is not None:
+				direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, new_hx, new_hy)
+				if not unit.PivotToFace(direction):
+					continue
+			
+			# make sure move into destination hex is possible
+			if not unit.CheckMoveInto(map_hex1.hx, map_hex1.hy, new_hx, new_hy):
+				continue
+			
+			fp = 0
+			for weapon in unit.weapon_list:
+				if weapon.weapon_type in ['small_arms', 'coax_mg', 'hull_mg']:
+					fp += weapon.stats['fp']
+			if fp > 0:
+				attackers.append((unit, fp))
+				# set movement statuses and effects
+				unit.moved_this_action = True
+				unit.ClearAcquiredTargets()
+				# set driver crew action - for now, player only
+				if unit == scenario.player_unit:
+					unit.SetCrewmanAction('Driver', 'Drive')
+					UpdatePlayerUnitConsole()
+		
+		# if no attackers can take part, cannot attack
+		if len(attackers) == 0:
+			scenario.AddMessage('No units can assault.', None)
+			return
+		else:
+			scenario.AddMessage(str(len(attackers)) + ' attacker(s).', None)
+		
+		defenders = []
+		for unit in map_hex2.unit_stack:
+			fp = 0
+			for weapon in unit.weapon_list:
+				if weapon.weapon_type in ['small_arms', 'coax_mg', 'hull_mg']:
+					fp += weapon.stats['fp']
+			# even defenders with 0 effective fp take part
+			defenders.append((unit, fp))
+		
+		# any unspotted enemies in target hex become spotted
+		for unit in map_hex2.unit_stack:
+			if not unit.known:
+				unit.SpotMe()
+		
+		# display message
+		scenario.AddMessage(self.GetName() + ' initiates an assault!', self)
+		
+		# animate move to edge of hex
+		if display_movement:
+		
+			direction = GetDirectionToAdjacent(self.hx, self.hy, new_hx, new_hy)
+			direction = ConstrainDir(direction - scenario.player_unit.facing)
+			(new_vp_hx, new_vp_hy) = GetAdjacentHex(self.vp_hx, self.vp_hy, direction)
+		
+			(x1,y1) = PlotHex(self.vp_hx, self.vp_hy)
+			(x2,y2) = PlotHex(new_vp_hx, new_vp_hy)
+			line = GetLine(x1,y1,x2,y2)
+			# make the animation speed a little slower otherwise it's hard to see
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.3
+			
+			for (unit, fp) in attackers:
+				unit.MoveToTopOfStack(map_hex1)
+				for (x,y) in line[1:3]:
+					unit.anim_x = x
+					unit.anim_y = y
+					UpdateUnitConsole()
+					DrawScreenConsoles()
+					libtcod.console_flush()
+					Wait(pause_time)
+		
+		# set new locations but don't join hex stack
+		for (unit, fp) in attackers:
+			unit.hx = new_hx
+			unit.hy = new_hy
+		
+		# shuffle both lists
+		shuffle(attackers)
+		shuffle(defenders)
+		
+		# do the first round of close combat: assault units on static units
+		DoAssaultRound(attackers, defenders, map_hex1, map_hex2)
+		
+		# if any defenders survive, they get a counterattack
+		if len(defenders) > 0:
+			shuffle(attackers)
+			shuffle(defenders)
+			DoAssaultRound(defenders, attackers, map_hex2, map_hex1)
+		
+		# determine final outcome of assault
+		
+		# attackers all destroyed
+		if len(attackers) == 0:
+			scenario.AddMessage('Assault has failed, all attackers destroyed!', None)
+			return
+		
+		# 1+ defenders still alive: attacker falls back
+		if len(defenders) > 0:
+			scenario.AddMessage('Defenders continue to hold the location.', None)
+			# set animation destination
+			new_x = x1
+			new_y = y1
+			# reset locations to old hex
+			for (unit, fp) in attackers:
+				unit.hx = map_hex1.hx
+				unit.hy = map_hex1.hy
+		
+		# all defenders destroyed
+		else:
+			scenario.AddMessage('Assault has succeeded, attackers take the location!', None)
+			# set animation destination
+			new_x = x2
+			new_y = y2
+			# join new hex stack
+			for (unit, fp) in attackers:
+				map_hex1.unit_stack.remove(unit)
+				map_hex2.unit_stack.append(unit)
+				
+		# display animation
+		if display_movement:
+			line = GetLine(self.anim_x, self.anim_y, new_x, new_y)
+			for (unit, fp) in attackers:
+				for (x,y) in line[1:]:
+					unit.anim_x = x
+					unit.anim_y = y
+					UpdateUnitConsole()
+					DrawScreenConsoles()
+					libtcod.console_flush()
+					Wait(pause_time)
 	
 	# resolve an AP hit on this unit
 	# if hit doesn't involve this player, display a message in the format:
@@ -1487,7 +1719,6 @@ class Unit:
 		attack_obj.final_ap = final_ap
 		
 		# display AP roll if player is not involved
-
 		display_attack = True
 		if attack_obj.attacker != scenario.player_unit and self != scenario.player_unit:
 			display_attack = False
@@ -2247,32 +2478,43 @@ class TerrainType:
 
 
 # Attack class, used for attack objects holding scores to use in an attack
-# generated by CalcAttack
+# generated by CalcAttack()
+# Note: attacker and target are lists if mode==2 (assault)
 class Attack:
-	def __init__(self, attacker, weapon, target):
-		self.attacker = attacker
+	def __init__(self, attacker, weapon, target, mode):
+		
+		# assault modes need to unpack the attacker and target tuples
+		if mode == ASSAULT_MODE:
+			(self.attacker, self.attacker_fp) = attacker
+			(self.target, self.defender_fp) = target
+		else:
+			self.attacker = attacker
+			self.target = target
 		self.weapon = weapon
-		self.target = target
 		
+		self.mode = mode		# attack mode: 0:to-hit; 1:firepower; 2:assault
+		
+		# General variables
 		self.modifiers = []		# list of dice roll modifiers
-		self.to_hit_attack = True	# attack is a to-hit attack
+		self.critical_hit = False	# roll was an original 2
 		
-		# Area Fire variables
+		# Firepower attack variables
 		self.base_fp = 0		# base attack firepower
 		self.fp_mods = []		# list of firepower modifiers (multipliers)
 		self.final_fp = 0		# final firepower
 		
-		# Point and Area Fire variables
+		# To-Hit and Firepower attack variables
 		self.base_to_hit = 0		# base score required to hit
 		self.final_to_hit = 0		# final to-hit score required
 
-		# AP variables
+		# AP variables - set by CalcAPRoll()
 		self.location_desc = ''		# description of location hit
 		self.base_ap = 0		# base armour-penetration roll required
 		self.final_ap = 0		# final "
 		
-		# final roll variables
-		self.critical_hit = False	# roll was an original 2
+		# Assault variables
+		self.base_roll = 0		# base to-destroy roll
+		self.final_roll = 0		# final to-destroy roll
 
 
 # a single option in a CommandMenu list
@@ -2359,6 +2601,7 @@ class CommandMenu:
 			else:
 				n += 1
 		self.selected_option = self.cmd_list[n]
+		PlaySound('menu_select')
 	
 	# returns the currently selected option, returning None if this option is inactive
 	def GetSelectedOption(self):
@@ -3145,8 +3388,13 @@ class Scenario:
 				if not self.TargetIsInArc(attacker, weapon, target):
 					return (None, 'Target outside weapon firing arc')
 		
+		# determine attack type - TEMP
+		mode = FIREPOWER_MODE
+		if weapon.weapon_type == 'gun':
+			mode = TO_HIT_MODE
+		
 		# calculate the attack odds
-		attack_obj = CalcAttack(attacker, weapon, target)
+		attack_obj = CalcAttack(attacker, weapon, target, mode)
 		if attack_obj.final_to_hit < 2:
 			return (0.0, '')
 		elif attack_obj.final_to_hit > 12:
@@ -3439,7 +3687,21 @@ class Scenario:
 				menu_option.inactive = True
 				menu_option.desc = 'Your tank is immbolized'
 			
-			menu_option = self.cmd_menu.AddOption('move_forward', 'W', 'Forward')
+			# forward move or assault
+			assault = False
+			(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
+				scenario.player_unit.hy, scenario.player_unit.facing)
+			map_hex = GetHexAt(hx, hy)
+			if len(map_hex.unit_stack) > 0:
+				unit = map_hex.unit_stack[0]
+				if unit.owning_player != scenario.player_unit.owning_player:
+					assault = True
+			
+			if assault:
+				menu_option = self.cmd_menu.AddOption('assault', 'W', 'Assault')
+			else:
+				menu_option = self.cmd_menu.AddOption('move_forward', 'W', 'Forward')
+			
 			if scenario.player_unit.immobilized:
 				menu_option.inactive = True
 				menu_option.desc = 'Your tank is immbolized'
@@ -3640,6 +3902,52 @@ class Scenario:
 #                                     General Functions                                  #
 ##########################################################################################
 
+# try to initialize SDL2 mixer
+def InitMixer():
+	if mixer.Mix_Init(mixer.MIX_INIT_OGG) != mixer.MIX_INIT_OGG:
+		print mixer.Mix_GetError()
+		return False
+	if mixer.Mix_OpenAudio(48000, mixer.MIX_DEFAULT_FORMAT,	2, 1024) == -1:
+		print mixer.Mix_GetError()
+		return False
+	mixer.Mix_AllocateChannels(16)
+	return True
+
+
+# load samples into memory
+def LoadSounds():
+	
+	global sound_samples
+	
+	SOUND_LIST = ['menu_select']
+	
+	# because the function returns NULL if the file failed to load, Python does not seem
+	# to have any way of detecting this and there's no error checking
+	
+	for sound_name in SOUND_LIST:
+		sound_samples[sound_name] = mixer.Mix_LoadWAV(SOUNDPATH + sound_name + '.ogg')
+
+
+# play a given sample, returns the channel it is playing on
+def PlaySound(sound_name):
+	if not config.get('ArmCom2', 'sounds_enabled'): return
+	channel = mixer.Mix_PlayChannel(-1, sound_samples[sound_name], 0)
+	if channel == -1:
+		print 'Error - could not play sound: ' + sound_name
+		print mixer.Mix_GetError()
+	return channel
+
+
+# throw a fatal error and quit
+def FatalError(message):
+	message += '\n\nPlease report this error to armouredcommander@gmail.com, thanks!'
+	if sys.platform == 'win32':
+		ctypes.windll.user32.MessageBoxW(0, unicode(message), u'Fatal Error', 0)
+	else:
+		print 'Fatal Error: ' + message
+	sys.exit()
+
+
 # draw an ArmCom2-style frame to the given console
 def DrawFrame(console, x, y, w, h):
 	libtcod.console_put_char(console, x, y, 249)
@@ -3707,24 +4015,17 @@ def EraseGame():
 
 # calculate an attack
 # TODO: allow passing other options, eg. assume that the attacker has pivoted / rotated turret
-def CalcAttack(attacker, weapon, target):
+def CalcAttack(attacker, weapon, target, mode):
 	
 	# create a new attack object
-	attack_obj = Attack(attacker, weapon, target)
-	
+	# if assault mode, attacker and target are tuples that the Attack class will unpack
+	attack_obj = Attack(attacker, weapon, target, mode)
+
 	# get distance to target
-	distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+	if mode != ASSAULT_MODE:
+		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 	
-	# determine whether this is a to-hit or a FP attack
-	to_hit_attack = False
-	if weapon.weapon_type == 'gun':
-		to_hit_attack = True
-	
-	######################
-	#   To-Hit Attacks   #
-	######################
-	
-	if to_hit_attack:
+	if mode == TO_HIT_MODE:
 	
 		# calculate base to-hit roll required
 		if distance <= 1:
@@ -3808,12 +4109,7 @@ def CalcAttack(attacker, weapon, target):
 		if attack_obj.final_to_hit > 11:
 			attack_obj.final_to_hit = 11
 
-	#####################
-	# Area Fire Attacks #
-	#####################
-
-	else:
-		attack_obj.to_hit_attack = False
+	elif mode == FIREPOWER_MODE:
 		
 		# get base firepower of weapon used
 		attack_obj.base_fp = weapon.stats['fp']
@@ -3878,7 +4174,58 @@ def CalcAttack(attacker, weapon, target):
 		# FUTURE: if < 2 required, attack not possible
 		if attack_obj.final_to_hit > 11:
 			attack_obj.final_to_hit = 11
+	
+	elif mode == ASSAULT_MODE:
 		
+		# determine base to-destroy roll
+		for (fp, score) in reversed(ASSAULT_SCORES):
+			if fp <= attack_obj.attacker_fp:
+				break
+		attack_obj.base_roll = score
+		
+		# build list of roll modifiers
+		
+		# firepower differential
+		if float(attack_obj.attacker_fp) / 2.0 >= float(attack_obj.defender_fp):
+			attack_obj.modifiers.append(('Superior Firepower', 2))
+		elif attack_obj.attacker_fp > attack_obj.defender_fp:
+			attack_obj.modifiers.append(('Better Firepower', 1))
+		elif attack_obj.defender_fp > attack_obj.attacker_fp:
+			attack_obj.modifiers.append(('Worse Firepower', -1))
+		elif float(attack_obj.defender_fp) / 2.0 >= float(attack_obj.attacker_fp):
+			attack_obj.modifiers.append(('Inferior Firepower', -2))
+			
+		# fully armoured attacking infantry or gun in open: +2
+		if attacker.armour is not None and target.infantry or target.gun:
+			map_hex = GetHexAt(target.hx, target.hy)
+			if map_hex.terrain_type.terrain_mod == 0:
+				attack_obj.modifiers.append(('Armoured Assault', 2))
+		
+		# infantry or gun vs. fully armoured in terrain mod >=2: +2
+		if attacker.infantry or attacker.gun and target.armour is not None:
+			map_hex = GetHexAt(target.hx, target.hy)
+			if map_hex.terrain_type.terrain_mod >= 2:
+				attack_obj.modifiers.append(('Concealing Terrain', 2))
+		
+		# target is armoured: - lowest armour rating
+		if target.armour is not None:
+			pass
+		
+		# calculate final to-destroy roll
+		attack_obj.final_roll = attack_obj.base_roll
+		
+		for (text, mod) in attack_obj.modifiers:
+			attack_obj.final_roll += mod
+			
+		# 2 is always success, 12 always failure
+		if attack_obj.final_roll > 11:
+			attack_obj.final_roll = 11
+		elif attack_obj.final_roll < 2:
+			attack_obj.final_roll = 2
+	
+	else:
+		FatalError('Error in CalcAttack(): mode not recognized!')
+	
 	return attack_obj
 
 
@@ -3921,7 +4268,7 @@ def CalcAPRoll(attack_obj):
 			base_ap = 6
 	
 	if base_ap == 0:
-		print 'ERROR: No AP rating found for ' + gun_rating
+		FatalError('No AP rating found for ' + gun_rating)
 	
 	# apply critical hit if any
 	if attack_obj.critical_hit:
@@ -4687,7 +5034,13 @@ def InitAttack(attacker, weapon, target):
 		display_attack = False
 	
 	# send information to CalcAttack, which will return an Attack object
-	attack_obj = CalcAttack(attacker, weapon, target)
+	
+	# determine attack type - TEMP
+	mode = FIREPOWER_MODE
+	if weapon.weapon_type == 'gun':
+		mode = TO_HIT_MODE
+	
+	attack_obj = CalcAttack(attacker, weapon, target, mode)
 	
 	# if player wasn't attacker, display LoS from attacker to target
 	# TODO: this will pause any ongoing animations, need to integrate into animation handler
@@ -4787,7 +5140,8 @@ def InitAttack(attacker, weapon, target):
 	
 	# if target was hit, save attack details to target to be resolved at end of attacker activation
 	if roll <= attack_obj.final_to_hit:
-		if attack_obj.to_hit_attack:
+		
+		if attack_obj.mode == TO_HIT_MODE:
 			
 			# see if we apply an AP or a FP hit
 			if weapon.stats['loaded_ammo'] == 'AP':
@@ -4964,7 +5318,7 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
-	# attacker or target portrait
+	# display unit in position 1: either attacker or the target if AP roll
 	if ap_roll:
 		unit = attack_obj.target
 	else:
@@ -4972,6 +5326,7 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
 	libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
 	
+	# only display portrait if unit is friendly or known
 	if not (unit.owning_player == 1 and not unit.known):
 		if unit.unit_id in unit_portraits:
 			libtcod.console_blit(unit_portraits[unit.unit_id], 0, 0, 0, 0, attack_con, 1, 2)
@@ -4979,18 +5334,21 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		unit.GetName())
 	
 	# roll description
-	if attack_obj.attacker.owning_player == 1 and not attack_obj.attacker.known:
-		text = 'unknown weapon'
+	if attack_obj.mode == ASSAULT_MODE:
+		text = 'assaulting'
 	else:
-		text = attack_obj.weapon.GetName()
-	if ap_roll:
-		text = ' hit by ' + text
-	else:
-		text = 'firing ' + text + ' at'
+		if attack_obj.attacker.owning_player == 1 and not attack_obj.attacker.known:
+			text = 'unknown weapon'
+		else:
+			text = attack_obj.weapon.GetName()
+		if ap_roll:
+			text = ' hit by ' + text
+		else:
+			text = 'firing ' + text + ' at'
 	libtcod.console_print_ex(attack_con, 13, 11, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
-	# target name and portrait if to-hit roll
+	# target name and portrait if not AP roll
 	if not ap_roll:
 		libtcod.console_print_ex(attack_con, 13, 12, libtcod.BKGND_NONE,
 			libtcod.CENTER, attack_obj.target.GetName())
@@ -5007,9 +5365,9 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		if attack_obj.critical_hit:
 			libtcod.console_print_ex(attack_con, 13, 14, libtcod.BKGND_NONE,
 				libtcod.CENTER, 'Critical Hit')
-				
-	# firepower and modifiers
-	if not ap_roll and not attack_obj.to_hit_attack:
+	
+	# base firepower, modifiers, and final firepower
+	if attack_obj.mode == FIREPOWER_MODE:
 		
 		if not (attack_obj.attacker.owning_player == 1 and not attack_obj.attacker.known):
 			text = 'Base FP: ' + str(attack_obj.base_fp)
@@ -5027,14 +5385,32 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		text = 'Final FP: ' + str(attack_obj.final_fp)
 		libtcod.console_print_ex(attack_con, 13, 25, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
-
-	# base to-hit / AP roll
-	if ap_roll:
-		text = 'Base roll required: ' + str(attack_obj.base_ap)
-	else:
-		text = 'Base to-hit: ' + str(attack_obj.base_to_hit)
-	libtcod.console_print_ex(attack_con, 13, 26, libtcod.BKGND_NONE,
-		libtcod.CENTER, text)
+		
+		text = 'To Hit: ' + str(attack_obj.base_to_hit)
+		libtcod.console_print_ex(attack_con, 13, 26, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+	
+	# to-hit chance
+	elif attack_obj.mode == TO_HIT_MODE:
+		
+		if ap_roll:
+			text = 'To penetrate: ' + str(attack_obj.base_ap)
+		else:
+			text = 'To Hit: ' + str(attack_obj.base_to_hit)
+		libtcod.console_print_ex(attack_con, 13, 26, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+	
+	# assault firepower
+	elif attack_obj.mode == ASSAULT_MODE:
+		text = 'Attacker FP: ' + str(attack_obj.attacker_fp)
+		libtcod.console_print_ex(attack_con, 13, 21, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+		text = 'Defender FP: ' + str(attack_obj.defender_fp)
+		libtcod.console_print_ex(attack_con, 13, 22, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+		text = 'To Destroy: ' + str(attack_obj.base_roll)
+		libtcod.console_print_ex(attack_con, 13, 26, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
 	
 	# list of roll modifiers
 	if ap_roll:
@@ -5078,14 +5454,20 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	
 	# final roll required
 	libtcod.console_rect(attack_con, 1, 41, 24, 1, False, libtcod.BKGND_SET)
+	
 	if ap_roll:
-		text = 'Score to penetrate:'
+		text = 'Final To Penetrate:'
+	elif attack_obj.mode != ASSAULT_MODE:
+		text = 'Final To Hit:'
 	else:
-		text = 'Score to hit:'
+		text = 'Final To Destroy:'
 	libtcod.console_print_ex(attack_con, 13, 41, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
+	
 	if ap_roll:
 		text = str(attack_obj.final_ap)
+	elif attack_obj.mode == ASSAULT_MODE:
+		text = str(attack_obj.final_roll)
 	else:
 		text = str(attack_obj.final_to_hit)
 	libtcod.console_print_ex(attack_con, 13, 43, libtcod.BKGND_NONE,
@@ -5102,7 +5484,7 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	libtcod.console_set_default_foreground(attack_con, libtcod.white)
 	libtcod.console_print(attack_con, 13, 57, 'Roll')
 		
-	if attack_obj.attacker == scenario.player_unit and not ap_roll:
+	if attack_obj.attacker == scenario.player_unit and not ap_roll and attack_obj.mode != ASSAULT_MODE:
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
 		libtcod.console_print(attack_con, 6, 58, 'Bksp')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
@@ -5715,6 +6097,9 @@ def UpdatePlayerUnitConsole():
 # updates the command console
 def UpdateCmdConsole():
 	libtcod.console_clear(cmd_con)
+	# don't show anything if player not active unit
+	if scenario.player_unit != scenario.active_unit:
+		return
 	libtcod.console_set_default_foreground(cmd_con, TITLE_COL)
 	libtcod.console_set_default_background(cmd_con, TITLE_BG_COL)
 	libtcod.console_rect(cmd_con, 0, 0, 24, 1, False, libtcod.BKGND_SET)
@@ -6104,7 +6489,13 @@ def ScenarioMenu():
 				EraseGame()
 				return True
 			UpdateScreen()
-		
+
+
+##########################################################################################
+#                                                                                        #
+#                                 Main Scenario Loop                                     #
+#                                                                                        #
+##########################################################################################
 
 def DoScenario(load_savegame=False):
 	
@@ -6136,7 +6527,7 @@ def DoScenario(load_savegame=False):
 	libtcod.console_set_default_background(scen_menu_con, libtcod.black)
 	libtcod.console_set_default_foreground(scen_menu_con, libtcod.white)
 	libtcod.console_print_ex(scen_menu_con, 37, 2, libtcod.BKGND_NONE, libtcod.CENTER,
-		VERSION + SUBVERSION)
+		VERSION)
 	
 	# map viewport console
 	map_vp_con = libtcod.console_new(55, 53)
@@ -6230,17 +6621,27 @@ def DoScenario(load_savegame=False):
 	# load terrain type definitions
 	terrain_types = LoadTerrainTypes()
 	
-	# here is where a saved game in-progress would be loaded
+	# load a saved game in progress
 	if load_savegame:
 		LoadGame()
 		
 		# check for saved game compatibility
-		if scenario.game_version != VERSION:
+		if scenario.game_version.split('.', 1) != VERSION.split('.', 1):
 			text = ('This save was created with version ' + scenario.game_version +
-				' of the game. It is not compatible with the current version.')
+				' of the game. It is not compatible with the currently' +
+				' installed version.')
 			GetConfirmation(text, warning_only=True)
 			del scenario
 			return
+		
+		# warning of different version - only used for pre-Alpha versions
+		if scenario.game_version != VERSION:
+			text = ('Warning - Your saved game may not be compatible with' +
+				' the currently installed game version. Crashes and' +
+				' other unexpected behaviour may result. Continue?')
+			if not GetConfirmation(text):
+				del scenario
+				return
 		
 		# reset pointers to terrain consoles for each map hex
 		# (needed because consoles can't be pickled)
@@ -6592,6 +6993,16 @@ def DoScenario(load_savegame=False):
 					scenario.ActivateNextUnit()
 					UpdateScreen()
 		
+		elif option.option_id == 'assault':
+			(hx, hy) = GetAdjacentHex(scenario.player_unit.hx,
+				scenario.player_unit.hy, scenario.player_unit.facing)
+			scenario.player_unit.AssaultInto(hx, hy)
+			scenario.BuildCmdMenu()
+			DrawScreenConsoles()
+			# end player's activation
+			scenario.ActivateNextUnit()
+			UpdateScreen()
+		
 		elif option.option_id in ['pivot_hull_port', 'pivot_hull_stb']:
 			if option.option_id == 'pivot_hull_port':
 				new_direction = CombineDirs(scenario.player_unit.facing, -1)
@@ -6743,6 +7154,7 @@ def LoadCFG():
 		config.set('ArmCom2', 'language', 'English')
 		config.set('ArmCom2', 'large_display_font', 'true')
 		config.set('ArmCom2', 'animation_speed', '30')
+		config.set('ArmCom2', 'sounds_enabled', 'true')
 		
 		# write to disk
 		with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
@@ -6768,13 +7180,15 @@ def SaveCFG():
 global config, unit_portraits
 global mouse, key, con, darken_con
 global lang_dict			# pointer to the current language dictionary of game msgs
-global nation_list
+global nation_list, sound_samples
+global sound_samples
 global gradient_x			# for main menu animation
 
 print 'Starting ' + NAME + ' version ' + VERSION
 
-# dictionary of unit portraits
+# dictionary of unit portraits, sound samples
 unit_portraits = {}
+sound_samples = {}
 
 # try to load game settings from config file, will create a new file if none present
 LoadCFG()
@@ -6796,7 +7210,7 @@ else:
 libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
 	0, 0)
 
-libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION + SUBVERSION,
+libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
 	fullscreen = False, renderer = libtcod.RENDERER_GLSL)
 libtcod.sys_set_fps(LIMIT_FPS)
 libtcod.console_set_keyboard_repeat(0, 0)
@@ -6810,6 +7224,13 @@ libtcod.console_clear(0)
 libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
 	GetMsg('loading'))
 libtcod.console_flush()
+
+# try to init sound mixer
+if not InitMixer():
+	config.set('ArmCom2', 'sounds_enabled', 'false')
+	print 'Not able to init mixer, sounds disabled'
+else:
+	LoadSounds()
 
 # main double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -6850,6 +7271,19 @@ for direction in range(6):
 #                                        Main Menu                                       #
 ##########################################################################################
 
+# list of unit images to display on main menu
+TANK_IMAGES = ['unit_TK3.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp', 'unit_7TP.xp',
+	'unit_pz_35t.xp', 'unit_pz_II.xp'
+]
+
+# gradient animated effect for main menu
+GRADIENT = [
+	libtcod.Color(51, 51, 51), libtcod.Color(64, 64, 64), libtcod.Color(128, 128, 128),
+	libtcod.Color(192, 192, 192), libtcod.Color(255, 255, 255), libtcod.Color(192, 192, 192),
+	libtcod.Color(128, 128, 128), libtcod.Color(64, 64, 64), libtcod.Color(51, 51, 51),
+	libtcod.Color(51, 51, 51)
+]
+
 # FUTURE: put into its own function so can be re-called after language change
 
 # generate main menu console
@@ -6876,7 +7310,7 @@ libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-8, libtcod.BKGN
 
 libtcod.console_set_default_foreground(main_menu_con, libtcod.light_grey)
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
-	libtcod.CENTER, VERSION + SUBVERSION)
+	libtcod.CENTER, VERSION)
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-4,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2016-2017')
 libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-3,
@@ -6954,6 +7388,7 @@ def UpdateMainMenu():
 		libtcod.console_print(0, WINDOW_XM-12, 50, text)
 		
 		libtcod.console_set_default_foreground(0, libtcod.white)
+
 
 # check for presence of a saved game file and disable the 'continue' menu option if not present
 def CheckSavedGame(menu):
@@ -7071,7 +7506,7 @@ while not exit_game:
 		libtcod.console_set_custom_font(DATAPATH+fontname,
 			libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
 		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
-			NAME + ' - ' + VERSION + SUBVERSION, fullscreen = False,
+			NAME + ' - ' + VERSION, fullscreen = False,
 			renderer = libtcod.RENDERER_GLSL)
 		SaveCFG()
 		UpdateMainMenu()
@@ -7090,6 +7525,11 @@ while not exit_game:
 	elif option.option_id == 'return_to_main':
 		active_menu = menus[0]
 		UpdateMainMenu()
+
+# close everything up
+if config.get('ArmCom2', 'sounds_enabled'):
+	mixer.Mix_CloseAudio()
+	mixer.Mix_Quit()
 
 # END #
 

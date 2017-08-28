@@ -1,7 +1,8 @@
 Armoured Commander II
 Alpha 1.0 In Progress Version
 
-Copyright (c) 2016-2017 Gregory Adam Scott (sudasana@gmail.com)
+Copyright (c) 2016-2017 Gregory Adam Scott
+<armouredcommander@gmail.com> or <sudasana@gmail.com>
 This file is part of Armoured Commander II.
 
 Armoured Commander II is free software: you can redistribute it and/or modify
@@ -19,12 +20,15 @@ along with Armoured Commander II, in the form of a file named "license.txt".
 If not, see <http://www.gnu.org/licenses/>.
 
 xp_loader.py is covered under a MIT License (MIT) and is Copyright (c) 2015
-Sean Hagar; see XpLoader_LICENSE.txt for more info.
+Sean Hagar
+
+Check in the docs folder for more documentation relating to included libraries
 
 Full source code is available at: https://github.com/sudasana/armcom2
 
-To run armcom2.py, you will need:
+To run the armcom2.py script, you will need:
 
 Python 2.7.8	http://www.python.org/download/releases/2.7.8/
 Libtcod 1.5.1	http://bitbucket.org/libtcod/libtcod
 XPLoader	http://github.com/RCIX/XPLoader
+PySDL2		https://bitbucket.org/marcusva/py-sdl2/downloads/

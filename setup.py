@@ -5,7 +5,7 @@ import glob, shutil
 sys.argv.append('py2exe')
 
 # constant defs
-VERSION = 'weekly'
+VERSION = '0.1.0-2017-09-01'
 AUTHOR_NAME = 'Gregory Adam Scott'
 AUTHOR_EMAIL = 'armouredcommander@gmail.com'
 AUTHOR_URL = 'http://www.armouredcommander.com'
@@ -15,17 +15,19 @@ VERSIONSTRING = PRODUCT_NAME + VERSION
 
 REMOVE_BUILD_ON_EXIT = False				# remove build tree on exit
 
-#PYGAMEDIR = os.path.split(pygame.base.__file__)[0]
-
-DLLS = ['libtcod-mingw.dll', 'python27.dll', 'SDL.dll']
+DLLS = ['libtcod-mingw.dll', 'python27.dll', 'SDL.dll', 'SDL2_mixer.dll', 
+	'libogg-0.dll', 'libvorbis-0.dll', 'libvorbisfile-3.dll']
 
 if os.path.exists('dist/'): shutil.rmtree('dist/')	# remove last dist dir
 
-extra_files = [ ("",['readme.txt', 'gpl.txt', 'license.txt']),
+extra_files = [ ("",['readme.txt', 'license.txt']),
+	("docs",glob.glob(os.path.join('docs','*.txt'))),
 	("data",glob.glob(os.path.join('data','c64_12x12.png'))),
 	("data",glob.glob(os.path.join('data','c64_16x16.png'))),
 	("data",glob.glob(os.path.join('data','*.xml'))),
 	("data",glob.glob(os.path.join('data','*.xp'))),
+	("data",glob.glob(os.path.join('data','armcom2.cfg'))),
+	("sounds",glob.glob(os.path.join('sounds','*.ogg')))
 ]
 
 # list of modules to exclude from dist

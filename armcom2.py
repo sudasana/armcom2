@@ -66,7 +66,7 @@ from encodings import hex_codec, ascii, utf_8, cp850
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2017-09-08'				# game version in Semantic Versioning format: http://semver.org/			
+VERSION = '0.1.0-2017-09-01'				# game version in Semantic Versioning format: http://semver.org/			
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -1367,7 +1367,7 @@ class Unit:
 		else:
 			map_hex2.unit_stack.append(self)
 		
-		# display movement animation if on viewport
+		# player sound display movement animation if on viewport
 		if self.vp_hx is not None and self.vp_hy is not None:
 		
 			direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, new_hx, new_hy)
@@ -1377,7 +1377,10 @@ class Unit:
 			(x1,y1) = PlotHex(self.vp_hx, self.vp_hy)
 			(x2,y2) = PlotHex(new_vp_hx, new_vp_hy)
 			line = GetLine(x1,y1,x2,y2)
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.1
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.3
+			
+			PlaySoundFor(self, 'movement')
+			
 			for (x,y) in line[1:-1]:
 				self.anim_x = x
 				self.anim_y = y
@@ -1574,14 +1577,19 @@ class Unit:
 		
 		for unit in map_hex1.unit_stack:
 			
-			if unit.pinned:
-				continue
+			# extra attackers must have the unit that initiated the assault as their squadron leader
+			if unit != self:
+				if unit.squadron_leader is None: continue
+				if unit.squadron_leader != self: continue
+			
+			if unit.pinned: continue
 			
 			# try to face assault direction if required
 			if unit.facing is not None:
 				direction = GetDirectionToAdjacent(map_hex1.hx, map_hex1.hy, new_hx, new_hy)
-				if not unit.PivotToFace(direction):
-					continue
+				if unit.facing != direction:
+					if not unit.PivotToFace(direction):
+						continue
 			
 			# make sure move into destination hex is possible
 			if not unit.CheckMoveInto(map_hex1.hx, map_hex1.hy, new_hx, new_hy):
@@ -1596,6 +1604,7 @@ class Unit:
 				# set movement statuses and effects
 				unit.moved_this_action = True
 				unit.ClearAcquiredTargets()
+				unit.misses_turns += 1
 				# set driver crew action - for now, player only
 				if unit == scenario.player_unit:
 					unit.SetCrewmanAction('Driver', 'Drive')
@@ -3919,13 +3928,23 @@ def LoadSounds():
 	
 	global sound_samples
 	
-	SOUND_LIST = ['menu_select']
+	SOUND_LIST = [
+		'menu_select',
+		'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02'
+	]
 	
 	# because the function returns NULL if the file failed to load, Python does not seem
 	# to have any way of detecting this and there's no error checking
-	
 	for sound_name in SOUND_LIST:
 		sound_samples[sound_name] = mixer.Mix_LoadWAV(SOUNDPATH + sound_name + '.ogg')
+
+
+# select and play a sound effect for a given situation
+def PlaySoundFor(unit, action):
+	if action == 'movement':
+		if unit.movement_class == 'Fast Tank':
+			n = libtcod.random_get_int(0, 0, 2)
+			PlaySound('light_tank_moving_0' + str(n))
 
 
 # play a given sample, returns the channel it is playing on

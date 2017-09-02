@@ -1,7 +1,6 @@
 from distutils.core import setup
 import py2exe, sys, os
 import glob, shutil
-#import pygame
 sys.argv.append('py2exe')
 
 # constant defs
@@ -15,12 +14,12 @@ VERSIONSTRING = PRODUCT_NAME + VERSION
 
 REMOVE_BUILD_ON_EXIT = False				# remove build tree on exit
 
-DLLS = ['libtcod-mingw.dll', 'python27.dll', 'SDL.dll', 'SDL2_mixer.dll', 
-	'libogg-0.dll', 'libvorbis-0.dll', 'libvorbisfile-3.dll']
+DLLS = ['libtcod-mingw.dll', 'python27.dll', 'SDL.dll']
 
 if os.path.exists('dist/'): shutil.rmtree('dist/')	# remove last dist dir
 
 extra_files = [ ("",['readme.txt', 'license.txt']),
+	("lib",glob.glob(os.path.join('lib','*.dll'))),
 	("docs",glob.glob(os.path.join('docs','*.txt'))),
 	("data",glob.glob(os.path.join('data','c64_12x12.png'))),
 	("data",glob.glob(os.path.join('data','c64_16x16.png'))),

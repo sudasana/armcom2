@@ -51,7 +51,10 @@ from math import floor, cos, sin, sqrt			# math
 from math import degrees, atan2, ceil			# heading calculation
 import shelve						# saving and loading games
 import os, sys, ctypes					# OS-related stuff
+
+os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)
 import sdl2.sdlmixer as mixer				# sound effects
+
 import xp_loader, gzip					# loading xp image files
 import xml.etree.ElementTree as xml			# ElementTree library for XML
 
@@ -66,7 +69,7 @@ from encodings import hex_codec, ascii, utf_8, cp850
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2017-09-01'				# game version in Semantic Versioning format: http://semver.org/			
+VERSION = '0.1.0-2017-09-08'				# game version in Semantic Versioning format: http://semver.org/			
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -173,7 +176,8 @@ VP_HEXES = [
 DEBUG_FLAG_LIST = [
 	'view_all',		# player has LoS to every hex within a 6 hex range
 	'immortal',		# player unit cannot be destroyed
-	'fast_tank'			# player unit always gets an extra turn when moving
+	'fast_tank',		# player unit always gets an extra turn when moving
+	'no_enemy_ai'		# enemy units will not act in any way
 ]
 
 # short forms for crew positions, used to fit information into player unit info console, etc.
@@ -1377,7 +1381,7 @@ class Unit:
 			(x1,y1) = PlotHex(self.vp_hx, self.vp_hy)
 			(x2,y2) = PlotHex(new_vp_hx, new_vp_hy)
 			line = GetLine(x1,y1,x2,y2)
-			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.3
+			pause_time = config.getint('ArmCom2', 'animation_speed') * 0.2
 			
 			PlaySoundFor(self, 'movement')
 			
@@ -1399,8 +1403,8 @@ class Unit:
 		self.ClearAcquiredTargets()
 		
 		# if player was targeting this unit, clear the player's target
-		#if scenario.player_target == self:
-		#	scenario.player_target = None
+		if scenario.player_target == self:
+			scenario.player_target = None
 		
 		# recalculate viewport and update consoles for player movement
 		if scenario.player_unit == self:
@@ -2265,6 +2269,10 @@ class AI:
 	
 	# determine an action for this unit and do it
 	def DoAIAction(self):
+		
+		# debug flag active
+		if self.owner.owning_player == 1 and DEBUG_MODE and scenario.debug_flags['no_enemy_ai']:
+			return
 
 		# can't do anything if we're not alive!
 		if not self.owner.alive: return
@@ -3323,7 +3331,6 @@ class Scenario:
 			if unit.portrait is None: continue
 			if unit.unit_id not in unit_portraits:
 				unit_portraits[unit.unit_id] = LoadXP(unit.portrait)
-		print 'Loaded unit portraits'
 	
 	# return the FP of an HE hit from a given calibre of gun
 	def GetGunHEFP(self, calibre):
@@ -3930,6 +3937,7 @@ def LoadSounds():
 	
 	SOUND_LIST = [
 		'menu_select',
+		'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
 		'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02'
 	]
 	
@@ -3940,16 +3948,29 @@ def LoadSounds():
 
 
 # select and play a sound effect for a given situation
-def PlaySoundFor(unit, action):
-	if action == 'movement':
-		if unit.movement_class == 'Fast Tank':
+def PlaySoundFor(obj, action):
+	if action == 'fire':
+		if obj.weapon_type == 'gun':
+			if obj.stats['calibre'] == 37:
+				n = libtcod.random_get_int(0, 0, 3)
+				PlaySound('37mm_firing_0' + str(n))
+				return
+		
+	elif action == 'movement':
+		if obj.movement_class == 'Fast Tank':
 			n = libtcod.random_get_int(0, 0, 2)
 			PlaySound('light_tank_moving_0' + str(n))
+			return
 
 
 # play a given sample, returns the channel it is playing on
 def PlaySound(sound_name):
 	if not config.get('ArmCom2', 'sounds_enabled'): return
+	
+	if sound_name not in sound_samples:
+		print 'ERROR: Sound not found: ' + sound_name
+		return
+	
 	channel = mixer.Mix_PlayChannel(-1, sound_samples[sound_name], 0)
 	if channel == -1:
 		print 'Error - could not play sound: ' + sound_name
@@ -5100,6 +5121,9 @@ def InitAttack(attacker, weapon, target):
 		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
+	
+	# play sound effect
+	PlaySoundFor(weapon, 'fire')
 	
 	# display appropriate attack animation
 	if weapon.weapon_type == 'gun':
@@ -6644,17 +6668,19 @@ def DoScenario(load_savegame=False):
 	if load_savegame:
 		LoadGame()
 		
-		# check for saved game compatibility
-		if scenario.game_version.split('.', 1) != VERSION.split('.', 1):
+		# check for saved game compatibility - determine by first and second number in version
+		list1 = scenario.game_version.split('.', 2)
+		list2 = VERSION.split('.', 2)
+		if list1[0] != list2[0] or list1[1] != list2[1]:
 			text = ('This save was created with version ' + scenario.game_version +
 				' of the game. It is not compatible with the currently' +
-				' installed version.')
+				' installed version (' + VERSION + ').')
 			GetConfirmation(text, warning_only=True)
 			del scenario
 			return
 		
 		# warning of different version - only used for pre-Alpha versions
-		if scenario.game_version != VERSION:
+		elif scenario.game_version != VERSION:
 			text = ('Warning - Your saved game may not be compatible with' +
 				' the currently installed game version. Crashes and' +
 				' other unexpected behaviour may result. Continue?')

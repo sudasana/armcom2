@@ -96,6 +96,7 @@ ACTION_KEY_COL = libtcod.Color(70, 170, 255)		# colour for key commands
 TITLE_COL = libtcod.white				# fore and background colours for
 TITLE_BG_COL = libtcod.Color(0, 50, 100)		#  console titles and highlighted options
 TITLE_BG_COL2 = libtcod.Color(150, 50, 0)
+TITLE_BG_COL3 = libtcod.Color(0, 90, 180)
 SECTION_BG_COL = libtcod.Color(0, 32, 64)		# darker bg colour for sections
 SECTION_BG_COL2 = libtcod.Color(0, 120, 120)		# lighter bg colour for sections
 INFO_TEXT_COL = libtcod.Color(190, 190, 190)		# informational text colour
@@ -215,6 +216,7 @@ MAX_BU_LOS_DISTANCE = 4			# " for buttoned-up crewmen
 ELEVATION_M = 10.0			# each elevation level represents x meters of height
 BASE_SPOT_SCORE = 5			# base score required to spot unknown enemy unit
 HEX_STACK_LIMIT = 6			# maximum number of units allowed in a map hex stack
+GAME_TURN_IN_MINUTES = 2		# how many in-game minutes pass after each turn
 
 # chance of extra turn / missed turn when moving in:
 # Open Ground, Road, Difficult Terrain
@@ -272,6 +274,16 @@ ASSAULT_SCORES = [
 ##########################################################################################
 #                                         Classes                                        #
 ##########################################################################################
+
+# Campaign: holds information about a campaign in progress across different scenarios
+# currently only allows for a single scenario to be played
+class Campaign:
+	def __init__(self):
+		self.player_nation = ''
+		self.start_year = 0
+		self.start_month = 0
+		self.battlefront = ''
+
 
 # Crewman: represents a crewman who can be assigned to a position in the player tank
 # FUTURE: may also generate for AI vehicles as well?
@@ -3178,7 +3190,7 @@ class Scenario:
 	def GenerateEnemyOOB(self):
 		
 		# FUTURE - will be integrated into national defs in a more generic way
-		total_groups = 6
+		total_groups = 8
 		
 		total_units = 0
 		for i in range(total_groups):
@@ -3310,7 +3322,7 @@ class Scenario:
 				print text
 		
 		# set dummy flags
-		dummy_percent = 35
+		dummy_percent = 45
 		dummy_num = int(total_units * dummy_percent / 100)
 		
 		if DEBUG_MODE:
@@ -3630,7 +3642,7 @@ class Scenario:
 	
 	# end of turn, advance the scenario clock by one turn
 	def AdvanceClock(self):
-		self.minute += 1
+		self.minute += GAME_TURN_IN_MINUTES
 		if self.minute >= 60:
 			self.minute -= 60
 			self.hour += 1
@@ -4236,20 +4248,28 @@ def CalcAttack(attacker, weapon, target, mode):
 			attack_obj.modifiers.append(('Inferior Firepower', -2))
 			
 		# fully armoured attacking infantry or gun in open: +2
-		if attacker.armour is not None and target.infantry or target.gun:
-			map_hex = GetHexAt(target.hx, target.hy)
+		if attack_obj.attacker.armour is not None and attack_obj.target.infantry or attack_obj.target.gun:
+			map_hex = GetHexAt(attack_obj.target.hx, attack_obj.target.hy)
 			if map_hex.terrain_type.terrain_mod == 0:
 				attack_obj.modifiers.append(('Armoured Assault', 2))
 		
 		# infantry or gun vs. fully armoured in terrain mod >=2: +2
-		if attacker.infantry or attacker.gun and target.armour is not None:
-			map_hex = GetHexAt(target.hx, target.hy)
+		if attack_obj.attacker.infantry or attack_obj.attacker.gun and attack_obj.target.armour is not None:
+			map_hex = GetHexAt(attack_obj.target.hx, attack_obj.target.hy)
 			if map_hex.terrain_type.terrain_mod >= 2:
 				attack_obj.modifiers.append(('Concealing Terrain', 2))
 		
 		# target is armoured: - lowest armour rating
-		if target.armour is not None:
-			pass
+		if attack_obj.target.armour is not None:
+			lowest_armour = attack_obj.target.armour['turret_front']
+			if attack_obj.target.armour['turret_side'] < lowest_armour:
+				lowest_armour = attack_obj.target.armour['turret_side']
+			if attack_obj.target.armour['hull_front'] < lowest_armour:
+				lowest_armour = attack_obj.target.armour['hull_front']
+			if attack_obj.target.armour['hull_side'] < lowest_armour:
+				lowest_armour = attack_obj.target.armour['hull_side']
+			if lowest_armour > 0:
+				attack_obj.modifiers.append(('Target Armour', 0-lowest_armour))
 		
 		# calculate final to-destroy roll
 		attack_obj.final_roll = attack_obj.base_roll
@@ -7215,11 +7235,130 @@ def SaveCFG():
 		config.write(configfile)
 
 
+##########################################################################################
+#                                    Campaign Stuff                                      #
+##########################################################################################
 
+# display a menu with options for a new campaign
+def CampaignSelectionMenu():
+	global campaign
+	
+	# draw a selection row on the menu
+	def DrawRow(x, y):
+		libtcod.console_set_default_foreground(con, INFO_TEXT_COL)
+		DrawFrame(con, x, y, 35, 5)
+		libtcod.console_set_default_background(con, TITLE_BG_COL)
+		libtcod.console_rect(con, x+1, y+1, 33, 3, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(con, TITLE_BG_COL3)
+		libtcod.console_rect(con, x+12, y+1, 11, 3, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(con, libtcod.black)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+	
+	# build a list of all possible national forces player can choose
+	player_nation_list = []
+	for dict_key in nation_list.keys():
+		player_nation_list.append(dict_key)
+	player_nation_list.sort(key=str.lower)
+	
+	# select the first one alphabetically as default
+	campaign.player_nation = player_nation_list[0]
+	
+	exit_menu = False
+	while not exit_menu:
+		
+		# draw the menu to screen
+		libtcod.console_clear(con)
+		
+		libtcod.console_set_default_background(con, TITLE_BG_COL)
+		libtcod.console_rect(con, 26, 3, 31, 3, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(con, libtcod.black)
+		libtcod.console_print_ex(con, WINDOW_XM, 4, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Campaign Selection')
+		
+		# display flag for current player nation
+		nation_dict = nation_list[campaign.player_nation]
+		temp = LoadXP(nation_dict['flag_image'])
+		libtcod.console_blit(temp, 0, 0, 0, 0, con, 27, 8)
+		del temp
+		
+		# selection rows
+		libtcod.console_print(con, 11, 26, 'PLAYER FORCE')
+		DrawRow(24, 24)
+		libtcod.console_print_ex(con, WINDOW_XM, 26, libtcod.BKGND_NONE,
+			libtcod.CENTER, campaign.player_nation)
+		n = player_nation_list.index(campaign.player_nation)
+		libtcod.console_set_default_foreground(con, INFO_TEXT_COL)
+		if n > 0:
+			libtcod.console_print_ex(con, WINDOW_XM-11, 26, libtcod.BKGND_NONE,
+				libtcod.CENTER, player_nation_list[n-1])
+		if n < len(player_nation_list) - 1:
+			libtcod.console_print_ex(con, WINDOW_XM+11, 26, libtcod.BKGND_NONE,
+				libtcod.CENTER, player_nation_list[n+1])
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		
+		
+		libtcod.console_print(con, 10, 30, 'STARTING YEAR')
+		DrawRow(24, 28)
+		libtcod.console_print_ex(con, WINDOW_XM, 30, libtcod.BKGND_NONE,
+			libtcod.CENTER, '1939')
+		
+		
+		libtcod.console_print(con, 9, 34, 'STARTING MONTH')
+		DrawRow(24, 32)
+		libtcod.console_print_ex(con, WINDOW_XM, 34, libtcod.BKGND_NONE,
+			libtcod.CENTER, MONTH_NAMES[9])
+		
+		
+		
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print(con, 24, 49, 'W/S')
+		libtcod.console_print(con, 24, 50, 'A/D')
+		libtcod.console_print(con, 24, 52, 'Enter')
+		libtcod.console_print(con, 24, 53, 'ESC')
+		
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print(con, 31, 49, 'Move Selection')
+		libtcod.console_print(con, 31, 50, 'Cycle Option')
+		libtcod.console_print(con, 31, 52, 'Accept and proceed')
+		libtcod.console_print(con, 31, 53, 'Cancel, return to main menu')
+		
+		
+		libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
+		
+		update_menu = False
+		while not update_menu:
+			
+			libtcod.console_flush()
+			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+			if libtcod.console_is_window_closed(): sys.exit()
+			if key is None: continue
+			
+			# cancel and return to main menu
+			if key.vk == libtcod.KEY_ESCAPE:
+				return False
+	
+	
+
+
+# start a new campaign, allow the player to select their force, opponent, start date, etc.
+def StartNewCampaign():
+	
+	global campaign
+	
+	# create a new, empty campaign object
+	campaign = Campaign()
+	
+	if not CampaignSelectionMenu():
+		return False
+
+
+
+##########################################################################################
 ##########################################################################################
 #                                                                                        #
 #                                       Main Script                                      #
 #                                                                                        #
+##########################################################################################
 ##########################################################################################
 
 global config, unit_portraits
@@ -7227,7 +7366,6 @@ global mouse, key, con, darken_con
 global lang_dict			# pointer to the current language dictionary of game msgs
 global nation_list, sound_samples
 global sound_samples
-global gradient_x			# for main menu animation
 
 print 'Starting ' + NAME + ' version ' + VERSION
 
@@ -7369,8 +7507,8 @@ libtcod.console_set_default_foreground(main_menu_con, libtcod.white)
 menus = []
 
 cmd_menu = CommandMenu('main_menu')
-cmd_menu.AddOption('continue_scenario', 'C', GetMsg('continue_game'))
-cmd_menu.AddOption('new_scenario', 'N', GetMsg('new_game'))
+cmd_menu.AddOption('continue_game', 'C', GetMsg('continue_game'))
+cmd_menu.AddOption('new_game', 'N', GetMsg('new_game'))
 cmd_menu.AddOption('options', 'O', GetMsg('game_options'))
 cmd_menu.AddOption('quit', 'Q', GetMsg('quit_game'))
 menus.append(cmd_menu)
@@ -7465,7 +7603,6 @@ while not exit_game:
 		time_click = time.time()
 	
 	libtcod.console_flush()
-	
 	libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
 	
 	# exit right away
@@ -7504,19 +7641,21 @@ while not exit_game:
 	if option.inactive: continue
 	
 	# main menu
-	if option.option_id == 'continue_scenario':
+	if option.option_id == 'continue_game':
 		DoScenario(load_savegame=True)
 		active_menu = menus[0]
 		CheckSavedGame(active_menu)
 		UpdateMainMenu()
-	elif option.option_id == 'new_scenario':
+	elif option.option_id == 'new_game':
 		# check for already-existing saved game
 		if os.path.exists('savegame'):
 			text = 'Starting a new game will erase the previous one. Proceed?'
 			if not GetConfirmation(text):
 				UpdateMainMenu()
 				continue
-			
+		#if not StartNewCampaign():
+		#	UpdateMainMenu()
+		#	continue
 		DoScenario()
 		active_menu = menus[0]
 		CheckSavedGame(active_menu)

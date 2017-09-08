@@ -283,6 +283,8 @@ class Campaign:
 		self.start_year = 0
 		self.start_month = 0
 		self.battlefront = ''
+		
+		# list of player forces as unit types
 
 
 # Crewman: represents a crewman who can be assigned to a position in the player tank
@@ -7240,6 +7242,7 @@ def SaveCFG():
 ##########################################################################################
 
 # display a menu with options for a new campaign
+# FUTURE: make set of options more generic
 def CampaignSelectionMenu():
 	global campaign
 	
@@ -7262,6 +7265,9 @@ def CampaignSelectionMenu():
 	
 	# select the first one alphabetically as default
 	campaign.player_nation = player_nation_list[0]
+	
+	# select first row as default
+	selected_row = 0
 	
 	exit_menu = False
 	while not exit_menu:
@@ -7308,8 +7314,11 @@ def CampaignSelectionMenu():
 		libtcod.console_print_ex(con, WINDOW_XM, 34, libtcod.BKGND_NONE,
 			libtcod.CENTER, MONTH_NAMES[9])
 		
+		# highlight selected row
+		libtcod.console_set_default_foreground(con, ENEMY_UNIT_COL)
+		DrawFrame(con, 24, 24+(selected_row*4), 35, 5)
 		
-		
+		# display command list
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 24, 49, 'W/S')
 		libtcod.console_print(con, 24, 50, 'A/D')
@@ -7336,8 +7345,54 @@ def CampaignSelectionMenu():
 			# cancel and return to main menu
 			if key.vk == libtcod.KEY_ESCAPE:
 				return False
-	
-	
+			
+			# proceed with current settings
+			elif key.vk == libtcod.KEY_ENTER:
+				return True
+			
+			key_char = chr(key.c).lower()
+			
+			# move selected row
+			if key_char in ['w', 's']:
+				
+				if key_char == 'w':
+					if selected_row > 0:
+						selected_row -= 1
+						update_menu = True
+						continue
+				
+				if key_char == 's':
+					if selected_row < 2:
+						selected_row += 1
+						update_menu = True
+						continue
+			
+			# cycle selection in row
+			if key_char in ['a', 'd']:
+				
+				# player nation
+				if selected_row == 0:
+				
+					n = player_nation_list.index(campaign.player_nation)
+					
+					if key_char == 'a':
+						if n > 0:
+							n -= 1
+							campaign.player_nation = player_nation_list[n]
+							update_menu = True
+							continue
+					
+					if key_char == 'd':
+						if n < len(player_nation_list) - 1:
+							n += 1
+							campaign.player_nation = player_nation_list[n]
+							update_menu = True
+							continue
+
+
+# allow the player to build a new force from a menu
+def ForceSelectionMenu():
+	pass
 
 
 # start a new campaign, allow the player to select their force, opponent, start date, etc.
@@ -7348,8 +7403,15 @@ def StartNewCampaign():
 	# create a new, empty campaign object
 	campaign = Campaign()
 	
+	# select player nation (FUTURE: starting date and battlefield)
 	if not CampaignSelectionMenu():
 		return False
+	
+	# build player force
+	if not ForceSelectionMenu():
+		return False
+	
+	return True
 
 
 
@@ -7576,10 +7638,8 @@ def UpdateMainMenu():
 # check for presence of a saved game file and disable the 'continue' menu option if not present
 def CheckSavedGame(menu):
 	for menu_option in menu.cmd_list:
-		if menu_option.option_id != 'continue_scenario': continue
-		if os.path.exists('savegame'):
-			menu_option.inactive = False
-		else:
+		if menu_option.option_id != 'continue_game': continue
+		if not os.path.exists('savegame'):
 			menu_option.inactive = True
 		return
 

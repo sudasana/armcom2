@@ -1,0 +1,34 @@
+{
+	"Germany": {
+		"short_code" : "GER",
+		"adjective" : "German",
+		"flag_image" : "flag_GER.xp",
+		"battlefronts": [
+			{
+				"location" : "Poland",
+				"start_month" : "9",
+				"start_year" : "1939",
+				"end_month" : "9",
+				"end_year" : "1939",
+				"restricted_units" : [],
+				"enemy_nations" : ["Poland"]
+			}
+		]
+	},
+	"Poland": {
+		"short_code" : "POL",
+		"adjective" : "Polish",
+		"flag_image" : "flag_POL.xp",
+		"battlefronts": [
+			{
+				"location" : "Poland",
+				"start_month" : "9",
+				"start_year" : "1939",
+				"end_month" : "9",
+				"end_year" : "1939",
+				"restricted_units" : [],
+				"enemy_nations" : ["Germany"]
+			}
+		]
+	}
+}

@@ -1,0 +1,35 @@
+{
+	"Open Ground": {
+		"los_height" : "0",
+		"terrain_mod" : "0",
+		"base_image" : "hex_openground.xp"
+	},
+	"Tall Fields": {
+		"los_height" : "1",
+		"terrain_mod" : "2",
+		"base_image" : "hex_fields_in_season.xp"
+	},
+	"Sparse Forest": {
+		"los_height" : "10",
+		"terrain_mod" : "3",
+		"base_image" : "hex_forest.xp",
+		"difficult" : "TRUE"
+	},
+	"Wooden Village": {
+		"los_height" : "5",
+		"terrain_mod" : "4",
+		"base_image" : "hex_village.xp"
+	},
+	"Pond": {
+		"los_height" : "0",
+		"terrain_mod" : "0",
+		"base_image" : "hex_pond.xp",
+		"water" : "TRUE"
+	},
+	"Rough Ground": {
+		"los_height" : "0",
+		"terrain_mod" : "0",
+		"base_image" : "hex_roughground.xp",
+		"difficult" : "TRUE"
+	}
+}

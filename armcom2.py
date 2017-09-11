@@ -37,8 +37,8 @@
 # in-game debug options active: should set to False in any distribution version
 DEBUG_MODE = False
 
-##### External Script Files #####
-import languages, nations
+##### External Script File #####
+import languages
 
 ##### Libraries #####
 import libtcodpy as libtcod				# The Doryen Library
@@ -57,6 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 import xp_loader, gzip					# loading xp image files
 import xml.etree.ElementTree as xml			# ElementTree library for XML
+import json						# FUTURE: use this instead of XML
 
 # needed for py2exe
 import dbhash, anydbm					
@@ -69,7 +70,7 @@ from encodings import hex_codec, ascii, utf_8, cp850
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2017-09-08'				# game version in Semantic Versioning format: http://semver.org/			
+VERSION = '0.1.0-2017-09-15'				# game version in Semantic Versioning format: http://semver.org/			
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -275,10 +276,53 @@ ASSAULT_SCORES = [
 #                                         Classes                                        #
 ##########################################################################################
 
+# Session object: holds data that is generated at start of session (upon starting a new
+#   game or resuming a saved game) and discarded at end of session (when returning to the
+#   main menu)
+class Session:
+	def __init__(self):
+		
+		# generate and store hex console images for each terrain type
+		self.hex_con = {}
+		for key, dictionary in campaign.terrain_types.iteritems():
+			# generate consoles for 4 different terrain heights
+			consoles = []
+			for elevation in range(4):
+				consoles.append(libtcod.console_new(7, 5))
+				libtcod.console_blit(LoadXP(dictionary['base_image']), 0, 0, 7, 5, consoles[elevation], 0, 0)
+				libtcod.console_set_key_color(consoles[elevation], KEY_COLOR)
+			
+			# apply colour modifier to elevations 0, 2, 3
+			for elevation in [0, 2, 3]:
+				for y in range(5):
+					for x in range(7):
+						bg = libtcod.console_get_char_background(consoles[elevation],x,y)
+						if bg == KEY_COLOR: continue
+						
+						if elevation == 0:
+							bg = bg * (1.0 - ELEVATION_SHADE)
+						elif elevation == 2:
+							bg = bg * (1.0 + ELEVATION_SHADE)
+						else:
+							bg = bg * (1.0 + (ELEVATION_SHADE * 2.0))
+						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
+			
+			self.hex_con[key] = consoles
+
+
 # Campaign: holds information about a campaign in progress across different scenarios
 # currently only allows for a single scenario to be played
 class Campaign:
 	def __init__(self):
+		
+		# load national and battlefront definitions from JSON file
+		with open(DATAPATH + 'nation_defs.json') as data_file:
+			self.nations = json.load(data_file)
+		
+		# load terrain type definitions from JSON file
+		with open(DATAPATH + 'terrain_defs.json') as data_file:
+			self.terrain_types = json.load(data_file)
+		
 		self.player_nation = ''
 		self.start_year = 0
 		self.start_month = 0
@@ -612,8 +656,7 @@ class Unit:
 	# set the nation for this unit
 	def SetNation(self, nation):
 		self.nation = nation
-		dictionary = nation_list[nation]
-		self.nation_desc = dictionary['adjective']
+		self.nation_desc = campaign.nations[nation]['adjective']
 
 	# display info about this individual unit or unit type to a console
 	# used in UpdatePlayerUnitConsole()
@@ -825,14 +868,15 @@ class Unit:
 			# movement class not recognized
 			return 0
 		map_hex2 = GetHexAt(hx, hy)
-		if map_hex2.terrain_type.difficult:
+		if 'difficult' in campaign.terrain_types[map_hex2.terrain_type]:
 			score = row[2]
 		else:
 			map_hex1 = GetHexAt(self.hx, self.hy)
 			if GetDirectionToAdjacent(self.hx, self.hy, hx, hy) in map_hex1.dirt_road_links:
 				score = row[1]
 			else:
-				if map_hex2.terrain_type.terrain_mod == 0:
+				terrain_mod = int(campaign.terrain_types[map_hex2.terrain_type]['terrain_mod'])
+				if terrain_mod == 0:
 					score = row[0]
 				else:
 					return 0
@@ -951,8 +995,9 @@ class Unit:
 		
 		# protective terrain
 		map_hex = GetHexAt(self.hx, self.hy)
-		if map_hex.terrain_type.terrain_mod > 0:
-			morale_lvl += map_hex.terrain_type.terrain_mod
+		terrain_mod = int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
+		if terrain_mod > 0:
+			morale_lvl += terrain_mod
 		
 		# normalize
 		if morale_lvl < 3:
@@ -1321,7 +1366,7 @@ class Unit:
 		direction = GetDirectionToAdjacent(hx1, hy1, hx2, hy2)
 		if direction < 0: return False
 		map_hex = GetHexAt(hx2, hy2)
-		if map_hex.terrain_type.water: return False
+		if 'water' in campaign.terrain_types[map_hex.terrain_type]: return False
 		if len(map_hex.unit_stack) > HEX_STACK_LIMIT: return False
 		
 		# check for moving backward into enemy unit(s)
@@ -2471,41 +2516,6 @@ class AI:
 		DrawScreenConsoles()
 		
 		InitAttack(self.owner, weapon, target)
-		
-
-# terrain type: determines effect of different types of map hex terrain
-class TerrainType:
-	def __init__(self):
-		self.console = []
-		self.display_name = ''
-		self.los_height = 0
-		self.base_image = ''
-		self.terrain_mod = 0
-		self.water = False
-		self.difficult = False
-		self.very_difficult = False
-		
-	# load base image and generate other elevations
-	def GenerateConsoles(self):
-		for elevation in range(4):
-			self.console.append(libtcod.console_new(7, 5))
-			libtcod.console_blit(LoadXP(self.base_image), 0, 0, 7, 5, self.console[elevation], 0, 0)
-			libtcod.console_set_key_color(self.console[elevation], KEY_COLOR)
-		
-		# apply colour modifier to elevations 0, 2, 3
-		for elevation in [0, 2, 3]:
-			for y in range(5):
-				for x in range(7):
-					bg = libtcod.console_get_char_background(self.console[elevation],x,y)
-					if bg == KEY_COLOR: continue
-					
-					if elevation == 0:
-						bg = bg * (1.0 - ELEVATION_SHADE)
-					elif elevation == 2:
-						bg = bg * (1.0 + ELEVATION_SHADE)
-					else:
-						bg = bg * (1.0 + (ELEVATION_SHADE * 2.0))
-					libtcod.console_set_char_background(self.console[elevation],x,y,bg)
 
 
 # Attack class, used for attack objects holding scores to use in an attack
@@ -2711,7 +2721,7 @@ class MapHex:
 		self.unit_stack = []			# list of units in this hex
 		
 		self.elevation = None			# elevation in steps above baseline
-		self.terrain_type = None		# pointer to type of terrain in the hex
+		self.terrain_type = ''			# string linked to a key in campaign.terrain_types
 		
 		self.objective = False			# hex is an objective
 		self.held_by = None			# if objective, currently held by this player
@@ -2734,14 +2744,6 @@ class MapHex:
 	# FUTURE: set up impassible cliff edges in this and adjacent hexes if required
 	def SetElevation(self, new_elevation):
 		self.elevation = new_elevation
-	
-	# set hex terrain
-	def SetTerrainType(self, new_terrain_type):
-		for terrain_type in terrain_types:
-			if terrain_type.display_name == new_terrain_type:
-				self.terrain_type = terrain_type
-				return
-		print 'ERROR: Terrain type not found: ' + new_terrain_type
 	
 	# cycle the unit stack, changing the stack order and the top unit in the stack
 	def CycleUnitStack(self, direction):
@@ -2856,7 +2858,7 @@ class HexMap:
 			map_hex.score = 0
 			
 			# skip water hexes
-			if map_hex.terrain_type.water: continue
+			if 'water' in campaign.terrain_types[map_hex.terrain_type]: continue
 		
 			# calculate new score
 			map_hex.score = 1
@@ -2880,8 +2882,9 @@ class HexMap:
 				# FUTURE: update a progress bar on loading screen?
 			
 			# terrain in hex
-			if map_hex.terrain_type.terrain_mod > 0:
-				map_hex.score = map_hex.score * map_hex.terrain_type.terrain_mod
+			terrain_mod = int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
+			if terrain_mod > 0:
+				map_hex.score = map_hex.score * terrain_mod
 			
 			if map_hex.objective:
 				map_hex.score = map_hex.score * 20
@@ -2986,10 +2989,6 @@ class HexMap:
 		#end_time = time.time()
 		#time_taken = round((end_time - start_time) * 1000, 3) 
 		#print 'FoV raycasting finished, took ' + str(time_taken) + ' ms.'
-		
-	# set a given hex on the campaign day map to a terrain type
-	def SetHexTerrainType(self, hx, hy, terrain_type):
-		self.hexes[(hx,hy)].terrain_type = terrain_type
 
 
 # holds information about a scenario in progress
@@ -3052,6 +3051,7 @@ class Scenario:
 		# create the hex map
 		self.hex_map = HexMap(map_w, map_h)
 		self.objective_hexes = []			# list of objective hexes
+		
 	
 	# display a window with the message history and allow the player to scroll through it
 	def DisplayMsgHistory(self):
@@ -3274,7 +3274,7 @@ class Scenario:
 				for tries in range(300):
 					(hx, hy) = choice(self.hex_map.hexes.keys())
 					map_hex = GetHexAt(hx, hy)
-					if map_hex.terrain_type.water: continue
+					if 'water' in campaign.terrain_types[map_hex.terrain_type]: continue
 					
 					if len(map_hex.unit_stack) > HEX_STACK_LIMIT: continue
 					if len(map_hex.unit_stack) > 0:
@@ -3285,7 +3285,7 @@ class Scenario:
 					if (hx2, hy2) not in self.hex_map.hexes: continue
 					
 					# chance of ignoring a hex if it's wrong type of terrain
-					terrain_mod = map_hex.terrain_type.terrain_mod
+					terrain_mod = int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
 					if prefer_terrain:
 						if terrain_mod == 0:
 							if libtcod.random_get_int(0, 1, 10) <= 8:
@@ -4021,30 +4021,6 @@ def GetMsg(msg_id):
 	return lang_dict[msg_id].decode('utf8').encode('IBM850')
 
 
-# load terrain type definitions
-def LoadTerrainTypes():
-	terrain_types = []
-	root = xml.parse(DATAPATH + 'terrain_type_defs.xml')
-	item_list = root.findall('terrain_def')
-	for item in item_list:
-		new_type = TerrainType()
-		new_type.display_name = item.find('display_name').text
-		new_type.los_height = int(item.find('los_height').text)
-		new_type.base_image = item.find('base_image').text
-		if item.find('terrain_mod') is not None:
-			new_type.terrain_mod = int(item.find('terrain_mod').text)
-		if item.find('water') is not None:
-			new_type.water = True
-		if item.find('difficult') is not None:
-			new_type.difficult = True
-		elif item.find('very_difficult') is not None:
-			new_type.very_difficult = True
-		terrain_types.append(new_type)
-		# set up internal stuff for this terrain type
-		new_type.GenerateConsoles()
-	return terrain_types
-
-
 # save the current game in progress
 def SaveGame():
 	save = shelve.open('savegame', 'n')
@@ -4252,13 +4228,15 @@ def CalcAttack(attacker, weapon, target, mode):
 		# fully armoured attacking infantry or gun in open: +2
 		if attack_obj.attacker.armour is not None and attack_obj.target.infantry or attack_obj.target.gun:
 			map_hex = GetHexAt(attack_obj.target.hx, attack_obj.target.hy)
-			if map_hex.terrain_type.terrain_mod == 0:
+			terrain_mod = int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
+			if terrain_mod == 0:
 				attack_obj.modifiers.append(('Armoured Assault', 2))
 		
 		# infantry or gun vs. fully armoured in terrain mod >=2: +2
 		if attack_obj.attacker.infantry or attack_obj.attacker.gun and attack_obj.target.armour is not None:
 			map_hex = GetHexAt(attack_obj.target.hx, attack_obj.target.hy)
-			if map_hex.terrain_type.terrain_mod >= 2:
+			terrain_mod = int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
+			if terrain_mod >= 2:
 				attack_obj.modifiers.append(('Concealing Terrain', 2))
 		
 		# target is armoured: - lowest armour rating
@@ -4711,7 +4689,7 @@ def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
 			if node in closed_list: continue
 			
 			# ignore impassible nodes
-			if node.terrain_type.water: continue
+			if 'water' in campaign.terrain_types[node.terrain_type]: continue
 			
 			# check that move into this new hex would be possible for unit
 			if unit is not None:
@@ -4729,9 +4707,9 @@ def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
 					cost = -5
 				
 				# prefer to pass through villages if possible
-				if node.terrain_type.display_name == 'Wooden Village':
+				if node.terrain_type == 'Wooden Village':
 					cost = -5
-				elif node.terrain_type.difficult:
+				elif 'difficult' in campaign.terrain_types[node.terrain_type]:
 					cost = 5
 				else:
 					cost = 3
@@ -4960,10 +4938,13 @@ def GetLoS(hx1, hy1, hx2, hy2):
 	
 	# same hex and adjacent hex
 	if hx1 == hx2 and hy1 == hy2:
-		return scenario.hex_map.hexes[(hx, hy)].terrain_type.terrain_mod
+		map_hex = GetHexAt(hx,hy)
+		return int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
+		
 	distance = GetHexDistance(hx1, hy1, hx2, hy2)
 	if distance == 1:
-		return scenario.hex_map.hexes[(hx2, hy2)].terrain_type.terrain_mod
+		map_hex = GetHexAt(hx2,hy2)
+		return int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
 	
 	# store info about the starting and ending hexes for this LoS
 	start_elevation = float(GetHexAt(hx1, hy1).elevation)
@@ -5027,8 +5008,8 @@ def GetLoS(hx1, hy1, hx2, hy2):
 		elevation = (float(map_hex.elevation) - start_elevation) * ELEVATION_M
 		distance = float(GetHexDistance(hx1, hy1, hx, hy))
 		floor_slope = elevation / (distance * 160.0)
-		terrain_slope = (elevation + float(map_hex.terrain_type.los_height)) / (distance * 160.0)
-		terrain_mod = map_hex.terrain_type.terrain_mod
+		terrain_slope = (elevation + float(campaign.terrain_types[map_hex.terrain_type]['los_height'])) / (distance * 160.0)
+		terrain_mod = int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
 		
 		# if we're on a hexspine, we need to compare some pairs of hexes
 		# the lowest floor slope of both hexes is used
@@ -5589,14 +5570,14 @@ def GenerateTerrain():
 			while not good_hex:
 				(hx1, hy1) = choice(hex_list1)
 				map_hex = GetHexAt(hx1, hy1)
-				if not map_hex.terrain_type.water:
+				if 'water' not in campaign.terrain_types[map_hex.terrain_type]:
 					good_hex = True
 			
 			good_hex = False
 			while not good_hex:
 				(hx2, hy2) = choice(hex_list2)
 				map_hex = GetHexAt(hx2, hy2)
-				if not map_hex.terrain_type.water:
+				if 'water' not in campaign.terrain_types[map_hex.terrain_type]:
 					good_hex = True
 				
 			path = GetHexPath(hx1, hy1, hx2, hy2, road_path=True)
@@ -5631,7 +5612,7 @@ def GenerateTerrain():
 	# clear map
 	for (hx, hy) in map_hex_list:
 		map_hex = GetHexAt(hx, hy)
-		map_hex.SetTerrainType('Open Ground')
+		map_hex.terrain_type = 'Open Ground'
 		map_hex.SetElevation(1)
 		map_hex.dirt_road_links = []
 	
@@ -5663,7 +5644,7 @@ def GenerateTerrain():
 	for rough_ground_pass in range(rough_ground_num):
 		(hx, hy) = choice(map_hex_list)
 		map_hex = GetHexAt(hx, hy)
-		map_hex.SetTerrainType('Rough Ground')
+		map_hex.terrain_type = 'Rough Ground'
 	
 	
 	##################################################################################
@@ -5727,7 +5708,7 @@ def GenerateTerrain():
 				# small chance of gaps in area
 				if libtcod.random_get_int(0, 1, 15) == 1:
 					continue
-				map_hex.SetTerrainType('Sparse Forest')
+				map_hex.terrain_type = 'Sparse Forest'
 	
 	##################################################################################
 	#                                 Villages                                       #
@@ -5744,9 +5725,9 @@ def GenerateTerrain():
 		shuffle(map_hex_list)
 		for (hx, hy) in map_hex_list:
 			map_hex = GetHexAt(hx, hy)
-			if map_hex.terrain_type.display_name == 'Sparse Forest':
+			if map_hex.terrain_type == 'Sparse Forest':
 				continue
-			map_hex.SetTerrainType('Wooden Village')
+			map_hex.terrain_type = 'Wooden Village'
 			
 			# handle large villages; if extra hexes fall off map they won't
 			#  be added
@@ -5755,7 +5736,7 @@ def GenerateTerrain():
 					(hx2, hy2) = GetAdjacentHex(hx, hy, libtcod.random_get_int(0, 0, 5))
 					map_hex = GetHexAt(hx2, hy2)
 					if map_hex is not None:
-						map_hex.SetTerrainType('Wooden Village')
+						map_hex.terrain_type = 'Wooden Village'
 				
 			break
 	
@@ -5781,13 +5762,13 @@ def GenerateTerrain():
 			if map_hex is not None:
 				
 				# don't overwrite villages
-				if map_hex.terrain_type.display_name == 'Wooden Village':
+				if map_hex.terrain_type == 'Wooden Village':
 					continue
 				# small chance of overwriting forest
-				if map_hex.terrain_type.display_name == 'Sparse Forest':
+				if map_hex.terrain_type == 'Sparse Forest':
 					if libtcod.random_get_int(0, 1, 10) <= 9:
 						continue
-				map_hex.SetTerrainType('Tall Fields')
+				map_hex.terrain_type = 'Tall Fields'
 	
 	##################################################################################
 	#                                   Ponds                                        #
@@ -5799,11 +5780,11 @@ def GenerateTerrain():
 		shuffle(map_hex_list)
 		for (hx, hy) in map_hex_list:
 			map_hex = GetHexAt(hx, hy)
-			if map_hex.terrain_type.display_name != 'Open Ground':
+			if map_hex.terrain_type != 'Open Ground':
 				continue
 			if map_hex.elevation != 1:
 				continue
-			map_hex.SetTerrainType('Pond')
+			map_hex.terrain_type = 'Pond'
 			break
 	
 	##################################################################################
@@ -6085,7 +6066,8 @@ def UpdateVPConsole():
 			if map_hex is None: continue
 			if map_hex.elevation != elevation: continue
 			(x,y) = PlotHex(hx, hy)
-			h_con = map_hex.terrain_type.console[map_hex.elevation]
+			h_con = session.hex_con[map_hex.terrain_type][map_hex.elevation]
+			#h_con = map_hex.terrain_type.console[map_hex.elevation]
 			libtcod.console_blit(h_con, 0, 0, 0, 0, map_vp_con, x-3, y-2)
 			
 			# add FoV mask if required
@@ -6225,7 +6207,7 @@ def UpdateHexInfoConsole():
 	
 	# replace window title with terrain type
 	libtcod.console_rect(hex_info_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
-	libtcod.console_print(hex_info_con, 0, 0, map_hex.terrain_type.display_name)
+	libtcod.console_print(hex_info_con, 0, 0, map_hex.terrain_type)
 	
 	# display coordinates if in debug mode
 	if DEBUG_MODE:
@@ -6564,7 +6546,7 @@ def ScenarioMenu():
 
 def DoScenario(load_savegame=False):
 	
-	global scenario, terrain_types
+	global scenario, session
 	# screen consoles
 	global scen_menu_con, bkg_console, map_vp_con, vp_mask, map_fov_con
 	global unit_con, player_unit_con, anim_con, cmd_con, attack_con, scen_info_con
@@ -6683,8 +6665,8 @@ def DoScenario(load_savegame=False):
 	# die face image
 	dice = LoadXP('dice.xp')
 	
-	# load terrain type definitions
-	terrain_types = LoadTerrainTypes()
+	# create new session object
+	session = Session()
 	
 	# load a saved game in progress
 	if load_savegame:
@@ -6710,10 +6692,6 @@ def DoScenario(load_savegame=False):
 				del scenario
 				return
 		
-		# reset pointers to terrain consoles for each map hex
-		# (needed because consoles can't be pickled)
-		for map_key, map_hex in scenario.hex_map.hexes.iteritems():
-			map_hex.SetTerrainType(map_hex.terrain_type.display_name)
 		UpdateVPConsole()
 	
 	else:
@@ -6765,7 +6743,7 @@ def DoScenario(load_savegame=False):
 		new_unit.skill_lvl = 8
 		scenario.player_unit = new_unit		# record this as the player unit
 		map_hex = GetHexAt(6, 22)
-		if not map_hex.terrain_type.water:
+		if 'water' not in campaign.terrain_types[map_hex.terrain_type]:
 			new_unit.hx = 6
 			new_unit.hy = 22
 		else:
@@ -6832,7 +6810,7 @@ def DoScenario(load_savegame=False):
 			if total_objectives == 0: break
 			(hx, hy) = choice(scenario.hex_map.hexes.keys())
 			map_hex = scenario.hex_map.hexes[(hx, hy)]
-			if map_hex.terrain_type.water: continue
+			if 'water' in campaign.terrain_types[map_hex.terrain_type]: continue
 			distance = GetHexDistance(scenario.player_unit.hx,
 				scenario.player_unit.hy, hx, hy)
 			if distance <= 12: continue
@@ -7203,8 +7181,8 @@ def DoScenario(load_savegame=False):
 			scenario.display_los = False
 			DrawScreenConsoles()
 		
-	# we're exiting back to the main menu, so delete the scenario object
-	del scenario
+	# we're exiting back to the main menu, so delete the session object
+	del session
 
 
 # try to load game settings from config file
@@ -7259,8 +7237,8 @@ def CampaignSelectionMenu():
 	
 	# build a list of all possible national forces player can choose
 	player_nation_list = []
-	for dict_key in nation_list.keys():
-		player_nation_list.append(dict_key)
+	for dict_key in campaign.nations.keys():
+		player_nation_list.append(str(dict_key))
 	player_nation_list.sort(key=str.lower)
 	
 	# select the first one alphabetically as default
@@ -7282,8 +7260,7 @@ def CampaignSelectionMenu():
 			libtcod.CENTER, 'Campaign Selection')
 		
 		# display flag for current player nation
-		nation_dict = nation_list[campaign.player_nation]
-		temp = LoadXP(nation_dict['flag_image'])
+		temp = LoadXP(campaign.nations[campaign.player_nation]['flag_image'])
 		libtcod.console_blit(temp, 0, 0, 0, 0, con, 27, 8)
 		del temp
 		
@@ -7408,8 +7385,8 @@ def StartNewCampaign():
 		return False
 	
 	# build player force
-	if not ForceSelectionMenu():
-		return False
+	#if not ForceSelectionMenu():
+	#	return False
 	
 	return True
 
@@ -7426,7 +7403,6 @@ def StartNewCampaign():
 global config, unit_portraits
 global mouse, key, con, darken_con
 global lang_dict			# pointer to the current language dictionary of game msgs
-global nation_list, sound_samples
 global sound_samples
 
 print 'Starting ' + NAME + ' version ' + VERSION
@@ -7437,9 +7413,6 @@ sound_samples = {}
 
 # try to load game settings from config file, will create a new file if none present
 LoadCFG()
-
-# set up nation definitions
-nation_list = nations.nation_list
 
 # set up language dictionary pointer
 lang_dict = languages.game_msgs[config.get('ArmCom2', 'language')]
@@ -7702,6 +7675,7 @@ while not exit_game:
 	
 	# main menu
 	if option.option_id == 'continue_game':
+		# generate new session object
 		DoScenario(load_savegame=True)
 		active_menu = menus[0]
 		CheckSavedGame(active_menu)
@@ -7713,9 +7687,10 @@ while not exit_game:
 			if not GetConfirmation(text):
 				UpdateMainMenu()
 				continue
-		#if not StartNewCampaign():
-		#	UpdateMainMenu()
-		#	continue
+		# generate new session object
+		if not StartNewCampaign():
+			UpdateMainMenu()
+			continue
 		DoScenario()
 		active_menu = menus[0]
 		CheckSavedGame(active_menu)

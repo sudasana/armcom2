@@ -50,6 +50,405 @@
 		"op_value" : "19"
 	},
 	
+	"TKS" : {
+		"category" : "Vehicle",
+		"class" : "Tankette",
+		"portrait" : "unit_TKS.xp",
+		"size_class" : "Very Small",
+		"movement_class" : "Fast Tank",
+		"unreliable" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "0",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "4",
+				"mount" : "Hull",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : "0"
+			}
+		],
+		"crew_position_list" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	"TKS (20mm)" : {
+		"category" : "Vehicle",
+		"class" : "Tankette",
+		"portrait" : "unit_TKS_20mm.xp",
+		"size_class" : "Very Small",
+		"movement_class" : "Fast Tank",
+		"unreliable" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "20",
+				"long_range" : "L",
+				"rof" : "4",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_position_list" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	"Vickers 6-Ton Mark E": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_vickers_ejw.xp",
+		"size_class" : "Small",
+		"movement_class" : "Fast Tank",
+		"turret" : "TRUE",
+		"unreliable" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "47",
+				"long_range" : "S",
+				"rof" : "4",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			},
+			{
+				"type" : "Coax MG",
+				"fp" : "6",
+				"rof" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0"
+			}
+		],
+		"crew_position_list" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	"7TP": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_7TP.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "4",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			},
+			{
+				"type" : "Coax MG",
+				"fp" : "4",
+				"rof" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0"
+			}
+		],
+		"crew_position_list" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"open_visible" : ["0", "1", "5"],
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	"wz. 34 (MG)": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_wz_34_MG.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Coax MG",
+				"fp" : "4",
+				"rof" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : "0"
+			}
+		],
+		"crew_position_list" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	"wz. 34 (37mm)": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_wz_34_37.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "S",
+				"rof" : "4",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_position_list" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	"37mm wz. 36": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_37mm_gun.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "4",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	"75mm wz. 02/26": {
+		"category" : "Gun",
+		"class" : "Field Gun",
+		"portrait" : "unit_75mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "",
+				"rof" : "4",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	"75mm wz. 97/25": {
+		"category" : "Gun",
+		"class" : "Anti-Aircraft Gun",
+		"portrait" : "unit_75mm_aa_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rof" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	
+	
+	
+	
 	"Panzer I B": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
@@ -623,5 +1022,95 @@
 			""
 		],
 		"op_value" : "46"
+	},
+	
+	"PSW 222": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_psw_222.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"open_topped" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "20",
+				"long_range" : "L",
+				"rof" : "6",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66"
+			},
+			{
+				"type" : "Coax MG",
+				"fp" : "5",
+				"rof" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : "0"
+			}
+		],
+		"crew_position_list" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "5"],
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
+	},
+	
+	"Rifle Squad with AT Rifles": {
+		"category" : "Infantry",
+		"class" : "Infantry Squad",
+		"portrait" : "",
+		"movement_class" : "Infantry",
+		"weapon_list" : [
+			{
+				"type" : "Small Arms",
+				"name" : "Rifles",
+				"fp" : "4",
+				"max_range" : "1"
+			},
+			{
+				"type" : "Gun",
+				"name" : "AT Rifle",
+				"max_range" : "3"
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "0"
 	}
 }

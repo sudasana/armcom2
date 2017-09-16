@@ -22,7 +22,7 @@
 				"firing_group" : "0"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Hull",
@@ -73,7 +73,7 @@
 				"firing_group" : "0"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Hull",
@@ -117,14 +117,14 @@
 				"long_range" : "L",
 				"rof" : "4",
 				"rr_size" : "4",
-				"mount" : "Turret",
+				"mount" : "Hull",
 				"fired_by" : ["Commander/Gunner"],
 				"firing_group" : "0",
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Hull",
@@ -184,7 +184,7 @@
 				"firing_group" : "0"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander",
 				"location" : "Turret",
@@ -247,7 +247,7 @@
 				"firing_group" : "0"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander",
 				"location" : "Turret",
@@ -299,7 +299,7 @@
 				"firing_group" : "0"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
@@ -347,7 +347,7 @@
 				"max_ammo" : "180"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
@@ -472,7 +472,7 @@
 				"firing_group" : "0"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
@@ -528,7 +528,7 @@
 				"firing_group" : "0"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
@@ -597,7 +597,7 @@
 				"firing_group" : "1"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
@@ -672,7 +672,7 @@
 				"firing_group" : "1"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
@@ -747,7 +747,7 @@
 				"firing_group" : "1"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander",
 				"location" : "Turret",
@@ -829,7 +829,7 @@
 				"firing_group" : "1"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander",
 				"location" : "Turret",
@@ -911,7 +911,7 @@
 				"firing_group" : "1"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander",
 				"location" : "Turret",
@@ -985,7 +985,7 @@
 				"firing_group" : "0"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander",
 				"location" : "Turret",
@@ -1061,7 +1061,7 @@
 				"firing_group" : "0"
 			}
 		],
-		"crew_position_list" : [
+		"crew_positions" : [
 			{
 				"name" : "Commander",
 				"location" : "Turret",

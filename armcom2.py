@@ -70,7 +70,7 @@ from encodings import hex_codec, ascii, utf_8, cp850
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2017-09-15'				# game version in Semantic Versioning format: http://semver.org/			
+VERSION = '0.1.0-2017-09-22'				# game version in Semantic Versioning format: http://semver.org/			
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -104,6 +104,7 @@ INFO_TEXT_COL = libtcod.Color(190, 190, 190)		# informational text colour
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 HIGHLIGHT_COLOR = libtcod.Color(51, 153, 255)		# colour for highlighted text 
 HIGHLIGHT_COLOR2 = libtcod.Color(0, 64, 0)		# alternate "
+GOLD_HIGHLIGHT_COLOR = libtcod.Color(255, 255, 102)	# golden "
 ROW_COLOR = libtcod.Color(30, 30, 30)			# background colour for list rows
 WEAPON_LIST_COLOR = libtcod.Color(25, 25, 90)		# background for weapon list in PSG console
 SELECTED_WEAPON_COLOR = libtcod.Color(50, 50, 150)	# " selected weapon
@@ -308,6 +309,12 @@ class Session:
 						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
 			
 			self.hex_con[key] = consoles
+		
+		self.unit_portraits = {}
+		for key, unit_type in campaign.unit_types.iteritems():
+			if 'portrait' in unit_type:
+				if unit_type['portrait'] == '': continue
+				self.unit_portraits[key] = LoadXP(unit_type['portrait'])
 
 
 # Campaign: holds information about a campaign in progress across different scenarios
@@ -319,6 +326,10 @@ class Campaign:
 		with open(DATAPATH + 'nation_defs.json') as data_file:
 			self.nations = json.load(data_file)
 		
+		# load unit type definitions from JSON file
+		with open(DATAPATH + 'unit_type_defs.json') as data_file:
+			self.unit_types = json.load(data_file)
+		
 		# load terrain type definitions from JSON file
 		with open(DATAPATH + 'terrain_defs.json') as data_file:
 			self.terrain_types = json.load(data_file)
@@ -328,7 +339,8 @@ class Campaign:
 		self.start_month = 0
 		self.battlefront = ''
 		
-		# list of player forces as unit types
+		# list of UnitGroup objects, within which are Units
+		self.player_battlegroup = []
 
 
 # Crewman: represents a crewman who can be assigned to a position in the player tank
@@ -371,12 +383,6 @@ class CrewPosition:
 		self.open_visible = open_visible	# list of visible hextants when hatch is open
 		self.closed_visible = closed_visible	# " closed
 		
-		# set up list of possible crew actions
-		self.actions = []
-		
-		# all positions can spot
-		self.actions.append(('Spot', 'Try to spot and identify enemy units'))
-		
 		
 	# toggle hatch status
 	def ToggleHatch(self):
@@ -385,31 +391,51 @@ class CrewPosition:
 			self.hatch = 'Open'
 		else:
 			self.hatch = 'Closed'
+
+
+# UnitGroup: defines a platoon or squadron-sized group within a battlegroup
+class UnitGroup:
+	def __init__(self, name, allowed_classes, max_units):
+		self.name = name			# name of this group type (eg. Tank Squadron)
+		self.allowed_classes = allowed_classes	# list of allowed unit class types
+							# if empty, all classes are allowed
+		self.max_units = max_units		# maximum number of units allowed in this group
 		
+		self.unit_list = []			# list of units currently in this group
+
 
 # Unit: represents a single vehicle, squad, gun, or small team
 class Unit:
 	def __init__(self, unit_id):
+		
+		self.unit_id = unit_id			# unique ID for unit type, used to
+							#   access basic stats from campaign.unit_types
+		
+		self.owning_player = None		# player that controls this unit
 		self.alive = True			# unit is not out of action yet
 		self.dummy = False			# unit is not a real one and will disappear
 							#   when spotted - AI units only
-		self.unit_id = unit_id			# unique ID for unit type, used to
-							#   load basic stats from unit_defs.xml
-		self.unit_name = ''			# generic name of unit
-		self.unit_type = ''			# description of the type of unit this is
 		self.nation = ''			# which nation this unit belongs to
-		self.nation_desc = ''			# adjective description of nationality
+		self.name = None			# unique name for this unit (eg. tank name)
 		
-		self.vehicle_name = None		# tank or other vehicle name
-		self.portrait = None
-		self.owning_player = None		# player that controls this unit
+		self.crew_list = []			# list of pointers to crewmen
+		self.weapon_list = []			# list of weapon systems
 		
 		self.ai = AI(self)			# pointer to AI instance
-		
 		self.squadron_leader = None		# pointer to squadron leader, used for AI
 		
-		self.morale_lvl = 0			# morale rating, set during unit spawn
-		self.skill_lvl = 0			# skill rating, "
+		self.known = False			# unit is known to the opposing side
+		
+		self.facing = None			# facing direction: guns and vehicles must have this set
+		self.previous_facing = None		# hull facing before current action
+		self.turret_facing = None		# facing of main turret on unit
+		self.previous_turret_facing = None	# turret facing before current action
+		
+		self.misses_turns = 0			# turns outstanding left to be missed
+		self.unresolved_fp = 0			# fp from attacks to be resolved at end of action
+		self.unresolved_ap = []			# list of unsolved AP hits
+		
+		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
 		
 		# location coordinates
 		self.hx = -1				# hex location of this unit, will be set
@@ -421,38 +447,11 @@ class Unit:
 		self.anim_x = 0				# animation location in console
 		self.anim_y = 0
 		
-		# basic unit stats
-		self.infantry = False			# unit type flags
-		self.gun = False
-		self.vehicle = False
-		
-		self.crew_positions = None		# list of crew positions if any
-		
-		self.known = False			# unit is known to the opposing side
-		
-		self.facing = None			# facing direction: guns and vehicles must have this set
-		self.turret_facing = None		# facing of main turret on unit
-		self.previous_facing = None		# hull facing before current action
-		self.previous_turret_facing = None	# turret facing before current action
-		
-		self.movement_class = ''		# movement class
-		self.misses_turns = 0			# turns outstanding left to be missed
-		
-		self.armour = None			# armour factors if any
-		self.max_ammo = 0			# maximum number of gun ammo carried
-		self.weapon_list = []			# list of weapons
-		
-		self.unresolved_fp = 0			# fp from attacks to be resolved at end of action
-		self.unresolved_ap = []			# list of unsolved AP hits
-		
-		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
-		
 		# action flags
 		self.used_up_moves = False		# if true, unit has no move actions remaining this turn
 		self.moved_this_action = False		# unit moved or pivoted in this turn
 		self.moved_last_action = False		# unit moved or pivoted in its previous turn
 		self.fired = False			# unit fired 1+ weapons this turn
-		#self.in_assault = False			# unit is currently undertaking an assault
 		
 		# status flags
 		self.pinned = False
@@ -461,120 +460,41 @@ class Unit:
 		#self.stunned = False
 		#self.bogged = False
 		
-		# special abilities or traits
-		self.recce = False
-		self.open_topped = False
-		self.unreliable = False
+		if self.GetStat('turret'):
+			self.turret_facing = 0
 		
-		#############################################
-		#  Load stats for this unit from data file  #
-		#############################################
-	
-		# find the unit type entry in the data file
-		root = xml.parse(DATAPATH + 'unit_defs.xml')
-		item_list = root.findall('unit_def')
-		found = False
-		for item in item_list:
-			if item.find('id').text == self.unit_id:	# this is the one we need
-				found = True
-				break
-		if not found:
-			FatalErrror('Could not find unit stats for: ' + self.unit_id)
-		
-		# load stats from item
-		self.unit_name = item.find('name').text
-		
-		if item.find('unit_type') is not None:
-			self.unit_type = item.find('unit_type').text
-		
-		if item.find('portrait') is not None:
-			self.portrait = item.find('portrait').text
-		
-		# weapon info
-		xml_weapon_list = item.findall('weapon')
-		if xml_weapon_list is not None:
-			for weapon_item in xml_weapon_list:
-				self.weapon_list.append(Weapon(weapon_item))
-				
-		# infantry stats if any
-		if item.find('infantry') is not None:
-			self.infantry = True
-		
-		# vehicle stats if any
-		if item.find('vehicle') is not None:
-			self.vehicle = True
-			if item.find('turret') is not None:
-				self.turret_facing = 0		# will be set later
-			if item.find('size_class') is not None:
-				self.size_class = item.find('size_class').text
-			else:
-				self.size_class = 'Normal'
-			if item.find('armour') is not None:
-				self.armour = {}
-				armour_ratings = item.find('armour')
-				self.armour['turret_front'] = int(armour_ratings.find('turret_front').text)
-				self.armour['turret_side'] = int(armour_ratings.find('turret_side').text)
-				self.armour['hull_front'] = int(armour_ratings.find('hull_front').text)
-				self.armour['hull_side'] = int(armour_ratings.find('hull_side').text)
-			if item.find('recce') is not None: self.recce = True
-			if item.find('open_topped') is not None: self.open_topped = True
-			if item.find('unreliable') is not None: self.unreliable = True
-			
-			# maximum total gun ammo load
-			if item.find('max_ammo') is not None:
-				self.max_ammo = int(item.find('max_ammo').text)
-			
-			# set up crew positions
-			if item.find('crew_position') is not None:
-				self.crew_positions = []
-				item_list = item.findall('crew_position')
-				for i in item_list:
-					name = i.find('name').text
-					turret = False
-					if i.find('turret') is not None:
-						turret = True
-					hatch = None
-					if i.find('hatch') is not None:
-						hatch = 'Open'
-					
-					# lists of hextants visible when hatch is open/closed
-					open_visible = []
-					if i.find('open_visible') is not None:
-						string = i.find('open_visible').text
-						for c in string:
-							open_visible.append(int(c))
-					
-					closed_visible = []
-					if i.find('closed_visible') is not None:
-						string = i.find('closed_visible').text
-						for c in string:
-							closed_visible.append(int(c))
-					
-					new_position = CrewPosition(name, turret,
-						hatch, open_visible, closed_visible)
-					
-					# check for special statuses
-					if i.find('large_hatch') is not None:
-						new_position.large_hatch = True
-					
-					self.crew_positions.append(new_position)
-				
-				# FUTURE: sort crew_positions by name based on CREW_POSITION_ORDER?
-				
-		
-		# gun stats
-		elif item.find('gun') is not None:
-			self.gun = True
+		if self.GetStat('category') == 'Gun':
 			self.deployed = True
-			if item.find('size_class') is not None:
-				self.size_class = item.find('size_class').text
-			else:
-				self.size_class = 'Normal'
-			if item.find('gun_shield') is not None:
-				self.gun_shield = True
 		
-		self.movement_class = item.find('movement_class').text
+		# set up list of weapons
+		self.weapon_list = []
+		weapon_list = self.GetStat('weapon_list')
+		if weapon_list is not None:
+			for weapon in weapon_list:
+				# TODO: make a new copy of the dictionary to create the object?
+				self.weapon_list.append(Weapon(weapon))
+		
+		# set up crew positions if any
+		self.crew_positions = []
+		crew_positions = self.GetStat('crew_positions')
+		if crew_positions is not None:
+			for position in crew_positions:
+				# make a copy of the dictionary so we can add some new keys and values
+				# that apply only to this position in this unit
+				new_position = dict(position)
+				new_position['crewman'] = None
+				if 'hatch' in new_position:
+					new_position['hatch_open'] = 'TRUE'
+				self.crew_positions.append(new_position)
+		
 		self.display_char = self.GetDisplayChar()	# set initial display character
+				
+
+	# return a stat for this unit's unit type
+	def GetStat(self, stat_name):
+		if stat_name not in campaign.unit_types[self.unit_id]:
+			return None
+		return campaign.unit_types[self.unit_id][stat_name]
 
 	# perform pre-activation automatic actions
 	def DoPreActivation(self):
@@ -593,8 +513,7 @@ class Unit:
 		self.used_up_moves = False
 		self.fired = False
 		for weapon in self.weapon_list:
-			weapon.fired = False
-			weapon.no_rof_this_turn = False
+			weapon.Reset()
 		self.previous_facing = self.facing
 		self.previous_turret_facing = self.turret_facing
 		
@@ -611,8 +530,8 @@ class Unit:
 		if self == scenario.player_unit:
 			# reset player crew flags
 			for crew_position in scenario.player_unit.crew_positions:
-				if crew_position.crewman is None: continue
-				crew_position.crewman.action = None
+				if crew_position['crewman'] is None: continue
+				crew_position['crewman'].action = None
 			scenario.AddMessage('Your activation begins', None)
 		
 		# check for regaining unknown status
@@ -673,20 +592,20 @@ class Unit:
 		if self.owning_player == 1 and not self.known:
 			return
 		
-		# unit type
+		# unit class
 		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
-		libtcod.console_print(console, x, y, self.unit_type)
+		libtcod.console_print(console, x, y, self.GetStat('class'))
 		y += 1
 		
 		# unit portrait if any
-		if self.unit_id in unit_portraits:
-			libtcod.console_blit(unit_portraits[self.unit_id], 0, 0, 0, 0, console, x, y)
+		if self.unit_id in session.unit_portraits:
+			libtcod.console_blit(session.unit_portraits[self.unit_id], 0, 0, 0, 0, console, x, y)
 		
-		# vehicle name if any
-		if self.vehicle_name is not None:
+		# unit name if any
+		if self.name is not None:
 			libtcod.console_set_default_foreground(console, libtcod.white)
 			libtcod.console_print_ex(console, x+12, y, libtcod.BKGND_NONE,
-				libtcod.CENTER, self.vehicle_name)
+				libtcod.CENTER, self.name)
 		y += 8
 
 		# weapons
@@ -696,25 +615,26 @@ class Unit:
 		text1 = ''
 		text2 = ''
 		for weapon in self.weapon_list:
-			if weapon.weapon_type == 'gun':
-				text1 += weapon.GetName() + ' '
+			if weapon.GetStat('type') == 'Gun':
+				text1 += weapon.GetStat('name') + ' '
 			else:
 				if text2 != '':
 					text2 += ', '
-				text2 += weapon.GetName()
+				text2 += weapon.GetStat('name')
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		libtcod.console_print(console, x, y, text1)
 		libtcod.console_print(console, x, y+1, text2)
 
 		# armour
 		y += 2
-		if self.vehicle:
+		if self.GetStat('category') == 'Vehicle':
 			libtcod.console_set_default_foreground(console, libtcod.white)
-			if self.armour is None:
+			armour = self.GetStat('armour')
+			if armour is None:
 				libtcod.console_print(console, x, y, 'Unarmoured')
 			else:
 				text = 'Armoured'
-				if self.open_topped:
+				if self.GetStat('open_topped') is not None:
 					text += '(OT)'
 				libtcod.console_print(console, x, y, text)
 				libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
@@ -723,9 +643,9 @@ class Unit:
 					text = 'U '
 				else:
 					text = 'T '
-				text += str(self.armour['turret_front']) + '/' + str(self.armour['turret_side'])
+				text += armour['turret_front'] + '/' + armour['turret_side']
 				libtcod.console_print(console, x+1, y+1, text)
-				text = 'H ' + str(self.armour['hull_front']) + '/' + str(self.armour['hull_side'])
+				text = 'H ' + armour['hull_front'] + '/' + armour['hull_side']
 				libtcod.console_print(console, x+1, y+2, text)
 		
 		# movement class
@@ -736,12 +656,12 @@ class Unit:
 		else:
 			libtcod.console_set_default_foreground(console, libtcod.light_green)
 			libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
-				libtcod.RIGHT, self.movement_class)
+				libtcod.RIGHT, self.GetStat('movement_class'))
 			# special movement abilities or restrictions
-			if self.recce:
+			if self.GetStat('recce') is not None:
 				libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE,
 					libtcod.RIGHT, 'Recce')
-			if self.unreliable:
+			if self.GetStat('unreliable') is not None:
 				libtcod.console_set_default_foreground(console, libtcod.red)
 				libtcod.console_print_ex(console, x+23, y+2, libtcod.BKGND_NONE,
 					libtcod.RIGHT, 'Unreliable')
@@ -812,13 +732,13 @@ class Unit:
 			
 			# abbreviated crew position name
 			libtcod.console_set_default_foreground(console, libtcod.light_grey)
-			libtcod.console_print(console, x, y, CREW_POSITION_ABB[position.name])
+			libtcod.console_print(console, x, y, CREW_POSITION_ABB[position['name']])
 			
 			# hatch status
-			if position.hatch is None:
+			if 'hatch' not in position:
 				text = '--'
 			else:
-				if position.hatch == 'Closed':
+				if position['hatch_open']:
 					text = 'BU'
 				else:
 					text = 'CE'
@@ -827,13 +747,13 @@ class Unit:
 			
 			# current crewman action or other status
 			libtcod.console_set_default_foreground(console, libtcod.white)
-			if position.crewman is None:
+			if position['crewman'] is None:
 				text = '[Position Empty]'
 			else:
-				if position.crewman.action is None:
+				if position['crewman'].action is None:
 					text = 'Spot'
 				else:
-					text = position.crewman.action
+					text = position['crewman'].action
 			libtcod.console_print(console, x+7, y, text)
 			
 			y += 1
@@ -844,13 +764,13 @@ class Unit:
 	# returns False if no such position, position is empty, or crewman already has a different action
 	def SetCrewmanAction(self, position_name, action):
 		for position in self.crew_positions:
-			if position.name == position_name:
-				if position.crewman is None:
+			if position['name'] == position_name:
+				if position['crewman'] is None:
 					return False
-				if position.crewman.action is not None:
-					if position.crewman.action != action:
+				if position['crewman'].action is not None:
+					if position['crewman'].action != action:
 						return False
-				position.crewman.action = action
+				position['crewman'].action = action
 				return True
 		return False
 		
@@ -858,11 +778,11 @@ class Unit:
 	def GetMovementTurnChance(self, hx, hy):
 		# move not possible
 		if not self.CheckMoveInto(self.hx, self.hy, hx, hy): return 0
-		if self.infantry:
+		if self.GetStat('category') == 'Infantry':
 			row = MOVE_TURN_CHANCE[0]
-		elif self.movement_class in ['Tank', 'Fast Tank']:
+		elif self.GetStat('movement_class') in ['Tank', 'Fast Tank']:
 			row = MOVE_TURN_CHANCE[1]
-		elif self.movement_class == 'Wheeled':
+		elif self.GetStat('movement_class') == 'Wheeled':
 			row = MOVE_TURN_CHANCE[2]
 		else:
 			# movement class not recognized
@@ -882,7 +802,7 @@ class Unit:
 					return 0
 		
 		# apply modifiers to base score
-		if self.movement_class == 'Fast Tank':
+		if self.GetStat('movement_class') == 'Fast Tank':
 			if score > 0:
 				score += 1
 			else:
@@ -904,7 +824,7 @@ class Unit:
 	def ResolveHits(self):
 		
 		# FUTURE: possible damage to unprotected crew
-		if self.unresolved_fp > 0 and self.armour is not None:
+		if self.unresolved_fp > 0 and self.GetStat('armour') is not None:
 			text = 'Firepower attack has no effect on ' + self.GetName()
 			scenario.AddMessage(text, self)
 			self.unresolved_fp = 0
@@ -919,7 +839,8 @@ class Unit:
 			# get base score to equal/beat
 			for (chart_fp, inf_score, veh_score) in reversed(AF_CHART):
 				if chart_fp <= self.unresolved_fp:
-					if self.infantry or self.gun:
+					unit_category = self.GetStat('category')
+					if unit_category == 'Infantry' or unit_category == 'Gun':
 						score = inf_score
 					else:
 						score = veh_score
@@ -961,7 +882,7 @@ class Unit:
 		# do AP rolls for unresolved ap hits
 		for attack_obj in self.unresolved_ap:
 			
-			text = 'Resolving ' + attack_obj.weapon.GetName() + ' AP hit on ' + self.GetName()
+			text = 'Resolving ' + attack_obj.weapon.GetStat('name') + ' AP hit on ' + self.GetName()
 			scenario.AddMessage(text, self)
 			
 			result = self.ResolveAPHit(attack_obj)
@@ -1076,7 +997,7 @@ class Unit:
 		if not true_name:
 			if self.owning_player == 1 and not self.known:
 				return 'Unknown Unit'
-		text = self.unit_name.decode('utf8').encode('IBM850')
+		text = self.unit_id.decode('utf8').encode('IBM850')
 		if self.dummy:
 			text = 'Dummy ' + text
 		return text
@@ -1085,8 +1006,8 @@ class Unit:
 	def SetCrew(self, position_name, crewman, player=False):
 		
 		for position in self.crew_positions:
-			if position.name == position_name:
-				position.crewman = crewman
+			if position['name'] == position_name:
+				position['crewman'] = crewman
 				return
 		
 		print ('ERROR: tried to assign crew to ' + position_name + ' position but ' +
@@ -1119,13 +1040,14 @@ class Unit:
 		if len(enemy_list) == 0: return
 		
 		# calculate base spotting distance
-		if self.infantry:
+		unit_category = self.GetStat('category')
+		if unit_category == 'Infantry':
 			spot_distance = 3
 			if self.moved_this_action:
 				spot_distance += 2
 			if self.fired:
 				spot_distance += 2
-		elif self.gun:
+		elif unit_category == 'Gun':
 			spot_distance = 2
 			if self.fired:
 				spot_distance += 4
@@ -1140,16 +1062,18 @@ class Unit:
 		for unit in enemy_list:
 			los_mod = GetLoS(unit.hx, unit.hy, self.hx, self.hy)
 			
-			if not unit.recce:
+			if unit.GetStat('recce') is None:
+				
+				unit_category = unit.GetStat('category')
 			
-				if self.infantry:
+				if unit_category == 'Infantry':
 					if los_mod >= 5:
 						spot_distance -= 5
 					elif los_mod >= 3:
 						spot_distance -= 3
 					elif los_mod >= 1:
 						spot_distance -= 1
-				elif self.gun:
+				elif unit_category == 'Gun':
 					if los_mod >= 5:
 						spot_distance -= 6
 					elif los_mod >= 3:
@@ -1164,7 +1088,7 @@ class Unit:
 					elif los_mod >= 1:
 						spot_distance -= 1
 			
-			if self.recce:
+			if self.GetStat('recce') is not None:
 				if los_mod >= 5:
 					spot_distance -= 3
 				elif los_mod >= 3:
@@ -1249,12 +1173,14 @@ class Unit:
 		if self.owning_player == 1 and not self.known:
 			return '?'
 		
+		unit_category = self.GetStat('category')
+		
 		# infantry
-		if self.infantry:
+		if unit_category == 'Infantry':
 			return 176
 		
 		# gun, set according to deployed status / hull facing
-		if self.gun:
+		if unit_category == 'Gun':
 			if self.facing is None:		# facing not yet set
 				return '!'
 			direction = ConstrainDir(self.facing - scenario.player_unit.facing)
@@ -1268,7 +1194,7 @@ class Unit:
 				return '!'		# should not happen
 		
 		# vehicle
-		if self.vehicle:
+		if unit_category == 'Vehicle':
 			
 			# turretless vehicle
 			if self.turret_facing is None:
@@ -1343,7 +1269,7 @@ class Unit:
 				libtcod.dark_grey, libtcod.black)
 		
 		# determine if we need to display a turret / gun depiction
-		if self.infantry: return
+		if self.GetStat('category') == 'Infantry': return
 		if self.owning_player == 1 and not self.known: return
 		
 		# use turret facing if present, otherwise hull facing
@@ -1360,7 +1286,7 @@ class Unit:
 		
 	# determine if this unit would be able to move from one hex into another
 	def CheckMoveInto(self, hx1, hy1, hx2, hy2):
-		if self.movement_class == 'Gun': return False
+		if self.GetStat('movement_class') == 'Gun': return False
 		if self.immobilized: return False
 		if (hx2, hy2) not in scenario.hex_map.hexes: return False
 		direction = GetDirectionToAdjacent(hx1, hy1, hx2, hy2)
@@ -1660,8 +1586,8 @@ class Unit:
 			
 			fp = 0
 			for weapon in unit.weapon_list:
-				if weapon.weapon_type in ['small_arms', 'coax_mg', 'hull_mg']:
-					fp += weapon.stats['fp']
+				if weapon.GetStat('type') in ['Small Arms', 'Coax MG', 'Hull MG']:
+					fp += int(weapon.GetStat('fp'))
 			if fp > 0:
 				attackers.append((unit, fp))
 				# set movement statuses and effects
@@ -1684,8 +1610,8 @@ class Unit:
 		for unit in map_hex2.unit_stack:
 			fp = 0
 			for weapon in unit.weapon_list:
-				if weapon.weapon_type in ['small_arms', 'coax_mg', 'hull_mg']:
-					fp += weapon.stats['fp']
+				if weapon.GetStat('type') in ['Small Arms', 'Coax MG', 'Hull MG']:
+					fp += int(weapon.GetStat('fp'))
 			# even defenders with 0 effective fp take part
 			defenders.append((unit, fp))
 		
@@ -1825,7 +1751,7 @@ class Unit:
 			text = attack_obj.target.GetName() + ' was '
 			if roll > attack_obj.final_ap:
 				text += 'not '
-			text += 'penetrated by a ' + attack_obj.weapon.GetName() + ' hit from '
+			text += 'penetrated by a ' + attack_obj.weapon.GetStat('name') + ' hit from '
 			text += attack_obj.attacker.GetName() + '.'
 		
 		
@@ -1860,7 +1786,7 @@ class Unit:
 					result = 'Explodes'
 			
 			# guns have less protection
-			if self.gun:
+			if self.GetStat('category') == 'Gun':
 				if result in ['Immobilized', 'Minor Damage']:
 					result = 'Knocked Out'
 			
@@ -1894,56 +1820,43 @@ class Unit:
 
 # Weapon class: represents a weapon carried by or mounted on a unit
 class Weapon:
-	def __init__(self, item):
+	def __init__(self, stat_dictionary):
 		
-		self.name = ''			# name of this weapon if not automatically generated
+		self.stats = stat_dictionary
+		if 'name' not in self.stats:
+			if self.GetStat('type') == 'Gun':
+				text = self.GetStat('calibre') + 'mm'
+				if self.GetStat('long_range') is not None:
+					text += '(' + self.GetStat('long_range') + ')'
+				self.stats['name'] = text
+			else:
+				self.stats['name'] = self.GetStat('type')
+		
+		if 'max_range' not in self.stats:
+			weapon_type = self.stats['type']
+			if weapon_type == 'Gun':
+				self.stats['max_range'] = "6"
+			elif weapon_type == 'Small Arms':
+				self.stats['max_range'] = "1"
+			elif weapon_type == 'Coax MG':
+				self.stats['max_range'] = "4"
+			else:
+				self.stats['max_range'] = "2"
+
+		if 'rof' not in self.stats:
+			self.stats['rof'] = "0"
+		
 		self.fired = False		# weapon has fired this turn
 		self.no_rof_this_turn = False	# RoF not allowed this turn
-		self.firing_group = None
-		
-		self.stats = {}
-		
-		# load weapon stats from xml item
-		self.weapon_type = item.find('type').text
-		if item.find('name') is not None:
-			self.name = item.find('name').text
-		
-		if item.find('firing_group') is not None:
-			self.firing_group = int(item.find('firing_group').text)
-		
-		self.stats['rof'] = 0
-		if item.find('rof') is not None:
-			self.stats['rof'] = int(item.find('rof').text)
 		
 		# gun stats
-		if self.weapon_type == 'gun':
-			self.stats['calibre'] = 0
-			if item.find('calibre') is not None:
-				self.stats['calibre'] = int(item.find('calibre').text)
+		if self.stats['type'] == 'Gun':
 			
-			self.stats['long_range'] = ''
-			if item.find('long_range') is not None:
-				self.stats['long_range'] = item.find('long_range').text
+			if 'rr_size' not in self.stats:
+				self.stats['rr_size'] = "0"
 			
-			self.stats['max_range'] = 6
-			if item.find('max_range') is not None:
-				self.stats['max_range'] = int(item.find('max_range').text)
-			
-			self.stats['rr_size'] = 0
-			self.stats['use_ready_rack'] = None
-			if item.find('rr_size') is not None:
-				self.stats['rr_size'] = int(item.find('rr_size').text)
-				self.stats['use_ready_rack'] = True
-			
-			# list of allowed ammo types
-			ammo_type_list = []
-			if item.find('ammo_type') is not None:
-				item_list = item.findall('ammo_type')
-				for i in item_list:
-					ammo_type_list.append(i.text)
-			self.stats['ammo_types'] = ammo_type_list[:]
-			
-			
+			self.stats['use_ready_rack'] = "FALSE"
+		
 			# ammo load stats
 			# FUTURE: these should be set to 0/empty and set by player
 			self.stats['loaded_ammo'] = 'AP'
@@ -1955,70 +1868,41 @@ class Weapon:
 			self.ready_rack = {}
 			self.ready_rack['HE'] = 3
 			self.ready_rack['AP'] = 3
-		
-		# area fire weapon stats
-		elif self.weapon_type in ['small_arms', 'coax_mg', 'hull_mg']:
-			self.stats['fp'] = int(item.find('fp').text)
-			if item.find('max_range') is not None:
-				self.stats['max_range'] = int(item.find('max_range').text)
-			else:
-				if self.weapon_type == 'small_arms':
-					self.stats['max_range'] = 1
-				elif self.weapon_type == 'coax_mg':
-					self.stats['max_range'] = 4
-				else:
-					self.stats['max_range'] = 2
-			
-		# weapon mount
-		if item.find('mount') is not None:
-			self.stats['mount'] = item.find('mount').text
-		
-		# firing crew if any
-		if item.find('fired_by') is not None:
-			fired_by = []
-			item_list = item.findall('fired_by')
-			for i in item_list:
-				fired_by.append(i.text)
-			self.stats['fired_by'] = fired_by
 	
-	# return a short display name for this weapon
-	def GetName(self):
-		if self.name != '':
-			return self.name
-		if self.weapon_type == 'gun':
-			text = str(self.stats['calibre']) + 'mm'
-			if self.stats['long_range'] != '':
-				text += '(' + self.stats['long_range'] + ')'
-		elif self.weapon_type == 'coax_mg':
-			text = 'Co-ax MG'
-		elif self.weapon_type == 'hull_mg':
-			text = 'Hull MG'
-		else:
-			text = 'ERROR'
-		return text
+	# check for the value of a stat, return None if stat not present
+	def GetStat(self, stat_name):
+		if stat_name not in self.stats:
+			return None
+		return self.stats[stat_name]
+	
+	# reset for a new activation
+	def Reset(self):
+		self.fired = False
+		self.no_rof_this_turn = False
 	
 	# find an appropriate crewman and set the action to fire this weapon
 	def SetFiredAction(self, unit):
+		fired_by_list = self.GetStat('fired_by')
 		# no such stat for this weapon
-		if 'fired_by' not in self.stats:
+		if fired_by_list is None:
 			return
-		for position_name in self.stats['fired_by']:
-			if unit.SetCrewmanAction(position_name, 'Fire ' + self.GetName()):
+		for position_name in fired_by_list:
+			if unit.SetCrewmanAction(position_name, 'Fire ' + self.GetStat('name')):
 				return
-		print 'ERROR: Could not find a crewman to fire ' + self.GetName()
+		print 'ERROR: Could not find a crewman to fire ' + self.GetStat('name')
 	
 	# load ammo into an empty gun or switch out loaded ammo for different type
 	def CycleAmmoLoad(self):
-		if not self.weapon_type == 'gun':
+		if self.GetStat('type') != 'Gun':
 			return False
 		
 		# determine type of shell to try to load
 		if self.stats['loaded_ammo'] is None:
 			switch_type = self.stats['reload_ammo']
 		else:
-			ammo_types_list = self.stats['ammo_types']
+			ammo_types_list = self.stats['ammo_type_list']
 			i = ammo_types_list.index(self.stats['loaded_ammo'])
-			if i == len(self.stats['ammo_types']) - 1:
+			if i == len(self.stats['ammo_type_list']) - 1:
 				i = 0
 			else:
 				i += 1
@@ -2033,14 +1917,14 @@ class Weapon:
 			return False
 		
 		# put back the current shell if any
-		if self.stats['loaded_ammo'] is not None:
-			self.stores[self.stats['loaded_ammo']] += 1
+		if self.GetStat('loaded_ammo') is not None:
+			self.stores[self.GetStat('loaded_ammo')] += 1
 		
 		# load the new shell
 		self.stats['loaded_ammo'] = switch_type
 		
 		self.no_rof_this_turn = True
-		text = ('Your loader loads ' + self.GetName() + ' with a ' +
+		text = ('Your loader loads ' + self.GetStat('name') + ' with a ' +
 			switch_type + ' shell.')
 		scenario.AddMessage(text, None)
 		
@@ -2048,14 +1932,17 @@ class Weapon:
 	
 	# toggle use of ready rack to reload next shell
 	def ToggleRR(self):
-		if not self.weapon_type == 'gun':
+		if self.GetStat('type') != 'Gun':
 			return False
-		if self.stats['use_ready_rack'] is None:
+		if self.GetStat('rr_size') == "0":
 			return False
-		self.stats['use_ready_rack'] = not self.stats['use_ready_rack']
+		if self.GetStat('use_ready_rack') == "TRUE":
+			self.stats['use_ready_rack'] = "FALSE"
+		else:
+			self.stats['use_ready_rack'] = "TRUE"
 		
-		text = self.GetName() + ' will'
-		if not self.stats['use_ready_rack']:
+		text = self.GetStat('name') + ' will'
+		if self.GetStat('use_ready_rack') == "TRUE":
 			text += ' not'
 		text += ' use the ready rack to reload.'
 		scenario.AddMessage(text, None)
@@ -2064,16 +1951,16 @@ class Weapon:
 	
 	# cycle the type of ammo to reload next
 	def CycleAmmoReload(self):
-		if len(self.stats['ammo_types']) < 2:
+		if len(self.GetStat('ammo_type_list')) < 2:
 			return False
-		ammo_types_list = self.stats['ammo_types']
+		ammo_types_list = self.GetStat('ammo_type_list')
 		i = ammo_types_list.index(self.stats['reload_ammo'])
-		if i == len(self.stats['ammo_types']) - 1:
+		if i == len(self.GetStat('ammo_type_list')) - 1:
 			i = 0
 		else:
 			i += 1
 		self.stats['reload_ammo'] = ammo_types_list[i]
-		text = self.GetName() + ' will now be reloaded with ' + self.stats['reload_ammo']
+		text = self.GetStat('name') + ' will now be reloaded with ' + self.GetStat('reload_ammo')
 		text += ' ammo'
 		scenario.AddMessage(text, None)
 		return True
@@ -2304,7 +2191,7 @@ class AI:
 			for weapon in self.owner.weapon_list:
 				
 				# don't bother with fp attacks on known armoured targets
-				if weapon.weapon_type != 'gun' and target.armour is not None and target.known:
+				if weapon.GetStat('type') != 'Gun' and target.GetStat('armour') is not None and target.known:
 					continue
 				
 				(score, text) = scenario.GetAttackScore(self.owner, weapon, target,
@@ -2480,14 +2367,15 @@ class AI:
 		# there was a possible attack, but no chance to hit
 		if score == 0.0:
 			# guns might benefit from pivoting to face a target
-			if not self.owner.gun: return
+			if self.owner.GetStat('category') != 'Gun': return
 			
 			direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
 				target.hy)
-			if weapon.stats['mount'] == 'turret':
-				self.owner.RotateTurret(direction)
-			else:
-				self.owner.PivotToFace(direction)
+			if weapon.GetStat('mount') is not None:
+				if weapon.GetStat('mount') == 'turret':
+					self.owner.RotateTurret(direction)
+				else:
+					self.owner.PivotToFace(direction)
 			
 			#print 'AI FIRE: gun turned to face target but no point in firing'
 			
@@ -2502,12 +2390,13 @@ class AI:
 		if not scenario.TargetIsInArc(self.owner, weapon, target):
 			direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
 				target.hy)
-			if weapon.stats['mount'] == 'turret':
-				self.owner.RotateTurret(direction)
-			else:
-				self.owner.PivotToFace(direction)
+			if weapon.GetStat('mount') is not None:
+				if weapon.GetStat('mount') == 'turret':
+					self.owner.RotateTurret(direction)
+				else:
+					self.owner.PivotToFace(direction)
 		
-		text = self.owner.GetName() + ' fires ' + weapon.GetName() + ' at '
+		text = self.owner.GetName() + ' fires ' + weapon.GetStat('name') + ' at '
 		if target == scenario.player_unit:
 			text += 'you!'
 		else:
@@ -2933,25 +2822,27 @@ class HexMap:
 		hex_list = []
 
 		for crew_position in scenario.player_unit.crew_positions:
-			if crew_position.crewman is None: continue
+			if crew_position['crewman'] is None: continue
 			# crewman must not being doing another action to spot
-			if crew_position.crewman.action is not None: continue
+			if crew_position['crewman'].action is not None: continue
 			
-			# visible_hextants is a slice of the original since we want a local copy and
-			#   don't want to change the original values
-			if crew_position.hatch is None:
-				visible_hextants = crew_position.closed_visible[:]
+			visible_hextants = []
+			if 'hatch' not in crew_position:
+				for hextant in crew_position['closed_visible']:
+					visible_hextants.append((int(hextant)))
 				max_distance = MAX_BU_LOS_DISTANCE
 			else:
-				if crew_position.hatch == 'Closed':
-					visible_hextants = crew_position.closed_visible[:]
+				if crew_position['hatch_open'] == 'FALSE':
+					for hextant in crew_position['closed_visible']:
+						visible_hextants.append((int(hextant)))
 					max_distance = MAX_BU_LOS_DISTANCE
 				else:
-					visible_hextants = crew_position.open_visible[:]
+					for hextant in crew_position['open_visible']:
+						visible_hextants.append((int(hextant)))
 					max_distance = MAX_LOS_DISTANCE
 			
 			# rotate visible hextants based on current turret/hull facing
-			if crew_position.turret:
+			if crew_position['location'] == 'Turret':
 				direction = scenario.player_unit.turret_facing
 			else:
 				direction = scenario.player_unit.facing
@@ -3208,7 +3099,7 @@ class Scenario:
 				if roll <= 5:
 					unit_id = '7TP'
 				else:
-					unit_id = 'vickers_ejw'
+					unit_id = 'Vickers 6-Ton Mark E'
 					unit_num = 2
 			
 			# 5 Tankette
@@ -3216,18 +3107,18 @@ class Scenario:
 				prefer_terrain = False
 				d1, d2, roll = Roll2D6()
 				if roll <= 8:
-					unit_id = 'TKS_20mm'
+					unit_id = 'TKS (20mm)'
 					unit_num = 2
 				elif roll <= 10:
 					unit_id = 'TKS'
 					unit_num = 3
 				else:
-					unit_id = 'TK_3'
+					unit_id = 'TK-3'
 					unit_num = 4
 			
 			# 6-7 Infantry
 			elif roll <= 7:
-				unit_id = 'rifle_squad_atr'
+				unit_id = 'Rifle Squad with AT Rifles'
 				d1, d2, roll = Roll2D6()
 				if 5 <= roll <= 7:
 					unit_num = 2
@@ -3241,9 +3132,9 @@ class Scenario:
 				prefer_terrain = False
 				d1, d2, roll = Roll2D6()
 				if roll <= 10:
-					unit_id = 'wz_34_37'
+					unit_id = 'wz. 34 (37mm)'
 				else:
-					unit_id = 'wz_34_mg'
+					unit_id = 'wz. 34 (MG)'
 				d1, d2, roll = Roll2D6()
 				if 6 <= roll <= 9:
 					unit_num = 2
@@ -3254,11 +3145,11 @@ class Scenario:
 			else:
 				d1, d2, roll = Roll2D6()
 				#if roll <= 4:
-				#	unit_id = '75mm_wz_9725'
+				#	unit_id = '75mm wz. 97/25'
 				if roll <= 4:
-					unit_id = '75mm_wz_0226'
+					unit_id = '75mm wz. 02/26'
 				else:
-					unit_id = '37mm_wz_36'
+					unit_id = '37mm wz. 36'
 					d1, d2, roll = Roll2D6()
 					if roll <= 8:
 						unit_num = 2
@@ -3337,14 +3228,6 @@ class Scenario:
 				unit.dummy = True
 				dummy_num -= 1
 			if dummy_num == 0: break
-		
-	
-	# load unit portraits for all active units into a dictionary
-	def LoadUnitPortraits(self):
-		for unit in self.unit_list:
-			if unit.portrait is None: continue
-			if unit.unit_id not in unit_portraits:
-				unit_portraits[unit.unit_id] = LoadXP(unit.portrait)
 	
 	# return the FP of an HE hit from a given calibre of gun
 	def GetGunHEFP(self, calibre):
@@ -3393,26 +3276,27 @@ class Scenario:
 			return (None, 'Cannot fire this weapon group again this turn')
 		
 		# check range
-		if GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy) > weapon.stats['max_range']:
+		if GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy) > int(weapon.GetStat('max_range')):
 			return (None, 'Target beyond maximum weapon range')
 		
 		# gun specific checks
-		if weapon.weapon_type == 'gun':
-			if weapon.stats['loaded_ammo'] == 'AP':
+		if weapon.GetStat('type') == 'Gun':
+			if weapon.GetStat('loaded_ammo') == 'AP':
 				if not target.known:
 					return (None, 'AP attacks possible on known targets only.')
-				if target.infantry:
+				if target.GetStat('category') == 'Infantry':
 					return (None, 'AP attacks have no effect on infantry')	
 		
 		# see if target must current be in weapon arc
-		if not attacker.infantry:
+		if not attacker.GetStat('category') == 'Infantry':
 			arc_check = False
-			if weapon.stats['mount'] == 'turret':
-				if not rotate_allowed and not pivot_allowed:
-					arc_check = True
-			else:
-				if not pivot_allowed:
-					arc_check = True
+			if weapon.GetStat('mount') is not None:
+				if weapon.GetStat('mount') == 'Turret':
+					if not rotate_allowed and not pivot_allowed:
+						arc_check = True
+				else:
+					if not pivot_allowed:
+						arc_check = True
 			if arc_check:
 				# check weapon arc
 				if not self.TargetIsInArc(attacker, weapon, target):
@@ -3420,7 +3304,7 @@ class Scenario:
 		
 		# determine attack type - TEMP
 		mode = FIREPOWER_MODE
-		if weapon.weapon_type == 'gun':
+		if weapon.GetStat('type') == 'Gun':
 			mode = TO_HIT_MODE
 		
 		# calculate the attack odds
@@ -3436,14 +3320,16 @@ class Scenario:
 	# returns true of target is in weapon arc of unit
 	def TargetIsInArc(self, attacker, weapon, target):
 		
-		if attacker.infantry:
+		if attacker.GetStat('category') == 'Infantry':
+			return True
+		if weapon.GetStat('mount') is None:
 			return True
 		
 		# calculate target location as if attacker is in 0,0 and facing 0
 		hx = target.hx - attacker.hx
 		hy = target.hy - attacker.hy
 		
-		if weapon.stats['mount'] == 'turret':
+		if weapon.GetStat('mount') == 'Turret':
 			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.turret_facing))
 		else:
 			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - attacker.facing))
@@ -3521,8 +3407,9 @@ class Scenario:
 			unit_activated = True
 		
 	# add a new message to the log, and display it on the current message console
-	def AddMessage(self, text, unit):
-		self.messages.append(text)
+	def AddMessage(self, text, unit, omit_from_log=False):
+		if not omit_from_log:
+			self.messages.append(text)
 		UpdateMsgConsole()
 		# we do this so as not to mess up the attack console being displayed
 		libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 27, 58)
@@ -3587,7 +3474,8 @@ class Scenario:
 		map_hex = GetHexAt(self.player_target.hx, self.player_target.hy)
 		if len(map_hex.unit_stack) > 1:
 			self.player_target.MoveToTopOfStack(map_hex)
-		scenario.AddMessage('Now targeting ' + self.player_target.GetName(), None)
+		scenario.AddMessage('Now targeting ' + self.player_target.GetName(), None,
+			omit_from_log=True)
 	
 	# check for scenario end and set up data if so
 	def CheckForEnd(self):
@@ -3684,21 +3572,6 @@ class Scenario:
 		# crew menu (not used yet)
 		elif self.active_cmd_menu == 'crew':
 			self.cmd_menu.title = 'Tank Crew'
-			# generate one command per crew position
-			n = 0
-			for crew_position in scenario.player_unit.crew_positions:
-				cmd = 'crewposition_' + str(n)
-				menu_option = self.cmd_menu.AddOption(cmd, str(n+1), crew_position.name)
-				if crew_position.crewman is None:
-					text = '[Position empty]'
-					menu_option.inactive = True
-				else:
-					text = 'Actions for ' + crew_position.crewman.GetName()
-				menu_option.desc = text
-				n += 1
-			
-			self.cmd_menu.AddOption('return_to_root', 'Bksp', 'Root Menu',
-				desc='Return to root command menu')
 		
 		# movement menu
 		elif self.active_cmd_menu == 'movement':
@@ -3772,7 +3645,7 @@ class Scenario:
 			for weapon in scenario.player_unit.weapon_list:
 				cmd = 'weapon_menu_' + str(n)
 				cmd_key = WEAPON_KEYS[n]
-				self.cmd_menu.AddOption(cmd, cmd_key, weapon.GetName(), 
+				self.cmd_menu.AddOption(cmd, cmd_key, weapon.GetStat('name'), 
 					desc='Actions for this weapon')
 				n += 1
 			menu_option = self.cmd_menu.AddOption('return_to_root', 'Bksp',
@@ -3808,15 +3681,15 @@ class Scenario:
 		# menu for a specific weapon
 		elif self.active_cmd_menu[:12] == 'weapon_menu_':
 			
-			self.cmd_menu.title = scenario.selected_weapon.GetName()
+			self.cmd_menu.title = scenario.selected_weapon.GetStat('name')
 			
 			self.cmd_menu.AddOption('next_target', 'T', 'Next Target')
 			
 			# see if we can fire this weapon at current target
 			cmd_text = 'Fire'
-			if scenario.selected_weapon.weapon_type == 'gun':
-				if scenario.selected_weapon.stats['loaded_ammo'] is not None:
-					cmd_text += ' ' + scenario.selected_weapon.stats['loaded_ammo']
+			if scenario.selected_weapon.GetStat('type') == 'Gun':
+				if scenario.selected_weapon.GetStat('loaded_ammo') is not None:
+					cmd_text += ' ' + scenario.selected_weapon.GetStat('loaded_ammo')
 			menu_option = self.cmd_menu.AddOption('fire_weapon', 'F', cmd_text)
 			
 			if scenario.player_target is None:
@@ -3834,14 +3707,14 @@ class Scenario:
 					menu_option.desc += ' (' + str(score) + '%)'
 			
 			# actions for gun type weapons
-			if scenario.selected_weapon.weapon_type == 'gun':
+			if scenario.selected_weapon.GetStat('type') == 'Gun':
 			
 				menu_option = self.cmd_menu.AddOption('cycle_weapon_load', 'L', 'Change Gun Load')
 				
-				if scenario.selected_weapon.stats['loaded_ammo'] is None:
+				if scenario.selected_weapon.GetStat('loaded_ammo') is None:
 					# no shell loaded
 					menu_option.desc = 'Load a shell into the gun'
-				elif len(scenario.selected_weapon.stats['ammo_types']) > 1:
+				elif len(scenario.selected_weapon.GetStat('ammo_type_list')) > 1:
 					# can switch out for different type
 					menu_option.desc = ('Switch loaded shell for different ammo type. ' +
 						'If weapon is fired this turn, RoF is not possible.')
@@ -3851,9 +3724,9 @@ class Scenario:
 				# TODO: check if loader can do this instant action
 			
 				# toggle use of ready rack to reload
-				if scenario.selected_weapon.stats['use_ready_rack'] is not None:
+				if scenario.selected_weapon.GetStat('rr_size') != "0":
 					menu_option = self.cmd_menu.AddOption('toggle_rr', 'R', 'Toggle Ready Rack')
-					if scenario.selected_weapon.stats['use_ready_rack']:
+					if scenario.selected_weapon.GetStat('use_ready_rack') == 'TRUE':
 						text = "Don't use ready rack to reload"
 					else:
 						text = 'Use ready rack to reload'
@@ -3864,7 +3737,7 @@ class Scenario:
 						desc='Add shells to or remove from ready rack')
 				
 				# cycle type of ammo to use to reload
-				if len(scenario.selected_weapon.stats['ammo_types']) > 1:
+				if len(scenario.selected_weapon.GetStat('ammo_type_list')) > 1:
 					menu_option = self.cmd_menu.AddOption('cycle_weapon_reload',
 						'A', 'Cycle reload ammo',
 						desc='Cycle the type of ammo to use when reloading the gun')
@@ -3879,7 +3752,7 @@ class Scenario:
 			
 			self.cmd_menu.title = 'Ready Rack'
 			
-			type_list = scenario.selected_weapon.stats['ammo_types']
+			type_list = scenario.selected_weapon.GetStat('ammo_type_list')
 			n = 0
 			for ammo_type in type_list:
 				option_id = 'rr_add_' + ammo_type
@@ -3896,9 +3769,9 @@ class Scenario:
 				else:
 					# rack is full
 					total = 0
-					for check_type in scenario.selected_weapon.stats['ammo_types']:
+					for check_type in scenario.selected_weapon.GetStat('ammo_type_list'):
 						total += scenario.selected_weapon.ready_rack[check_type]
-					if total >= scenario.selected_weapon.stats['rr_size']:
+					if total >= int(scenario.selected_weapon.GetStat('rr_size')):
 						menu_option.inactive = True
 						menu_option.desc = 'Ready rack is full'				
 				n+=1
@@ -3964,14 +3837,14 @@ def LoadSounds():
 # select and play a sound effect for a given situation
 def PlaySoundFor(obj, action):
 	if action == 'fire':
-		if obj.weapon_type == 'gun':
-			if obj.stats['calibre'] == 37:
+		if obj.GetStat('type') == 'Gun':
+			if obj.stats['calibre'] == "37":
 				n = libtcod.random_get_int(0, 0, 3)
 				PlaySound('37mm_firing_0' + str(n))
 				return
 		
 	elif action == 'movement':
-		if obj.movement_class == 'Fast Tank':
+		if obj.GetStat('movement_class') == 'Fast Tank':
 			n = libtcod.random_get_int(0, 0, 2)
 			PlaySound('light_tank_moving_0' + str(n))
 			return
@@ -4025,17 +3898,17 @@ def GetMsg(msg_id):
 def SaveGame():
 	save = shelve.open('savegame', 'n')
 	save['scenario'] = scenario
+	save['campaign'] = campaign
 	save.close()
 
 
 # load a saved game
 def LoadGame():
-	global scenario
+	global scenario, campaign
 	save = shelve.open('savegame')
 	scenario = save['scenario']
+	campaign = save['campaign']
 	save.close()
-	# load unit portraits
-	scenario.LoadUnitPortraits()
 
 
 # remove a saved game, either because the scenario is over or the player abandoned it
@@ -4064,7 +3937,7 @@ def CalcAttack(attacker, weapon, target, mode):
 			column = distance - 1
 		to_hit_list = BASE_TO_HIT[column]
 		
-		if target.vehicle:
+		if target.GetStat('category') == 'Vehicle':
 			attack_obj.base_to_hit = to_hit_list[0]
 		else:
 			attack_obj.base_to_hit = to_hit_list[1]
@@ -4089,39 +3962,45 @@ def CalcAttack(attacker, weapon, target, mode):
 			if ac_target == target:
 				attack_obj.modifiers.append(('Acquired Target', int(ac_level)))
 		
-		# Long Range gun Modifiers
-		if weapon.stats['long_range'] == 'S':
-			if distance >= 4:
-				attack_obj.modifiers.append(('Low Muzzle Velocity', -1))
-		elif weapon.stats['long_range'] == 'L':
-			if 4 <= distance <= 6:
-				attack_obj.modifiers.append(('L Weapon', 1))
-		elif weapon.stats['long_range'] == 'LL':
-			if 4 <= distance <= 5:
-				attack_obj.modifiers.append(('LL Weapon', 1))
-			elif distance == 6:
-				attack_obj.modifiers.append(('LL Weapon', 2))
+		# Long Range Gun Modifiers
+		long_range = weapon.GetStat('long_range')
+		if long_range is not None:
+			if long_range == 'S':
+				if distance >= 4:
+					attack_obj.modifiers.append(('Low Muzzle Velocity', -1))
+			elif long_range == 'L':
+				if 4 <= distance <= 6:
+					attack_obj.modifiers.append(('L Weapon', 1))
+			elif long_range == 'LL':
+				if 4 <= distance <= 5:
+					attack_obj.modifiers.append(('LL Weapon', 1))
+				elif distance == 6:
+					attack_obj.modifiers.append(('LL Weapon', 2))
 		
 		# calibre range modifiers
-		if weapon.stats['calibre'] <= 40:
-			if 4 <= distance <= 6:
-				attack_obj.modifiers.append(('Small Calibre', -1))
-		elif weapon.stats['calibre'] <= 57:
-			if 4 <= distance <= 5:
-				attack_obj.modifiers.append(('Medium Calibre', -1))
-			elif distance == 6:
-				attack_obj.modifiers.append(('Medium Calibre', -2))
+		calibre = weapon.GetStat('calibre')
+		if calibre is not None:
+			calibre = int(calibre)
+			if calibre <= 40:
+				if 4 <= distance <= 6:
+					attack_obj.modifiers.append(('Small Calibre', -1))
+			elif calibre <= 57:
+				if 4 <= distance <= 5:
+					attack_obj.modifiers.append(('Medium Calibre', -1))
+				elif distance == 6:
+					attack_obj.modifiers.append(('Medium Calibre', -2))
 		
 		# vehicle targets
-		if target.vehicle:
+		if target.GetStat('category') == 'Vehicle':
 			if target.moved_this_action:
 				attack_obj.modifiers.append(('Target Vehicle Moved', -2))
 		
 			# size class
-			if target.size_class != 'Normal':
-				if target.size_class == 'Small':
+			size_class = target.GetStat('size_class')
+			if size_class != 'Normal':
+				if size_class == 'Small':
 					attack_obj.modifiers.append(('Small Target', -1))
-				elif target.size_class == 'Very Small':
+				elif size_class == 'Very Small':
 					attack_obj.modifiers.append(('Very Small Target', -2))
 		
 		# LoS terrain modifier
@@ -4142,7 +4021,7 @@ def CalcAttack(attacker, weapon, target, mode):
 	elif mode == FIREPOWER_MODE:
 		
 		# get base firepower of weapon used
-		attack_obj.base_fp = weapon.stats['fp']
+		attack_obj.base_fp = int(weapon.GetStat('fp'))
 		
 		# calculate fp modifiers (multipliers)
 		if attacker.moved_this_action:
@@ -4172,7 +4051,8 @@ def CalcAttack(attacker, weapon, target, mode):
 		# get base score to equal/beat
 		for (chart_fp, inf_score, veh_score) in reversed(AF_CHART):
 			if chart_fp <= attack_obj.final_fp:
-				if attack_obj.target.infantry or attack_obj.target.gun:
+				unit_category = attack_obj.target.GetStat('category')
+				if unit_category == 'Infantry' or unit_category == 'Gun':
 					attack_obj.base_to_hit = inf_score
 				else:
 					attack_obj.base_to_hit = veh_score
@@ -4187,7 +4067,7 @@ def CalcAttack(attacker, weapon, target, mode):
 			attack_obj.modifiers.append(('Terrain', 0-los))
 		
 		# target infantry moved in open
-		elif los == 0 and target.infantry and target.moved_last_action:
+		elif los == 0 and target.GetStat('category') == 'Infantry' and target.moved_last_action:
 			attack_obj.modifiers.append(('Infantry Moved in Open', 2))
 		
 		# total up modifiers
@@ -4226,28 +4106,31 @@ def CalcAttack(attacker, weapon, target, mode):
 			attack_obj.modifiers.append(('Inferior Firepower', -2))
 			
 		# fully armoured attacking infantry or gun in open: +2
-		if attack_obj.attacker.armour is not None and attack_obj.target.infantry or attack_obj.target.gun:
+		unit_category = attack_obj.target.GetStat('category')
+		if attack_obj.attacker.GetStat('armour') is not None and unit_category == 'Infantry' or unit_category == 'Gun':
 			map_hex = GetHexAt(attack_obj.target.hx, attack_obj.target.hy)
 			terrain_mod = int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
 			if terrain_mod == 0:
 				attack_obj.modifiers.append(('Armoured Assault', 2))
 		
 		# infantry or gun vs. fully armoured in terrain mod >=2: +2
-		if attack_obj.attacker.infantry or attack_obj.attacker.gun and attack_obj.target.armour is not None:
+		unit_category = attack_obj.attacker.GetStat('category')
+		if unit_category == 'Infantry' or unit_category == 'Gun' and attack_obj.target.GetStat('armour') is not None:
 			map_hex = GetHexAt(attack_obj.target.hx, attack_obj.target.hy)
 			terrain_mod = int(campaign.terrain_types[map_hex.terrain_type]['terrain_mod'])
 			if terrain_mod >= 2:
 				attack_obj.modifiers.append(('Concealing Terrain', 2))
 		
 		# target is armoured: - lowest armour rating
-		if attack_obj.target.armour is not None:
-			lowest_armour = attack_obj.target.armour['turret_front']
-			if attack_obj.target.armour['turret_side'] < lowest_armour:
-				lowest_armour = attack_obj.target.armour['turret_side']
-			if attack_obj.target.armour['hull_front'] < lowest_armour:
-				lowest_armour = attack_obj.target.armour['hull_front']
-			if attack_obj.target.armour['hull_side'] < lowest_armour:
-				lowest_armour = attack_obj.target.armour['hull_side']
+		armour = attack_obj.target.GetStat('armour')
+		if armour is not None:
+			lowest_armour = int(armour['turret_front'])
+			if int(armour['turret_side']) < lowest_armour:
+				lowest_armour = int(armour['turret_side'])
+			if int(armour['hull_front']) < lowest_armour:
+				lowest_armour = int(armour['hull_front'])
+			if int(armour['hull_side']) < lowest_armour:
+				lowest_armour = int(armour['hull_side'])
 			if lowest_armour > 0:
 				attack_obj.modifiers.append(('Target Armour', 0-lowest_armour))
 		
@@ -4290,10 +4173,12 @@ def CalcAPRoll(attack_obj):
 	
 	# calculate base AP score required
 	base_ap = 0
-	if attack_obj.weapon.name == 'AT Rifle':
+	if attack_obj.weapon.GetStat('name') == 'AT Rifle':
 		base_ap = 5
 	else:
-		gun_rating = str(attack_obj.weapon.stats['calibre']) + attack_obj.weapon.stats['long_range']
+		gun_rating = attack_obj.weapon.GetStat('calibre')
+		if attack_obj.weapon.GetStat('long_range') is not None:
+			gun_rating += attack_obj.weapon.GetStat('long_range')
 		if gun_rating in ['75L', '76L']:
 			base_ap = 17
 		elif gun_rating in ['75', '105']:
@@ -4318,22 +4203,24 @@ def CalcAPRoll(attack_obj):
 	modifiers = []
 	
 	# calibre/range modifier
+	calibre = int(attack_obj.weapon.GetStat('calibre'))
 	distance = GetHexDistance(attack_obj.attacker.hx, attack_obj.attacker.hy,
 		attack_obj.target.hx, attack_obj.target.hy)
 	if distance <= 1:
-		if attack_obj.weapon.stats['calibre'] <= 57:
+		if calibre <= 57:
 			modifiers.append(('Close Range', 1))
 	elif distance == 5:
 		modifiers.append(('800 m. Range', -1))
 	elif distance == 6:
-		if attack_obj.weapon.stats['calibre'] < 65:
+		if calibre < 65:
 			modifiers.append(('960 m. Range', -2))
 		else:
 			modifiers.append(('960 m. Range', -1))
 	
 	# target armour modifier
-	if attack_obj.target.armour:
-		target_armour = attack_obj.target.armour[hit_location]
+	armour = attack_obj.target.GetStat('armour')
+	if armour is not None:
+		target_armour = int(armour[hit_location])
 		if target_armour > 0:
 			modifiers.append(('Target Armour', 0-target_armour))
 	
@@ -5080,7 +4967,7 @@ def InitAttack(attacker, weapon, target):
 	
 	# determine attack type - TEMP
 	mode = FIREPOWER_MODE
-	if weapon.weapon_type == 'gun':
+	if weapon.GetStat('type') == 'Gun':
 		mode = TO_HIT_MODE
 	
 	attack_obj = CalcAttack(attacker, weapon, target, mode)
@@ -5107,10 +4994,10 @@ def InitAttack(attacker, weapon, target):
 	# set unit fired flag
 	attacker.fired = True
 	# mark this weapon and all others in same group as having fired
-	if weapon.firing_group is not None:
+	if weapon.GetStat('firing_group') is not None:
 		for check_weapon in attacker.weapon_list:
-			if check_weapon.firing_group is not None:
-				if check_weapon.firing_group == weapon.firing_group:
+			if check_weapon.GetStat('firing_group') is not None:
+				if check_weapon.GetStat('firing_group') == weapon.GetStat('firing_group'):
 					check_weapon.fired = True
 	
 	# if player is attacking, set action for crewman firing this weapon
@@ -5129,12 +5016,12 @@ def InitAttack(attacker, weapon, target):
 	PlaySoundFor(weapon, 'fire')
 	
 	# display appropriate attack animation
-	if weapon.weapon_type == 'gun':
+	if weapon.GetStat('type') == 'Gun':
 		x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
 		x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
 		scenario.anim.InitGunEffect(x1, y1, x2, y2)
 		WaitForAnimation()
-	elif weapon.weapon_type in ['small_arms', 'coax_mg', 'hull_mg']:
+	elif weapon.GetStat('type') in ['Small Arms', 'Coax MG', 'Hull MG']:
 		x1, y1 = attack_obj.attacker.screen_x-26, attack_obj.attacker.screen_y-3
 		x2, y2 = attack_obj.target.screen_x-26, attack_obj.target.screen_y-3
 		scenario.anim.InitAFAttackEffect(x1, y1, x2, y2)
@@ -5190,11 +5077,11 @@ def InitAttack(attacker, weapon, target):
 		if attack_obj.mode == TO_HIT_MODE:
 			
 			# see if we apply an AP or a FP hit
-			if weapon.stats['loaded_ammo'] == 'AP':
+			if weapon.GetStat('loaded_ammo') == 'AP':
 				target.unresolved_ap.append(attack_obj)
 				text = 'AP hit applied'
 			else:
-				fp = scenario.GetGunHEFP(weapon.stats['calibre'])
+				fp = scenario.GetGunHEFP(int(weapon.GetStat('calibre')))
 				if attack_obj.critical_hit:
 					fp = fp * 2
 				target.unresolved_fp += fp
@@ -5213,7 +5100,7 @@ def InitAttack(attacker, weapon, target):
 			target.SpotMe()
 	
 	# newly acquired target for guns
-	if weapon.weapon_type == 'gun':
+	if weapon.GetStat('type') == 'Gun':
 		if attacker.acquired_target is None:
 			attacker.acquired_target = (target, 1)
 		else:
@@ -5231,14 +5118,14 @@ def InitAttack(attacker, weapon, target):
 	rof_possible = True
 	
 	# reloading procedure for gun
-	if weapon.weapon_type == 'gun':
+	if weapon.GetStat('type') == 'Gun':
 		# clear fired shell
 		weapon.stats['loaded_ammo'] = None
 		
 		# check for ready rack use
 		use_rr = False
-		if weapon.stats['use_ready_rack'] is not None:
-			if weapon.stats['use_ready_rack']:
+		if weapon.GetStat('rr_size') != '0':
+			if weapon.GetStat('use_ready_rack') == 'TRUE':
 				use_rr = True
 		
 		# for player unit: set loader action
@@ -5247,7 +5134,7 @@ def InitAttack(attacker, weapon, target):
 			scenario.player_unit.SetCrewmanAction('Loader', 'Reload')
 		
 		# check for new shell of reload type and load it if possible
-		reload_type = weapon.stats['reload_ammo']
+		reload_type = weapon.GetStat('reload_ammo')
 		if use_rr:
 			if weapon.ready_rack[reload_type] > 0:
 				weapon.ready_rack[reload_type] -= 1
@@ -5255,7 +5142,7 @@ def InitAttack(attacker, weapon, target):
 			else:
 				# no shell of the right type in the ready rack, but we can
 				#   default to general stores
-				weapon.stats['use_ready_rack'] = False
+				weapon.stats['use_ready_rack'] = "FALSE"
 				use_rr = False
 		
 		if not use_rr:
@@ -5264,11 +5151,11 @@ def InitAttack(attacker, weapon, target):
 				weapon.stats['loaded_ammo'] = reload_type
 		
 		# no shell could be loaded, can't maintain RoF
-		if weapon.stats['loaded_ammo'] is None:
+		if weapon.GetStat('loaded_ammo') is None:
 			rof_possible = False
 	
 	# weapon has no RoF capability
-	if weapon.stats['rof'] == 0:
+	if weapon.stats['rof'] == "0":
 		rof_possible = False
 	# gun had shell switched out or loaded or loader managed ready rack this turn
 	elif weapon.no_rof_this_turn:
@@ -5286,8 +5173,8 @@ def InitAttack(attacker, weapon, target):
 	
 	# do RoF roll if possible
 	if rof_possible:
-		roll_required = weapon.stats['rof']
-		if weapon.weapon_type == 'gun':
+		roll_required = int(weapon.GetStat('rof'))
+		if weapon.GetStat('type') == 'Gun':
 			if use_rr:
 				roll_required += 2
 		if roll_required > 10:
@@ -5374,8 +5261,8 @@ def DisplayAttack(attack_obj, ap_roll=False):
 	
 	# only display portrait if unit is friendly or known
 	if not (unit.owning_player == 1 and not unit.known):
-		if unit.unit_id in unit_portraits:
-			libtcod.console_blit(unit_portraits[unit.unit_id], 0, 0, 0, 0, attack_con, 1, 2)
+		if unit.unit_id in session.unit_portraits:
+			libtcod.console_blit(session.unit_portraits[unit.unit_id], 0, 0, 0, 0, attack_con, 1, 2)
 	libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE, libtcod.CENTER,
 		unit.GetName())
 	
@@ -5386,7 +5273,7 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		if attack_obj.attacker.owning_player == 1 and not attack_obj.attacker.known:
 			text = 'unknown weapon'
 		else:
-			text = attack_obj.weapon.GetName()
+			text = attack_obj.weapon.GetStat('name')
 		if ap_roll:
 			text = ' hit by ' + text
 		else:
@@ -5402,8 +5289,8 @@ def DisplayAttack(attack_obj, ap_roll=False):
 		libtcod.console_rect(attack_con, 1, 13, 24, 8, False, libtcod.BKGND_SET)
 		
 		if not (attack_obj.target.owning_player == 1 and not attack_obj.target.known):
-			if attack_obj.target.unit_id in unit_portraits:
-				libtcod.console_blit(unit_portraits[attack_obj.target.unit_id], 0, 0, 0, 0, attack_con, 1, 13)
+			if attack_obj.target.unit_id in session.unit_portraits:
+				libtcod.console_blit(session.unit_portraits[attack_obj.target.unit_id], 0, 0, 0, 0, attack_con, 1, 13)
 	else:
 		# location hit in AP roll
 		libtcod.console_print_ex(attack_con, 13, 12, libtcod.BKGND_NONE,
@@ -5934,24 +5821,24 @@ def UpdateContextCon():
 		
 		libtcod.console_set_default_foreground(context_con, INFO_TEXT_COL)
 		weapon = scenario.player_unit.weapon_list[0]
-		libtcod.console_print(context_con, 0, 1, weapon.GetName())
+		libtcod.console_print(context_con, 0, 1, weapon.GetStat('name'))
 		libtcod.console_print(context_con, 0, 2, 'Load')
 		libtcod.console_print(context_con, 0, 3, 'Next')
 		
 		libtcod.console_set_default_foreground(context_con, INFO_TEXT_COL)
-		if weapon.stats['loaded_ammo'] is None:
+		if weapon.GetStat('loaded_ammo') is None:
 			text = 'None'
 		else:
-			text = weapon.stats['loaded_ammo']
+			text = weapon.GetStat('loaded_ammo')
 		libtcod.console_print(context_con, 5, 2, text)
-		if weapon.stats['reload_ammo'] is None:
+		if weapon.GetStat('reload_ammo') is None:
 			text = 'None'
 		else:
-			text = weapon.stats['reload_ammo']
+			text = weapon.GetStat('reload_ammo')
 		libtcod.console_print(context_con, 5, 3, text)
 		
-		if weapon.stats['use_ready_rack'] is not None:
-			if weapon.stats['use_ready_rack']:
+		if weapon.GetStat('use_ready_rack') is not None:
+			if weapon.GetStat('use_ready_rack') == "TRUE":
 				col = libtcod.white
 			else:
 				col = libtcod.dark_grey
@@ -5960,7 +5847,7 @@ def UpdateContextCon():
 		
 		y = 5
 		for ammo_type in AMMO_TYPE_ORDER:
-			if ammo_type in weapon.stats['ammo_types']:
+			if ammo_type in weapon.GetStat('ammo_type_list'):
 				
 				libtcod.console_set_default_foreground(context_con, libtcod.white)
 				libtcod.console_print(context_con, 2, y, ammo_type)
@@ -5974,10 +5861,11 @@ def UpdateContextCon():
 		libtcod.console_set_default_foreground(context_con, libtcod.white)
 		libtcod.console_print(context_con, 2, 9, 'Max')
 		libtcod.console_set_default_foreground(context_con, INFO_TEXT_COL)
-		libtcod.console_print_ex(context_con, 8, 9, libtcod.BKGND_NONE,
-			libtcod.RIGHT, str(scenario.player_unit.max_ammo))
+		# TODO - get max ammo stores from weapon, not unit
+		#libtcod.console_print_ex(context_con, 8, 9, libtcod.BKGND_NONE,
+		#	libtcod.RIGHT, text)
 		libtcod.console_print_ex(context_con, 11, 9, libtcod.BKGND_NONE,
-			libtcod.RIGHT, str(weapon.stats['rr_size']))
+			libtcod.RIGHT, weapon.GetStat('rr_size'))
 
 
 # update the objective info console
@@ -6273,8 +6161,8 @@ def UpdateHexInfoConsole():
 		# unit nation
 		libtcod.console_print(hex_info_con, 0, 8, unit.nation_desc)
 	
-		# unit type
-		libtcod.console_print(hex_info_con, 0, 9, unit.unit_type)
+		# unit class
+		libtcod.console_print(hex_info_con, 0, 9, unit.GetStat('class'))
 	
 	# unresolved hits on this unit
 	if unit.unresolved_fp > 0 or len(unit.unresolved_ap) > 0:
@@ -6665,9 +6553,6 @@ def DoScenario(load_savegame=False):
 	# die face image
 	dice = LoadXP('dice.xp')
 	
-	# create new session object
-	session = Session()
-	
 	# load a saved game in progress
 	if load_savegame:
 		LoadGame()
@@ -6692,6 +6577,9 @@ def DoScenario(load_savegame=False):
 				del scenario
 				return
 		
+		# create new session object
+		session = Session()
+		
 		UpdateVPConsole()
 	
 	else:
@@ -6702,6 +6590,10 @@ def DoScenario(load_savegame=False):
 		
 		# create a new campaign day object and hex map
 		scenario = Scenario(26, 26)
+		
+		# create new session object
+		session = Session()
+		
 		
 		# FUTURE: following will be handled by a Scenario Generator
 		# for now, things are set up manually
@@ -6733,10 +6625,10 @@ def DoScenario(load_savegame=False):
 		# spawn the player unit
 		# FUTURE: integrate into a single spawn function with deployment zones
 		#  for each side
-		new_unit = Unit('panzer_38_t_a')
+		new_unit = Unit('Panzer 38(t) A')
 		new_unit.owning_player = 0
 		new_unit.SetNation('Germany')
-		new_unit.vehicle_name = 'Gretchen'
+		new_unit.name = 'Gretchen'
 		new_unit.facing = 0
 		new_unit.turret_facing = 0
 		new_unit.morale_lvl = 8
@@ -6776,7 +6668,7 @@ def DoScenario(load_savegame=False):
 		
 		# spawn rest of player squadron
 		for i in range(2):
-			new_unit = Unit('psw_222')
+			new_unit = Unit('PSW 222')
 			new_unit.owning_player = 0
 			new_unit.SetNation('Germany')
 			new_unit.facing = 0
@@ -6833,9 +6725,6 @@ def DoScenario(load_savegame=False):
 		# generate and spawn enemy OOB
 		scenario.GenerateEnemyOOB()
 		
-		# all units spawned, load unit portraits into consoles
-		scenario.LoadUnitPortraits()
-		
 		# set up map viewport
 		scenario.SetVPHexes()
 		
@@ -6862,7 +6751,6 @@ def DoScenario(load_savegame=False):
 			str(scenario.minute).zfill(2), None)
 		
 	# End of new/continued game set-up
-	
 	UpdateScenInfoConsole()
 	UpdateScreen()
 	SaveGame()
@@ -7222,7 +7110,6 @@ def SaveCFG():
 # display a menu with options for a new campaign
 # FUTURE: make set of options more generic
 def CampaignSelectionMenu():
-	global campaign
 	
 	# draw a selection row on the menu
 	def DrawRow(x, y):
@@ -7369,7 +7256,167 @@ def CampaignSelectionMenu():
 
 # allow the player to build a new force from a menu
 def ForceSelectionMenu():
-	pass
+	
+	menu = CommandMenu('force_selection_menu')
+	menu.AddOption('selection_up', 'W', 'Select Previous')
+	menu.AddOption('selection_down', 'S', 'Select Next')
+	menu.AddOption('add_unit', 'Space', 'Add a unit')
+	menu.AddOption('remove_unit', 'Bksp', 'Remove unit')
+	menu.AddOption('continue', 'Enter', 'Finish & Continue')
+	menu.AddOption('cancel', 'Esc', 'Cancel & Return')
+	
+	# create empty unit groups within the player's battlegroup
+	new_group = UnitGroup('HQ Squadron', [], 3)
+	campaign.player_battlegroup.append(new_group)
+	new_group = UnitGroup('Tank Squadron', ['Light Tank', 'Medium Tank'], 3)
+	campaign.player_battlegroup.append(new_group)
+	new_group = UnitGroup('Infantry Platoon', ['Infantry Squad'], 2)
+	campaign.player_battlegroup.append(new_group)
+	
+	selected_group = campaign.player_battlegroup[0]
+	selected_slot = 0
+	
+	exit_menu = False
+	while not exit_menu:
+		
+		# draw the menu to screen
+		libtcod.console_clear(con)
+		
+		# current battlegroup list
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		DrawFrame(con, 0, 0, 34, 60)
+		libtcod.console_put_char(con, 0, 9, 249)
+		libtcod.console_put_char(con, 33, 9, 249)
+		for x in range(1,33):
+			libtcod.console_put_char(con, x, 9, 196)
+		
+		# TEMP - get data from campaign object later on
+		libtcod.console_set_default_foreground(con, HIGHLIGHT_COLOR)
+		libtcod.console_print_ex(con, 17, 2, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'September 1939')
+		libtcod.console_print_ex(con, 17, 3, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Poland')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print_ex(con, 17, 5, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'German')
+		libtcod.console_print_ex(con, 17, 6, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Battlegroup')
+		
+		# draw gold brocade-style decorations
+		libtcod.console_set_default_foreground(con, GOLD_HIGHLIGHT_COLOR)
+		for y in range(5,7):
+			for x in range(5,8):
+				libtcod.console_print(con, x, y, chr(247))
+			for x in range(27,30):
+				libtcod.console_print(con, x, y, chr(247))
+		
+		# list of unit groups in player's battlegroup
+		y = 11
+		for unit_group in campaign.player_battlegroup:
+			libtcod.console_set_default_foreground(con, libtcod.light_green)
+			libtcod.console_print(con, 1, y, unit_group.name)
+			text = str(len(unit_group.unit_list)) + '/' + str(unit_group.max_units)
+			libtcod.console_print_ex(con, 32, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
+			libtcod.console_set_default_foreground(con, INFO_TEXT_COL)
+			
+			# highlight this unit if selected
+			if selected_group == unit_group:
+				libtcod.console_set_default_background(con, TITLE_BG_COL3)
+				libtcod.console_rect(con, 1, y, 32, 1, False, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(con, libtcod.black)
+			
+			# list units or empty unit slots
+			y += 1
+			for i in range(unit_group.max_units - len(unit_group.unit_list)):
+				
+				
+				if len(unit_group.unit_list) > i:
+					libtcod.console_set_default_foreground(con, libtcod.white)
+					# TODO: display unit id and OP value here
+				else:
+					libtcod.console_set_default_foreground(con, INACTIVE_COL)
+					libtcod.console_print(con, 2, y, '(Empty)')
+				# highlight this unit/slot if selected
+				if selected_group == unit_group and selected_slot == i:
+					libtcod.console_set_default_background(con, TITLE_BG_COL)
+					libtcod.console_rect(con, 1, y, 32, 1, False, libtcod.BKGND_SET)
+					libtcod.console_set_default_background(con, libtcod.black)
+					
+				y += 1
+				
+			y += 1
+			libtcod.console_hline(con, 1, y, 32)
+			y += 2
+		
+		# current total OP value and max OP value of battlegroup
+		libtcod.console_set_default_foreground(con, INFO_TEXT_COL)
+		libtcod.console_hline(con, 1, 54, 32)
+		
+		libtcod.console_set_default_foreground(con, HIGHLIGHT_COLOR)
+		libtcod.console_print(con, 1, 56, 'OP Total:')
+		libtcod.console_print(con, 1, 57, 'Max OP:')
+		
+		# display command menu
+		menu.DisplayMe(con, 44, 48, 24)
+		
+		libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
+		
+		update_menu = False
+		while not update_menu:
+			
+			libtcod.console_flush()
+			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+			if libtcod.console_is_window_closed(): sys.exit()
+			if key is None: continue
+			
+			# select previous or next menu option
+			if key.vk == libtcod.KEY_UP:
+				menu.SelectNextOption(reverse=True)
+				update_menu = True
+				continue
+				
+			elif key.vk == libtcod.KEY_DOWN:
+				menu.SelectNextOption()
+				update_menu = True
+				continue
+			
+			# activate selected menu option
+			elif key.vk == libtcod.KEY_ENTER:
+				option = menu.GetSelectedOption()
+			
+			# see if we pressed a key associated with a menu option
+			else:
+				option = menu.GetOptionByKey()
+			
+			if option is None: continue
+			
+			# select this option and highlight it
+			menu.selected_option = option
+			update_menu = True
+			
+			# selected an inactive menu option
+			if option.inactive: continue
+			
+			# cancel and return to main menu
+			if option.option_id == 'cancel':
+				return False
+			
+			# proceed with current settings
+			elif option.option_id == 'continue':
+				return True
+			
+			elif option.option_id == 'selection_up':
+				if selected_slot > 0:
+					selected_slot -= 1
+					update_menu = True
+			
+			elif option.option_id == 'selection_down':
+				if selected_slot < selected_group.max_units - 1:
+					selected_slot += 1
+					update_menu = True
+			
+
 
 
 # start a new campaign, allow the player to select their force, opponent, start date, etc.
@@ -7381,10 +7428,12 @@ def StartNewCampaign():
 	campaign = Campaign()
 	
 	# select player nation (FUTURE: starting date and battlefield)
-	if not CampaignSelectionMenu():
-		return False
+	# TEMP - disabled
+	#if not CampaignSelectionMenu():
+	#	return False
 	
 	# build player force
+	# TEMP - disabled
 	#if not ForceSelectionMenu():
 	#	return False
 	
@@ -7400,15 +7449,14 @@ def StartNewCampaign():
 ##########################################################################################
 ##########################################################################################
 
-global config, unit_portraits
+global config
 global mouse, key, con, darken_con
 global lang_dict			# pointer to the current language dictionary of game msgs
 global sound_samples
 
 print 'Starting ' + NAME + ' version ' + VERSION
 
-# dictionary of unit portraits, sound samples
-unit_portraits = {}
+# dictionary of sound samples
 sound_samples = {}
 
 # try to load game settings from config file, will create a new file if none present

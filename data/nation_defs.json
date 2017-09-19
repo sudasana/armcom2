@@ -3,6 +3,11 @@
 		"short_code" : "GER",
 		"adjective" : "German",
 		"flag_image" : "flag_GER.xp",
+		"unit_list" : [
+			"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A",
+			"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",
+			"PSW 222", "Rifle Squad with AT Rifles"
+		],
 		"battlefronts": [
 			{
 				"location" : "Poland",
@@ -19,6 +24,11 @@
 		"short_code" : "POL",
 		"adjective" : "Polish",
 		"flag_image" : "flag_POL.xp",
+		"unit_list" : [
+			"TK-3", "TKS", "TKS (20mm)", "Vickers 6-Ton Mark E", "7TP",
+			"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
+			"75mm wz. 97/25"
+		],
 		"battlefronts": [
 			{
 				"location" : "Poland",

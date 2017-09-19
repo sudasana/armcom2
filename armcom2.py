@@ -7416,6 +7416,16 @@ def ForceSelectionMenu():
 					selected_slot += 1
 					update_menu = True
 			
+			# build list of allowed units types based on national list and
+			# filter by allowed classes in this type of group
+
+
+# display a list of unit types and allow the player to select one
+def UnitTypeMenu(unit_type_list):
+	
+	# standard unit info display including portrait will be 24x24 cells
+	
+	pass
 
 
 

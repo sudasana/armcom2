@@ -579,6 +579,7 @@ class Unit:
 
 	# display info about this individual unit or unit type to a console
 	# used in UpdatePlayerUnitConsole()
+	# TODO: move to independent function, able to display info about a unit or a unit type
 	def DisplayInfo(self, console, x, y1):
 		# current draw line relative to y start
 		y = y1
@@ -758,7 +759,6 @@ class Unit:
 			
 			y += 1
 		
-
 
 	# find the crewman in the given position and set their current action
 	# returns False if no such position, position is empty, or crewman already has a different action
@@ -2483,7 +2483,7 @@ class CommandMenu:
 	def AddOption(self, option_id, key_code, option_text, desc=None, inactive=False):
 		new_option = MenuOption(option_id, key_code, option_text, desc, inactive)
 		self.cmd_list.append(new_option)
-		# if we're adding the first option, select it
+		# if we're adding the first option, select it as default
 		if len(self.cmd_list) == 1:
 			self.selected_option = self.cmd_list[0]
 		return new_option
@@ -7265,6 +7265,12 @@ def ForceSelectionMenu():
 	menu.AddOption('continue', 'Enter', 'Finish & Continue')
 	menu.AddOption('cancel', 'Esc', 'Cancel & Return')
 	
+	# TEMP - testing
+	campaign.player_nation = 'Germany'
+	
+	# build unit type list
+	unit_list = campaign.nations[campaign.player_nation]['unit_list'][:]
+	
 	# create empty unit groups within the player's battlegroup
 	new_group = UnitGroup('HQ Squadron', [], 3)
 	campaign.player_battlegroup.append(new_group)
@@ -7329,7 +7335,6 @@ def ForceSelectionMenu():
 			# list units or empty unit slots
 			y += 1
 			for i in range(unit_group.max_units - len(unit_group.unit_list)):
-				
 				
 				if len(unit_group.unit_list) > i:
 					libtcod.console_set_default_foreground(con, libtcod.white)
@@ -7418,6 +7423,15 @@ def ForceSelectionMenu():
 			
 			# build list of allowed units types based on national list and
 			# filter by allowed classes in this type of group
+			elif option.option_id == 'add_unit':
+				
+				# TODO: check for free slot
+				
+				
+				unit_type = UnitTypeMenu(unit_list)
+				if unit_type is not None:
+					pass
+				update_menu = True
 
 
 # display a list of unit types and allow the player to select one
@@ -7425,7 +7439,74 @@ def UnitTypeMenu(unit_type_list):
 	
 	# standard unit info display including portrait will be 24x24 cells
 	
-	pass
+	selected_type_index = 0
+	
+	exit_menu = False
+	while not exit_menu:
+		libtcod.console_clear(con)
+		
+		# list of possible unit types
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		DrawFrame(con, 1, 1, 34, 57)
+		libtcod.console_set_default_foreground(con, HIGHLIGHT_COLOR)
+		libtcod.console_print(con, 2, 2, 'Unit Type')
+		libtcod.console_print_ex(con, 33, 2, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'OP Cost')
+		libtcod.console_set_default_foreground(con, INFO_TEXT_COL)
+		libtcod.console_hline(con, 2, 3, 32)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		
+		y = 4
+		for unit_type in unit_type_list:
+			libtcod.console_print(con, 2, y, unit_type)
+			cost = campaign.unit_types[unit_type]['op_value']
+			libtcod.console_print_ex(con, 33, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, cost)
+			if unit_type_list.index(unit_type) == selected_type_index:
+				libtcod.console_set_default_background(con, TITLE_BG_COL)
+				libtcod.console_rect(con, 1, y, 32, 1, False, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(con, libtcod.black)
+			y += 2
+		
+		# TODO: display unit info
+		
+		# display simple menu commands
+		libtcod.console_set_default_foreground(con, HIGHLIGHT_COLOR)
+		libtcod.console_print(con, 46, 51, 'W/S')
+		libtcod.console_print(con, 46, 52, 'Space')
+		libtcod.console_print(con, 46, 53, 'Esc')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print(con, 52, 51, 'Move Selection')
+		libtcod.console_print(con, 52, 52, 'Select this unit type')
+		libtcod.console_print(con, 52, 53, 'Cancel & Return')
+		
+		libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
+		
+		update_menu = False
+		while not update_menu:
+			
+			libtcod.console_flush()
+			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+			if libtcod.console_is_window_closed(): sys.exit()
+			if key is None: continue
+			
+			if key.vk == libtcod.KEY_ESCAPE:
+				return None
+			
+			elif key.vk == libtcod.KEY_SPACE:
+				return unit_type_list[selected_type_index]
+			
+			key_char = chr(key.c).lower()
+			
+			if key_char == 'w':
+				if selected_type_index > 0:
+					selected_type_index -= 1
+					update_menu = True
+			
+			elif key_char == 's':
+				if selected_type_index < len(unit_type_list) - 1:
+					selected_type_index += 1
+					update_menu = True
 
 
 

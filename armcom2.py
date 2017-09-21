@@ -38,6 +38,7 @@
 DEBUG_MODE = False
 
 ##### External Script File #####
+# TODO: change to JSON file as well
 import languages
 
 ##### Libraries #####
@@ -579,12 +580,12 @@ class Unit:
 
 	# display info about this individual unit or unit type to a console
 	# used in UpdatePlayerUnitConsole()
-	# TODO: move to independent function, able to display info about a unit or a unit type
+	# TODO: call DisplayUnitInfo instead
 	def DisplayInfo(self, console, x, y1):
 		# current draw line relative to y start
 		y = y1
 		
-		# unit name
+		# unit type name
 		libtcod.console_set_default_foreground(console, HIGHLIGHT_COLOR)
 		libtcod.console_print(console, x, y, self.GetName())
 		y += 1
@@ -650,29 +651,25 @@ class Unit:
 				libtcod.console_print(console, x+1, y+2, text)
 		
 		# movement class
-		if self.immobilized:
-			libtcod.console_set_default_foreground(console, INACTIVE_COL)
-			libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
-				libtcod.RIGHT, 'Immobilized')
-		else:
-			libtcod.console_set_default_foreground(console, libtcod.light_green)
-			libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
-				libtcod.RIGHT, self.GetStat('movement_class'))
-			# special movement abilities or restrictions
-			if self.GetStat('recce') is not None:
-				libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE,
-					libtcod.RIGHT, 'Recce')
-			if self.GetStat('unreliable') is not None:
-				libtcod.console_set_default_foreground(console, libtcod.red)
-				libtcod.console_print_ex(console, x+23, y+2, libtcod.BKGND_NONE,
-					libtcod.RIGHT, 'Unreliable')
-		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+		libtcod.console_set_default_foreground(console, libtcod.light_green)
+		libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, self.GetStat('movement_class'))
+		# special movement abilities or restrictions
+		if self.GetStat('recce') is not None:
+			libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Recce')
+		if self.GetStat('unreliable') is not None:
+			libtcod.console_set_default_foreground(console, libtcod.red)
+			libtcod.console_print_ex(console, x+23, y+2, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Unreliable')
 		
-		# unit statuses (console width = 24)
+		
+		# unit statuses
 		y += 3
 		libtcod.console_set_default_background(console, SECTION_BG_COL)
 		libtcod.console_rect(console, x, y, 24, 2, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(console, libtcod.black)
+		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
 		
 		# moving/moved/stopped (FUTURE: bogged)
 		if self.immobilized:
@@ -3805,6 +3802,230 @@ class Scenario:
 #                                     General Functions                                  #
 ##########################################################################################
 
+# display info about an individual Unit or a given Unit Type to a console
+def DisplayUnitInfo(console, x, y1, unit_type, unit=None):
+	# current draw line relative to y start
+	y = y1
+	
+	# unit type name
+	libtcod.console_set_default_foreground(console, HIGHLIGHT_COLOR)
+	if unit is not None:
+		if unit.owning_player == 1 and not unit.known:
+			libtcod.console_print(console, x, y, 'Unknown Unit')
+			return
+	libtcod.console_print(console, x, y, unit_type)
+	y += 1
+	
+	# unit class
+	libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+	libtcod.console_print(console, x, y, campaign.unit_types[unit_type]['class'])
+	y += 1
+	
+	# unit portrait if any
+	if unit_type in session.unit_portraits:
+		libtcod.console_blit(session.unit_portraits[unit_type], 0, 0, 0, 0, console, x, y)
+	
+	# unit name if any
+	if unit is not None:
+		if unit.name is not None:
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			libtcod.console_print_ex(console, x+12, y, libtcod.BKGND_NONE,
+				libtcod.CENTER, unit.name)
+	y += 8
+	
+	# weapons list
+	libtcod.console_set_default_background(console, TARGET_HL_COL)
+	libtcod.console_rect(console, x, y, 24, 2, True, libtcod.BKGND_SET)
+	libtcod.console_set_default_background(console, libtcod.black)
+	text1 = ''
+	text2 = ''
+	for weapon in campaign.unit_types[unit_type]['weapon_list']:
+		if weapon['type'] == 'Gun':
+			if 'name' in weapon:
+				text1 = weapon['name'] + ' '
+			else:
+				text1 += weapon['calibre']
+				if 'long_range' in weapon:
+					text1 += weapon['long_range']
+				text1 += ' '
+		else:
+			if text2 != '':
+				text2 += ', '
+			text2 += weapon['type']
+	libtcod.console_set_default_foreground(console, libtcod.white)
+	libtcod.console_print(console, x, y, text1)
+	libtcod.console_print(console, x, y+1, text2)
+	
+	# armour
+	y += 2
+	if campaign.unit_types[unit_type]['category'] == 'Vehicle':
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		armour = campaign.unit_types[unit_type]['armour']
+		if armour is None:
+			libtcod.console_print(console, x, y, 'Unarmoured')
+		else:
+			text = 'Armoured'
+			if 'open_topped' in campaign.unit_types[unit_type]:
+				text += ' (OT)'
+			libtcod.console_print(console, x, y, text)
+			libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+			# display armour for turret and hull
+			if 'turret' in campaign.unit_types[unit_type]:
+				text = 'T '
+			else:
+				text = 'U '
+			text += armour['turret_front'] + '/' + armour['turret_side']
+			libtcod.console_print(console, x+1, y+1, text)
+			text = 'H ' + armour['hull_front'] + '/' + armour['hull_side']
+			libtcod.console_print(console, x+1, y+2, text)
+
+	# movement class
+	libtcod.console_set_default_foreground(console, libtcod.light_green)
+	libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
+		libtcod.RIGHT, campaign.unit_types[unit_type]['movement_class'])
+	
+	# special movement abilities or restrictions
+	if 'recce' in campaign.unit_types[unit_type]:
+		libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'Recce')
+	if 'unreliable' in campaign.unit_types[unit_type]:
+		libtcod.console_set_default_foreground(console, libtcod.red)
+		libtcod.console_print_ex(console, x+23, y+2, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'Unreliable')
+	
+	if unit is not None:
+		
+		# unit statuses
+		y += 3
+		libtcod.console_set_default_background(console, SECTION_BG_COL)
+		libtcod.console_rect(console, x, y, 24, 2, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(console, libtcod.black)
+		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+		
+		# moving/moved/stopped (FUTURE: bogged)
+		if unit.immobilized:
+			text = 'Immobilized'
+		elif unit.moved_this_action:
+			text = 'Moving'
+		elif unit.moved_last_action:
+			text = 'Moved'
+		else:
+			text = 'Stopped'
+			# FUTURE: different description for infantry/guns?
+		libtcod.console_print(console, x, y, text)
+
+		# concealed
+		if not unit.known:
+			libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Concealed')
+
+		# fired
+		if unit.fired:
+			libtcod.console_print(console, x, y+1, 'Fired')
+		
+		# pinned/broken (FUTURE: stunned)
+		text = ''
+		if unit.broken:
+			text = 'Broken'
+		elif unit.pinned:
+			text = 'Pinned'
+		libtcod.console_set_default_foreground(console, libtcod.red)
+		libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
+		libtcod.console_set_default_foreground(console, INFO_TEXT_COL)
+		
+		# crew/infantry skill and morale ratings
+		y += 2
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_set_default_background(console, SECTION_BG_COL2)
+		libtcod.console_rect(console, x, y, 24, 1, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(console, libtcod.black)
+		libtcod.console_print(console, x, y, SKILL_DESC[unit.skill_lvl])
+		libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, MORALE_DESC[unit.morale_lvl])
+	
+	# return now if no crew positions to display
+	if 'crew_positions' not in campaign.unit_types[unit_type]:
+		return
+	
+	y += 3
+	
+	# unit display: also include info on current crew
+	if unit is not None:
+		
+		# for now, only display if player unit, since only the player unit has any crew
+		if unit != scenario.player_unit:
+			return
+		
+		for position in unit.crew_positions:
+			
+			# background shading
+			if y % 2 != 0:
+				libtcod.console_set_default_background(console, ROW_COLOR)
+				libtcod.console_rect(console, x, y, 24, 1, False, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(console, libtcod.black)
+			
+			# abbreviated crew position name
+			libtcod.console_set_default_foreground(console, libtcod.light_grey)
+			libtcod.console_print(console, x, y, CREW_POSITION_ABB[position['name']])
+			
+			# hatch status
+			if 'hatch' not in position:
+				text = '--'
+			else:
+				if position['hatch_open']:
+					text = 'BU'
+				else:
+					text = 'CE'
+			libtcod.console_set_default_foreground(console, libtcod.dark_grey)
+			libtcod.console_print(console, x+4, y, text)
+			
+			# current crewman action or other status
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			if position['crewman'] is None:
+				text = '[Position Empty]'
+			else:
+				if position['crewman'].action is None:
+					text = 'Spot'
+				else:
+					text = position['crewman'].action
+			libtcod.console_print(console, x+7, y, text)
+			
+			y += 1
+		return
+		
+	# unit type display: only display basic info about positions
+	for position in campaign.unit_types[unit_type]['crew_positions']:
+		
+		# background shading
+		if y % 2 != 0:
+			libtcod.console_set_default_background(console, ROW_COLOR)
+			libtcod.console_rect(console, x, y, 24, 1, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(console, libtcod.black)
+		
+		# full position name
+		libtcod.console_set_default_foreground(console, libtcod.light_grey)
+		libtcod.console_print(console, x, y, position['name'])
+		
+		# turret/hull location
+		text = ''
+		if position['location'] == 'Turret':
+			if 'turret' in campaign.unit_types[unit_type]:
+				text = 'T'
+			else:
+				text = 'U'
+		elif position['location'] == 'Hull':
+			text = 'H'
+		libtcod.console_print(console, x+22, y, text)
+		
+		# position has a hatch
+		if 'hatch' in position:
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			libtcod.console_print(console, x+23, y, 'H')
+		
+		y += 1
+
+
 # try to initialize SDL2 mixer
 def InitMixer():
 	if mixer.Mix_Init(mixer.MIX_INIT_OGG) != mixer.MIX_INIT_OGG:
@@ -6577,10 +6798,10 @@ def DoScenario(load_savegame=False):
 				del scenario
 				return
 		
+		UpdateVPConsole()
+		
 		# create new session object
 		session = Session()
-		
-		UpdateVPConsole()
 	
 	else:
 	
@@ -6590,10 +6811,6 @@ def DoScenario(load_savegame=False):
 		
 		# create a new campaign day object and hex map
 		scenario = Scenario(26, 26)
-		
-		# create new session object
-		session = Session()
-		
 		
 		# FUTURE: following will be handled by a Scenario Generator
 		# for now, things are set up manually
@@ -7456,6 +7673,9 @@ def UnitTypeMenu(unit_type_list):
 		libtcod.console_hline(con, 2, 3, 32)
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		
+		# frame for selected unit type info
+		DrawFrame(con, 46, 5, 26, 26)
+		
 		y = 4
 		for unit_type in unit_type_list:
 			libtcod.console_print(con, 2, y, unit_type)
@@ -7464,11 +7684,15 @@ def UnitTypeMenu(unit_type_list):
 				libtcod.RIGHT, cost)
 			if unit_type_list.index(unit_type) == selected_type_index:
 				libtcod.console_set_default_background(con, TITLE_BG_COL)
-				libtcod.console_rect(con, 1, y, 32, 1, False, libtcod.BKGND_SET)
+				libtcod.console_rect(con, 2, y, 32, 1, False, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(con, libtcod.black)
+				
+				# display unit type info
+				DisplayUnitInfo(con, 47, 6, unit_type)
+				libtcod.console_set_default_foreground(con, libtcod.white)
+				libtcod.console_set_default_background(con, libtcod.black)
+				
 			y += 2
-		
-		# TODO: display unit info
 		
 		# display simple menu commands
 		libtcod.console_set_default_foreground(con, HIGHLIGHT_COLOR)
@@ -7513,10 +7737,13 @@ def UnitTypeMenu(unit_type_list):
 # start a new campaign, allow the player to select their force, opponent, start date, etc.
 def StartNewCampaign():
 	
-	global campaign
+	global campaign, session
 	
 	# create a new, empty campaign object
 	campaign = Campaign()
+	
+	# create new session object
+	session = Session()
 	
 	# select player nation (FUTURE: starting date and battlefield)
 	# TEMP - disabled
@@ -7543,7 +7770,7 @@ def StartNewCampaign():
 global config
 global mouse, key, con, darken_con
 global lang_dict			# pointer to the current language dictionary of game msgs
-global sound_samples
+global sound_samples, session
 
 print 'Starting ' + NAME + ' version ' + VERSION
 

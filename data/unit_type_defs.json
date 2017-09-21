@@ -452,7 +452,7 @@
 	"Panzer I B": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
-		"portrait" : "",
+		"portrait" : "unit_pz_I_B.xp",
 		"size_class" : "Small",
 		"movement_class" : "Fast Tank",
 		"turret" : "TRUE",
@@ -707,7 +707,7 @@
 	"Panzer III D": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
-		"portrait" : "",
+		"portrait" : "unit_pz_III_D.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",
@@ -789,7 +789,7 @@
 	"Panzer III F": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
-		"portrait" : "",
+		"portrait" : "unit_pz_III_F.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",
@@ -871,7 +871,7 @@
 	"Panzer IV A": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
-		"portrait" : "",
+		"portrait" : "unit_pz_IV_A.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",
@@ -953,7 +953,7 @@
 	"Panzer IV C": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
-		"portrait" : "",
+		"portrait" : "unit_pz_IV_C.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",
@@ -1090,7 +1090,7 @@
 		"op_value" : "36"
 	},
 	
-	"Rifle Squad with AT Rifles": {
+	"Rifle Squad + AT Rifles": {
 		"category" : "Infantry",
 		"class" : "Infantry Squad",
 		"portrait" : "",

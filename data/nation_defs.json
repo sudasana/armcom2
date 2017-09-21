@@ -6,7 +6,7 @@
 		"unit_list" : [
 			"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A",
 			"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",
-			"PSW 222", "Rifle Squad with AT Rifles"
+			"PSW 222", "Rifle Squad + AT Rifles"
 		],
 		"battlefronts": [
 			{

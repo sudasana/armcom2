@@ -18,6 +18,42 @@
 				"restricted_units" : [],
 				"enemy_nations" : ["Poland"]
 			}
+		],
+		"first_names" : [
+			"Hans", "Peter", "Klaus", "Wolfgang", "Jürgen", "Dieter", "Manfred",
+			"Uwe", "Günter", "Horst", "Berndt", "Karl", "Werner", "Heinz", "Rolf",
+			"Rainer", "Gerhard", "Helmut", "Michael", "Gerd", "Joachim", "Holger",
+			"Walter", "Reinhard", "Harald", "Herbert", "Jens", "Norbert", "Ulrich",
+			"Wilfried", "Hartmut", "Volker", "Kurt", "Sigfried", "Ernst", "Rudolf",
+			"Lothar", "Thomas", "Hermann", "Frank", "Detlef", "Georg", "Wolf",
+			"Heinrich", "Ingo", "Rüdiger", "Jörg", "Bernhard", "Udo", "Josef",
+			"Alfred", "Ralf", "Friedrich", "Erich", "Dirk", "Wilhelm", "Eckard",
+			"Franz", "Paul", "Willy", "Axel", "Christian", "Jan", "Erwin",
+			"Dietmar", "Fritz", "Jörn", "Martin", "Otto", "Dietrich", "Andreas",
+			"Karsten", "Roland", "Harry", "Lutz", "Johann", "Alexander",
+			"Eberhard", "Johannes", "Robert", "Reinhold", "Richard", "Heino",
+			"Ronald", "Heiner", "Winfried", "Adolf", "Erhard", "Jochen",
+			"Stefan", "Edgar", "Olaf", "Burghard", "Egon", "Bodo", "Fred",
+			"Victor", "Bruno", "Heiko", "Hubert"
+		],
+		"surnames" : [
+			"Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer",
+			"Wagner", "Becker", "Schulz", "Hoffmann", "Schäfer", "Koch",
+			"Bauer", "Richter", "Klein", "Wolf", "Schröder", "Neumann",
+			"Schwarz", "Zimmermann", "Braun", "Krüger", "Hofmann", "Hartmann",
+			"Lange", "Schmitt", "Werner", "Schmitz", "Krause", "Meier",
+			"Lehmann", "Schmid", "Schulze", "Maier", "Köhler", "Herrmann",
+			"König", "Walter", "Mayer", "Huber", "Kaiser", "Fuchs", "Peters",
+			"Lang", "Scholz", "Möller", "Weiss", "Jung", "Hahn", "Schubert",
+			"Vogel", "Friedrich", "Keller", "Günther", "Frank", "Berger",
+			"Winkler", "Roth", "Beck", "Lorenz", "Baumann", "Franke",
+			"Albrecht", "Schuster", "Simon", "Ludwig", "Böhm", "Winter",
+			"Kraus", "Martin", "Schumacher", "Krämer", "Vogt", "Stein",
+			"Jäger", "Otto", "Sommer", "Gross", "Seidel", "Heinrich",
+			"Brandt", "Haas", "Schreiber", "Graf", "Schulte", "Dietrich",
+			"Ziegler", "Kuhn", "Kühn", "Pohl", "Engel", "Horn", "Busch",
+			"Bergmann", "Thomas", "Voigt", "Sauer", "Arnold", "Wolff",
+			"Pfeiffer"
 		]
 	},
 	"Poland": {

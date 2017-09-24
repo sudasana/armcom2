@@ -71,7 +71,7 @@ from encodings import hex_codec, ascii, utf_8, cp850
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2017-09-22'				# game version in Semantic Versioning format: http://semver.org/			
+VERSION = '0.1.0-2017-09-29'				# game version in Semantic Versioning format: http://semver.org/			
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -199,6 +199,9 @@ CREW_POSITION_ABB = {
 CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Gunner/Loader', 'Loader',
 	'Driver', 'Assistant Driver'
 ]
+
+# max length of crewman name strings
+CREW_NAME_MAX_LENGTH = 20
 
 # order in which to display ammo types
 AMMO_TYPE_ORDER = ['HE', 'AP']
@@ -336,6 +339,7 @@ class Campaign:
 			self.terrain_types = json.load(data_file)
 		
 		self.player_nation = ''
+		self.player_character_name = ''
 		self.start_year = 0
 		self.start_month = 0
 		self.battlefront = ''
@@ -383,7 +387,6 @@ class CrewPosition:
 		# visible hextants, relative to hull/turret facing of the vehicle
 		self.open_visible = open_visible	# list of visible hextants when hatch is open
 		self.closed_visible = closed_visible	# " closed
-		
 		
 	# toggle hatch status
 	def ToggleHatch(self):
@@ -3115,7 +3118,7 @@ class Scenario:
 			
 			# 6-7 Infantry
 			elif roll <= 7:
-				unit_id = 'Rifle Squad with AT Rifles'
+				unit_id = 'Rifle Squad + AT Rifles'
 				d1, d2, roll = Roll2D6()
 				if 5 <= roll <= 7:
 					unit_num = 2
@@ -3801,6 +3804,25 @@ class Scenario:
 ##########################################################################################
 #                                     General Functions                                  #
 ##########################################################################################
+
+# generate a random crewman name given a nation
+def GenerateCrewmanName(nation_name):
+	
+	for tries in range(300):
+		first_name = choice(campaign.nations[nation_name]['first_names'])
+		surname = choice(campaign.nations[nation_name]['surnames'])
+		
+		# don't return an unsuitable combination
+		if len(first_name) + len(surname) + 1 > CREW_NAME_MAX_LENGTH:
+			continue
+		if first_name == surname: continue
+		if first_name[0] == surname[0]:
+			if libtcod.random_get_int(0, 1, 10) <= 8:
+				continue
+		
+		full_name = first_name + ' ' + surname
+		return full_name.encode('IBM850')
+
 
 # display info about an individual Unit or a given Unit Type to a console
 def DisplayUnitInfo(console, x, y1, unit_type, unit=None):
@@ -7474,27 +7496,33 @@ def CampaignSelectionMenu():
 # allow the player to build a new force from a menu
 def ForceSelectionMenu():
 	
+	# TODO: add a local build menu function so that eg. continue can be disabled if no
+	# player unit selected yet
+	
 	menu = CommandMenu('force_selection_menu')
 	menu.AddOption('selection_up', 'W', 'Select Previous')
 	menu.AddOption('selection_down', 'S', 'Select Next')
 	menu.AddOption('add_unit', 'Space', 'Add a unit')
 	menu.AddOption('remove_unit', 'Bksp', 'Remove unit')
+	
+	# TODO: change this command? can also trigger currently highlighted option
 	menu.AddOption('continue', 'Enter', 'Finish & Continue')
+	
 	menu.AddOption('cancel', 'Esc', 'Cancel & Return')
 	
 	# TEMP - testing
 	campaign.player_nation = 'Germany'
 	
-	# build unit type list
+	# build full unit type list
 	unit_list = campaign.nations[campaign.player_nation]['unit_list'][:]
 	
 	# create empty unit groups within the player's battlegroup
-	new_group = UnitGroup('HQ Squadron', [], 3)
+	new_group = UnitGroup('HQ Squadron', ['Light Tank', 'Medium Tank', 'Armoured Car'], 4)
 	campaign.player_battlegroup.append(new_group)
-	new_group = UnitGroup('Tank Squadron', ['Light Tank', 'Medium Tank'], 3)
-	campaign.player_battlegroup.append(new_group)
-	new_group = UnitGroup('Infantry Platoon', ['Infantry Squad'], 2)
-	campaign.player_battlegroup.append(new_group)
+	#new_group = UnitGroup('Tank Squadron', ['Light Tank', 'Medium Tank'], 3)
+	#campaign.player_battlegroup.append(new_group)
+	#new_group = UnitGroup('Infantry Platoon', ['Infantry Squad'], 2)
+	#campaign.player_battlegroup.append(new_group)
 	
 	selected_group = campaign.player_battlegroup[0]
 	selected_slot = 0
@@ -7533,8 +7561,13 @@ def ForceSelectionMenu():
 			for x in range(27,30):
 				libtcod.console_print(con, x, y, chr(247))
 		
+		# frame for selected unit type info
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		DrawFrame(con, 46, 5, 26, 26)
+		
 		# list of unit groups in player's battlegroup
 		y = 11
+		player_unit_displayed = False
 		for unit_group in campaign.player_battlegroup:
 			libtcod.console_set_default_foreground(con, libtcod.light_green)
 			libtcod.console_print(con, 1, y, unit_group.name)
@@ -7551,20 +7584,35 @@ def ForceSelectionMenu():
 			
 			# list units or empty unit slots
 			y += 1
-			for i in range(unit_group.max_units - len(unit_group.unit_list)):
+			for i in range(unit_group.max_units):
 				
 				if len(unit_group.unit_list) > i:
 					libtcod.console_set_default_foreground(con, libtcod.white)
-					# TODO: display unit id and OP value here
+					# display unit id
+					libtcod.console_print(con, 2, y, unit_group.unit_list[i])
+					# TODO lookup OP value and display at right
 				else:
 					libtcod.console_set_default_foreground(con, INACTIVE_COL)
-					libtcod.console_print(con, 2, y, '(Empty)')
+					libtcod.console_print(con, 2, y, 'Empty')
 				# highlight this unit/slot if selected
 				if selected_group == unit_group and selected_slot == i:
 					libtcod.console_set_default_background(con, TITLE_BG_COL)
 					libtcod.console_rect(con, 1, y, 32, 1, False, libtcod.BKGND_SET)
 					libtcod.console_set_default_background(con, libtcod.black)
 					
+					# display unit info if there's one in selected slot
+					if len(unit_group.unit_list) > i:
+						unit_type = unit_group.unit_list[i]
+						DisplayUnitInfo(con, 47, 6, unit_type)
+						libtcod.console_set_default_foreground(con, libtcod.white)
+						libtcod.console_set_default_background(con, libtcod.black)
+				
+				# highlight if this would be player unit
+				if not player_unit_displayed:
+					player_unit_displayed = True
+					y += 1
+					libtcod.console_print(con, 3, y, '(Player Unit)')
+				
 				y += 1
 				
 			y += 1
@@ -7626,6 +7674,11 @@ def ForceSelectionMenu():
 			
 			# proceed with current settings
 			elif option.option_id == 'continue':
+				
+				# player must have at least one unit in group
+				if len(selected_group.unit_list) == 0:
+					continue
+				
 				return True
 			
 			elif option.option_id == 'selection_up':
@@ -7638,23 +7691,40 @@ def ForceSelectionMenu():
 					selected_slot += 1
 					update_menu = True
 			
-			# build list of allowed units types based on national list and
-			# filter by allowed classes in this type of group
+			# add a unit to the selected slot, possibly replacing another unit there
 			elif option.option_id == 'add_unit':
 				
-				# TODO: check for free slot
-				
-				
-				unit_type = UnitTypeMenu(unit_list)
+				unit_type = UnitTypeMenu(unit_list, selected_group.allowed_classes)
 				if unit_type is not None:
-					pass
+					
+					# check for replacing unit in selected slot
+					if selected_slot < len(selected_group.unit_list):
+						del selected_group.unit_list[selected_slot]
+						selected_group.unit_list.insert(selected_slot, unit_type)
+					# filling an empty slot
+					else:
+						selected_group.unit_list.append(unit_type)
 				update_menu = True
-
+			
+			# remove any unit in the selected slot
+			elif option.option_id == 'remove_unit':
+				
+				# no unit in slot
+				if selected_slot >= len(selected_group.unit_list):
+					continue
+				
+				del selected_group.unit_list[selected_slot]
+				update_menu = True
+			
 
 # display a list of unit types and allow the player to select one
-def UnitTypeMenu(unit_type_list):
+def UnitTypeMenu(unit_type_list, limited_class_list):
 	
-	# standard unit info display including portrait will be 24x24 cells
+	# prune any non-allowed classes from unit type list
+	if len(limited_class_list) > 0:
+		for unit_type in reversed(unit_type_list):
+			if campaign.unit_types[unit_type]['class'] not in limited_class_list:
+				unit_type_list.remove(unit_type)
 	
 	selected_type_index = 0
 	
@@ -7733,6 +7803,103 @@ def UnitTypeMenu(unit_type_list):
 					update_menu = True
 
 
+# allow the player to input a character name, including option to generate a random name
+# for their nation. if player_name is true, additional text is displayed and name is set
+# in the campaign object, otherwise the name is returned by the function
+def GetCharacterName(player_name=False):
+	
+	# draw window background
+	libtcod.console_rect(con, 20, 17, 43, 17, True, libtcod.BKGND_SET)
+	
+	# selecting player name
+	if player_name:
+	
+		# draw gold brocade-style decorations
+		libtcod.console_set_default_foreground(con, GOLD_HIGHLIGHT_COLOR)
+		for y in range(19,21):
+			for x in range(23,26):
+				libtcod.console_print(con, x, y, chr(247))
+			for x in range(57,60):
+				libtcod.console_print(con, x, y, chr(247))
+		
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print(con, 27, 19, 'Good morning, commander.')
+		libtcod.console_print(con, 27, 20, 'Please confirm your identity.')
+	
+	else:
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print(con, 27, 19, 'Please enter a name.')
+	
+	# frame and background for name text area
+	DrawFrame(con, 23, 23, 37, 5)
+	libtcod.console_set_default_background(con, TITLE_BG_COL)
+	libtcod.console_rect(con, 24, 24, 35, 3, True, libtcod.BKGND_SET)
+	libtcod.console_set_default_background(con, libtcod.black)
+	
+	# display simple menu commands
+	libtcod.console_set_default_foreground(con, HIGHLIGHT_COLOR)
+	libtcod.console_print(con, 28, 30, 'Tab')
+	libtcod.console_print(con, 28, 31, 'Enter')
+	libtcod.console_set_default_foreground(con, libtcod.white)
+	libtcod.console_print(con, 34, 30, 'Generate random name')
+	libtcod.console_print(con, 34, 31, 'Confirm and continue')
+	
+	new_name = ''
+	
+	exit_menu = False
+	while not exit_menu:
+		
+		libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
+		libtcod.console_print_ex(0, WINDOW_XM, 25, libtcod.BKGND_NONE, libtcod.CENTER,
+			new_name)
+		
+		update_name = False
+		while not update_name:
+			
+			libtcod.console_flush()
+			libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
+			if libtcod.console_is_window_closed(): sys.exit()
+			if key is None: continue
+			
+			if key.vk == libtcod.KEY_ENTER:
+				if new_name != '':
+					exit_menu = True
+					update_name = True
+				
+			elif key.vk == libtcod.KEY_TAB:
+				# setting nation here is TEMP
+				new_name = GenerateCrewmanName('Germany')
+				update_name = True
+			
+			# delete last character in string
+			elif key.vk == libtcod.KEY_BACKSPACE:
+				if len(new_name) > 0:
+					new_name = new_name[:-1]
+					update_name = True
+			
+			# if string is at length limit, can't add any more
+			if len(new_name) == CREW_NAME_MAX_LENGTH:
+				continue
+			
+			# if character is a valid one, add it to the string
+			if 32 <= key.c <= 126:
+				new_name += chr(key.c)
+				update_name = True
+			
+	
+	if player_name:
+		campaign.player_character_name = new_name
+	else:
+		return new_name
+
+
+# allow the player to build the initial crew for their tank
+def CrewRecruitmentMenu():
+	
+	
+	# TEMP
+	return True
+
 
 # start a new campaign, allow the player to select their force, opponent, start date, etc.
 def StartNewCampaign():
@@ -7751,8 +7918,19 @@ def StartNewCampaign():
 	#	return False
 	
 	# build player force
-	# TEMP - disabled
 	#if not ForceSelectionMenu():
+	#	return False
+	
+	# clear the screen
+	#libtcod.console_clear(con)
+	#libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
+	#libtcod.console_flush()
+	
+	# get player character name
+	#GetCharacterName(player_name=True)
+	
+	# select player vehicle crew
+	#if not CrewRecruitmentMenu():
 	#	return False
 	
 	return True

@@ -339,6 +339,7 @@ class Campaign:
 			self.terrain_types = json.load(data_file)
 		
 		self.player_nation = ''
+		self.enemy_nation = ''
 		self.player_character_name = ''
 		self.start_year = 0
 		self.start_month = 0
@@ -6542,9 +6543,11 @@ def ScenarioSummary():
 	libtcod.console_print(temp, 2, 25, 'Your Forces')
 	libtcod.console_print(temp, 2, 31, 'Expected Resistance')
 	libtcod.console_set_default_foreground(temp, libtcod.white)
-	libtcod.console_print(temp, 3, 26, 'German Heer')
+	text = campaign.nations[campaign.player_nation]['adjective']
+	libtcod.console_print(temp, 3, 26, text + ' Army')
 	libtcod.console_print(temp, 3, 27, 'Armoured Battlegroup')
-	libtcod.console_print(temp, 3, 32, 'Polish Army')
+	text = campaign.nations[campaign.enemy_nation]['adjective']
+	libtcod.console_print(temp, 3, 32, text + ' Army')
 	libtcod.console_print(temp, 3, 33, 'Armoured and Infantry')
 	
 	# objectives
@@ -6860,6 +6863,9 @@ def DoScenario(load_savegame=False):
 		libtcod.console_flush()
 		
 		GenerateTerrain()
+		
+		# TODO: spawn player units from each unit_list in campaign.player_battlegroup
+		
 		
 		# spawn the player unit
 		# FUTURE: integrate into a single spawn function with deployment zones
@@ -7370,6 +7376,12 @@ def CampaignSelectionMenu():
 	# select the first one alphabetically as default
 	campaign.player_nation = player_nation_list[0]
 	
+	# TEMP - will take from list of 'battlefronts' in future
+	if campaign.player_nation == 'Germany':
+		campaign.enemy_nation = 'Poland'
+	else:
+		campaign.enemy_nation = 'Germany'
+	
 	# select first row as default
 	selected_row = 0
 	
@@ -7475,22 +7487,25 @@ def CampaignSelectionMenu():
 				
 				# player nation
 				if selected_row == 0:
-				
 					n = player_nation_list.index(campaign.player_nation)
 					
 					if key_char == 'a':
-						if n > 0:
-							n -= 1
-							campaign.player_nation = player_nation_list[n]
-							update_menu = True
-							continue
+						if n > 0: n -= 1
+					else:
+						if n < len(player_nation_list) - 1: n += 1
 					
-					if key_char == 'd':
-						if n < len(player_nation_list) - 1:
-							n += 1
-							campaign.player_nation = player_nation_list[n]
-							update_menu = True
-							continue
+					campaign.player_nation = player_nation_list[n]
+					
+					# TEMP - will take from list of 'battlefronts' in future
+					if campaign.player_nation == 'Germany':
+						campaign.enemy_nation = 'Poland'
+					else:
+						campaign.enemy_nation = 'Germany'
+						
+					update_menu = True
+					continue
+					
+					
 
 
 # allow the player to build a new force from a menu
@@ -7506,12 +7521,9 @@ def ForceSelectionMenu():
 	menu.AddOption('remove_unit', 'Bksp', 'Remove unit')
 	
 	# TODO: change this command? can also trigger currently highlighted option
-	menu.AddOption('continue', 'Enter', 'Finish & Continue')
+	menu.AddOption('continue', 'End', 'Finish & Continue')
 	
 	menu.AddOption('cancel', 'Esc', 'Cancel & Return')
-	
-	# TEMP - testing
-	campaign.player_nation = 'Germany'
 	
 	# build full unit type list
 	unit_list = campaign.nations[campaign.player_nation]['unit_list'][:]
@@ -7549,7 +7561,7 @@ def ForceSelectionMenu():
 			libtcod.CENTER, 'Poland')
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		libtcod.console_print_ex(con, 17, 5, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'German')
+			libtcod.CENTER, campaign.nations[campaign.player_nation]['adjective'])
 		libtcod.console_print_ex(con, 17, 6, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Battlegroup')
 		
@@ -7893,14 +7905,6 @@ def GetCharacterName(player_name=False):
 		return new_name
 
 
-# allow the player to build the initial crew for their tank
-def CrewRecruitmentMenu():
-	
-	
-	# TEMP
-	return True
-
-
 # start a new campaign, allow the player to select their force, opponent, start date, etc.
 def StartNewCampaign():
 	
@@ -7913,13 +7917,12 @@ def StartNewCampaign():
 	session = Session()
 	
 	# select player nation (FUTURE: starting date and battlefield)
-	# TEMP - disabled
-	#if not CampaignSelectionMenu():
-	#	return False
+	if not CampaignSelectionMenu():
+		return False
 	
 	# build player force
-	#if not ForceSelectionMenu():
-	#	return False
+	if not ForceSelectionMenu():
+		return False
 	
 	# clear the screen
 	#libtcod.console_clear(con)
@@ -7928,10 +7931,6 @@ def StartNewCampaign():
 	
 	# get player character name
 	#GetCharacterName(player_name=True)
-	
-	# select player vehicle crew
-	#if not CrewRecruitmentMenu():
-	#	return False
 	
 	return True
 
@@ -8054,10 +8053,8 @@ libtcod.console_set_default_background(main_menu_con, libtcod.black)
 libtcod.console_set_default_foreground(main_menu_con, libtcod.white)
 libtcod.console_clear(main_menu_con)
 main_menu_image = LoadXP('ArmCom2_title.xp')
-# randomly load a tank image to use for this session
-tank_image = LoadXP(choice(TANK_IMAGES))
-libtcod.console_blit(tank_image, 0, 0, 20, 8, main_menu_image, 5, 6)
-del tank_image
+# randomly choose a tank image to use for this session
+libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 20, 8, main_menu_image, 5, 6)
 
 # main title
 libtcod.console_blit(main_menu_image, 0, 0, 88, 60, main_menu_con, 0, 0)
@@ -8231,7 +8228,7 @@ while not exit_game:
 			if not GetConfirmation(text):
 				UpdateMainMenu()
 				continue
-		# generate new session object
+		# start a new campaign
 		if not StartNewCampaign():
 			UpdateMainMenu()
 			continue

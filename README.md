@@ -1,6 +1,6 @@
 # Armoured Commander II
 
-This is the work-in-progress pre-Alpha version of Armoured Commander II.
+This is the work-in-progress version of Armoured Commander II. **Note**: the current state of the code might not run properly or at all; if you're looking to try out the game, check the [development blog](http://www.armouredcommander.com/blog/) for builds for Windows that also include a working snapshot of the Python code.
 
 ![screenshot 1](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_14.png "Armoured Commander II Screenshot")
 ![screenshot 2](https://github.com/sudasana/armcom2/blob/master/screenshots/armcom2_17.png "Armoured Commander II Screenshot")

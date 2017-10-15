@@ -352,27 +352,16 @@ class Campaign:
 # Crewman: represents a crewman who can be assigned to a position in the player tank
 # FUTURE: may also generate for AI vehicles as well?
 class Crewman:
-	def __init__(self):
-		self.name = ['', '']			# first and last name
-		self.position_training = {		# skill in working different tank positions
-			'Commander/Gunner' : 0,
-			'Loader' : 0,
-			'Driver' : 0,
-			'Assistant Driver' : 0
-		}
+	def __init__(self, nation, player=False):
+		self.nation = nation
+		self.player = player
+		# randomly generate name if not the player character
+		if player:
+			self.name = campaign.player_character_name
+		else:
+			self.name = GenerateCrewmanName(nation)
 		self.action = None			# current action, if None then
 							#   crewman is spotting
-	
-	def GetName(self, shortname=False, lastname=False):
-		if shortname:
-			text = self.name[0]
-			text = text[0]
-			text += '. ' + self.name[1]
-		elif lastname:
-			text = self.name[1]
-		else:
-			text = self.name[0] + ' ' + self.name[1]
-		return text.decode('utf8').encode('IBM850')
 
 
 # represents a single position in a vehicle that can be occupied by a crewman
@@ -1004,7 +993,7 @@ class Unit:
 		return text
 	
 	# assign a crewmember to a crew position
-	def SetCrew(self, position_name, crewman, player=False):
+	def SetCrew(self, position_name, crewman):
 		
 		for position in self.crew_positions:
 			if position['name'] == position_name:
@@ -3087,41 +3076,56 @@ class Scenario:
 		total_groups = 8
 		
 		total_units = 0
-		for i in range(total_groups):
+		while total_groups > 0:
 			prefer_terrain = True
 			
 			unit_num = 1
+			unit_class = ''
+			unit_type_list = []
 			d1, d2, roll = Roll2D6()
 			
-			# 2-4 Light Tank
-			if roll <= 4:
+			# 2 Medium Tank
+			if roll == 2:
 				prefer_terrain = False
+				unit_class = 'Medium Tank'
 				d1, d2, roll = Roll2D6()
-				if roll <= 5:
-					unit_id = '7TP'
+				if roll <= 9:
+					unit_num = 1
 				else:
-					unit_id = 'Vickers 6-Ton Mark E'
 					unit_num = 2
 			
+			# 3-4 Light Tank
+			elif 3 <= roll <= 4:
+				prefer_terrain = False
+				unit_class = 'Light Tank'
+				
+				d1, d2, roll = Roll2D6()
+				if roll <= 6:
+					unit_num = 1
+				elif roll <= 10:
+					unit_num = 2
+				else:
+					unit_num = 3
+					
 			# 5 Tankette
 			elif roll <= 5:
 				prefer_terrain = False
+				unit_class = 'Tankette'
+				
 				d1, d2, roll = Roll2D6()
 				if roll <= 8:
-					unit_id = 'TKS (20mm)'
 					unit_num = 2
 				elif roll <= 10:
-					unit_id = 'TKS'
 					unit_num = 3
 				else:
-					unit_id = 'TK-3'
 					unit_num = 4
 			
-			# 6-7 Infantry
+			# 6-7 Infantry Squad
 			elif roll <= 7:
-				unit_id = 'Rifle Squad + AT Rifles'
+				unit_class = 'Infantry Squad'
+				
 				d1, d2, roll = Roll2D6()
-				if 5 <= roll <= 7:
+				if roll <= 5:
 					unit_num = 2
 				elif roll <= 9:
 					unit_num = 3
@@ -3130,30 +3134,50 @@ class Scenario:
 			
 			# 8-9 Armoured Car
 			elif roll <= 9:
+				unit_class = 'Armoured Car'
 				prefer_terrain = False
 				d1, d2, roll = Roll2D6()
-				if roll <= 10:
-					unit_id = 'wz. 34 (37mm)'
-				else:
-					unit_id = 'wz. 34 (MG)'
-				d1, d2, roll = Roll2D6()
-				if 6 <= roll <= 9:
+				if roll <= 7:
 					unit_num = 2
 				else:
 					unit_num = 3
 			
-			# 10-12 Gun
+			# 10-11 AT Gun
+			elif 10 <= roll <= 11:
+				unit_class = 'Anti-Tank Gun'
+				d1, d2, roll = Roll2D6()
+				if roll <= 5:
+					unit_num = 1
+				elif roll <= 10:
+					unit_num = 2
+				else:
+					unit_num = 3
+			
+			# 12 Field Gun or AA Gun
 			else:
 				d1, d2, roll = Roll2D6()
-				#if roll <= 4:
-				#	unit_id = '75mm wz. 97/25'
-				if roll <= 4:
-					unit_id = '75mm wz. 02/26'
+				if roll <= 8:
+					unit_class = 'Field Gun'
 				else:
-					unit_id = '37mm wz. 36'
-					d1, d2, roll = Roll2D6()
-					if roll <= 8:
-						unit_num = 2
+					unit_class = 'Anti-Aircraft Gun'
+				d1, d2, roll = Roll2D6()
+				if roll <= 4:
+					unit_num = 1
+				else:
+					unit_num = 2
+			
+			# try to find a unit type of suitable class in the nation's unit type list
+			unit_id = None
+			for unit_type in campaign.nations[campaign.enemy_nation]['unit_list']:
+				if campaign.unit_types[unit_type]['class'] == unit_class:
+					unit_id = unit_type
+					break
+			
+			# not able to find a unit type of this class, re-roll
+			if unit_id is None:
+				continue
+			
+			total_groups -= 1
 			
 			# find a suitable spawn location
 			suitable_location = None
@@ -3194,12 +3218,13 @@ class Scenario:
 				print 'ERROR: Unable to find a location to spawn ' + unit_id
 				continue
 			
+			# spawn one unit per number rolled above
 			(hx, hy) = suitable_location
 			map_hex = GetHexAt(hx, hy)
 			for u in range(unit_num):
 				new_unit = Unit(unit_id)
 				new_unit.owning_player = 1
-				new_unit.SetNation('Poland')
+				new_unit.SetNation(campaign.enemy_nation)
 				new_unit.facing = self.player_direction
 				if new_unit.turret_facing is not None:
 					new_unit.turret_facing = self.player_direction
@@ -3214,6 +3239,7 @@ class Scenario:
 			if DEBUG_MODE:
 				text = 'Spawned ' + unit_id + ' x ' + str(unit_num)
 				print text
+			
 		
 		# set dummy flags
 		dummy_percent = 45
@@ -3807,22 +3833,34 @@ class Scenario:
 ##########################################################################################
 
 # generate a random crewman name given a nation
-def GenerateCrewmanName(nation_name):
+def GenerateCrewmanName(nation):
+	
+	# TEMP - need to normalize special characters in Polish names
+	# FUTURE: will have their own glyphs as part of font
+	CODE = {
+		u'Ś' : 'S', u'Ż' : 'Z', 
+		u'ą' : 'a', u'ć' : 'c', u'ę' : 'e', u'ł' : 'l', u'ń' : 'n', u'ó' : 'o',
+		u'ś' : 's', u'ź' : 'z', u'ż' : 'z'
+	}
 	
 	for tries in range(300):
-		first_name = choice(campaign.nations[nation_name]['first_names'])
-		surname = choice(campaign.nations[nation_name]['surnames'])
+		first_name = choice(campaign.nations[nation]['first_names'])
+		surname = choice(campaign.nations[nation]['surnames'])
+		full_name = first_name + ' '.encode('utf-8') + surname
 		
-		# don't return an unsuitable combination
-		if len(first_name) + len(surname) + 1 > CREW_NAME_MAX_LENGTH:
+		# don't return a name that is too long
+		if len(full_name) > CREW_NAME_MAX_LENGTH:
 			continue
-		if first_name == surname: continue
-		if first_name[0] == surname[0]:
-			if libtcod.random_get_int(0, 1, 10) <= 8:
-				continue
 		
-		full_name = first_name + ' ' + surname
-		return full_name.encode('IBM850')
+		fixed_name = u''
+		for i in range(len(full_name)):
+			if full_name[i] in CODE:
+				new_char = CODE[full_name[i]]
+				fixed_name += new_char.encode('utf-8')
+			else:
+				fixed_name += full_name[i]
+		
+		return fixed_name.encode('IBM850')
 
 
 # display info about an individual Unit or a given Unit Type to a console
@@ -6864,16 +6902,13 @@ def DoScenario(load_savegame=False):
 		
 		GenerateTerrain()
 		
-		# TODO: spawn player units from each unit_list in campaign.player_battlegroup
+		# spawn the player unit based on unit chosen earlier
+		# FUTURE: will run through other units in battlegroup and spawn them too
 		
-		
-		# spawn the player unit
-		# FUTURE: integrate into a single spawn function with deployment zones
-		#  for each side
-		new_unit = Unit('Panzer 38(t) A')
+		unit_type = campaign.player_battlegroup[0].unit_list[0]
+		new_unit = Unit(unit_type)
 		new_unit.owning_player = 0
-		new_unit.SetNation('Germany')
-		new_unit.name = 'Gretchen'
+		new_unit.SetNation(campaign.player_nation)
 		new_unit.facing = 0
 		new_unit.turret_facing = 0
 		new_unit.morale_lvl = 8
@@ -6890,52 +6925,13 @@ def DoScenario(load_savegame=False):
 		map_hex.unit_stack.append(new_unit)
 		scenario.unit_list.append(new_unit)
 		
-		# set up player tank crew
-		new_crew = Crewman()
-		new_crew.name = ['Günter', 'Bauer']
-		new_crew.position_training['Commander/Gunner'] = 30
-		new_unit.SetCrew('Commander/Gunner', new_crew, player=True)
-		
-		new_crew = Crewman()
-		new_crew.name = ['Hans', 'Eichelberger']
-		new_crew.position_training['Loader'] = 20
-		new_unit.SetCrew('Loader', new_crew)
-		
-		new_crew = Crewman()
-		new_crew.name = ['Werner', 'Kaufmann']
-		new_crew.position_training['Driver'] = 20
-		new_unit.SetCrew('Driver', new_crew)
-		
-		new_crew = Crewman()
-		new_crew.name = ['Horst', 'Schwicker']
-		new_crew.position_training['Assistant Driver'] = 10
-		new_unit.SetCrew('Assistant Driver', new_crew)
-		
-		# spawn rest of player squadron
-		for i in range(2):
-			new_unit = Unit('PSW 222')
-			new_unit.owning_player = 0
-			new_unit.SetNation('Germany')
-			new_unit.facing = 0
-			new_unit.turret_facing = 0
-			new_unit.morale_lvl = 8
-			new_unit.skill_lvl = 8
-			new_unit.hx = scenario.player_unit.hx
-			new_unit.hy = scenario.player_unit.hy
-			new_unit.squadron_leader = scenario.player_unit
-			map_hex = GetHexAt(new_unit.hx, new_unit.hy)
-			map_hex.unit_stack.append(new_unit)
-			scenario.unit_list.append(new_unit)
-		
-		#for i in range(4):
-		#	new_unit = Unit('Panzer 35t')
-		#	scenario.unit_list.append(new_unit)
-		#	new_unit.owning_player = 0
-		#	new_unit.facing = 0
-		#	new_unit.turret_facing = 0
-		#	new_unit.morale_lvl = 8
-		#	new_unit.skill_lvl = 8
-		#	new_unit.squadron_leader = scenario.player_unit
+		# randomly generate a crewman for each crew position, flag the first one
+		# as the player character
+		player=True
+		for position in new_unit.crew_positions:
+			new_crew = Crewman(new_unit.nation, player=player)
+			if player: player = False
+			new_unit.SetCrew(position['name'], new_crew)
 		
 		UpdatePlayerUnitConsole()
 		
@@ -7529,7 +7525,7 @@ def ForceSelectionMenu():
 	unit_list = campaign.nations[campaign.player_nation]['unit_list'][:]
 	
 	# create empty unit groups within the player's battlegroup
-	new_group = UnitGroup('HQ Squadron', ['Light Tank', 'Medium Tank', 'Armoured Car'], 4)
+	new_group = UnitGroup('HQ Squadron', ['Light Tank', 'Medium Tank', 'Armoured Car'], 1)
 	campaign.player_battlegroup.append(new_group)
 	#new_group = UnitGroup('Tank Squadron', ['Light Tank', 'Medium Tank'], 3)
 	#campaign.player_battlegroup.append(new_group)
@@ -7730,7 +7726,7 @@ def ForceSelectionMenu():
 			
 
 # display a list of unit types and allow the player to select one
-def UnitTypeMenu(unit_type_list, limited_class_list):
+def UnitTypeMenu(unit_type_list, limited_class_list, menu_title=''):
 	
 	# prune any non-allowed classes from unit type list
 	if len(limited_class_list) > 0:
@@ -7754,6 +7750,11 @@ def UnitTypeMenu(unit_type_list, limited_class_list):
 		libtcod.console_set_default_foreground(con, INFO_TEXT_COL)
 		libtcod.console_hline(con, 2, 3, 32)
 		libtcod.console_set_default_foreground(con, libtcod.white)
+		
+		# menu title if any
+		libtcod.console_print_ex(con, 59, 2, libtcod.BKGND_NONE,
+			libtcod.CENTER, menu_title)
+
 		
 		# frame for selected unit type info
 		DrawFrame(con, 46, 5, 26, 26)
@@ -7879,8 +7880,7 @@ def GetCharacterName(player_name=False):
 					update_name = True
 				
 			elif key.vk == libtcod.KEY_TAB:
-				# setting nation here is TEMP
-				new_name = GenerateCrewmanName('Germany')
+				new_name = GenerateCrewmanName(campaign.player_nation)
 				update_name = True
 			
 			# delete last character in string
@@ -7920,17 +7920,32 @@ def StartNewCampaign():
 	if not CampaignSelectionMenu():
 		return False
 	
-	# build player force
-	if not ForceSelectionMenu():
+	# TEMP: allow player to select a tank type and build a single unit force for them
+	new_group = UnitGroup('HQ Squadron', ['Light Tank', 'Medium Tank', 'Armoured Car'], 1)
+	campaign.player_battlegroup.append(new_group)
+	unit_list = campaign.nations[campaign.player_nation]['unit_list'][:]
+	unit_type = UnitTypeMenu(unit_list, campaign.player_battlegroup[0].allowed_classes,
+		menu_title='Select a vehicle type to command')
+	if unit_type is None:
 		return False
+	campaign.player_battlegroup[0].unit_list.append(unit_type)
+	
+	# build player force
+	#if not ForceSelectionMenu():
+	#	return False
 	
 	# clear the screen
-	#libtcod.console_clear(con)
-	#libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
-	#libtcod.console_flush()
+	libtcod.console_clear(con)
+	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
+	libtcod.console_flush()
 	
 	# get player character name
-	#GetCharacterName(player_name=True)
+	GetCharacterName(player_name=True)
+	
+	# clear the screen
+	libtcod.console_clear(con)
+	libtcod.console_blit(con, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 0)
+	libtcod.console_flush()
 	
 	return True
 

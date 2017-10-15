@@ -1090,6 +1090,58 @@
 		"op_value" : "36"
 	},
 	
+	"3.7cm PaK 35/36": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "30"
+	},
+	
+	"8.8cm FlaK 18 o. 36": {
+		"category" : "Gun",
+		"class" : "Anti-Aircraft Gun",
+		"portrait" : "",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"long_range" : "L",
+				"rof" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "55"
+	},
+	
 	"Rifle Squad + AT Rifles": {
 		"category" : "Infantry",
 		"class" : "Infantry Squad",

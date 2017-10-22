@@ -71,7 +71,7 @@ from encodings import hex_codec, ascii, utf_8, cp850
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2017-09-29'				# game version in Semantic Versioning format: http://semver.org/			
+VERSION = '0.1.0-2017-10-20'				# game version in Semantic Versioning format: http://semver.org/			
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -202,6 +202,10 @@ CREW_POSITION_ORDER = ['Commander', 'Commander/Gunner', 'Gunner', 'Gunner/Loader
 
 # max length of crewman name strings
 CREW_NAME_MAX_LENGTH = 20
+
+# names of crewman stats and starting base value
+CREW_STATS = ['Grit', 'Perception', 'Strength', 'Intelligence', 'Discipline', 'Initiative']
+CREW_STAT_BASE_VALUE = 6
 
 # order in which to display ammo types
 AMMO_TYPE_ORDER = ['HE', 'AP']
@@ -360,8 +364,25 @@ class Crewman:
 			self.name = campaign.player_character_name
 		else:
 			self.name = GenerateCrewmanName(nation)
+		
 		self.action = None			# current action, if None then
 							#   crewman is spotting
+		
+		# crew stat values
+		self.stats = {}
+		for stat_name in CREW_STATS:
+			self.stats[stat_name] = CREW_STAT_BASE_VALUE
+		
+		self.RandomizeStats()
+		
+	# randomize stat values; used for potential recruits and replacements
+	def RandomizeStats(self):
+		
+		stat_list = CREW_STATS[:]
+		shuffle(stat_list)
+		for stat_name in stat_list:
+			self.stats[stat_name] -= 1
+			self.stats[choice(CREW_STATS)] += 1
 
 
 # represents a single position in a vehicle that can be occupied by a crewman
@@ -412,7 +433,6 @@ class Unit:
 		self.nation = ''			# which nation this unit belongs to
 		self.name = None			# unique name for this unit (eg. tank name)
 		
-		self.crew_list = []			# list of pointers to crewmen
 		self.weapon_list = []			# list of weapon systems
 		
 		self.ai = AI(self)			# pointer to AI instance
@@ -473,6 +493,10 @@ class Unit:
 		crew_positions = self.GetStat('crew_positions')
 		if crew_positions is not None:
 			for position in crew_positions:
+				
+				# TODO: use the CrewPosition object instead
+				
+				
 				# make a copy of the dictionary so we can add some new keys and values
 				# that apply only to this position in this unit
 				new_position = dict(position)
@@ -498,10 +522,6 @@ class Unit:
 			self.ResolveHits()
 		if not self.alive: return
 		
-		# do spot check and return if this was a dummy unit that was revealed
-		self.DoSpotCheck()
-		if not self.alive: return
-		
 		# reset unit flags
 		self.moved_this_action = False
 		self.used_up_moves = False
@@ -520,12 +540,16 @@ class Unit:
 		if len(map_hex.unit_stack) > 1:
 			self.MoveToTopOfStack(map_hex)
 		
-		# player unit
+		# check for spotting enemy units
+		self.DoSpotCheck()
+		
+		# reset crew flags
+		for crew_position in self.crew_positions:
+			if crew_position['crewman'] is None: continue
+			crew_position['crewman'].action = None
+		
+		# player unit message
 		if self == scenario.player_unit:
-			# reset player crew flags
-			for crew_position in scenario.player_unit.crew_positions:
-				if crew_position['crewman'] is None: continue
-				crew_position['crewman'].action = None
 			scenario.AddMessage('Your activation begins', None)
 		
 		# check for regaining unknown status
@@ -541,7 +565,7 @@ class Unit:
 				return
 		# no enemy units in LoS
 		self.HideMe()
-			
+	
 	# perform post-activation automatic actions
 	def DoPostActivation(self):
 		
@@ -562,9 +586,9 @@ class Unit:
 		# set moved flag for next activation
 		self.moved_last_action = self.moved_this_action
 		
-		# do spot check
-		if self.alive:
-			self.DoSpotCheck()
+		# check for automatic spotting
+		if self.alive and not self.known:
+			self.DoAutomaticSpotCheck()
 
 	# set the nation for this unit
 	def SetNation(self, nation):
@@ -749,7 +773,6 @@ class Unit:
 			
 			y += 1
 		
-
 	# find the crewman in the given position and set their current action
 	# returns False if no such position, position is empty, or crewman already has a different action
 	def SetCrewmanAction(self, position_name, action):
@@ -1003,115 +1026,169 @@ class Unit:
 		print ('ERROR: tried to assign crew to ' + position_name + ' position but ' +
 			'no such position exists!')
 	
-	# check to see if this unit is spotted
-	def DoSpotCheck(self):
+	# check to see if this unit is automatically spotted by an enemy unit
+	# called at end of unit activation
+	def DoAutomaticSpotCheck(self):
 		
-		# unit is already spotted, no need to test
-		if self.known: return
+		if self.broken:
+			self.SpotMe(None, None)
+			return
 		
-		# get list of enemy units in LoS
-		enemy_list = []
 		for unit in scenario.unit_list:
 			if not unit.alive: continue
 			if unit.owning_player == self.owning_player: continue
 			if unit.dummy: continue
+			los = GetLoS(unit.hx, unit.hy, self.hx, self.hy)
 			
-			# FUTURE: check LoS for each crewmember in enemy unit
+			# no LoS
+			if los == -1: continue
 			
-			if unit == scenario.player_unit:
-				map_hex = GetHexAt(self.hx, self.hy)
-				if not map_hex.vis_to_player: continue
-			else:
-				if GetLoS(unit.hx, unit.hy, self.hx, self.hy) == -1: continue
+			# just moved and no LoS concealment
+			if self.moved_this_action:
+				if los == 0:
+					self.SpotMe(unit, None)
+					return
 			
-			enemy_list.append(unit)
-			
-		# no enemies in LoS
-		if len(enemy_list) == 0: return
+			# just fired
+			if self.fired:
+				distance = GetHexDistance(self.hx, self.hy, unit.hx, unit.hy)
+				# TODO: might need to change this
+				if distance <= los:
+					self.SpotMe(unit, None)
+					return
+
+	# check to see if this unit spots any enemy units
+	def DoSpotCheck(self):
 		
-		# calculate base spotting distance
-		unit_category = self.GetStat('category')
-		if unit_category == 'Infantry':
-			spot_distance = 3
-			if self.moved_this_action:
-				spot_distance += 2
-			if self.fired:
-				spot_distance += 2
-		elif unit_category == 'Gun':
-			spot_distance = 2
-			if self.fired:
-				spot_distance += 4
-		else:
-			spot_distance = 4
-			if self.moved_this_action:
-				spot_distance += 1
-			if self.fired:
-				spot_distance += 2
-			
-		# test each enemy in LoS
-		for unit in enemy_list:
-			los_mod = GetLoS(unit.hx, unit.hy, self.hx, self.hy)
-			
-			if unit.GetStat('recce') is None:
+		if self.dummy: return
+		
+		# no crew positions
+		# TEMP? will need to add crew to every type of unit
+		if len(self.crew_positions) == 0:
+			return
+		
+		spotting_position_list = []
+		for position in self.crew_positions:
+			if position['crewman'] is None: continue
+			# FUTURE: Check that crewman is not incapacitated
+			if position['crewman'].action is not None: continue
+			spotting_position_list.append(position)
+		
+		if len(spotting_position_list) == 0:
+			return
+		
+		print 'DEBUG: starting spot check for ' + self.GetName(true_name=True)
+		
+		shuffle(spotting_position_list)
+		
+		# make a local copy of the scenario unit list and shuffle it
+		spot_unit_list = scenario.unit_list[:]
+		shuffle(spot_unit_list)
+		
+		for position in spotting_position_list:
+		
+			for unit in spot_unit_list:
+				if not unit.alive: continue
+				if unit.owning_player == self.owning_player: continue
+				if unit.known: continue
 				
-				unit_category = unit.GetStat('category')
-			
-				if unit_category == 'Infantry':
-					if los_mod >= 5:
-						spot_distance -= 5
-					elif los_mod >= 3:
-						spot_distance -= 3
-					elif los_mod >= 1:
-						spot_distance -= 1
-				elif unit_category == 'Gun':
-					if los_mod >= 5:
-						spot_distance -= 6
-					elif los_mod >= 3:
-						spot_distance -= 4
-					elif los_mod >= 1:
-						spot_distance -= 2
+				# check if possible to spot
+				distance = GetHexDistance(self.hx, self.hy, unit.hx, unit.hy)
+				if distance > MAX_LOS_DISTANCE:
+					continue
+				
+				los = GetLoS(self.hx, self.hy, unit.hx, unit.hy)
+				if los == -1:
+					continue
+				
+				# get list of visible hextants based on position and hatch status
+				visible_hextants = []
+				if 'hatch' not in position:
+					for hextant in position['closed_visible']:
+						visible_hextants.append((int(hextant)))
+					max_distance = MAX_BU_LOS_DISTANCE
 				else:
-					if los_mod >= 5:
-						spot_distance -= 3
-					elif los_mod >= 3:
-						spot_distance -= 2
-					elif los_mod >= 1:
-						spot_distance -= 1
-			
-			if self.GetStat('recce') is not None:
-				if los_mod >= 5:
-					spot_distance -= 3
-				elif los_mod >= 3:
-					spot_distance -= 2
-				elif los_mod >= 1:
-					spot_distance -= 1
-			
-			#if DEBUG_MODE:
-			#	print ('Spotting distance for ' + self.GetName(true_name=True) +
-			#		' to ' + unit.GetName(true_name=True) + ' is ' + 
-			#		str(spot_distance) + ' hexes')
-			
-			# impossible to spot
-			if spot_distance < 1:
-				continue
-			# automatically spotted
-			if spot_distance >= 6:
-				self.SpotMe()
-				return
-			# spotted if distance is close enough
-			distance = GetHexDistance(unit.hx, unit.hy, self.hx, self.hy)
-			if distance <= spot_distance:
-				self.SpotMe()
-				return
-	
+					if position['hatch_open'] == 'FALSE':
+						for hextant in position['closed_visible']:
+							visible_hextants.append((int(hextant)))
+						max_distance = MAX_BU_LOS_DISTANCE
+					else:
+						for hextant in position['open_visible']:
+							visible_hextants.append((int(hextant)))
+						max_distance = MAX_LOS_DISTANCE
+				
+				# check that enemy unit is within max LoS distance
+				if distance > max_distance:
+					print ('DEBUG: ' + unit.GetName(true_name=True) + 
+						' beyond max LoS distance of crew position')
+					continue
+				
+				# calculate position of enemy unit relative to spotting unit
+				hx = unit.hx - self.hx
+				hy = unit.hy - self.hy
+				
+				# rotate to account for hull or turret facing
+				if position['location'] == 'Turret':
+					(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - self.turret_facing))
+				else:
+					(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - self.facing))
+				
+				# check that relative location is in at least one visible hextant
+				visible = False
+				for hextant in visible_hextants:
+					if (hx, hy) in HEXTANTS[hextant]:
+						visible = True
+						break
+				if not visible:
+					continue
+				
+				# this crewman can try to spot target enemy unit
+				
+				target_roll = int(position['crewman'].stats['Perception'])
+				
+				# calculate and apply modifiers
+				if los > 0:
+					target_roll -= los
+				
+				if unit.moved_this_action:
+					target_roll += 2
+				
+				if unit.fired:
+					target_roll += 1
+				
+				size_class = unit.GetStat('size_class')
+				if size_class != 'Normal':
+					if size_class == 'Small':
+						target_roll -= 1
+					elif size_class == 'Very Small':
+						target_roll -= 2
+				
+				# constrain between 2 and 11
+				if target_roll < 2:
+					target_roll = 2
+				elif target_roll > 11:
+					target_roll = 11
+				
+				print ('DEBUG: Rolling to spot ' + unit.GetName(true_name=True) +
+					', target roll is ' + str(target_roll))
+				
+				d1, d2, roll = Roll2D6()
+				if roll <= target_roll:
+					unit.SpotMe(self, position['crewman'].name)
+					# crew position can't spot another unit this turn
+					break
+				else:
+					print 'DEBUG: Crewman failed to spot unit' 
+				
 	# this unit has been spotted by an enemy unit
-	def SpotMe(self):
+	def SpotMe(self, unit, name):
 		if self.known: return
 		
 		# dummy unit reveal
 		if self.dummy:
-			text = 'No enemy unit actually there.'
-			scenario.AddMessage(text, self)
+			text = 'No enemy unit there - must have been a false report.'
+			scenario.PopUp(text, name, None, None)
+			# TODO: add log message
 			self.DestroyMe()
 			return
 		
@@ -1122,13 +1199,13 @@ class Unit:
 		DrawScreenConsoles()
 		libtcod.console_flush()
 		
-		# show message
+		# build message text
 		if self.owning_player == 0:
-			text = 'Your '
+			text = 'Your ' + self.GetName() + ' has been spotted by ' + unit.GetName()
 		else:
-			text = 'Enemy '
-		text += self.GetName() + ' has been spotted!'
-		scenario.AddMessage(text, self)
+			text = 'Enemy ' + self.GetName() + ' spotted!'
+		scenario.PopUp(text, name, None, None)
+		# TODO: add log message
 	
 	# regain unknown status for this unit
 	def HideMe(self):
@@ -1326,7 +1403,7 @@ class Unit:
 		for unit in map_hex2.unit_stack:
 			if unit.owning_player != self.owning_player and not unit.known:
 				spotted_enemy = True
-				unit.SpotMe()
+				unit.SpotMe(self, None)
 		if spotted_enemy:
 			# rebuild menu since move may no longer possible into this hex
 			scenario.BuildCmdMenu()
@@ -1608,7 +1685,7 @@ class Unit:
 		# any unspotted enemies in target hex become spotted
 		for unit in map_hex2.unit_stack:
 			if not unit.known:
-				unit.SpotMe()
+				unit.SpotMe(self, None)
 		
 		# display message
 		scenario.AddMessage(self.GetName() + ' initiates an assault!', self)
@@ -3073,7 +3150,7 @@ class Scenario:
 	def GenerateEnemyOOB(self):
 		
 		# FUTURE - will be integrated into national defs in a more generic way
-		total_groups = 8
+		total_groups = 6
 		
 		total_units = 0
 		while total_groups > 0:
@@ -3432,7 +3509,44 @@ class Scenario:
 				SaveGame()
 			
 			unit_activated = True
+	
+	# display a pop-up message on the screen, pausing action other than animations
+	# max 27 width x 7 lines; if name is set, then remainder of text is max 5 lines
+	def PopUp(self, text, name, vp_hx, vp_hy):
+		libtcod.console_clear(pop_up_con)
 		
+		# TEMP - assume top of screen; otherwise y=38
+		x = 40
+		y = 14
+		
+		# display the popup background
+		temp = LoadXP('popup_bkg.xp')
+		libtcod.console_blit(temp, 0, 0, 0, 0, pop_up_con, x, y)
+		del temp
+		libtcod.console_set_default_foreground(pop_up_con, libtcod.white)
+		libtcod.console_set_default_background(pop_up_con, KEY_COLOR)
+		
+		n = 0
+		if name is not None:
+			if len(name) > CREW_NAME_MAX_LENGTH:
+				name = name[:CREW_NAME_MAX_LENGTH - 1]
+			name += ' says:'
+			libtcod.console_print(pop_up_con, x+1, y+1+n, name)
+			n = 2
+		
+		for line in wrap(text, 27):
+			libtcod.console_print(pop_up_con, x+1, y+1+n, line)
+			if n == 7:
+				break
+			n += 1
+		
+		DrawScreenConsoles()
+		Wait(220)
+		libtcod.console_clear(pop_up_con)
+		DrawScreenConsoles()
+	
+	
+	
 	# add a new message to the log, and display it on the current message console
 	def AddMessage(self, text, unit, omit_from_log=False):
 		if not omit_from_log:
@@ -4974,6 +5088,7 @@ def Wait(wait_time):
 		if scenario.anim.Update():
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)
+			libtcod.console_blit(pop_up_con, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.0)
 			
 		libtcod.console_flush()
 
@@ -5379,7 +5494,7 @@ def InitAttack(attacker, weapon, target):
 			
 		# target spotted if hit
 		if not target.known:
-			target.SpotMe()
+			target.SpotMe(attacker, None)
 	
 	# newly acquired target for guns
 	if weapon.GetStat('type') == 'Gun':
@@ -6237,7 +6352,6 @@ def UpdateVPConsole():
 			if map_hex.elevation != elevation: continue
 			(x,y) = PlotHex(hx, hy)
 			h_con = session.hex_con[map_hex.terrain_type][map_hex.elevation]
-			#h_con = map_hex.terrain_type.console[map_hex.elevation]
 			libtcod.console_blit(h_con, 0, 0, 0, 0, map_vp_con, x-3, y-2)
 			
 			# add FoV mask if required
@@ -6500,20 +6614,15 @@ def DrawScreenConsoles():
 	libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 27, 4, 1.0, 0.0)	# map unit layer
 
 	# left column consoles
-	libtcod.console_blit(player_unit_con, 0, 0, 0, 0, con, 1, 1)
-	libtcod.console_blit(cmd_con, 0, 0, 0, 0, con, 1, 26)
-	libtcod.console_blit(hex_info_con, 0, 0, 0, 0, con, 1, 45)
+	libtcod.console_blit(player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
+	libtcod.console_blit(cmd_con, 0, 0, 0, 0, con, 1, 26)			# command menu
+	libtcod.console_blit(hex_info_con, 0, 0, 0, 0, con, 1, 45)		# hex info
 	
 	# scenario info, contextual info, objective info, and most recent message if any
 	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 40, 0)
 	libtcod.console_blit(context_con, 0, 0, 0, 0, con, 27, 1)
 	libtcod.console_blit(objective_con, 0, 0, 0, 0, con, 70, 50)
 	libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 27, 58)
-	libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-	libtcod.console_put_char(con, 27, 56, 'M')
-	libtcod.console_set_default_foreground(con, INFO_TEXT_COL)
-	libtcod.console_print(con, 28, 56, 'essage Log')
-	libtcod.console_set_default_foreground(con, libtcod.white)
 
 	# LoS display for player unit
 	if scenario.display_los and scenario.player_target is not None:
@@ -6533,6 +6642,8 @@ def DrawScreenConsoles():
 	
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_blit(anim_con, 0, 0, 0, 0, 0, 26, 3, 1.0, 0.0)	# animation layer
+	libtcod.console_blit(pop_up_con, 0, 0, 0, 0, 0, 0, 0)	# pop-up window layer
+
 
 
 ##########################################################################################
@@ -6723,7 +6834,7 @@ def DoScenario(load_savegame=False):
 	global scen_menu_con, bkg_console, map_vp_con, vp_mask, map_fov_con
 	global unit_con, player_unit_con, anim_con, cmd_con, attack_con, scen_info_con
 	global context_con, objective_con, hex_info_con, fov_hex_con, msg_con, tile_offmap
-	global dice
+	global pop_up_con, dice
 	
 	# update every display console and draw everything to screen
 	# FUTURE: change to UpdateConsoles()
@@ -6826,6 +6937,13 @@ def DoScenario(load_savegame=False):
 	libtcod.console_set_default_background(attack_con, libtcod.black)
 	libtcod.console_set_default_foreground(attack_con, libtcod.white)
 	libtcod.console_clear(attack_con)
+	
+	# pop-up window console
+	pop_up_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_set_default_background(pop_up_con, KEY_COLOR)
+	libtcod.console_set_default_foreground(pop_up_con, libtcod.white)
+	libtcod.console_set_key_color(pop_up_con, KEY_COLOR)
+	libtcod.console_clear(pop_up_con)
 
 	# load dark tile to indicate tiles that aren't visible to the player
 	fov_hex_con = LoadXP('ArmCom2_tile_fov.xp')
@@ -6861,10 +6979,10 @@ def DoScenario(load_savegame=False):
 				del scenario
 				return
 		
-		UpdateVPConsole()
-		
 		# create new session object
 		session = Session()
+		
+		UpdateVPConsole()
 	
 	else:
 	

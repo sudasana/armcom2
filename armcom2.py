@@ -105,6 +105,7 @@ INFO_TEXT_COL = libtcod.Color(190, 190, 190)		# informational text colour
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 HIGHLIGHT_COLOR = libtcod.Color(51, 153, 255)		# colour for highlighted text 
 HIGHLIGHT_COLOR2 = libtcod.Color(0, 64, 0)		# alternate "
+HIGHLIGHT_COLOR3 = libtcod.Color(0, 70, 140)		# another "
 GOLD_HIGHLIGHT_COLOR = libtcod.Color(255, 255, 102)	# golden "
 ROW_COLOR = libtcod.Color(30, 30, 30)			# background colour for list rows
 WEAPON_LIST_COLOR = libtcod.Color(25, 25, 90)		# background for weapon list in PSG console
@@ -1187,12 +1188,19 @@ class Unit:
 		# dummy unit reveal
 		if self.dummy:
 			text = 'No enemy unit there - must have been a false report.'
-			scenario.PopUp(text, name, None, None)
+			scenario.PopUp(text, name, self.vp_hx, self.vp_hy)
 			# TODO: add log message
 			self.DestroyMe()
+			UpdateUnitConsole()
+			DrawScreenConsoles()
+			libtcod.console_flush()
 			return
 		
 		self.known = True
+		
+		# move to top of stack
+		map_hex = GetHexAt(self.hx, self.hy)
+		self.MoveToTopOfStack(map_hex)
 
 		# update unit console
 		UpdateUnitConsole()
@@ -1204,7 +1212,7 @@ class Unit:
 			text = 'Your ' + self.GetName() + ' has been spotted by ' + unit.GetName()
 		else:
 			text = 'Enemy ' + self.GetName() + ' spotted!'
-		scenario.PopUp(text, name, None, None)
+		scenario.PopUp(text, name, self.vp_hx, self.vp_hy)
 		# TODO: add log message
 	
 	# regain unknown status for this unit
@@ -1281,12 +1289,12 @@ class Unit:
 				unit.acquired_target = None
 
 	# draw this unit to the unit console in the given viewport hx, hy location
-	# if stack_size > 1, indicate total number of units in hex stack
-	def DrawMe(self, hx, hy, stack_size):
+	# if stack_size > 1, also indicate total number of units in hex stack
+	def DrawMe(self, vp_hx, vp_hy, stack_size):
 		
 		# calculate draw position
 		if self.anim_x == 0 or self.anim_y == 0:
-			(x,y) = PlotHex(hx, hy)
+			(x,y) = PlotHex(vp_hx, vp_hy)
 		# position override for animations
 		else:
 			x = self.anim_x
@@ -1296,15 +1304,15 @@ class Unit:
 		self.screen_x = x + 27
 		self.screen_y = y + 4
 		# record viewport hex location as well
-		self.vp_hx = hx
-		self.vp_hy = hy
+		self.vp_hx = vp_hx
+		self.vp_hy = vp_hy
 		
-		self.display_char = self.GetDisplayChar()
-		
-		# don't actually draw if unknown enemy outside of FoV
+		# don't draw if this is an unknown enemy outside of FoV
 		if not self.known and self.owning_player == 1:
 			if not GetHexAt(self.hx, self.hy).vis_to_player:
 				return
+		
+		self.display_char = self.GetDisplayChar()
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
@@ -1400,7 +1408,9 @@ class Unit:
 		# check for unspotted enemy in target hex
 		# if so, all units in target hex are spotted and action ends
 		spotted_enemy = False
-		for unit in map_hex2.unit_stack:
+		# make a copy of the stack list since being spotted moves unit to top
+		unit_list = map_hex2.unit_stack[:]
+		for unit in unit_list:
 			if unit.owning_player != self.owning_player and not unit.known:
 				spotted_enemy = True
 				unit.SpotMe(self, None)
@@ -1683,7 +1693,8 @@ class Unit:
 			defenders.append((unit, fp))
 		
 		# any unspotted enemies in target hex become spotted
-		for unit in map_hex2.unit_stack:
+		unit_list = map_hex2.unit_stack[:]
+		for unit in unit_list:
 			if not unit.known:
 				unit.SpotMe(self, None)
 		
@@ -2065,13 +2076,6 @@ class AnimHandler:
 		self.af_attack_click = 0		# time between animation updates
 		self.af_attack_remaining = 0		# remaining number of updates before end
 		self.af_attack_active = False
-		
-		# unit highlight effect
-		self.highlight_unit = None		# which unit we are
-		self.highlight_vp_hex = None		# which hex we are highlighting	
-		self.highlight_timer = time.time()	# animation timer
-		self.highlight_click = 0		# time between animation updates
-		self.highlight_lifetime = 0		# remaining updates before removal
 	
 	# start an MG / small arms attack effect
 	def InitAFAttackEffect(self, x1, y1, x2, y2):
@@ -2090,36 +2094,11 @@ class AnimHandler:
 		self.gun_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.001
 		self.gun_active = True
 	
-	# start a unit highlight animation
-	def InitUnitHighlight(self, unit):
-		
-		# do not init if this unit is off the current map viewport
-		if not scenario.IsOnViewport(unit.hx, unit.hy):
-			self.anim_finished = True
-			return
-		
-		# get its viewport location
-		for (vp_hx, vp_hy) in VP_HEXES:
-			if scenario.map_vp[(vp_hx, vp_hy)] == (unit.hx, unit.hy):
-				break
-
-		# make the unit the top of its hex stack
-		map_hex = GetHexAt(unit.hx, unit.hy)
-		unit.MoveToTopOfStack(map_hex)
-
-		# set up the variables for this animation
-		self.highlight_unit = unit
-		self.highlight_vp_hex = (vp_hx, vp_hy)
-		self.highlight_timer = time.time()
-		self.highlight_click = float(config.getint('ArmCom2', 'animation_speed')) * 0.004
-		self.highlight_lifetime = 6
-	
 	# stop all animations in progress
 	def StopAll(self):
 		self.rain_active = False
 		self.gun_active = False
 		self.af_attack_active = False
-		self.highlight_unit = None
 		libtcod.console_clear(anim_con)
 	
 	# update animation statuses and animation console
@@ -2173,18 +2152,6 @@ class AnimHandler:
 					self.af_attack_positions = sample(self.af_attack_line, int(len(self.af_attack_line) / 5))
 					self.af_attack_remaining -= 1
 		
-		# unit highlight
-		if self.highlight_unit is not None:
-			if time.time() - self.highlight_timer >= self.highlight_click:
-				updated_animation = True
-				self.highlight_timer =  time.time()
-				# remove animation if it's reached its end
-				if self.highlight_lifetime == 0:
-					self.highlight_unit = None
-					self.highlight_vp_hex = None
-					self.anim_finished = True
-				self.highlight_lifetime -= 1
-		
 		# if we updated any animations, draw all of them to the screen
 		if updated_animation:
 			libtcod.console_clear(anim_con)
@@ -2204,23 +2171,6 @@ class AnimHandler:
 				(x,y) = self.gun_line[self.gun_location]
 				libtcod.console_put_char_ex(anim_con, x, y, 249, libtcod.white,
 					libtcod.black)
-			if self.highlight_unit is not None:
-				(hx, hy) = self.highlight_vp_hex
-				(x,y) = PlotHex(hx, hy)
-				x += 1
-				y += 1
-				if self.highlight_lifetime % 3 == 0:
-					chars = [249,249,249,249]
-				else:
-					chars = [169,170,28,29]
-				libtcod.console_put_char_ex(anim_con, x-1, y-1,
-					chars[0], UNIT_HIGHLIGHT_COL, libtcod.black)
-				libtcod.console_put_char_ex(anim_con, x+1, y-1,
-					chars[1], UNIT_HIGHLIGHT_COL, libtcod.black)
-				libtcod.console_put_char_ex(anim_con, x-1, y+1,
-					chars[2], UNIT_HIGHLIGHT_COL, libtcod.black)
-				libtcod.console_put_char_ex(anim_con, x+1, y+1,
-					chars[3], UNIT_HIGHLIGHT_COL, libtcod.black)
 				
 		return updated_animation
 
@@ -3515,9 +3465,20 @@ class Scenario:
 	def PopUp(self, text, name, vp_hx, vp_hy):
 		libtcod.console_clear(pop_up_con)
 		
-		# TEMP - assume top of screen; otherwise y=38
+		# make sure viewport hex is on viewport, and if not, don't highlight it
+		if vp_hx is not None and vp_hy is not None:
+			if (vp_hx, vp_hy) not in VP_HEXES:
+				vp_hx = None
+				vp_hy = None
+		
+		# left edge of message area
 		x = 40
+		
+		# determine if message needs to appear on bottom half of map view
 		y = 14
+		if vp_hx is not None and vp_hy is not None:
+			if vp_hy <= 0 - abs(int(ceil(vp_hx / 2))):
+				y = 38
 		
 		# display the popup background
 		temp = LoadXP('popup_bkg.xp')
@@ -3541,27 +3502,41 @@ class Scenario:
 			n += 1
 		
 		DrawScreenConsoles()
-		Wait(220)
+		
+		# if a viewport hex is being highlighted, animate a line connecting message
+		# to that hex
+		if vp_hx is not None and vp_hy is not None:
+			# set start and end points for line
+			x1 = 53
+			if y == 14:
+				y1 = 23
+			else:
+				y1 = 37
+			(x2,y2) = PlotHex(vp_hx, vp_hy)
+			x2 += 27
+			y2 += 4
+			line = GetLine(x1, y1, x2, y2)
+			for (x,y) in line[:-1]:
+				libtcod.console_put_char_ex(pop_up_con, x, y, 249, HIGHLIGHT_COLOR3, libtcod.black)
+				DrawScreenConsoles()
+				Wait(2)
+		
+		Wait(280)
 		libtcod.console_clear(pop_up_con)
 		DrawScreenConsoles()
 	
 	
 	
 	# add a new message to the log, and display it on the current message console
+	# TODO: remove unit from vars
 	def AddMessage(self, text, unit, omit_from_log=False):
 		if not omit_from_log:
 			self.messages.append(text)
 		UpdateMsgConsole()
 		# we do this so as not to mess up the attack console being displayed
 		libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 27, 58)
-		if unit is not None:
-			scenario.anim.InitUnitHighlight(unit)
-			WaitForAnimation()
-		else:
-			DrawScreenConsoles()
-			libtcod.console_flush()
-			#pause_time = config.getint('ArmCom2', 'animation_speed') * 0.5
-			#Wait(pause_time)
+		DrawScreenConsoles()
+		libtcod.console_flush()
 	
 	# set up map viewport hexes based on current player tank position and facing
 	def SetVPHexes(self):
@@ -6408,8 +6383,15 @@ def UpdateVPConsole():
 
 
 # run through active PSGs and draw them to the unit console
+# also update their internal vp hex records
 def UpdateUnitConsole():
 	libtcod.console_clear(unit_con)
+	
+	for unit in scenario.unit_list:
+		if not unit.alive: continue
+		unit.vp_hx = None
+		unit.vp_hy = None
+	
 	for (hx, hy) in VP_HEXES:
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
 		map_hex = GetHexAt(map_hx, map_hy)
@@ -6417,6 +6399,11 @@ def UpdateUnitConsole():
 		if len(map_hex.unit_stack) == 0: continue
 		# draw the top unit in the stack
 		map_hex.unit_stack[0].DrawMe(hx, hy, len(map_hex.unit_stack))
+		# set vp hex locations for rest of stack
+		if len(map_hex.unit_stack) > 1:
+			for unit in map_hex.unit_stack[1:]:
+				unit.vp_hx = hx
+				unit.vp_hy = hy
 
 
 # updates the player unit info console

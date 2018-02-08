@@ -2195,7 +2195,8 @@ class Unit:
 			# display pop-up message window
 			
 			if self == scenario.player_unit:
-				text = (position.crewman.GetFullName() + ' says: ' + target.GetName() +
+				text = (position.crewman.GetFullName() + ' says: ' + 
+					target.GetName() + ' ' + target.GetStat('class') +
 					' spotted!')
 				scenario.ShowMessage(text)
 			else:
@@ -2939,8 +2940,12 @@ def UpdateVPCon():
 		# no road here
 		if len(map_hex.dirt_roads) == 0: continue
 		for direction in map_hex.dirt_roads:
-			# TEMP: only draw each road link once
-			if 3 <= direction <= 5: continue
+			
+			# get other VP hex linked by road
+			(hx2, hy2) = GetAdjacentHex(hx, hy, ConstrainDir(direction - scenario.player_unit.facing))
+			
+			# only draw if it is in direction 0-2, unless the other hex is off the VP
+			if (hx2, hy2) in VP_HEXES and 3 <= direction <= 5: continue
 			
 			# paint road
 			(x1, y1) = PlotHex(hx, hy)
@@ -2948,6 +2953,11 @@ def UpdateVPCon():
 			(x2, y2) = PlotHex(hx2, hy2)
 			line = GetLine(x1, y1, x2, y2)
 			for (x, y) in line:
+				
+				# don't paint over outside of map area
+				if libtcod.console_get_char_background(map_vp_con, x, y) == libtcod.black:
+					continue
+				
 				libtcod.console_set_char_background(map_vp_con, x, y,
 					DIRT_ROAD_COL, libtcod.BKGND_SET)
 				

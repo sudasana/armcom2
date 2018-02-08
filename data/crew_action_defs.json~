@@ -1,0 +1,36 @@
+{
+	"Spot": {
+		"desc" : "Scan terrain for enemies"
+	},
+	"Direct Driver" : {
+		"desc" : "Help direct the driver",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"fov_hextants" : ["5", "0", "1"],
+		"fov_range" : "2"
+	},
+	"Fire Gun" : {
+		"desc" : "Fire the main gun",
+		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
+		"fov_hextants" : ["0"],
+		"fov_range" : "6"
+	},
+	"Load Gun" : {
+		"desc" : "Reload the main gun as needed",
+		"position_list" : ["Loader"],
+		"fov_hextants" : [],
+		"fov_range" : "1"
+	},
+	"Drive" : {
+		"desc" : "Drive the vehicle",
+		"position_list" : ["Driver"],
+		"fov_hextants" : ["0"],
+		"fov_range" : "2"
+	},
+	"Drive Cautiously" : {
+		"desc" : "Advance slowly, watching for obstacles",
+		"position_list" : ["Driver"],
+		"fov_hextants" : ["0"],
+		"fov_range" : "1"
+	}
+	
+}

@@ -215,6 +215,8 @@ class AI:
 			text += 'Wait'
 		else:
 			text += self.disposition
+		if self.owner.dummy:
+			text += ' (dummy)'
 		print text
 		
 		for position in self.owner.crew_positions:
@@ -238,7 +240,10 @@ class AI:
 			if roll >= 70.0:
 				self.disposition = None
 			elif roll <= 35.0:
-				self.disposition = 'Combat'
+				if self.owner.dummy:
+					self.disposition = None
+				else:
+					self.disposition = 'Combat'
 			else:
 				self.disposition = 'Movement'
 			
@@ -861,6 +866,9 @@ class Scenario:
 					UpdateUnitCon()
 					UpdateScenarioDisplay()
 					libtcod.console_flush()
+				
+				# dummy units can't spot
+				if unit.dummy: continue
 				
 				# create a local list of crew positions in a random order
 				position_list = sample(unit.crew_positions, len(unit.crew_positions))
@@ -1649,6 +1657,7 @@ class Unit:
 		
 		self.unit_id = unit_id			# unique ID for unit type
 		self.ai = None				# AI controller
+		self.dummy = False			# unit is a false report, erased upon reveal
 		
 		# load unit stats from JSON file
 		with open(DATAPATH + 'unit_type_defs.json') as data_file:
@@ -2195,9 +2204,14 @@ class Unit:
 			# display pop-up message window
 			
 			if self == scenario.player_unit:
-				text = (position.crewman.GetFullName() + ' says: ' + 
-					target.GetName() + ' ' + target.GetStat('class') +
-					' spotted!')
+				
+				if target.dummy:
+					text = (position.crewman.GetFullName() + ' says: ' + 
+						'Thought there was something there...')
+				else:
+					text = (position.crewman.GetFullName() + ' says: ' + 
+						target.GetName() + ' ' + target.GetStat('class') +
+						' spotted!')
 				scenario.ShowMessage(text)
 			else:
 				text = 'You have been spotted!'
@@ -2205,6 +2219,12 @@ class Unit:
 			
 	# reveal this unit after being spotted
 	def SpotMe(self):
+		
+		# dummy units are removed instead
+		if self.dummy:
+			self.DestroyMe()
+			return
+		
 		self.known = True
 		UpdateUnitCon()
 		UpdateUnitInfoCon()
@@ -2835,12 +2855,14 @@ def ShowGameMenu(active_tab):
 	# fill in active tab info
 	# TEMP - only game menu tab possible for now
 	libtcod.console_set_default_foreground(game_menu_con, libtcod.light_blue)
-	libtcod.console_print(game_menu_con, 25, 22, 'Q')
-	libtcod.console_print(game_menu_con, 25, 23, 'A')
+	libtcod.console_print(game_menu_con, 25, 22, 'Esc')
+	libtcod.console_print(game_menu_con, 25, 24, 'Q')
+	libtcod.console_print(game_menu_con, 25, 25, 'A')
 	
 	libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-	libtcod.console_print(game_menu_con, 30, 22, 'Save and Quit to Main Menu')
-	libtcod.console_print(game_menu_con, 30, 23, 'Abandon Scenario')
+	libtcod.console_print(game_menu_con, 30, 22, 'Return to Game')
+	libtcod.console_print(game_menu_con, 30, 24, 'Save and Quit to Main Menu')
+	libtcod.console_print(game_menu_con, 30, 25, 'Abandon Game')
 	
 	# blit menu to screen
 	libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
@@ -2868,7 +2890,7 @@ def ShowGameMenu(active_tab):
 			return 'exit_game'
 		
 		elif key_char == 'a':
-			text = 'Abandoning this scenario will erase the saved game.'
+			text = 'Abandoning will erase the saved game.'
 			result = ShowNotification(text, confirm=True)
 			if result:
 				EraseGame()
@@ -2876,11 +2898,6 @@ def ShowGameMenu(active_tab):
 			libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 			libtcod.console_flush()
 			Wait(15)
-				
-		
-		
-	
-
 
 
 
@@ -2913,23 +2930,21 @@ def ShowNotification(text, confirm=False):
 	h = len(lines) + 6
 	y = WINDOW_YM - int(h/2)
 	
-	# create a local copy of the screen
+	# create a local copy of the current screen to re-draw when we're done
 	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
-	libtcod.console_set_default_background(temp_con, libtcod.black)
-	libtcod.console_set_default_foreground(temp_con, libtcod.white)
 	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
 	
 	# darken background 
-	libtcod.console_blit(darken_con, 0, 0, 0, 0, temp_con, 0, 0, 0.0, 0.5)
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.5)
 	
 	# draw a black rect and an outline
-	libtcod.console_rect(temp_con, x, y, 60, h, True, libtcod.BKGND_SET)
-	DrawFrame(temp_con, x, y, 60, h)
+	libtcod.console_rect(0, x, y, 60, h, True, libtcod.BKGND_SET)
+	DrawFrame(0, x, y, 60, h)
 	
 	# display message
 	ly = y+2
 	for line in lines:
-		libtcod.console_print(temp_con, x+2, ly, line)
+		libtcod.console_print(0, x+2, ly, line)
 		ly += 1
 	
 	# if asking for confirmation, display yes/no choices, otherwise display a simple messages
@@ -2938,11 +2953,10 @@ def ShowNotification(text, confirm=False):
 	else:
 		text = 'Enter to Continue'
 	
-	libtcod.console_print_ex(temp_con, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	
-	# blit temporary console to screen
-	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	# show to screen
 	libtcod.console_flush()
 	Wait(15)
 	
@@ -2959,15 +2973,19 @@ def ShowNotification(text, confirm=False):
 			key_char = chr(key.c).lower()
 			
 			if key_char == 'y':
+				# restore original screen before returning
+				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 				del temp_con
 				return True
 			elif key_char == 'n':
+				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 				del temp_con
 				return False
 		else:
 			if key.vk == libtcod.KEY_ENTER:
 				exit_menu = True
 	
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
 	
 
@@ -3219,8 +3237,8 @@ def UpdateCommandCon():
 		if scenario.game_turn['active_player'] != 0: return
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
-		libtcod.console_print(command_con, 2, 2, 'W/S')
-		libtcod.console_print(command_con, 2, 3, 'A/D')
+		libtcod.console_print(command_con, 2, 2, 'I/K')
+		libtcod.console_print(command_con, 2, 3, 'J/L')
 		libtcod.console_print(command_con, 2, 4, 'H')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
@@ -3669,6 +3687,17 @@ def DoScenario(load_game=False):
 			new_unit.GenerateNewCrew()
 			scenario.units.append(new_unit)
 		
+		# set dummy enemy units
+		# TEMP - should be approx 1/4 of total enemy units
+		dummy_units = 2
+		unit_list = []
+		for unit in scenario.units:
+			if unit.owning_player == 1:
+				unit_list.append(unit)
+		unit_list = sample(unit_list, dummy_units)	
+		for unit in unit_list:
+			unit.dummy = True
+		
 		# TEMP - place enemy units randomly
 		for unit in scenario.units:
 			if unit.owning_player == 0: continue
@@ -3822,9 +3851,9 @@ def DoScenario(load_game=False):
 		if scenario.game_turn['current_phase'] == 'Crew Actions':
 			
 			# change selected crewman
-			if key_char in ['w', 's']:
+			if key_char in ['i', 'k']:
 				
-				if key_char == 'w':
+				if key_char == 'i':
 					if scenario.selected_position > 0:
 						scenario.selected_position -= 1
 					else:
@@ -3840,13 +3869,13 @@ def DoScenario(load_game=False):
 				UpdateScenarioDisplay()
 			
 			# set action for selected crewman
-			elif key_char in ['a', 'd']:
+			elif key_char in ['j', 'l']:
 				
 				position = scenario.player_unit.crew_positions[scenario.selected_position]
 				
 				# check for empty position
 				if position.crewman is not None:
-					if key_char == 'a':
+					if key_char == 'j':
 						result = position.crewman.SetAction(False)
 					else:
 						result = position.crewman.SetAction(True)

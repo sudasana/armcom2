@@ -2817,6 +2817,73 @@ def LoadGame():
 def EraseGame():
 	os.remove('savegame')
 
+
+##########################################################################################
+#                                     In-Game Menu                                       #
+##########################################################################################
+
+# display the game menu to screen, with the given tab active
+
+def ShowGameMenu(active_tab):
+	
+	# darken screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	
+	# blit menu background to game menu console
+	libtcod.console_blit(game_menu_bkg, 0, 0, 0, 0, game_menu_con, 0, 0)
+	
+	# fill in active tab info
+	# TEMP - only game menu tab possible for now
+	libtcod.console_set_default_foreground(game_menu_con, libtcod.light_blue)
+	libtcod.console_print(game_menu_con, 25, 22, 'Q')
+	libtcod.console_print(game_menu_con, 25, 23, 'A')
+	
+	libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+	libtcod.console_print(game_menu_con, 30, 22, 'Save and Quit to Main Menu')
+	libtcod.console_print(game_menu_con, 30, 23, 'Abandon Scenario')
+	
+	# blit menu to screen
+	libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
+	libtcod.console_flush()
+	Wait(15)
+	
+	# get input from player
+	exit_menu = False
+	while not exit_menu:
+		libtcod.console_flush()
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
+		if libtcod.console_is_window_closed(): sys.exit()
+		
+		if key is None: continue
+		
+		# exit menu
+		if key.vk == libtcod.KEY_ESCAPE:
+			return ''
+		
+		key_char = chr(key.c).lower()
+		
+		if key_char == 'q':
+			SaveGame()
+			return 'exit_game'
+		
+		elif key_char == 'a':
+			text = 'Abandoning this scenario will erase the saved game.'
+			result = ShowNotification(text, confirm=True)
+			if result:
+				EraseGame()
+				return 'exit_game'
+			libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
+			libtcod.console_flush()
+			Wait(15)
+				
+		
+		
+	
+
+
+
+
 ##########################################################################################
 #                              Console Drawing Functions                                 #
 ##########################################################################################
@@ -2837,7 +2904,7 @@ def DrawFrame(console, x, y, w, h):
 
 
 # display a pop-up message on the root console
-# FUTURE: can be used for confirmation
+# can be used for yes/no confirmation
 def ShowNotification(text, confirm=False):
 	
 	# determine window x, height, and y position
@@ -2846,17 +2913,23 @@ def ShowNotification(text, confirm=False):
 	h = len(lines) + 6
 	y = WINDOW_YM - int(h/2)
 	
+	# create a local copy of the screen
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_set_default_background(temp_con, libtcod.black)
+	libtcod.console_set_default_foreground(temp_con, libtcod.white)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
 	# darken background 
-	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.5)
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, temp_con, 0, 0, 0.0, 0.5)
 	
 	# draw a black rect and an outline
-	libtcod.console_rect(0, x, y, 60, h, True, libtcod.BKGND_SET)
-	DrawFrame(0, x, y, 60, h)
+	libtcod.console_rect(temp_con, x, y, 60, h, True, libtcod.BKGND_SET)
+	DrawFrame(temp_con, x, y, 60, h)
 	
 	# display message
 	ly = y+2
 	for line in lines:
-		libtcod.console_print(0, x+2, ly, line)
+		libtcod.console_print(temp_con, x+2, ly, line)
 		ly += 1
 	
 	# if asking for confirmation, display yes/no choices, otherwise display a simple messages
@@ -2865,15 +2938,17 @@ def ShowNotification(text, confirm=False):
 	else:
 		text = 'Enter to Continue'
 	
-	libtcod.console_print_ex(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(temp_con, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	
+	# blit temporary console to screen
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
-	
 	Wait(15)
 	
-	exit_notifcation = False
-	while not exit_notifcation:
+	exit_menu = False
+	while not exit_menu:
+		libtcod.console_flush()
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
 			key, mouse)
 		if libtcod.console_is_window_closed(): sys.exit()
@@ -2884,12 +2959,16 @@ def ShowNotification(text, confirm=False):
 			key_char = chr(key.c).lower()
 			
 			if key_char == 'y':
+				del temp_con
 				return True
 			elif key_char == 'n':
+				del temp_con
 				return False
 		else:
 			if key.vk == libtcod.KEY_ENTER:
-				exit_notifcation = True
+				exit_menu = True
+	
+	del temp_con
 	
 
 # draw the map viewport console
@@ -3702,8 +3781,12 @@ def DoScenario(load_game=False):
 		
 		# exit game
 		if key.vk == libtcod.KEY_ESCAPE:
-			SaveGame()
-			exit_scenario = True
+			result = ShowGameMenu(None)
+			if result == 'exit_game':
+				exit_scenario = True
+			else:
+				# re-draw to clear game menu from screen
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			continue
 		
 		# automatically trigger next phase for player
@@ -3905,6 +3988,13 @@ libtcod.console_set_default_background(darken_con, libtcod.black)
 libtcod.console_set_default_foreground(darken_con, libtcod.black)
 libtcod.console_clear(darken_con)
 
+# game menu console: 84x54
+game_menu_bkg = LoadXP('game_menu.xp')
+game_menu_con = libtcod.console_new(84, 54)
+libtcod.console_set_default_background(game_menu_con, libtcod.black)
+libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
+libtcod.console_clear(game_menu_con)
+
 # create mouse and key event holders
 mouse = libtcod.Mouse()
 key = libtcod.Key()
@@ -4056,6 +4146,8 @@ while not exit_game:
 		DoScenario(load_game=True)
 		UpdateMainMenuCon()
 		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		Wait(15)
 	
 	if key_char == 'n':
 		# check for overwrite of existing saved game
@@ -4070,6 +4162,8 @@ while not exit_game:
 		DoScenario()
 		UpdateMainMenuCon()
 		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		Wait(15)
 
 # END #
 

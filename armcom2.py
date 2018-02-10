@@ -265,7 +265,7 @@ class AI:
 				for position in self.owner.crew_positions:
 					if position.crewman is None: continue
 					if position.name in ['Commander/Gunner', 'Gunner/Loader', 'Gunner']:
-						position.crewman.current_action = 'Fire Gun'
+						position.crewman.current_action = 'Operate Gun'
 					elif position.name == 'Loader':
 						position.crewman.current_action = 'Load Gun'
 					else:
@@ -795,10 +795,6 @@ class Scenario:
 		if self.game_turn['current_phase'] == 'Movement':
 			# check for a crewman on a move action
 			move_action = False
-			
-			# might want to rotate turret
-			if self.player_unit.CheckCrewAction(['Commander/Gunner'],['Fire Gun']):
-				move_action = True
 			if self.player_unit.CheckCrewAction(['Driver'], ['Drive', 'Drive Cautiously']):
 				move_action = True
 			
@@ -807,7 +803,7 @@ class Scenario:
 		elif self.game_turn['current_phase'] == 'Combat':
 			# check for a crewman on a combat action
 			combat_action = False
-			if self.player_unit.CheckCrewAction(['Commander/Gunner'],['Fire Gun']):
+			if self.player_unit.CheckCrewAction(['Commander/Gunner'],['Operate Gun']):
 				combat_action = True
 			
 			if not combat_action: return True
@@ -1445,8 +1441,8 @@ class Scenario:
 
 		# check crew order
 		# TEMP: need to make more specific to this weapon
-		if not attacker.CheckCrewAction(['Commander/Gunner', 'Gunner/Loader', 'Gunner'], ['Fire Gun']):
-			return 'Crewman not on Fire Gun order'
+		if not attacker.CheckCrewAction(['Commander/Gunner', 'Gunner/Loader', 'Gunner'], ['Operate Gun']):
+			return 'Crewman not on Operate Gun order'
 
 		# attack can proceed
 		return ''
@@ -2061,7 +2057,7 @@ class Unit:
 			return False
 		
 		# make sure crewman on correct action
-		if not self.CheckCrewAction(['Gunner', 'Commander/Gunner'], ['Fire Gun']):
+		if not self.CheckCrewAction(['Gunner', 'Commander/Gunner'], ['Operate Gun']):
 			return False
 		
 		if clockwise:
@@ -3269,12 +3265,12 @@ def UpdateCommandCon():
 		libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
 		libtcod.console_print(command_con, 2, 2, 'W')
 		libtcod.console_print(command_con, 2, 3, 'A/D')
-		libtcod.console_print(command_con, 2, 4, 'Q/E')
+		
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 		libtcod.console_print(command_con, 9, 2, 'Move Forward')
 		libtcod.console_print(command_con, 9, 3, 'Pivot Hull')
-		libtcod.console_print(command_con, 9, 4, 'Rotate Turret')
+		
 	
 	elif scenario.game_turn['current_phase'] == 'Combat':
 		
@@ -3287,14 +3283,18 @@ def UpdateCommandCon():
 		if scenario.game_turn['active_player'] != 0: return
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
-		libtcod.console_print(command_con, 2, 2, 'W/S')
-		libtcod.console_print(command_con, 2, 3, 'A/D')
-		libtcod.console_print(command_con, 2, 4, 'F')
+		# TEMP - hidden since no additional weapons have been added yet
+		#libtcod.console_print(command_con, 2, 2, 'W/S')
+		libtcod.console_print(command_con, 2, 3, 'Q/E')
+		libtcod.console_print(command_con, 2, 4, 'A/D')
+		libtcod.console_print(command_con, 2, 5, 'F')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		libtcod.console_print(command_con, 9, 2, 'Select Weapon')
-		libtcod.console_print(command_con, 9, 3, 'Select Target')
-		libtcod.console_print(command_con, 9, 4, 'Fire')
+		# TEMP - hidden since no additional weapons have been added yet
+		#libtcod.console_print(command_con, 9, 2, 'Select Weapon')
+		libtcod.console_print(command_con, 9, 3, 'Rotate Turret')
+		libtcod.console_print(command_con, 9, 4, 'Select Target')
+		libtcod.console_print(command_con, 9, 5, 'Fire')
 		
 	libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
 	libtcod.console_print(command_con, 2, 11, 'Enter')
@@ -3915,6 +3915,10 @@ def DoScenario(load_game=False):
 					UpdateScenarioDisplay()
 					libtcod.console_flush()
 					SaveGame()
+					
+					# check for end of movement
+					if scenario.player_unit.move_finished:
+						trigger_end_of_phase = True
 			
 			# pivot hull facing
 			elif key_char in ['a', 'd']:
@@ -3933,17 +3937,6 @@ def DoScenario(load_game=False):
 					UpdateHexTerrainCon()
 					UpdateScenarioDisplay()
 			
-			# rotate turret facing
-			elif key_char in ['q', 'e']:
-				if key_char == 'q':
-					result = scenario.player_unit.RotateTurret(False)
-				else:
-					result = scenario.player_unit.RotateTurret(True)
-				if result:
-					UpdateUnitCon()
-					UpdateVPCon()
-					UpdateScenarioDisplay()
-		
 		elif scenario.game_turn['current_phase'] == 'Combat':
 			
 			# select weapon
@@ -3954,6 +3947,17 @@ def DoScenario(load_game=False):
 					result = scenario.SelectNextWeapon(True)
 				if result:
 					UpdateContextCon()
+					UpdateScenarioDisplay()
+			
+			# rotate turret facing
+			elif key_char in ['q', 'e']:
+				if key_char == 'q':
+					result = scenario.player_unit.RotateTurret(False)
+				else:
+					result = scenario.player_unit.RotateTurret(True)
+				if result:
+					UpdateUnitCon()
+					UpdateVPCon()
 					UpdateScenarioDisplay()
 			
 			# select target

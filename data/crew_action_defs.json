@@ -8,8 +8,8 @@
 		"fov_hextants" : ["5", "0", "1"],
 		"fov_range" : "6"
 	},
-	"Fire Gun" : {
-		"desc" : "Fire the main gun",
+	"Operate Gun" : {
+		"desc" : "Operate the main gun and the turret",
 		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
 		"fov_hextants" : ["0"],
 		"fov_range" : "6"

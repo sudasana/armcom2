@@ -1338,18 +1338,27 @@ class Scenario:
 		libtcod.console_rect(attack_con, 1, 46, 24, 1, False, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(attack_con, libtcod.black)
 		libtcod.console_print_ex(attack_con, 13, 46, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Final')
+			libtcod.CENTER, 'Final Chance')
 		
 		# chance graph display
 		x = int(ceil(24.0 * profile['final_chance'] / 100.0))
 		libtcod.console_set_default_background(attack_con, libtcod.green)
 		libtcod.console_rect(attack_con, 1, 49, x-1, 3, False, libtcod.BKGND_SET)
+		
 		libtcod.console_set_default_background(attack_con, libtcod.red)
 		libtcod.console_rect(attack_con, x, 49, 25-x, 3, False, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(attack_con, libtcod.blue)
-		libtcod.console_rect(attack_con, 1, 49, 1, 3, False, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(attack_con, libtcod.dark_grey)
-		libtcod.console_rect(attack_con, 24, 49, 1, 3, False, libtcod.BKGND_SET)
+		
+		# critical hit band
+		libtcod.console_set_default_foreground(attack_con, libtcod.blue)
+		for y in range(49, 52):
+			libtcod.console_put_char(attack_con, 1, y, 221)
+		
+		# critical miss band
+		libtcod.console_set_default_foreground(attack_con, libtcod.dark_grey)
+		for y in range(49, 52):
+			libtcod.console_put_char(attack_con, 24, y, 222)
+		
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		libtcod.console_set_default_background(attack_con, libtcod.black)
 		
 		text = str(profile['final_chance']) + '%%'
@@ -1560,7 +1569,7 @@ class Crew:
 		with open(DATAPATH + 'nation_defs.json') as data_file:
 			nations = json.load(data_file)
 		
-		for tries in range (300):
+		for tries in range(300):
 			first_name = choice(nations[nation]['first_names'])
 			surname = choice(nations[nation]['surnames'])
 			

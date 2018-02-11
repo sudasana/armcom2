@@ -477,21 +477,7 @@ class Scenario:
 		
 		###### Hex Map and Map Viewport #####
 		
-		# dictionary of hex console images; newly generated each time scenario
-		# starts or is resumed
-		self.hex_consoles = {}			
-		
-		self.map_vp = {}			# dictionary of map viewport hexes and
-							#   their corresponding map hexes
-		
-		self.vp_hx = 0				# location and facing of center of
-		self.vp_hy = 0				#   viewport on map
-		self.vp_facing = 0
-		
-		# dictionary of screen display locations and their corresponding map hex
-		self.hex_map_index = {}
-		
-		# generate hex map in the shape of a pointy-top hex
+		# generate the hex map in the shape of a pointy-top hex
 		# standard radius is 12 hexes not including centre hex
 		self.map_hexes = {}
 		map_radius = 12
@@ -504,13 +490,29 @@ class Scenario:
 			hex_list = GetHexRing(0, 0, r)
 			for (hx, hy) in hex_list:
 				self.map_hexes[(hx,hy)] = MapHex(hx,hy)
-
-		print 'Generated ' + str(len(self.map_hexes.keys())) + ' map hexes'
+		#print 'Generated ' + str(len(self.map_hexes.keys())) + ' map hexes'
+		
+		self.map_objectives = []		# list of map hex objectives
+		self.highlighted_hex = None		# currently highlighted map hex
+		
+		##### Map VP
+		self.map_vp = {}			# dictionary of map viewport hexes and
+							#   their corresponding map hexes
+		self.vp_hx = 0				# location and facing of center of
+		self.vp_hy = 0				#   viewport on map
+		self.vp_facing = 0
+		
+		# dictionary of screen display locations on the VP and their corresponding map hex
+		self.hex_map_index = {}
+		
+		# dictionary of hex console images; newly generated each time scenario
+		# starts or is resumed
+		self.hex_consoles = {}
 		
 		# FUTURE: move this to a session object
 		self.GenerateHexConsoles()
 		
-		self.map_objectives = []		# list of map hex objectives
+		
 		
 		
 	# generate hex console images for scenario map
@@ -1506,10 +1508,17 @@ class Scenario:
 		
 		return RestrictChance(chance)
 	
-	# display a message overtop the map viewport
-	# FUTURE: optionally, highlight a map hex as well and move display location of
-	# message if required
+	# display a pop-up message overtop the map viewport
 	def ShowMessage(self, message, hx=None, hy=None):
+		
+		# enable hex highlight if any
+		if hx is not None and hy is not None:
+			self.highlighted_hex = (hx, hy)
+			UpdateUnitCon()
+			UpdateScenarioDisplay()
+		
+		# FUTURE: determine if window needs to be shifted to bottom half of screen
+		# so that highlighted hex is not obscured
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_blit(popup_bkg, 0, 0, 0, 0, 0, 44, 13)
@@ -1525,7 +1534,13 @@ class Scenario:
 		# FUTURE: get message pause time from settings
 		Wait(len(lines) * 30)
 		
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		# clear hex highlight if any
+		if hx is not None and hy is not None:
+			self.highlighted_hex = None
+			UpdateUnitCon()
+			UpdateScenarioDisplay()
+		else:
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 
 
@@ -2235,10 +2250,10 @@ class Unit:
 					text = (position.crewman.GetFullName() + ' says: ' + 
 						target.GetName() + ' ' + target.GetStat('class') +
 						' spotted!')
-				scenario.ShowMessage(text)
+				scenario.ShowMessage(text, hx=target.hx, hy=target.hy)
 			else:
 				text = 'You have been spotted!'
-				scenario.ShowMessage(text)
+				scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
 			
 	# reveal this unit after being spotted
 	def SpotMe(self):
@@ -3098,6 +3113,7 @@ def UpdateVPCon():
 			
 
 # display units on the unit console
+# also displays map hex highlight and LoS if any
 def UpdateUnitCon():
 	libtcod.console_clear(unit_con)
 	
@@ -3111,11 +3127,25 @@ def UpdateUnitCon():
 		#if (map_hx, map_hy) not in scenario.player_unit.fov: continue
 		# get the map hex
 		map_hex = scenario.map_hexes[(map_hx, map_hy)]
-		# no units in hex
-		if len(map_hex.unit_stack) == 0: continue
-		# display the top unit in the stack
-		map_hex.unit_stack[0].DrawMe(vp_hx, vp_hy)
+		
+		# any units in the stack
+		if len(map_hex.unit_stack) != 0:
+			# display the top unit in the stack
+			map_hex.unit_stack[0].DrawMe(vp_hx, vp_hy)
 	
+		# check for hex highlight if any
+		if scenario.highlighted_hex is not None:
+			if scenario.highlighted_hex == (map_hx, map_hy):
+				(x,y) = PlotHex(vp_hx, vp_hy)
+				libtcod.console_put_char_ex(unit_con, x-1, y-1, 169, libtcod.cyan,
+					libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x+1, y-1, 170, libtcod.cyan,
+					libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x-1, y+1, 28, libtcod.cyan,
+					libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x+1, y+1, 29, libtcod.cyan,
+					libtcod.black)
+		
 	# display LoS if applicable
 	if scenario.player_los_active and scenario.player_target is not None:
 		line = GetLine(scenario.player_unit.screen_x, scenario.player_unit.screen_y,
@@ -3429,7 +3459,7 @@ def UpdateContextCon():
 			libtcod.console_print(context_con, 0, 3, '+Dirt Road')
 		
 		# get bonus move chance
-		libtcod.console_print(context_con, 0, 4, 'Bonus Chance:')
+		libtcod.console_print(context_con, 0, 4, '+1 move chance:')
 		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
 		libtcod.console_print(context_con, 1, 5, str(chance) + '%%')
 	
@@ -3800,7 +3830,7 @@ def DoScenario(load_game=False):
 		# scenario end conditions have been met
 		if scenario.finished:
 			EraseGame()
-			# FUTURE: add more detail here
+			# FUTURE: add more descriptive detail here
 			text = 'The scenario is over: ' + scenario.win_desc
 			ShowNotification(text)
 			exit_scenario = True

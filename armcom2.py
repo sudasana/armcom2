@@ -438,6 +438,7 @@ class MapHex:
 		if len(self.unit_stack) == 0: return False
 		
 		for unit in self.unit_stack:
+			if unit.dummy: continue
 			if unit.owning_player != self.objective:
 				self.objective = unit.owning_player
 				return True
@@ -463,6 +464,8 @@ class Scenario:
 		self.player_unit = None			# pointer to the player unit
 		
 		self.finished = False			# have win/loss conditions been met
+		self.winner = -1			# player number of scenario winner, -1 if None
+		self.win_desc = ''			# description of win/loss conditions met
 		
 		self.selected_position = 0		# index of selected crewman in player unit
 		self.selected_weapon = None		# currently selected weapon on player unit
@@ -975,7 +978,31 @@ class Scenario:
 		
 		# check for win/loss conditions
 		if not self.player_unit.alive:
+			self.winner = 1
 			self.finished = True
+			self.win_desc = 'Your tank was destroyed.'
+			return
+		
+		all_enemies_dead = True
+		for unit in self.units:
+			if unit.owning_player == 1 and unit.alive:
+				all_enemies_dead = False
+				break
+		if all_enemies_dead:
+			self.winner = 0
+			self.finished = True
+			self.win_desc = 'All enemy units in the area were destroyed.'
+			return
+		
+		all_objectives_captured = True
+		for map_hex in self.map_objectives:
+			if map_hex.objective == 1:
+				all_objectives_captured = False
+				break
+		if all_objectives_captured:
+			self.winner = 0
+			self.finished = True
+			self.win_desc = 'All objectives in the area were captured.'
 			return
 		
 		self.game_turn['turn_number'] += 1
@@ -3774,7 +3801,8 @@ def DoScenario(load_game=False):
 		if scenario.finished:
 			EraseGame()
 			# FUTURE: add more detail here
-			ShowNotification('The scenario is over.')
+			text = 'The scenario is over: ' + scenario.win_desc
+			ShowNotification(text)
 			exit_scenario = True
 			continue
 		

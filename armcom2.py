@@ -1556,47 +1556,56 @@ class Scenario:
 # Crew Class: represents a crewman in a vehicle or a single member of a unit's personnel
 class Crew:
 	def __init__(self, nation):
-		self.name = self.GenerateName(nation)		# first and last name
+		self.first_name = ''				# name, set by GenerateName()
+		self.last_name = ''
 		self.nation = nation
+		self.GenerateName()			# generate random first and last name
+		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'Spot'			# currently active action
 		
 		self.fov = set()				# set of visible hexes
-	
-	def GenerateName(self, nation):
 		
+		self.stats = {					# dictionary of stat values
+			'Strength' : 0,
+			'Grit' : 0,
+			'Perception' : 0,
+			'Intelligence': 0
+		}
+	
+	# generate a random first and last name for this crewman
+	# TEMP: normalize extended characters so they can be displayed on screen
+	def GenerateName(self):
+		
+		# normalize extended characters
+		# FUTURE: will have their own glyphs as part of font
+		def FixName(text):
+			CODE = {
+				u'Ś' : 'S', u'Ż' : 'Z', u'Ł' : 'L',
+				u'ą' : 'a', u'ć' : 'c', u'ę' : 'e', u'ł' : 'l', u'ń' : 'n', u'ó' : 'o',
+				u'ś' : 's', u'ź' : 'z', u'ż' : 'z'
+			}
+			
+			fixed_name = ''
+			for i in range(len(text)):
+				if text[i] in CODE:
+					fixed_name += CODE[text[i]]
+				else:
+					fixed_name += text[i]
+			return fixed_name
+			
 		# get list of possible first and last names
 		with open(DATAPATH + 'nation_defs.json') as data_file:
 			nations = json.load(data_file)
 		
-		for tries in range(300):
-			first_name = choice(nations[nation]['first_names'])
-			surname = choice(nations[nation]['surnames'])
+		first_name = choice(nations[self.nation]['first_names'])
+		self.first_name = FixName(first_name)
+		last_name = choice(nations[self.nation]['surnames'])
+		self.last_name = FixName(last_name)
 			
-			return (first_name, surname)
-	
-	# return the crewman's full name as a string
+	# return the crewman's full name as an encoded string
 	def GetFullName(self):
-		(first_name, surname) = self.name
-		full_name = first_name + ' '.encode('utf-8') + surname
-		
-		# TODO - need to normalize special characters in Polish names
-		# FUTURE: will have their own glyphs as part of font
-		CODE = {
-			u'Ś' : 'S', u'Ż' : 'Z', u'Ł' : 'L',
-			u'ą' : 'a', u'ć' : 'c', u'ę' : 'e', u'ł' : 'l', u'ń' : 'n', u'ó' : 'o',
-			u'ś' : 's', u'ź' : 'z', u'ż' : 'z'
-		}
-		
-		fixed_name = u''
-		for i in range(len(full_name)):
-			if full_name[i] in CODE:
-				new_char = CODE[full_name[i]]
-				fixed_name += new_char.encode('utf-8')
-			else:
-				fixed_name += full_name[i]
-		
-		return fixed_name.encode('IBM850')
+		return (self.first_name + ' ' + self.last_name).encode('IBM850')
 	
 	# set a new action; if True, select next in list, otherwise previous
 	def SetAction(self, forward):
@@ -3265,8 +3274,7 @@ def UpdateCrewPositionCon():
 		if position.crewman is None:
 			text = 'Empty'
 		else:
-			(firstname, surname) = position.crewman.name
-			text = firstname[0] + '. ' + surname
+			text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
 		
 		# names might have special characters so we encode it before printing it
 		libtcod.console_print(crew_position_con, 0, y+1, text.encode('IBM850'))

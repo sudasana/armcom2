@@ -1572,6 +1572,7 @@ class Crew:
 			'Perception' : 0,
 			'Intelligence': 0
 		}
+		self.GenerateStats()
 	
 	# generate a random first and last name for this crewman
 	# TEMP: normalize extended characters so they can be displayed on screen
@@ -1606,6 +1607,30 @@ class Crew:
 	# return the crewman's full name as an encoded string
 	def GetFullName(self):
 		return (self.first_name + ' ' + self.last_name).encode('IBM850')
+	
+	# generate a new set of stats for this crewman
+	def GenerateStats(self):
+		
+		for tries in range(300):
+			value_list = []
+			total = 0
+			for i in range(4):
+				new_value = libtcod.random_get_int(0, 5, 50) + libtcod.random_get_int(0, 5, 50)
+				new_value = int(new_value / 10)
+				value_list.append(new_value)
+				total += new_value
+			
+			# check that total stat values fall within a given range
+			if 12 <= total <= 32:
+				break
+		
+		# set stat values
+		i = 0
+		for key in self.stats.keys():
+			self.stats[key] = value_list[i]
+			i+=1
+		
+		print 'DEBUG: Set stats for ' + self.GetFullName() + ' to: ' + str(self.stats)
 	
 	# set a new action; if True, select next in list, otherwise previous
 	def SetAction(self, forward):
@@ -2902,31 +2927,50 @@ def EraseGame():
 
 def ShowGameMenu(active_tab):
 	
+	# draw the contents of the currently active tab to the menu console
+	def DrawMenuCon(active_tab):
+		# blit menu background to game menu console
+		libtcod.console_blit(game_menu_bkg, 0, 0, 0, 0, game_menu_con, 0, 0)
+		
+		# fill in active tab info
+		
+		# Game Menu
+		if active_tab == 0:
+		
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.light_blue)
+			libtcod.console_print(game_menu_con, 25, 22, 'Esc')
+			libtcod.console_print(game_menu_con, 25, 24, 'Q')
+			libtcod.console_print(game_menu_con, 25, 25, 'A')
+			
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+			libtcod.console_print(game_menu_con, 30, 22, 'Return to Game')
+			libtcod.console_print(game_menu_con, 30, 24, 'Save and Quit to Main Menu')
+			libtcod.console_print(game_menu_con, 30, 25, 'Abandon Game')
+		
+		elif active_tab == 3:
+			
+			pass
+		
+		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
+		libtcod.console_flush()
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
 	# darken screen background
 	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
 	
-	# blit menu background to game menu console
-	libtcod.console_blit(game_menu_bkg, 0, 0, 0, 0, game_menu_con, 0, 0)
-	
-	# fill in active tab info
-	# TEMP - only game menu tab possible for now
-	libtcod.console_set_default_foreground(game_menu_con, libtcod.light_blue)
-	libtcod.console_print(game_menu_con, 25, 22, 'Esc')
-	libtcod.console_print(game_menu_con, 25, 24, 'Q')
-	libtcod.console_print(game_menu_con, 25, 25, 'A')
-	
-	libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-	libtcod.console_print(game_menu_con, 30, 22, 'Return to Game')
-	libtcod.console_print(game_menu_con, 30, 24, 'Save and Quit to Main Menu')
-	libtcod.console_print(game_menu_con, 30, 25, 'Abandon Game')
+	# generate menu console for the first time and blit to screen
+	DrawMenuCon(active_tab)
 	
 	# blit menu to screen
-	libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
-	libtcod.console_flush()
+	
 	Wait(15)
 	
 	# get input from player
 	exit_menu = False
+	result = ''
 	while not exit_menu:
 		libtcod.console_flush()
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
@@ -2935,25 +2979,45 @@ def ShowGameMenu(active_tab):
 		
 		if key is None: continue
 		
-		# exit menu
-		if key.vk == libtcod.KEY_ESCAPE:
-			return ''
+		# Activate Different Menu
+		if key.vk == libtcod.KEY_ESCAPE and active_tab != 0:
+			active_tab = 0
+			DrawMenuCon(active_tab)
+			Wait(15)
+			continue
+		elif key.vk == libtcod.KEY_F3 and active_tab != 3:
+			active_tab = 3
+			DrawMenuCon(active_tab)
+			Wait(15)
+			continue
 		
 		key_char = chr(key.c).lower()
 		
-		if key_char == 'q':
-			SaveGame()
-			return 'exit_game'
-		
-		elif key_char == 'a':
-			text = 'Abandoning will erase the saved game.'
-			result = ShowNotification(text, confirm=True)
-			if result:
-				EraseGame()
-				return 'exit_game'
-			libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
-			libtcod.console_flush()
-			Wait(15)
+		# Game Menu
+		if active_tab == 0:
+			
+			if key.vk == libtcod.KEY_ESCAPE:
+				exit_menu = True
+			
+			elif key_char == 'q':
+				SaveGame()
+				result = 'exit_game'
+				exit_menu = True
+			
+			elif key_char == 'a':
+				text = 'Abandoning will erase the saved game.'
+				result = ShowNotification(text, confirm=True)
+				if result:
+					EraseGame()
+					result = 'exit_game'
+					exit_menu = True
+				libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
+				libtcod.console_flush()
+				Wait(15)
+
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	del temp_con
+	return result
 
 
 
@@ -3883,9 +3947,9 @@ def DoScenario(load_game=False):
 		
 		##### Player Keyboard Commands #####
 		
-		# exit game
+		# enter game menu
 		if key.vk == libtcod.KEY_ESCAPE:
-			result = ShowGameMenu(None)
+			result = ShowGameMenu(0)
 			if result == 'exit_game':
 				exit_scenario = True
 			else:

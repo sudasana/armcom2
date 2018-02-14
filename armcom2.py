@@ -1629,8 +1629,6 @@ class Crew:
 		for key in self.stats.keys():
 			self.stats[key] = value_list[i]
 			i+=1
-		
-		print 'DEBUG: Set stats for ' + self.GetFullName() + ' to: ' + str(self.stats)
 	
 	# set a new action; if True, select next in list, otherwise previous
 	def SetAction(self, forward):

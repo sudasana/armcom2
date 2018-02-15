@@ -116,8 +116,11 @@ HEX_TERRAIN_DESC = {
 	'pond' : 'Pond', 'roughground' : 'Rough Ground', 'village' : 'Village'
 }
 
-# maximum length for randomly generate crew names
+# maximum length for randomly generated crew names
 CREW_NAME_MAX_LENGTH = 20
+
+# list of crew stat names
+STAT_NAMES = ['Strength', 'Grit', 'Perception', 'Intelligence']
 
 # list of phases in a unit activation
 PHASE_LIST = ['Crew Actions', 'Spotting', 'Movement', 'Combat']
@@ -1555,24 +1558,29 @@ class Scenario:
 
 # Crew Class: represents a crewman in a vehicle or a single member of a unit's personnel
 class Crew:
-	def __init__(self, nation):
+	def __init__(self, nation, position):
 		self.first_name = ''				# name, set by GenerateName()
 		self.last_name = ''
 		self.nation = nation
-		self.GenerateName()			# generate random first and last name
+		self.GenerateName()				# generate random first and last name
+		
+		self.current_position = position		# pointer to current position in a unit
+		
+		self.age = 0					# age of crewman in years
+		self.GenerateAge()
 		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'Spot'			# currently active action
 		
 		self.fov = set()				# set of visible hexes
 		
-		self.stats = {					# dictionary of stat values
-			'Strength' : 0,
-			'Grit' : 0,
-			'Perception' : 0,
-			'Intelligence': 0
-		}
+		self.stats = {}					# dictionary of stat values
+		for stat_name in STAT_NAMES:
+			self.stats[stat_name] = 0
+		
 		self.GenerateStats()
+		
+		
 	
 	# generate a random first and last name for this crewman
 	# TEMP: normalize extended characters so they can be displayed on screen
@@ -1608,6 +1616,27 @@ class Crew:
 	def GetFullName(self):
 		return (self.first_name + ' ' + self.last_name).encode('IBM850')
 	
+	# generate a random age for this crewman
+	# FUTURE: can take into account current year of war
+	def GenerateAge(self):
+		self.age = 22
+		roll = libtcod.random_get_int(0, 1, 6)
+		if roll == 1:
+			self.age -= 2
+		elif roll == 2:
+			self.age -= 1
+		elif roll == 5:
+			self.age += 1
+		elif roll == 6:
+			self.age += 2
+		
+		if self.current_position.name in ['Commander', 'Commander/Gunner']:
+			roll = libtcod.random_get_int(0, 1, 6)
+			if roll <= 4:
+				self.age += 3
+			else:
+				self.age += 4
+	
 	# generate a new set of stats for this crewman
 	def GenerateStats(self):
 		
@@ -1626,7 +1655,7 @@ class Crew:
 		
 		# set stat values
 		i = 0
-		for key in self.stats.keys():
+		for key in STAT_NAMES:
 			self.stats[key] = value_list[i]
 			i+=1
 	
@@ -1931,7 +1960,7 @@ class Unit:
 	# generate a new crew sufficent to man all crew positions
 	def GenerateNewCrew(self):
 		for position in self.crew_positions:
-			self.crew_list.append(Crew(self.nation))
+			self.crew_list.append(Crew(self.nation, position))
 			position.crewman = self.crew_list[-1]
 	
 	# draw this unit to the given viewport hex on the unit console
@@ -2947,7 +2976,19 @@ def ShowGameMenu(active_tab):
 		
 		elif active_tab == 3:
 			
-			pass
+			# display list of crew
+			DisplayCrew(scenario.player_unit, game_menu_con, 6, 13, True)
+			
+			# display info on selected crewman
+			crewman = scenario.player_unit.crew_positions[scenario.selected_position].crewman
+			if crewman is not None:
+				DisplayCrewInfo(crewman, game_menu_con, 37, 8)
+			
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.light_blue)
+			libtcod.console_print(game_menu_con, 6, 40, 'I/K')
+			
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+			libtcod.console_print(game_menu_con, 11, 40, 'Select Crew')
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		libtcod.console_flush()
@@ -3012,6 +3053,28 @@ def ShowGameMenu(active_tab):
 				libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 				libtcod.console_flush()
 				Wait(15)
+		
+		# Crew Menu
+		elif active_tab == 3:
+			
+			# change selected crewman
+			if key_char in ['i', 'k']:
+				
+				if key_char == 'i':
+					if scenario.selected_position > 0:
+						scenario.selected_position -= 1
+					else:
+						scenario.selected_position = len(scenario.player_unit.crew_positions) - 1
+				
+				else:
+					if scenario.selected_position == len(scenario.player_unit.crew_positions) - 1:
+						scenario.selected_position = 0
+					else:
+						scenario.selected_position += 1
+				UpdateContextCon()
+				UpdateCrewPositionCon()
+				DrawMenuCon(active_tab)
+				Wait(15)
 
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
@@ -3022,7 +3085,6 @@ def ShowGameMenu(active_tab):
 ##########################################################################################
 #                              Console Drawing Functions                                 #
 ##########################################################################################
-
 
 # draw an ArmCom2-style frame to the given console
 def DrawFrame(console, x, y, w, h):
@@ -3036,6 +3098,107 @@ def DrawFrame(console, x, y, w, h):
 	for y1 in range(y+1, y+h-1):
 		libtcod.console_put_char(console, x, y1, 179)
 		libtcod.console_put_char(console, x+w-1, y1, 179)
+
+
+# draw info about a series of crew positions and their crewmen to a console
+def DisplayCrew(unit, console, x, y, highlight_selected):
+	
+	for position in unit.crew_positions:
+		
+		# highlight selected position and crewman
+		if highlight_selected:
+			if unit.crew_positions.index(position) == scenario.selected_position:
+				libtcod.console_set_default_background(console, libtcod.darker_blue)
+				libtcod.console_rect(console, x, y, 24, 4, True, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(console, libtcod.black)
+		
+		libtcod.console_set_default_foreground(console, libtcod.light_blue)
+		libtcod.console_print(console, x, y, position.name)
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE, 
+			libtcod.RIGHT, position.location)
+		if not position.hatch:
+			text = '--'
+		else:
+			if position.hatch_open:
+				text = 'CE'
+			else:
+				text = 'BU'
+		libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE, 
+			libtcod.RIGHT, text)
+		
+		if position.crewman is None:
+			text = 'Empty'
+		else:
+			text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
+		
+		# names might have special characters so we encode it before printing it
+		libtcod.console_print(console, x, y+1, text.encode('IBM850'))
+		
+		# current action if any
+		if position.crewman is not None:
+			if position.crewman.current_action is not None:
+				libtcod.console_set_default_foreground(console,
+					libtcod.dark_yellow)
+				libtcod.console_print(console, x, y+2,
+					position.crewman.current_action)
+				libtcod.console_set_default_foreground(console,
+					libtcod.white)
+		
+		y += 5
+
+
+# display info about a crewman to a console
+def DisplayCrewInfo(crewman, console, x, y):
+	
+	# outline and section dividers
+	libtcod.console_set_default_foreground(console, libtcod.grey)
+	DrawFrame(console, x, y, 31, 41)
+	libtcod.console_hline(console, x+1, y+4, 29)
+	libtcod.console_hline(console, x+1, y+6, 29)
+	libtcod.console_hline(console, x+1, y+8, 29)
+	libtcod.console_hline(console, x+1, y+10, 29)
+	libtcod.console_hline(console, x+1, y+14, 29)
+	libtcod.console_hline(console, x+1, y+22, 29)
+	
+	# section titles
+	libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
+	libtcod.console_print(console, x+1, y+2, 'Crewman Report')
+	libtcod.console_print(console, x+1, y+5, 'Name')
+	libtcod.console_print(console, x+1, y+7, 'Age')
+	libtcod.console_print(console, x+1, y+9, 'Rank')
+	libtcod.console_print(console, x+1, y+11, 'Current')
+	libtcod.console_print(console, x+1, y+12, 'Position')
+	libtcod.console_print(console, x+1, y+15, 'Assessment')
+	
+	# info
+	libtcod.console_set_default_foreground(console, libtcod.white)
+	libtcod.console_print(console, x+10, y+5, crewman.GetFullName())
+	libtcod.console_print(console, x+10, y+7, str(crewman.age))
+	# TODO: rank
+	libtcod.console_print(console, x+10, y+11, scenario.player_unit.unit_id)
+	libtcod.console_print(console, x+10, y+12, crewman.current_position.name)
+	
+	# crew stats
+	libtcod.console_set_default_background(console, libtcod.darkest_grey)
+	background_shade = False
+	i = 0
+	for stat_name in STAT_NAMES:
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_print(console, x+8, y+17+i, stat_name)
+		libtcod.console_set_default_foreground(console, libtcod.light_grey)
+		libtcod.console_print_ex(console, x+23, y+17+i, libtcod.BKGND_NONE, 
+			libtcod.RIGHT, str(crewman.stats[stat_name]))
+		if background_shade:
+			libtcod.console_rect(console, x+8, y+17+i, 16, 1, False, libtcod.BKGND_SET)
+		background_shade = not background_shade
+		i+=1
+	
+	libtcod.console_set_default_foreground(console, libtcod.white)
+	libtcod.console_set_default_background(console, libtcod.black)
+		
+
+
 
 
 # display a pop-up message on the root console
@@ -3303,55 +3466,14 @@ def UpdatePlayerInfoCon():
 def UpdateCrewPositionCon():
 	libtcod.console_clear(crew_position_con)
 	
-	unit = scenario.player_unit
-	
-	if len(unit.crew_positions) == 0:
+	if len(scenario.player_unit.crew_positions) == 0:
 		return
 	
-	y = 1
-	for position in unit.crew_positions:
-		
-		# highlight if special action phase and this crewman is selected
-		if scenario.game_turn['current_phase'] == 'Crew Actions':
-			if unit.crew_positions.index(position) == scenario.selected_position:
-				libtcod.console_set_default_background(crew_position_con, libtcod.darker_blue)
-				libtcod.console_rect(crew_position_con, 0, y, 24, 4, True, libtcod.BKGND_SET)
-				libtcod.console_set_default_background(crew_position_con, libtcod.black)
-		
-		libtcod.console_set_default_foreground(crew_position_con, libtcod.light_blue)
-		libtcod.console_print(crew_position_con, 0, y, position.name)
-		libtcod.console_set_default_foreground(crew_position_con, libtcod.white)
-		libtcod.console_print_ex(crew_position_con, 23, y, libtcod.BKGND_NONE, 
-			libtcod.RIGHT, position.location)
-		if not position.hatch:
-			text = '--'
-		else:
-			if position.hatch_open:
-				text = 'CE'
-			else:
-				text = 'BU'
-		libtcod.console_print_ex(crew_position_con, 23, y+1, libtcod.BKGND_NONE, 
-			libtcod.RIGHT, text)
-		
-		if position.crewman is None:
-			text = 'Empty'
-		else:
-			text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
-		
-		# names might have special characters so we encode it before printing it
-		libtcod.console_print(crew_position_con, 0, y+1, text.encode('IBM850'))
-		
-		# special action if any
-		if position.crewman is not None:
-			if position.crewman.current_action is not None:
-				libtcod.console_set_default_foreground(crew_position_con,
-					libtcod.dark_yellow)
-				libtcod.console_print(crew_position_con, 0, y+2,
-					position.crewman.current_action)
-				libtcod.console_set_default_foreground(crew_position_con,
-					libtcod.white)
-		
-		y += 5
+	highlight_selected = False
+	if scenario.game_turn['current_phase'] == 'Crew Actions':
+		highlight_selected = True
+	
+	DisplayCrew(scenario.player_unit, crew_position_con, 0, 1, highlight_selected)
 
 
 # list current player commands
@@ -3946,13 +4068,18 @@ def DoScenario(load_game=False):
 		##### Player Keyboard Commands #####
 		
 		# enter game menu
-		if key.vk == libtcod.KEY_ESCAPE:
-			result = ShowGameMenu(0)
+		if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_F3]:
+			if key.vk == libtcod.KEY_ESCAPE:
+				menu_tab = 0
+			else:
+				menu_tab = 3
+			result = ShowGameMenu(menu_tab)
 			if result == 'exit_game':
 				exit_scenario = True
 			else:
 				# re-draw to clear game menu from screen
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				UpdateScenarioDisplay()
 			continue
 		
 		# automatically trigger next phase for player

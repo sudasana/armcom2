@@ -1569,6 +1569,10 @@ class Crew:
 		self.age = 0					# age of crewman in years
 		self.GenerateAge()
 		
+		self.rank = 0					# rank level
+		self.rank_desc = ''				# text name for rank
+		self.SetRank()
+		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'Spot'			# currently active action
 		
@@ -1636,6 +1640,20 @@ class Crew:
 				self.age += 3
 			else:
 				self.age += 4
+	
+	# set rank based on current position
+	def SetRank(self):
+		if self.current_position.name in ['Commander', 'Commander/Gunner']:
+			self.rank = 3
+		elif self.current_position.name in ['Gunner', 'Driver']:
+			self.rank = 2
+		else:
+			self.rank = 1
+		
+		with open(DATAPATH + 'nation_defs.json') as data_file:
+			nations = json.load(data_file)
+		
+		self.rank_desc = nations[self.nation]['rank_names'][str(self.rank)]
 	
 	# generate a new set of stats for this crewman
 	def GenerateStats(self):
@@ -2298,6 +2316,9 @@ class Unit:
 		# target fired
 		if target.fired:
 			chance = chance * 2.0
+		
+		# TODO crew perception modifier
+		crew_mod = position.crewman.stats['Perception']
 		
 		chance = RestrictChance(chance)
 		
@@ -3175,7 +3196,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_print(console, x+10, y+5, crewman.GetFullName())
 	libtcod.console_print(console, x+10, y+7, str(crewman.age))
-	# TODO: rank
+	libtcod.console_print(console, x+10, y+9, crewman.rank_desc)
 	libtcod.console_print(console, x+10, y+11, scenario.player_unit.unit_id)
 	libtcod.console_print(console, x+10, y+12, crewman.current_position.name)
 	
@@ -3197,9 +3218,6 @@ def DisplayCrewInfo(crewman, console, x, y):
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)
 		
-
-
-
 
 # display a pop-up message on the root console
 # can be used for yes/no confirmation

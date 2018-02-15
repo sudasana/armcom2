@@ -3,6 +3,15 @@
 		"short_code" : "GER",
 		"adjective" : "German",
 		"flag_image" : "flag_GER.xp",
+		"rank_names" : {
+			"0" : "Panzeroberschutze",
+			"1" : "Gefreiter",
+			"2" : "Unteroffizier",
+			"3" : "Unterfeldwebel",
+			"4" : "Feldwebel",
+			"5" : "Oberfeldwebel",
+			"6" : "Stabsfeldwebel"
+		},
 		"unit_list" : [
 			"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A",
 			"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",
@@ -60,6 +69,15 @@
 		"short_code" : "POL",
 		"adjective" : "Polish",
 		"flag_image" : "flag_POL.xp",
+		"rank_names" : {
+			"0" : "Szeregowy",
+			"1" : "Kapral",
+			"2" : "Plutonowy",
+			"3" : "Sierzant",
+			"4" : "Starszy Sierzant",
+			"5" : "Chorazy",
+			"6" : "Starszy Chorazy"
+		},
 		"unit_list" : [
 			"TK-3", "TKS", "TKS (20mm)", "Vickers 6-Ton Mark E", "7TP",
 			"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",

@@ -1417,10 +1417,6 @@ class Scenario:
 		
 		roll = GetPercentileRoll()
 		
-		# TEMP - no AP
-		if profile['type'] == 'ap':
-			roll = 100.0
-		
 		# display final roll indicators
 		x = int(ceil(24.0 * roll / 100.0))
 		

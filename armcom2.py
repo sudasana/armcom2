@@ -2317,8 +2317,8 @@ class Unit:
 		if target.fired:
 			chance = chance * 2.0
 		
-		# TODO crew perception modifier
-		crew_mod = position.crewman.stats['Perception']
+		# crew perception modifier
+		chance += (position.crewman.stats['Perception'] - 5) * 5.0
 		
 		chance = RestrictChance(chance)
 		

@@ -242,7 +242,7 @@ class AI:
 			
 			if roll >= 70.0:
 				self.disposition = None
-			elif roll <= 35.0:
+			elif roll <= 50.0:
 				if self.owner.dummy:
 					self.disposition = None
 				else:
@@ -958,9 +958,17 @@ class Scenario:
 				if not unit.alive:
 					continue
 				
+				# if unit moved, lose any acquired targets and lose
+				#   any acquired target status
+				if unit.moved:
+					unit.ClearAcquiredTargets()
+				
 				if unit.facing is not None:
 					if unit.facing != unit.previous_facing:
 						unit.moved = True
+						
+						# lose any of this unit's acquired targets
+						unit.acquired_target = None
 		
 		elif self.game_turn['current_phase'] == 'Combat':
 			
@@ -1130,6 +1138,16 @@ class Scenario:
 			los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 			if los > 0.0:
 				modifier_list.append(('Terrain', 0.0 - los))
+			
+			# acquired target
+			if attacker.acquired_target is not None:
+				(ac_target, level) = attacker.acquired_target
+				if ac_target == target:
+					if not level:
+						mod = 15.0
+					else:
+						mod = 25.0
+					modifier_list.append(('Acquired Target', mod))
 			
 			# target vehicle moved
 			if target.moved and target.GetStat('category') == 'Vehicle':
@@ -1398,6 +1416,10 @@ class Scenario:
 			libtcod.console_put_char(attack_con, x, 52, 0)
 		
 		roll = GetPercentileRoll()
+		
+		# TEMP - no AP
+		if profile['type'] == 'ap':
+			roll = 100.0
 		
 		# display final roll indicators
 		x = int(ceil(24.0 * roll / 100.0))
@@ -2202,6 +2224,38 @@ class Unit:
 		
 		return True
 	
+	# clear any acquired target from this unit, and clear it from any enemy unit
+	def ClearAcquiredTargets(self):
+		self.acquired_target = None
+		for unit in scenario.units:
+			if unit.owning_player == self.owning_player: continue
+			if unit.acquired_target is None: continue
+			(target, level) = unit.acquired_target
+			if target == self:
+				unit.acquired_target = None
+	
+	# set a newly acquired target, or add a level
+	def AddAcquiredTarget(self, target):
+		
+		# no previous acquired target
+		if self.acquired_target is None:
+			self.acquired_target = (target, False)
+			return
+		
+		(old_target, level) = self.acquired_target
+		
+		# had an old target but now have a new one
+		if old_target != target:
+			self.acquired_target = (target, False)
+			return
+		
+		# possible to add one level
+		if not level:
+			self.acquired_target = (target, True)
+			return
+		
+		# otherwise, already acquired target to 2 levels, no further effect
+	
 	# start an attack with the given weapon on the given target
 	def Attack(self, weapon, target, mode):
 		
@@ -2217,9 +2271,6 @@ class Unit:
 		# set flags
 		weapon.fired = True
 		self.fired = True
-		
-		# TEMP - not needed any more?
-		#self.CalcFoV()
 		
 		# display message if player is the target
 		if target == scenario.player_unit:
@@ -2239,7 +2290,12 @@ class Unit:
 		result = scenario.DoAttackRoll(attack_profile)
 		WaitForEnter()
 		
+		# add acquired target if doing point fire
+		if mode == 'point_fire':
+			self.AddAcquiredTarget(target)
+		
 		# break here if attack had no effect
+		# TODO: why is NO PENETRATION here?
 		if result in ['MISS', 'NO PENETRATION']: return True
 		
 		# record AP hit to be resolved if target was a vehicle
@@ -2278,7 +2334,8 @@ class Unit:
 	# destroy this unit and remove it from the scenario map
 	def DestroyMe(self):
 		self.alive = False
-		scenario.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)	
+		scenario.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
+		self.ClearAcquiredTargets()
 		UpdateUnitCon()
 		UpdateScenarioDisplay()
 	
@@ -3596,7 +3653,7 @@ def UpdateHexTerrainCon():
 	text = HEX_TERRAIN_DESC[map_hex.terrain_type]
 	libtcod.console_print(hex_terrain_con, 0, 0, text)
 	
-	# TEMP
+	# TEMP - don't display this in production version
 	libtcod.console_print(hex_terrain_con, 0, 1, str(hx) + ',' + str(hy))
 	text = str(map_hex.elevation * ELEVATION_M) + ' m.'
 	libtcod.console_print_ex(hex_terrain_con, 15, 1, libtcod.BKGND_NONE,
@@ -3740,6 +3797,15 @@ def UpdateUnitInfoCon():
 		y+=1
 	libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
 	libtcod.console_print(unit_info_con, 0, 2, unit.GetStat('class'))
+	
+	libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
+	if scenario.player_unit.acquired_target is not None:
+		(target, level) = scenario.player_unit.acquired_target 
+		if target == unit:
+			text = 'Acquired target'
+			if level:
+				text += '+'
+			libtcod.console_print(unit_info_con, 0, 4, text)
 
 
 # update objective info console, 16x10
@@ -3964,7 +4030,7 @@ def DoScenario(load_game=False):
 			scenario.units.append(new_unit)
 		
 		# set dummy enemy units
-		# TEMP - should be approx 1/4 of total enemy units
+		# TEMP - in future should be approx 1/4 of total enemy units
 		dummy_units = 2
 		unit_list = []
 		for unit in scenario.units:

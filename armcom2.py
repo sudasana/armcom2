@@ -1284,14 +1284,16 @@ class Scenario:
 			libtcod.CENTER, text)
 		
 		# attacker portrait if any
-		libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
-		libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
+		if profile['type'] != 'ap':
+			
+			libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
+			libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
 		
-		# TEMP: in future will store portraits for every active unit type in session object
-		if not (attacker.owning_player == 1 and not attacker.known):
-			portrait = attacker.GetStat('portrait')
-			if portrait is not None:
-				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 2)
+			# TEMP: in future will store portraits for every active unit type in session object
+			if not (attacker.owning_player == 1 and not attacker.known):
+				portrait = attacker.GetStat('portrait')
+				if portrait is not None:
+					libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 2)
 		
 		# attack description
 		if profile['type'] == 'ap':
@@ -1509,6 +1511,10 @@ class Scenario:
 	# calculate the chance of a unit getting a bonus move after a given move
 	# hx, hy is the move destination hex
 	def CalcBonusMove(self, unit, hx, hy):
+		
+		# none for ponds
+		if self.map_hexes[(hx, hy)].terrain_type == 'pond':
+			return 0.0
 		
 		# check for dirt road link
 		direction = GetDirectionToAdjacent(unit.hx, unit.hy, hx, hy)
@@ -2309,7 +2315,7 @@ class Unit:
 		
 		for (attacker, weapon, result) in self.ap_hits_to_resolve:
 			
-			# calcualte AP profile
+			# calculate AP profile
 			profile = scenario.CalcAP(attacker, weapon, self, result)
 			
 			# display the profile to the screen
@@ -2326,6 +2332,10 @@ class Unit:
 			
 			# unit was destroyed
 			if not self.alive: return
+		
+		# clear unresolved hits
+		self.ap_hits_to_resolve = []
+		
 	
 	# destroy this unit and remove it from the scenario map
 	def DestroyMe(self):
@@ -2389,7 +2399,7 @@ class Unit:
 				
 				if target.dummy:
 					text = (position.crewman.GetFullName() + ' says: ' + 
-						'Thought there was something there...')
+						"Thought there was something there, but I don't see anything.")
 				else:
 					text = (position.crewman.GetFullName() + ' says: ' + 
 						target.GetName() + ' ' + target.GetStat('class') +
@@ -4301,6 +4311,7 @@ def DoScenario(load_game=False):
 					result = scenario.player_unit.RotateTurret(True)
 				if result:
 					UpdateUnitCon()
+					UpdateContextCon()
 					UpdateVPCon()
 					UpdateScenarioDisplay()
 			

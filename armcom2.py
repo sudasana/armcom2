@@ -95,7 +95,19 @@ HEXSPINES = {
 	5: [(-1,0), (0,-1), (-1,-1)]
 }
 
+# relative locations of edge cells in a given direction for a map hex
+HEX_EDGE_CELLS = {
+	0: [(-1,-2),(0,-2),(1,-2)],
+	1: [(1,-2),(2,-1),(3,0)],
+	2: [(3,0),(2,1),(1,2)],
+	3: [(1,2),(0,2),(-1,2)],
+	4: [(-1,2),(-2,1),(-3,0)],
+	5: [(-3,0),(-2,-1),(-1,-2)]
+}
+
+
 ##### Colour Definitions #####
+
 ELEVATION_SHADE = 0.15					# difference in shading for map hexes of
 							#   different elevations
 FOV_SHADE = 0.5						# alpha level for FoV mask layer
@@ -105,6 +117,8 @@ PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portra
 UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.light_red			# known "
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
+RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
+
 
 # hex terrain types
 HEX_TERRAIN_TYPES = [
@@ -417,6 +431,7 @@ class MapHex:
 		self.hy = hy			# 0,0 is centre of map
 		self.terrain_type = 'openground'
 		self.elevation = 1		# elevation in steps above baseline
+		self.river_edges = []		# list of edges bounded by a river
 		self.dirt_roads = []		# list of directions linked by a dirt road
 		
 		self.unit_stack = []		# stack of units present in this hex
@@ -758,6 +773,11 @@ class Scenario:
 					continue
 				self.map_hexes[(hx, hy)].SetTerrainType('pond')
 				break
+		
+		##### Rivers #####
+		
+		# TEMP - testing
+		self.map_hexes[(0, 8)].river_edges.append(0)
 		
 		##### Dirt Road #####
 		hx1, hy1 = 0, self.map_radius
@@ -1531,6 +1551,12 @@ class Scenario:
 		if self.map_hexes[(hx, hy)].terrain_type == 'pond':
 			return 0.0
 		
+		# none for river crossings
+		if len(self.map_hexes[(unit.hx, unit.hy)].river_edges) > 0:
+			direction = GetDirectionToAdjacent(unit.hx, unit.hy, hx, hy)
+			if direction in self.map_hexes[(unit.hx, unit.hy)].river_edges:
+				return 0.0
+		
 		# check for dirt road link
 		direction = GetDirectionToAdjacent(unit.hx, unit.hy, hx, hy)
 		if direction in self.map_hexes[(unit.hx, unit.hy)].dirt_roads:
@@ -2128,11 +2154,19 @@ class Unit:
 		if (hx, hy) not in scenario.map_hexes:
 			return False
 		
+		map_hex1 = scenario.map_hexes[(self.hx, self.hy)]
 		map_hex2 = scenario.map_hexes[(hx, hy)]
 		
 		# target hex can't be entered
 		if map_hex2.terrain_type == 'pond':
 			return False
+		
+		# river on edge and no road link
+		if len(map_hex1.river_edges) > 0:
+			direction = GetDirectionToAdjacent(self.hx, self.hy, hx, hy)
+			if direction in map_hex1.river_edges:
+				if direction not in map_hex1.dirt_roads:
+					return False
 		
 		# already occupied by enemy
 		for unit in map_hex2.unit_stack:
@@ -2165,7 +2199,7 @@ class Unit:
 			self.anim_y = 0
 		
 		# remove unit from old map hex unit stack
-		map_hex1 = scenario.map_hexes[(self.hx, self.hy)]
+		
 		map_hex1.unit_stack.remove(self)
 		
 		self.hx = hx
@@ -3380,7 +3414,8 @@ def UpdateVPCon():
 		if (map_hx, map_hy) not in scenario.map_hexes:
 			(x,y) = PlotHex(hx, hy)
 			libtcod.console_blit(tile_offmap, 0, 0, 0, 0, map_vp_con, x-3, y-2)
-	
+			
+	# draw on-map hexes starting with lowest elevation
 	for elevation in range(4):
 		for (hx, hy) in VP_HEXES:
 			(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
@@ -3405,7 +3440,22 @@ def UpdateVPCon():
 			for x1 in range(x-2, x+3):
 				scenario.hex_map_index[(x1,y)] = (map_hx, map_hy)
 	
-	# draw roads overtop
+	# draw river edges
+	for (hx, hy) in VP_HEXES:
+		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
+		if (map_hx, map_hy) not in scenario.map_hexes:
+			continue
+		map_hex = scenario.map_hexes[(map_hx, map_hy)]
+		
+		if len(map_hex.river_edges) == 0: continue
+		
+		(x,y) = PlotHex(hx, hy)
+		for direction in map_hex.river_edges:
+			for (xm, ym) in HEX_EDGE_CELLS[ConstrainDir(direction - scenario.player_unit.facing)]:
+				libtcod.console_set_char_background(map_vp_con, x+xm, 
+					y+ym, RIVER_BG_COL)
+	
+	# draw roads
 	for (hx, hy) in VP_HEXES:
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
 		if (map_hx, map_hy) not in scenario.map_hexes:
@@ -3439,7 +3489,6 @@ def UpdateVPCon():
 				if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
 					libtcod.console_set_char(map_vp_con, x, y, 0)
 			
-	
 	# highlight objective hexes
 	for (hx, hy) in VP_HEXES:
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
@@ -3665,7 +3714,13 @@ def UpdateHexTerrainCon():
 	if mouse.cx < 32: return
 	x = mouse.cx - 31
 	y = mouse.cy - 4
-	if (x,y) not in scenario.hex_map_index: return
+	
+	if (x,y) not in scenario.hex_map_index:
+		# possible hex edge info
+		col = libtcod.console_get_char_background(map_vp_con, x, y)
+		if col == RIVER_BG_COL:
+			libtcod.console_print(hex_terrain_con, 0, 0, 'River')
+		return
 	
 	libtcod.console_set_default_foreground(hex_terrain_con, libtcod.white)
 	

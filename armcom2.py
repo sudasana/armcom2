@@ -35,19 +35,20 @@
 
 
 ##### Libraries #####
+import os, sys, ctypes					# OS-related stuff
 import libtcodpy as libtcod				# The Doryen Library
 from random import choice, shuffle, sample
 from math import floor, cos, sin, sqrt			# math
 from math import degrees, atan2, ceil			# heading calculations
 import xp_loader, gzip					# loading xp image files
-import os, sys, ctypes					# OS-related stuff
 import json						# for loading JSON data
 import time
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
 
-#os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)
-#import sdl2
+os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)
+import sdl2.sdlmixer as mixer				# sound effects
+
 
 
 ##########################################################################################
@@ -60,6 +61,7 @@ AI_SPY = False						# write description of AI actions to console
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-02-16'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
+SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
 WINDOW_WIDTH, WINDOW_HEIGHT = 90, 60			# size of game window in character cells
 WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of game window
@@ -219,6 +221,60 @@ MAX_LOS_MOD = 60.0
 ##########################################################################################
 #                                         Classes                                        #
 ##########################################################################################
+
+# Session: stores data that is generated for each game session and not stored in the saved game
+class Session:
+	def __init__(self):
+		
+		# generate hex console images for scenario map
+		self.hex_consoles = {}
+		
+		for terrain_type in HEX_TERRAIN_TYPES:
+			
+			# generate consoles for 4 different terrain heights
+			consoles = []
+			for elevation in range(4):
+				consoles.append(libtcod.console_new(7, 5))
+				libtcod.console_blit(LoadXP('hex_' + terrain_type + '.xp'),
+					0, 0, 7, 5, consoles[elevation], 0, 0)
+				libtcod.console_set_key_color(consoles[elevation], KEY_COLOR)
+			
+			# apply colour modifier to elevations 0, 2, 3
+			for elevation in [0, 2, 3]:
+				for y in range(5):
+					for x in range(7):
+						bg = libtcod.console_get_char_background(consoles[elevation],x,y)
+						if bg == KEY_COLOR: continue
+						bg = bg * (1.0 + float(elevation-1) * ELEVATION_SHADE)
+						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
+			
+			self.hex_consoles[terrain_type] = consoles
+	
+	# try to initialize SDL2 mixer
+	def InitMixer(self):
+		mixer.Mix_Init(mixer.MIX_INIT_OGG)
+		if mixer.Mix_OpenAudio(48000, mixer.MIX_DEFAULT_FORMAT,	2, 1024) == -1:
+			print 'ERROR in Mix_OpenAudio: ' + mixer.Mix_GetError()
+			return False
+		mixer.Mix_AllocateChannels(16)
+		return True
+	
+	def LoadSounds(self):
+		self.sample = {}
+		
+		SOUND_LIST = [
+			'menu_select',
+			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
+			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02'
+		]
+		
+		# because the function returns NULL if the file failed to load, Python does not seem
+		# to have any way of detecting this and there's no error checking
+		for sound_name in SOUND_LIST:
+			self.sample[sound_name] = mixer.Mix_LoadWAV(SOUNDPATH + sound_name + '.ogg')
+		
+		print 'SDL2_mixer: loaded ' + str(len(SOUND_LIST)) + ' sound samples'
+		
 
 # AI: controller for enemy and player-allied units
 class AI:
@@ -537,45 +593,6 @@ class Scenario:
 		
 		# dictionary of screen display locations on the VP and their corresponding map hex
 		self.hex_map_index = {}
-		
-		# dictionary of hex console images; newly generated each time scenario
-		# starts or is resumed
-		self.hex_consoles = {}
-		
-		# FUTURE: move this to a session object
-		self.GenerateHexConsoles()
-		
-		
-		
-		
-	# generate hex console images for scenario map
-	def GenerateHexConsoles(self):
-		self.hex_consoles = {}
-		
-		for terrain_type in HEX_TERRAIN_TYPES:
-			
-			# generate consoles for 4 different terrain heights
-			consoles = []
-			for elevation in range(4):
-				consoles.append(libtcod.console_new(7, 5))
-				libtcod.console_blit(LoadXP('hex_' + terrain_type + '.xp'),
-					0, 0, 7, 5, consoles[elevation], 0, 0)
-				libtcod.console_set_key_color(consoles[elevation], KEY_COLOR)
-			
-			# apply colour modifier to elevations 0, 2, 3
-			for elevation in [0, 2, 3]:
-				for y in range(5):
-					for x in range(7):
-						bg = libtcod.console_get_char_background(consoles[elevation],x,y)
-						if bg == KEY_COLOR: continue
-						bg = bg * (1.0 + float(elevation-1) * ELEVATION_SHADE)
-						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
-			
-			self.hex_consoles[terrain_type] = consoles
-	
-	# clear stored hex consoles
-	def ClearHexConsoles(self):
-		self.hex_consoles = {}
 	
 	# set up map viewport hexes based on viewport center position and facing
 	def SetVPHexes(self):
@@ -2176,7 +2193,7 @@ class Unit:
 		# calculate bonus move chance
 		chance = scenario.CalcBonusMove(self, hx, hy)
 		
-		# do movement animation if applicable
+		# do movement animation and sound if applicable
 		distance1 = GetHexDistance(self.hx, self.hy, scenario.player_unit.hx,
 			scenario.player_unit.hy)
 		distance2 = GetHexDistance(hx, hy, scenario.player_unit.hx,
@@ -2188,6 +2205,9 @@ class Unit:
 			(new_vp_hx, new_vp_hy) = GetAdjacentHex(self.vp_hx, self.vp_hy, direction)
 			(x2,y2) = PlotHex(new_vp_hx, new_vp_hy)
 			line = GetLine(x1,y1,x2,y2)
+			
+			PlaySoundFor(self, 'movement')
+			
 			for (x,y) in line[1:-1]:
 				self.anim_x = x
 				self.anim_y = y
@@ -2327,6 +2347,9 @@ class Unit:
 		if target == scenario.player_unit:
 			text = self.GetName() + ' fires at you!'
 			scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
+		
+		# play attack sound if possible
+		PlaySoundFor(weapon, 'fire')
 		
 		# TODO: display attack animation
 		
@@ -3058,11 +3081,8 @@ def WaitForEnter(allow_cancel=False):
 # save the current game in progress
 def SaveGame():
 	save = shelve.open('savegame', 'n')
-	# TEMP - move to session object in future
-	scenario.ClearHexConsoles()
 	save['scenario'] = scenario
 	save.close()
-	scenario.GenerateHexConsoles()
 
 
 # load a saved game
@@ -3071,12 +3091,45 @@ def LoadGame():
 	save = shelve.open('savegame')
 	scenario = save['scenario']
 	save.close()
-	scenario.GenerateHexConsoles()
 
 
 # remove a saved game, either because the scenario is over or the player abandoned it
 def EraseGame():
 	os.remove('savegame')
+
+
+##########################################################################################
+#                                   Sounds and Music                                     #
+##########################################################################################
+
+# play a given sample, returns the channel it is playing on
+def PlaySound(sound_name):
+	
+	if sound_name not in session.sample:
+		print 'ERROR: Sound not found: ' + sound_name
+		return
+	
+	channel = mixer.Mix_PlayChannel(-1, session.sample[sound_name], 0)
+	if channel == -1:
+		print 'Error - could not play sound: ' + sound_name
+		print mixer.Mix_GetError()
+	return channel
+
+
+# select and play a sound effect for a given situation
+def PlaySoundFor(obj, action):
+	if action == 'fire':
+		if obj.GetStat('type') == 'Gun':
+			if obj.stats['calibre'] == "37":
+				n = libtcod.random_get_int(0, 0, 3)
+				PlaySound('37mm_firing_0' + str(n))
+				return
+		
+	elif action == 'movement':
+		if obj.GetStat('movement_class') == 'Fast Tank':
+			n = libtcod.random_get_int(0, 0, 2)
+			PlaySound('light_tank_moving_0' + str(n))
+			return
 
 
 ##########################################################################################
@@ -3426,7 +3479,7 @@ def UpdateVPCon():
 			if map_hex.elevation != elevation: continue
 			(x,y) = PlotHex(hx, hy)
 			
-			libtcod.console_blit(scenario.hex_consoles[map_hex.terrain_type][map_hex.elevation],
+			libtcod.console_blit(session.hex_consoles[map_hex.terrain_type][map_hex.elevation],
 				0, 0, 0, 0, map_vp_con, x-3, y-2)
 			
 			# if this hex is visible, unmask it in the FoV mask
@@ -4439,6 +4492,18 @@ libtcod.console_set_default_background(0, libtcod.black)
 libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
 
+# display loading screen
+libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+	'Loading...')
+libtcod.console_flush()
+
+# create new session object
+session = Session()
+
+# try to init sound mixer and load sounds if successful
+if session.InitMixer():
+	session.LoadSounds()
+
 # set up double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
 libtcod.console_set_default_background(con, libtcod.black)
@@ -4478,6 +4543,7 @@ for direction in range(6):
 		for i, (hx, hy) in enumerate(hex_list):
 			hex_list[i] = RotateHex(hx, hy, direction)
 	HEXTANTS.append(hex_list)
+
 
 
 

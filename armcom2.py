@@ -495,15 +495,15 @@ class Scenario:
 		###### Hex Map and Map Viewport #####
 		
 		# generate the hex map in the shape of a pointy-top hex
-		# standard radius is 12 hexes not including centre hex
+		# radius does not include centre hex
 		self.map_hexes = {}
-		map_radius = 12
+		self.map_radius = 10
 		
 		# create centre hex
 		self.map_hexes[(0,0)] = MapHex(0,0)
 		
 		# add rings around centre
-		for r in range(1, map_radius+1):
+		for r in range(1, self.map_radius+1):
 			hex_list = GetHexRing(0, 0, r)
 			for (hx, hy) in hex_list:
 				self.map_hexes[(hx,hy)] = MapHex(hx,hy)
@@ -759,8 +759,8 @@ class Scenario:
 				break
 		
 		##### Dirt Road #####
-		hx1, hy1 = 0, 12
-		hx2, hy2 = 0, -12
+		hx1, hy1 = 0, self.map_radius
+		hx2, hy2 = 0, 0 - self.map_radius
 		GenerateRoad(hx1, hy1, hx2, hy2)
 			
 	# set a given map hex as an objective, and set initial control state
@@ -4012,13 +4012,18 @@ def DoScenario(load_game=False):
 		new_unit = Unit('Panzer 38(t) A')
 		new_unit.owning_player = 0
 		new_unit.nation = 'Germany'
-		new_unit.hy = 12
 		new_unit.facing = 0
 		new_unit.turret_facing = 0
+		
+		
+		# determine player unit spawn location on map: 2 hexes up from bottom corner
+		new_unit.hx = 0
+		new_unit.hy = scenario.map_radius - 2
 		
 		# add this unit to the hex stack
 		# FUTURE: integrate into a spawn unit function
 		scenario.map_hexes[(new_unit.hx, new_unit.hy)].unit_stack.append(new_unit)
+		
 		
 		# generate a new crew for this unit
 		new_unit.GenerateNewCrew()

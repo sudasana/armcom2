@@ -100,6 +100,7 @@ ELEVATION_SHADE = 0.15					# difference in shading for map hexes of
 							#   different elevations
 FOV_SHADE = 0.5						# alpha level for FoV mask layer
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
+ACTION_KEY_COL = libtcod.Color(51, 153, 255)		# colour for key commands
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.light_red			# known "
@@ -1380,10 +1381,10 @@ class Scenario:
 		# chance graph display
 		x = int(ceil(24.0 * profile['final_chance'] / 100.0))
 		libtcod.console_set_default_background(attack_con, libtcod.green)
-		libtcod.console_rect(attack_con, 1, 49, x-1, 3, False, libtcod.BKGND_SET)
+		libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
 		
 		libtcod.console_set_default_background(attack_con, libtcod.red)
-		libtcod.console_rect(attack_con, x, 49, 25-x, 3, False, libtcod.BKGND_SET)
+		libtcod.console_rect(attack_con, x+1, 49, 24-x, 3, False, libtcod.BKGND_SET)
 		
 		# critical hit band
 		libtcod.console_set_default_foreground(attack_con, libtcod.blue)
@@ -1403,7 +1404,7 @@ class Scenario:
 			libtcod.CENTER, text)
 		
 		# display prompts
-		libtcod.console_set_default_foreground(attack_con, libtcod.light_blue)
+		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
 		libtcod.console_print(attack_con, 6, 57, 'Enter')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		libtcod.console_print(attack_con, 12, 57, 'Continue')
@@ -1436,7 +1437,7 @@ class Scenario:
 		# display final roll indicators
 		x = int(ceil(24.0 * roll / 100.0))
 		
-		# make sure only critical hits and misses appear in their columns
+		# make sure only critical hits and misses appear in their bands
 		if roll > CRITICAL_HIT and x == 1: x = 2
 		if roll < CRITICAL_MISS and x == 24: x = 23
 		
@@ -3062,7 +3063,7 @@ def ShowGameMenu(active_tab):
 		# Game Menu
 		if active_tab == 0:
 		
-			libtcod.console_set_default_foreground(game_menu_con, libtcod.light_blue)
+			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(game_menu_con, 25, 22, 'Esc')
 			libtcod.console_print(game_menu_con, 25, 24, 'Q')
 			libtcod.console_print(game_menu_con, 25, 25, 'A')
@@ -3082,7 +3083,7 @@ def ShowGameMenu(active_tab):
 			if crewman is not None:
 				DisplayCrewInfo(crewman, game_menu_con, 37, 8)
 			
-			libtcod.console_set_default_foreground(game_menu_con, libtcod.light_blue)
+			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(game_menu_con, 6, 40, 'I/K')
 			
 			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
@@ -3585,7 +3586,7 @@ def UpdateCommandCon():
 		
 		if scenario.game_turn['active_player'] != 0: return
 		
-		libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
+		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 		libtcod.console_print(command_con, 2, 2, 'I/K')
 		libtcod.console_print(command_con, 2, 3, 'J/L')
 		libtcod.console_print(command_con, 2, 4, 'H')
@@ -3615,7 +3616,7 @@ def UpdateCommandCon():
 		
 		if scenario.game_turn['active_player'] != 0: return
 		
-		libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
+		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 		libtcod.console_print(command_con, 2, 2, 'W')
 		libtcod.console_print(command_con, 2, 3, 'A/D')
 		
@@ -3635,7 +3636,7 @@ def UpdateCommandCon():
 		
 		if scenario.game_turn['active_player'] != 0: return
 		
-		libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
+		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 		# TEMP - hidden since no additional weapons have been added yet
 		#libtcod.console_print(command_con, 2, 2, 'W/S')
 		libtcod.console_print(command_con, 2, 3, 'Q/E')
@@ -3649,7 +3650,7 @@ def UpdateCommandCon():
 		libtcod.console_print(command_con, 9, 4, 'Select Target')
 		libtcod.console_print(command_con, 9, 5, 'Fire')
 		
-	libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
+	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 	libtcod.console_print(command_con, 2, 11, 'Enter')
 	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 	libtcod.console_print(command_con, 9, 11, 'Next Phase')
@@ -4489,7 +4490,7 @@ def UpdateMainMenuCon():
 		if disabled:
 			libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
 		else:
-			libtcod.console_set_default_foreground(main_menu_con, libtcod.light_blue)
+			libtcod.console_set_default_foreground(main_menu_con, ACTION_KEY_COL)
 		libtcod.console_print(main_menu_con, WINDOW_XM-5, y, char)
 		
 		if disabled:

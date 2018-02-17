@@ -6,7 +6,7 @@
 		"desc" : "Help direct the driver",
 		"position_list" : ["Commander", "Commander/Gunner"],
 		"fov_hextants" : ["5", "0", "1"],
-		"fov_range" : "2"
+		"fov_range" : "6"
 	},
 	"Fire Gun" : {
 		"desc" : "Fire the main gun",
@@ -28,7 +28,7 @@
 	},
 	"Drive Cautiously" : {
 		"desc" : "Advance slowly, watching for obstacles",
-		"position_list" : ["Driver"],
+		"position_list" : [],
 		"fov_hextants" : ["0"],
 		"fov_range" : "1"
 	}

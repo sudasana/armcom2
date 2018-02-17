@@ -58,7 +58,7 @@ import shelve						# saving and loading games
 AI_SPY = False						# write description of AI actions to console
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-02-06'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-02-16'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 LIMIT_FPS = 50						# maximum screen refreshes per second
 WINDOW_WIDTH, WINDOW_HEIGHT = 90, 60			# size of game window in character cells
@@ -240,6 +240,10 @@ class AI:
 			# set unit disposition for this turn
 			roll = GetPercentileRoll()
 			
+			# much more likely to attack if already have an acquired target
+			if self.owner.acquired_target is not None:
+				roll -= 20.0
+			
 			if roll >= 70.0:
 				self.disposition = None
 			elif roll <= 50.0:
@@ -368,8 +372,18 @@ class AI:
 					print 'AI SPY: ' + self.owner.unit_id + ': no possible targets'
 				return
 			
-			# select a random target from list
-			unit = choice(target_list)
+			# select our target unit
+			unit = None
+			
+			# if one of these is our acquired target, choose that one
+			if self.owner.acquired_target is not None:
+				(target, level) = self.owner.acquired_target
+				if target in target_list:
+					unit = target
+			
+			if unit is None:
+				# select a random target from list
+				unit = choice(target_list)
 			
 			# rotate turret if any to face target
 			if self.owner.turret_facing is not None:

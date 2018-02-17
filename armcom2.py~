@@ -35,19 +35,20 @@
 
 
 ##### Libraries #####
+import os, sys, ctypes					# OS-related stuff
 import libtcodpy as libtcod				# The Doryen Library
 from random import choice, shuffle, sample
 from math import floor, cos, sin, sqrt			# math
 from math import degrees, atan2, ceil			# heading calculations
 import xp_loader, gzip					# loading xp image files
-import os, sys, ctypes					# OS-related stuff
 import json						# for loading JSON data
 import time
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
 
-#os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)
-#import sdl2
+os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)
+import sdl2.sdlmixer as mixer				# sound effects
+
 
 
 ##########################################################################################
@@ -58,8 +59,9 @@ import shelve						# saving and loading games
 AI_SPY = False						# write description of AI actions to console
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-02-06'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-02-16'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
+SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
 WINDOW_WIDTH, WINDOW_HEIGHT = 90, 60			# size of game window in character cells
 WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of game window
@@ -95,15 +97,30 @@ HEXSPINES = {
 	5: [(-1,0), (0,-1), (-1,-1)]
 }
 
+# relative locations of edge cells in a given direction for a map hex
+HEX_EDGE_CELLS = {
+	0: [(-1,-2),(0,-2),(1,-2)],
+	1: [(1,-2),(2,-1),(3,0)],
+	2: [(3,0),(2,1),(1,2)],
+	3: [(1,2),(0,2),(-1,2)],
+	4: [(-1,2),(-2,1),(-3,0)],
+	5: [(-3,0),(-2,-1),(-1,-2)]
+}
+
+
 ##### Colour Definitions #####
+
 ELEVATION_SHADE = 0.15					# difference in shading for map hexes of
 							#   different elevations
 FOV_SHADE = 0.5						# alpha level for FoV mask layer
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
+ACTION_KEY_COL = libtcod.Color(51, 153, 255)		# colour for key commands
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.light_red			# known "
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
+RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
+
 
 # hex terrain types
 HEX_TERRAIN_TYPES = [
@@ -116,8 +133,11 @@ HEX_TERRAIN_DESC = {
 	'pond' : 'Pond', 'roughground' : 'Rough Ground', 'village' : 'Village'
 }
 
-# maximum length for randomly generate crew names
+# maximum length for randomly generated crew names
 CREW_NAME_MAX_LENGTH = 20
+
+# list of crew stat names
+STAT_NAMES = ['Strength', 'Grit', 'Perception', 'Intelligence']
 
 # list of phases in a unit activation
 PHASE_LIST = ['Crew Actions', 'Spotting', 'Movement', 'Combat']
@@ -162,6 +182,8 @@ MAX_LOS_DISTANCE = 6
 
 ELEVATION_M = 10.0			# each elevation level represents x meters of height
 
+# TODO: move this to json file
+
 # percentile LoS modifiers for terrain types
 TERRAIN_LOS_MODS = {
 	'openground' : 0.0,
@@ -202,6 +224,60 @@ MAX_LOS_MOD = 60.0
 #                                         Classes                                        #
 ##########################################################################################
 
+# Session: stores data that is generated for each game session and not stored in the saved game
+class Session:
+	def __init__(self):
+		
+		# generate hex console images for scenario map
+		self.hex_consoles = {}
+		
+		for terrain_type in HEX_TERRAIN_TYPES:
+			
+			# generate consoles for 4 different terrain heights
+			consoles = []
+			for elevation in range(4):
+				consoles.append(libtcod.console_new(7, 5))
+				libtcod.console_blit(LoadXP('hex_' + terrain_type + '.xp'),
+					0, 0, 7, 5, consoles[elevation], 0, 0)
+				libtcod.console_set_key_color(consoles[elevation], KEY_COLOR)
+			
+			# apply colour modifier to elevations 0, 2, 3
+			for elevation in [0, 2, 3]:
+				for y in range(5):
+					for x in range(7):
+						bg = libtcod.console_get_char_background(consoles[elevation],x,y)
+						if bg == KEY_COLOR: continue
+						bg = bg * (1.0 + float(elevation-1) * ELEVATION_SHADE)
+						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
+			
+			self.hex_consoles[terrain_type] = consoles
+	
+	# try to initialize SDL2 mixer
+	def InitMixer(self):
+		mixer.Mix_Init(mixer.MIX_INIT_OGG)
+		if mixer.Mix_OpenAudio(48000, mixer.MIX_DEFAULT_FORMAT,	2, 1024) == -1:
+			print 'ERROR in Mix_OpenAudio: ' + mixer.Mix_GetError()
+			return False
+		mixer.Mix_AllocateChannels(16)
+		return True
+	
+	def LoadSounds(self):
+		self.sample = {}
+		
+		SOUND_LIST = [
+			'menu_select',
+			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
+			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02'
+		]
+		
+		# because the function returns NULL if the file failed to load, Python does not seem
+		# to have any way of detecting this and there's no error checking
+		for sound_name in SOUND_LIST:
+			self.sample[sound_name] = mixer.Mix_LoadWAV(SOUNDPATH + sound_name + '.ogg')
+		
+		print 'SDL2_mixer: loaded ' + str(len(SOUND_LIST)) + ' sound samples'
+		
+
 # AI: controller for enemy and player-allied units
 class AI:
 	def __init__(self, owner):
@@ -215,6 +291,8 @@ class AI:
 			text += 'Wait'
 		else:
 			text += self.disposition
+		if self.owner.dummy:
+			text += ' (dummy)'
 		print text
 		
 		for position in self.owner.crew_positions:
@@ -235,10 +313,17 @@ class AI:
 			# set unit disposition for this turn
 			roll = GetPercentileRoll()
 			
+			# much more likely to attack if already have an acquired target
+			if self.owner.acquired_target is not None:
+				roll -= 20.0
+			
 			if roll >= 70.0:
 				self.disposition = None
-			elif roll <= 35.0:
-				self.disposition = 'Combat'
+			elif roll <= 50.0:
+				if self.owner.dummy:
+					self.disposition = None
+				else:
+					self.disposition = 'Combat'
 			else:
 				self.disposition = 'Movement'
 			
@@ -260,7 +345,7 @@ class AI:
 				for position in self.owner.crew_positions:
 					if position.crewman is None: continue
 					if position.name in ['Commander/Gunner', 'Gunner/Loader', 'Gunner']:
-						position.crewman.current_action = 'Fire Gun'
+						position.crewman.current_action = 'Operate Gun'
 					elif position.name == 'Loader':
 						position.crewman.current_action = 'Load Gun'
 					else:
@@ -360,8 +445,18 @@ class AI:
 					print 'AI SPY: ' + self.owner.unit_id + ': no possible targets'
 				return
 			
-			# select a random target from list
-			unit = choice(target_list)
+			# select our target unit
+			unit = None
+			
+			# if one of these is our acquired target, choose that one
+			if self.owner.acquired_target is not None:
+				(target, level) = self.owner.acquired_target
+				if target in target_list:
+					unit = target
+			
+			if unit is None:
+				# select a random target from list
+				unit = choice(target_list)
 			
 			# rotate turret if any to face target
 			if self.owner.turret_facing is not None:
@@ -394,6 +489,7 @@ class MapHex:
 		self.hy = hy			# 0,0 is centre of map
 		self.terrain_type = 'openground'
 		self.elevation = 1		# elevation in steps above baseline
+		self.river_edges = []		# list of edges bounded by a river
 		self.dirt_roads = []		# list of directions linked by a dirt road
 		
 		self.unit_stack = []		# stack of units present in this hex
@@ -433,6 +529,7 @@ class MapHex:
 		if len(self.unit_stack) == 0: return False
 		
 		for unit in self.unit_stack:
+			if unit.dummy: continue
 			if unit.owning_player != self.objective:
 				self.objective = unit.owning_player
 				return True
@@ -458,6 +555,8 @@ class Scenario:
 		self.player_unit = None			# pointer to the player unit
 		
 		self.finished = False			# have win/loss conditions been met
+		self.winner = -1			# player number of scenario winner, -1 if None
+		self.win_desc = ''			# description of win/loss conditions met
 		
 		self.selected_position = 0		# index of selected crewman in player unit
 		self.selected_weapon = None		# currently selected weapon on player unit
@@ -469,70 +568,33 @@ class Scenario:
 		
 		###### Hex Map and Map Viewport #####
 		
-		# dictionary of hex console images; newly generated each time scenario
-		# starts or is resumed
-		self.hex_consoles = {}			
-		
-		self.map_vp = {}			# dictionary of map viewport hexes and
-							#   their corresponding map hexes
-		
-		self.vp_hx = 0				# location and facing of center of
-		self.vp_hy = 0				#   viewport on map
-		self.vp_facing = 0
-		
-		# dictionary of screen display locations and their corresponding map hex
-		self.hex_map_index = {}
-		
-		# generate hex map in the shape of a pointy-top hex
-		# standard radius is 12 hexes not including centre hex
+		# generate the hex map in the shape of a pointy-top hex
+		# radius does not include centre hex
 		self.map_hexes = {}
-		map_radius = 12
+		self.map_radius = 10
 		
 		# create centre hex
 		self.map_hexes[(0,0)] = MapHex(0,0)
 		
 		# add rings around centre
-		for r in range(1, map_radius+1):
+		for r in range(1, self.map_radius+1):
 			hex_list = GetHexRing(0, 0, r)
 			for (hx, hy) in hex_list:
 				self.map_hexes[(hx,hy)] = MapHex(hx,hy)
-
-		print 'Generated ' + str(len(self.map_hexes.keys())) + ' map hexes'
-		
-		# FUTURE: move this to a session object
-		self.GenerateHexConsoles()
+		#print 'Generated ' + str(len(self.map_hexes.keys())) + ' map hexes'
 		
 		self.map_objectives = []		# list of map hex objectives
+		self.highlighted_hex = None		# currently highlighted map hex
 		
+		##### Map VP
+		self.map_vp = {}			# dictionary of map viewport hexes and
+							#   their corresponding map hexes
+		self.vp_hx = 0				# location and facing of center of
+		self.vp_hy = 0				#   viewport on map
+		self.vp_facing = 0
 		
-	# generate hex console images for scenario map
-	def GenerateHexConsoles(self):
-		self.hex_consoles = {}
-		
-		for terrain_type in HEX_TERRAIN_TYPES:
-			
-			# generate consoles for 4 different terrain heights
-			consoles = []
-			for elevation in range(4):
-				consoles.append(libtcod.console_new(7, 5))
-				libtcod.console_blit(LoadXP('hex_' + terrain_type + '.xp'),
-					0, 0, 7, 5, consoles[elevation], 0, 0)
-				libtcod.console_set_key_color(consoles[elevation], KEY_COLOR)
-			
-			# apply colour modifier to elevations 0, 2, 3
-			for elevation in [0, 2, 3]:
-				for y in range(5):
-					for x in range(7):
-						bg = libtcod.console_get_char_background(consoles[elevation],x,y)
-						if bg == KEY_COLOR: continue
-						bg = bg * (1.0 + float(elevation-1) * ELEVATION_SHADE)
-						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
-			
-			self.hex_consoles[terrain_type] = consoles
-	
-	# clear stored hex consoles
-	def ClearHexConsoles(self):
-		self.hex_consoles = {}
+		# dictionary of screen display locations on the VP and their corresponding map hex
+		self.hex_map_index = {}
 	
 	# set up map viewport hexes based on viewport center position and facing
 	def SetVPHexes(self):
@@ -731,9 +793,14 @@ class Scenario:
 				self.map_hexes[(hx, hy)].SetTerrainType('pond')
 				break
 		
+		##### Rivers #####
+		
+		# TEMP - testing
+		self.map_hexes[(0, 8)].river_edges.append(0)
+		
 		##### Dirt Road #####
-		hx1, hy1 = 0, 12
-		hx2, hy2 = 0, -12
+		hx1, hy1 = 0, self.map_radius
+		hx2, hy2 = 0, 0 - self.map_radius
 		GenerateRoad(hx1, hy1, hx2, hy2)
 			
 	# set a given map hex as an objective, and set initial control state
@@ -790,10 +857,6 @@ class Scenario:
 		if self.game_turn['current_phase'] == 'Movement':
 			# check for a crewman on a move action
 			move_action = False
-			
-			# might want to rotate turret
-			if self.player_unit.CheckCrewAction(['Commander/Gunner'],['Fire Gun']):
-				move_action = True
 			if self.player_unit.CheckCrewAction(['Driver'], ['Drive', 'Drive Cautiously']):
 				move_action = True
 			
@@ -802,7 +865,7 @@ class Scenario:
 		elif self.game_turn['current_phase'] == 'Combat':
 			# check for a crewman on a combat action
 			combat_action = False
-			if self.player_unit.CheckCrewAction(['Commander/Gunner'],['Fire Gun']):
+			if self.player_unit.CheckCrewAction(['Commander/Gunner'],['Operate Gun']):
 				combat_action = True
 			
 			if not combat_action: return True
@@ -861,6 +924,9 @@ class Scenario:
 					UpdateUnitCon()
 					UpdateScenarioDisplay()
 					libtcod.console_flush()
+				
+				# dummy units can't spot
+				if unit.dummy: continue
 				
 				# create a local list of crew positions in a random order
 				position_list = sample(unit.crew_positions, len(unit.crew_positions))
@@ -946,9 +1012,17 @@ class Scenario:
 				if not unit.alive:
 					continue
 				
+				# if unit moved, lose any acquired targets and lose
+				#   any acquired target status
+				if unit.moved:
+					unit.ClearAcquiredTargets()
+				
 				if unit.facing is not None:
 					if unit.facing != unit.previous_facing:
 						unit.moved = True
+						
+						# lose any of this unit's acquired targets
+						unit.acquired_target = None
 		
 		elif self.game_turn['current_phase'] == 'Combat':
 			
@@ -971,7 +1045,31 @@ class Scenario:
 		
 		# check for win/loss conditions
 		if not self.player_unit.alive:
+			self.winner = 1
 			self.finished = True
+			self.win_desc = 'Your tank was destroyed.'
+			return
+		
+		all_enemies_dead = True
+		for unit in self.units:
+			if unit.owning_player == 1 and unit.alive:
+				all_enemies_dead = False
+				break
+		if all_enemies_dead:
+			self.winner = 0
+			self.finished = True
+			self.win_desc = 'All enemy units in the area were destroyed.'
+			return
+		
+		all_objectives_captured = True
+		for map_hex in self.map_objectives:
+			if map_hex.objective == 1:
+				all_objectives_captured = False
+				break
+		if all_objectives_captured:
+			self.winner = 0
+			self.finished = True
+			self.win_desc = 'All objectives in the area were captured.'
 			return
 		
 		self.game_turn['turn_number'] += 1
@@ -1094,6 +1192,16 @@ class Scenario:
 			los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 			if los > 0.0:
 				modifier_list.append(('Terrain', 0.0 - los))
+			
+			# acquired target
+			if attacker.acquired_target is not None:
+				(ac_target, level) = attacker.acquired_target
+				if ac_target == target:
+					if not level:
+						mod = 15.0
+					else:
+						mod = 25.0
+					modifier_list.append(('Acquired Target', mod))
 			
 			# target vehicle moved
 			if target.moved and target.GetStat('category') == 'Vehicle':
@@ -1230,14 +1338,16 @@ class Scenario:
 			libtcod.CENTER, text)
 		
 		# attacker portrait if any
-		libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
-		libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
+		if profile['type'] != 'ap':
+			
+			libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
+			libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
 		
-		# TEMP: in future will store portraits for every active unit type in session object
-		if not (attacker.owning_player == 1 and not attacker.known):
-			portrait = attacker.GetStat('portrait')
-			if portrait is not None:
-				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 2)
+			# TEMP: in future will store portraits for every active unit type in session object
+			if not (attacker.owning_player == 1 and not attacker.known):
+				portrait = attacker.GetStat('portrait')
+				if portrait is not None:
+					libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 2)
 		
 		# attack description
 		if profile['type'] == 'ap':
@@ -1305,18 +1415,27 @@ class Scenario:
 		libtcod.console_rect(attack_con, 1, 46, 24, 1, False, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(attack_con, libtcod.black)
 		libtcod.console_print_ex(attack_con, 13, 46, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Final')
+			libtcod.CENTER, 'Final Chance')
 		
 		# chance graph display
 		x = int(ceil(24.0 * profile['final_chance'] / 100.0))
 		libtcod.console_set_default_background(attack_con, libtcod.green)
-		libtcod.console_rect(attack_con, 1, 49, x-1, 3, False, libtcod.BKGND_SET)
+		libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+		
 		libtcod.console_set_default_background(attack_con, libtcod.red)
-		libtcod.console_rect(attack_con, x, 49, 25-x, 3, False, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(attack_con, libtcod.blue)
-		libtcod.console_rect(attack_con, 1, 49, 1, 3, False, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(attack_con, libtcod.dark_grey)
-		libtcod.console_rect(attack_con, 24, 49, 1, 3, False, libtcod.BKGND_SET)
+		libtcod.console_rect(attack_con, x+1, 49, 24-x, 3, False, libtcod.BKGND_SET)
+		
+		# critical hit band
+		libtcod.console_set_default_foreground(attack_con, libtcod.blue)
+		for y in range(49, 52):
+			libtcod.console_put_char(attack_con, 1, y, 221)
+		
+		# critical miss band
+		libtcod.console_set_default_foreground(attack_con, libtcod.dark_grey)
+		for y in range(49, 52):
+			libtcod.console_put_char(attack_con, 24, y, 222)
+		
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		libtcod.console_set_default_background(attack_con, libtcod.black)
 		
 		text = str(profile['final_chance']) + '%%'
@@ -1324,7 +1443,7 @@ class Scenario:
 			libtcod.CENTER, text)
 		
 		# display prompts
-		libtcod.console_set_default_foreground(attack_con, libtcod.light_blue)
+		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
 		libtcod.console_print(attack_con, 6, 57, 'Enter')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		libtcod.console_print(attack_con, 12, 57, 'Continue')
@@ -1357,7 +1476,7 @@ class Scenario:
 		# display final roll indicators
 		x = int(ceil(24.0 * roll / 100.0))
 		
-		# make sure only critical hits and misses appear in their columns
+		# make sure only critical hits and misses appear in their bands
 		if roll > CRITICAL_HIT and x == 1: x = 2
 		if roll < CRITICAL_MISS and x == 24: x = 23
 		
@@ -1437,8 +1556,8 @@ class Scenario:
 
 		# check crew order
 		# TEMP: need to make more specific to this weapon
-		if not attacker.CheckCrewAction(['Commander/Gunner', 'Gunner/Loader', 'Gunner'], ['Fire Gun']):
-			return 'Crewman not on Fire Gun order'
+		if not attacker.CheckCrewAction(['Commander/Gunner', 'Gunner/Loader', 'Gunner'], ['Operate Gun']):
+			return 'Crewman not on Operate Gun order'
 
 		# attack can proceed
 		return ''
@@ -1446,6 +1565,16 @@ class Scenario:
 	# calculate the chance of a unit getting a bonus move after a given move
 	# hx, hy is the move destination hex
 	def CalcBonusMove(self, unit, hx, hy):
+		
+		# none for ponds
+		if self.map_hexes[(hx, hy)].terrain_type == 'pond':
+			return 0.0
+		
+		# none for river crossings
+		if len(self.map_hexes[(unit.hx, unit.hy)].river_edges) > 0:
+			direction = GetDirectionToAdjacent(unit.hx, unit.hy, hx, hy)
+			if direction in self.map_hexes[(unit.hx, unit.hy)].river_edges:
+				return 0.0
 		
 		# check for dirt road link
 		direction = GetDirectionToAdjacent(unit.hx, unit.hy, hx, hy)
@@ -1475,10 +1604,17 @@ class Scenario:
 		
 		return RestrictChance(chance)
 	
-	# display a message overtop the map viewport
-	# FUTURE: optionally, highlight a map hex as well and move display location of
-	# message if required
+	# display a pop-up message overtop the map viewport
 	def ShowMessage(self, message, hx=None, hy=None):
+		
+		# enable hex highlight if any
+		if hx is not None and hy is not None:
+			self.highlighted_hex = (hx, hy)
+			UpdateUnitCon()
+			UpdateScenarioDisplay()
+		
+		# FUTURE: determine if window needs to be shifted to bottom half of screen
+		# so that highlighted hex is not obscured
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_blit(popup_bkg, 0, 0, 0, 0, 0, 44, 13)
@@ -1494,54 +1630,136 @@ class Scenario:
 		# FUTURE: get message pause time from settings
 		Wait(len(lines) * 30)
 		
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		# clear hex highlight if any
+		if hx is not None and hy is not None:
+			self.highlighted_hex = None
+			UpdateUnitCon()
+			UpdateScenarioDisplay()
+		else:
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 
 
 # Crew Class: represents a crewman in a vehicle or a single member of a unit's personnel
 class Crew:
-	def __init__(self, nation):
-		self.name = self.GenerateName(nation)		# first and last name
+	def __init__(self, nation, position):
+		self.first_name = ''				# name, set by GenerateName()
+		self.last_name = ''
 		self.nation = nation
+		self.GenerateName()				# generate random first and last name
+		
+		self.current_position = position		# pointer to current position in a unit
+		
+		self.age = 0					# age of crewman in years
+		self.GenerateAge()
+		
+		self.rank = 0					# rank level
+		self.rank_desc = ''				# text name for rank
+		self.SetRank()
+		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'Spot'			# currently active action
 		
 		self.fov = set()				# set of visible hexes
-	
-	def GenerateName(self, nation):
 		
+		self.stats = {}					# dictionary of stat values
+		for stat_name in STAT_NAMES:
+			self.stats[stat_name] = 0
+		
+		self.GenerateStats()
+		
+		
+	
+	# generate a random first and last name for this crewman
+	# TEMP: normalize extended characters so they can be displayed on screen
+	def GenerateName(self):
+		
+		# normalize extended characters
+		# FUTURE: will have their own glyphs as part of font
+		def FixName(text):
+			CODE = {
+				u'Ś' : 'S', u'Ż' : 'Z', u'Ł' : 'L',
+				u'ą' : 'a', u'ć' : 'c', u'ę' : 'e', u'ł' : 'l', u'ń' : 'n', u'ó' : 'o',
+				u'ś' : 's', u'ź' : 'z', u'ż' : 'z'
+			}
+			
+			fixed_name = ''
+			for i in range(len(text)):
+				if text[i] in CODE:
+					fixed_name += CODE[text[i]]
+				else:
+					fixed_name += text[i]
+			return fixed_name
+			
 		# get list of possible first and last names
 		with open(DATAPATH + 'nation_defs.json') as data_file:
 			nations = json.load(data_file)
 		
-		for tries in range (300):
-			first_name = choice(nations[nation]['first_names'])
-			surname = choice(nations[nation]['surnames'])
+		first_name = choice(nations[self.nation]['first_names'])
+		self.first_name = FixName(first_name)
+		last_name = choice(nations[self.nation]['surnames'])
+		self.last_name = FixName(last_name)
 			
-			return (first_name, surname)
-	
-	# return the crewman's full name as a string
+	# return the crewman's full name as an encoded string
 	def GetFullName(self):
-		(first_name, surname) = self.name
-		full_name = first_name + ' '.encode('utf-8') + surname
+		return (self.first_name + ' ' + self.last_name).encode('IBM850')
+	
+	# generate a random age for this crewman
+	# FUTURE: can take into account current year of war
+	def GenerateAge(self):
+		self.age = 22
+		roll = libtcod.random_get_int(0, 1, 6)
+		if roll == 1:
+			self.age -= 2
+		elif roll == 2:
+			self.age -= 1
+		elif roll == 5:
+			self.age += 1
+		elif roll == 6:
+			self.age += 2
 		
-		# TODO - need to normalize special characters in Polish names
-		# FUTURE: will have their own glyphs as part of font
-		CODE = {
-			u'Ś' : 'S', u'Ż' : 'Z', u'Ł' : 'L',
-			u'ą' : 'a', u'ć' : 'c', u'ę' : 'e', u'ł' : 'l', u'ń' : 'n', u'ó' : 'o',
-			u'ś' : 's', u'ź' : 'z', u'ż' : 'z'
-		}
-		
-		fixed_name = u''
-		for i in range(len(full_name)):
-			if full_name[i] in CODE:
-				new_char = CODE[full_name[i]]
-				fixed_name += new_char.encode('utf-8')
+		if self.current_position.name in ['Commander', 'Commander/Gunner']:
+			roll = libtcod.random_get_int(0, 1, 6)
+			if roll <= 4:
+				self.age += 3
 			else:
-				fixed_name += full_name[i]
+				self.age += 4
+	
+	# set rank based on current position
+	def SetRank(self):
+		if self.current_position.name in ['Commander', 'Commander/Gunner']:
+			self.rank = 3
+		elif self.current_position.name in ['Gunner', 'Driver']:
+			self.rank = 2
+		else:
+			self.rank = 1
 		
-		return fixed_name.encode('IBM850')
+		with open(DATAPATH + 'nation_defs.json') as data_file:
+			nations = json.load(data_file)
+		
+		self.rank_desc = nations[self.nation]['rank_names'][str(self.rank)]
+	
+	# generate a new set of stats for this crewman
+	def GenerateStats(self):
+		
+		for tries in range(300):
+			value_list = []
+			total = 0
+			for i in range(4):
+				new_value = libtcod.random_get_int(0, 5, 50) + libtcod.random_get_int(0, 5, 50)
+				new_value = int(new_value / 10)
+				value_list.append(new_value)
+				total += new_value
+			
+			# check that total stat values fall within a given range
+			if 12 <= total <= 32:
+				break
+		
+		# set stat values
+		i = 0
+		for key in STAT_NAMES:
+			self.stats[key] = value_list[i]
+			i+=1
 	
 	# set a new action; if True, select next in list, otherwise previous
 	def SetAction(self, forward):
@@ -1649,6 +1867,7 @@ class Unit:
 		
 		self.unit_id = unit_id			# unique ID for unit type
 		self.ai = None				# AI controller
+		self.dummy = False			# unit is a false report, erased upon reveal
 		
 		# load unit stats from JSON file
 		with open(DATAPATH + 'unit_type_defs.json') as data_file:
@@ -1843,7 +2062,7 @@ class Unit:
 	# generate a new crew sufficent to man all crew positions
 	def GenerateNewCrew(self):
 		for position in self.crew_positions:
-			self.crew_list.append(Crew(self.nation))
+			self.crew_list.append(Crew(self.nation, position))
 			position.crewman = self.crew_list[-1]
 	
 	# draw this unit to the given viewport hex on the unit console
@@ -1954,11 +2173,19 @@ class Unit:
 		if (hx, hy) not in scenario.map_hexes:
 			return False
 		
+		map_hex1 = scenario.map_hexes[(self.hx, self.hy)]
 		map_hex2 = scenario.map_hexes[(hx, hy)]
 		
 		# target hex can't be entered
 		if map_hex2.terrain_type == 'pond':
 			return False
+		
+		# river on edge and no road link
+		if len(map_hex1.river_edges) > 0:
+			direction = GetDirectionToAdjacent(self.hx, self.hy, hx, hy)
+			if direction in map_hex1.river_edges:
+				if direction not in map_hex1.dirt_roads:
+					return False
 		
 		# already occupied by enemy
 		for unit in map_hex2.unit_stack:
@@ -1968,7 +2195,7 @@ class Unit:
 		# calculate bonus move chance
 		chance = scenario.CalcBonusMove(self, hx, hy)
 		
-		# do movement animation if applicable
+		# do movement animation and sound if applicable
 		distance1 = GetHexDistance(self.hx, self.hy, scenario.player_unit.hx,
 			scenario.player_unit.hy)
 		distance2 = GetHexDistance(hx, hy, scenario.player_unit.hx,
@@ -1980,6 +2207,9 @@ class Unit:
 			(new_vp_hx, new_vp_hy) = GetAdjacentHex(self.vp_hx, self.vp_hy, direction)
 			(x2,y2) = PlotHex(new_vp_hx, new_vp_hy)
 			line = GetLine(x1,y1,x2,y2)
+			
+			PlaySoundFor(self, 'movement')
+			
 			for (x,y) in line[1:-1]:
 				self.anim_x = x
 				self.anim_y = y
@@ -1991,7 +2221,7 @@ class Unit:
 			self.anim_y = 0
 		
 		# remove unit from old map hex unit stack
-		map_hex1 = scenario.map_hexes[(self.hx, self.hy)]
+		
 		map_hex1.unit_stack.remove(self)
 		
 		self.hx = hx
@@ -2052,7 +2282,7 @@ class Unit:
 			return False
 		
 		# make sure crewman on correct action
-		if not self.CheckCrewAction(['Gunner', 'Commander/Gunner'], ['Fire Gun']):
+		if not self.CheckCrewAction(['Gunner', 'Commander/Gunner'], ['Operate Gun']):
 			return False
 		
 		if clockwise:
@@ -2066,6 +2296,38 @@ class Unit:
 		self.CalcFoV()
 		
 		return True
+	
+	# clear any acquired target from this unit, and clear it from any enemy unit
+	def ClearAcquiredTargets(self):
+		self.acquired_target = None
+		for unit in scenario.units:
+			if unit.owning_player == self.owning_player: continue
+			if unit.acquired_target is None: continue
+			(target, level) = unit.acquired_target
+			if target == self:
+				unit.acquired_target = None
+	
+	# set a newly acquired target, or add a level
+	def AddAcquiredTarget(self, target):
+		
+		# no previous acquired target
+		if self.acquired_target is None:
+			self.acquired_target = (target, False)
+			return
+		
+		(old_target, level) = self.acquired_target
+		
+		# had an old target but now have a new one
+		if old_target != target:
+			self.acquired_target = (target, False)
+			return
+		
+		# possible to add one level
+		if not level:
+			self.acquired_target = (target, True)
+			return
+		
+		# otherwise, already acquired target to 2 levels, no further effect
 	
 	# start an attack with the given weapon on the given target
 	def Attack(self, weapon, target, mode):
@@ -2083,13 +2345,13 @@ class Unit:
 		weapon.fired = True
 		self.fired = True
 		
-		# TEMP - not needed any more?
-		#self.CalcFoV()
-		
 		# display message if player is the target
 		if target == scenario.player_unit:
 			text = self.GetName() + ' fires at you!'
 			scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
+		
+		# play attack sound if possible
+		PlaySoundFor(weapon, 'fire')
 		
 		# TODO: display attack animation
 		
@@ -2104,7 +2366,12 @@ class Unit:
 		result = scenario.DoAttackRoll(attack_profile)
 		WaitForEnter()
 		
+		# add acquired target if doing point fire
+		if mode == 'point_fire':
+			self.AddAcquiredTarget(target)
+		
 		# break here if attack had no effect
+		# TODO: why is NO PENETRATION here?
 		if result in ['MISS', 'NO PENETRATION']: return True
 		
 		# record AP hit to be resolved if target was a vehicle
@@ -2122,7 +2389,7 @@ class Unit:
 		
 		for (attacker, weapon, result) in self.ap_hits_to_resolve:
 			
-			# calcualte AP profile
+			# calculate AP profile
 			profile = scenario.CalcAP(attacker, weapon, self, result)
 			
 			# display the profile to the screen
@@ -2139,11 +2406,16 @@ class Unit:
 			
 			# unit was destroyed
 			if not self.alive: return
+		
+		# clear unresolved hits
+		self.ap_hits_to_resolve = []
+		
 	
 	# destroy this unit and remove it from the scenario map
 	def DestroyMe(self):
 		self.alive = False
-		scenario.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)	
+		scenario.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
+		self.ClearAcquiredTargets()
 		UpdateUnitCon()
 		UpdateScenarioDisplay()
 	
@@ -2182,6 +2454,9 @@ class Unit:
 		if target.fired:
 			chance = chance * 2.0
 		
+		# crew perception modifier
+		chance += (position.crewman.stats['Perception'] - 5) * 5.0
+		
 		chance = RestrictChance(chance)
 		
 		# special: automatic spot cases
@@ -2195,15 +2470,27 @@ class Unit:
 			# display pop-up message window
 			
 			if self == scenario.player_unit:
-				text = (position.crewman.GetFullName() + ' says: ' + target.GetName() +
-					' spotted!')
-				scenario.ShowMessage(text)
+				
+				if target.dummy:
+					text = (position.crewman.GetFullName() + ' says: ' + 
+						"Thought there was something there, but I don't see anything.")
+				else:
+					text = (position.crewman.GetFullName() + ' says: ' + 
+						target.GetName() + ' ' + target.GetStat('class') +
+						' spotted!')
+				scenario.ShowMessage(text, hx=target.hx, hy=target.hy)
 			else:
 				text = 'You have been spotted!'
-				scenario.ShowMessage(text)
+				scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
 			
 	# reveal this unit after being spotted
 	def SpotMe(self):
+		
+		# dummy units are removed instead
+		if self.dummy:
+			self.DestroyMe()
+			return
+		
 		self.known = True
 		UpdateUnitCon()
 		UpdateUnitInfoCon()
@@ -2796,11 +3083,8 @@ def WaitForEnter(allow_cancel=False):
 # save the current game in progress
 def SaveGame():
 	save = shelve.open('savegame', 'n')
-	# TEMP - move to session object in future
-	scenario.ClearHexConsoles()
 	save['scenario'] = scenario
 	save.close()
-	scenario.GenerateHexConsoles()
 
 
 # load a saved game
@@ -2809,17 +3093,186 @@ def LoadGame():
 	save = shelve.open('savegame')
 	scenario = save['scenario']
 	save.close()
-	scenario.GenerateHexConsoles()
 
 
 # remove a saved game, either because the scenario is over or the player abandoned it
 def EraseGame():
 	os.remove('savegame')
 
+
+##########################################################################################
+#                                   Sounds and Music                                     #
+##########################################################################################
+
+# play a given sample, returns the channel it is playing on
+def PlaySound(sound_name):
+	
+	if sound_name not in session.sample:
+		print 'ERROR: Sound not found: ' + sound_name
+		return
+	
+	channel = mixer.Mix_PlayChannel(-1, session.sample[sound_name], 0)
+	if channel == -1:
+		print 'Error - could not play sound: ' + sound_name
+		print mixer.Mix_GetError()
+	return channel
+
+
+# select and play a sound effect for a given situation
+def PlaySoundFor(obj, action):
+	if action == 'fire':
+		if obj.GetStat('type') == 'Gun':
+			if obj.stats['calibre'] == "37":
+				n = libtcod.random_get_int(0, 0, 3)
+				PlaySound('37mm_firing_0' + str(n))
+				return
+		
+	elif action == 'movement':
+		if obj.GetStat('movement_class') == 'Fast Tank':
+			n = libtcod.random_get_int(0, 0, 2)
+			PlaySound('light_tank_moving_0' + str(n))
+			return
+
+
+##########################################################################################
+#                                     In-Game Menu                                       #
+##########################################################################################
+
+# display the game menu to screen, with the given tab active
+
+def ShowGameMenu(active_tab):
+	
+	# draw the contents of the currently active tab to the menu console
+	def DrawMenuCon(active_tab):
+		# blit menu background to game menu console
+		libtcod.console_blit(game_menu_bkg, 0, 0, 0, 0, game_menu_con, 0, 0)
+		
+		# fill in active tab info
+		
+		# Game Menu
+		if active_tab == 0:
+		
+			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(game_menu_con, 25, 22, 'Esc')
+			libtcod.console_print(game_menu_con, 25, 24, 'Q')
+			libtcod.console_print(game_menu_con, 25, 25, 'A')
+			
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+			libtcod.console_print(game_menu_con, 30, 22, 'Return to Game')
+			libtcod.console_print(game_menu_con, 30, 24, 'Save and Quit to Main Menu')
+			libtcod.console_print(game_menu_con, 30, 25, 'Abandon Game')
+		
+		elif active_tab == 3:
+			
+			# display list of crew
+			DisplayCrew(scenario.player_unit, game_menu_con, 6, 13, True)
+			
+			# display info on selected crewman
+			crewman = scenario.player_unit.crew_positions[scenario.selected_position].crewman
+			if crewman is not None:
+				DisplayCrewInfo(crewman, game_menu_con, 37, 8)
+			
+			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(game_menu_con, 6, 40, 'I/K')
+			
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+			libtcod.console_print(game_menu_con, 11, 40, 'Select Crew')
+		
+		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
+		libtcod.console_flush()
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+	# darken screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	
+	# generate menu console for the first time and blit to screen
+	DrawMenuCon(active_tab)
+	
+	# blit menu to screen
+	
+	Wait(15)
+	
+	# get input from player
+	exit_menu = False
+	result = ''
+	while not exit_menu:
+		libtcod.console_flush()
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
+		if libtcod.console_is_window_closed(): sys.exit()
+		
+		if key is None: continue
+		
+		# Activate Different Menu
+		if key.vk == libtcod.KEY_ESCAPE and active_tab != 0:
+			active_tab = 0
+			DrawMenuCon(active_tab)
+			Wait(15)
+			continue
+		elif key.vk == libtcod.KEY_F3 and active_tab != 3:
+			active_tab = 3
+			DrawMenuCon(active_tab)
+			Wait(15)
+			continue
+		
+		key_char = chr(key.c).lower()
+		
+		# Game Menu
+		if active_tab == 0:
+			
+			if key.vk == libtcod.KEY_ESCAPE:
+				exit_menu = True
+			
+			elif key_char == 'q':
+				SaveGame()
+				result = 'exit_game'
+				exit_menu = True
+			
+			elif key_char == 'a':
+				text = 'Abandoning will erase the saved game.'
+				result = ShowNotification(text, confirm=True)
+				if result:
+					EraseGame()
+					result = 'exit_game'
+					exit_menu = True
+				libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
+				libtcod.console_flush()
+				Wait(15)
+		
+		# Crew Menu
+		elif active_tab == 3:
+			
+			# change selected crewman
+			if key_char in ['i', 'k']:
+				
+				if key_char == 'i':
+					if scenario.selected_position > 0:
+						scenario.selected_position -= 1
+					else:
+						scenario.selected_position = len(scenario.player_unit.crew_positions) - 1
+				
+				else:
+					if scenario.selected_position == len(scenario.player_unit.crew_positions) - 1:
+						scenario.selected_position = 0
+					else:
+						scenario.selected_position += 1
+				UpdateContextCon()
+				UpdateCrewPositionCon()
+				DrawMenuCon(active_tab)
+				Wait(15)
+
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	del temp_con
+	return result
+
+
+
 ##########################################################################################
 #                              Console Drawing Functions                                 #
 ##########################################################################################
-
 
 # draw an ArmCom2-style frame to the given console
 def DrawFrame(console, x, y, w, h):
@@ -2835,8 +3288,106 @@ def DrawFrame(console, x, y, w, h):
 		libtcod.console_put_char(console, x+w-1, y1, 179)
 
 
+# draw info about a series of crew positions and their crewmen to a console
+def DisplayCrew(unit, console, x, y, highlight_selected):
+	
+	for position in unit.crew_positions:
+		
+		# highlight selected position and crewman
+		if highlight_selected:
+			if unit.crew_positions.index(position) == scenario.selected_position:
+				libtcod.console_set_default_background(console, libtcod.darker_blue)
+				libtcod.console_rect(console, x, y, 24, 4, True, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(console, libtcod.black)
+		
+		libtcod.console_set_default_foreground(console, libtcod.light_blue)
+		libtcod.console_print(console, x, y, position.name)
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE, 
+			libtcod.RIGHT, position.location)
+		if not position.hatch:
+			text = '--'
+		else:
+			if position.hatch_open:
+				text = 'CE'
+			else:
+				text = 'BU'
+		libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE, 
+			libtcod.RIGHT, text)
+		
+		if position.crewman is None:
+			text = 'Empty'
+		else:
+			text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
+		
+		# names might have special characters so we encode it before printing it
+		libtcod.console_print(console, x, y+1, text.encode('IBM850'))
+		
+		# current action if any
+		if position.crewman is not None:
+			if position.crewman.current_action is not None:
+				libtcod.console_set_default_foreground(console,
+					libtcod.dark_yellow)
+				libtcod.console_print(console, x, y+2,
+					position.crewman.current_action)
+				libtcod.console_set_default_foreground(console,
+					libtcod.white)
+		
+		y += 5
+
+
+# display info about a crewman to a console
+def DisplayCrewInfo(crewman, console, x, y):
+	
+	# outline and section dividers
+	libtcod.console_set_default_foreground(console, libtcod.grey)
+	DrawFrame(console, x, y, 31, 41)
+	libtcod.console_hline(console, x+1, y+4, 29)
+	libtcod.console_hline(console, x+1, y+6, 29)
+	libtcod.console_hline(console, x+1, y+8, 29)
+	libtcod.console_hline(console, x+1, y+10, 29)
+	libtcod.console_hline(console, x+1, y+14, 29)
+	libtcod.console_hline(console, x+1, y+22, 29)
+	
+	# section titles
+	libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
+	libtcod.console_print(console, x+1, y+2, 'Crewman Report')
+	libtcod.console_print(console, x+1, y+5, 'Name')
+	libtcod.console_print(console, x+1, y+7, 'Age')
+	libtcod.console_print(console, x+1, y+9, 'Rank')
+	libtcod.console_print(console, x+1, y+11, 'Current')
+	libtcod.console_print(console, x+1, y+12, 'Position')
+	libtcod.console_print(console, x+1, y+15, 'Assessment')
+	
+	# info
+	libtcod.console_set_default_foreground(console, libtcod.white)
+	libtcod.console_print(console, x+10, y+5, crewman.GetFullName())
+	libtcod.console_print(console, x+10, y+7, str(crewman.age))
+	libtcod.console_print(console, x+10, y+9, crewman.rank_desc)
+	libtcod.console_print(console, x+10, y+11, scenario.player_unit.unit_id)
+	libtcod.console_print(console, x+10, y+12, crewman.current_position.name)
+	
+	# crew stats
+	libtcod.console_set_default_background(console, libtcod.darkest_grey)
+	background_shade = False
+	i = 0
+	for stat_name in STAT_NAMES:
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_print(console, x+8, y+17+i, stat_name)
+		libtcod.console_set_default_foreground(console, libtcod.light_grey)
+		libtcod.console_print_ex(console, x+23, y+17+i, libtcod.BKGND_NONE, 
+			libtcod.RIGHT, str(crewman.stats[stat_name]))
+		if background_shade:
+			libtcod.console_rect(console, x+8, y+17+i, 16, 1, False, libtcod.BKGND_SET)
+		background_shade = not background_shade
+		i+=1
+	
+	libtcod.console_set_default_foreground(console, libtcod.white)
+	libtcod.console_set_default_background(console, libtcod.black)
+		
+
 # display a pop-up message on the root console
-# FUTURE: can be used for confirmation
+# can be used for yes/no confirmation
 def ShowNotification(text, confirm=False):
 	
 	# determine window x, height, and y position
@@ -2844,6 +3395,10 @@ def ShowNotification(text, confirm=False):
 	lines = wrap(text, 58)
 	h = len(lines) + 6
 	y = WINDOW_YM - int(h/2)
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
 	
 	# darken background 
 	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.5)
@@ -2858,11 +3413,46 @@ def ShowNotification(text, confirm=False):
 		libtcod.console_print(0, x+2, ly, line)
 		ly += 1
 	
-	libtcod.console_print_ex(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
-		'Enter to Continue')
+	# if asking for confirmation, display yes/no choices, otherwise display a simple messages
+	if confirm:
+		text = 'Proceed? Y/N'
+	else:
+		text = 'Enter to Continue'
 	
+	libtcod.console_print_ex(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
+		text)
+	
+	# show to screen
 	libtcod.console_flush()
-	WaitForEnter()
+	Wait(15)
+	
+	exit_menu = False
+	while not exit_menu:
+		libtcod.console_flush()
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
+		if libtcod.console_is_window_closed(): sys.exit()
+		
+		if key is None: continue
+		
+		if confirm:
+			key_char = chr(key.c).lower()
+			
+			if key_char == 'y':
+				# restore original screen before returning
+				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+				del temp_con
+				return True
+			elif key_char == 'n':
+				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+				del temp_con
+				return False
+		else:
+			if key.vk == libtcod.KEY_ENTER:
+				exit_menu = True
+	
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	del temp_con
 	
 
 # draw the map viewport console
@@ -2879,7 +3469,8 @@ def UpdateVPCon():
 		if (map_hx, map_hy) not in scenario.map_hexes:
 			(x,y) = PlotHex(hx, hy)
 			libtcod.console_blit(tile_offmap, 0, 0, 0, 0, map_vp_con, x-3, y-2)
-	
+			
+	# draw on-map hexes starting with lowest elevation
 	for elevation in range(4):
 		for (hx, hy) in VP_HEXES:
 			(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
@@ -2890,7 +3481,7 @@ def UpdateVPCon():
 			if map_hex.elevation != elevation: continue
 			(x,y) = PlotHex(hx, hy)
 			
-			libtcod.console_blit(scenario.hex_consoles[map_hex.terrain_type][map_hex.elevation],
+			libtcod.console_blit(session.hex_consoles[map_hex.terrain_type][map_hex.elevation],
 				0, 0, 0, 0, map_vp_con, x-3, y-2)
 			
 			# if this hex is visible, unmask it in the FoV mask
@@ -2904,7 +3495,22 @@ def UpdateVPCon():
 			for x1 in range(x-2, x+3):
 				scenario.hex_map_index[(x1,y)] = (map_hx, map_hy)
 	
-	# draw roads overtop
+	# draw river edges
+	for (hx, hy) in VP_HEXES:
+		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
+		if (map_hx, map_hy) not in scenario.map_hexes:
+			continue
+		map_hex = scenario.map_hexes[(map_hx, map_hy)]
+		
+		if len(map_hex.river_edges) == 0: continue
+		
+		(x,y) = PlotHex(hx, hy)
+		for direction in map_hex.river_edges:
+			for (xm, ym) in HEX_EDGE_CELLS[ConstrainDir(direction - scenario.player_unit.facing)]:
+				libtcod.console_set_char_background(map_vp_con, x+xm, 
+					y+ym, RIVER_BG_COL)
+	
+	# draw roads
 	for (hx, hy) in VP_HEXES:
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
 		if (map_hx, map_hy) not in scenario.map_hexes:
@@ -2913,8 +3519,12 @@ def UpdateVPCon():
 		# no road here
 		if len(map_hex.dirt_roads) == 0: continue
 		for direction in map_hex.dirt_roads:
-			# TEMP: only draw each road link once
-			if 3 <= direction <= 5: continue
+			
+			# get other VP hex linked by road
+			(hx2, hy2) = GetAdjacentHex(hx, hy, ConstrainDir(direction - scenario.player_unit.facing))
+			
+			# only draw if it is in direction 0-2, unless the other hex is off the VP
+			if (hx2, hy2) in VP_HEXES and 3 <= direction <= 5: continue
 			
 			# paint road
 			(x1, y1) = PlotHex(hx, hy)
@@ -2922,6 +3532,11 @@ def UpdateVPCon():
 			(x2, y2) = PlotHex(hx2, hy2)
 			line = GetLine(x1, y1, x2, y2)
 			for (x, y) in line:
+				
+				# don't paint over outside of map area
+				if libtcod.console_get_char_background(map_vp_con, x, y) == libtcod.black:
+					continue
+				
 				libtcod.console_set_char_background(map_vp_con, x, y,
 					DIRT_ROAD_COL, libtcod.BKGND_SET)
 				
@@ -2929,7 +3544,6 @@ def UpdateVPCon():
 				if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
 					libtcod.console_set_char(map_vp_con, x, y, 0)
 			
-	
 	# highlight objective hexes
 	for (hx, hy) in VP_HEXES:
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
@@ -2942,6 +3556,7 @@ def UpdateVPCon():
 			
 
 # display units on the unit console
+# also displays map hex highlight and LoS if any
 def UpdateUnitCon():
 	libtcod.console_clear(unit_con)
 	
@@ -2955,11 +3570,25 @@ def UpdateUnitCon():
 		#if (map_hx, map_hy) not in scenario.player_unit.fov: continue
 		# get the map hex
 		map_hex = scenario.map_hexes[(map_hx, map_hy)]
-		# no units in hex
-		if len(map_hex.unit_stack) == 0: continue
-		# display the top unit in the stack
-		map_hex.unit_stack[0].DrawMe(vp_hx, vp_hy)
+		
+		# any units in the stack
+		if len(map_hex.unit_stack) != 0:
+			# display the top unit in the stack
+			map_hex.unit_stack[0].DrawMe(vp_hx, vp_hy)
 	
+		# check for hex highlight if any
+		if scenario.highlighted_hex is not None:
+			if scenario.highlighted_hex == (map_hx, map_hy):
+				(x,y) = PlotHex(vp_hx, vp_hy)
+				libtcod.console_put_char_ex(unit_con, x-1, y-1, 169, libtcod.cyan,
+					libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x+1, y-1, 170, libtcod.cyan,
+					libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x-1, y+1, 28, libtcod.cyan,
+					libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x+1, y+1, 29, libtcod.cyan,
+					libtcod.black)
+		
 	# display LoS if applicable
 	if scenario.player_los_active and scenario.player_target is not None:
 		line = GetLine(scenario.player_unit.screen_x, scenario.player_unit.screen_y,
@@ -3037,56 +3666,14 @@ def UpdatePlayerInfoCon():
 def UpdateCrewPositionCon():
 	libtcod.console_clear(crew_position_con)
 	
-	unit = scenario.player_unit
-	
-	if len(unit.crew_positions) == 0:
+	if len(scenario.player_unit.crew_positions) == 0:
 		return
 	
-	y = 1
-	for position in unit.crew_positions:
-		
-		# highlight if special action phase and this crewman is selected
-		if scenario.game_turn['current_phase'] == 'Crew Actions':
-			if unit.crew_positions.index(position) == scenario.selected_position:
-				libtcod.console_set_default_background(crew_position_con, libtcod.darker_blue)
-				libtcod.console_rect(crew_position_con, 0, y, 24, 4, True, libtcod.BKGND_SET)
-				libtcod.console_set_default_background(crew_position_con, libtcod.black)
-		
-		libtcod.console_set_default_foreground(crew_position_con, libtcod.light_blue)
-		libtcod.console_print(crew_position_con, 0, y, position.name)
-		libtcod.console_set_default_foreground(crew_position_con, libtcod.white)
-		libtcod.console_print_ex(crew_position_con, 23, y, libtcod.BKGND_NONE, 
-			libtcod.RIGHT, position.location)
-		if not position.hatch:
-			text = '--'
-		else:
-			if position.hatch_open:
-				text = 'CE'
-			else:
-				text = 'BU'
-		libtcod.console_print_ex(crew_position_con, 23, y+1, libtcod.BKGND_NONE, 
-			libtcod.RIGHT, text)
-		
-		if position.crewman is None:
-			text = 'Empty'
-		else:
-			(firstname, surname) = position.crewman.name
-			text = firstname[0] + '. ' + surname
-		
-		# names might have special characters so we encode it before printing it
-		libtcod.console_print(crew_position_con, 0, y+1, text.encode('IBM850'))
-		
-		# special action if any
-		if position.crewman is not None:
-			if position.crewman.current_action is not None:
-				libtcod.console_set_default_foreground(crew_position_con,
-					libtcod.dark_yellow)
-				libtcod.console_print(crew_position_con, 0, y+2,
-					position.crewman.current_action)
-				libtcod.console_set_default_foreground(crew_position_con,
-					libtcod.white)
-		
-		y += 5
+	highlight_selected = False
+	if scenario.game_turn['current_phase'] == 'Crew Actions':
+		highlight_selected = True
+	
+	DisplayCrew(scenario.player_unit, crew_position_con, 0, 1, highlight_selected)
 
 
 # list current player commands
@@ -3103,9 +3690,9 @@ def UpdateCommandCon():
 		
 		if scenario.game_turn['active_player'] != 0: return
 		
-		libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
-		libtcod.console_print(command_con, 2, 2, 'W/S')
-		libtcod.console_print(command_con, 2, 3, 'A/D')
+		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+		libtcod.console_print(command_con, 2, 2, 'I/K')
+		libtcod.console_print(command_con, 2, 3, 'J/L')
 		libtcod.console_print(command_con, 2, 4, 'H')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
@@ -3133,15 +3720,15 @@ def UpdateCommandCon():
 		
 		if scenario.game_turn['active_player'] != 0: return
 		
-		libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
+		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 		libtcod.console_print(command_con, 2, 2, 'W')
 		libtcod.console_print(command_con, 2, 3, 'A/D')
-		libtcod.console_print(command_con, 2, 4, 'Q/E')
+		
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 		libtcod.console_print(command_con, 9, 2, 'Move Forward')
 		libtcod.console_print(command_con, 9, 3, 'Pivot Hull')
-		libtcod.console_print(command_con, 9, 4, 'Rotate Turret')
+		
 	
 	elif scenario.game_turn['current_phase'] == 'Combat':
 		
@@ -3153,17 +3740,21 @@ def UpdateCommandCon():
 		
 		if scenario.game_turn['active_player'] != 0: return
 		
-		libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
-		libtcod.console_print(command_con, 2, 2, 'W/S')
-		libtcod.console_print(command_con, 2, 3, 'A/D')
-		libtcod.console_print(command_con, 2, 4, 'F')
+		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+		# TEMP - hidden since no additional weapons have been added yet
+		#libtcod.console_print(command_con, 2, 2, 'W/S')
+		libtcod.console_print(command_con, 2, 3, 'Q/E')
+		libtcod.console_print(command_con, 2, 4, 'A/D')
+		libtcod.console_print(command_con, 2, 5, 'F')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		libtcod.console_print(command_con, 9, 2, 'Select Weapon')
-		libtcod.console_print(command_con, 9, 3, 'Select Target')
-		libtcod.console_print(command_con, 9, 4, 'Fire')
+		# TEMP - hidden since no additional weapons have been added yet
+		#libtcod.console_print(command_con, 9, 2, 'Select Weapon')
+		libtcod.console_print(command_con, 9, 3, 'Rotate Turret')
+		libtcod.console_print(command_con, 9, 4, 'Select Target')
+		libtcod.console_print(command_con, 9, 5, 'Fire')
 		
-	libtcod.console_set_default_foreground(command_con, libtcod.light_blue)
+	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 	libtcod.console_print(command_con, 2, 11, 'Enter')
 	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 	libtcod.console_print(command_con, 9, 11, 'Next Phase')
@@ -3178,7 +3769,13 @@ def UpdateHexTerrainCon():
 	if mouse.cx < 32: return
 	x = mouse.cx - 31
 	y = mouse.cy - 4
-	if (x,y) not in scenario.hex_map_index: return
+	
+	if (x,y) not in scenario.hex_map_index:
+		# possible hex edge info
+		col = libtcod.console_get_char_background(map_vp_con, x, y)
+		if col == RIVER_BG_COL:
+			libtcod.console_print(hex_terrain_con, 0, 0, 'River')
+		return
 	
 	libtcod.console_set_default_foreground(hex_terrain_con, libtcod.white)
 	
@@ -3187,7 +3784,7 @@ def UpdateHexTerrainCon():
 	text = HEX_TERRAIN_DESC[map_hex.terrain_type]
 	libtcod.console_print(hex_terrain_con, 0, 0, text)
 	
-	# TEMP
+	# TEMP - don't display this in production version
 	libtcod.console_print(hex_terrain_con, 0, 1, str(hx) + ',' + str(hy))
 	text = str(map_hex.elevation * ELEVATION_M) + ' m.'
 	libtcod.console_print_ex(hex_terrain_con, 15, 1, libtcod.BKGND_NONE,
@@ -3269,7 +3866,7 @@ def UpdateContextCon():
 			libtcod.console_print(context_con, 0, 3, '+Dirt Road')
 		
 		# get bonus move chance
-		libtcod.console_print(context_con, 0, 4, 'Bonus Chance:')
+		libtcod.console_print(context_con, 0, 4, '+1 move chance:')
 		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
 		libtcod.console_print(context_con, 1, 5, str(chance) + '%%')
 	
@@ -3331,6 +3928,15 @@ def UpdateUnitInfoCon():
 		y+=1
 	libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
 	libtcod.console_print(unit_info_con, 0, 2, unit.GetStat('class'))
+	
+	libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
+	if scenario.player_unit.acquired_target is not None:
+		(target, level) = scenario.player_unit.acquired_target 
+		if target == unit:
+			text = 'Acquired target'
+			if level:
+				text += '+'
+			libtcod.console_print(unit_info_con, 0, 4, text)
 
 
 # update objective info console, 16x10
@@ -3517,13 +4123,18 @@ def DoScenario(load_game=False):
 		new_unit = Unit('Panzer 38(t) A')
 		new_unit.owning_player = 0
 		new_unit.nation = 'Germany'
-		new_unit.hy = 12
 		new_unit.facing = 0
 		new_unit.turret_facing = 0
+		
+		
+		# determine player unit spawn location on map: 2 hexes up from bottom corner
+		new_unit.hx = 0
+		new_unit.hy = scenario.map_radius - 2
 		
 		# add this unit to the hex stack
 		# FUTURE: integrate into a spawn unit function
 		scenario.map_hexes[(new_unit.hx, new_unit.hy)].unit_stack.append(new_unit)
+		
 		
 		# generate a new crew for this unit
 		new_unit.GenerateNewCrew()
@@ -3553,6 +4164,17 @@ def DoScenario(load_game=False):
 			new_unit.turret_facing = 3
 			new_unit.GenerateNewCrew()
 			scenario.units.append(new_unit)
+		
+		# set dummy enemy units
+		# TEMP - in future should be approx 1/4 of total enemy units
+		dummy_units = 2
+		unit_list = []
+		for unit in scenario.units:
+			if unit.owning_player == 1:
+				unit_list.append(unit)
+		unit_list = sample(unit_list, dummy_units)	
+		for unit in unit_list:
+			unit.dummy = True
 		
 		# TEMP - place enemy units randomly
 		for unit in scenario.units:
@@ -3629,8 +4251,9 @@ def DoScenario(load_game=False):
 		# scenario end conditions have been met
 		if scenario.finished:
 			EraseGame()
-			# FUTURE: add more detail here
-			ShowNotification('The scenario is over.')
+			# FUTURE: add more descriptive detail here
+			text = 'The scenario is over: ' + scenario.win_desc
+			ShowNotification(text)
 			exit_scenario = True
 			continue
 		
@@ -3664,10 +4287,19 @@ def DoScenario(load_game=False):
 		
 		##### Player Keyboard Commands #####
 		
-		# exit game
-		if key.vk == libtcod.KEY_ESCAPE:
-			SaveGame()
-			exit_scenario = True
+		# enter game menu
+		if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_F3]:
+			if key.vk == libtcod.KEY_ESCAPE:
+				menu_tab = 0
+			else:
+				menu_tab = 3
+			result = ShowGameMenu(menu_tab)
+			if result == 'exit_game':
+				exit_scenario = True
+			else:
+				# re-draw to clear game menu from screen
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				UpdateScenarioDisplay()
 			continue
 		
 		# automatically trigger next phase for player
@@ -3703,9 +4335,9 @@ def DoScenario(load_game=False):
 		if scenario.game_turn['current_phase'] == 'Crew Actions':
 			
 			# change selected crewman
-			if key_char in ['w', 's']:
+			if key_char in ['i', 'k']:
 				
-				if key_char == 'w':
+				if key_char == 'i':
 					if scenario.selected_position > 0:
 						scenario.selected_position -= 1
 					else:
@@ -3721,13 +4353,13 @@ def DoScenario(load_game=False):
 				UpdateScenarioDisplay()
 			
 			# set action for selected crewman
-			elif key_char in ['a', 'd']:
+			elif key_char in ['j', 'l']:
 				
 				position = scenario.player_unit.crew_positions[scenario.selected_position]
 				
 				# check for empty position
 				if position.crewman is not None:
-					if key_char == 'a':
+					if key_char == 'j':
 						result = position.crewman.SetAction(False)
 					else:
 						result = position.crewman.SetAction(True)
@@ -3767,6 +4399,10 @@ def DoScenario(load_game=False):
 					UpdateScenarioDisplay()
 					libtcod.console_flush()
 					SaveGame()
+					
+					# check for end of movement
+					if scenario.player_unit.move_finished:
+						trigger_end_of_phase = True
 			
 			# pivot hull facing
 			elif key_char in ['a', 'd']:
@@ -3785,17 +4421,6 @@ def DoScenario(load_game=False):
 					UpdateHexTerrainCon()
 					UpdateScenarioDisplay()
 			
-			# rotate turret facing
-			elif key_char in ['q', 'e']:
-				if key_char == 'q':
-					result = scenario.player_unit.RotateTurret(False)
-				else:
-					result = scenario.player_unit.RotateTurret(True)
-				if result:
-					UpdateUnitCon()
-					UpdateVPCon()
-					UpdateScenarioDisplay()
-		
 		elif scenario.game_turn['current_phase'] == 'Combat':
 			
 			# select weapon
@@ -3806,6 +4431,18 @@ def DoScenario(load_game=False):
 					result = scenario.SelectNextWeapon(True)
 				if result:
 					UpdateContextCon()
+					UpdateScenarioDisplay()
+			
+			# rotate turret facing
+			elif key_char in ['q', 'e']:
+				if key_char == 'q':
+					result = scenario.player_unit.RotateTurret(False)
+				else:
+					result = scenario.player_unit.RotateTurret(True)
+				if result:
+					UpdateUnitCon()
+					UpdateContextCon()
+					UpdateVPCon()
 					UpdateScenarioDisplay()
 			
 			# select target
@@ -3857,6 +4494,18 @@ libtcod.console_set_default_background(0, libtcod.black)
 libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
 
+# display loading screen
+libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+	'Loading...')
+libtcod.console_flush()
+
+# create new session object
+session = Session()
+
+# try to init sound mixer and load sounds if successful
+if session.InitMixer():
+	session.LoadSounds()
+
 # set up double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
 libtcod.console_set_default_background(con, libtcod.black)
@@ -3868,6 +4517,13 @@ darken_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
 libtcod.console_set_default_background(darken_con, libtcod.black)
 libtcod.console_set_default_foreground(darken_con, libtcod.black)
 libtcod.console_clear(darken_con)
+
+# game menu console: 84x54
+game_menu_bkg = LoadXP('game_menu.xp')
+game_menu_con = libtcod.console_new(84, 54)
+libtcod.console_set_default_background(game_menu_con, libtcod.black)
+libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
+libtcod.console_clear(game_menu_con)
 
 # create mouse and key event holders
 mouse = libtcod.Mouse()
@@ -3889,6 +4545,7 @@ for direction in range(6):
 		for i, (hx, hy) in enumerate(hex_list):
 			hex_list[i] = RotateHex(hx, hy, direction)
 	HEXTANTS.append(hex_list)
+
 
 
 
@@ -3956,7 +4613,7 @@ def UpdateMainMenuCon():
 		if disabled:
 			libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
 		else:
-			libtcod.console_set_default_foreground(main_menu_con, libtcod.light_blue)
+			libtcod.console_set_default_foreground(main_menu_con, ACTION_KEY_COL)
 		libtcod.console_print(main_menu_con, WINDOW_XM-5, y, char)
 		
 		if disabled:
@@ -4020,14 +4677,24 @@ while not exit_game:
 		DoScenario(load_game=True)
 		UpdateMainMenuCon()
 		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		Wait(15)
 	
 	if key_char == 'n':
-		# TODO: check for overwrite of existing saved game
+		# check for overwrite of existing saved game
+		if os.path.exists('savegame'):
+			text = 'Starting a new scenario will overwrite the existing saved game.'
+			result = ShowNotification(text, confirm=True)
+			if not result:
+				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+				Wait(15)
+				continue
 		
 		DoScenario()
 		UpdateMainMenuCon()
 		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-
+		libtcod.console_flush()
+		Wait(15)
 
 # END #
 

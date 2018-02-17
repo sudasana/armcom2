@@ -182,6 +182,8 @@ MAX_LOS_DISTANCE = 6
 
 ELEVATION_M = 10.0			# each elevation level represents x meters of height
 
+# TODO: move this to a json file
+
 # percentile LoS modifiers for terrain types
 TERRAIN_LOS_MODS = {
 	'openground' : 0.0,

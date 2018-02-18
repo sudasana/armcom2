@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-02-16'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-02-18'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -795,7 +795,7 @@ class Scenario:
 		
 		##### Rivers #####
 		
-		# TEMP - testing
+		# not yet implemented - need to do pathfinding along hex corners
 		#self.map_hexes[(0, 8)].river_edges.append(0)
 		
 		##### Dirt Road #####
@@ -1947,6 +1947,7 @@ class Unit:
 		
 		self.screen_x = 0			# draw location on the screen
 		self.screen_y = 0			#   set by DrawMe()
+							# TODO: at present is relative to unit_con, not screen
 		self.vp_hx = None			# location in viewport if any
 		self.vp_hy = None			# "
 		self.anim_x = 0				# animation location in console
@@ -2350,10 +2351,27 @@ class Unit:
 			text = self.GetName() + ' fires at you!'
 			scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
 		
-		# play attack sound if possible
-		PlaySoundFor(weapon, 'fire')
+		# play sound and show animation if in range of player
+		distance1 = GetHexDistance(self.hx, self.hy, scenario.player_unit.hx,
+			scenario.player_unit.hy)
+		distance2 = GetHexDistance(target.hx, target.hy, scenario.player_unit.hx,
+			scenario.player_unit.hy)
+		if distance1 <= 6 and distance2 <= 6:
 		
-		# TODO: display attack animation
+			x1, y1 = self.screen_x, self.screen_y
+			x2, y2 = target.screen_x, target.screen_y
+			line = GetLine(x1,y1,x2,y2)
+			
+			PlaySoundFor(weapon, 'fire')
+			
+			# TEMP: uses the root console, future will have an animation console
+			for (x,y) in line[1:-1]:
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_put_char(0, x+31, y+4, 250)
+				libtcod.console_flush()
+				Wait(10)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
 		
 		# calculate the attack profile
 		attack_profile = scenario.CalcAttack(self, weapon, target, mode)
@@ -3122,7 +3140,8 @@ def PlaySound(sound_name):
 def PlaySoundFor(obj, action):
 	if action == 'fire':
 		if obj.GetStat('type') == 'Gun':
-			if obj.stats['calibre'] == "37":
+			# TEMP - can add more detail in future
+			if obj.stats['calibre'] in ["37", "47"]:
 				n = libtcod.random_get_int(0, 0, 3)
 				PlaySound('37mm_firing_0' + str(n))
 				return
@@ -3135,11 +3154,10 @@ def PlaySoundFor(obj, action):
 
 
 ##########################################################################################
-#                                     In-Game Menu                                       #
+#                              In-Game Menus and Displays                                #
 ##########################################################################################
 
 # display the game menu to screen, with the given tab active
-
 def ShowGameMenu(active_tab):
 	
 	# draw the contents of the currently active tab to the menu console
@@ -3190,8 +3208,6 @@ def ShowGameMenu(active_tab):
 	
 	# generate menu console for the first time and blit to screen
 	DrawMenuCon(active_tab)
-	
-	# blit menu to screen
 	
 	Wait(15)
 	
@@ -3268,6 +3284,83 @@ def ShowGameMenu(active_tab):
 	del temp_con
 	return result
 
+
+# display information about a scenario about to start
+def DisplayScenInfo():
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+	# darken screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	
+	# load and build scenario info window
+	scen_info_con = LoadXP('scen_summary_bkg.xp')
+	# TEMP: most of this will be drawn from scenario object in future
+	libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
+	libtcod.console_print_ex(scen_info_con, 14, 1, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Western Poland')
+	libtcod.console_print_ex(scen_info_con, 14, 2, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'September 1939')
+	text = str(scenario.game_turn['hour']) + ':' + str(scenario.game_turn['minute']).zfill(2)
+	libtcod.console_print_ex(scen_info_con, 14, 3, libtcod.BKGND_NONE,
+		libtcod.CENTER, text)
+	
+	libtcod.console_set_default_foreground(scen_info_con, libtcod.light_grey)
+	text = ('You have advanced into an area held by enemy forces. You must capture this area ' +
+		'in order to continue your advance.')
+	lines = wrap(text, 25)
+	y = 7
+	for line in lines[:9]:
+		libtcod.console_print(scen_info_con, 2, y, line)
+		y+=1
+	
+	libtcod.console_print_ex(scen_info_con, 14, 20, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Light Armour')
+	
+	libtcod.console_print(scen_info_con, 1, 27, '1) Capture all objectives')
+	libtcod.console_print_ex(scen_info_con, 14, 29, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'OR')
+	libtcod.console_print(scen_info_con, 1, 31, '2) Destroy all enemy units')
+	
+	libtcod.console_print_ex(scen_info_con, 14, 40, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Light Armour')
+	
+	# display to screen
+	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, 0, 31, 3)
+	
+	Wait(15)
+	
+	# get input from player
+	exit_menu = False
+	result = ''
+	while not exit_menu:
+		libtcod.console_flush()
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
+		if libtcod.console_is_window_closed(): sys.exit()
+		
+		if key is None: continue
+		
+		# cancel scenario start
+		if key.vk == libtcod.KEY_ESCAPE:
+			result = False
+			exit_menu = True
+		
+		# confirm and continue
+		elif key.vk == libtcod.KEY_ENTER:
+			result = True
+			exit_menu = True
+	
+	# replace original screen if canceling
+	if not result:
+		libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		Wait(15)
+	del temp_con
+	del scen_info_con
+	return result
 
 
 ##########################################################################################
@@ -4116,6 +4209,13 @@ def DoScenario(load_game=False):
 		# set up time of day and current phase
 		scenario.game_turn['hour'] = 5
 		scenario.game_turn['current_phase'] = PHASE_LIST[0]
+		
+		# display scenario info
+		result = DisplayScenInfo()
+		
+		# player cancelled start
+		if not result:
+			return
 		
 		# generate scenario units
 		

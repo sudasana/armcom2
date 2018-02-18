@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-02-16'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-02-18'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -553,6 +553,9 @@ class Scenario:
 		
 		self.units = []				# list of units in the scenario
 		self.player_unit = None			# pointer to the player unit
+		
+		# TEMP - player 'luck' points, will go into a campaign object eventually
+		self.player_luck = 2 + libtcod.random_get_int(0, 1, 3)
 		
 		self.finished = False			# have win/loss conditions been met
 		self.winner = -1			# player number of scenario winner, -1 if None
@@ -1165,6 +1168,7 @@ class Scenario:
 		
 		profile = {}
 		profile['type'] = mode
+		profile['target'] = target
 		modifier_list = []
 		
 		# calculate distance to target
@@ -1240,6 +1244,7 @@ class Scenario:
 		
 		profile = {}
 		profile['type'] = 'ap'
+		profile['target'] = target
 		modifier_list = []
 		
 		# determine location hit on target
@@ -1473,6 +1478,16 @@ class Scenario:
 		
 		roll = GetPercentileRoll()
 		
+		# at this point, if the player tank would be penetrated, they have a chance
+		# to survive using luck
+		if profile['target'] == self.player_unit and profile['type'] == 'ap':
+			if roll <= profile['final_chance']:
+				if self.player_luck > 0:
+					self.player_luck -= 1
+					# generate a random result that would save the player
+					minimum = int(profile['final_chance'] * 10.0)
+					roll = float(libtcod.random_get_int(0, minimum+1, 1000)) / 10.0
+		
 		# display final roll indicators
 		x = int(ceil(24.0 * roll / 100.0))
 		
@@ -1671,7 +1686,7 @@ class Crew:
 		
 	
 	# generate a random first and last name for this crewman
-	# TEMP: normalize extended characters so they can be displayed on screen
+	# TEMP: have to normalize extended characters so they can be displayed on screen
 	def GenerateName(self):
 		
 		# normalize extended characters
@@ -2351,6 +2366,13 @@ class Unit:
 			text = self.GetName() + ' fires at you!'
 			scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
 		
+		# clear LoS if any
+		if self == scenario.player_unit:
+			scenario.player_los_active = False
+			UpdateUnitCon()
+			UpdateScenarioDisplay()
+			libtcod.console_flush()
+		
 		# play sound and show animation if in range of player
 		distance1 = GetHexDistance(self.hx, self.hy, scenario.player_unit.hx,
 			scenario.player_unit.hy)
@@ -2388,9 +2410,15 @@ class Unit:
 		if mode == 'point_fire':
 			self.AddAcquiredTarget(target)
 		
+		# re-enable LoS if player unit
+		if self == scenario.player_unit:
+			scenario.player_los_active = True
+			UpdateUnitCon()
+			UpdateScenarioDisplay()
+			libtcod.console_flush()
+		
 		# break here if attack had no effect
-		# TODO: why is NO PENETRATION here?
-		if result in ['MISS', 'NO PENETRATION']: return True
+		if result == 'MISS': return True
 		
 		# record AP hit to be resolved if target was a vehicle
 		if target.GetStat('category') == 'Vehicle':
@@ -3923,6 +3951,7 @@ def UpdateContextCon():
 				libtcod.light_grey)
 			
 			# TEMP - need this to avoid crash when non-special actions are displayed
+			# TODO: still needed?
 			if 'desc' not in CREW_ACTIONS[action]:
 				lines = []
 			else:
@@ -4245,7 +4274,7 @@ def DoScenario(load_game=False):
 		new_unit.CalcFoV()
 		
 		# enemy units
-		for i in range(2):
+		for i in range(4):
 		
 			new_unit = Unit('7TP')
 			new_unit.owning_player = 1
@@ -4266,7 +4295,6 @@ def DoScenario(load_game=False):
 			scenario.units.append(new_unit)
 		
 		# set dummy enemy units
-		# TEMP - in future should be approx 1/4 of total enemy units
 		dummy_units = 2
 		unit_list = []
 		for unit in scenario.units:

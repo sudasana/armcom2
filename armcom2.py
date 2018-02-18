@@ -4277,7 +4277,7 @@ def DoScenario(load_game=False):
 		new_unit.CalcFoV()
 		
 		# enemy units
-		for i in range(4):
+		for i in range(2):
 		
 			new_unit = Unit('7TP')
 			new_unit.owning_player = 1

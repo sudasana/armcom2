@@ -7,7 +7,7 @@
 #                                                                                        #
 ##########################################################################################
 #             Project Started February 23, 2016; Restarted July 25, 2016                 #
-#                           Restarted again January 11, 2018                              #
+#                           Restarted again January 11, 2018                             #
 ##########################################################################################
 #
 #    Copyright (c) 2016-2018 Gregory Adam Scott (sudasana@gmail.com)
@@ -1622,6 +1622,9 @@ class Scenario:
 	# display a pop-up message overtop the map viewport
 	def ShowMessage(self, message, hx=None, hy=None):
 		
+		# encode message for display
+		message = message.encode('IBM850')
+		
 		# enable hex highlight if any
 		if hx is not None and hy is not None:
 			self.highlighted_hex = (hx, hy)
@@ -1643,7 +1646,7 @@ class Scenario:
 		libtcod.console_flush()
 		
 		# FUTURE: get message pause time from settings
-		Wait(len(lines) * 30)
+		Wait(len(lines) * 60)
 		
 		# clear hex highlight if any
 		if hx is not None and hy is not None:
@@ -1658,8 +1661,8 @@ class Scenario:
 # Crew Class: represents a crewman in a vehicle or a single member of a unit's personnel
 class Crew:
 	def __init__(self, nation, position):
-		self.first_name = ''				# name, set by GenerateName()
-		self.last_name = ''
+		self.first_name = u''				# name, set by GenerateName()
+		self.last_name = u''
 		self.nation = nation
 		self.GenerateName()				# generate random first and last name
 		
@@ -1717,7 +1720,7 @@ class Crew:
 			
 	# return the crewman's full name as an encoded string
 	def GetFullName(self):
-		return (self.first_name + ' ' + self.last_name).encode('IBM850')
+		return (self.first_name + ' ' + self.last_name)
 	
 	# generate a random age for this crewman
 	# FUTURE: can take into account current year of war

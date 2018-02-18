@@ -182,7 +182,7 @@ MAX_LOS_DISTANCE = 6
 
 ELEVATION_M = 10.0			# each elevation level represents x meters of height
 
-# TODO: move this to json file
+# TODO: move this to a json file
 
 # percentile LoS modifiers for terrain types
 TERRAIN_LOS_MODS = {
@@ -796,7 +796,7 @@ class Scenario:
 		##### Rivers #####
 		
 		# TEMP - testing
-		self.map_hexes[(0, 8)].river_edges.append(0)
+		#self.map_hexes[(0, 8)].river_edges.append(0)
 		
 		##### Dirt Road #####
 		hx1, hy1 = 0, self.map_radius

@@ -795,8 +795,8 @@ class Scenario:
 		
 		##### Rivers #####
 		
-		# TEMP - testing
-		self.map_hexes[(0, 8)].river_edges.append(0)
+		# not yet implemented - need to do pathfinding along hex corners
+		#self.map_hexes[(0, 8)].river_edges.append(0)
 		
 		##### Dirt Road #####
 		hx1, hy1 = 0, self.map_radius
@@ -1947,6 +1947,7 @@ class Unit:
 		
 		self.screen_x = 0			# draw location on the screen
 		self.screen_y = 0			#   set by DrawMe()
+							# TODO: at present is relative to unit_con, not screen
 		self.vp_hx = None			# location in viewport if any
 		self.vp_hy = None			# "
 		self.anim_x = 0				# animation location in console
@@ -2350,10 +2351,27 @@ class Unit:
 			text = self.GetName() + ' fires at you!'
 			scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
 		
-		# play attack sound if possible
-		PlaySoundFor(weapon, 'fire')
+		# play sound and show animation if in range of player
+		distance1 = GetHexDistance(self.hx, self.hy, scenario.player_unit.hx,
+			scenario.player_unit.hy)
+		distance2 = GetHexDistance(target.hx, target.hy, scenario.player_unit.hx,
+			scenario.player_unit.hy)
+		if distance1 <= 6 and distance2 <= 6:
 		
-		# TODO: display attack animation
+			x1, y1 = self.screen_x, self.screen_y
+			x2, y2 = target.screen_x, target.screen_y
+			line = GetLine(x1,y1,x2,y2)
+			
+			PlaySoundFor(weapon, 'fire')
+			
+			# TEMP: uses the root console, future will have an animation console
+			for (x,y) in line[1:-1]:
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_put_char(0, x+31, y+4, 250)
+				libtcod.console_flush()
+				Wait(10)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
 		
 		# calculate the attack profile
 		attack_profile = scenario.CalcAttack(self, weapon, target, mode)
@@ -3122,7 +3140,8 @@ def PlaySound(sound_name):
 def PlaySoundFor(obj, action):
 	if action == 'fire':
 		if obj.GetStat('type') == 'Gun':
-			if obj.stats['calibre'] == "37":
+			# TEMP - can add more detail in future
+			if obj.stats['calibre'] in ["37", "47"]:
 				n = libtcod.random_get_int(0, 0, 3)
 				PlaySound('37mm_firing_0' + str(n))
 				return

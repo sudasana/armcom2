@@ -3154,11 +3154,10 @@ def PlaySoundFor(obj, action):
 
 
 ##########################################################################################
-#                                     In-Game Menu                                       #
+#                              In-Game Menus and Displays                                #
 ##########################################################################################
 
 # display the game menu to screen, with the given tab active
-
 def ShowGameMenu(active_tab):
 	
 	# draw the contents of the currently active tab to the menu console
@@ -3209,8 +3208,6 @@ def ShowGameMenu(active_tab):
 	
 	# generate menu console for the first time and blit to screen
 	DrawMenuCon(active_tab)
-	
-	# blit menu to screen
 	
 	Wait(15)
 	
@@ -3287,6 +3284,83 @@ def ShowGameMenu(active_tab):
 	del temp_con
 	return result
 
+
+# display information about a scenario about to start
+def DisplayScenInfo():
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+	# darken screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	
+	# load and build scenario info window
+	scen_info_con = LoadXP('scen_summary_bkg.xp')
+	# TEMP: most of this will be drawn from scenario object in future
+	libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
+	libtcod.console_print_ex(scen_info_con, 14, 1, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Western Poland')
+	libtcod.console_print_ex(scen_info_con, 14, 2, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'September 1939')
+	text = str(scenario.game_turn['hour']) + ':' + str(scenario.game_turn['minute']).zfill(2)
+	libtcod.console_print_ex(scen_info_con, 14, 3, libtcod.BKGND_NONE,
+		libtcod.CENTER, text)
+	
+	libtcod.console_set_default_foreground(scen_info_con, libtcod.light_grey)
+	text = ('You have advanced into an area held by enemy forces. You must capture this area ' +
+		'in order to continue your advance.')
+	lines = wrap(text, 25)
+	y = 7
+	for line in lines[:9]:
+		libtcod.console_print(scen_info_con, 2, y, line)
+		y+=1
+	
+	libtcod.console_print_ex(scen_info_con, 14, 20, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Light Armour')
+	
+	libtcod.console_print(scen_info_con, 1, 27, '1) Capture all objectives')
+	libtcod.console_print_ex(scen_info_con, 14, 29, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'OR')
+	libtcod.console_print(scen_info_con, 1, 31, '2) Destroy all enemy units')
+	
+	libtcod.console_print_ex(scen_info_con, 14, 40, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Light Armour')
+	
+	# display to screen
+	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, 0, 31, 3)
+	
+	Wait(15)
+	
+	# get input from player
+	exit_menu = False
+	result = ''
+	while not exit_menu:
+		libtcod.console_flush()
+		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
+		if libtcod.console_is_window_closed(): sys.exit()
+		
+		if key is None: continue
+		
+		# cancel scenario start
+		if key.vk == libtcod.KEY_ESCAPE:
+			result = False
+			exit_menu = True
+		
+		# confirm and continue
+		elif key.vk == libtcod.KEY_ENTER:
+			result = True
+			exit_menu = True
+	
+	# replace original screen if canceling
+	if not result:
+		libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		Wait(15)
+	del temp_con
+	del scen_info_con
+	return result
 
 
 ##########################################################################################
@@ -4135,6 +4209,13 @@ def DoScenario(load_game=False):
 		# set up time of day and current phase
 		scenario.game_turn['hour'] = 5
 		scenario.game_turn['current_phase'] = PHASE_LIST[0]
+		
+		# display scenario info
+		result = DisplayScenInfo()
+		
+		# player cancelled start
+		if not result:
+			return
 		
 		# generate scenario units
 		

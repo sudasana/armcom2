@@ -57,6 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags TEMP
 AI_SPY = False						# write description of AI actions to console
+AI_NO_ACTION = True					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-02-20'				# game version in Semantic Versioning format: http://semver.org/
@@ -283,8 +284,6 @@ class Session:
 		for sound_name in SOUND_LIST:
 			self.sample[sound_name] = mixer.Mix_LoadWAV(SOUNDPATH + sound_name + '.ogg')
 		
-		print 'SDL2_mixer: loaded ' + str(len(SOUND_LIST)) + ' sound samples'
-		
 
 # AI: controller for enemy and player-allied units
 class AI:
@@ -334,6 +333,10 @@ class AI:
 					self.disposition = 'Combat'
 			else:
 				self.disposition = 'Movement'
+			
+			# debug testing override
+			if AI_NO_ACTION:
+				self.disposition = None
 			
 			# set crew actions according to disposition
 			if self.disposition is None:
@@ -1864,10 +1867,10 @@ class Weapon:
 			self.max_range = int(self.stats['max_range'])
 			del self.stats['max_range']
 		else:
-			if self.stats['type'] == 'Coax MG':
-				self.max_range = 4
+			if self.stats['type'] == 'Co-ax MG':
+				self.max_range = 3
 			elif self.stats['type'] == 'Hull MG':
-				self.max_range = 2
+				self.max_range = 1
 		
 		self.InitScenarioStats()
 
@@ -1900,6 +1903,7 @@ class Unit:
 			unit_types = json.load(data_file)
 		if unit_id not in unit_types:
 			print 'ERROR: Could not find unit id: ' + unit_id
+			self.unit_id = None
 			return
 		self.stats = unit_types[unit_id].copy()
 		
@@ -1912,7 +1916,11 @@ class Unit:
 		if 'crew_positions' in self.stats:
 			for position in self.stats['crew_positions']:
 				name = position['name']
-				location = position['location']
+				
+				# infantry units don't have locations as such
+				location = None
+				if 'location' in position:
+					location = position['location']
 				
 				hatch = False
 				if 'hatch' in position:
@@ -1937,10 +1945,6 @@ class Unit:
 		weapon_list = self.stats['weapon_list']
 		if weapon_list is not None:
 			for weapon in weapon_list:
-				
-				# TEMP - skip adding MGs
-				if weapon['type'] in ['Coax MG', 'Hull MG']:
-					continue
 				
 				# create a Weapon object and store in unit's weapon list
 				new_weapon = Weapon(weapon)
@@ -2007,6 +2011,12 @@ class Unit:
 			return 'Unknown Unit'
 		return self.unit_id
 	
+	# place this unit into the scenario map at hx, hy
+	def SpawnAt(self, hx, hy):
+		self.hx = hx
+		self.hy = hy
+		scenario.map_hexes[(hx, hy)].unit_stack.append(self)
+	
 	# calculate which hexes are visible to this unit
 	def CalcFoV(self):
 		
@@ -2028,16 +2038,22 @@ class Unit:
 			position.crewman.fov.add((self.hx, self.hy))
 			
 			visible_hextants = []
-			if not position.hatch:
-				visible_hextants = position.closed_visible[:]
+			
+			# infantry can see all around but not as far
+			if self.GetStat('category') == 'Infantry':
+				visible_hextants = [0,1,2,3,4,5]
 				max_distance = MAX_BU_LOS_DISTANCE
 			else:
-				if position.hatch_open:
-					visible_hextants = position.open_visible[:]
-					max_distance = MAX_LOS_DISTANCE
-				else:
+				if not position.hatch:
 					visible_hextants = position.closed_visible[:]
 					max_distance = MAX_BU_LOS_DISTANCE
+				else:
+					if position.hatch_open:
+						visible_hextants = position.open_visible[:]
+						max_distance = MAX_LOS_DISTANCE
+					else:
+						visible_hextants = position.closed_visible[:]
+						max_distance = MAX_BU_LOS_DISTANCE
 			
 			# restrict visible hextants and max distance if crewman did a
 			# special action last turn
@@ -2051,14 +2067,15 @@ class Unit:
 					if int(action['fov_range']) < max_distance:
 						max_distance = int(action['fov_range'])
 			
-			# rotate visible hextants based on current turret/hull facing
-			if position.location == 'Turret':
-				direction = self.turret_facing
-			else:
-				direction = self.facing
-			if direction != 0:
-				for i, hextant in enumerate(visible_hextants):
-					visible_hextants[i] = ConstrainDir(hextant + direction)
+			if self.facing is not None:
+				# rotate visible hextants based on current turret/hull facing
+				if position.location == 'Turret':
+					direction = self.turret_facing
+				else:
+					direction = self.facing
+				if direction != 0:
+					for i, hextant in enumerate(visible_hextants):
+						visible_hextants[i] = ConstrainDir(hextant + direction)
 			
 			# go through hexes in each hextant and check LoS if within spotting distance
 			for hextant in visible_hextants:
@@ -2532,9 +2549,9 @@ class Unit:
 					text = (position.crewman.GetFullName() + ' says: ' + 
 						"Thought there was something there, but I don't see anything.")
 				else:
-					text = (position.crewman.GetFullName() + ' says: ' + 
-						target.GetName() + ' ' + target.GetStat('class') +
-						' spotted!')
+					text = position.crewman.GetFullName() + ' says: '
+					text += target.GetName() + ' ' + target.GetStat('class')
+					text += ' spotted!'
 				scenario.ShowMessage(text, hx=target.hx, hy=target.hy)
 			else:
 				text = 'You have been spotted!'
@@ -3752,17 +3769,17 @@ def UpdatePlayerInfoCon():
 	libtcod.console_set_default_background(player_info_con, libtcod.darkest_red)
 	libtcod.console_rect(player_info_con, 0, 10, 24, 2, True, libtcod.BKGND_SET)
 	
-	text = ''
+	text1 = ''
+	text2 = ''
 	for weapon in unit.weapon_list:
-		if text != '':
-			text += ', '
-		text += weapon.stats['name']
-	lines = wrap(text, 24)
-	y = 10
-	for line in lines:
-		libtcod.console_print(player_info_con, 0, y, line)
-		y += 1
-		if y == 12: break
+		if weapon.GetStat('type') == 'Gun':
+			if text1 != '': text1 += ', '
+			text1 += weapon.stats['name']
+		else:
+			if text2 != '': text2 += ', '
+			text2 +=weapon.stats['name']
+	libtcod.console_print(player_info_con, 0, 10, text1)
+	libtcod.console_print(player_info_con, 0, 11, text2)
 	
 	# armour
 	armour = unit.GetStat('armour')
@@ -4263,76 +4280,77 @@ def DoScenario(load_game=False):
 		
 		# player tank
 		new_unit = Unit('Panzer 38(t) A')
-		new_unit.owning_player = 0
-		new_unit.nation = 'Germany'
-		new_unit.facing = 0
-		new_unit.turret_facing = 0
+		if new_unit.unit_id is not None:
+			new_unit.owning_player = 0
+			new_unit.nation = 'Germany'
+			new_unit.facing = 0
+			new_unit.turret_facing = 0
+			
+			# spawn into map: 2 hexes up from bottom corner
+			new_unit.SpawnAt(0, scenario.map_radius - 2)
 		
+			# generate a new crew for this unit
+			new_unit.GenerateNewCrew()
+			scenario.units.append(new_unit)
+			scenario.player_unit = new_unit
+			new_unit.CalcFoV()
 		
-		# determine player unit spawn location on map: 2 hexes up from bottom corner
-		new_unit.hx = 0
-		new_unit.hy = scenario.map_radius - 2
-		
-		# add this unit to the hex stack
-		# FUTURE: integrate into a spawn unit function
-		scenario.map_hexes[(new_unit.hx, new_unit.hy)].unit_stack.append(new_unit)
-		
-		
-		# generate a new crew for this unit
-		new_unit.GenerateNewCrew()
-		
-		scenario.units.append(new_unit)
-		scenario.player_unit = new_unit
-		
-		new_unit.CalcFoV()
+		# TEMP - testing enemy infantry
+		new_unit = Unit('Riflemen')
+		if new_unit.unit_id is not None:
+			new_unit.owning_player = 1
+			new_unit.ai = AI(new_unit)
+			new_unit.nation = 'Poland'
+			scenario.units.append(new_unit)
+			new_unit.SpawnAt(0, scenario.map_radius - 4)
 		
 		# enemy units
-		for i in range(2):
+		#for i in range(2):
 		
-			new_unit = Unit('7TP')
-			new_unit.owning_player = 1
-			new_unit.ai = AI(new_unit)
-			new_unit.nation = 'Poland'
-			new_unit.facing = 3
-			new_unit.turret_facing = 3
-			new_unit.GenerateNewCrew()
-			scenario.units.append(new_unit)
+		#	new_unit = Unit('7TP')
+		#	new_unit.owning_player = 1
+		#	new_unit.ai = AI(new_unit)
+		#	new_unit.nation = 'Poland'
+		#	new_unit.facing = 3
+		#	new_unit.turret_facing = 3
+		#	new_unit.GenerateNewCrew()
+		#	scenario.units.append(new_unit)
 			
-			new_unit = Unit('Vickers 6-Ton Mark E')
-			new_unit.owning_player = 1
-			new_unit.ai = AI(new_unit)
-			new_unit.nation = 'Poland'
-			new_unit.facing = 3
-			new_unit.turret_facing = 3
-			new_unit.GenerateNewCrew()
-			scenario.units.append(new_unit)
+		#	new_unit = Unit('Vickers 6-Ton Mark E')
+		#	new_unit.owning_player = 1
+		#	new_unit.ai = AI(new_unit)
+		#	new_unit.nation = 'Poland'
+		#	new_unit.facing = 3
+		#	new_unit.turret_facing = 3
+		#	new_unit.GenerateNewCrew()
+		#	scenario.units.append(new_unit)
 		
 		# set dummy enemy units
-		dummy_units = 2
-		unit_list = []
-		for unit in scenario.units:
-			if unit.owning_player == 1:
-				unit_list.append(unit)
-		unit_list = sample(unit_list, dummy_units)	
-		for unit in unit_list:
-			unit.dummy = True
+		#dummy_units = 2
+		#unit_list = []
+		#for unit in scenario.units:
+		#	if unit.owning_player == 1:
+		#		unit_list.append(unit)
+		#unit_list = sample(unit_list, dummy_units)	
+		#for unit in unit_list:
+		#	unit.dummy = True
 		
 		# TEMP - place enemy units randomly
-		for unit in scenario.units:
-			if unit.owning_player == 0: continue
-			for tries in range(300):
-				(hx, hy) = choice(scenario.map_hexes.keys())
+		#for unit in scenario.units:
+		#	if unit.owning_player == 0: continue
+		#	for tries in range(300):
+		#		(hx, hy) = choice(scenario.map_hexes.keys())
 				
 				# terrain is not passable
-				if scenario.map_hexes[(hx, hy)].terrain_type == 'pond':
-					continue
+		#		if scenario.map_hexes[(hx, hy)].terrain_type == 'pond':
+		#			continue
 				
-				if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 4:
-					continue
+		#		if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 4:
+		#			continue
 				
-				unit.hx, unit.hy = hx, hy
-				scenario.map_hexes[(hx, hy)].unit_stack.append(unit)
-				break
+		#		unit.hx, unit.hy = hx, hy
+		#		scenario.map_hexes[(hx, hy)].unit_stack.append(unit)
+		#		break
 		
 		# set up VP hexes and generate initial VP console
 		scenario.CenterVPOnPlayer()

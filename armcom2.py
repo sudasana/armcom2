@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-02-18'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-02-20'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -223,6 +223,14 @@ MAX_LOS_MOD = 60.0
 ##########################################################################################
 #                                         Classes                                        #
 ##########################################################################################
+
+# Campaign: stores data about a campaign in progress, made up of campaign days
+class Campaign:
+	def __init__(self):
+		
+		# nation of player forces; corresponds to a key in nation_defs.json
+		self.player_nation = ''
+
 
 # Session: stores data that is generated for each game session and not stored in the saved game
 class Session:
@@ -3133,13 +3141,15 @@ def WaitForEnter(allow_cancel=False):
 def SaveGame():
 	save = shelve.open('savegame', 'n')
 	save['scenario'] = scenario
+	save['campaign'] = campaign
 	save.close()
 
 
 # load a saved game
 def LoadGame():
-	global scenario
+	global campaign, scenario
 	save = shelve.open('savegame')
+	campaign = save['campaign']
 	scenario = save['scenario']
 	save.close()
 
@@ -4820,7 +4830,8 @@ while not exit_game:
 				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 				Wait(15)
 				continue
-		
+		campaign = Campaign()
+		campaign.player_nation = 'Germany'
 		DoScenario()
 		UpdateMainMenuCon()
 		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)

@@ -1576,14 +1576,26 @@ class Scenario:
 		if weapon.fired:
 			return 'Weapon already fired this turn'
 		
-		# TEMP: assume that attack is point fire
-		if not target.known:
-			return 'Target not spotted'
+		# point-fire attacks must have a spotted target
+		# TEMP - check for ammo type in future
+		if weapon.GetStat('type') == 'Gun':
+			if not target.known:
+				return 'Target must be spotted for this attack'
 
-		# check crew order
-		# TEMP: need to make more specific to this weapon
-		if not attacker.CheckCrewAction(['Commander/Gunner', 'Gunner/Loader', 'Gunner'], ['Operate Gun']):
-			return 'Crewman not on Operate Gun order'
+		# check that proper crew action is set for this attack
+		weapon_type = weapon.GetStat('type')
+		position_list = weapon.GetStat('fired_by')
+		
+		if weapon_type in ['Gun', 'Co-ax MG']:
+			action_list = ['Operate Gun']
+		elif weapon_type == 'Hull MG':
+			action_list = ['Operate Hull MG']
+		
+		if not attacker.CheckCrewAction(position_list, action_list):
+			text = 'Crewman not on required action: '
+			# TEMP - give full list in future
+			text += action_list[0]
+			return text
 
 		# attack can proceed
 		return ''
@@ -2407,21 +2419,25 @@ class Unit:
 		distance2 = GetHexDistance(target.hx, target.hy, scenario.player_unit.hx,
 			scenario.player_unit.hy)
 		if distance1 <= 6 and distance2 <= 6:
-		
-			x1, y1 = self.screen_x, self.screen_y
-			x2, y2 = target.screen_x, target.screen_y
-			line = GetLine(x1,y1,x2,y2)
-			
-			PlaySoundFor(weapon, 'fire')
 			
 			# TEMP: uses the root console, future will have an animation console
-			for (x,y) in line[1:-1]:
+			
+			# Gun animation
+			if weapon.GetStat('type') == 'Gun':
+		
+				x1, y1 = self.screen_x, self.screen_y
+				x2, y2 = target.screen_x, target.screen_y
+				line = GetLine(x1,y1,x2,y2)
+				
+				PlaySoundFor(weapon, 'fire')
+				
+				for (x,y) in line[1:-1]:
+					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+					libtcod.console_put_char(0, x+31, y+4, 250)
+					libtcod.console_flush()
+					Wait(10)
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-				libtcod.console_put_char(0, x+31, y+4, 250)
 				libtcod.console_flush()
-				Wait(10)
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
 		
 		# calculate the attack profile
 		attack_profile = scenario.CalcAttack(self, weapon, target, mode)
@@ -3892,15 +3908,13 @@ def UpdateCommandCon():
 		if scenario.game_turn['active_player'] != 0: return
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		# TEMP - hidden since no additional weapons have been added yet
-		#libtcod.console_print(command_con, 2, 2, 'W/S')
+		libtcod.console_print(command_con, 2, 2, 'W/S')
 		libtcod.console_print(command_con, 2, 3, 'Q/E')
 		libtcod.console_print(command_con, 2, 4, 'A/D')
 		libtcod.console_print(command_con, 2, 5, 'F')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		# TEMP - hidden since no additional weapons have been added yet
-		#libtcod.console_print(command_con, 9, 2, 'Select Weapon')
+		libtcod.console_print(command_con, 9, 2, 'Select Weapon')
 		libtcod.console_print(command_con, 9, 3, 'Rotate Turret')
 		libtcod.console_print(command_con, 9, 4, 'Select Target')
 		libtcod.console_print(command_con, 9, 5, 'Fire')
@@ -4149,7 +4163,7 @@ def UpdateScenarioDisplay():
 		text = 'Player'
 	else:
 		text = 'Enemy'
-	text += ' Turn ' + str(scenario.game_turn['turn_number'])
+	text += ' Turn'# ' + str(scenario.game_turn['turn_number'])
 	libtcod.console_print_ex(con, 58, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	text = str(scenario.game_turn['hour']) + ':' + str(scenario.game_turn['minute']).zfill(2)
@@ -4270,11 +4284,12 @@ def DoScenario(load_game=False):
 		scenario.game_turn['current_phase'] = PHASE_LIST[0]
 		
 		# display scenario info
-		result = DisplayScenInfo()
+		# TEMP - disabled
+		#result = DisplayScenInfo()
 		
 		# player cancelled start
-		if not result:
-			return
+		#if not result:
+		#	return
 		
 		# generate scenario units
 		
@@ -4302,7 +4317,7 @@ def DoScenario(load_game=False):
 			new_unit.ai = AI(new_unit)
 			new_unit.nation = 'Poland'
 			scenario.units.append(new_unit)
-			new_unit.SpawnAt(0, scenario.map_radius - 4)
+			new_unit.SpawnAt(0, scenario.map_radius - 3)
 		
 		# enemy units
 		#for i in range(2):

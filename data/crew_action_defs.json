@@ -31,6 +31,12 @@
 		"position_list" : [],
 		"fov_hextants" : ["0"],
 		"fov_range" : "1"
+	},
+	"Operate Hull MG" : {
+		"desc" : "Operate the hull-mounted MG",
+		"position_list" : ["Assistant Driver"],
+		"fov_hextants" : ["0"],
+		"fov_range" : "6"
 	}
 	
 }

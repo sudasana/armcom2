@@ -177,6 +177,16 @@ AP_BASE_CHANCE = {
 	'47S' : 72.0
 }
 
+# base success chances for firepower attacks: infantry/gun and vehicle targets
+# success means that the attack is effective in some way, otherwise ineffective
+INF_FP_BASE_CHANCE = 15.0
+VEH_FP_BASE_CHANCE = 5.0
+# each additional firepower beyond 1 adds this additional chance
+FP_CHANCE_STEP = 5.0
+# additional firepower modifier reduced by this much beyond 1
+FP_CHANCE_STEP_MOD = 0.95
+
+
 # visible distances for crewmen when buttoned up and exposed
 MAX_BU_LOS_DISTANCE = 3
 MAX_LOS_DISTANCE = 6
@@ -1175,10 +1185,21 @@ class Scenario:
 	
 	# calculate the odds of success of a ranged attack, return a dictionary of data
 	# including base chance, modifiers, and final chance
-	def CalcAttack(self, attacker, weapon, target, mode):
+	def CalcAttack(self, attacker, weapon, target):
 		
 		profile = {}
-		profile['type'] = mode
+		
+		# determine attack type: point or area; AP results are handled by CalcAP()
+		# TEMP - check for ammo type in future
+		weapon_type = weapon.GetStat('type')
+		if weapon_type == 'Gun':
+			profile['type'] = 'Point Fire'
+		elif weapon_type in ['Co-ax MG', 'Hull MG']:
+			profile['type'] = 'Area Fire'
+		else:
+			print 'ERROR: Weapon type not recognized: ' + weapon.stats['name']
+			return profile
+		
 		profile['target'] = target
 		modifier_list = []
 		
@@ -1186,7 +1207,7 @@ class Scenario:
 		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 		
 		# point fire attacks (eg. large guns)
-		if mode == 'point_fire':
+		if profile['type'] == 'Point Fire':
 			
 			# calculate base success chance
 			if target.GetStat('category') == 'Vehicle':
@@ -1235,6 +1256,22 @@ class Scenario:
 			elevation2 = self.map_hexes[(target.hx, target.hy)].elevation
 			if elevation2 > elevation1:
 				modifier_list.append(('Higher Elevation', -20.0))
+		
+		# area fire
+		elif profile['type'] == 'Area Fire':
+			
+			# calculate base success chance
+			if target.GetStat('category') == 'Vehicle':
+				base_chance = VEH_FP_BASE_CHANCE
+			else:
+				base_chance = INF_FP_BASE_CHANCE
+			fp = int(weapon.GetStat('fp'))
+			for i in range(2, fp + 1):
+				base_chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
+			profile['base_chance'] = round(base_chance, 2)
+			
+			# TODO: calculate modifiers
+			
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -1335,7 +1372,7 @@ class Scenario:
 		return profile
 	
 	# display an attack or AP profile to the screen and prompt to proceed
-	def DisplayAttack(self, attacker, weapon, target, mode, profile):
+	def DisplayAttack(self, attacker, weapon, target, profile):
 		libtcod.console_clear(attack_con)
 		
 		# display the background outline
@@ -1393,8 +1430,17 @@ class Scenario:
 				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 13)
 		
 		# base chance
-		text = 'Base Chance: ' + str(profile['base_chance']) + '%%'
+		text = 'Base Chance to '
+		if profile['type'] == 'ap':
+			text += 'Penetrate:'
+		elif profile['type'] == 'Area Fire':
+			text += 'Effect:'
+		else:
+			text += 'Hit:'
 		libtcod.console_print_ex(attack_con, 13, 23, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+		text = str(profile['base_chance']) + '%%'
+		libtcod.console_print_ex(attack_con, 13, 24, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 		
 		# modifiers
@@ -1583,9 +1629,9 @@ class Scenario:
 				return 'Target must be spotted for this attack'
 
 		# check that proper crew action is set for this attack
-		weapon_type = weapon.GetStat('type')
-		position_list = weapon.GetStat('fired_by')
 		
+		position_list = weapon.GetStat('fired_by')
+		weapon_type = weapon.GetStat('type')
 		if weapon_type in ['Gun', 'Co-ax MG']:
 			action_list = ['Operate Gun']
 		elif weapon_type == 'Hull MG':
@@ -2386,7 +2432,7 @@ class Unit:
 		# otherwise, already acquired target to 2 levels, no further effect
 	
 	# start an attack with the given weapon on the given target
-	def Attack(self, weapon, target, mode):
+	def Attack(self, weapon, target):
 		
 		# check to see that correct data has been supplied
 		if weapon is None or target is None:
@@ -2440,10 +2486,10 @@ class Unit:
 				libtcod.console_flush()
 		
 		# calculate the attack profile
-		attack_profile = scenario.CalcAttack(self, weapon, target, mode)
+		attack_profile = scenario.CalcAttack(self, weapon, target)
 		
 		# display the attack to the screen
-		scenario.DisplayAttack(self, weapon, target, mode, attack_profile)
+		scenario.DisplayAttack(self, weapon, target, attack_profile)
 		WaitForEnter()
 		
 		# do the roll and display results to the screen
@@ -2451,7 +2497,7 @@ class Unit:
 		WaitForEnter()
 		
 		# add acquired target if doing point fire
-		if mode == 'point_fire':
+		if attack_profile['type'] == 'Point Fire':
 			self.AddAcquiredTarget(target)
 		
 		# re-enable LoS if player unit
@@ -4633,7 +4679,7 @@ def DoScenario(load_game=False):
 			# fire the active weapon at the selected target
 			elif key_char == 'f':
 				result = scenario.player_unit.Attack(scenario.selected_weapon,
-					scenario.player_target, 'point_fire')
+					scenario.player_target)
 				if result:
 					# clear player target
 					scenario.player_target = None

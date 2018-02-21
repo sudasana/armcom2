@@ -1145,7 +1145,6 @@
 	"Riflemen": {
 		"category" : "Infantry",
 		"class" : "Infantry Squad",
-		"portrait" : "",
 		"movement_class" : "Infantry",
 		"weapon_list" : [
 			{

@@ -1224,7 +1224,7 @@ class Scenario:
 				modifier_list.append(('Attacker Moved', -60.0))
 			# TODO: elif weapon turret rotated
 			
-			# TODO: LoS modifier
+			# LoS modifier
 			los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 			if los > 0.0:
 				modifier_list.append(('Terrain', 0.0 - los))
@@ -1270,8 +1270,29 @@ class Scenario:
 				base_chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
 			profile['base_chance'] = round(base_chance, 2)
 			
-			# TODO: calculate modifiers
+			# store the rounded base chance so we can use it later for modifiers
+			base_chance = profile['base_chance']
 			
+			# calculate modifiers
+			
+			# attacker moved
+			if attacker.moved:
+				mod = round(base_chance / 2.0, 2)
+				modifier_list.append(('Attacker Moved', 0.0 - mod))
+			
+			# close range
+			if distance == 1:
+				modifier_list.append(('Close Range', base_chance))
+			
+			# LoS modifier
+			los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
+			if los > 0.0:
+				modifier_list.append(('Terrain', 0.0 - los))
+			
+			# target is infantry and moved
+			if target.moved and target.GetStat('category') == 'Infantry':
+				mod = round(base_chance / 2.0, 2)
+				modifier_list.append(('Target Infantry Moved', mod))			
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -1487,6 +1508,8 @@ class Scenario:
 		libtcod.console_set_default_background(attack_con, libtcod.red)
 		libtcod.console_rect(attack_con, x+1, 49, 24-x, 3, False, libtcod.BKGND_SET)
 		
+		# TODO: additional band for area fire: partial effect
+		
 		# critical hit band
 		libtcod.console_set_default_foreground(attack_con, libtcod.blue)
 		for y in range(49, 52):
@@ -1565,6 +1588,12 @@ class Scenario:
 				text = 'PENETRATED'
 			else:
 				text = 'NO PENETRATION'
+		
+		# TODO: calculate Area Fire results
+		elif profile['type'] == 'Area Fire':
+			pass
+		
+		# point fire attack
 		else:
 			if roll >= CRITICAL_MISS:
 				text = 'MISS'
@@ -1584,18 +1613,6 @@ class Scenario:
 		libtcod.console_flush()
 		
 		return text
-		
-		if profile['type'] == 'ap':
-			if roll <= profile['final_chance']:
-				return 'penetrated'
-			else:
-				return 'no_penetrate'
-		
-		if roll <= CRITICAL_HIT:
-			return 'critical_hit'
-		if roll <= profile['final_chance']:
-			return 'hit'
-		return 'miss'
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
 	# valid attack; if not, return a text description of why not

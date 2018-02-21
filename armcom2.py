@@ -2524,6 +2524,9 @@ class Unit:
 			UpdateScenarioDisplay()
 			libtcod.console_flush()
 		
+		# TODO: handle results of FP attacks here as well:
+		# should DoAttackRoll return a string and an int (effective fp)?
+		
 		# break here if attack had no effect
 		if result == 'MISS': return True
 		

@@ -1183,24 +1183,29 @@ class Scenario:
 			
 		return True
 	
-	# calculate the odds of success of a ranged attack, return a dictionary of data
-	# including base chance, modifiers, and final chance
+	# calculate the odds of success of a ranged attack, returns an attack profile
 	def CalcAttack(self, attacker, weapon, target):
 		
 		profile = {}
 		
+		profile['attacker'] = attacker
+		profile['weapon'] = weapon
+		profile['target'] = target
+		profile['result'] = ''		# placeholder for text rescription of result
+		
 		# determine attack type: point or area; AP results are handled by CalcAP()
-		# TEMP - check for ammo type in future
+		
+		# TEMP - check for active ammo type in future
 		weapon_type = weapon.GetStat('type')
 		if weapon_type == 'Gun':
 			profile['type'] = 'Point Fire'
 		elif weapon_type in ['Co-ax MG', 'Hull MG']:
 			profile['type'] = 'Area Fire'
+			profile['effective_fp'] = 0		# placeholder for effective fp
 		else:
 			print 'ERROR: Weapon type not recognized: ' + weapon.stats['name']
-			return profile
+			return None
 		
-		profile['target'] = target
 		modifier_list = []
 		
 		# calculate distance to target
@@ -1266,6 +1271,7 @@ class Scenario:
 			else:
 				base_chance = INF_FP_BASE_CHANCE
 			fp = int(weapon.GetStat('fp'))
+			profile['base_fp'] = fp
 			for i in range(2, fp + 1):
 				base_chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
 			profile['base_chance'] = round(base_chance, 2)
@@ -1309,12 +1315,15 @@ class Scenario:
 	
 	# calculate an armour penetration attempt
 	# also determines location hit on target
-	def CalcAP(self, attacker, weapon, target, result):
+	def CalcAP(self, profile):
 		
-		profile = {}
 		profile['type'] = 'ap'
-		profile['target'] = target
 		modifier_list = []
+		
+		# create local pointers for convenience
+		attacker = profile['attacker']
+		weapon = profile['weapon']
+		target = profile['target']
 		
 		# determine location hit on target
 		if libtcod.random_get_int(0, 1, 6) <= 4:
@@ -1374,7 +1383,7 @@ class Scenario:
 				modifier_list.append(('Target Armour', modifier))
 				
 				# apply critical hit modifier if any
-				if result == 'CRITICAL HIT':
+				if profile['result'] == 'CRITICAL HIT':
 					modifier = abs(modifier) * 0.8
 					modifier_list.append(('Critical Hit', modifier))
 				
@@ -1393,7 +1402,8 @@ class Scenario:
 		return profile
 	
 	# display an attack or AP profile to the screen and prompt to proceed
-	def DisplayAttack(self, attacker, weapon, target, profile):
+	# does not alter the profile
+	def DisplayAttack(self, profile):
 		libtcod.console_clear(attack_con)
 		
 		# display the background outline
@@ -1418,20 +1428,20 @@ class Scenario:
 			libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
 		
 			# TEMP: in future will store portraits for every active unit type in session object
-			if not (attacker.owning_player == 1 and not attacker.known):
-				portrait = attacker.GetStat('portrait')
+			if not (profile['attacker'].owning_player == 1 and not profile['attacker'].known):
+				portrait = profile['attacker'].GetStat('portrait')
 				if portrait is not None:
 					libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 2)
 		
 		# attack description
 		if profile['type'] == 'ap':
-			text1 = target.GetName()
-			text2 = 'hit by ' + weapon.GetStat('name')
+			text1 = profile['target'].GetName()
+			text2 = 'hit by ' + profile['weapon'].GetStat('name')
 			text3 = 'in ' + profile['location_desc']
 		else:
-			text1 = attacker.GetName()
-			text2 = 'firing ' + weapon.GetStat('name') + ' at'
-			text3 = target.unit_id
+			text1 = profile['attacker'].GetName()
+			text2 = 'firing ' + profile['weapon'].GetStat('name') + ' at'
+			text3 = profile['target'].unit_id
 		
 		libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE,
 			libtcod.CENTER, text1)
@@ -1445,8 +1455,8 @@ class Scenario:
 		libtcod.console_rect(attack_con, 1, 13, 24, 8, False, libtcod.BKGND_SET)
 		
 		# TEMP: in future will store portraits for every active unit type in session object
-		if not (target.owning_player == 1 and not target.known):
-			portrait = target.GetStat('portrait')
+		if not (profile['target'].owning_player == 1 and not profile['target'].known):
+			portrait = profile['target'].GetStat('portrait')
 			if portrait is not None:
 				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 13)
 		
@@ -1479,13 +1489,15 @@ class Scenario:
 			for (desc, mod) in profile['modifier_list']:
 				libtcod.console_print(attack_con, 2, y, desc)
 				
-				# TODO: display more arrows if modifier is more severe
 				if mod > 0.0:
 					col = libtcod.green
-					text = chr(232)
+					text = '+'
 				else:
 					col = libtcod.red
-					text = chr(233)
+					text = ''
+				
+				text += str(mod)
+				
 				libtcod.console_set_default_foreground(attack_con, col)
 				libtcod.console_print_ex(attack_con, 24, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, text)
@@ -1493,14 +1505,14 @@ class Scenario:
 				
 				y += 1
 		
-		# final chance
+		# display final chance
 		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
 		libtcod.console_rect(attack_con, 1, 46, 24, 1, False, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(attack_con, libtcod.black)
 		libtcod.console_print_ex(attack_con, 13, 46, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Final Chance')
 		
-		# chance graph display
+		# display chance graph 
 		x = int(ceil(24.0 * profile['final_chance'] / 100.0))
 		libtcod.console_set_default_background(attack_con, libtcod.green)
 		libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
@@ -1508,7 +1520,7 @@ class Scenario:
 		libtcod.console_set_default_background(attack_con, libtcod.red)
 		libtcod.console_rect(attack_con, x+1, 49, 24-x, 3, False, libtcod.BKGND_SET)
 		
-		# TODO: additional band for area fire: partial effect
+		# TODO: display an additional band for area fire: partial effect
 		
 		# critical hit band
 		libtcod.console_set_default_foreground(attack_con, libtcod.blue)
@@ -1539,6 +1551,7 @@ class Scenario:
 		libtcod.console_flush()
 	
 	# do a roll, animate the attack console, and display the results
+	# returns an altered attack profile
 	def DoAttackRoll(self, profile):
 		
 		# animate roll indicators randomly
@@ -1581,38 +1594,45 @@ class Scenario:
 		if profile['type'] == 'ap':
 			
 			if roll >= CRITICAL_MISS:
-				text = 'NO PENETRATION'
+				result_text = 'NO PENETRATION'
 			elif roll <= CRITICAL_HIT:
-				text = 'PENETRATED'
+				result_text = 'PENETRATED'
 			elif roll <= profile['final_chance']:
-				text = 'PENETRATED'
+				result_text = 'PENETRATED'
 			else:
-				text = 'NO PENETRATION'
+				result_text = 'NO PENETRATION'
 		
 		# TODO: calculate Area Fire results
 		elif profile['type'] == 'Area Fire':
-			pass
+			
+			if roll <= profile['final_chance']:
+				result_text = 'SUCCESS'
+				profile['effective_fp'] = profile['base_fp']
+			else:
+				result_text = 'NO EFFECT'
 		
 		# point fire attack
 		else:
 			if roll >= CRITICAL_MISS:
-				text = 'MISS'
+				result_text = 'MISS'
 			elif roll <= CRITICAL_HIT:
-				text = 'CRITICAL HIT'
+				result_text = 'CRITICAL HIT'
 			elif roll <= profile['final_chance']:
-				text = 'HIT'
+				result_text = 'HIT'
 			else:
-				text = 'MISS'
+				result_text = 'MISS'
+		
+		profile['result'] = result_text
 		
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
-			libtcod.CENTER, text)
+			libtcod.CENTER, result_text)
 		
 		# blit the finished console to the screen
 		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 		
-		return text
+		return profile
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
 	# valid attack; if not, return a text description of why not
@@ -2456,11 +2476,10 @@ class Unit:
 			return False
 		
 		# make sure attack is possible
-		result = scenario.CheckAttack(self, weapon, target)
-		if result != '':
+		if scenario.CheckAttack(self, weapon, target) != '':
 			return False
 		
-		# set flags
+		# set weapon and unit fired flags
 		weapon.fired = True
 		self.fired = True
 		
@@ -2502,19 +2521,22 @@ class Unit:
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				libtcod.console_flush()
 		
-		# calculate the attack profile
-		attack_profile = scenario.CalcAttack(self, weapon, target)
+		# calculate an attack profile
+		profile = scenario.CalcAttack(self, weapon, target)
+		
+		# something went wrong
+		if profile is None: return False
 		
 		# display the attack to the screen
-		scenario.DisplayAttack(self, weapon, target, attack_profile)
+		scenario.DisplayAttack(profile)
 		WaitForEnter()
 		
 		# do the roll and display results to the screen
-		result = scenario.DoAttackRoll(attack_profile)
+		profile = scenario.DoAttackRoll(profile)
 		WaitForEnter()
 		
 		# add acquired target if doing point fire
-		if attack_profile['type'] == 'Point Fire':
+		if profile['type'] == 'Point Fire':
 			self.AddAcquiredTarget(target)
 		
 		# re-enable LoS if player unit
@@ -2524,40 +2546,48 @@ class Unit:
 			UpdateScenarioDisplay()
 			libtcod.console_flush()
 		
-		# TODO: handle results of FP attacks here as well:
-		# should DoAttackRoll return a string and an int (effective fp)?
+		# handle the results of the attack
+		if profile['type'] == 'Area Fire':
+			target.fp_to_resolve += profile['effective_fp']
+			print 'DEBUG: added ' + str(profile['effective_fp']) + ' fp to ' + target.unit_id
+			return
 		
-		# break here if attack had no effect
-		if result == 'MISS': return True
+		# attack missed
+		if profile['result'] == 'MISS': return True
 		
 		# record AP hit to be resolved if target was a vehicle
 		if target.GetStat('category') == 'Vehicle':
-			target.ap_hits_to_resolve.append((self, weapon, result))
+			target.ap_hits_to_resolve.append(profile)
 		
 		return True
 	
-	# resolve all unresolved hits on this unit, triggered at end of enemy combat phase
+	# resolve all unresolved AP hits and FP on this unit
+	# triggered at end of enemy combat phase
 	def ResolveHits(self):
 		
-		# no hits to resolve
-		if len(self.ap_hits_to_resolve) == 0:
-			return
+		# TODO: handle FP first
+		if self.fp_to_resolve > 0:
+			print 'DEBUG: resolving ' + str(self.fp_to_resolve) + ' fp on ' + self.unit_id
+			self.fp_to_resolve = 0
 		
-		for (attacker, weapon, result) in self.ap_hits_to_resolve:
+		# handle AP hits
+		for profile in self.ap_hits_to_resolve:
 			
-			# calculate AP profile
-			profile = scenario.CalcAP(attacker, weapon, self, result)
+			# TODO: determine if an AP roll must be made
+			
+			# calculate the AP profile for the attack
+			profile = scenario.CalcAP(profile)
 			
 			# display the profile to the screen
-			scenario.DisplayAttack(attacker, weapon, self, result, profile)
+			scenario.DisplayAttack(profile)
 			WaitForEnter()
 			
 			# do the roll and display results to the screen
-			result = scenario.DoAttackRoll(profile)
+			profile = scenario.DoAttackRoll(profile)
 			WaitForEnter()
 			
 			# apply result
-			if result == 'PENETRATED':
+			if profile['result'] == 'PENETRATED':
 				self.DestroyMe()
 			
 			# unit was destroyed
@@ -4701,8 +4731,7 @@ def DoScenario(load_game=False):
 				result = scenario.player_unit.Attack(scenario.selected_weapon,
 					scenario.player_target)
 				if result:
-					# clear player target
-					scenario.player_target = None
+					UpdateContextCon()
 					UpdatePlayerInfoCon()
 					UpdateCrewPositionCon()
 					UpdateVPCon()

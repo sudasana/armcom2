@@ -2,7 +2,7 @@
 
 This is the work-in-progress pre-Alpha version of Armoured Commander II.
 
-Copyright (c) 2016-2017 Gregory Adam Scott (sudasana@gmail.com)
+Copyright (c) 2018 Gregory Adam Scott (sudasana@gmail.com)
 This file is part of Armoured Commander II.
 
 Armoured Commander II is free software: you can redistribute it and/or modify

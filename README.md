@@ -22,7 +22,7 @@ If not, see <http://www.gnu.org/licenses/>.
 
 To run armcom2.py, you will need:
 
-* Python 2.7.8	http://www.python.org/download/releases/2.7.8/
-* Libtcod 1.5.1	http://bitbucket.org/libtcod/libtcod
+* Python 2.7.14	https://www.python.org/downloads/release/python-2714/
+* Libtcod 1.6.4	http://bitbucket.org/libtcod/libtcod
 * XPLoader http://github.com/RCIX/XPLoader
 * PySDL2 https://bitbucket.org/marcusva/py-sdl2/downloads/

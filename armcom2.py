@@ -606,7 +606,7 @@ class Scenario:
 		# generate the hex map in the shape of a pointy-top hex
 		# radius does not include centre hex
 		self.map_hexes = {}
-		self.map_radius = 10
+		self.map_radius = 8
 		
 		# create centre hex
 		self.map_hexes[(0,0)] = MapHex(0,0)
@@ -1309,11 +1309,16 @@ class Scenario:
 			los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 			if los > 0.0:
 				modifier_list.append(('Terrain', 0.0 - los))
+				
+			if not target.known:
+				modifier_list.append(('Unknown Target', -20.0))
 			
-			# target is infantry and moved
-			if target.moved and target.GetStat('category') == 'Infantry':
-				mod = round(base_chance / 2.0, 2)
-				modifier_list.append(('Target Infantry Moved', mod))			
+			else:
+			
+				# target is infantry and moved
+				if target.moved and target.GetStat('category') == 'Infantry':
+					mod = round(base_chance / 2.0, 2)
+					modifier_list.append(('Target Infantry Moved', mod))			
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -1505,8 +1510,8 @@ class Scenario:
 		else:
 			text1 = profile['attacker'].GetName()
 			text2 = 'firing ' + profile['weapon'].GetStat('name') + ' at'
-			text3 = profile['target'].unit_id
-		
+			text3 = profile['target'].GetName()
+			
 		libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE,
 			libtcod.CENTER, text1)
 		libtcod.console_print_ex(attack_con, 13, 11, libtcod.BKGND_NONE,
@@ -1527,13 +1532,13 @@ class Scenario:
 		# base chance
 		text = 'Base Chance to '
 		if profile['type'] == 'ap':
-			text += 'Penetrate:'
+			text += 'Penetrate'
 		elif profile['type'] == 'FP Resolution':
-			text += 'Survive:'
+			text += 'Survive'
 		elif profile['type'] == 'Area Fire':
-			text += 'Effect:'
+			text += 'Effect'
 		else:
-			text += 'Hit:'
+			text += 'Hit'
 		libtcod.console_print_ex(attack_con, 13, 23, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 		text = str(profile['base_chance']) + '%%'
@@ -4300,25 +4305,27 @@ def UpdateContextCon():
 		libtcod.console_print(context_con, 1, 5, str(chance) + '%%')
 	
 	elif scenario.game_turn['current_phase'] == 'Combat':
-		if scenario.selected_weapon is not None:
-			libtcod.console_set_default_background(context_con, libtcod.darkest_red)
-			libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
-			libtcod.console_print(context_con, 0, 0, scenario.selected_weapon.stats['name'])
-			libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
-			
-			# update attack description is case changes occured since last phase
-			if scenario.player_target is not None:
-				scenario.player_attack_desc = scenario.CheckAttack(scenario.player_unit,
-					scenario.selected_weapon, scenario.player_target)
-
-		if scenario.player_attack_desc != '':
-			libtcod.console_set_default_foreground(context_con, libtcod.red)
-			lines = wrap(scenario.player_attack_desc, 16)
-			y = 7
-			for line in lines[:3]:
-				libtcod.console_print(context_con, 0, y, line)
-				y += 1
-			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+		if scenario.selected_weapon is None: return
+		
+		libtcod.console_set_default_background(context_con, libtcod.darkest_red)
+		libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
+		libtcod.console_print(context_con, 0, 0, scenario.selected_weapon.stats['name'])
+		libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
+		
+		if scenario.player_target is None: return
+		
+		# check if this attack could proceed
+		scenario.player_attack_desc = scenario.CheckAttack(scenario.player_unit,
+			scenario.selected_weapon, scenario.player_target)
+		if scenario.player_attack_desc == '': return
+		
+		libtcod.console_set_default_foreground(context_con, libtcod.red)
+		lines = wrap(scenario.player_attack_desc, 16)
+		y = 7
+		for line in lines[:3]:
+			libtcod.console_print(context_con, 0, y, line)
+			y += 1
+		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 
 
 

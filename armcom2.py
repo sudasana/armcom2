@@ -295,7 +295,8 @@ class Session:
 		SOUND_LIST = [
 			'menu_select',
 			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
-			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02'
+			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
+			'zb_53_mg_00'
 		]
 		
 		# because the function returns NULL if the file failed to load, Python does not seem
@@ -2637,6 +2638,25 @@ class Unit:
 					Wait(8)
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				libtcod.console_flush()
+			
+			elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG']:
+				
+				x1, y1 = self.screen_x, self.screen_y
+				x2, y2 = target.screen_x, target.screen_y
+				line = GetLine(x1,y1,x2,y2)
+				
+				PlaySoundFor(weapon, 'fire')
+				
+				libtcod.console_set_default_foreground(0, libtcod.yellow)
+				for i in range(30):
+					(x,y) = choice(line[1:-1])
+					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+					libtcod.console_put_char(0, x+31, y+4, 250)
+					Wait(3)
+				libtcod.console_set_default_foreground(0, libtcod.white)
+				
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_flush()
 		
 		# calculate an attack profile
 		profile = scenario.CalcAttack(self, weapon, target)
@@ -3452,6 +3472,11 @@ def PlaySoundFor(obj, action):
 				n = libtcod.random_get_int(0, 0, 3)
 				PlaySound('37mm_firing_0' + str(n))
 				return
+			
+		# TEMP - only one MG sound effect for now
+		if obj.stats['type'] in ['Co-ax MG', 'Hull MG']:
+			PlaySound('zb_53_mg_00')
+			return
 		
 	elif action == 'movement':
 		if obj.GetStat('movement_class') == 'Fast Tank':

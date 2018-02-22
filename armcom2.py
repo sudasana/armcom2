@@ -55,9 +55,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-# Debug Flags TEMP
+# Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_NO_ACTION = False					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-02-20'				# game version in Semantic Versioning format: http://semver.org/
@@ -312,7 +312,7 @@ class AI:
 	
 	# print an AI report re: crew actions for this unit to the console, used for debugging
 	def DoCrewActionReport(self):
-		text = 'AI SPY: ' + self.owner.unit_id + ' set to disposition: '
+		text = '\nAI SPY: ' + self.owner.unit_id + ' set to disposition: '
 		if self.disposition is None:
 			text += 'Wait'
 		else:
@@ -346,7 +346,8 @@ class AI:
 			if roll >= 70.0:
 				self.disposition = None
 			elif roll <= 50.0:
-				if self.owner.dummy:
+				# TEMP - infantry units can't attack yet
+				if self.owner.dummy or self.owner.GetStat('category') == 'Infantry':
 					self.disposition = None
 				else:
 					self.disposition = 'Combat'
@@ -422,9 +423,9 @@ class AI:
 					
 					# rotate turret if any
 					if self.owner.turret_facing is not None:
-						self.owner.turret_facing = ConstrainDir(self.owner.turret_facing + change)
+						self.owner.turret_facing = self.owner.facing
 					
-					if animate:
+					if animate and self.owner.GetStat('category') != 'Infantry':
 						UpdateUnitCon()
 						UpdateScenarioDisplay()
 						libtcod.console_flush()
@@ -504,7 +505,7 @@ class AI:
 			weapon = self.owner.weapon_list[0]
 			
 			# try the attack
-			result = self.owner.Attack(weapon, unit, 'point_fire')
+			result = self.owner.Attack(weapon, unit)
 			if not result:
 				if AI_SPY:
 					print 'AI SPY: ' + self.owner.unit_id + ': could not attack'
@@ -1480,7 +1481,7 @@ class Scenario:
 			libtcod.CENTER, text)
 		
 		# attacker portrait if any
-		if profile['type'] == 'Ranged Attack':
+		if profile['type'] in ['Point Fire', 'Area Fire']:
 			
 			libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
 			libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
@@ -1752,12 +1753,25 @@ class Scenario:
 			return 'Beyond maximum weapon range'
 		
 		# check covered arc
-		if weapon.GetStat('mount') == 'Turret':
-			direction = attacker.turret_facing
-		else:
-			direction = attacker.facing
-		if (target.hx - attacker.hx, target.hy - attacker.hy) not in HEXTANTS[direction]:
-			return "Outside of weapon's covered arc"
+		mount = weapon.GetStat('mount')
+		if mount is not None:
+			if weapon.GetStat('mount') == 'Turret':
+				direction = attacker.turret_facing
+			else:
+				direction = attacker.facing
+			if (target.hx - attacker.hx, target.hy - attacker.hy) not in HEXTANTS[direction]:
+				return "Outside of weapon's covered arc"
+		
+		# don't allow firing if another weapon in this group has already fired
+		firing_group = weapon.GetStat('firing_group')
+		if firing_group is not None:
+			for weapon2 in attacker.weapon_list:
+				if weapon2 == weapon: continue
+				firing_group2 = weapon2.GetStat('firing_group')
+				if firing_group2 is None: continue
+				if firing_group2 != firing_group: continue
+				if not weapon2.fired: continue
+				return "Another weapon on this mount has fired"
 		
 		# check LoS
 		if GetLoS(attacker.hx, attacker.hy, target.hx, target.hy) == -1.0:
@@ -1772,7 +1786,7 @@ class Scenario:
 		if weapon.GetStat('type') == 'Gun':
 			if not target.known:
 				return 'Target must be spotted for this attack'
-
+		
 		# check that proper crew action is set for this attack
 		
 		position_list = weapon.GetStat('fired_by')
@@ -2173,7 +2187,7 @@ class Unit:
 		
 		self.hx = 0				# hex location in the scenario map
 		self.hy = 0
-		self.facing = None			# facing direction: guns and vehicles must have this set
+		self.facing = None			# facing direction
 		self.previous_facing = None		# hull facing before current action
 		self.turret_facing = None		# facing of main turret on unit
 		self.previous_turret_facing = None	# turret facing before current action
@@ -2446,11 +2460,7 @@ class Unit:
 		chance = scenario.CalcBonusMove(self, hx, hy)
 		
 		# do movement animation and sound if applicable
-		distance1 = GetHexDistance(self.hx, self.hy, scenario.player_unit.hx,
-			scenario.player_unit.hy)
-		distance2 = GetHexDistance(hx, hy, scenario.player_unit.hx,
-			scenario.player_unit.hy)
-		if distance1 <= 6 and distance2 <= 6:
+		if self.vp_hx is not None and self.vp_hy is not None:
 			x1, y1 = self.screen_x, self.screen_y
 			direction = GetDirectionToAdjacent(self.hx, self.hy, hx, hy)
 			direction = ConstrainDir(direction - scenario.player_unit.facing)
@@ -2606,12 +2616,8 @@ class Unit:
 			UpdateScenarioDisplay()
 			libtcod.console_flush()
 		
-		# play sound and show animation if in range of player
-		distance1 = GetHexDistance(self.hx, self.hy, scenario.player_unit.hx,
-			scenario.player_unit.hy)
-		distance2 = GetHexDistance(target.hx, target.hy, scenario.player_unit.hx,
-			scenario.player_unit.hy)
-		if distance1 <= 6 and distance2 <= 6:
+		# play sound and show animation if both units on viewport
+		if self.vp_hx is not None and self.vp_hy is not None and target.vp_hx is not None and target.vp_hy is not None:
 			
 			# TEMP: uses the root console, future will have an animation console
 			
@@ -2628,7 +2634,7 @@ class Unit:
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 					libtcod.console_put_char(0, x+31, y+4, 250)
 					libtcod.console_flush()
-					Wait(10)
+					Wait(8)
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				libtcod.console_flush()
 		
@@ -2661,10 +2667,8 @@ class Unit:
 		if profile['type'] == 'Area Fire':
 			
 			if profile['result'] == 'SUCCESS':
-			
 				target.fp_to_resolve += profile['effective_fp']
-				print 'DEBUG: added ' + str(profile['effective_fp']) + ' fp to ' + target.unit_id
-			
+				
 				# target will automatically be spotted next turn if possible
 				if not target.known:
 					target.hit_by_fp = 2			
@@ -2686,7 +2690,6 @@ class Unit:
 		
 		# handle FP first
 		if self.fp_to_resolve > 0:
-			print 'DEBUG: resolving ' + str(self.fp_to_resolve) + ' fp on ' + self.unit_id
 			
 			# TODO: handle possible crew injury
 			if self.GetStat('category') != 'Vehicle':
@@ -2764,6 +2767,10 @@ class Unit:
 		# target fired
 		if target.fired:
 			chance = chance * 2.0
+		
+		# infantry are not as good at spotting from their lower position
+		if self.GetStat('category') == 'Infantry':
+			chance = chance * 0.5
 		
 		# crew perception modifier
 		chance += (position.crewman.stats['Perception'] - 5) * 5.0
@@ -3230,7 +3237,8 @@ def GetRelativeBearing(unit1, unit2):
 def GetFacing(attacker, target, turret_facing=False):
 	bearing = GetRelativeBearing(target, attacker)
 	if turret_facing and target.turret_facing is not None:
-		bearing = RectifyBearing(bearing - (target.turret_facing * 60))
+		turret_diff = target.turret_facing - target.facing
+		bearing = RectifyBearing(bearing - (turret_diff * 60))
 	if bearing >= 300 or bearing <= 60:
 		return 'Front'
 	return 'Side'
@@ -3952,6 +3960,11 @@ def UpdateVPCon():
 def UpdateUnitCon():
 	libtcod.console_clear(unit_con)
 	
+	# clear unit vp_hx and vp_hy
+	for unit in scenario.units:
+		unit.vp_hx = None
+		unit.vp_hy = None
+	
 	# run through each viewport hex
 	for (vp_hx, vp_hy) in VP_HEXES:
 		# determine which map hex this viewport hex displays
@@ -4535,73 +4548,49 @@ def DoScenario(load_game=False):
 			scenario.player_unit = new_unit
 			new_unit.CalcFoV()
 		
-		# TEMP - testing enemy infantry
-		new_unit = Unit('Riflemen')
-		if new_unit.unit_id is not None:
-			new_unit.owning_player = 1
-			new_unit.ai = AI(new_unit)
-			new_unit.nation = 'Poland'
-			scenario.units.append(new_unit)
-			new_unit.SpawnAt(0, scenario.map_radius - 3)
-		
-		new_unit = Unit('7TP')
-		if new_unit.unit_id is not None:
+		# TEMP - will have a better enemy spawning system eventually
+		def SpawnEnemy(unit_id):
+			new_unit = Unit(unit_id)
 			new_unit.owning_player = 1
 			new_unit.ai = AI(new_unit)
 			new_unit.nation = 'Poland'
 			new_unit.facing = 3
-			new_unit.turret_facing = 3
+			if 'turret' in new_unit.stats:
+				new_unit.turret_facing = 3
 			new_unit.GenerateNewCrew()
 			scenario.units.append(new_unit)
-			new_unit.SpawnAt(1, scenario.map_radius - 3)
 		
-		# enemy units
-		#for i in range(2):
-		
-		#	new_unit = Unit('7TP')
-		#	new_unit.owning_player = 1
-		#	new_unit.ai = AI(new_unit)
-		#	new_unit.nation = 'Poland'
-		#	new_unit.facing = 3
-		#	new_unit.turret_facing = 3
-		#	new_unit.GenerateNewCrew()
-		#	scenario.units.append(new_unit)
-			
-		#	new_unit = Unit('Vickers 6-Ton Mark E')
-		#	new_unit.owning_player = 1
-		#	new_unit.ai = AI(new_unit)
-		#	new_unit.nation = 'Poland'
-		#	new_unit.facing = 3
-		#	new_unit.turret_facing = 3
-		#	new_unit.GenerateNewCrew()
-		#	scenario.units.append(new_unit)
+		# spawn enemy units
+		for i in range(2):
+			SpawnEnemy('7TP')
+			SpawnEnemy('Vickers 6-Ton Mark E')
+			SpawnEnemy('Riflemen')
 		
 		# set dummy enemy units
-		#dummy_units = 2
-		#unit_list = []
-		#for unit in scenario.units:
-		#	if unit.owning_player == 1:
-		#		unit_list.append(unit)
-		#unit_list = sample(unit_list, dummy_units)	
-		#for unit in unit_list:
-		#	unit.dummy = True
+		dummy_units = 2
+		unit_list = []
+		for unit in scenario.units:
+			if unit.owning_player == 1:
+				unit_list.append(unit)
+		unit_list = sample(unit_list, dummy_units)	
+		for unit in unit_list:
+			unit.dummy = True
 		
 		# TEMP - place enemy units randomly
-		#for unit in scenario.units:
-		#	if unit.owning_player == 0: continue
-		#	for tries in range(300):
-		#		(hx, hy) = choice(scenario.map_hexes.keys())
+		for unit in scenario.units:
+			if unit.owning_player == 0: continue
+			for tries in range(300):
+				(hx, hy) = choice(scenario.map_hexes.keys())
 				
 				# terrain is not passable
-		#		if scenario.map_hexes[(hx, hy)].terrain_type == 'pond':
-		#			continue
+				if scenario.map_hexes[(hx, hy)].terrain_type == 'pond':
+					continue
 				
-		#		if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 4:
-		#			continue
+				if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 4:
+					continue
 				
-		#		unit.hx, unit.hy = hx, hy
-		#		scenario.map_hexes[(hx, hy)].unit_stack.append(unit)
-		#		break
+				unit.SpawnAt(hx, hy)
+				break
 		
 		# set up VP hexes and generate initial VP console
 		scenario.CenterVPOnPlayer()

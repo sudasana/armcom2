@@ -170,7 +170,7 @@
 				"rof" : "4",
 				"rr_size" : "4",
 				"mount" : "Turret",
-				"fired_by" : ["Gunner"],
+				"fired_by" : ["Gunner/Loader"],
 				"firing_group" : "0",
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
@@ -180,7 +180,7 @@
 				"fp" : "6",
 				"rof" : "4",
 				"mount" : "Turret",
-				"fired_by" : ["Gunner"],
+				"fired_by" : ["Gunner/Loader"],
 				"firing_group" : "0"
 			}
 		],
@@ -233,7 +233,7 @@
 				"rof" : "4",
 				"rr_size" : "4",
 				"mount" : "Turret",
-				"fired_by" : ["Gunner"],
+				"fired_by" : ["Gunner/Loader"],
 				"firing_group" : "0",
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
@@ -243,7 +243,7 @@
 				"fp" : "4",
 				"rof" : "4",
 				"mount" : "Turret",
-				"fired_by" : ["Gunner"],
+				"fired_by" : ["Gunner/Loader"],
 				"firing_group" : "0"
 			}
 		],

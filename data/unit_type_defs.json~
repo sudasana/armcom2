@@ -176,7 +176,7 @@
 				"max_ammo" : "180"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "6",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -239,7 +239,7 @@
 				"max_ammo" : "180"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "4",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -291,7 +291,7 @@
 		},
 		"weapon_list" : [
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "4",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -464,7 +464,7 @@
 		},
 		"weapon_list" : [
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "6",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -520,7 +520,7 @@
 				"max_ammo" : "180"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "5",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -581,7 +581,7 @@
 				"max_ammo" : "66"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "4",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -656,7 +656,7 @@
 				"max_ammo" : "66"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "4",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -731,7 +731,7 @@
 				"max_ammo" : "66"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "8",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -813,7 +813,7 @@
 				"max_ammo" : "66"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "8",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -895,7 +895,7 @@
 				"max_ammo" : "87"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "5",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -977,7 +977,7 @@
 				"max_ammo" : "87"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "5",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -1053,7 +1053,7 @@
 				"max_ammo" : "66"
 			},
 			{
-				"type" : "Coax MG",
+				"type" : "Co-ax MG",
 				"fp" : "5",
 				"rof" : "4",
 				"mount" : "Turret",
@@ -1142,10 +1142,9 @@
 		"op_value" : "55"
 	},
 	
-	"Rifle Squad + AT Rifles": {
+	"Riflemen": {
 		"category" : "Infantry",
 		"class" : "Infantry Squad",
-		"portrait" : "",
 		"movement_class" : "Infantry",
 		"weapon_list" : [
 			{
@@ -1159,6 +1158,18 @@
 				"name" : "AT Rifle",
 				"max_range" : "3"
 			}
+		],
+		"crew_positions" : [
+			{"name" : "NCO"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"}
 		],
 		"description" : [
 			""

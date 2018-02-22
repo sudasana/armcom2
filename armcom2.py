@@ -193,6 +193,8 @@ RESOLVE_FP_CHANCE_STEP = 5.0
 # additional firepower modifier increased by this much beyond 1
 RESOLVE_FP_CHANCE_MOD = 1.05
 
+# list of possible results from fp resolution, in addition to no effect
+FP_EFFECT_RESULT_LIST = ['Pinned', 'Broken', 'Reduction', 'Destroyed']
 
 # visible distances for crewmen when buttoned up and exposed
 MAX_BU_LOS_DISTANCE = 3
@@ -200,7 +202,7 @@ MAX_LOS_DISTANCE = 6
 
 ELEVATION_M = 10.0			# each elevation level represents x meters of height
 
-# TODO: move this to a json file
+# TODO: move following to a json file
 
 # percentile LoS modifiers for terrain types
 TERRAIN_LOS_MODS = {
@@ -1426,7 +1428,7 @@ class Scenario:
 			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
 		profile['base_chance'] = round(base_chance, 2)
 		
-		# TODO: calculate modifiers
+		# TODO: calculate modifiers: eg. morale level
 		modifier_list = []
 		
 		profile['modifier_list'] = modifier_list[:]
@@ -1436,10 +1438,22 @@ class Scenario:
 		for (desc, mod) in modifier_list:
 			total_modifier += mod
 		
-		# calculate final chance of success
-		profile['final_chance'] = RestrictChance(profile['base_chance'] + total_modifier)
+		# calculate the raw final chance of no effect
+		# we'll use this to calculate other result bands
+		result_chance = profile['base_chance'] + total_modifier
 		
-		# TODO: calculate result bands
+		# record the effective final chance of no effect
+		profile['final_chance'] = RestrictChance(result_chance)
+		
+		# calculate additional result bands
+		for result in FP_EFFECT_RESULT_LIST:
+			
+			if result == 'Destroyed':
+				result_chance = 100.0
+				profile[result] = 100.0
+			else:
+				result_chance = round(result_chance + ((100.0 - base_chance) / 4.0), 2)
+				profile[result] = RestrictChance(result_chance)
 		
 		return profile
 		
@@ -1562,32 +1576,46 @@ class Scenario:
 		libtcod.console_print_ex(attack_con, 13, 46, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Final Chance')
 		
-		# display chance graph 
-		x = int(ceil(24.0 * profile['final_chance'] / 100.0))
-		libtcod.console_set_default_background(attack_con, libtcod.green)
-		libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+		# display chance graph
+		if profile['type'] == 'FP Resolution':
+			
+			libtcod.console_print(attack_con, 1, 48, 'No Effect: ')
+			libtcod.console_print_ex(attack_con, 24, 48, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(profile['final_chance']) + '%%') 
+			y = 49
+			for result in FP_EFFECT_RESULT_LIST:
+				libtcod.console_print(attack_con, 1, y, result)
+				libtcod.console_print_ex(attack_con, 24, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(profile[result]) + '%%')
+				y += 1
+
+		else:
 		
-		libtcod.console_set_default_background(attack_con, libtcod.red)
-		libtcod.console_rect(attack_con, x+1, 49, 24-x, 3, False, libtcod.BKGND_SET)
+			x = int(ceil(24.0 * profile['final_chance'] / 100.0))
+			libtcod.console_set_default_background(attack_con, libtcod.green)
+			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+			
+			libtcod.console_set_default_background(attack_con, libtcod.red)
+			libtcod.console_rect(attack_con, x+1, 49, 24-x, 3, False, libtcod.BKGND_SET)
+			
+			# TODO: display an additional band for area fire: partial effect
+			
+			# critical hit band
+			libtcod.console_set_default_foreground(attack_con, libtcod.blue)
+			for y in range(49, 52):
+				libtcod.console_put_char(attack_con, 1, y, 221)
+			
+			# critical miss band
+			libtcod.console_set_default_foreground(attack_con, libtcod.dark_grey)
+			for y in range(49, 52):
+				libtcod.console_put_char(attack_con, 24, y, 222)
 		
-		# TODO: display an additional band for area fire: partial effect
+			libtcod.console_set_default_foreground(attack_con, libtcod.white)
+			libtcod.console_set_default_background(attack_con, libtcod.black)
 		
-		# critical hit band
-		libtcod.console_set_default_foreground(attack_con, libtcod.blue)
-		for y in range(49, 52):
-			libtcod.console_put_char(attack_con, 1, y, 221)
-		
-		# critical miss band
-		libtcod.console_set_default_foreground(attack_con, libtcod.dark_grey)
-		for y in range(49, 52):
-			libtcod.console_put_char(attack_con, 24, y, 222)
-		
-		libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		libtcod.console_set_default_background(attack_con, libtcod.black)
-		
-		text = str(profile['final_chance']) + '%%'
-		libtcod.console_print_ex(attack_con, 13, 50, libtcod.BKGND_NONE,
-			libtcod.CENTER, text)
+			text = str(profile['final_chance']) + '%%'
+			libtcod.console_print_ex(attack_con, 13, 50, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
 		
 		# display prompts
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
@@ -1604,22 +1632,39 @@ class Scenario:
 	# returns an altered attack profile
 	def DoAttackRoll(self, profile):
 		
-		# animate roll indicators randomly
-		for i in range(3):
-			x = libtcod.random_get_int(0, 1, 24)
-			libtcod.console_put_char(attack_con, x, 48, 233)
-			libtcod.console_put_char(attack_con, x, 52, 232)
-			
-			libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-			
-			Wait(20)
-			
-			libtcod.console_put_char(attack_con, x, 48, 0)
-			libtcod.console_put_char(attack_con, x, 52, 0)
+		# FP resolution uses a different animation
+		if profile['type'] == 'FP Resolution':
+			for i in range(4):
+				roll = GetPercentileRoll()
+				libtcod.console_print_ex(attack_con, 13, 55,
+					libtcod.BKGND_NONE, libtcod.CENTER, str(roll) + '%%')
+				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_flush()
+				# don't wait on final roll, this is the real one
+				if i != 3:
+					Wait(20)
+					libtcod.console_print_ex(attack_con, 13, 55,
+						libtcod.BKGND_NONE, libtcod.CENTER, '      ')
 		
-		roll = GetPercentileRoll()
+		else:
+			
+			# animate roll indicators randomly
+			for i in range(3):
+				x = libtcod.random_get_int(0, 1, 24)
+				libtcod.console_put_char(attack_con, x, 48, 233)
+				libtcod.console_put_char(attack_con, x, 52, 232)
+				
+				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_flush()
+				
+				Wait(20)
+				
+				libtcod.console_put_char(attack_con, x, 48, 0)
+				libtcod.console_put_char(attack_con, x, 52, 0)
+		
+			roll = GetPercentileRoll()
 		
 		# at this point, if the player tank would be penetrated, they have a chance
 		# to survive using luck
@@ -1631,15 +1676,17 @@ class Scenario:
 					minimum = int(profile['final_chance'] * 10.0)
 					roll = float(libtcod.random_get_int(0, minimum+1, 1000)) / 10.0
 		
-		# display final roll indicators
-		x = int(ceil(24.0 * roll / 100.0))
+		if profile['type'] != 'FP Resolution':
 		
-		# make sure only critical hits and misses appear in their bands
-		if roll > CRITICAL_HIT and x == 1: x = 2
-		if roll < CRITICAL_MISS and x == 24: x = 23
-		
-		libtcod.console_put_char(attack_con, x, 48, 233)
-		libtcod.console_put_char(attack_con, x, 52, 232)
+			# display final roll indicators
+			x = int(ceil(24.0 * roll / 100.0))
+			
+			# make sure only critical hits and misses appear in their bands
+			if roll > CRITICAL_HIT and x == 1: x = 2
+			if roll < CRITICAL_MISS and x == 24: x = 23
+			
+			libtcod.console_put_char(attack_con, x, 48, 233)
+			libtcod.console_put_char(attack_con, x, 52, 232)
 		
 		if profile['type'] == 'ap':
 			
@@ -1662,13 +1709,15 @@ class Scenario:
 				result_text = 'NO EFFECT'
 		
 		# FP resolution
-		# TODO: additional outcomes possible
 		elif profile['type'] == 'FP Resolution':
 			
 			if roll <= profile['final_chance']:
-				result_text = 'SURVIVED'
+				result_text = 'No Effect'
 			else:
-				result_text = 'DESTROYED'
+				for result in FP_EFFECT_RESULT_LIST:
+					if roll <= profile[result]:
+						result_text = result
+						break
 		
 		# point fire attack
 		else:
@@ -2646,7 +2695,8 @@ class Unit:
 				WaitForEnter()
 				profile = scenario.DoAttackRoll(profile)
 				WaitForEnter()
-				if profile['result'] == 'DESTROYED':
+				# TODO: handle additional results
+				if profile['result'] == 'Destroyed':
 					self.DestroyMe()
 					return
 					

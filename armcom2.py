@@ -186,6 +186,13 @@ FP_CHANCE_STEP = 5.0
 # additional firepower modifier reduced by this much beyond 1
 FP_CHANCE_STEP_MOD = 0.95
 
+# base chance of a 1 firepower attack having no effect on a unit
+RESOLVE_FP_BASE_CHANCE = 95.0
+# each additional firepower beyond 1 subtracts this additional chance
+RESOLVE_FP_CHANCE_STEP = 5.0
+# additional firepower modifier increased by this much beyond 1
+RESOLVE_FP_CHANCE_MOD = 1.05
+
 
 # visible distances for crewmen when buttoned up and exposed
 MAX_BU_LOS_DISTANCE = 3
@@ -575,7 +582,7 @@ class Scenario:
 		self.units = []				# list of units in the scenario
 		self.player_unit = None			# pointer to the player unit
 		
-		# TEMP - player 'luck' points, will go into a campaign object eventually
+		# TEMP - player 'luck' points, will go into campaign object eventually
 		self.player_luck = 2 + libtcod.random_get_int(0, 1, 3)
 		
 		self.finished = False			# have win/loss conditions been met
@@ -931,6 +938,10 @@ class Scenario:
 					if position.crewman.current_action is not None:
 						if position.crewman.current_action not in action_list:
 							position.crewman.current_action = None
+				
+				# decrement FP hit counter if any
+				if unit.hit_by_fp > 0:
+					unit.hit_by_fp -= 1
 		
 		elif self.game_turn['current_phase'] == 'Spotting':
 			
@@ -1401,6 +1412,37 @@ class Scenario:
 		
 		return profile
 	
+	# calculate the resolution of FP attacks on a unit
+	def CalcFP(self, unit):
+		
+		profile = {}
+		profile['target'] = unit
+		profile['type'] = 'FP Resolution'
+		profile['effective_fp'] = unit.fp_to_resolve
+		
+		# calculate base chance of no effect
+		base_chance = RESOLVE_FP_BASE_CHANCE
+		for i in range(2, unit.fp_to_resolve + 1):
+			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
+		profile['base_chance'] = round(base_chance, 2)
+		
+		# TODO: calculate modifiers
+		modifier_list = []
+		
+		profile['modifier_list'] = modifier_list[:]
+		
+		# calculate total modifier
+		total_modifier = 0.0
+		for (desc, mod) in modifier_list:
+			total_modifier += mod
+		
+		# calculate final chance of success
+		profile['final_chance'] = RestrictChance(profile['base_chance'] + total_modifier)
+		
+		# TODO: calculate result bands
+		
+		return profile
+		
 	# display an attack or AP profile to the screen and prompt to proceed
 	# does not alter the profile
 	def DisplayAttack(self, profile):
@@ -1416,13 +1458,15 @@ class Scenario:
 		
 		if profile['type'] == 'ap':
 			text = 'Armour Penetration'
+		elif profile['type'] == 'FP Resolution':
+			text = 'FP Resolution'
 		else:
 			text = 'Ranged Attack'
 		libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 		
 		# attacker portrait if any
-		if profile['type'] != 'ap':
+		if profile['type'] == 'Ranged Attack':
 			
 			libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
 			libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
@@ -1438,6 +1482,10 @@ class Scenario:
 			text1 = profile['target'].GetName()
 			text2 = 'hit by ' + profile['weapon'].GetStat('name')
 			text3 = 'in ' + profile['location_desc']
+		elif profile['type'] == 'FP Resolution':
+			text1 = profile['target'].GetName()
+			text2 = 'hit by ' + str(profile['effective_fp']) + ' FP'
+			text3 = ''
 		else:
 			text1 = profile['attacker'].GetName()
 			text2 = 'firing ' + profile['weapon'].GetStat('name') + ' at'
@@ -1464,6 +1512,8 @@ class Scenario:
 		text = 'Base Chance to '
 		if profile['type'] == 'ap':
 			text += 'Penetrate:'
+		elif profile['type'] == 'FP Resolution':
+			text += 'Survive:'
 		elif profile['type'] == 'Area Fire':
 			text += 'Effect:'
 		else:
@@ -1602,7 +1652,7 @@ class Scenario:
 			else:
 				result_text = 'NO PENETRATION'
 		
-		# TODO: calculate Area Fire results
+		# TODO: calculate additional Area Fire results
 		elif profile['type'] == 'Area Fire':
 			
 			if roll <= profile['final_chance']:
@@ -1610,6 +1660,15 @@ class Scenario:
 				profile['effective_fp'] = profile['base_fp']
 			else:
 				result_text = 'NO EFFECT'
+		
+		# FP resolution
+		# TODO: additional outcomes possible
+		elif profile['type'] == 'FP Resolution':
+			
+			if roll <= profile['final_chance']:
+				result_text = 'SURVIVED'
+			else:
+				result_text = 'DESTROYED'
 		
 		# point fire attack
 		else:
@@ -2059,6 +2118,9 @@ class Unit:
 		
 		self.fp_to_resolve = 0			# fp from attacks to be resolved at end of phase
 		self.ap_hits_to_resolve = []		# list of unresolved AP hits
+		
+		self.hit_by_fp = 0			# used to tag unknown units hit by fp;
+							# impacts spotting checks next turn
 		
 		self.hx = 0				# hex location in the scenario map
 		self.hy = 0
@@ -2548,8 +2610,16 @@ class Unit:
 		
 		# handle the results of the attack
 		if profile['type'] == 'Area Fire':
-			target.fp_to_resolve += profile['effective_fp']
-			print 'DEBUG: added ' + str(profile['effective_fp']) + ' fp to ' + target.unit_id
+			
+			if profile['result'] == 'SUCCESS':
+			
+				target.fp_to_resolve += profile['effective_fp']
+				print 'DEBUG: added ' + str(profile['effective_fp']) + ' fp to ' + target.unit_id
+			
+				# target will automatically be spotted next turn if possible
+				if not target.known:
+					target.hit_by_fp = 2			
+			
 			return
 		
 		# attack missed
@@ -2565,9 +2635,21 @@ class Unit:
 	# triggered at end of enemy combat phase
 	def ResolveHits(self):
 		
-		# TODO: handle FP first
+		# handle FP first
 		if self.fp_to_resolve > 0:
 			print 'DEBUG: resolving ' + str(self.fp_to_resolve) + ' fp on ' + self.unit_id
+			
+			# TODO: handle possible crew injury
+			if self.GetStat('category') != 'Vehicle':
+				profile = scenario.CalcFP(self)
+				scenario.DisplayAttack(profile)
+				WaitForEnter()
+				profile = scenario.DoAttackRoll(profile)
+				WaitForEnter()
+				if profile['result'] == 'DESTROYED':
+					self.DestroyMe()
+					return
+					
 			self.fp_to_resolve = 0
 		
 		# handle AP hits
@@ -2575,23 +2657,16 @@ class Unit:
 			
 			# TODO: determine if an AP roll must be made
 			
-			# calculate the AP profile for the attack
-			profile = scenario.CalcAP(profile)
+			if self.GetStat('category') != 'Infantry':
 			
-			# display the profile to the screen
-			scenario.DisplayAttack(profile)
-			WaitForEnter()
-			
-			# do the roll and display results to the screen
-			profile = scenario.DoAttackRoll(profile)
-			WaitForEnter()
-			
-			# apply result
-			if profile['result'] == 'PENETRATED':
-				self.DestroyMe()
-			
-			# unit was destroyed
-			if not self.alive: return
+				profile = scenario.CalcAP(profile)
+				scenario.DisplayAttack(profile)
+				WaitForEnter()
+				profile = scenario.DoAttackRoll(profile)
+				WaitForEnter()
+				if profile['result'] == 'PENETRATED':
+					self.DestroyMe()
+					return
 		
 		# clear unresolved hits
 		self.ap_hits_to_resolve = []
@@ -2647,6 +2722,10 @@ class Unit:
 		
 		# special: automatic spot cases
 		if distance <= 2 and los == 0.0:
+			chance = 100.0
+		
+		# target was hit by effective fp last turn
+		if target.hit_by_fp > 0:
 			chance = 100.0
 		
 		roll = GetPercentileRoll()
@@ -4414,6 +4493,17 @@ def DoScenario(load_game=False):
 			new_unit.nation = 'Poland'
 			scenario.units.append(new_unit)
 			new_unit.SpawnAt(0, scenario.map_radius - 3)
+		
+		new_unit = Unit('7TP')
+		if new_unit.unit_id is not None:
+			new_unit.owning_player = 1
+			new_unit.ai = AI(new_unit)
+			new_unit.nation = 'Poland'
+			new_unit.facing = 3
+			new_unit.turret_facing = 3
+			new_unit.GenerateNewCrew()
+			scenario.units.append(new_unit)
+			new_unit.SpawnAt(1, scenario.map_radius - 3)
 		
 		# enemy units
 		#for i in range(2):

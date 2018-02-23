@@ -196,6 +196,15 @@ RESOLVE_FP_CHANCE_MOD = 1.05
 # list of possible results from fp resolution, in addition to no effect
 FP_EFFECT_RESULT_LIST = ['Pinned', 'Broken', 'Reduction', 'Destroyed']
 
+# ranges for morale level descriptions
+MORALE_LEVELS = {
+	'Reluctant': (51.0, 60.9),
+	'Regular': (61.0, 70.9),
+	'Confident': (71.0, 80.9),
+	'Fearless': (81.0, 90.9),
+	'Fanatic': (91.0, 100.0)
+}
+
 # visible distances for crewmen when buttoned up and exposed
 MAX_BU_LOS_DISTANCE = 3
 MAX_LOS_DISTANCE = 6
@@ -1164,8 +1173,9 @@ class Scenario:
 		for unit in self.units:
 			if not unit.alive: continue
 			if unit.owning_player == 0: continue
-			if GetHexDistance(self.player_unit.hx, self.player_unit.hy, unit.hx,
-				unit.hy) > 6: continue
+			distance = GetHexDistance(self.player_unit.hx, self.player_unit.hy,
+				unit.hx, unit.hy)
+			if distance > 6: continue
 			if (unit.hx, unit.hy) not in scenario.player_unit.fov: continue
 			self.player_target_list.append(unit)
 	
@@ -1909,6 +1919,9 @@ class Crew:
 		self.rank_desc = ''				# text name for rank
 		self.SetRank()
 		
+		self.morale = 0.0				# morale level, will be set later on
+		self.morale_desc = ''				# text description of morale
+		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'Spot'			# currently active action
 		
@@ -1920,8 +1933,6 @@ class Crew:
 		
 		self.GenerateStats()
 		
-		
-	
 	# generate a random first and last name for this crewman
 	# TEMP: have to normalize extended characters so they can be displayed on screen
 	def GenerateName(self):
@@ -2012,6 +2023,22 @@ class Crew:
 		for key in STAT_NAMES:
 			self.stats[key] = value_list[i]
 			i+=1
+	
+	# set this crewman's morale level based on base level for unit
+	def SetMorale(self, base_level):
+		(min_lvl, max_lvl) = MORALE_LEVELS[base_level]
+		base_level = (min_lvl + max_lvl) / 2.0
+		self.morale = base_level - 5.0 + float(libtcod.random_get_int(0, 0, 5) + libtcod.random_get_int(0, 0, 5))
+		
+		if self.current_position.name in ['Commander', 'Commander/Gunner']:
+			self.morale += 5.0
+		
+		if self.morale > 100.0:
+			self.morale = 100.0
+		for key, (min_lvl, max_lvl) in MORALE_LEVELS.iteritems():
+			if min_lvl < self.morale < max_lvl:
+				self.morale_desc = key
+				break
 	
 	# set a new action; if True, select next in list, otherwise previous
 	def SetAction(self, forward):
@@ -2129,11 +2156,12 @@ class Unit:
 			self.unit_id = None
 			return
 		self.stats = unit_types[unit_id].copy()
-		
 		self.owning_player = None		# player that controls this unit
 		self.nation = None			# nation of unit's crew
-		self.crew_list = []			# list of pointers to crew/personnel
 		
+		self.crew_list = []			# list of pointers to crew/personnel
+		self.base_morale_level = ''		# base morale level for personnel
+		self.morale_desc = ''			# description of current effective morale level
 		self.crew_positions = []		# list of crew positions
 		
 		if 'crew_positions' in self.stats:
@@ -2332,8 +2360,19 @@ class Unit:
 	# generate a new crew sufficent to man all crew positions
 	def GenerateNewCrew(self):
 		for position in self.crew_positions:
-			self.crew_list.append(Crew(self.nation, position))
+			new_crew = Crew(self.nation, position)
+			new_crew.SetMorale(self.base_morale_level)
+			self.crew_list.append(new_crew)
 			position.crewman = self.crew_list[-1]
+		# set current average morale level description
+		total_morale = 0.0
+		for crewman in self.crew_list:
+			total_morale += crewman.morale
+		total_morale = total_morale / len(self.crew_list)
+		for key, (min_lvl, max_lvl) in MORALE_LEVELS.iteritems():
+			if min_lvl < total_morale < max_lvl:
+				self.morale_desc = key
+				break
 	
 	# draw this unit to the given viewport hex on the unit console
 	def DrawMe(self, vp_hx, vp_hy):
@@ -3777,7 +3816,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	libtcod.console_hline(console, x+1, y+8, 29)
 	libtcod.console_hline(console, x+1, y+10, 29)
 	libtcod.console_hline(console, x+1, y+14, 29)
-	libtcod.console_hline(console, x+1, y+22, 29)
+	libtcod.console_hline(console, x+1, y+23, 29)
 	
 	# section titles
 	libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
@@ -3791,7 +3830,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	
 	# info
 	libtcod.console_set_default_foreground(console, libtcod.white)
-	libtcod.console_print(console, x+10, y+5, crewman.GetFullName())
+	libtcod.console_print(console, x+10, y+5, crewman.GetFullName().encode('IBM850'))
 	libtcod.console_print(console, x+10, y+7, str(crewman.age))
 	libtcod.console_print(console, x+10, y+9, crewman.rank_desc)
 	libtcod.console_print(console, x+10, y+11, scenario.player_unit.unit_id)
@@ -3811,6 +3850,9 @@ def DisplayCrewInfo(crewman, console, x, y):
 			libtcod.console_rect(console, x+8, y+17+i, 16, 1, False, libtcod.BKGND_SET)
 		background_shade = not background_shade
 		i+=1
+	
+	# morale level
+	libtcod.console_print(console, x+1, y+22, crewman.morale_desc)
 	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)
@@ -4089,12 +4131,18 @@ def UpdatePlayerInfoCon():
 	# status
 	libtcod.console_set_default_foreground(player_info_con, libtcod.light_grey)
 	libtcod.console_set_default_background(player_info_con, libtcod.darkest_blue)
-	libtcod.console_rect(player_info_con, 0, 15, 24, 3, True, libtcod.BKGND_SET)
+	libtcod.console_rect(player_info_con, 0, 15, 24, 2, True, libtcod.BKGND_SET)
 	
 	if unit.moved:
 		libtcod.console_print(player_info_con, 0, 16, 'Moved')
 	if unit.fired:
 		libtcod.console_print(player_info_con, 6, 16, 'Fired')
+	
+	# morale level of unit overall
+	libtcod.console_set_default_foreground(player_info_con, libtcod.white)
+	libtcod.console_set_default_background(player_info_con, libtcod.darker_cyan)
+	libtcod.console_rect(player_info_con, 0, 17, 24, 1, True, libtcod.BKGND_SET)
+	libtcod.console_print(player_info_con, 0, 17, unit.morale_desc)
 
 
 # list player unit crew positions and current crewmen if any
@@ -4570,6 +4618,7 @@ def DoScenario(load_game=False):
 			new_unit.nation = 'Germany'
 			new_unit.facing = 0
 			new_unit.turret_facing = 0
+			new_unit.base_morale_level = 'Confident'
 			
 			# spawn into map: 2 hexes up from bottom corner
 			new_unit.SpawnAt(0, scenario.map_radius - 2)
@@ -4589,6 +4638,7 @@ def DoScenario(load_game=False):
 			new_unit.facing = 3
 			if 'turret' in new_unit.stats:
 				new_unit.turret_facing = 3
+			new_unit.base_morale_level = 'Fearless'
 			new_unit.GenerateNewCrew()
 			scenario.units.append(new_unit)
 		
@@ -4618,7 +4668,7 @@ def DoScenario(load_game=False):
 				if scenario.map_hexes[(hx, hy)].terrain_type == 'pond':
 					continue
 				
-				if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 4:
+				if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 6:
 					continue
 				
 				unit.SpawnAt(hx, hy)

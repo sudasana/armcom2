@@ -56,8 +56,8 @@ import sdl2.sdlmixer as mixer				# sound effects
 ##########################################################################################
 
 # Debug Flags
-AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_SPY = True						# write description of AI actions to console
+AI_NO_ACTION = False					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-02-20'				# game version in Semantic Versioning format: http://semver.org/
@@ -194,13 +194,16 @@ RESOLVE_FP_CHANCE_STEP = 5.0
 RESOLVE_FP_CHANCE_MOD = 1.05
 
 # list of possible results from fp resolution, in addition to no effect
-FP_EFFECT_RESULT_LIST = ['Pin Test', 'Break Test', 'Destroyed']
+FP_EFFECT_RESULT_LIST = ['Pin Test', 'Destroyed']
 
 # FUTURE full list:
-#FP_EFFECT_RESULT_LIST = ['Pinned', 'Broken', 'Reduction', 'Destroyed']
+#FP_EFFECT_RESULT_LIST = ['Pin Test', 'Break Test', 'Reduction', 'Destroyed']
 
 # each point of FP applies this as a negative modifier to a morale check
 FP_MORALE_CHECK_MOD = 5.0
+
+# modifier to morale checks for broken units
+BROKEN_MORALE_MOD = -40.0
 
 # ranges for morale level descriptions
 MORALE_LEVELS = {
@@ -315,6 +318,7 @@ class Session:
 		SOUND_LIST = [
 			'menu_select',
 			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
+			'at_rifle_firing',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'zb_53_mg_00'
 		]
@@ -367,8 +371,7 @@ class AI:
 			if roll >= 70.0:
 				self.disposition = None
 			elif roll <= 50.0:
-				# TEMP - infantry units can't attack yet
-				if self.owner.dummy or self.owner.GetStat('category') == 'Infantry':
+				if self.owner.dummy:
 					self.disposition = None
 				else:
 					self.disposition = 'Combat'
@@ -1101,6 +1104,25 @@ class Scenario:
 				if not unit.alive:
 					continue
 				unit.ResolveHits()
+			
+			# test for unit recovery
+			for unit in self.units:
+				if unit.owning_player != self.game_turn['active_player']:
+					continue
+				if not unit.alive: continue
+				
+				if unit.broken:
+					if unit.MoraleCheck(BROKEN_MORALE_MOD):
+						unit.broken = False
+						text = unit.GetName() + ' recovers from being Broken.'
+						scenario.ShowMessage(text, unit.hx, unit.hy)
+					continue
+				
+				if unit.pinned:
+					if unit.MoraleCheck(0):
+						unit.pinned = False
+						text = unit.GetName() + ' recovers from being Pinned.'
+						scenario.ShowMessage(text, unit.hx, unit.hy)
 
 	# do automatic events at the end of a game turn
 	def DoEndOfTurn(self):
@@ -1187,9 +1209,11 @@ class Scenario:
 		for unit in self.units:
 			if not unit.alive: continue
 			if unit.owning_player == 0: continue
-			distance = GetHexDistance(self.player_unit.hx, self.player_unit.hy,
-				unit.hx, unit.hy)
-			if distance > 6: continue
+			
+			# target must be on VP
+			if unit.vp_hx is None or unit.vp_hy is None:
+				continue
+			
 			if (unit.hx, unit.hy) not in scenario.player_unit.fov: continue
 			self.player_target_list.append(unit)
 	
@@ -1314,6 +1338,11 @@ class Scenario:
 			else:
 				base_chance = INF_FP_BASE_CHANCE
 			fp = int(weapon.GetStat('fp'))
+			
+			# close range multiplier
+			if distance == 1:
+				fp = fp * 2
+			
 			profile['base_fp'] = fp
 			for i in range(2, fp + 1):
 				base_chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
@@ -1411,18 +1440,19 @@ class Scenario:
 		# calculate modifiers
 		
 		# calibre/range modifier
-		calibre = int(weapon.GetStat('calibre'))
-		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
-		if distance <= 1:
-			if calibre <= 57:
-				modifier_list.append(('Close Range', 7.0))
-		elif distance == 5:
-			modifier_list.append(('Medium Range', -7.0))
-		elif distance == 6:
-			if calibre < 65:
-				modifier_list.append(('Long Range', -18.0))
-			else:
-				modifier_list.append(('Long Range', -7.0))
+		if weapon.GetStat('calibre') is not None:
+			calibre = int(weapon.GetStat('calibre'))
+			distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+			if distance <= 1:
+				if calibre <= 57:
+					modifier_list.append(('Close Range', 7.0))
+			elif distance == 5:
+				modifier_list.append(('Medium Range', -7.0))
+			elif distance == 6:
+				if calibre < 65:
+					modifier_list.append(('Long Range', -18.0))
+				else:
+					modifier_list.append(('Long Range', -7.0))
 		
 		# target armour modifier
 		armour = target.GetStat('armour')
@@ -1563,15 +1593,13 @@ class Scenario:
 				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 13)
 		
 		# base chance
-		text = 'Base Chance to '
+		text = 'Base Chance '
 		if profile['type'] == 'ap':
-			text += 'Penetrate'
-		elif profile['type'] == 'FP Resolution':
-			text += 'Survive'
-		elif profile['type'] == 'Area Fire':
-			text += 'Effect'
+			text += 'to Penetrate'
+		elif profile['type'] in ['FP Resolution', 'Area Fire']:
+			text += 'of Effect'
 		else:
-			text += 'Hit'
+			text += 'to Hit'
 		libtcod.console_print_ex(attack_con, 13, 23, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 		text = str(profile['base_chance']) + '%%'
@@ -1826,20 +1854,20 @@ class Scenario:
 			if not target.known:
 				return 'Target must be spotted for this attack'
 		
-		# check that proper crew action is set for this attack
-		
+		# check that proper crew action is set for this attack if required
 		position_list = weapon.GetStat('fired_by')
-		weapon_type = weapon.GetStat('type')
-		if weapon_type in ['Gun', 'Co-ax MG']:
-			action_list = ['Operate Gun']
-		elif weapon_type == 'Hull MG':
-			action_list = ['Operate Hull MG']
-		
-		if not attacker.CheckCrewAction(position_list, action_list):
-			text = 'Crewman not on required action: '
-			# TEMP - give full list in future
-			text += action_list[0]
-			return text
+		if position_list is not None:
+			weapon_type = weapon.GetStat('type')
+			if weapon_type in ['Gun', 'Co-ax MG']:
+				action_list = ['Operate Gun']
+			elif weapon_type == 'Hull MG':
+				action_list = ['Operate Hull MG']
+			
+			if not attacker.CheckCrewAction(position_list, action_list):
+				text = 'Crewman not on required action: '
+				# TEMP - give full list in future
+				text += action_list[0]
+				return text
 
 		# attack can proceed
 		return ''
@@ -1874,6 +1902,8 @@ class Scenario:
 		if movement_class is not None:
 			if movement_class == 'Fast Tank':
 				chance += 15.0
+			elif movement_class == 'Infantry':
+				chance -= 50.0
 		
 		# direct driver modifier
 		if unit.CheckCrewAction(['Commander', 'Commander/Gunner'], ['Direct Driver']):
@@ -2698,7 +2728,7 @@ class Unit:
 				
 				PlaySoundFor(weapon, 'fire')
 				
-				for (x,y) in line[1:-1]:
+				for (x,y) in line[2:-1]:
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 					libtcod.console_put_char(0, x+31, y+4, 250)
 					libtcod.console_flush()
@@ -2716,7 +2746,7 @@ class Unit:
 				
 				libtcod.console_set_default_foreground(0, libtcod.yellow)
 				for i in range(30):
-					(x,y) = choice(line[1:-1])
+					(x,y) = choice(line[2:-1])
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 					libtcod.console_put_char(0, x+31, y+4, 250)
 					Wait(3)
@@ -2791,6 +2821,9 @@ class Unit:
 					modifier = self.fp_to_resolve * FP_MORALE_CHECK_MOD
 					if not self.MoraleCheck(modifier):
 						self.PinMe()
+					else:
+						text = self.GetName() + ' avoided being Pinned.'
+						scenario.ShowMessage(text, self.hx, self.hy)
 					
 				# TODO: Handle Broken result
 				elif profile['result'] == 'Break Test':
@@ -2828,11 +2861,6 @@ class Unit:
 		
 		# TODO: apply terrain modifiers
 		
-		# DEBUG
-		text = 'DEBUG: Doing a morale check for ' + self.unit_id
-		text += ', modifier = ' + str(modifier)
-		print text
-		
 		# check against unit leader first
 		leader = None
 		for crewman in self.crew_list:
@@ -2844,9 +2872,7 @@ class Unit:
 			effective_morale = leader.morale + modifier
 			roll = GetPercentileRoll()
 			if roll <= effective_morale:
-				print 'DEBUG: Leader passed check for ' + self.unit_id
 				return True
-			print 'DEBUG: Leader failed check for ' + self.unit_id
 		
 		# no leader or leader has failed check, check against remaining personnel
 		crew_list = []
@@ -2865,10 +2891,8 @@ class Unit:
 				passed += 1
 		
 		if passed >= half_crew:
-			print 'DEBUG: ' + str(passed) + ' personnel passed of ' + str(len(self.crew_list))
 			return True
 		return False
-	
 	
 	# pin this unit
 	def PinMe(self):
@@ -2876,6 +2900,8 @@ class Unit:
 		self.acquired_target = None
 		UpdateUnitInfoCon()
 		UpdateScenarioDisplay()
+		text = self.GetName() + ' is now Pinned.'
+		scenario.ShowMessage(text, self.hx, self.hy)
 		
 	# destroy this unit and remove it from the scenario map
 	def DestroyMe(self):
@@ -3599,6 +3625,11 @@ def PlaySound(sound_name):
 def PlaySoundFor(obj, action):
 	if action == 'fire':
 		if obj.GetStat('type') == 'Gun':
+			
+			if obj.GetStat('name') == 'AT Rifle':
+				PlaySound('at_rifle_firing')
+				return
+			
 			# TEMP - can add more detail in future
 			if obj.stats['calibre'] in ["37", "47"]:
 				n = libtcod.random_get_int(0, 0, 3)
@@ -4398,12 +4429,7 @@ def UpdateContextCon():
 			libtcod.console_set_default_foreground(context_con,
 				libtcod.light_grey)
 			
-			# TEMP - need this to avoid crash when non-special actions are displayed
-			# TODO: still needed?
-			if 'desc' not in CREW_ACTIONS[action]:
-				lines = []
-			else:
-				lines = wrap(CREW_ACTIONS[action]['desc'], 16)
+			lines = wrap(CREW_ACTIONS[action]['desc'], 16)
 			y = 2
 			for line in lines:
 				libtcod.console_print(context_con, 0, y, line)
@@ -5018,6 +5044,7 @@ def DoScenario(load_game=False):
 				else:
 					result = scenario.player_unit.RotateTurret(True)
 				if result:
+					scenario.RebuildPlayerTargetList()
 					UpdateUnitCon()
 					UpdateContextCon()
 					UpdateVPCon()

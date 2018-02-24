@@ -3821,6 +3821,8 @@ def DisplayScenInfo():
 	
 	libtcod.console_print_ex(scen_info_con, 14, 40, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Light Armour')
+	libtcod.console_print_ex(scen_info_con, 14, 41, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Infantry')
 	
 	# display to screen
 	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, 0, 31, 3)

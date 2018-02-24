@@ -56,11 +56,11 @@ import sdl2.sdlmixer as mixer				# sound effects
 ##########################################################################################
 
 # Debug Flags
-AI_SPY = True						# write description of AI actions to console
+AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-02-20'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-02-24'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -4724,13 +4724,10 @@ def DoScenario(load_game=False):
 		scenario.game_turn['hour'] = 5
 		scenario.game_turn['current_phase'] = PHASE_LIST[0]
 		
-		# display scenario info
-		# TEMP - disabled
-		#result = DisplayScenInfo()
-		
-		# player cancelled start
-		#if not result:
-		#	return
+		# display scenario info, allow player to cancel start
+		result = DisplayScenInfo()
+		if not result:
+			return
 		
 		# generate scenario units
 		
@@ -4766,13 +4763,13 @@ def DoScenario(load_game=False):
 			scenario.units.append(new_unit)
 		
 		# spawn enemy units
-		for i in range(8):
-			#SpawnEnemy('7TP')
-			#SpawnEnemy('Vickers 6-Ton Mark E')
+		for i in range(2):
+			SpawnEnemy('7TP')
+			SpawnEnemy('Vickers 6-Ton Mark E')
 			SpawnEnemy('Riflemen')
 		
 		# set dummy enemy units
-		dummy_units = 0
+		dummy_units = 2
 		unit_list = []
 		for unit in scenario.units:
 			if unit.owning_player == 1:

@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_NO_ACTION = True					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-02-20'				# game version in Semantic Versioning format: http://semver.org/
@@ -194,7 +194,13 @@ RESOLVE_FP_CHANCE_STEP = 5.0
 RESOLVE_FP_CHANCE_MOD = 1.05
 
 # list of possible results from fp resolution, in addition to no effect
-FP_EFFECT_RESULT_LIST = ['Pinned', 'Broken', 'Reduction', 'Destroyed']
+FP_EFFECT_RESULT_LIST = ['Pin Test', 'Break Test', 'Destroyed']
+
+# FUTURE full list:
+#FP_EFFECT_RESULT_LIST = ['Pinned', 'Broken', 'Reduction', 'Destroyed']
+
+# each point of FP applies this as a negative modifier to a morale check
+FP_MORALE_CHECK_MOD = 5.0
 
 # ranges for morale level descriptions
 MORALE_LEVELS = {
@@ -204,6 +210,11 @@ MORALE_LEVELS = {
 	'Fearless': (81.0, 90.9),
 	'Fanatic': (91.0, 100.0)
 }
+
+# list of unit leader positions: they check morale first for the unit
+UNIT_LEADER_POSITIONS = [
+	'Commander', 'Commander/Gunner', 'NCO'
+]
 
 # visible distances for crewmen when buttoned up and exposed
 MAX_BU_LOS_DISTANCE = 3
@@ -362,7 +373,10 @@ class AI:
 				else:
 					self.disposition = 'Combat'
 			else:
-				self.disposition = 'Movement'
+				if self.owner.pinned:
+					self.disposition = 'Combat'
+				else:
+					self.disposition = 'Movement'
 			
 			# debug testing override
 			if AI_NO_ACTION:
@@ -1254,6 +1268,10 @@ class Scenario:
 				modifier_list.append(('Attacker Moved', -60.0))
 			# TODO: elif weapon turret rotated
 			
+			# attacker pinned
+			if attacker.pinned:
+				modifier_list.append(('Attacker Pinned', -60.0))
+			
 			# LoS modifier
 			los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 			if los > 0.0:
@@ -1310,6 +1328,11 @@ class Scenario:
 			if attacker.moved:
 				mod = round(base_chance / 2.0, 2)
 				modifier_list.append(('Attacker Moved', 0.0 - mod))
+			
+			# attacker pinned
+			if attacker.pinned:
+				mod = round(base_chance / 2.0, 2)
+				modifier_list.append(('Attacker Pinned', 0.0 - mod))
 			
 			# close range
 			if distance == 1:
@@ -2247,7 +2270,7 @@ class Unit:
 		# status flags
 		self.pinned = False
 		self.broken = False
-		self.immobilized = False
+		#self.immobilized = False
 		self.deployed = False
 		
 		# field of view
@@ -2755,15 +2778,25 @@ class Unit:
 		# handle FP first
 		if self.fp_to_resolve > 0:
 			
-			# TODO: handle possible crew injury
+			# TODO: handle possible crew injury for vehicle units
 			if self.GetStat('category') != 'Vehicle':
 				profile = scenario.CalcFP(self)
 				scenario.DisplayAttack(profile)
 				WaitForEnter()
 				profile = scenario.DoAttackRoll(profile)
 				WaitForEnter()
-				# TODO: handle additional results
-				if profile['result'] == 'Destroyed':
+				
+				# handle results
+				if profile['result'] == 'Pin Test':
+					modifier = self.fp_to_resolve * FP_MORALE_CHECK_MOD
+					if not self.MoraleCheck(modifier):
+						self.PinMe()
+					
+				# TODO: Handle Broken result
+				elif profile['result'] == 'Break Test':
+					pass
+					
+				elif profile['result'] == 'Destroyed':
 					self.DestroyMe()
 					return
 					
@@ -2787,8 +2820,63 @@ class Unit:
 		
 		# clear unresolved hits
 		self.ap_hits_to_resolve = []
-		
 	
+	# do a morale check for this unit, result of FP attack, etc.
+	def MoraleCheck(self, modifier):
+		
+		modifier = float(0 - modifier)
+		
+		# TODO: apply terrain modifiers
+		
+		# DEBUG
+		text = 'DEBUG: Doing a morale check for ' + self.unit_id
+		text += ', modifier = ' + str(modifier)
+		print text
+		
+		# check against unit leader first
+		leader = None
+		for crewman in self.crew_list:
+			if crewman.current_position.name in UNIT_LEADER_POSITIONS:
+				leader = crewman
+				break
+		
+		if leader is not None:
+			effective_morale = leader.morale + modifier
+			roll = GetPercentileRoll()
+			if roll <= effective_morale:
+				print 'DEBUG: Leader passed check for ' + self.unit_id
+				return True
+			print 'DEBUG: Leader failed check for ' + self.unit_id
+		
+		# no leader or leader has failed check, check against remaining personnel
+		crew_list = []
+		for crewman in self.crew_list:
+			if crewman.current_position in UNIT_LEADER_POSITIONS:
+				continue
+			# TODO: check for personnel incapacitated
+			crew_list.append(crewman)
+		
+		passed = 0
+		half_crew = int(floor(len(self.crew_list) / 2))
+		for crewman in crew_list:
+			effective_morale = crewman.morale + modifier
+			roll = GetPercentileRoll()
+			if roll <= effective_morale:
+				passed += 1
+		
+		if passed >= half_crew:
+			print 'DEBUG: ' + str(passed) + ' personnel passed of ' + str(len(self.crew_list))
+			return True
+		return False
+	
+	
+	# pin this unit
+	def PinMe(self):
+		self.pinned = True
+		self.acquired_target = None
+		UpdateUnitInfoCon()
+		UpdateScenarioDisplay()
+		
 	# destroy this unit and remove it from the scenario map
 	def DestroyMe(self):
 		self.alive = False
@@ -4421,6 +4509,15 @@ def UpdateUnitInfoCon():
 			if level:
 				text += '+'
 			libtcod.console_print(unit_info_con, 0, 4, text)
+	
+	# active status
+	libtcod.console_set_default_foreground(unit_info_con, libtcod.light_red)
+	text = ''
+	if unit.broken:
+		text = 'Broken'
+	elif unit.pinned:
+		text = 'Pinned'
+	libtcod.console_print(unit_info_con, 0, 5, text)
 
 
 # update objective info console, 16x10
@@ -4643,13 +4740,13 @@ def DoScenario(load_game=False):
 			scenario.units.append(new_unit)
 		
 		# spawn enemy units
-		for i in range(2):
-			SpawnEnemy('7TP')
-			SpawnEnemy('Vickers 6-Ton Mark E')
+		for i in range(8):
+			#SpawnEnemy('7TP')
+			#SpawnEnemy('Vickers 6-Ton Mark E')
 			SpawnEnemy('Riflemen')
 		
 		# set dummy enemy units
-		dummy_units = 2
+		dummy_units = 0
 		unit_list = []
 		for unit in scenario.units:
 			if unit.owning_player == 1:

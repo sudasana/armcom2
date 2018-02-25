@@ -60,7 +60,7 @@ AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-02-24'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-03-03'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -177,14 +177,19 @@ AP_BASE_CHANCE = {
 	'47S' : 72.0
 }
 
-# base success chances for firepower attacks: infantry/gun and vehicle targets
-# success means that the attack is effective in some way, otherwise ineffective
-INF_FP_BASE_CHANCE = 15.0
-VEH_FP_BASE_CHANCE = 5.0
+# base chances of partial effect for area fire attacks: infantry/gun and vehicle targets
+INF_FP_BASE_CHANCE = 30.0
+VEH_FP_BASE_CHANCE = 20.0
+
 # each additional firepower beyond 1 adds this additional chance
 FP_CHANCE_STEP = 5.0
 # additional firepower modifier reduced by this much beyond 1
 FP_CHANCE_STEP_MOD = 0.95
+
+# multiplier for full effect
+FP_FULL_EFFECT = 0.75
+# multipler for critical effect
+FP_CRIT_EFFECT = 0.1
 
 # base chance of a 1 firepower attack having no effect on a unit
 RESOLVE_FP_BASE_CHANCE = 95.0
@@ -1332,11 +1337,7 @@ class Scenario:
 		# area fire
 		elif profile['type'] == 'Area Fire':
 			
-			# calculate base success chance
-			if target.GetStat('category') == 'Vehicle':
-				base_chance = VEH_FP_BASE_CHANCE
-			else:
-				base_chance = INF_FP_BASE_CHANCE
+			# calculate base FP
 			fp = int(weapon.GetStat('fp'))
 			
 			# close range multiplier
@@ -1344,6 +1345,13 @@ class Scenario:
 				fp = fp * 2
 			
 			profile['base_fp'] = fp
+			
+			# calculate base effect chance
+			# TODO: is this chance of any effect including partial?
+			if target.GetStat('category') == 'Vehicle':
+				base_chance = VEH_FP_BASE_CHANCE
+			else:
+				base_chance = INF_FP_BASE_CHANCE
 			for i in range(2, fp + 1):
 				base_chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
 			profile['base_chance'] = round(base_chance, 2)
@@ -1371,7 +1379,13 @@ class Scenario:
 			los = GetLoS(attacker.hx, attacker.hy, target.hx, target.hy)
 			if los > 0.0:
 				modifier_list.append(('Terrain', 0.0 - los))
-				
+			
+			# elevation
+			elevation1 = self.map_hexes[(attacker.hx, attacker.hy)].elevation
+			elevation2 = self.map_hexes[(target.hx, target.hy)].elevation
+			if elevation2 > elevation1:
+				modifier_list.append(('Higher Elevation', -20.0))
+			
 			if not target.known:
 				modifier_list.append(('Unknown Target', -20.0))
 			
@@ -1380,7 +1394,15 @@ class Scenario:
 				# target is infantry and moved
 				if target.moved and target.GetStat('category') == 'Infantry':
 					mod = round(base_chance / 2.0, 2)
-					modifier_list.append(('Target Infantry Moved', mod))			
+					modifier_list.append(('Target Infantry Moved', mod))
+				
+				# target size class
+				size_class = target.GetStat('size_class')
+				if size_class is not None:
+					if size_class == 'Small':
+						modifier_list.append(('Small Target', -7.0))
+					elif size_class == 'Very Small':
+						modifier_list.append(('Very Small Target', -18.0))
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -1392,6 +1414,13 @@ class Scenario:
 		
 		# calculate final chance of success
 		profile['final_chance'] = RestrictChance(profile['base_chance'] + total_modifier)
+		
+		# calculate additional outcomes for Area Fire
+		if profile['type'] == 'Area Fire':
+			profile['full_effect'] = RestrictChance((profile['base_chance'] + 
+				total_modifier) * FP_FULL_EFFECT)
+			profile['critical_effect'] = RestrictChance((profile['base_chance'] + 
+				total_modifier) * FP_CRIT_EFFECT)
 		
 		return profile
 	
@@ -1657,16 +1686,42 @@ class Scenario:
 					libtcod.RIGHT, str(profile[result]) + '%%')
 				y += 1
 
+		elif profile['type'] == 'Area Fire':
+			# area fire has partial, full, and critical outcomes possible
+			
+			# no effect
+			libtcod.console_set_default_background(attack_con, libtcod.red)
+			libtcod.console_rect(attack_con, 1, 49, 24, 3, False, libtcod.BKGND_SET)
+			
+			# partial effect
+			libtcod.console_set_default_background(attack_con, libtcod.darker_green)
+			x = int(ceil(24.0 * profile['final_chance'] / 100.0))
+			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+			
+			# full effect
+			libtcod.console_set_default_background(attack_con, libtcod.green)
+			x = int(ceil(24.0 * profile['full_effect'] / 100.0))
+			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+			
+			# critical effect
+			libtcod.console_set_default_background(attack_con, libtcod.blue)
+			x = int(ceil(24.0 * profile['critical_effect'] / 100.0))
+			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+			
+			text = str(profile['final_chance']) + '%%'
+			libtcod.console_print_ex(attack_con, 13, 50, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
+			
 		else:
-		
+			
+			# miss
+			libtcod.console_set_default_background(attack_con, libtcod.red)
+			libtcod.console_rect(attack_con, 1, 49, 24, 3, False, libtcod.BKGND_SET)
+			
+			# hit
 			x = int(ceil(24.0 * profile['final_chance'] / 100.0))
 			libtcod.console_set_default_background(attack_con, libtcod.green)
 			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
-			
-			libtcod.console_set_default_background(attack_con, libtcod.red)
-			libtcod.console_rect(attack_con, x+1, 49, 24-x, 3, False, libtcod.BKGND_SET)
-			
-			# TODO: display an additional band for area fire: partial effect
 			
 			# critical hit band
 			libtcod.console_set_default_foreground(attack_con, libtcod.blue)
@@ -1756,6 +1811,7 @@ class Scenario:
 			libtcod.console_put_char(attack_con, x, 48, 233)
 			libtcod.console_put_char(attack_con, x, 52, 232)
 		
+		# armour penetration roll
 		if profile['type'] == 'ap':
 			
 			if roll >= CRITICAL_MISS:
@@ -1767,12 +1823,18 @@ class Scenario:
 			else:
 				result_text = 'NO PENETRATION'
 		
-		# TODO: calculate additional Area Fire results
+		# area fire attack
 		elif profile['type'] == 'Area Fire':
 			
-			if roll <= profile['final_chance']:
-				result_text = 'SUCCESS'
+			if roll <= profile['critical_effect']:
+				result_text = 'CRITICAL EFFECT'
+				profile['effective_fp'] = profile['base_fp'] * 2
+			elif roll <= profile['full_effect']:
+				result_text = 'FULL EFFECT'
 				profile['effective_fp'] = profile['base_fp']
+			elif roll <= profile['final_chance']:
+				result_text = 'PARTIAL EFFECT'
+				profile['effective_fp'] = int(floor(profile['base_fp'] / 2))
 			else:
 				result_text = 'NO EFFECT'
 		
@@ -1802,6 +1864,11 @@ class Scenario:
 		
 		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, result_text)
+		
+		# display effect FP if it was successful area fire attack
+		if profile['type'] == 'Area Fire' and result_text != 'NO EFFECT':
+			libtcod.console_print_ex(attack_con, 13, 55, libtcod.BKGND_NONE,
+				libtcod.CENTER, str(profile['effective_fp']) + ' FP')
 		
 		# blit the finished console to the screen
 		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
@@ -2783,7 +2850,7 @@ class Unit:
 		# handle the results of the attack
 		if profile['type'] == 'Area Fire':
 			
-			if profile['result'] == 'SUCCESS':
+			if profile['result'] in ['CRITICAL EFFECT', 'FULL EFFECT', 'PARTIAL EFFECT']:
 				target.fp_to_resolve += profile['effective_fp']
 				
 				# target will automatically be spotted next turn if possible

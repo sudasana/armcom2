@@ -1121,19 +1121,7 @@ class Scenario:
 				if unit.owning_player != self.game_turn['active_player']:
 					continue
 				if not unit.alive: continue
-				
-				if unit.broken:
-					if unit.MoraleCheck(BROKEN_MORALE_MOD):
-						unit.broken = False
-						text = unit.GetName() + ' recovers from being Broken.'
-						scenario.ShowMessage(text, unit.hx, unit.hy)
-					continue
-				
-				if unit.pinned:
-					if unit.MoraleCheck(0):
-						unit.pinned = False
-						text = unit.GetName() + ' recovers from being Pinned.'
-						scenario.ShowMessage(text, unit.hx, unit.hy)
+				unit.RecoveryCheck()
 
 	# do automatic events at the end of a game turn
 	def DoEndOfTurn(self):
@@ -2170,7 +2158,7 @@ class Crew:
 	
 	# returns True if this crewman is currently able to choose an action
 	def AbleToAct(self):
-		if self.status in ['Stunned', 'Unconscious', 'Dead']:
+		if self.status in ['Unconscious', 'Dead']:
 			return False
 		return True
 	
@@ -2404,6 +2392,38 @@ class Unit:
 		self.hx = hx
 		self.hy = hy
 		scenario.map_hexes[(hx, hy)].unit_stack.append(self)
+	
+	# check for recovery for the unit and for personnel
+	# normally called at end of own turn
+	def RecoveryCheck(self):
+		
+		# check for personnel status recovery first
+		for position in self.crew_positions:
+			if position.crewman is None: continue
+			if position.crewman.status not in ['Stunned', 'Unconscious']: continue
+			
+			# TODO: roll for recovery from Stunned
+			if position.crewman.status == 'Stunned':
+				
+				
+				
+				continue
+		
+		# check for unit recovering from Broken status
+		if self.broken:
+			if self.MoraleCheck(BROKEN_MORALE_MOD):
+				self.broken = False
+				text = self.GetName() + ' recovers from being Broken.'
+				scenario.ShowMessage(text, self.hx, self.hy)
+			return
+		
+		# check for unit recovering from Pinned status
+		if self.pinned:
+			if self.MoraleCheck(0):
+				self.pinned = False
+				text = self.GetName() + ' recovers from being Pinned.'
+				scenario.ShowMessage(text, self.hx, self.hy)
+	
 	
 	# calculate which hexes are visible to this unit
 	def CalcFoV(self):
@@ -2950,17 +2970,20 @@ class Unit:
 				break
 		
 		if leader is not None:
-			effective_morale = leader.morale + modifier
-			roll = GetPercentileRoll()
-			if roll <= effective_morale:
-				return True
+			if leader.AbleToAct():
+				effective_morale = leader.morale + modifier
+				roll = GetPercentileRoll()
+				if roll <= effective_morale:
+					return True
 		
 		# no leader or leader has failed check, check against remaining personnel
 		crew_list = []
 		for crewman in self.crew_list:
 			if crewman.current_position in UNIT_LEADER_POSITIONS:
 				continue
-			# TODO: check for personnel incapacitated
+			# check for personnel incapacitated
+			if not crewman.AbleToAct():
+				continue
 			crew_list.append(crewman)
 		
 		passed = 0
@@ -4311,7 +4334,7 @@ def UpdatePlayerInfoCon():
 			text1 += weapon.stats['name']
 		else:
 			if text2 != '': text2 += ', '
-			text2 +=weapon.stats['name']
+			text2 += weapon.stats['name']
 	libtcod.console_print(player_info_con, 0, 10, text1)
 	libtcod.console_print(player_info_con, 0, 11, text2)
 	

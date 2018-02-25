@@ -915,7 +915,7 @@ class Scenario:
 		# do start of phase stuff
 		self.DoStartOfPhase()
 		
-		# if AI p[layer active, return now
+		# if AI player active, return now
 		if self.game_turn['active_player'] == 1:
 			return False
 		
@@ -959,20 +959,26 @@ class Scenario:
 					
 					action_list = []
 					
-					for action_name in CREW_ACTIONS:
-						# action restricted to a list of positions
-						if 'position_list' in CREW_ACTIONS[action_name]:
-							if position.name not in CREW_ACTIONS[action_name]['position_list']:
-								continue
-						action_list.append(action_name)
+					# crewman cannot act
+					if not position.crewman.AbleToAct():
+						action_list.append('None')
+					else:
+						for action_name in CREW_ACTIONS:
+							# action restricted to a list of positions
+							if 'position_list' in CREW_ACTIONS[action_name]:
+								if position.name not in CREW_ACTIONS[action_name]['position_list']:
+									continue
+							action_list.append(action_name)
 					
 					# copy over the list to the crewman
 					position.crewman.action_list = action_list[:]
 					
 					# if previous action is no longer possible, cancel it
+					# TODO: set no action or default to first action in list?
+					# First one will either be None or Spot
 					if position.crewman.current_action is not None:
 						if position.crewman.current_action not in action_list:
-							position.crewman.current_action = None
+							position.crewman.current_action = action_list[0]
 				
 				# decrement FP hit counter if any
 				if unit.hit_by_fp > 0:
@@ -2042,6 +2048,8 @@ class Crew:
 		self.morale = 0.0				# morale level, will be set later on
 		self.morale_desc = ''				# text description of morale
 		
+		self.status = 'Alert'				# current mental/physical status
+		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'Spot'			# currently active action
 		
@@ -2052,7 +2060,7 @@ class Crew:
 			self.stats[stat_name] = 0
 		
 		self.GenerateStats()
-		
+
 	# generate a random first and last name for this crewman
 	# TEMP: have to normalize extended characters so they can be displayed on screen
 	def GenerateName(self):
@@ -2159,6 +2167,12 @@ class Crew:
 			if min_lvl < self.morale < max_lvl:
 				self.morale_desc = key
 				break
+	
+	# returns True if this crewman is currently able to choose an action
+	def AbleToAct(self):
+		if self.status in ['Stunned', 'Unconscious', 'Dead']:
+			return False
+		return True
 	
 	# set a new action; if True, select next in list, otherwise previous
 	def SetAction(self, forward):
@@ -3980,16 +3994,22 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 		# names might have special characters so we encode it before printing it
 		libtcod.console_print(console, x, y+1, text.encode('IBM850'))
 		
-		# current action if any
+		# crewman info if any
 		if position.crewman is not None:
+			
+			# current action
 			if position.crewman.current_action is not None:
 				libtcod.console_set_default_foreground(console,
 					libtcod.dark_yellow)
 				libtcod.console_print(console, x, y+2,
 					position.crewman.current_action)
-				libtcod.console_set_default_foreground(console,
-					libtcod.white)
-		
+				
+			
+			# status
+			libtcod.console_set_default_foreground(console, libtcod.grey)
+			libtcod.console_print(console, x, y+3, position.crewman.status)
+			
+		libtcod.console_set_default_foreground(console, libtcod.white)
 		y += 5
 
 

@@ -1388,7 +1388,7 @@ class Scenario:
 				# target is infantry and moved
 				if target.moved and target.GetStat('category') == 'Infantry':
 					mod = round(base_chance / 2.0, 2)
-					modifier_list.append(('Target Infantry Moved', mod))
+					modifier_list.append(('Target Moved', mod))
 				
 				# target size class
 				size_class = target.GetStat('size_class')
@@ -1396,7 +1396,7 @@ class Scenario:
 					if size_class == 'Small':
 						modifier_list.append(('Small Target', -7.0))
 					elif size_class == 'Very Small':
-						modifier_list.append(('Very Small Target', -18.0))
+						modifier_list.append(('V. Small Target', -18.0))
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -1995,7 +1995,7 @@ class Scenario:
 		if hx is not None and hy is not None:
 			for (vp_hx, vp_hy) in VP_HEXES:
 				if scenario.map_vp[(vp_hx, vp_hy)] == (hx, hy):
-					if abs(vp_hy) < int(abs(vp_hx) / 2):
+					if vp_hy < int((0 - vp_hx) / 2):
 						switch = True
 					break
 		if switch:
@@ -2015,7 +2015,8 @@ class Scenario:
 		libtcod.console_flush()
 		
 		# FUTURE: get message pause time from settings
-		Wait(len(lines) * 100)
+		wait_time = 60 + (len(lines) * 60)
+		Wait(wait_time)
 		
 		# clear hex highlight if any
 		if hx is not None and hy is not None:

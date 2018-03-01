@@ -1569,7 +1569,7 @@ class Scenario:
 			text = 'FP Resolution'
 		else:
 			text = 'Ranged Attack'
-		libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 1, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 		
 		# attacker portrait if any
@@ -1598,11 +1598,11 @@ class Scenario:
 			text2 = 'firing ' + profile['weapon'].GetStat('name') + ' at'
 			text3 = profile['target'].GetName()
 			
-		libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 10, libtcod.BKGND_NONE,
 			libtcod.CENTER, text1)
-		libtcod.console_print_ex(attack_con, 13, 11, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 11, libtcod.BKGND_NONE,
 			libtcod.CENTER, text2)
-		libtcod.console_print_ex(attack_con, 13, 12, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 12, libtcod.BKGND_NONE,
 			libtcod.CENTER, text3)
 		
 		# target portrait if any
@@ -1623,26 +1623,26 @@ class Scenario:
 			text += 'of Effect'
 		else:
 			text += 'to Hit'
-		libtcod.console_print_ex(attack_con, 13, 23, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 23, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 		text = str(profile['base_chance']) + '%%'
-		libtcod.console_print_ex(attack_con, 13, 24, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 24, libtcod.BKGND_NONE,
 			libtcod.CENTER, text)
 		
 		# modifiers
 		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
 		libtcod.console_rect(attack_con, 1, 27, 24, 1, False, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(attack_con, libtcod.black)
-		libtcod.console_print_ex(attack_con, 13, 27, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 27, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Modifiers')
 		
 		y = 29
 		if len(profile['modifier_list']) == 0:
-			libtcod.console_print_ex(attack_con, 13, y, libtcod.BKGND_NONE,
+			ConsolePrintEx(attack_con, 13, y, libtcod.BKGND_NONE,
 				libtcod.CENTER, 'None')
 		else:
 			for (desc, mod) in profile['modifier_list']:
-				libtcod.console_print(attack_con, 2, y, desc)
+				ConsolePrint(attack_con, 2, y, desc)
 				
 				if mod > 0.0:
 					col = libtcod.green
@@ -1654,7 +1654,7 @@ class Scenario:
 				text += str(mod)
 				
 				libtcod.console_set_default_foreground(attack_con, col)
-				libtcod.console_print_ex(attack_con, 24, y, libtcod.BKGND_NONE,
+				ConsolePrintEx(attack_con, 24, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, text)
 				libtcod.console_set_default_foreground(attack_con, libtcod.white)
 				
@@ -1664,19 +1664,19 @@ class Scenario:
 		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
 		libtcod.console_rect(attack_con, 1, 46, 24, 1, False, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(attack_con, libtcod.black)
-		libtcod.console_print_ex(attack_con, 13, 46, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 46, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Final Chance')
 		
 		# display chance graph
 		if profile['type'] == 'FP Resolution':
 			
-			libtcod.console_print(attack_con, 1, 48, 'No Effect: ')
-			libtcod.console_print_ex(attack_con, 24, 48, libtcod.BKGND_NONE,
+			ConsolePrint(attack_con, 1, 48, 'No Effect: ')
+			ConsolePrintEx(attack_con, 24, 48, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(profile['final_chance']) + '%%') 
 			y = 49
 			for result in FP_EFFECT_RESULT_LIST:
-				libtcod.console_print(attack_con, 1, y, result)
-				libtcod.console_print_ex(attack_con, 24, y, libtcod.BKGND_NONE,
+				ConsolePrint(attack_con, 1, y, result)
+				ConsolePrintEx(attack_con, 24, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, str(profile[result]) + '%%')
 				y += 1
 
@@ -1703,7 +1703,7 @@ class Scenario:
 			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
 			
 			text = str(profile['final_chance']) + '%%'
-			libtcod.console_print_ex(attack_con, 13, 50, libtcod.BKGND_NONE,
+			ConsolePrintEx(attack_con, 13, 50, libtcod.BKGND_NONE,
 				libtcod.CENTER, text)
 			
 		else:
@@ -1731,14 +1731,14 @@ class Scenario:
 			libtcod.console_set_default_background(attack_con, libtcod.black)
 		
 			text = str(profile['final_chance']) + '%%'
-			libtcod.console_print_ex(attack_con, 13, 50, libtcod.BKGND_NONE,
+			ConsolePrintEx(attack_con, 13, 50, libtcod.BKGND_NONE,
 				libtcod.CENTER, text)
 		
 		# display prompts
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		libtcod.console_print(attack_con, 6, 57, 'Enter')
+		ConsolePrint(attack_con, 6, 57, 'Enter')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		libtcod.console_print(attack_con, 12, 57, 'Continue')
+		ConsolePrint(attack_con, 12, 57, 'Continue')
 		
 		# blit the finished console to the screen
 		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
@@ -1753,7 +1753,7 @@ class Scenario:
 		if profile['type'] == 'FP Resolution':
 			for i in range(4):
 				roll = GetPercentileRoll()
-				libtcod.console_print_ex(attack_con, 13, 55,
+				ConsolePrintEx(attack_con, 13, 55,
 					libtcod.BKGND_NONE, libtcod.CENTER, str(roll) + '%%')
 				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -1761,7 +1761,7 @@ class Scenario:
 				# don't wait on final roll, this is the real one
 				if i != 3:
 					Wait(20)
-					libtcod.console_print_ex(attack_con, 13, 55,
+					ConsolePrintEx(attack_con, 13, 55,
 						libtcod.BKGND_NONE, libtcod.CENTER, '      ')
 		
 		else:
@@ -1856,12 +1856,12 @@ class Scenario:
 		
 		profile['result'] = result_text
 		
-		libtcod.console_print_ex(attack_con, 13, 54, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 54, libtcod.BKGND_NONE,
 			libtcod.CENTER, result_text)
 		
 		# display effect FP if it was successful area fire attack
 		if profile['type'] == 'Area Fire' and result_text != 'NO EFFECT':
-			libtcod.console_print_ex(attack_con, 13, 55, libtcod.BKGND_NONE,
+			ConsolePrintEx(attack_con, 13, 55, libtcod.BKGND_NONE,
 				libtcod.CENTER, str(profile['effective_fp']) + ' FP')
 		
 		# blit the finished console to the screen
@@ -1998,7 +1998,7 @@ class Scenario:
 		lines = wrap(message, 27)
 		# max 7 lines tall
 		for line in lines[:7]:
-			libtcod.console_print(0, 45, y, line)
+			ConsolePrint(0, 45, y, line)
 			y += 1
 		
 		libtcod.console_flush()
@@ -3120,6 +3120,14 @@ class Unit:
 #                                  General Functions                                     #
 ##########################################################################################
 
+# TESTING fix for Win10 PyInstaller overflow crash
+# wrappers to cast text to a string object before sending to libtcod
+def ConsolePrint(console, x, y, text):
+	libtcod.console_print(console, x, y, str(text))
+def ConsolePrintEx(console, x, y, flag1, flag2, text):
+	libtcod.console_print_ex(console, x, y, flag1, flag2, str(text))
+
+
 # return a random float between 0.0 and 100.0
 def GetPercentileRoll():
 	return float(libtcod.random_get_int(0, 1, 1000)) / 10.0
@@ -3770,14 +3778,14 @@ def ShowGameMenu(active_tab):
 		if active_tab == 0:
 		
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(game_menu_con, 25, 22, 'Esc')
-			libtcod.console_print(game_menu_con, 25, 24, 'Q')
-			libtcod.console_print(game_menu_con, 25, 25, 'A')
+			ConsolePrint(game_menu_con, 25, 22, 'Esc')
+			ConsolePrint(game_menu_con, 25, 24, 'Q')
+			ConsolePrint(game_menu_con, 25, 25, 'A')
 			
 			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-			libtcod.console_print(game_menu_con, 30, 22, 'Return to Game')
-			libtcod.console_print(game_menu_con, 30, 24, 'Save and Quit to Main Menu')
-			libtcod.console_print(game_menu_con, 30, 25, 'Abandon Game')
+			ConsolePrint(game_menu_con, 30, 22, 'Return to Game')
+			ConsolePrint(game_menu_con, 30, 24, 'Save and Quit to Main Menu')
+			ConsolePrint(game_menu_con, 30, 25, 'Abandon Game')
 		
 		elif active_tab == 3:
 			
@@ -3790,10 +3798,10 @@ def ShowGameMenu(active_tab):
 				DisplayCrewInfo(crewman, game_menu_con, 37, 8)
 			
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(game_menu_con, 6, 40, 'I/K')
+			ConsolePrint(game_menu_con, 6, 40, 'I/K')
 			
 			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-			libtcod.console_print(game_menu_con, 11, 40, 'Select Crew')
+			ConsolePrint(game_menu_con, 11, 40, 'Select Crew')
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		libtcod.console_flush()
@@ -3898,12 +3906,12 @@ def DisplayScenInfo():
 	scen_info_con = LoadXP('scen_summary_bkg.xp')
 	# TEMP: most of this will be drawn from scenario object in future
 	libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
-	libtcod.console_print_ex(scen_info_con, 14, 1, libtcod.BKGND_NONE,
+	ConsolePrintEx(scen_info_con, 14, 1, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Western Poland')
-	libtcod.console_print_ex(scen_info_con, 14, 2, libtcod.BKGND_NONE,
+	ConsolePrintEx(scen_info_con, 14, 2, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'September 1939')
 	text = str(scenario.game_turn['hour']) + ':' + str(scenario.game_turn['minute']).zfill(2)
-	libtcod.console_print_ex(scen_info_con, 14, 3, libtcod.BKGND_NONE,
+	ConsolePrintEx(scen_info_con, 14, 3, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
 	libtcod.console_set_default_foreground(scen_info_con, libtcod.light_grey)
@@ -3912,20 +3920,20 @@ def DisplayScenInfo():
 	lines = wrap(text, 25)
 	y = 7
 	for line in lines[:9]:
-		libtcod.console_print(scen_info_con, 2, y, line)
+		ConsolePrint(scen_info_con, 2, y, line)
 		y+=1
 	
-	libtcod.console_print_ex(scen_info_con, 14, 20, libtcod.BKGND_NONE,
+	ConsolePrintEx(scen_info_con, 14, 20, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Light Armour')
 	
-	libtcod.console_print(scen_info_con, 1, 27, '1) Capture all objectives')
-	libtcod.console_print_ex(scen_info_con, 14, 29, libtcod.BKGND_NONE,
+	ConsolePrint(scen_info_con, 1, 27, '1) Capture all objectives')
+	ConsolePrintEx(scen_info_con, 14, 29, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'OR')
-	libtcod.console_print(scen_info_con, 1, 31, '2) Destroy all enemy units')
+	ConsolePrint(scen_info_con, 1, 31, '2) Destroy all enemy units')
 	
-	libtcod.console_print_ex(scen_info_con, 14, 40, libtcod.BKGND_NONE,
+	ConsolePrintEx(scen_info_con, 14, 40, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Light Armour')
-	libtcod.console_print_ex(scen_info_con, 14, 41, libtcod.BKGND_NONE,
+	ConsolePrintEx(scen_info_con, 14, 41, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Infantry')
 	
 	# display to screen
@@ -3995,9 +4003,9 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 				libtcod.console_set_default_background(console, libtcod.black)
 		
 		libtcod.console_set_default_foreground(console, libtcod.light_blue)
-		libtcod.console_print(console, x, y, position.name)
+		ConsolePrint(console, x, y, position.name)
 		libtcod.console_set_default_foreground(console, libtcod.white)
-		libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE, 
+		ConsolePrintEx(console, x+23, y, libtcod.BKGND_NONE, 
 			libtcod.RIGHT, position.location)
 		if not position.hatch:
 			text = '--'
@@ -4006,7 +4014,7 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 				text = 'CE'
 			else:
 				text = 'BU'
-		libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE, 
+		ConsolePrintEx(console, x+23, y+1, libtcod.BKGND_NONE, 
 			libtcod.RIGHT, text)
 		
 		if position.crewman is None:
@@ -4015,7 +4023,7 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 			text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
 		
 		# names might have special characters so we encode it before printing it
-		libtcod.console_print(console, x, y+1, text.encode('IBM850'))
+		ConsolePrint(console, x, y+1, text.encode('IBM850'))
 		
 		# crewman info if any
 		if position.crewman is not None:
@@ -4024,13 +4032,13 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 			if position.crewman.current_action is not None:
 				libtcod.console_set_default_foreground(console,
 					libtcod.dark_yellow)
-				libtcod.console_print(console, x, y+2,
+				ConsolePrint(console, x, y+2,
 					position.crewman.current_action)
 				
 			
 			# status
 			libtcod.console_set_default_foreground(console, libtcod.grey)
-			libtcod.console_print(console, x, y+3, position.crewman.status)
+			ConsolePrint(console, x, y+3, position.crewman.status)
 			
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		y += 5
@@ -4051,21 +4059,21 @@ def DisplayCrewInfo(crewman, console, x, y):
 	
 	# section titles
 	libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
-	libtcod.console_print(console, x+1, y+2, 'Crewman Report')
-	libtcod.console_print(console, x+1, y+5, 'Name')
-	libtcod.console_print(console, x+1, y+7, 'Age')
-	libtcod.console_print(console, x+1, y+9, 'Rank')
-	libtcod.console_print(console, x+1, y+11, 'Current')
-	libtcod.console_print(console, x+1, y+12, 'Position')
-	libtcod.console_print(console, x+1, y+15, 'Assessment')
+	ConsolePrint(console, x+1, y+2, 'Crewman Report')
+	ConsolePrint(console, x+1, y+5, 'Name')
+	ConsolePrint(console, x+1, y+7, 'Age')
+	ConsolePrint(console, x+1, y+9, 'Rank')
+	ConsolePrint(console, x+1, y+11, 'Current')
+	ConsolePrint(console, x+1, y+12, 'Position')
+	ConsolePrint(console, x+1, y+15, 'Assessment')
 	
 	# info
 	libtcod.console_set_default_foreground(console, libtcod.white)
-	libtcod.console_print(console, x+10, y+5, crewman.GetFullName().encode('IBM850'))
-	libtcod.console_print(console, x+10, y+7, str(crewman.age))
-	libtcod.console_print(console, x+10, y+9, crewman.rank_desc)
-	libtcod.console_print(console, x+10, y+11, scenario.player_unit.unit_id)
-	libtcod.console_print(console, x+10, y+12, crewman.current_position.name)
+	ConsolePrint(console, x+10, y+5, crewman.GetFullName().encode('IBM850'))
+	ConsolePrint(console, x+10, y+7, str(crewman.age))
+	ConsolePrint(console, x+10, y+9, crewman.rank_desc)
+	ConsolePrint(console, x+10, y+11, scenario.player_unit.unit_id)
+	ConsolePrint(console, x+10, y+12, crewman.current_position.name)
 	
 	# crew stats
 	libtcod.console_set_default_background(console, libtcod.darkest_grey)
@@ -4073,9 +4081,9 @@ def DisplayCrewInfo(crewman, console, x, y):
 	i = 0
 	for stat_name in STAT_NAMES:
 		libtcod.console_set_default_foreground(console, libtcod.white)
-		libtcod.console_print(console, x+8, y+17+i, stat_name)
+		ConsolePrint(console, x+8, y+17+i, stat_name)
 		libtcod.console_set_default_foreground(console, libtcod.light_grey)
-		libtcod.console_print_ex(console, x+23, y+17+i, libtcod.BKGND_NONE, 
+		ConsolePrintEx(console, x+23, y+17+i, libtcod.BKGND_NONE, 
 			libtcod.RIGHT, str(crewman.stats[stat_name]))
 		if background_shade:
 			libtcod.console_rect(console, x+8, y+17+i, 16, 1, False, libtcod.BKGND_SET)
@@ -4083,7 +4091,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 		i+=1
 	
 	# morale level
-	libtcod.console_print(console, x+1, y+22, crewman.morale_desc)
+	ConsolePrint(console, x+1, y+22, crewman.morale_desc)
 	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)
@@ -4113,7 +4121,7 @@ def ShowNotification(text, confirm=False):
 	# display message
 	ly = y+2
 	for line in lines:
-		libtcod.console_print(0, x+2, ly, line)
+		ConsolePrint(0, x+2, ly, line)
 		ly += 1
 	
 	# if asking for confirmation, display yes/no choices, otherwise display a simple messages
@@ -4122,7 +4130,7 @@ def ShowNotification(text, confirm=False):
 	else:
 		text = 'Enter to Continue'
 	
-	libtcod.console_print_ex(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
+	ConsolePrintEx(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	
 	# show to screen
@@ -4314,9 +4322,9 @@ def UpdatePlayerInfoCon():
 	unit = scenario.player_unit
 	
 	libtcod.console_set_default_foreground(player_info_con, libtcod.lighter_blue)
-	libtcod.console_print(player_info_con, 0, 0, unit.unit_id)
+	ConsolePrint(player_info_con, 0, 0, unit.unit_id)
 	libtcod.console_set_default_foreground(player_info_con, libtcod.light_grey)
-	libtcod.console_print(player_info_con, 0, 1, unit.GetStat('class'))
+	ConsolePrint(player_info_con, 0, 1, unit.GetStat('class'))
 	portrait = unit.GetStat('portrait')
 	if portrait is not None:
 		libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, player_info_con, 0, 2)
@@ -4335,28 +4343,28 @@ def UpdatePlayerInfoCon():
 		else:
 			if text2 != '': text2 += ', '
 			text2 += weapon.stats['name']
-	libtcod.console_print(player_info_con, 0, 10, text1)
-	libtcod.console_print(player_info_con, 0, 11, text2)
+	ConsolePrint(player_info_con, 0, 10, text1)
+	ConsolePrint(player_info_con, 0, 11, text2)
 	
 	# armour
 	armour = unit.GetStat('armour')
 	if armour is None:
-		libtcod.console_print(player_info_con, 0, 12, 'Unarmoured')
+		ConsolePrint(player_info_con, 0, 12, 'Unarmoured')
 	else:
-		libtcod.console_print(player_info_con, 0, 12, 'Armoured')
+		ConsolePrint(player_info_con, 0, 12, 'Armoured')
 		libtcod.console_set_default_foreground(player_info_con, libtcod.light_grey)
 		if unit.GetStat('turret'):
 			text = 'T'
 		else:
 			text = 'U'
 		text += ' ' + armour['turret_front'] + '/' + armour['turret_side']
-		libtcod.console_print(player_info_con, 1, 13, text)
+		ConsolePrint(player_info_con, 1, 13, text)
 		text = 'H ' + armour['hull_front'] + '/' + armour['hull_side']
-		libtcod.console_print(player_info_con, 1, 14, text)
+		ConsolePrint(player_info_con, 1, 14, text)
 	
 	# movement
 	libtcod.console_set_default_foreground(player_info_con, libtcod.light_green)
-	libtcod.console_print_ex(player_info_con, 23, 12, libtcod.BKGND_NONE, libtcod.RIGHT,
+	ConsolePrintEx(player_info_con, 23, 12, libtcod.BKGND_NONE, libtcod.RIGHT,
 		unit.GetStat('movement_class'))
 	
 	# status
@@ -4365,15 +4373,15 @@ def UpdatePlayerInfoCon():
 	libtcod.console_rect(player_info_con, 0, 15, 24, 2, True, libtcod.BKGND_SET)
 	
 	if unit.moved:
-		libtcod.console_print(player_info_con, 0, 16, 'Moved')
+		ConsolePrint(player_info_con, 0, 16, 'Moved')
 	if unit.fired:
-		libtcod.console_print(player_info_con, 6, 16, 'Fired')
+		ConsolePrint(player_info_con, 6, 16, 'Fired')
 	
 	# morale level of unit overall
 	libtcod.console_set_default_foreground(player_info_con, libtcod.white)
 	libtcod.console_set_default_background(player_info_con, libtcod.darker_cyan)
 	libtcod.console_rect(player_info_con, 0, 17, 24, 1, True, libtcod.BKGND_SET)
-	libtcod.console_print(player_info_con, 0, 17, unit.morale_desc)
+	ConsolePrint(player_info_con, 0, 17, unit.morale_desc)
 
 
 # list player unit crew positions and current crewmen if any
@@ -4399,27 +4407,27 @@ def UpdateCommandCon():
 		libtcod.console_set_default_background(command_con, libtcod.darker_yellow)
 		libtcod.console_rect(command_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(command_con, libtcod.black)
-		libtcod.console_print_ex(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
+		ConsolePrintEx(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Crew Actions')
 		
 		if scenario.game_turn['active_player'] != 0: return
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		libtcod.console_print(command_con, 2, 2, 'I/K')
-		libtcod.console_print(command_con, 2, 3, 'J/L')
-		libtcod.console_print(command_con, 2, 4, 'H')
+		ConsolePrint(command_con, 2, 2, 'I/K')
+		ConsolePrint(command_con, 2, 3, 'J/L')
+		ConsolePrint(command_con, 2, 4, 'H')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		libtcod.console_print(command_con, 9, 2, 'Select Crew')
-		libtcod.console_print(command_con, 9, 3, 'Set Action')
-		libtcod.console_print(command_con, 9, 4, 'Toggle Hatch')
+		ConsolePrint(command_con, 9, 2, 'Select Crew')
+		ConsolePrint(command_con, 9, 3, 'Set Action')
+		ConsolePrint(command_con, 9, 4, 'Toggle Hatch')
 	
 	elif scenario.game_turn['current_phase'] == 'Spotting':
 		
 		libtcod.console_set_default_background(command_con, libtcod.darker_purple)
 		libtcod.console_rect(command_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(command_con, libtcod.black)
-		libtcod.console_print_ex(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
+		ConsolePrintEx(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Spotting')
 		
 		if scenario.game_turn['active_player'] != 0: return
@@ -4429,19 +4437,19 @@ def UpdateCommandCon():
 		libtcod.console_set_default_background(command_con, libtcod.darker_green)
 		libtcod.console_rect(command_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(command_con, libtcod.black)
-		libtcod.console_print_ex(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
+		ConsolePrintEx(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Movement')
 		
 		if scenario.game_turn['active_player'] != 0: return
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		libtcod.console_print(command_con, 2, 2, 'W')
-		libtcod.console_print(command_con, 2, 3, 'A/D')
+		ConsolePrint(command_con, 2, 2, 'W')
+		ConsolePrint(command_con, 2, 3, 'A/D')
 		
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		libtcod.console_print(command_con, 9, 2, 'Move Forward')
-		libtcod.console_print(command_con, 9, 3, 'Pivot Hull')
+		ConsolePrint(command_con, 9, 2, 'Move Forward')
+		ConsolePrint(command_con, 9, 3, 'Pivot Hull')
 		
 	
 	elif scenario.game_turn['current_phase'] == 'Combat':
@@ -4449,27 +4457,27 @@ def UpdateCommandCon():
 		libtcod.console_set_default_background(command_con, libtcod.darker_red)
 		libtcod.console_rect(command_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(command_con, libtcod.black)
-		libtcod.console_print_ex(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
+		ConsolePrintEx(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Combat')
 		
 		if scenario.game_turn['active_player'] != 0: return
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		libtcod.console_print(command_con, 2, 2, 'W/S')
-		libtcod.console_print(command_con, 2, 3, 'Q/E')
-		libtcod.console_print(command_con, 2, 4, 'A/D')
-		libtcod.console_print(command_con, 2, 5, 'F')
+		ConsolePrint(command_con, 2, 2, 'W/S')
+		ConsolePrint(command_con, 2, 3, 'Q/E')
+		ConsolePrint(command_con, 2, 4, 'A/D')
+		ConsolePrint(command_con, 2, 5, 'F')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		libtcod.console_print(command_con, 9, 2, 'Select Weapon')
-		libtcod.console_print(command_con, 9, 3, 'Rotate Turret')
-		libtcod.console_print(command_con, 9, 4, 'Select Target')
-		libtcod.console_print(command_con, 9, 5, 'Fire')
+		ConsolePrint(command_con, 9, 2, 'Select Weapon')
+		ConsolePrint(command_con, 9, 3, 'Rotate Turret')
+		ConsolePrint(command_con, 9, 4, 'Select Target')
+		ConsolePrint(command_con, 9, 5, 'Fire')
 		
 	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-	libtcod.console_print(command_con, 2, 11, 'Enter')
+	ConsolePrint(command_con, 2, 11, 'Enter')
 	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-	libtcod.console_print(command_con, 9, 11, 'Next Phase')
+	ConsolePrint(command_con, 9, 11, 'Next Phase')
 	
 	
 # draw information about the hex currently under the mouse cursor to the hex terrain info
@@ -4486,7 +4494,7 @@ def UpdateHexTerrainCon():
 		# possible hex edge info
 		col = libtcod.console_get_char_background(map_vp_con, x, y)
 		if col == RIVER_BG_COL:
-			libtcod.console_print(hex_terrain_con, 0, 0, 'River')
+			ConsolePrint(hex_terrain_con, 0, 0, 'River')
 		return
 	
 	libtcod.console_set_default_foreground(hex_terrain_con, libtcod.white)
@@ -4494,17 +4502,17 @@ def UpdateHexTerrainCon():
 	(hx, hy) = scenario.hex_map_index[(x,y)]
 	map_hex = scenario.map_hexes[(hx, hy)]
 	text = HEX_TERRAIN_DESC[map_hex.terrain_type]
-	libtcod.console_print(hex_terrain_con, 0, 0, text)
+	ConsolePrint(hex_terrain_con, 0, 0, text)
 	
 	# TEMP - don't display this in production version
-	libtcod.console_print(hex_terrain_con, 0, 1, str(hx) + ',' + str(hy))
+	ConsolePrint(hex_terrain_con, 0, 1, str(hx) + ',' + str(hy))
 	text = str(map_hex.elevation * ELEVATION_M) + ' m.'
-	libtcod.console_print_ex(hex_terrain_con, 15, 1, libtcod.BKGND_NONE,
+	ConsolePrintEx(hex_terrain_con, 15, 1, libtcod.BKGND_NONE,
 		libtcod.RIGHT, text)
 	
 	if map_hex.objective is not None:
 		libtcod.console_set_default_foreground(hex_terrain_con, libtcod.light_blue)
-		libtcod.console_print(hex_terrain_con, 0, 2, 'Objective')
+		ConsolePrint(hex_terrain_con, 0, 2, 'Objective')
 		if map_hex.objective == -1:
 			return
 		if map_hex.objective == 0:
@@ -4512,10 +4520,10 @@ def UpdateHexTerrainCon():
 		else:
 			text = 'Enemy Held'
 		libtcod.console_set_default_foreground(hex_terrain_con, libtcod.white)
-		libtcod.console_print(hex_terrain_con, 0, 3, text)
+		ConsolePrint(hex_terrain_con, 0, 3, text)
 	
 	if len(map_hex.dirt_roads) > 0:
-		libtcod.console_print(hex_terrain_con, 0, 9, 'Dirt Road')
+		ConsolePrint(hex_terrain_con, 0, 9, 'Dirt Road')
 
 
 # draw information based on current turn phase to contextual info console
@@ -4532,30 +4540,30 @@ def UpdateContextCon():
 		action = position.crewman.current_action
 		
 		if action is None:
-			libtcod.console_print(context_con, 0, 0, 'No action')
-			libtcod.console_print(context_con, 0, 1, 'assigned')
+			ConsolePrint(context_con, 0, 0, 'No action')
+			ConsolePrint(context_con, 0, 1, 'assigned')
 		else:
 			libtcod.console_set_default_foreground(context_con,
 				libtcod.dark_yellow)
-			libtcod.console_print(context_con, 0, 0, action)
+			ConsolePrint(context_con, 0, 0, action)
 			libtcod.console_set_default_foreground(context_con,
 				libtcod.light_grey)
 			
 			lines = wrap(CREW_ACTIONS[action]['desc'], 16)
 			y = 2
 			for line in lines:
-				libtcod.console_print(context_con, 0, y, line)
+				ConsolePrint(context_con, 0, y, line)
 				y += 1
 				if y == 9: break
 	
 	elif scenario.game_turn['current_phase'] == 'Movement':
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
-		libtcod.console_print(context_con, 0, 0, scenario.player_unit.GetStat('movement_class'))
+		ConsolePrint(context_con, 0, 0, scenario.player_unit.GetStat('movement_class'))
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 		if scenario.player_unit.move_finished:
-			libtcod.console_print(context_con, 0, 2, 'Move finished')
+			ConsolePrint(context_con, 0, 2, 'Move finished')
 			return
 		
 		# display chance of getting a bonus move
@@ -4567,23 +4575,23 @@ def UpdateContextCon():
 		
 		# display destination terrain type
 		text = HEX_TERRAIN_DESC[scenario.map_hexes[(hx, hy)].terrain_type]
-		libtcod.console_print(context_con, 0, 2, text)
+		ConsolePrint(context_con, 0, 2, text)
 		
 		# display road status if any
 		if scenario.player_unit.facing in scenario.map_hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].dirt_roads:
-			libtcod.console_print(context_con, 0, 3, '+Dirt Road')
+			ConsolePrint(context_con, 0, 3, '+Dirt Road')
 		
 		# get bonus move chance
-		libtcod.console_print(context_con, 0, 4, '+1 move chance:')
+		ConsolePrint(context_con, 0, 4, '+1 move chance:')
 		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
-		libtcod.console_print(context_con, 1, 5, str(chance) + '%%')
+		ConsolePrint(context_con, 1, 5, str(chance) + '%%')
 	
 	elif scenario.game_turn['current_phase'] == 'Combat':
 		if scenario.selected_weapon is None: return
 		
 		libtcod.console_set_default_background(context_con, libtcod.darkest_red)
 		libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
-		libtcod.console_print(context_con, 0, 0, scenario.selected_weapon.stats['name'])
+		ConsolePrint(context_con, 0, 0, scenario.selected_weapon.stats['name'])
 		libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
 		
 		if scenario.player_target is None: return
@@ -4597,7 +4605,7 @@ def UpdateContextCon():
 		lines = wrap(scenario.player_attack_desc, 16)
 		y = 7
 		for line in lines[:3]:
-			libtcod.console_print(context_con, 0, y, line)
+			ConsolePrint(context_con, 0, y, line)
 			y += 1
 		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 
@@ -4623,7 +4631,7 @@ def UpdateUnitInfoCon():
 	if unit.owning_player == 1:
 		if not unit.known:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
-			libtcod.console_print(unit_info_con, 0, 0, 'Possible Enemy')
+			ConsolePrint(unit_info_con, 0, 0, 'Possible Enemy')
 			return
 		else:
 			col = ENEMY_UNIT_COL
@@ -4634,10 +4642,10 @@ def UpdateUnitInfoCon():
 	lines = wrap(unit.unit_id, 16)
 	y = 0
 	for line in lines[:2]:
-		libtcod.console_print(unit_info_con, 0, y, line)
+		ConsolePrint(unit_info_con, 0, y, line)
 		y+=1
 	libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
-	libtcod.console_print(unit_info_con, 0, 2, unit.GetStat('class'))
+	ConsolePrint(unit_info_con, 0, 2, unit.GetStat('class'))
 	
 	libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
 	if scenario.player_unit.acquired_target is not None:
@@ -4646,7 +4654,7 @@ def UpdateUnitInfoCon():
 			text = 'Acquired target'
 			if level:
 				text += '+'
-			libtcod.console_print(unit_info_con, 0, 4, text)
+			ConsolePrint(unit_info_con, 0, 4, text)
 	
 	# active status
 	libtcod.console_set_default_foreground(unit_info_con, libtcod.light_red)
@@ -4655,16 +4663,16 @@ def UpdateUnitInfoCon():
 		text = 'Broken'
 	elif unit.pinned:
 		text = 'Pinned'
-	libtcod.console_print(unit_info_con, 0, 5, text)
+	ConsolePrint(unit_info_con, 0, 5, text)
 
 
 # update objective info console, 16x10
 def UpdateObjectiveInfoCon():
 	libtcod.console_clear(objective_con)
 	libtcod.console_set_default_foreground(objective_con, libtcod.light_blue)
-	libtcod.console_print(objective_con, 0, 0, 'Objectives')
+	ConsolePrint(objective_con, 0, 0, 'Objectives')
 	libtcod.console_set_default_foreground(objective_con, libtcod.light_grey)
-	libtcod.console_print(objective_con, 0, 1, '----------------')
+	ConsolePrint(objective_con, 0, 1, '----------------')
 	y = 2
 	for map_hex in scenario.map_objectives:
 		distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
@@ -4673,7 +4681,7 @@ def UpdateObjectiveInfoCon():
 			text = str(float(distance) / 1000.0) + ' km.'
 		else:
 			text = str(distance) + ' m.'
-		libtcod.console_print_ex(objective_con, 13, y, libtcod.BKGND_NONE,
+		ConsolePrintEx(objective_con, 13, y, libtcod.BKGND_NONE,
 			libtcod.RIGHT, text)
 		
 		# capture status
@@ -4717,10 +4725,10 @@ def UpdateScenarioDisplay():
 	else:
 		text = 'Enemy'
 	text += ' Turn'# ' + str(scenario.game_turn['turn_number'])
-	libtcod.console_print_ex(con, 58, 0, libtcod.BKGND_NONE, libtcod.CENTER,
+	ConsolePrintEx(con, 58, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	text = str(scenario.game_turn['hour']) + ':' + str(scenario.game_turn['minute']).zfill(2)
-	libtcod.console_print_ex(con, 58, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+	ConsolePrintEx(con, 58, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -5208,7 +5216,7 @@ libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
 
 # display loading screen
-libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
 	'Loading...')
 libtcod.console_flush()
 
@@ -5301,17 +5309,17 @@ def UpdateMainMenuCon():
 	
 	# display version number and program info
 	libtcod.console_set_default_foreground(main_menu_con, libtcod.red)
-	libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-8, libtcod.BKGND_NONE,
+	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-8, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Development Build: Has bugs and incomplete features')
 	
 	libtcod.console_set_default_foreground(main_menu_con, libtcod.light_grey)
-	libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
+	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
 		libtcod.CENTER, VERSION)
-	libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-4,
+	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-4,
 		libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2018')
-	libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-3,
+	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-3,
 		libtcod.BKGND_NONE, libtcod.CENTER, 'Free Software under the GNU GPL')
-	libtcod.console_print_ex(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-2,
+	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-2,
 		libtcod.BKGND_NONE, libtcod.CENTER, 'www.armouredcommander.com')
 	
 	# display menu options
@@ -5327,13 +5335,13 @@ def UpdateMainMenuCon():
 			libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
 		else:
 			libtcod.console_set_default_foreground(main_menu_con, ACTION_KEY_COL)
-		libtcod.console_print(main_menu_con, WINDOW_XM-5, y, char)
+		ConsolePrint(main_menu_con, WINDOW_XM-5, y, char)
 		
 		if disabled:
 			libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
 		else:
 			libtcod.console_set_default_foreground(main_menu_con, libtcod.lighter_grey)
-		libtcod.console_print(main_menu_con, WINDOW_XM-3, y, text)	
+		ConsolePrint(main_menu_con, WINDOW_XM-3, y, text)	
 		
 		y += 1
 

@@ -144,12 +144,14 @@ STAT_NAMES = ['Strength', 'Grit', 'Perception', 'Intelligence']
 PHASE_LIST = ['Crew Actions', 'Spotting', 'Movement', 'Combat']
 
 # FUTURE full list:
-#PHASE_LIST = ['Recovery', 'Command', 'Crew Actions', 'Spotting', 'Movement', 'Combat']
+#PHASE_LIST = ['Command', 'Crew Actions', 'Spotting', 'Movement', 'Combat']
 
 # crew action definitions
 with open(DATAPATH + 'crew_action_defs.json') as data_file:
 	CREW_ACTIONS = json.load(data_file)
 
+# order to display ammo types
+AMMO_TYPES = ['HE', 'AP']
 
 ##### Game Engine Constants #####
 # Can be modified for a different game experience
@@ -252,7 +254,7 @@ TERRAIN_LOS_HEIGHT = {
 	'pond' : 3.0
 }
 
-# base chance of getting a bonus move after moving into terrain
+# base chance of getting a bonus move when moving into terrain
 TERRAIN_BONUS_CHANCE = {
 	'openground' : 80.0,
 	'roughground' : 20.0,
@@ -263,6 +265,8 @@ TERRAIN_BONUS_CHANCE = {
 }
 # bonus move chance when moving along a dirt road
 DIRT_ROAD_BONUS_CHANCE = 90.0
+# multiplier for each extra move already taken
+BONUS_CHANCE_MULTIPLIER = 0.4
 
 # maximum total modifer before a LoS is blocked by terrain
 MAX_LOS_MOD = 60.0
@@ -551,6 +555,7 @@ class MapHex:
 		self.hx = hx			# hex coordinates in the map
 		self.hy = hy			# 0,0 is centre of map
 		self.terrain_type = 'openground'
+		self.variant = 0		# varient of hex depiction, no effect on gameplay
 		self.elevation = 1		# elevation in steps above baseline
 		self.river_edges = []		# list of edges bounded by a river
 		self.dirt_roads = []		# list of directions linked by a dirt road
@@ -790,6 +795,9 @@ class Scenario:
 					if libtcod.random_get_int(0, 1, 15) == 1:
 						continue
 					self.map_hexes[(hx, hy)].SetTerrainType('forest')
+					
+					# set variant too
+					self.map_hexes[(hx, hy)].variant = libtcod.random_get_int(0, 0, 1)
 
 		##### Villages #####
 		num_villages = libtcod.random_get_int(0, village_min, village_max)
@@ -1973,7 +1981,7 @@ class Scenario:
 		# previous bonus move modifier
 		if unit.additional_moves_taken > 0:
 			for i in range(unit.additional_moves_taken):
-				chance = chance * 0.6
+				chance = chance * BONUS_CHANCE_MULTIPLIER
 		
 		return RestrictChance(chance)
 	
@@ -2256,6 +2264,29 @@ class Weapon:
 			elif self.stats['type'] == 'Hull MG':
 				self.max_range = 1
 		
+		# TODO: set up ammo stores and ready rack if gun
+		self.ammo_stores = None
+		if self.GetStat('type') == 'Gun' and 'ammo_type_list' in self.stats:
+			self.ammo_stores = {}
+			
+			# set up empty categories first
+			for ammo_type in self.stats['ammo_type_list']:
+				self.ammo_stores[ammo_type] = 0
+			
+			# now determine loadout
+			max_ammo = int(self.stats['max_ammo'])
+			
+			# only one type, fill it up
+			if len(self.stats['ammo_type_list']) == 1:
+				ammo_type = self.stats['ammo_type_list'][0]
+				self.ammo_stores[ammo_type] = max_ammo
+			
+			# HE and AP: 70% and 30%
+			else:
+				if self.stats['ammo_type_list'] == ['HE', 'AP']:
+					self.ammo_stores['HE'] = int(max_ammo * 0.7)
+					self.ammo_stores['AP'] = max_ammo - self.ammo_stores['HE']
+				
 		self.InitScenarioStats()
 
 	# set up any data that is unique to a scenario
@@ -4595,16 +4626,39 @@ def UpdateContextCon():
 	elif scenario.game_turn['current_phase'] == 'Combat':
 		if scenario.selected_weapon is None: return
 		
+		weapon = scenario.selected_weapon
+		
 		libtcod.console_set_default_background(context_con, libtcod.darkest_red)
 		libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
-		ConsolePrint(context_con, 0, 0, scenario.selected_weapon.stats['name'])
+		ConsolePrint(context_con, 0, 0, weapon.stats['name'])
 		libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
 		
+		# if gun, display current ammo stats
+		if weapon.GetStat('type') == 'Gun':
+			
+			# general stores
+			y = 2
+			for ammo_type in AMMO_TYPES:
+				if ammo_type in weapon.ammo_stores:
+					libtcod.console_set_default_foreground(context_con, libtcod.white)
+					ConsolePrint(context_con, 0, y, ammo_type)
+					libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+					ConsolePrintEx(context_con, 7, y, libtcod.BKGND_NONE,
+						libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
+					y += 1
+			y += 1
+			ConsolePrint(context_con, 0, y, 'Max')
+			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+			ConsolePrintEx(context_con, 7, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, weapon.stats['max_ammo'])
+			
+			# TODO: ready rack if any
+			
 		if scenario.player_target is None: return
 		
 		# check if this attack could proceed
 		scenario.player_attack_desc = scenario.CheckAttack(scenario.player_unit,
-			scenario.selected_weapon, scenario.player_target)
+			weapon, scenario.player_target)
 		if scenario.player_attack_desc == '': return
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.red)

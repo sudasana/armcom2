@@ -5202,7 +5202,7 @@ def DoScenario(load_game=False):
 
 print 'Starting ' + NAME + ' version ' + VERSION	# startup message
 os.putenv('SDL_VIDEO_CENTERED', '1')			# center game window on screen
-fontname = 'c64_16x16.png'				# TEMP - only one font for now
+fontname = 'c64_16x16.png'				# default font
 
 # set up custom font for libtcod
 libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
@@ -5323,7 +5323,7 @@ def UpdateMainMenuCon():
 		libtcod.BKGND_NONE, libtcod.CENTER, 'www.armouredcommander.com')
 	
 	# display menu options
-	OPTIONS = [('C', 'Continue'), ('N', 'New Game'), ('Q', 'Quit')]
+	OPTIONS = [('C', 'Continue'), ('N', 'New Game'), ('F', 'Toggle Font Size'), ('Q', 'Quit')]
 	y = 38
 	for (char, text) in OPTIONS:
 		# grey-out continue game option if no saved game present
@@ -5392,7 +5392,22 @@ while not exit_game:
 		exit_game = True
 		continue
 	
-	if key_char == 'c':
+	if key_char == 'f':
+		if fontname == 'c64_16x16.png':
+			fontname = 'c64_8x8.png'
+		else:
+			fontname = 'c64_16x16.png'
+		
+		# close current console, set new font, and restart console
+		libtcod.console_delete(0)
+		libtcod.console_set_custom_font(DATAPATH+fontname,
+			libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
+		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
+			NAME + ' - ' + VERSION, fullscreen = False,
+			renderer = libtcod.RENDERER_GLSL)
+		Wait(15)
+	
+	elif key_char == 'c':
 		if not os.path.exists('savegame'):
 			continue
 		DoScenario(load_game=True)
@@ -5401,7 +5416,7 @@ while not exit_game:
 		libtcod.console_flush()
 		Wait(15)
 	
-	if key_char == 'n':
+	elif key_char == 'n':
 		# check for overwrite of existing saved game
 		if os.path.exists('savegame'):
 			text = 'Starting a new scenario will overwrite the existing saved game.'

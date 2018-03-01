@@ -1989,12 +1989,23 @@ class Scenario:
 			UpdateUnitCon()
 			UpdateScenarioDisplay()
 		
-		# FUTURE: determine if window needs to be shifted to bottom half of screen
+		# determine if window needs to be shifted to bottom half of screen
 		# so that highlighted hex is not obscured
+		switch = False
+		if hx is not None and hy is not None:
+			for (vp_hx, vp_hy) in VP_HEXES:
+				if scenario.map_vp[(vp_hx, vp_hy)] == (hx, hy):
+					if abs(vp_hy) < int(abs(vp_hx) / 2):
+						switch = True
+					break
+		if switch:
+			y_start = 36
+		else:
+			y_start = 16
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_blit(popup_bkg, 0, 0, 0, 0, 0, 44, 13)
-		y = 14
+		libtcod.console_blit(popup_bkg, 0, 0, 0, 0, 0, 44, y_start)
+		y = y_start+1
 		lines = wrap(message, 27)
 		# max 7 lines tall
 		for line in lines[:7]:
@@ -2004,7 +2015,7 @@ class Scenario:
 		libtcod.console_flush()
 		
 		# FUTURE: get message pause time from settings
-		Wait(len(lines) * 60)
+		Wait(len(lines) * 100)
 		
 		# clear hex highlight if any
 		if hx is not None and hy is not None:
@@ -4296,14 +4307,8 @@ def UpdateUnitCon():
 		if scenario.highlighted_hex is not None:
 			if scenario.highlighted_hex == (map_hx, map_hy):
 				(x,y) = PlotHex(vp_hx, vp_hy)
-				libtcod.console_put_char_ex(unit_con, x-1, y-1, 169, libtcod.cyan,
-					libtcod.black)
-				libtcod.console_put_char_ex(unit_con, x+1, y-1, 170, libtcod.cyan,
-					libtcod.black)
-				libtcod.console_put_char_ex(unit_con, x-1, y+1, 28, libtcod.cyan,
-					libtcod.black)
-				libtcod.console_put_char_ex(unit_con, x+1, y+1, 29, libtcod.cyan,
-					libtcod.black)
+				libtcod.console_blit(hex_highlight, 0, 0, 0, 0, unit_con, 
+					x-3, y-2)
 		
 	# display LoS if applicable
 	if scenario.player_los_active and scenario.player_target is not None:
@@ -4744,6 +4749,7 @@ def DoScenario(load_game=False):
 	global bkg_console, map_vp_con, unit_con, player_info_con, hex_terrain_con
 	global crew_position_con, command_con, context_con, unit_info_con, objective_con
 	global attack_con, fov_con, hex_fov, popup_bkg, hex_objective_neutral
+	global hex_highlight
 	global tile_offmap
 	
 	# set up consoles
@@ -4755,9 +4761,14 @@ def DoScenario(load_game=False):
 	libtcod.console_set_key_color(hex_fov, libtcod.black)
 	# background for scenario message window
 	popup_bkg = LoadXP('popup_bkg.xp')
+	
 	# highlight for objective hexes
 	hex_objective_neutral = LoadXP('hex_objective_neutral.xp')
 	libtcod.console_set_key_color(hex_objective_neutral, KEY_COLOR)
+	
+	# highlight for in-game messages
+	hex_highlight = LoadXP('hex_highlight.xp')
+	libtcod.console_set_key_color(hex_highlight, KEY_COLOR)
 	
 	# map viewport console
 	map_vp_con = libtcod.console_new(55, 53)

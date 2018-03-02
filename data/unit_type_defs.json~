@@ -1148,15 +1148,15 @@
 		"movement_class" : "Infantry",
 		"weapon_list" : [
 			{
+				"type" : "Gun",
+				"name" : "AT Rifle",
+				"max_range" : "3"
+			},
+			{
 				"type" : "Small Arms",
 				"name" : "Rifles",
 				"fp" : "4",
 				"max_range" : "1"
-			},
-			{
-				"type" : "Gun",
-				"name" : "AT Rifle",
-				"max_range" : "3"
 			}
 		],
 		"crew_positions" : [

@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_NO_ACTION = True					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-03-03'				# game version in Semantic Versioning format: http://semver.org/
@@ -1670,18 +1670,18 @@ class Scenario:
 		
 		# display final chance
 		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
-		libtcod.console_rect(attack_con, 1, 46, 24, 1, False, libtcod.BKGND_SET)
+		libtcod.console_rect(attack_con, 1, 43, 24, 1, False, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(attack_con, libtcod.black)
-		ConsolePrintEx(attack_con, 13, 46, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 43, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Final Chance')
 		
 		# display chance graph
 		if profile['type'] == 'FP Resolution':
 			
-			ConsolePrint(attack_con, 1, 48, 'No Effect: ')
-			ConsolePrintEx(attack_con, 24, 48, libtcod.BKGND_NONE,
+			ConsolePrint(attack_con, 1, 45, 'No Effect: ')
+			ConsolePrintEx(attack_con, 24, 45, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(profile['final_chance']) + '%%') 
-			y = 49
+			y = 46
 			for result in FP_EFFECT_RESULT_LIST:
 				ConsolePrint(attack_con, 1, y, result)
 				ConsolePrintEx(attack_con, 24, y, libtcod.BKGND_NONE,
@@ -1693,53 +1693,53 @@ class Scenario:
 			
 			# no effect
 			libtcod.console_set_default_background(attack_con, libtcod.red)
-			libtcod.console_rect(attack_con, 1, 49, 24, 3, False, libtcod.BKGND_SET)
+			libtcod.console_rect(attack_con, 1, 46, 24, 3, False, libtcod.BKGND_SET)
 			
 			# partial effect
 			libtcod.console_set_default_background(attack_con, libtcod.darker_green)
 			x = int(ceil(24.0 * profile['final_chance'] / 100.0))
-			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
 			
 			# full effect
 			libtcod.console_set_default_background(attack_con, libtcod.green)
 			x = int(ceil(24.0 * profile['full_effect'] / 100.0))
-			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
 			
 			# critical effect
 			libtcod.console_set_default_background(attack_con, libtcod.blue)
 			x = int(ceil(24.0 * profile['critical_effect'] / 100.0))
-			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
 			
 			text = str(profile['final_chance']) + '%%'
-			ConsolePrintEx(attack_con, 13, 50, libtcod.BKGND_NONE,
+			ConsolePrintEx(attack_con, 13, 47, libtcod.BKGND_NONE,
 				libtcod.CENTER, text)
 			
 		else:
 			
 			# miss
 			libtcod.console_set_default_background(attack_con, libtcod.red)
-			libtcod.console_rect(attack_con, 1, 49, 24, 3, False, libtcod.BKGND_SET)
+			libtcod.console_rect(attack_con, 1, 46, 24, 3, False, libtcod.BKGND_SET)
 			
 			# hit
 			x = int(ceil(24.0 * profile['final_chance'] / 100.0))
 			libtcod.console_set_default_background(attack_con, libtcod.green)
-			libtcod.console_rect(attack_con, 1, 49, x, 3, False, libtcod.BKGND_SET)
+			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
 			
 			# critical hit band
 			libtcod.console_set_default_foreground(attack_con, libtcod.blue)
-			for y in range(49, 52):
+			for y in range(46, 49):
 				libtcod.console_put_char(attack_con, 1, y, 221)
 			
 			# critical miss band
 			libtcod.console_set_default_foreground(attack_con, libtcod.dark_grey)
-			for y in range(49, 52):
+			for y in range(46, 49):
 				libtcod.console_put_char(attack_con, 24, y, 222)
 		
 			libtcod.console_set_default_foreground(attack_con, libtcod.white)
 			libtcod.console_set_default_background(attack_con, libtcod.black)
 		
 			text = str(profile['final_chance']) + '%%'
-			ConsolePrintEx(attack_con, 13, 50, libtcod.BKGND_NONE,
+			ConsolePrintEx(attack_con, 13, 47, libtcod.BKGND_NONE,
 				libtcod.CENTER, text)
 		
 		# display prompts
@@ -1757,11 +1757,25 @@ class Scenario:
 	# returns an altered attack profile
 	def DoAttackRoll(self, profile):
 		
+		# check to see if this weapon maintains Rate of Fire
+		def CheckRoF(profile):
+			
+			if not profile['attacker'].CheckCrewAction(['Loader'], ['Reload']):
+				print 'DEBUG: cannot maintain RoF because Loader not on Reload action'
+				return False
+			
+			base_chance = float(profile['weapon'].GetStat('rof'))
+			roll = GetPercentileRoll()
+			
+			if roll <= base_chance:
+				return True
+			return False
+			
 		# FP resolution uses a different animation
 		if profile['type'] == 'FP Resolution':
 			for i in range(4):
 				roll = GetPercentileRoll()
-				ConsolePrintEx(attack_con, 13, 55,
+				ConsolePrintEx(attack_con, 13, 52,
 					libtcod.BKGND_NONE, libtcod.CENTER, str(roll) + '%%')
 				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -1769,7 +1783,7 @@ class Scenario:
 				# don't wait on final roll, this is the real one
 				if i != 3:
 					Wait(20)
-					ConsolePrintEx(attack_con, 13, 55,
+					ConsolePrintEx(attack_con, 13, 52,
 						libtcod.BKGND_NONE, libtcod.CENTER, '      ')
 		
 		else:
@@ -1777,8 +1791,8 @@ class Scenario:
 			# animate roll indicators randomly
 			for i in range(3):
 				x = libtcod.random_get_int(0, 1, 24)
-				libtcod.console_put_char(attack_con, x, 48, 233)
-				libtcod.console_put_char(attack_con, x, 52, 232)
+				libtcod.console_put_char(attack_con, x, 45, 233)
+				libtcod.console_put_char(attack_con, x, 49, 232)
 				
 				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -1786,8 +1800,8 @@ class Scenario:
 				
 				Wait(20)
 				
-				libtcod.console_put_char(attack_con, x, 48, 0)
-				libtcod.console_put_char(attack_con, x, 52, 0)
+				libtcod.console_put_char(attack_con, x, 45, 0)
+				libtcod.console_put_char(attack_con, x, 49, 0)
 		
 			roll = GetPercentileRoll()
 		
@@ -1810,8 +1824,8 @@ class Scenario:
 			if roll > CRITICAL_HIT and x == 1: x = 2
 			if roll < CRITICAL_MISS and x == 24: x = 23
 			
-			libtcod.console_put_char(attack_con, x, 48, 233)
-			libtcod.console_put_char(attack_con, x, 52, 232)
+			libtcod.console_put_char(attack_con, x, 45, 233)
+			libtcod.console_put_char(attack_con, x, 49, 232)
 		
 		# armour penetration roll
 		if profile['type'] == 'ap':
@@ -1864,14 +1878,25 @@ class Scenario:
 		
 		profile['result'] = result_text
 		
-		ConsolePrintEx(attack_con, 13, 54, libtcod.BKGND_NONE,
+		ConsolePrintEx(attack_con, 13, 51, libtcod.BKGND_NONE,
 			libtcod.CENTER, result_text)
 		
 		# display effect FP if it was successful area fire attack
 		if profile['type'] == 'Area Fire' and result_text != 'NO EFFECT':
-			ConsolePrintEx(attack_con, 13, 55, libtcod.BKGND_NONE,
+			ConsolePrintEx(attack_con, 13, 52, libtcod.BKGND_NONE,
 				libtcod.CENTER, str(profile['effective_fp']) + ' FP')
 		
+		# check for rof for guns/MG
+		if profile['weapon'].GetStat('rof') is not None:
+			profile['weapon'].maintained_rof = CheckRoF(profile) 
+			if profile['weapon'].maintained_rof:
+				ConsolePrintEx(attack_con, 13, 53, libtcod.BKGND_NONE,
+					libtcod.CENTER, 'Maintained Rate of Fire')
+				libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+				ConsolePrint(attack_con, 6, 56, 'F')
+				libtcod.console_set_default_foreground(attack_con, libtcod.white)
+				ConsolePrint(attack_con, 12, 56, 'Fire Again')
+			
 		# blit the finished console to the screen
 		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -2292,6 +2317,7 @@ class Weapon:
 	# set up any data that is unique to a scenario
 	def InitScenarioStats(self):
 		self.fired = False
+		self.maintained_rof = False			# can fire again even if fired == True
 	
 	# reset gun for start of new turn
 	def ResetForNewTurn(self):
@@ -2858,90 +2884,107 @@ class Unit:
 			UpdateScenarioDisplay()
 			libtcod.console_flush()
 		
-		# play sound and show animation if both units on viewport
-		if self.vp_hx is not None and self.vp_hy is not None and target.vp_hx is not None and target.vp_hy is not None:
-			
-			# TEMP: uses the root console, future will have an animation console
-			
-			# Gun animation
-			if weapon.GetStat('type') == 'Gun':
+		# attack loop, can do multiple shots if maintain RoF
+		attack_finished = False
+		while not attack_finished: 
 		
-				x1, y1 = self.screen_x, self.screen_y
-				x2, y2 = target.screen_x, target.screen_y
-				line = GetLine(x1,y1,x2,y2)
+			# play sound and show animation if both units on viewport
+			if self.vp_hx is not None and self.vp_hy is not None and target.vp_hx is not None and target.vp_hy is not None:
 				
-				PlaySoundFor(weapon, 'fire')
+				# TEMP: uses the root console, future will have an animation console
 				
-				for (x,y) in line[2:-1]:
+				# Gun animation
+				if weapon.GetStat('type') == 'Gun':
+			
+					x1, y1 = self.screen_x, self.screen_y
+					x2, y2 = target.screen_x, target.screen_y
+					line = GetLine(x1,y1,x2,y2)
+					
+					PlaySoundFor(weapon, 'fire')
+					
+					for (x,y) in line[2:-1]:
+						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+						libtcod.console_put_char(0, x+31, y+4, 250)
+						libtcod.console_flush()
+						Wait(8)
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-					libtcod.console_put_char(0, x+31, y+4, 250)
 					libtcod.console_flush()
-					Wait(8)
-				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-				libtcod.console_flush()
-			
-			elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG']:
 				
-				x1, y1 = self.screen_x, self.screen_y
-				x2, y2 = target.screen_x, target.screen_y
-				line = GetLine(x1,y1,x2,y2)
-				
-				PlaySoundFor(weapon, 'fire')
-				
-				libtcod.console_set_default_foreground(0, libtcod.yellow)
-				for i in range(30):
-					(x,y) = choice(line[2:-1])
+				elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG']:
+					
+					x1, y1 = self.screen_x, self.screen_y
+					x2, y2 = target.screen_x, target.screen_y
+					line = GetLine(x1,y1,x2,y2)
+					
+					PlaySoundFor(weapon, 'fire')
+					
+					libtcod.console_set_default_foreground(0, libtcod.yellow)
+					for i in range(30):
+						(x,y) = choice(line[2:-1])
+						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+						libtcod.console_put_char(0, x+31, y+4, 250)
+						Wait(3)
+					libtcod.console_set_default_foreground(0, libtcod.white)
+					
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-					libtcod.console_put_char(0, x+31, y+4, 250)
-					Wait(3)
-				libtcod.console_set_default_foreground(0, libtcod.white)
-				
-				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+					libtcod.console_flush()
+			
+			# calculate an attack profile
+			profile = scenario.CalcAttack(self, weapon, target)
+			
+			# something went wrong!
+			if profile is None: return False
+			
+			# display the attack to the screen
+			scenario.DisplayAttack(profile)
+			WaitForEnter()
+			
+			# do the roll and display results to the screen
+			profile = scenario.DoAttackRoll(profile)
+			
+			# if we maintain RoF, we might choose to attack again here
+			end_pause = False
+			attack_finished = True
+			while not end_pause:
 				libtcod.console_flush()
+				libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+					key, mouse)
+				if libtcod.console_is_window_closed(): sys.exit()
+				
+				if key.vk == libtcod.KEY_ENTER: 
+					end_pause = True
+				
+				if chr(key.c).lower() == 'f' and weapon.maintained_rof:
+					attack_finished = False
+					end_pause = True
+			
+			# add acquired target if doing point fire
+			if profile['type'] == 'Point Fire':
+				self.AddAcquiredTarget(target)
+			
+			# apply results of this attack if any
+			if profile['type'] == 'Area Fire':
+				
+				if profile['result'] in ['CRITICAL EFFECT', 'FULL EFFECT', 'PARTIAL EFFECT']:
+					target.fp_to_resolve += profile['effective_fp']
+					
+					# target will automatically be spotted next turn if possible
+					if not target.known:
+						target.hit_by_fp = 2
+			
+			# fp attack hit
+			elif profile['result'] in ['CRITICAL HIT', 'HIT']:
+			
+				# record AP hit to be resolved if target was a vehicle
+				if target.GetStat('category') == 'Vehicle':
+					target.ap_hits_to_resolve.append(profile)
 		
-		# calculate an attack profile
-		profile = scenario.CalcAttack(self, weapon, target)
-		
-		# something went wrong
-		if profile is None: return False
-		
-		# display the attack to the screen
-		scenario.DisplayAttack(profile)
-		WaitForEnter()
-		
-		# do the roll and display results to the screen
-		profile = scenario.DoAttackRoll(profile)
-		WaitForEnter()
-		
-		# add acquired target if doing point fire
-		if profile['type'] == 'Point Fire':
-			self.AddAcquiredTarget(target)
-		
-		# re-enable LoS if player unit
+		# attack is over, re-enable LoS if player unit
 		if self == scenario.player_unit:
 			scenario.player_los_active = True
 			UpdateUnitCon()
 			UpdateScenarioDisplay()
 			libtcod.console_flush()
-		
-		# handle the results of the attack
-		if profile['type'] == 'Area Fire':
-			
-			if profile['result'] in ['CRITICAL EFFECT', 'FULL EFFECT', 'PARTIAL EFFECT']:
-				target.fp_to_resolve += profile['effective_fp']
-				
-				# target will automatically be spotted next turn if possible
-				if not target.known:
-					target.hit_by_fp = 2			
-			
-			return
-		
-		# attack missed
-		if profile['result'] == 'MISS': return True
-		
-		# record AP hit to be resolved if target was a vehicle
-		if target.GetStat('category') == 'Vehicle':
-			target.ap_hits_to_resolve.append(profile)
 		
 		return True
 	

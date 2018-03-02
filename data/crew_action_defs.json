@@ -17,8 +17,8 @@
 		"fov_hextants" : ["0"],
 		"fov_range" : "6"
 	},
-	"Load Gun" : {
-		"desc" : "Reload the main gun as needed",
+	"Reload" : {
+		"desc" : "Reload the main gun as needed, increasing fire rate",
 		"position_list" : ["Loader"],
 		"fov_hextants" : [],
 		"fov_range" : "1"

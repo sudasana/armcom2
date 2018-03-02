@@ -1,4 +1,7 @@
 {
+	"None": {
+		"desc" : "Crewman unable to act"
+	},
 	"Spot": {
 		"desc" : "Scan terrain for enemies"
 	},

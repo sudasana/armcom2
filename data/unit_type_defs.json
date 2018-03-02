@@ -16,7 +16,7 @@
 			{
 				"type" : "Hull MG",
 				"fp" : "4",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Commander/Gunner"],
 				"firing_group" : "0"
@@ -67,7 +67,7 @@
 			{
 				"type" : "Hull MG",
 				"fp" : "4",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Commander/Gunner"],
 				"firing_group" : "0"
@@ -115,7 +115,7 @@
 				"type" : "Gun",
 				"calibre" : "20",
 				"long_range" : "L",
-				"rof" : "4",
+				"rof" : "17.0",
 				"rr_size" : "4",
 				"mount" : "Hull",
 				"fired_by" : ["Commander/Gunner"],
@@ -167,7 +167,7 @@
 				"type" : "Gun",
 				"calibre" : "47",
 				"long_range" : "S",
-				"rof" : "4",
+				"rof" : "17.0",
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
@@ -178,7 +178,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "6",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
 				"firing_group" : "0"
@@ -230,7 +230,7 @@
 				"type" : "Gun",
 				"calibre" : "37",
 				"long_range" : "L",
-				"rof" : "4",
+				"rof" : "17.0",
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
@@ -241,7 +241,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "4",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
 				"firing_group" : "0"
@@ -293,7 +293,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "4",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
 				"firing_group" : "0"
@@ -338,7 +338,7 @@
 				"type" : "Gun",
 				"calibre" : "37",
 				"long_range" : "S",
-				"rof" : "4",
+				"rof" : "17.0",
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
@@ -379,7 +379,7 @@
 				"type" : "Gun",
 				"calibre" : "37",
 				"long_range" : "L",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Gunner"],
 				"firing_group" : "0",
@@ -405,7 +405,7 @@
 				"type" : "Gun",
 				"calibre" : "75",
 				"long_range" : "",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Gunner"],
 				"firing_group" : "0",
@@ -431,7 +431,7 @@
 				"type" : "Gun",
 				"calibre" : "75",
 				"long_range" : "L",
-				"rof" : "6",
+				"rof" : "42.0",
 				"mount" : "Hull",
 				"fired_by" : ["Gunner"],
 				"firing_group" : "0",
@@ -466,7 +466,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "6",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
 				"firing_group" : "0"
@@ -512,7 +512,7 @@
 				"type" : "Gun",
 				"calibre" : "20",
 				"long_range" : "L",
-				"rof" : "5",
+				"rof" : "28.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
 				"firing_group" : "0",
@@ -522,7 +522,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "5",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
 				"firing_group" : "0"
@@ -572,7 +572,7 @@
 			{
 				"type" : "Gun",
 				"calibre" : "37",
-				"rof" : "5",
+				"rof" : "28.0",
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
@@ -583,7 +583,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "4",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner", "Loader"],
 				"firing_group" : "0"
@@ -591,7 +591,7 @@
 			{
 				"type" : "Hull MG",
 				"fp" : "4",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Driver", "Assistant Driver"],
 				"firing_group" : "1"
@@ -647,7 +647,7 @@
 				"type" : "Gun",
 				"calibre" : "37",
 				"long_range" : "L",
-				"rof" : "5",
+				"rof" : "28.0",
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
@@ -658,7 +658,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "4",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner", "Loader"],
 				"firing_group" : "0"
@@ -666,7 +666,7 @@
 			{
 				"type" : "Hull MG",
 				"fp" : "4",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Driver", "Assistant Driver"],
 				"firing_group" : "1"
@@ -722,7 +722,7 @@
 				"type" : "Gun",
 				"calibre" : "37",
 				"long_range" : "L",
-				"rof" : "5",
+				"rof" : "28.0",
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
@@ -733,7 +733,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "8",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
 				"firing_group" : "0"
@@ -741,7 +741,7 @@
 			{
 				"type" : "Hull MG",
 				"fp" : "4",
-				"rof" : "3",
+				"rof" : "8.4",
 				"mount" : "Hull",
 				"fired_by" : ["Assistant Driver"],
 				"firing_group" : "1"
@@ -804,7 +804,7 @@
 				"type" : "Gun",
 				"calibre" : "37",
 				"long_range" : "L",
-				"rof" : "5",
+				"rof" : "28.0",
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
@@ -815,7 +815,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "8",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
 				"firing_group" : "0"
@@ -823,7 +823,7 @@
 			{
 				"type" : "Hull MG",
 				"fp" : "4",
-				"rof" : "3",
+				"rof" : "8.4",
 				"mount" : "Hull",
 				"fired_by" : ["Assistant Driver"],
 				"firing_group" : "1"
@@ -886,7 +886,7 @@
 				"type" : "Gun",
 				"calibre" : "75",
 				"long_range" : "S",
-				"rof" : "5",
+				"rof" : "28.0",
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
@@ -897,7 +897,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "5",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
 				"firing_group" : "0"
@@ -905,7 +905,7 @@
 			{
 				"type" : "Hull MG",
 				"fp" : "3",
-				"rof" : "3",
+				"rof" : "8.4",
 				"mount" : "Hull",
 				"fired_by" : ["Assistant Driver"],
 				"firing_group" : "1"
@@ -968,7 +968,7 @@
 				"type" : "Gun",
 				"calibre" : "75",
 				"long_range" : "S",
-				"rof" : "5",
+				"rof" : "28.0",
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
@@ -979,7 +979,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "5",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
 				"firing_group" : "0"
@@ -1044,7 +1044,7 @@
 				"type" : "Gun",
 				"calibre" : "20",
 				"long_range" : "L",
-				"rof" : "6",
+				"rof" : "42.0",
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
@@ -1055,7 +1055,7 @@
 			{
 				"type" : "Co-ax MG",
 				"fp" : "5",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
 				"firing_group" : "0"
@@ -1102,7 +1102,7 @@
 				"type" : "Gun",
 				"calibre" : "37",
 				"long_range" : "L",
-				"rof" : "6",
+				"rof" : "42.0",
 				"mount" : "Hull",
 				"fired_by" : ["Gunner"],
 				"firing_group" : "0",
@@ -1128,7 +1128,7 @@
 				"type" : "Gun",
 				"calibre" : "88",
 				"long_range" : "L",
-				"rof" : "4",
+				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
 				"firing_group" : "0",
@@ -1150,7 +1150,9 @@
 			{
 				"type" : "Gun",
 				"name" : "AT Rifle",
-				"max_range" : "3"
+				"max_range" : "3",
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "40"
 			},
 			{
 				"type" : "Small Arms",

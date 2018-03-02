@@ -5217,7 +5217,7 @@ def DoScenario(load_game=False):
 		elif scenario.game_turn['current_phase'] == 'Movement':
 		
 			# move player unit forward
-			if key_char == 'w':
+			if key_char == 'w' or key.vk == libtcod.KEY_UP:
 				
 				if scenario.player_unit.MoveForward():
 					UpdatePlayerInfoCon()
@@ -5238,9 +5238,9 @@ def DoScenario(load_game=False):
 						trigger_end_of_phase = True
 			
 			# pivot hull facing
-			elif key_char in ['a', 'd']:
+			elif key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
 				
-				if key_char == 'a':
+				if key_char == 'a' or key.vk == libtcod.KEY_LEFT:
 					result = scenario.player_unit.Pivot(False)
 				else:
 					result = scenario.player_unit.Pivot(True)
@@ -5257,8 +5257,8 @@ def DoScenario(load_game=False):
 		elif scenario.game_turn['current_phase'] == 'Combat':
 			
 			# select weapon
-			if key_char in ['w', 's']:
-				if key_char == 'w':
+			if key_char in ['w', 's'] or key.vk in [libtcod.KEY_UP, libtcod.KEY_DOWN]:
+				if key_char == 'w' or key.vk == libtcod.KEY_UP:
 					result = scenario.SelectNextWeapon(False)
 				else:
 					result = scenario.SelectNextWeapon(True)
@@ -5280,8 +5280,8 @@ def DoScenario(load_game=False):
 					UpdateScenarioDisplay()
 			
 			# select target
-			elif key_char in ['a', 'd']:
-				if key_char == 'a':
+			elif key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
+				if key_char == 'a' or key.vk == libtcod.KEY_LEFT:
 					result = scenario.SelectNextTarget(False)
 				else:
 					result = scenario.SelectNextTarget(True)

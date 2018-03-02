@@ -972,6 +972,8 @@ class Scenario:
 						action_list.append('None')
 					else:
 						for action_name in CREW_ACTIONS:
+							# skip None action
+							if action_name == 'None': continue
 							# action restricted to a list of positions
 							if 'position_list' in CREW_ACTIONS[action_name]:
 								if position.name not in CREW_ACTIONS[action_name]['position_list']:
@@ -1887,8 +1889,8 @@ class Scenario:
 			ConsolePrintEx(attack_con, 13, 52, libtcod.BKGND_NONE,
 				libtcod.CENTER, str(profile['effective_fp']) + ' FP')
 		
-		# check for rof for guns/MG
-		if profile['weapon'].GetStat('rof') is not None:
+		# check for RoF for gun / MG attacks
+		if profile['type'] not in ['ap', 'FP Resolution'] and profile['weapon'].GetStat('rof') is not None:
 			profile['weapon'].maintained_rof = CheckRoF(profile) 
 			if profile['weapon'].maintained_rof:
 				ConsolePrintEx(attack_con, 13, 53, libtcod.BKGND_NONE,
@@ -2938,7 +2940,10 @@ class Unit:
 			
 			# display the attack to the screen
 			scenario.DisplayAttack(profile)
-			WaitForEnter()
+			
+			# pause if we're not doing a RoF attack
+			if not profile['weapon'].maintained_rof:
+				WaitForEnter()
 			
 			# do the roll and display results to the screen
 			profile = scenario.DoAttackRoll(profile)

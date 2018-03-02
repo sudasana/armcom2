@@ -974,6 +974,7 @@ class Scenario:
 						for action_name in CREW_ACTIONS:
 							# skip None action
 							if action_name == 'None': continue
+							
 							# action restricted to a list of positions
 							if 'position_list' in CREW_ACTIONS[action_name]:
 								if position.name not in CREW_ACTIONS[action_name]['position_list']:
@@ -983,9 +984,8 @@ class Scenario:
 					# copy over the list to the crewman
 					position.crewman.action_list = action_list[:]
 					
-					# if previous action is no longer possible, cancel it
-					# TODO: set no action or default to first action in list?
-					# First one will either be None or Spot
+					# if previous action is no longer possible, set to
+					# first action in list: Spot
 					if position.crewman.current_action is not None:
 						if position.crewman.current_action not in action_list:
 							position.crewman.current_action = action_list[0]
@@ -1020,7 +1020,8 @@ class Scenario:
 				for position in position_list:
 					if position.crewman is None: continue
 					
-					# FUTURE: check that crewman is able to spot
+					# check that crewman is able to spot
+					if not position.crewman.AbleToAct(): continue
 					
 					spot_list = []
 					for unit2 in self.units:

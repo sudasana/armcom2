@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_NO_ACTION = False					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-03-03'				# game version in Semantic Versioning format: http://semver.org/
@@ -1760,9 +1760,10 @@ class Scenario:
 		# check to see if this weapon maintains Rate of Fire
 		def CheckRoF(profile):
 			
-			if not profile['attacker'].CheckCrewAction(['Loader'], ['Reload']):
-				print 'DEBUG: cannot maintain RoF because Loader not on Reload action'
-				return False
+			# guns must have a Loader active
+			if profile['weapon'].GetStat('type') == 'Gun':
+				if not profile['attacker'].CheckCrewAction(['Loader'], ['Reload']):
+					return False
 			
 			base_chance = float(profile['weapon'].GetStat('rof'))
 			roll = GetPercentileRoll()
@@ -4677,7 +4678,9 @@ def UpdateContextCon():
 		libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
 		
 		# if gun, display current ammo stats
-		if weapon.GetStat('type') == 'Gun':
+		# TEMP: disabled until HE is added
+		#if weapon.GetStat('type') == 'Gun':
+		if 1 == 0:
 			
 			# general stores
 			y = 2

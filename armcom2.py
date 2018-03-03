@@ -4646,11 +4646,8 @@ def UpdateContextCon():
 	elif scenario.game_turn['current_phase'] == 'Movement':
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
-		ConsolePrint(context_con, 0, 0, scenario.player_unit.GetStat('movement_class'))
-		
-		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 		if scenario.player_unit.move_finished:
-			ConsolePrint(context_con, 0, 2, 'Move finished')
+			ConsolePrint(context_con, 0, 0, 'Move finished')
 			return
 		
 		# display chance of getting a bonus move
@@ -4662,16 +4659,18 @@ def UpdateContextCon():
 		
 		# display destination terrain type
 		text = HEX_TERRAIN_DESC[scenario.map_hexes[(hx, hy)].terrain_type]
-		ConsolePrint(context_con, 0, 2, text)
+		ConsolePrint(context_con, 0, 0, text)
+		
+		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 		
 		# display road status if any
 		if scenario.player_unit.facing in scenario.map_hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].dirt_roads:
-			ConsolePrint(context_con, 0, 3, '+Dirt Road')
+			ConsolePrint(context_con, 0, 1, 'Dirt Road')
 		
 		# get bonus move chance
-		ConsolePrint(context_con, 0, 4, '+1 move chance:')
+		ConsolePrint(context_con, 0, 2, '+1 move chance:')
 		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
-		ConsolePrint(context_con, 1, 5, str(chance) + '%%')
+		ConsolePrint(context_con, 1, 3, str(chance) + '%%')
 	
 	elif scenario.game_turn['current_phase'] == 'Combat':
 		if scenario.selected_weapon is None: return

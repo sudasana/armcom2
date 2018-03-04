@@ -60,7 +60,7 @@ AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-03-03'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-03-10'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -622,7 +622,8 @@ class Scenario:
 		self.units = []				# list of units in the scenario
 		self.player_unit = None			# pointer to the player unit
 		
-		# TEMP - player 'luck' points, will go into campaign object eventually
+		# player 'luck' points
+		# FUTURE move into campaign object
 		self.player_luck = 2 + libtcod.random_get_int(0, 1, 3)
 		
 		self.finished = False			# have win/loss conditions been met
@@ -652,7 +653,6 @@ class Scenario:
 			hex_list = GetHexRing(0, 0, r)
 			for (hx, hy) in hex_list:
 				self.map_hexes[(hx,hy)] = MapHex(hx,hy)
-		#print 'Generated ' + str(len(self.map_hexes.keys())) + ' map hexes'
 		
 		self.map_objectives = []		# list of map hex objectives
 		self.highlighted_hex = None		# currently highlighted map hex
@@ -883,6 +883,129 @@ class Scenario:
 		map_hex.objective = owning_player
 		self.map_objectives.append(map_hex)
 	
+	# generate enemy units for this scenario
+	# assumes that enemy are on defense, already in place in area before player arrives
+	# FUTURE: will take list of unit groups for this area from Campaign object
+	def SpawnEnemyUnits(self):
+		
+		# FUTURE - get from nation_defs eventually
+		enemy_unit_list = [
+			('TK-3', 2, 3),
+			('TKS', 2, 3),
+			('TKS (20mm)', 1, 2),
+			('Vickers 6-Ton Mark E', 1, 1),
+			('7TP', 1, 1),
+			('wz. 34 (MG)', 1, 2),
+			('wz. 34 (37mm)', 1, 2),
+			('37mm wz. 36', 2, 3),
+			('75mm wz. 02/26', 1, 2),
+			('75mm wz. 97/25', 1, 2),
+			('Riflemen', 1, 3)
+		]
+		
+		print 'DEBUG: Generating enemy units'
+		
+		# load unit stats from JSON file
+		with open(DATAPATH + 'unit_type_defs.json') as data_file:
+			unit_types = json.load(data_file)
+		
+		# determine list of unit types for this scenario
+		num_unit_groups = libtcod.random_get_int(0, 2, 4)
+		print 'DEBUG: Spawning ' + str(num_unit_groups) + ' unit groups'
+		unit_group_list = []
+		
+		for i in range(num_unit_groups):
+			unit_group_list.append(choice(enemy_unit_list))
+		
+		CATEGORY_LIST = ['Gun', 'Infantry', 'Vehicle']
+		for category in CATEGORY_LIST:
+			print 'DEBUG: Spawning category: ' + category
+			for (unit_id, min_num, max_num) in unit_group_list:
+				if unit_id not in unit_types:
+					print 'ERROR: Could not find unit id: ' + unit_id
+					continue
+				
+				unit_stats = unit_types[unit_id]
+				if unit_stats['category'] != category:
+					continue
+				
+				# determine where to place center point of group
+				if category == 'Gun':
+					ideal_distance = 1
+				elif category == 'Infantry':
+					ideal_distance = 3
+				else:
+					ideal_distance = 12
+				
+				hx = None
+				hy = None
+				for tries in range(300):
+					close_enough = False
+					(hx, hy) = choice(scenario.map_hexes.keys())
+					for map_hex in scenario.map_objectives:
+						if GetHexDistance(hx, hy, map_hex.hx, map_hex.hy) <= ideal_distance:
+							close_enough = True
+							break
+					if close_enough:
+						break
+				
+				if hx is None and hy is None:
+					print 'ERROR: Could not find a location close enough to an objective to spawn!'
+					continue
+				
+				print 'DEBUG: spawning a group of ' + unit_id + ' near ' + str(hx) + ',' + str(hy)
+				
+				# spawn each unit within the group close to hx, hy
+				unit_num = libtcod.random_get_int(0, min_num, max_num)
+				for i in range(unit_num):
+					
+					# create the unit
+					new_unit = Unit(unit_id)
+					new_unit.owning_player = 1
+					new_unit.ai = AI(new_unit)
+					new_unit.nation = 'Poland'
+					new_unit.facing = 3
+					if 'turret' in new_unit.stats:
+						new_unit.turret_facing = 3
+					new_unit.base_morale_level = 'Fearless'
+					new_unit.GenerateNewCrew()
+					scenario.units.append(new_unit)
+					
+					# build a list of hexes within the ideal distance of hx,hy
+					hex_list = []
+					hex_list.append((hx, hy))
+					for r in range(1, ideal_distance+1):
+						hex_list.extend(GetHexRing(hx, hy, r))
+					
+					# find a random location and place the unit there
+					for tries in range(300):
+						(spawn_hx, spawn_hy) = choice(hex_list)
+						
+						# might be off map
+						if (spawn_hx, spawn_hy) not in scenario.map_hexes:
+							continue
+						
+						# might not be passable
+						if scenario.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
+							continue
+						
+						new_unit.SpawnAt(spawn_hx, spawn_hy)
+						print 'DEBUG: spawned unit: ' + unit_id
+						break
+			
+		# set dummy units
+		dummy_ratio = 0.25
+		unit_list = []
+		for unit in scenario.units:
+			if unit.owning_player == 1:
+				unit_list.append(unit)
+		print 'DEBUG: total of ' + str(len(unit_list)) + ' enemy units'
+		num_dummy_units = int(ceil(len(unit_list) * dummy_ratio))
+		print 'DEBUG: setting ' + str(num_dummy_units) + ' dummy units'
+		unit_list = sample(unit_list, num_dummy_units)	
+		for unit in unit_list:
+			unit.dummy = True
+		
 	# proceed to next phase or player turn
 	# if returns True, then play proceeds to next phase/turn automatically
 	def NextPhase(self):
@@ -2520,8 +2643,8 @@ class Unit:
 			
 			visible_hextants = []
 			
-			# infantry can see all around but not as far
-			if self.GetStat('category') == 'Infantry':
+			# infantry and gun crew can see all around but not as far
+			if self.GetStat('category') in ['Infantry', 'Gun']:
 				visible_hextants = [0,1,2,3,4,5]
 				max_distance = MAX_BU_LOS_DISTANCE
 			else:
@@ -4104,9 +4227,9 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 			text = '--'
 		else:
 			if position.hatch_open:
-				text = 'CE'
+				text = 'Open'
 			else:
-				text = 'BU'
+				text = 'Shut'
 		ConsolePrintEx(console, x+23, y+1, libtcod.BKGND_NONE, 
 			libtcod.RIGHT, text)
 		
@@ -4835,7 +4958,7 @@ def UpdateScenarioDisplay():
 		text = 'Player'
 	else:
 		text = 'Enemy'
-	text += ' Turn'# ' + str(scenario.game_turn['turn_number'])
+	text += ' Turn'
 	ConsolePrintEx(con, 58, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	text = str(scenario.game_turn['hour']) + ':' + str(scenario.game_turn['minute']).zfill(2)
@@ -4953,22 +5076,22 @@ def DoScenario(load_game=False):
 		LoadGame()
 	else:
 	
-		# generate a new scenario object and generate terrain for the hex map
+		# generate a new scenario object
 		scenario = Scenario()
-		scenario.GenerateTerrain()
 		
 		# set up time of day and current phase
 		scenario.game_turn['hour'] = 5
 		scenario.game_turn['current_phase'] = PHASE_LIST[0]
 		
 		# display scenario info, allow player to cancel start
-		result = DisplayScenInfo()
-		if not result:
-			return
+		if not DisplayScenInfo(): return
+		
+		# generate scenario terrain
+		scenario.GenerateTerrain()
 		
 		# generate scenario units
 		
-		# player tank
+		# spawn player tank
 		new_unit = Unit('Panzer 38(t) A')
 		if new_unit.unit_id is not None:
 			new_unit.owning_player = 0
@@ -4985,51 +5108,6 @@ def DoScenario(load_game=False):
 			scenario.units.append(new_unit)
 			scenario.player_unit = new_unit
 			new_unit.CalcFoV()
-		
-		# TEMP - will have a better enemy spawning system eventually
-		def SpawnEnemy(unit_id):
-			new_unit = Unit(unit_id)
-			new_unit.owning_player = 1
-			new_unit.ai = AI(new_unit)
-			new_unit.nation = 'Poland'
-			new_unit.facing = 3
-			if 'turret' in new_unit.stats:
-				new_unit.turret_facing = 3
-			new_unit.base_morale_level = 'Fearless'
-			new_unit.GenerateNewCrew()
-			scenario.units.append(new_unit)
-		
-		# spawn enemy units
-		for i in range(2):
-			SpawnEnemy('7TP')
-			SpawnEnemy('Vickers 6-Ton Mark E')
-			SpawnEnemy('Riflemen')
-		
-		# set dummy enemy units
-		dummy_units = 2
-		unit_list = []
-		for unit in scenario.units:
-			if unit.owning_player == 1:
-				unit_list.append(unit)
-		unit_list = sample(unit_list, dummy_units)	
-		for unit in unit_list:
-			unit.dummy = True
-		
-		# TEMP - place enemy units randomly
-		for unit in scenario.units:
-			if unit.owning_player == 0: continue
-			for tries in range(300):
-				(hx, hy) = choice(scenario.map_hexes.keys())
-				
-				# terrain is not passable
-				if scenario.map_hexes[(hx, hy)].terrain_type == 'pond':
-					continue
-				
-				if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 6:
-					continue
-				
-				unit.SpawnAt(hx, hy)
-				break
 		
 		# set up VP hexes and generate initial VP console
 		scenario.CenterVPOnPlayer()
@@ -5057,6 +5135,9 @@ def DoScenario(load_game=False):
 				
 				scenario.SetObjectiveHex(hx, hy, 1)
 				break
+		
+		# generate and spawn initial enemy units for this scenario
+		scenario.SpawnEnemyUnits()
 		
 		# set up start of first phase
 		scenario.DoStartOfPhase()

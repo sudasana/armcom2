@@ -387,6 +387,11 @@
 				"max_ammo" : "180"
 			}
 		],
+		"crew_positions" : [
+			{"name" : "Commander/Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"}
+		],
 		"description" : [
 			""
 		],
@@ -413,6 +418,15 @@
 				"max_ammo" : "180"
 			}
 		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
 		"description" : [
 			""
 		],
@@ -438,6 +452,15 @@
 				"ammo_type_list" : ["AP"],
 				"max_ammo" : "180"
 			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
 		],
 		"description" : [
 			""

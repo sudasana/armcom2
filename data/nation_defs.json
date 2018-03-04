@@ -15,18 +15,7 @@
 		"unit_list" : [
 			"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A",
 			"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",
-			"PSW 222", "Rifle Squad + AT Rifles"
-		],
-		"battlefronts": [
-			{
-				"location" : "Poland",
-				"start_month" : "9",
-				"start_year" : "1939",
-				"end_month" : "9",
-				"end_year" : "1939",
-				"restricted_units" : [],
-				"enemy_nations" : ["Poland"]
-			}
+			"PSW 222", "Riflemen"
 		],
 		"first_names" : [
 			"Hans", "Peter", "Klaus", "Wolfgang", "Jürgen", "Dieter", "Manfred",
@@ -81,18 +70,7 @@
 		"unit_list" : [
 			"TK-3", "TKS", "TKS (20mm)", "Vickers 6-Ton Mark E", "7TP",
 			"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
-			"75mm wz. 97/25", "Rifle Squad + AT Rifles"
-		],
-		"battlefronts": [
-			{
-				"location" : "Poland",
-				"start_month" : "9",
-				"start_year" : "1939",
-				"end_month" : "9",
-				"end_year" : "1939",
-				"restricted_units" : [],
-				"enemy_nations" : ["Germany"]
-			}
+			"75mm wz. 97/25", "Riflemen"
 		],
 		"first_names" : [
 			"Adam", "Adrian", "Albert", "Albin", "Aleksander", "Aleksy", 

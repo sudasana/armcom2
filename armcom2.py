@@ -57,10 +57,10 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_NO_ACTION = False					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-03-10'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-03-04'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -377,18 +377,41 @@ class AI:
 			if self.owner.acquired_target is not None:
 				roll -= 20.0
 			
-			if roll >= 70.0:
-				self.disposition = None
-			elif roll <= 50.0:
-				if self.owner.dummy:
+			# guns have fewer options for actions
+			if self.owner.GetStat('category') == 'Gun':
+				if roll >= 70.0:
 					self.disposition = None
 				else:
 					self.disposition = 'Combat'
-			else:
-				if self.owner.pinned:
-					self.disposition = 'Combat'
+			
+			elif self.owner.GetStat('category') == 'Infantry':
+				if roll <= 50.0:
+					if self.owner.dummy:
+						self.disposition = None
+					else:
+						self.disposition = 'Combat'
+				elif roll <= 60.0:
+					if self.owner.pinned:
+						self.disposition = 'Combat'
+					else:
+						self.disposition = 'Movement'
 				else:
-					self.disposition = 'Movement'
+					self.disposition = None
+			
+			else:
+			
+				if roll >= 80.0:
+					self.disposition = None
+				elif roll <= 50.0:
+					if self.owner.dummy:
+						self.disposition = None
+					else:
+						self.disposition = 'Combat'
+				else:
+					if self.owner.pinned:
+						self.disposition = 'Combat'
+					else:
+						self.disposition = 'Movement'
 			
 			# debug testing override
 			if AI_NO_ACTION:
@@ -411,10 +434,13 @@ class AI:
 			elif self.disposition == 'Combat':
 				for position in self.owner.crew_positions:
 					if position.crewman is None: continue
-					if position.name in ['Commander/Gunner', 'Gunner/Loader', 'Gunner']:
+					if position.name == 'Commander':
+						# FUTURE: direct fire
+						position.crewman.current_action = 'Spot'
+					elif position.name in ['Commander/Gunner', 'Gunner/Loader', 'Gunner']:
 						position.crewman.current_action = 'Operate Gun'
 					elif position.name == 'Loader':
-						position.crewman.current_action = 'Load Gun'
+						position.crewman.current_action = 'Reload'
 					else:
 						position.crewman.current_action = 'Spot'
 			
@@ -525,8 +551,28 @@ class AI:
 				# select a random target from list
 				unit = choice(target_list)
 			
-			# rotate turret if any to face target
-			if self.owner.turret_facing is not None:
+			# TEMP - can select first weapon only
+			weapon = self.owner.weapon_list[0]
+			
+			# Following is a bit of a hack because it takes place in the Combat phase
+			# FUTURE: identify target in action phase
+			
+			# if weapon is hull mounted, pivot to face target
+			if weapon.GetStat('mount') == 'Hull':
+				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
+					unit.hy)
+				if self.owner.facing != direction:
+					self.owner.facing = direction
+					self.owner.moved = True
+					
+					if animate:
+						UpdateUnitCon()
+						UpdateScenarioDisplay()
+						libtcod.console_flush()
+						Wait(10)
+			
+			# otherwise, rotate turret if any to face target
+			elif self.owner.turret_facing is not None:
 				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
 					unit.hy)
 				if self.owner.turret_facing != direction:
@@ -537,8 +583,6 @@ class AI:
 						UpdateScenarioDisplay()
 						libtcod.console_flush()
 						Wait(10)
-			
-			weapon = self.owner.weapon_list[0]
 			
 			# try the attack
 			result = self.owner.Attack(weapon, unit)
@@ -890,23 +934,18 @@ class Scenario:
 		
 		# FUTURE - get from nation_defs eventually
 		enemy_unit_list = [
-			('TK-3', 2, 3),
-			('TKS', 2, 3),
-			('TKS (20mm)', 1, 2),
+			#('TK-3', 2, 3),
+			#('TKS', 2, 3),
+			#('TKS (20mm)', 1, 2),
 			('Vickers 6-Ton Mark E', 1, 1),
 			('7TP', 1, 1),
-			('wz. 34 (MG)', 1, 2),
-			('wz. 34 (37mm)', 1, 2),
-			('37mm wz. 36', 2, 3),
-			('75mm wz. 02/26', 1, 2),
-			('75mm wz. 97/25', 1, 2),
+			#('wz. 34 (MG)', 1, 2),
+			#('wz. 34 (37mm)', 1, 2),
+			#('37mm wz. 36', 2, 3),
+			#('75mm wz. 02/26', 1, 2),
+			#('75mm wz. 97/25', 1, 2),
 			('Riflemen', 1, 3)
 		]
-		
-		# TEMP unit testing
-		enemy_unit_list = [('TK-3', 1, 1)]
-		
-		print 'DEBUG: Generating enemy units'
 		
 		# load unit stats from JSON file
 		with open(DATAPATH + 'unit_type_defs.json') as data_file:
@@ -915,10 +954,6 @@ class Scenario:
 		# determine list of unit types for this scenario
 		num_unit_groups = libtcod.random_get_int(0, 2, 4)
 		
-		# TEMP testing
-		num_unit_groups = 1
-		
-		print 'DEBUG: Spawning ' + str(num_unit_groups) + ' unit groups'
 		unit_group_list = []
 		
 		for i in range(num_unit_groups):
@@ -926,7 +961,6 @@ class Scenario:
 		
 		CATEGORY_LIST = ['Gun', 'Infantry', 'Vehicle']
 		for category in CATEGORY_LIST:
-			print 'DEBUG: Spawning category: ' + category
 			for (unit_id, min_num, max_num) in unit_group_list:
 				if unit_id not in unit_types:
 					print 'ERROR: Could not find unit id: ' + unit_id
@@ -944,31 +978,26 @@ class Scenario:
 				else:
 					ideal_distance = 12
 				
-				# TEMP testing
-				ideal_distance = 2
-				
 				hx = None
 				hy = None
 				for tries in range(300):
 					close_enough = False
-					(hx, hy) = choice(scenario.map_hexes.keys())
-					for map_hex in scenario.map_objectives:
+					(hx, hy) = choice(self.map_hexes.keys())
+					
+					# too close to player
+					if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) < 5:
+						continue
+					
+					for map_hex in self.map_objectives:
 						if GetHexDistance(hx, hy, map_hex.hx, map_hex.hy) <= ideal_distance:
 							close_enough = True
 							break
 					if close_enough:
 						break
 				
-				# TEMP position override
-				hx = 0
-				hy = scenario.map_radius - 4
-				
-				
 				if hx is None and hy is None:
 					print 'ERROR: Could not find a location close enough to an objective to spawn!'
 					continue
-				
-				print 'DEBUG: spawning a group of ' + unit_id + ' near ' + str(hx) + ',' + str(hy)
 				
 				# spawn each unit within the group close to hx, hy
 				unit_num = libtcod.random_get_int(0, min_num, max_num)
@@ -984,7 +1013,10 @@ class Scenario:
 						new_unit.turret_facing = 3
 					new_unit.base_morale_level = 'Fearless'
 					new_unit.GenerateNewCrew()
-					scenario.units.append(new_unit)
+					# deploy if gun
+					if new_unit.GetStat('category') == 'Gun':
+						new_unit.deployed = True
+					self.units.append(new_unit)
 					
 					# build a list of hexes within the ideal distance of hx,hy
 					hex_list = []
@@ -996,31 +1028,33 @@ class Scenario:
 					for tries in range(300):
 						(spawn_hx, spawn_hy) = choice(hex_list)
 						
+						# too close to player
+						if GetHexDistance(spawn_hx, spawn_hy, self.player_unit.hx, self.player_unit.hy) < 5:
+							continue
+						
 						# might be off map
-						if (spawn_hx, spawn_hy) not in scenario.map_hexes:
+						if (spawn_hx, spawn_hy) not in self.map_hexes:
 							continue
 						
 						# might not be passable
-						if scenario.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
+						if self.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
+							continue
+						
+						# don't stack units
+						if len(self.map_hexes[(spawn_hx, spawn_hy)].unit_stack) > 0:
 							continue
 						
 						new_unit.SpawnAt(spawn_hx, spawn_hy)
-						print 'DEBUG: spawned unit: ' + unit_id
 						break
-			
-		# set dummy units
-		
-		# TEMP testing
-		return
 		
 		dummy_ratio = 0.25
 		unit_list = []
-		for unit in scenario.units:
+		for unit in self.units:
 			if unit.owning_player == 1:
 				unit_list.append(unit)
-		print 'DEBUG: total of ' + str(len(unit_list)) + ' enemy units'
+		#print 'DEBUG: total of ' + str(len(unit_list)) + ' enemy units'
 		num_dummy_units = int(ceil(len(unit_list) * dummy_ratio))
-		print 'DEBUG: setting ' + str(num_dummy_units) + ' dummy units'
+		#print 'DEBUG: setting ' + str(num_dummy_units) + ' dummy units'
 		unit_list = sample(unit_list, num_dummy_units)	
 		for unit in unit_list:
 			unit.dummy = True
@@ -2033,15 +2067,17 @@ class Scenario:
 				libtcod.CENTER, str(profile['effective_fp']) + ' FP')
 		
 		# check for RoF for gun / MG attacks
-		if profile['type'] not in ['ap', 'FP Resolution'] and profile['weapon'].GetStat('rof') is not None:
-			profile['weapon'].maintained_rof = CheckRoF(profile) 
-			if profile['weapon'].maintained_rof:
-				ConsolePrintEx(attack_con, 13, 53, libtcod.BKGND_NONE,
-					libtcod.CENTER, 'Maintained Rate of Fire')
-				libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-				ConsolePrint(attack_con, 6, 56, 'F')
-				libtcod.console_set_default_foreground(attack_con, libtcod.white)
-				ConsolePrint(attack_con, 12, 56, 'Fire Again')
+		# TEMP: player only for now
+		if profile['attacker'] == scenario.player_unit:
+			if profile['type'] not in ['ap', 'FP Resolution'] and profile['weapon'].GetStat('rof') is not None:
+				profile['weapon'].maintained_rof = CheckRoF(profile) 
+				if profile['weapon'].maintained_rof:
+					ConsolePrintEx(attack_con, 13, 53, libtcod.BKGND_NONE,
+						libtcod.CENTER, 'Maintained Rate of Fire')
+					libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+					ConsolePrint(attack_con, 6, 56, 'F')
+					libtcod.console_set_default_foreground(attack_con, libtcod.white)
+					ConsolePrint(attack_con, 12, 56, 'Fire Again')
 			
 		# blit the finished console to the screen
 		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
@@ -2790,6 +2826,7 @@ class Unit:
 		# determine if we need to display a turret / gun depiction
 		if self.GetStat('category') == 'Infantry': return
 		if self.owning_player == 1 and not self.known: return
+		if self.GetStat('category') == 'Gun' and not self.deployed: return
 		
 		# use turret facing if present, otherwise hull facing
 		if self.turret_facing is not None:
@@ -3112,9 +3149,11 @@ class Unit:
 				if key.vk == libtcod.KEY_ENTER: 
 					end_pause = True
 				
-				if chr(key.c).lower() == 'f' and weapon.maintained_rof:
-					attack_finished = False
-					end_pause = True
+				if self == scenario.player_unit:
+				
+					if chr(key.c).lower() == 'f' and weapon.maintained_rof:
+						attack_finished = False
+						end_pause = True
 			
 			# add acquired target if doing point fire
 			if profile['type'] == 'Point Fire':

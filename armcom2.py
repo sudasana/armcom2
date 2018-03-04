@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_NO_ACTION = True					# no AI actions at all
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-03-10'				# game version in Semantic Versioning format: http://semver.org/
@@ -903,6 +903,9 @@ class Scenario:
 			('Riflemen', 1, 3)
 		]
 		
+		# TEMP unit testing
+		enemy_unit_list = [('TK-3', 1, 1)]
+		
 		print 'DEBUG: Generating enemy units'
 		
 		# load unit stats from JSON file
@@ -911,6 +914,10 @@ class Scenario:
 		
 		# determine list of unit types for this scenario
 		num_unit_groups = libtcod.random_get_int(0, 2, 4)
+		
+		# TEMP testing
+		num_unit_groups = 1
+		
 		print 'DEBUG: Spawning ' + str(num_unit_groups) + ' unit groups'
 		unit_group_list = []
 		
@@ -937,6 +944,9 @@ class Scenario:
 				else:
 					ideal_distance = 12
 				
+				# TEMP testing
+				ideal_distance = 2
+				
 				hx = None
 				hy = None
 				for tries in range(300):
@@ -948,6 +958,11 @@ class Scenario:
 							break
 					if close_enough:
 						break
+				
+				# TEMP position override
+				hx = 0
+				hy = scenario.map_radius - 4
+				
 				
 				if hx is None and hy is None:
 					print 'ERROR: Could not find a location close enough to an objective to spawn!'
@@ -994,6 +1009,10 @@ class Scenario:
 						break
 			
 		# set dummy units
+		
+		# TEMP testing
+		return
+		
 		dummy_ratio = 0.25
 		unit_list = []
 		for unit in scenario.units:
@@ -2138,7 +2157,9 @@ class Scenario:
 		return RestrictChance(chance)
 	
 	# display a pop-up message overtop the map viewport
-	def ShowMessage(self, message, hx=None, hy=None):
+	# if hx and hy are not none, highlight this hex on the map viewport
+	# if portrait is not None, display a unit portrait above/below the message window
+	def ShowMessage(self, message, hx=None, hy=None, portrait=None):
 		
 		# encode message for display
 		message = message.encode('IBM850')
@@ -2171,6 +2192,13 @@ class Scenario:
 		for line in lines[:7]:
 			ConsolePrint(0, 45, y, line)
 			y += 1
+		
+		if portrait is not None:
+			if switch:
+				y = 45
+			else:
+				y = 8
+			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, 0, 47, y)
 		
 		libtcod.console_flush()
 		
@@ -3294,11 +3322,13 @@ class Unit:
 				if target.dummy:
 					text = (position.crewman.GetFullName() + ' says: ' + 
 						"Thought there was something there, but I don't see anything.")
+					portrait = None
 				else:
 					text = position.crewman.GetFullName() + ' says: '
 					text += target.GetName() + ' ' + target.GetStat('class')
 					text += ' spotted!'
-				scenario.ShowMessage(text, hx=target.hx, hy=target.hy)
+					portrait = target.GetStat('portrait')
+				scenario.ShowMessage(text, hx=target.hx, hy=target.hy, portrait=portrait)
 			else:
 				text = 'You have been spotted!'
 				scenario.ShowMessage(text, hx=self.hx, hy=self.hy)

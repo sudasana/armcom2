@@ -1806,6 +1806,14 @@ class Scenario:
 		libtcod.console_rect(attack_con, 1, 1, 24, 1, False, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(attack_con, libtcod.black)
 		
+		# set flags on whether attacker/target is known to player
+		attacker_known = True
+		if profile['attacker'].owning_player == 1 and not profile['attacker'].known:
+			attacker_known = False
+		target_known = True
+		if profile['target'].owning_player == 1 and not profile['target'].known:
+			target_known = False
+		
 		if profile['type'] == 'ap':
 			text = 'Armour Penetration'
 		elif profile['type'] == 'FP Resolution':
@@ -1822,7 +1830,7 @@ class Scenario:
 			libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
 		
 			# TEMP: in future will store portraits for every active unit type in session object
-			if not (profile['attacker'].owning_player == 1 and not profile['attacker'].known):
+			if attacker_known:
 				portrait = profile['attacker'].GetStat('portrait')
 				if portrait is not None:
 					libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 2)
@@ -1830,7 +1838,10 @@ class Scenario:
 		# attack description
 		if profile['type'] == 'ap':
 			text1 = profile['target'].GetName()
-			text2 = 'hit by ' + profile['weapon'].GetStat('name')
+			if attacker_known:
+				text2 = 'hit by ' + profile['weapon'].GetStat('name')
+			else:
+				text2 = 'hit'
 			if profile['ammo_type'] is not None:
 				text2 += ' (' + profile['ammo_type'] + ')'
 			text3 = 'in ' + profile['location_desc']
@@ -1840,7 +1851,10 @@ class Scenario:
 			text3 = ''
 		else:
 			text1 = profile['attacker'].GetName()
-			text2 = 'firing ' + profile['weapon'].GetStat('name') + ' at'
+			if attacker_known:
+				text2 = 'firing ' + profile['weapon'].GetStat('name') + ' at'
+			else:
+				text2 = 'firing at'
 			text3 = profile['target'].GetName()
 			
 		ConsolePrintEx(attack_con, 13, 10, libtcod.BKGND_NONE,
@@ -1855,7 +1869,7 @@ class Scenario:
 		libtcod.console_rect(attack_con, 1, 13, 24, 8, False, libtcod.BKGND_SET)
 		
 		# TEMP: in future will store portraits for every active unit type in session object
-		if not (profile['target'].owning_player == 1 and not profile['target'].known):
+		if target_known:
 			portrait = profile['target'].GetStat('portrait')
 			if portrait is not None:
 				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 13)
@@ -2058,10 +2072,13 @@ class Scenario:
 					minimum = int(profile['final_chance'] * 10.0)
 					roll = float(libtcod.random_get_int(0, minimum+1, 1000)) / 10.0
 		
+		# to-hit or area fire attack, or AP roll
 		if profile['type'] != 'FP Resolution':
 		
 			# display final roll indicators
-			x = int(ceil(24.0 * roll / 100.0))
+			# TEMP? need to add the +1 since it was falling into green area sometimes
+			#   when it was a miss
+			x = int(ceil(24.0 * roll / 100.0)) + 1
 			
 			# make sure only critical hits and misses appear in their bands
 			if roll > CRITICAL_HIT and x == 1: x = 2
@@ -4215,10 +4232,9 @@ def PlaySoundFor(obj, action):
 				return
 			
 			# TEMP - can add more detail in future
-			if obj.stats['calibre'] in ["37", "47"]:
-				n = libtcod.random_get_int(0, 0, 3)
-				PlaySound('37mm_firing_0' + str(n))
-				return
+			n = libtcod.random_get_int(0, 0, 3)
+			PlaySound('37mm_firing_0' + str(n))
+			return
 			
 		# TEMP - only one MG sound effect for now
 		if obj.stats['type'] in ['Co-ax MG', 'Hull MG']:
@@ -4844,10 +4860,12 @@ def UpdatePlayerInfoCon():
 	libtcod.console_set_default_background(player_info_con, libtcod.darkest_blue)
 	libtcod.console_rect(player_info_con, 0, 15, 24, 2, True, libtcod.BKGND_SET)
 	
+	text = ''
 	if unit.moved:
-		ConsolePrint(player_info_con, 0, 16, 'Moved')
+		text += 'Moved '
 	if unit.fired:
-		ConsolePrint(player_info_con, 6, 16, 'Fired')
+		text += 'Fired '
+	ConsolePrint(player_info_con, 0, 16, text)
 	
 	# morale level of unit overall
 	libtcod.console_set_default_foreground(player_info_con, libtcod.white)

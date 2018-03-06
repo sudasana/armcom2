@@ -3184,10 +3184,6 @@ class Unit:
 		weapon.fired = True
 		self.fired = True
 		
-		# expend a shell if gun
-		if weapon.GetStat('type') == 'Gun' and weapon.current_ammo is not None:
-			weapon.ammo_stores[weapon.current_ammo] -= 1
-		
 		# display message if player is the target
 		if target == scenario.player_unit:
 			text = self.GetName() + ' fires at you!'
@@ -3223,8 +3219,21 @@ class Unit:
 						libtcod.console_put_char(0, x+31, y+4, 250)
 						libtcod.console_flush()
 						Wait(8)
+					
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 					libtcod.console_flush()
+					
+					# add explosion effect if HE ammo
+					if weapon.current_ammo == 'HE':
+						for i in range(6):
+							col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+							libtcod.console_set_default_foreground(0, col)
+							libtcod.console_put_char(0, x2+31, y2+4, 42)
+							libtcod.console_flush()
+							Wait(4)
+						libtcod.console_set_default_foreground(0, libtcod.white)
+						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+						libtcod.console_flush()
 				
 				elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG']:
 					
@@ -3244,6 +3253,11 @@ class Unit:
 					
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 					libtcod.console_flush()
+			
+			
+			# expend a shell if gun
+			if weapon.GetStat('type') == 'Gun' and weapon.current_ammo is not None:
+				weapon.ammo_stores[weapon.current_ammo] -= 1
 			
 			# calculate an attack profile
 			profile = scenario.CalcAttack(self, weapon, target)
@@ -5384,6 +5398,9 @@ def DoScenario(load_game=False):
 	# record mouse cursor position to check when it has moved
 	mouse_x = -1
 	mouse_y = -1
+	
+	# keyboard repeat hack
+	Wait(15)
 	
 	trigger_end_of_phase = False
 	exit_scenario = False

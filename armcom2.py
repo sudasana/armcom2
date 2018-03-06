@@ -1805,12 +1805,14 @@ class Scenario:
 		libtcod.console_set_default_background(attack_con, libtcod.black)
 		
 		# set flags on whether attacker/target is known to player
+		# not used in FP resolution
 		attacker_known = True
-		if profile['attacker'].owning_player == 1 and not profile['attacker'].known:
-			attacker_known = False
 		target_known = True
-		if profile['target'].owning_player == 1 and not profile['target'].known:
-			target_known = False
+		if profile['type'] != 'FP Resolution':
+			if profile['attacker'].owning_player == 1 and not profile['attacker'].known:
+				attacker_known = False
+			if profile['target'].owning_player == 1 and not profile['target'].known:
+				target_known = False
 		
 		if profile['type'] == 'ap':
 			text = 'Armour Penetration'

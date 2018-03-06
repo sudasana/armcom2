@@ -57,7 +57,8 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_NO_ACTION = True					# no AI actions at all
+NO_SOUNDS = True					# skip all sound effects
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-03-04'				# game version in Semantic Versioning format: http://semver.org/
@@ -175,9 +176,40 @@ PF_BASE_CHANCE = [
 # base success chances for armour penetration
 AP_BASE_CHANCE = {
 	'AT Rifle' : 28.0,
+	'20L' : 28.0,
+	'37S' : 58.4,
+	'37' : 72.0,
 	'37L' : 83.0,
-	'47S' : 72.0
+	'47S' : 72.0,
+	'75S' : 91.7,
+	'75' : 120.0,		# not sure if this and below are accurate, TODO check balance
+	'75L' : 160.0,
+	'88L' : 200.0
 }
+
+# effective FP of an HE hit from different weapon calibres
+HE_FP_EFFECT = [
+	(75, 8),
+	(70, 8),
+	(65, 7),
+	(60, 7),
+	(57, 6),
+	(50, 6),
+	(45, 5),
+	(37, 5),
+	(30, 4),
+	(25, 3),
+	(20, 3)
+]
+
+# penetration chance on armour of HE hits
+HE_AP_CHANCE = [
+	(70, 58.4),
+	(50, 41.7),
+	(40, 27.8),
+	(30, 16.7),
+	
+]
 
 # base chances of partial effect for area fire attacks: infantry/gun and vehicle targets
 INF_FP_BASE_CHANCE = 30.0
@@ -1439,6 +1471,7 @@ class Scenario:
 		
 		profile['attacker'] = attacker
 		profile['weapon'] = weapon
+		profile['ammo_type'] = weapon.current_ammo
 		profile['target'] = target
 		profile['result'] = ''		# placeholder for text rescription of result
 		
@@ -1464,10 +1497,16 @@ class Scenario:
 		if profile['type'] == 'Point Fire':
 			
 			# calculate base success chance
-			if target.GetStat('category') == 'Vehicle':
-				profile['base_chance'] = PF_BASE_CHANCE[distance][0]
-			else:
+			
+			# can fire HE at unknown targets
+			if not target.known:
+				# use infantry chance as base chance
 				profile['base_chance'] = PF_BASE_CHANCE[distance][1]
+			else:
+				if target.GetStat('category') == 'Vehicle':
+					profile['base_chance'] = PF_BASE_CHANCE[distance][0]
+				else:
+					profile['base_chance'] = PF_BASE_CHANCE[distance][1]
 		
 			# calculate modifiers and build list of descriptions
 			
@@ -1487,33 +1526,40 @@ class Scenario:
 			if los > 0.0:
 				modifier_list.append(('Terrain', 0.0 - los))
 			
-			# acquired target
-			if attacker.acquired_target is not None:
-				(ac_target, level) = attacker.acquired_target
-				if ac_target == target:
-					if not level:
-						mod = 15.0
-					else:
-						mod = 25.0
-					modifier_list.append(('Acquired Target', mod))
-			
-			# target vehicle moved
-			if target.moved and target.GetStat('category') == 'Vehicle':
-				modifier_list.append(('Target Moved', -30.0))
-			
-			# target size
-			size_class = target.GetStat('size_class')
-			if size_class is not None:
-				if size_class == 'Small':
-					modifier_list.append(('Small Target', -7.0))
-				elif size_class == 'Very Small':
-					modifier_list.append(('Very Small Target', -18.0))
-			
 			# elevation
 			elevation1 = self.map_hexes[(attacker.hx, attacker.hy)].elevation
 			elevation2 = self.map_hexes[(target.hx, target.hy)].elevation
 			if elevation2 > elevation1:
 				modifier_list.append(('Higher Elevation', -20.0))
+			
+			# unknown target
+			if not target.known:
+				modifier_list.append(('Unknown Target', -20.0))
+			
+			# known target
+			else:
+			
+				# acquired target
+				if attacker.acquired_target is not None:
+					(ac_target, level) = attacker.acquired_target
+					if ac_target == target:
+						if not level:
+							mod = 15.0
+						else:
+							mod = 25.0
+						modifier_list.append(('Acquired Target', mod))
+				
+				# target vehicle moved
+				if target.moved and target.GetStat('category') == 'Vehicle':
+					modifier_list.append(('Target Moved', -30.0))
+				
+				# target size
+				size_class = target.GetStat('size_class')
+				if size_class is not None:
+					if size_class == 'Small':
+						modifier_list.append(('Small Target', -7.0))
+					elif size_class == 'Very Small':
+						modifier_list.append(('Very Small Target', -18.0))
 		
 		# area fire
 		elif profile['type'] == 'Area Fire':
@@ -1569,7 +1615,6 @@ class Scenario:
 			
 			if not target.known:
 				modifier_list.append(('Unknown Target', -20.0))
-			
 			else:
 			
 				# target is infantry and moved
@@ -1638,31 +1683,37 @@ class Scenario:
 			base_chance = AP_BASE_CHANCE['AT Rifle']
 		else:
 			gun_rating = weapon.GetStat('calibre')
-			if weapon.GetStat('long_range') is not None:
-				gun_rating += weapon.GetStat('long_range')
-			if gun_rating not in AP_BASE_CHANCE:
-				print 'ERROR: No AP base chance found for: ' + gun_rating
-				return None
-			base_chance = AP_BASE_CHANCE[gun_rating]
+			
+			# HE hits have a much lower base chance
+			if profile['ammo_type'] == 'HE':
+				base_chance = weapon.GetBaseHEPenetrationChance()
+			else:
+				if weapon.GetStat('long_range') is not None:
+					gun_rating += weapon.GetStat('long_range')
+				if gun_rating not in AP_BASE_CHANCE:
+					print 'ERROR: No AP base chance found for: ' + gun_rating
+					return None
+				base_chance = AP_BASE_CHANCE[gun_rating]
 		
 		profile['base_chance'] = base_chance
 		
 		# calculate modifiers
 		
 		# calibre/range modifier
-		if weapon.GetStat('calibre') is not None:
-			calibre = int(weapon.GetStat('calibre'))
-			distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
-			if distance <= 1:
-				if calibre <= 57:
-					modifier_list.append(('Close Range', 7.0))
-			elif distance == 5:
-				modifier_list.append(('Medium Range', -7.0))
-			elif distance == 6:
-				if calibre < 65:
-					modifier_list.append(('Long Range', -18.0))
-				else:
-					modifier_list.append(('Long Range', -7.0))
+		if profile['ammo_type'] == 'AP':
+			if weapon.GetStat('calibre') is not None:
+				calibre = int(weapon.GetStat('calibre'))
+				distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+				if distance <= 1:
+					if calibre <= 57:
+						modifier_list.append(('Close Range', 7.0))
+				elif distance == 5:
+					modifier_list.append(('Medium Range', -7.0))
+				elif distance == 6:
+					if calibre < 65:
+						modifier_list.append(('Long Range', -18.0))
+					else:
+						modifier_list.append(('Long Range', -7.0))
 		
 		# target armour modifier
 		armour = target.GetStat('armour')
@@ -1775,6 +1826,8 @@ class Scenario:
 		if profile['type'] == 'ap':
 			text1 = profile['target'].GetName()
 			text2 = 'hit by ' + profile['weapon'].GetStat('name')
+			if profile['ammo_type'] is not None:
+				text2 += ' (' + profile['ammo_type'] + ')'
 			text3 = 'in ' + profile['location_desc']
 		elif profile['type'] == 'FP Resolution':
 			text1 = profile['target'].GetName()
@@ -1943,6 +1996,11 @@ class Scenario:
 			if profile['weapon'].GetStat('type') == 'Gun':
 				if not profile['attacker'].CheckCrewAction(['Loader'], ['Reload']):
 					return False
+				
+				# guns must also have at least one shell available
+				if profile['weapon'].current_ammo is not None:
+					if profile['weapon'].ammo_stores[profile['weapon'].current_ammo] == 0:
+						return False			
 			
 			base_chance = float(profile['weapon'].GetStat('rof'))
 			roll = GetPercentileRoll()
@@ -2090,6 +2148,10 @@ class Scenario:
 	# valid attack; if not, return a text description of why not
 	def CheckAttack(self, attacker, weapon, target):
 		
+		if weapon.GetStat('type') == 'Gun' and weapon.current_ammo is not None:
+			if weapon.ammo_stores[weapon.current_ammo] == 0:
+				return 'No ammo of this type remaining'
+		
 		# check range to target
 		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 		if distance > weapon.max_range:
@@ -2125,9 +2187,8 @@ class Scenario:
 			return 'Weapon already fired this turn'
 		
 		# point-fire attacks must have a spotted target
-		# TEMP - check for ammo type in future
 		if weapon.GetStat('type') == 'Gun':
-			if not target.known:
+			if weapon.current_ammo == 'AP' and not target.known:
 				return 'Target must be spotted for this attack'
 		
 		# check that proper crew action is set for this attack if required
@@ -2480,7 +2541,7 @@ class Weapon:
 			elif self.stats['type'] == 'Hull MG':
 				self.max_range = 1
 		
-		# TODO: set up ammo stores and ready rack if gun
+		# set up ammo stores if gun with types of ammo
 		self.ammo_stores = None
 		if self.GetStat('type') == 'Gun' and 'ammo_type_list' in self.stats:
 			self.ammo_stores = {}
@@ -2502,13 +2563,72 @@ class Weapon:
 				if self.stats['ammo_type_list'] == ['HE', 'AP']:
 					self.ammo_stores['HE'] = int(max_ammo * 0.7)
 					self.ammo_stores['AP'] = max_ammo - self.ammo_stores['HE']
-				
+		
+		# TODO: set up ready rack if any
+		
 		self.InitScenarioStats()
 
 	# set up any data that is unique to a scenario
 	def InitScenarioStats(self):
 		self.fired = False
 		self.maintained_rof = False			# can fire again even if fired == True
+		self.current_ammo = None
+		
+		# Guns must have current_ammo set or else attacks won't work properly
+		if self.GetStat('type') == 'Gun':
+			self.current_ammo = self.stats['ammo_type_list'][0]
+	
+	# switch active ammo type for this weapon
+	def SelectAmmoType(self, forward):
+		
+		if self.GetStat('type') != 'Gun':
+			return False
+		if self.current_ammo is None:
+			return False
+		if 'ammo_type_list' not in self.stats:
+			return False
+		
+		i = self.stats['ammo_type_list'].index(self.current_ammo)
+		
+		if forward:
+			if i == len(self.stats['ammo_type_list']) - 1:
+				i = 0
+			else:
+				i += 1
+		else:
+			if i == 0:
+				i = len(self.stats['ammo_type_list']) - 1
+			else:
+				i = 0
+		self.current_ammo = self.stats['ammo_type_list'][i]
+		
+		return True
+	
+	# return the effective FP of an HE hit from this gun
+	def GetEffectiveFP(self):
+		if self.GetStat('type') != 'Gun':
+			print 'ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate effective FP'
+			return 1
+		
+		for (calibre, fp) in HE_FP_EFFECT:
+			if calibre <= int(self.GetStat('calibre')):
+				return fp
+		
+		print 'ERROR: Could not find effective FP for: ' + self.stats['name']
+		return 1
+	
+	# return the base penetration chance of an HE hit from this gun
+	def GetBaseHEPenetrationChance(self):
+		if self.GetStat('type') != 'Gun':
+			print 'ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate HE AP chance'
+			return 0.0
+		
+		for (calibre, chance) in HE_AP_CHANCE:
+			if calibre <= int(self.GetStat('calibre')):
+				return chance
+		
+		print 'ERROR: Could not find HE AP chance for: ' + self.stats['name']
+		return 0.0
 	
 	# reset gun for start of new turn
 	def ResetForNewTurn(self):
@@ -3064,6 +3184,10 @@ class Unit:
 		weapon.fired = True
 		self.fired = True
 		
+		# expend a shell if gun
+		if weapon.GetStat('type') == 'Gun' and weapon.current_ammo is not None:
+			weapon.ammo_stores[weapon.current_ammo] -= 1
+		
 		# display message if player is the target
 		if target == scenario.player_unit:
 			text = self.GetName() + ' fires at you!'
@@ -3159,6 +3283,7 @@ class Unit:
 			if profile['type'] == 'Point Fire':
 				self.AddAcquiredTarget(target)
 			
+			
 			# apply results of this attack if any
 			if profile['type'] == 'Area Fire':
 				
@@ -3169,12 +3294,35 @@ class Unit:
 					if not target.known:
 						target.hit_by_fp = 2
 			
-			# fp attack hit
+			# ap attack hit
 			elif profile['result'] in ['CRITICAL HIT', 'HIT']:
-			
-				# record AP hit to be resolved if target was a vehicle
-				if target.GetStat('category') == 'Vehicle':
-					target.ap_hits_to_resolve.append(profile)
+				
+				# infantry or gun target
+				if target.GetStat('category') in ['Infantry', 'Gun']:
+					
+					# if HE hit, apply effective FP
+					if profile['ammo_type'] == 'HE':
+						
+						effective_fp = profile['weapon'].GetEffectiveFP()
+						
+						# TODO: apply critical hit multiplier
+					
+						# TODO: apply infantry moved modifier
+						
+						target.fp_to_resolve += effective_fp
+						
+						if not target.known:
+							target.hit_by_fp = 2
+					
+					# TEMP: AP hits have no effect on Guns
+				
+				# vehicle hit
+				else:
+					
+					# record AP hit to be resolved if target was a vehicle
+					# also handles AP rolls for HE hits
+					if target.GetStat('category') == 'Vehicle':
+						target.ap_hits_to_resolve.append(profile)
 		
 		# attack is over, re-enable LoS if player unit
 		if self == scenario.player_unit:
@@ -4020,6 +4168,10 @@ def PlaySound(sound_name):
 
 # select and play a sound effect for a given situation
 def PlaySoundFor(obj, action):
+	
+	# debug flag
+	if NO_SOUNDS: return
+	
 	if action == 'fire':
 		if obj.GetStat('type') == 'Gun':
 			
@@ -4745,13 +4897,15 @@ def UpdateCommandCon():
 		ConsolePrint(command_con, 2, 2, 'W/S')
 		ConsolePrint(command_con, 2, 3, 'Q/E')
 		ConsolePrint(command_con, 2, 4, 'A/D')
-		ConsolePrint(command_con, 2, 5, 'F')
+		ConsolePrint(command_con, 2, 5, 'Z/C')
+		ConsolePrint(command_con, 2, 6, 'F')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 		ConsolePrint(command_con, 9, 2, 'Select Weapon')
 		ConsolePrint(command_con, 9, 3, 'Rotate Turret')
 		ConsolePrint(command_con, 9, 4, 'Select Target')
-		ConsolePrint(command_con, 9, 5, 'Fire')
+		ConsolePrint(command_con, 9, 5, 'Select Ammo')
+		ConsolePrint(command_con, 9, 6, 'Fire')
 		
 	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 	ConsolePrint(command_con, 2, 11, 'Enter')
@@ -4875,9 +5029,12 @@ def UpdateContextCon():
 		libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
 		
 		# if gun, display current ammo stats
-		# TEMP: disabled until HE is added
-		#if weapon.GetStat('type') == 'Gun':
-		if 1 == 0:
+		if weapon.GetStat('type') == 'Gun':
+			
+			# current active ammo type
+			if weapon.current_ammo is not None:
+				ConsolePrintEx(context_con, 14, 0, libtcod.BKGND_NONE,
+					libtcod.RIGHT, weapon.current_ammo)
 			
 			# general stores
 			y = 2
@@ -5443,6 +5600,16 @@ def DoScenario(load_game=False):
 				if result:
 					UpdateContextCon()
 					UpdateUnitCon()
+					UpdateScenarioDisplay()
+			
+			# select ammo type
+			elif key_char in ['z', 'c'] or key.vk in [libtcod.KEY_PAGEUP, libtcod.KEY_PAGEDOWN]:
+				if key_char == 'z' or key.vk == libtcod.KEY_PAGEUP:
+					result = scenario.selected_weapon.SelectAmmoType(False)
+				else:
+					result = scenario.selected_weapon.SelectAmmoType(True)
+				if result:
+					UpdateContextCon()
 					UpdateScenarioDisplay()
 			
 			# fire the active weapon at the selected target

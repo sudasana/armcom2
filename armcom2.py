@@ -420,10 +420,7 @@ class AI:
 			
 			elif self.owner.GetStat('category') == 'Infantry':
 				if roll <= 50.0:
-					if self.owner.dummy:
-						self.disposition = None
-					else:
-						self.disposition = 'Combat'
+					self.disposition = 'Combat'
 				elif roll <= 60.0:
 					if self.owner.pinned:
 						self.disposition = 'Combat'
@@ -437,15 +434,16 @@ class AI:
 				if roll >= 80.0:
 					self.disposition = None
 				elif roll <= 50.0:
-					if self.owner.dummy:
-						self.disposition = None
-					else:
-						self.disposition = 'Combat'
+					self.disposition = 'Combat'
 				else:
 					if self.owner.pinned:
 						self.disposition = 'Combat'
 					else:
 						self.disposition = 'Movement'
+			
+			# dummy units never attack
+			if self.owner.dummy and self.disposition == 'Combat':
+				self.disposition = None
 			
 			# debug testing override
 			if AI_NO_ACTION:

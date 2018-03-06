@@ -58,10 +58,10 @@ import sdl2.sdlmixer as mixer				# sound effects
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = True					# no AI actions at all
-NO_SOUNDS = True					# skip all sound effects
+NO_SOUNDS = False					# skip all sound effects
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-03-04'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-03-10'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -359,6 +359,7 @@ class Session:
 		SOUND_LIST = [
 			'menu_select',
 			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
+			'37mm_he_explosion_00', '37mm_he_explosion_01',
 			'at_rifle_firing',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'zb_53_mg_00'
@@ -1468,7 +1469,6 @@ class Scenario:
 	def CalcAttack(self, attacker, weapon, target):
 		
 		profile = {}
-		
 		profile['attacker'] = attacker
 		profile['weapon'] = weapon
 		profile['ammo_type'] = weapon.current_ammo
@@ -2125,9 +2125,9 @@ class Scenario:
 				libtcod.CENTER, str(profile['effective_fp']) + ' FP')
 		
 		# check for RoF for gun / MG attacks
-		# TEMP: player only for now
-		if profile['attacker'] == scenario.player_unit:
-			if profile['type'] not in ['ap', 'FP Resolution'] and profile['weapon'].GetStat('rof') is not None:
+		if profile['type'] not in ['ap', 'FP Resolution'] and profile['weapon'].GetStat('rof') is not None:
+			# TEMP: player only for now
+			if profile['attacker'] == scenario.player_unit:
 				profile['weapon'].maintained_rof = CheckRoF(profile) 
 				if profile['weapon'].maintained_rof:
 					ConsolePrintEx(attack_con, 13, 53, libtcod.BKGND_NONE,
@@ -3225,6 +3225,9 @@ class Unit:
 					
 					# add explosion effect if HE ammo
 					if weapon.current_ammo == 'HE':
+						
+						PlaySoundFor(weapon, 'he_explosion')
+						
 						for i in range(6):
 							col = choice([libtcod.red, libtcod.yellow, libtcod.black])
 							libtcod.console_set_default_foreground(0, col)
@@ -4203,7 +4206,13 @@ def PlaySoundFor(obj, action):
 		if obj.stats['type'] in ['Co-ax MG', 'Hull MG']:
 			PlaySound('zb_53_mg_00')
 			return
-		
+	
+	elif action == 'he_explosion':
+		# TEMP - more detail to come
+		n = libtcod.random_get_int(0, 0, 1)
+		PlaySound('37mm_he_explosion_0' + str(n))
+		return
+	
 	elif action == 'movement':
 		if obj.GetStat('movement_class') == 'Fast Tank':
 			n = libtcod.random_get_int(0, 0, 2)

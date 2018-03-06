@@ -57,8 +57,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_NO_ACTION = False					# no AI actions at all
 NO_SOUNDS = False					# skip all sound effects
+GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-03-10'				# game version in Semantic Versioning format: http://semver.org/
@@ -587,6 +588,11 @@ class AI:
 			# TEMP - can select first weapon only
 			weapon = self.owner.weapon_list[0]
 			
+			# TEMP - choose AP ammo only
+			if weapon.GetStat('type') == 'Gun':
+				if 'AP' in weapon.stats['ammo_type_list']:
+					weapon.current_ammo = 'AP'
+			
 			# Following is a bit of a hack because it takes place in the Combat phase
 			# FUTURE: identify target in action phase
 			
@@ -969,12 +975,12 @@ class Scenario:
 		enemy_unit_list = [
 			#('TK-3', 2, 3),
 			#('TKS', 2, 3),
-			#('TKS (20mm)', 1, 2),
+			('TKS (20mm)', 1, 2),
 			('Vickers 6-Ton Mark E', 1, 1),
 			('7TP', 1, 1),
 			#('wz. 34 (MG)', 1, 2),
-			#('wz. 34 (37mm)', 1, 2),
-			#('37mm wz. 36', 2, 3),
+			('wz. 34 (37mm)', 1, 2),
+			('37mm wz. 36', 2, 3),
 			#('75mm wz. 02/26', 1, 2),
 			#('75mm wz. 97/25', 1, 2),
 			('Riflemen', 1, 3)
@@ -1574,7 +1580,6 @@ class Scenario:
 			profile['base_fp'] = fp
 			
 			# calculate base effect chance
-			# TODO: is this chance of any effect including partial?
 			if target.GetStat('category') == 'Vehicle':
 				base_chance = VEH_FP_BASE_CHANCE
 			else:
@@ -2151,6 +2156,12 @@ class Scenario:
 		if weapon.GetStat('type') == 'Gun' and weapon.current_ammo is not None:
 			if weapon.ammo_stores[weapon.current_ammo] == 0:
 				return 'No ammo of this type remaining'
+			if weapon.current_ammo == 'AP' and not target.known:
+				return 'Target must be spotted for this attack'
+			if weapon.current_ammo == 'AP' and target.GetStat('category') == 'Infantry':
+				return 'AP has no effect on infantry'
+			if weapon.current_ammo == 'AP' and target.GetStat('category') == 'Gun':
+				return 'AP cannot harm guns'
 		
 		# check range to target
 		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
@@ -2186,11 +2197,6 @@ class Scenario:
 		if weapon.fired:
 			return 'Weapon already fired this turn'
 		
-		# point-fire attacks must have a spotted target
-		if weapon.GetStat('type') == 'Gun':
-			if weapon.current_ammo == 'AP' and not target.known:
-				return 'Target must be spotted for this attack'
-		
 		# check that proper crew action is set for this attack if required
 		position_list = weapon.GetStat('fired_by')
 		if position_list is not None:
@@ -2225,8 +2231,10 @@ class Scenario:
 		
 		# check for dirt road link
 		direction = GetDirectionToAdjacent(unit.hx, unit.hy, hx, hy)
+		dirt_road = False
 		if direction in self.map_hexes[(unit.hx, unit.hy)].dirt_roads:
 			chance = DIRT_ROAD_BONUS_CHANCE
+			dirt_road = True
 		else:
 			chance = TERRAIN_BONUS_CHANCE[self.map_hexes[(hx, hy)].terrain_type]
 		
@@ -2241,6 +2249,11 @@ class Scenario:
 				chance += 15.0
 			elif movement_class == 'Infantry':
 				chance -= 50.0
+			elif movement_class == 'Wheeled':
+				if dirt_road:
+					chance += 30.0
+				else:
+					chance -= 30.0
 		
 		# direct driver modifier
 		if unit.CheckCrewAction(['Commander', 'Commander/Gunner'], ['Direct Driver']):
@@ -3388,8 +3401,7 @@ class Unit:
 		for profile in self.ap_hits_to_resolve:
 			
 			# TODO: determine if an AP roll must be made
-			
-			if self.GetStat('category') != 'Infantry':
+			if self.GetStat('category') == 'Vehicle':
 			
 				profile = scenario.CalcAP(profile)
 				scenario.DisplayAttack(profile)
@@ -3457,6 +3469,12 @@ class Unit:
 		
 	# destroy this unit and remove it from the scenario map
 	def DestroyMe(self):
+		
+		# debug flag
+		if GODMODE and self == scenario.player_unit:
+			print 'DEBUG: Player saved from destruction'
+			return
+		
 		self.alive = False
 		scenario.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
 		self.ClearAcquiredTargets()
@@ -4206,7 +4224,7 @@ def PlaySoundFor(obj, action):
 		if obj.stats['type'] in ['Co-ax MG', 'Hull MG']:
 			PlaySound('zb_53_mg_00')
 			return
-	
+	 
 	elif action == 'he_explosion':
 		# TEMP - more detail to come
 		n = libtcod.random_get_int(0, 0, 1)

@@ -1167,12 +1167,13 @@ class Scenario:
 		
 		if self.game_turn['current_phase'] == 'Crew Actions':
 			
-			# go through active units and generate list of possible crew actions
+			# go through active units
 			for unit in self.units:
 				if unit.owning_player != self.game_turn['active_player']:
 					continue
 				if not unit.alive: continue
-			
+				
+				# generate list of possible crew actions
 				for position in unit.crew_positions:
 					
 					# no crewman in this position
@@ -1206,6 +1207,9 @@ class Scenario:
 				# decrement FP hit counter if any
 				if unit.hit_by_fp > 0:
 					unit.hit_by_fp -= 1
+				
+				# check for units regaining concealment
+				unit.ConcealmentCheck()
 		
 		elif self.game_turn['current_phase'] == 'Spotting':
 			
@@ -2834,6 +2838,38 @@ class Unit:
 				text = self.GetName() + ' recovers from being Pinned.'
 				scenario.ShowMessage(text, self.hx, self.hy)
 	
+	# check to see if this unit can regain unknown status
+	def ConcealmentCheck(self):
+		
+		# already unknown
+		if not self.known: return
+		
+		for unit in scenario.units:
+			if unit.owning_player == self.owning_player: continue
+			if not unit.alive: continue
+			
+			# if in the FoV of an active enemy unit, can't regain unknown status
+			if (self.hx, self.hy) in unit.fov:
+				return
+		
+		# if we get here, unit is not in enemy FoV
+		
+		# no message if outside of VP
+		dist = GetHexDistance(self.hx, self.hy, scenario.player_unit.hx,
+			scenario.player_unit.hy)
+		if dist > 6:
+			self.unknown = True
+			return
+		
+		if self == scenario.player_unit:
+			text = 'You are now concealed from the enemy'
+		else:
+			text = 'Lost contact with ' + self.GetName()
+		scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
+		self.known = False
+		UpdateUnitCon()
+		UpdateUnitInfoCon()
+		UpdateScenarioDisplay()
 	
 	# calculate which hexes are visible to this unit
 	def CalcFoV(self):

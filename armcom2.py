@@ -2818,9 +2818,6 @@ class Unit:
 			
 			# TODO: roll for recovery from Stunned
 			if position.crewman.status == 'Stunned':
-				
-				
-				
 				continue
 		
 		# check for unit recovering from Broken status
@@ -2893,10 +2890,10 @@ class Unit:
 			
 			visible_hextants = []
 			
-			# infantry and gun crew can see all around but not as far
+			# infantry and gun crew can see all around
 			if self.GetStat('category') in ['Infantry', 'Gun']:
 				visible_hextants = [0,1,2,3,4,5]
-				max_distance = MAX_BU_LOS_DISTANCE
+				max_distance = MAX_LOS_DISTANCE
 			else:
 				if not position.hatch:
 					visible_hextants = position.closed_visible[:]
@@ -3558,10 +3555,9 @@ class Unit:
 			elif size_class == 'Very Small':
 				chance -= 18.0
 		
-		# spotter movement
+		# spotter moved / target moved
 		if self.moved:
 			chance = chance * 0.75
-		# target movement
 		elif target.moved:
 			chance = chance * 1.5
 		

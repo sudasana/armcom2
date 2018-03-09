@@ -155,6 +155,8 @@ with open(DATAPATH + 'crew_action_defs.json') as data_file:
 # order to display ammo types
 AMMO_TYPES = ['HE', 'AP']
 
+
+
 ##### Game Engine Constants #####
 # Can be modified for a different game experience
 
@@ -176,6 +178,7 @@ PF_BASE_CHANCE = [
 
 # base success chances for armour penetration
 AP_BASE_CHANCE = {
+	'MG' : 16.7,
 	'AT Rifle' : 28.0,
 	'20L' : 28.0,
 	'37S' : 58.4,
@@ -211,6 +214,9 @@ HE_AP_CHANCE = [
 	(30, 16.7),
 	
 ]
+
+# maximum range for an MG attack to cause an AP hit on armoured target
+MG_AP_RANGE = 2
 
 # base chances of partial effect for area fire attacks: infantry/gun and vehicle targets
 INF_FP_BASE_CHANCE = 30.0
@@ -971,17 +977,17 @@ class Scenario:
 		
 		# FUTURE - get from nation_defs eventually
 		enemy_unit_list = [
-			#('TK-3', 2, 3),
-			#('TKS', 2, 3),
-			('TKS (20mm)', 1, 2),
-			('Vickers 6-Ton Mark E', 1, 1),
-			('7TP', 1, 1),
-			#('wz. 34 (MG)', 1, 2),
-			('wz. 34 (37mm)', 1, 2),
-			('37mm wz. 36', 2, 3),
-			#('75mm wz. 02/26', 1, 2),
-			#('75mm wz. 97/25', 1, 2),
-			('Riflemen', 1, 3)
+			#('TK-3', 2, 3, 90.0),
+			#('TKS', 2, 3, 90.0),
+			('TKS (20mm)', 1, 2, 50.0),
+			('Vickers 6-Ton Mark E', 1, 1, 50.0),
+			('7TP', 1, 1, 70.0)
+			#('wz. 34 (MG)', 1, 2, 80.0),
+			('wz. 34 (37mm)', 1, 2, 90.0),
+			('37mm wz. 36', 2, 3, 60.0),
+			#('75mm wz. 02/26', 1, 2, 70.0),
+			#('75mm wz. 97/25', 1, 2, 40.0),
+			('Riflemen', 1, 3, 100.0)
 		]
 		
 		# load unit stats from JSON file
@@ -998,13 +1004,18 @@ class Scenario:
 		
 		CATEGORY_LIST = ['Gun', 'Infantry', 'Vehicle']
 		for category in CATEGORY_LIST:
-			for (unit_id, min_num, max_num) in unit_group_list:
+			for (unit_id, min_num, max_num, rarity) in unit_group_list:
 				if unit_id not in unit_types:
 					print 'ERROR: Could not find unit id: ' + unit_id
 					continue
 				
 				unit_stats = unit_types[unit_id]
 				if unit_stats['category'] != category:
+					continue
+				
+				# roll for rarity test
+				roll = GetPercentileRoll()
+				if roll > rarity:
 					continue
 				
 				# determine where to place center point of group
@@ -1688,6 +1699,8 @@ class Scenario:
 		# calculate base chance of penetration
 		if weapon.GetStat('name') == 'AT Rifle':
 			base_chance = AP_BASE_CHANCE['AT Rifle']
+		elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG']:
+			base_chance = AP_BASE_CHANCE['MG']
 		else:
 			gun_rating = weapon.GetStat('calibre')
 			
@@ -1706,21 +1719,20 @@ class Scenario:
 		
 		# calculate modifiers
 		
-		# calibre/range modifier
-		if profile['ammo_type'] == 'AP':
-			if weapon.GetStat('calibre') is not None:
-				calibre = int(weapon.GetStat('calibre'))
-				distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
-				if distance <= 1:
-					if calibre <= 57:
-						modifier_list.append(('Close Range', 7.0))
-				elif distance == 5:
-					modifier_list.append(('Medium Range', -7.0))
-				elif distance == 6:
-					if calibre < 65:
-						modifier_list.append(('Long Range', -18.0))
-					else:
-						modifier_list.append(('Long Range', -7.0))
+		# calibre/range modifier - not applicable to HE and MG attacks
+		if profile['ammo_type'] == 'AP' and weapon.GetStat('calibre') is not None:
+			calibre = int(weapon.GetStat('calibre'))
+			distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+			if distance <= 1:
+				if calibre <= 57:
+					modifier_list.append(('Close Range', 7.0))
+			elif distance == 5:
+				modifier_list.append(('Medium Range', -7.0))
+			elif distance == 6:
+				if calibre < 65:
+					modifier_list.append(('Long Range', -18.0))
+				else:
+					modifier_list.append(('Long Range', -7.0))
 		
 		# target armour modifier
 		armour = target.GetStat('armour')
@@ -3363,11 +3375,16 @@ class Unit:
 			if profile['type'] == 'Point Fire':
 				self.AddAcquiredTarget(target)
 			
-			
 			# apply results of this attack if any
 			if profile['type'] == 'Area Fire':
 				
 				if profile['result'] in ['CRITICAL EFFECT', 'FULL EFFECT', 'PARTIAL EFFECT']:
+					
+					# possible to apply an AP hit if MG within range
+					if weapon.GetStat('type') in ['Co-ax MG', 'Hull MG'] and target.GetStat('armour') is not None:
+						if GetHexDistance(self.hx, self.hy, target.hx, target.hy) <= MG_AP_RANGE:
+							target.ap_hits_to_resolve.append(profile)
+					
 					target.fp_to_resolve += profile['effective_fp']
 					
 					# target will automatically be spotted next turn if possible
@@ -3385,7 +3402,9 @@ class Unit:
 						
 						effective_fp = profile['weapon'].GetEffectiveFP()
 						
-						# TODO: apply critical hit multiplier
+						# apply critical hit multiplier
+						if profile['result'] == 'CRITICAL HIT':
+							effective_fp = effective_fp * 2 
 					
 						# TODO: apply infantry moved modifier
 						
@@ -5450,6 +5469,14 @@ def DoScenario(load_game=False):
 						break
 				if too_close: continue
 				
+				# too close to map edge
+				hex_ring = GetHexRing(hx, hy, 1)
+				for (hx2, hy2) in hex_ring:
+					if (hx2, hy2) not in scenario.map_hexes:
+						too_close = True
+						break
+				if too_close: continue
+				
 				scenario.SetObjectiveHex(hx, hy, 1)
 				break
 		
@@ -5574,9 +5601,9 @@ def DoScenario(load_game=False):
 		if scenario.game_turn['current_phase'] == 'Crew Actions':
 			
 			# change selected crewman
-			if key_char in ['i', 'k']:
+			if key_char in ['i', 'k'] or (libtcod.console_is_key_pressed(libtcod.KEY_ALT) and key.vk in [libtcod.KEY_UP, libtcod.KEY_DOWN]):
 				
-				if key_char == 'i':
+				if key_char == 'i' or (libtcod.console_is_key_pressed(libtcod.KEY_ALT) and key.vk == libtcod.KEY_UP):
 					if scenario.selected_position > 0:
 						scenario.selected_position -= 1
 					else:
@@ -5592,13 +5619,13 @@ def DoScenario(load_game=False):
 				UpdateScenarioDisplay()
 			
 			# set action for selected crewman
-			elif key_char in ['j', 'l']:
+			elif key_char in ['j', 'l'] or (libtcod.console_is_key_pressed(libtcod.KEY_ALT) and key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]):
 				
 				position = scenario.player_unit.crew_positions[scenario.selected_position]
 				
 				# check for empty position
 				if position.crewman is not None:
-					if key_char == 'j':
+					if key_char == 'j' or (libtcod.console_is_key_pressed(libtcod.KEY_ALT) and key.vk == libtcod.KEY_LEFT):
 						result = position.crewman.SetAction(False)
 					else:
 						result = position.crewman.SetAction(True)

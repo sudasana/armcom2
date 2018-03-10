@@ -160,6 +160,9 @@ AMMO_TYPES = ['HE', 'AP']
 ##### Game Engine Constants #####
 # Can be modified for a different game experience
 
+# of all enemy units initially spawned in a scenario, portion that are spawned as dummy units
+ENEMY_DUMMY_RATIO = 0.25
+
 # critical hit and miss thresholds
 CRITICAL_HIT = 3.0
 CRITICAL_MISS = 97.0
@@ -995,7 +998,8 @@ class Scenario:
 			unit_types = json.load(data_file)
 		
 		# determine how many unit groups will be spawned
-		num_unit_groups = libtcod.random_get_int(0, 2, 4)
+		# TEMP number - too many!
+		num_unit_groups = libtcod.random_get_int(0, 6, 6)
 		
 		# generate list of unit groups
 		unit_group_list = []
@@ -1090,22 +1094,18 @@ class Scenario:
 						if self.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
 							continue
 						
-						# don't stack units
+						# don't stack units during spawn
 						if len(self.map_hexes[(spawn_hx, spawn_hy)].unit_stack) > 0:
 							continue
 						
 						new_unit.SpawnAt(spawn_hx, spawn_hy)
 						break
 		
-		dummy_ratio = 0.25
 		unit_list = []
 		for unit in self.units:
 			if unit.owning_player == 1:
 				unit_list.append(unit)
-		#print 'DEBUG: total of ' + str(len(unit_list)) + ' enemy units'
-		num_dummy_units = int(ceil(len(unit_list) * dummy_ratio))
-		#print 'DEBUG: setting ' + str(num_dummy_units) + ' dummy units'
-		unit_list = sample(unit_list, num_dummy_units)	
+		unit_list = sample(unit_list, int(ceil(len(unit_list) * ENEMY_DUMMY_RATIO)))	
 		for unit in unit_list:
 			unit.dummy = True
 		
@@ -1565,9 +1565,9 @@ class Scenario:
 					(ac_target, level) = attacker.acquired_target
 					if ac_target == target:
 						if not level:
-							mod = 15.0
+							mod = 10.0
 						else:
-							mod = 25.0
+							mod = 20.0
 						modifier_list.append(('Acquired Target', mod))
 				
 				# target vehicle moved
@@ -3373,8 +3373,8 @@ class Unit:
 						attack_finished = False
 						end_pause = True
 			
-			# add acquired target if doing point fire
-			if profile['type'] == 'Point Fire':
+			# add acquired target if firing gun
+			if weapon.GetStat('type') == 'Gun':
 				self.AddAcquiredTarget(target)
 			
 			# apply results of this attack if any
@@ -3659,7 +3659,7 @@ class Unit:
 ##########################################################################################
 
 # TESTING fix for Win10 PyInstaller overflow crash
-# wrappers to cast text to a string object before sending to libtcod
+# wrappers to cast text as a string object before sending to libtcod
 def ConsolePrint(console, x, y, text):
 	libtcod.console_print(console, x, y, str(text))
 def ConsolePrintEx(console, x, y, flag1, flag2, text):

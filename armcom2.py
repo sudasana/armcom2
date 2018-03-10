@@ -999,13 +999,13 @@ class Scenario:
 			('TK-3', 2, 3, 95.0),
 			('TKS', 2, 3, 85.0),
 			('TKS (20mm)', 1, 2, 40.0),
-			('Vickers 6-Ton Mark E', 1, 1, 40.0),
-			('7TP', 1, 1, 70.0),
+			('Vickers 6-Ton Mark E', 1, 1, 30.0),
+			('7TP', 1, 1, 50.0),
 			('wz. 34 (MG)', 1, 2, 75.0),
-			('wz. 34 (37mm)', 1, 2, 90.0),
+			('wz. 34 (37mm)', 1, 2, 50.0),
 			('37mm wz. 36', 2, 3, 60.0),
-			('75mm wz. 02/26', 1, 2, 40.0),
-			('75mm wz. 97/25', 1, 2, 20.0),
+			('75mm wz. 02/26', 1, 1, 22.0),
+			('75mm wz. 97/25', 1, 1, 13.0),
 			('Riflemen', 1, 3, 100.0)
 		]
 		
@@ -2110,9 +2110,7 @@ class Scenario:
 		if profile['type'] != 'FP Resolution':
 		
 			# display final roll indicators
-			# TEMP? need to add the +1 since it was falling into green area sometimes
-			#   when it was a miss
-			x = int(ceil(24.0 * roll / 100.0)) + 1
+			x = int(ceil(24.0 * roll / 100.0))
 			
 			# make sure only critical hits and misses appear in their bands
 			if roll > CRITICAL_HIT and x == 1: x = 2

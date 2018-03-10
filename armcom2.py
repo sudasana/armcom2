@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 NO_SOUNDS = False					# skip all sound effects
-GODMODE = False						# player cannot be destroyed
+GODMODE = True						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-03-10'				# game version in Semantic Versioning format: http://semver.org/
@@ -977,16 +977,16 @@ class Scenario:
 		
 		# FUTURE - get from nation_defs eventually
 		enemy_unit_list = [
-			#('TK-3', 2, 3, 90.0),
-			#('TKS', 2, 3, 90.0),
-			('TKS (20mm)', 1, 2, 50.0),
-			('Vickers 6-Ton Mark E', 1, 1, 50.0),
-			('7TP', 1, 1, 70.0)
-			#('wz. 34 (MG)', 1, 2, 80.0),
+			('TK-3', 2, 3, 95.0),
+			('TKS', 2, 3, 85.0),
+			('TKS (20mm)', 1, 2, 40.0),
+			('Vickers 6-Ton Mark E', 1, 1, 40.0),
+			('7TP', 1, 1, 70.0),
+			('wz. 34 (MG)', 1, 2, 75.0),
 			('wz. 34 (37mm)', 1, 2, 90.0),
 			('37mm wz. 36', 2, 3, 60.0),
-			#('75mm wz. 02/26', 1, 2, 70.0),
-			#('75mm wz. 97/25', 1, 2, 40.0),
+			('75mm wz. 02/26', 1, 2, 40.0),
+			('75mm wz. 97/25', 1, 2, 20.0),
 			('Riflemen', 1, 3, 100.0)
 		]
 		
@@ -994,13 +994,20 @@ class Scenario:
 		with open(DATAPATH + 'unit_type_defs.json') as data_file:
 			unit_types = json.load(data_file)
 		
-		# determine list of unit types for this scenario
+		# determine how many unit groups will be spawned
 		num_unit_groups = libtcod.random_get_int(0, 2, 4)
 		
+		# generate list of unit groups
 		unit_group_list = []
-		
-		for i in range(num_unit_groups):
-			unit_group_list.append(choice(enemy_unit_list))
+		while len(unit_group_list) < num_unit_groups:
+			(unit_id, min_num, max_num, rarity) = choice(enemy_unit_list)
+			
+			# do rarity test
+			roll = GetPercentileRoll()
+			if roll > rarity:
+				continue
+			
+			unit_group_list.append((unit_id, min_num, max_num, rarity))
 		
 		CATEGORY_LIST = ['Gun', 'Infantry', 'Vehicle']
 		for category in CATEGORY_LIST:
@@ -1011,11 +1018,6 @@ class Scenario:
 				
 				unit_stats = unit_types[unit_id]
 				if unit_stats['category'] != category:
-					continue
-				
-				# roll for rarity test
-				roll = GetPercentileRoll()
-				if roll > rarity:
 					continue
 				
 				# determine where to place center point of group

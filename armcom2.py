@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 NO_SOUNDS = False					# skip all sound effects
-GODMODE = True						# player cannot be destroyed
+GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-03-10'				# game version in Semantic Versioning format: http://semver.org/
@@ -454,7 +454,7 @@ class AI:
 			if self.owner.dummy and self.disposition == 'Combat':
 				self.disposition = None
 			
-			# debug testing override
+			# debug override
 			if AI_NO_ACTION:
 				self.disposition = None
 			
@@ -473,15 +473,31 @@ class AI:
 						position.crewman.current_action = 'Spot'
 			
 			elif self.disposition == 'Combat':
+				
+				# get the weapon that will be fired
+				# TEMP - first in list only
+				weapon = self.owner.weapon_list[0]
+				
 				for position in self.owner.crew_positions:
 					if position.crewman is None: continue
 					if position.name == 'Commander':
 						# FUTURE: direct fire
 						position.crewman.current_action = 'Spot'
+						
 					elif position.name in ['Commander/Gunner', 'Gunner/Loader', 'Gunner']:
-						position.crewman.current_action = 'Operate Gun'
+						
+						if weapon.GetStat('type') in ['Gun', 'Co-ax MG']:
+							position.crewman.current_action = 'Operate Gun'
+							
+						elif weapon.GetStat('type') == 'Hull MG':
+							position.crewman.current_action = 'Operate Hull MG'
+							
 					elif position.name == 'Loader':
-						position.crewman.current_action = 'Reload'
+						if weapon.GetStat('type') == 'Gun':
+							position.crewman.current_action = 'Reload'
+						else:
+							position.crewman.current_action = 'Spot'
+					
 					else:
 						position.crewman.current_action = 'Spot'
 			

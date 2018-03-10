@@ -1014,8 +1014,7 @@ class Scenario:
 			unit_types = json.load(data_file)
 		
 		# determine how many unit groups will be spawned
-		# TEMP number - too many!
-		num_unit_groups = libtcod.random_get_int(0, 6, 6)
+		num_unit_groups = libtcod.random_get_int(0, 2, 3)
 		
 		# generate list of unit groups
 		unit_group_list = []
@@ -3139,7 +3138,8 @@ class Unit:
 			(x2,y2) = PlotHex(new_vp_hx, new_vp_hy)
 			line = GetLine(x1,y1,x2,y2)
 			
-			PlaySoundFor(self, 'movement')
+			if not(self.owning_player == 1 and not self.known):
+				PlaySoundFor(self, 'movement')
 			
 			for (x,y) in line[1:-1]:
 				self.anim_x = x

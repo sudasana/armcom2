@@ -57,12 +57,12 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_NO_ACTION = False					# no AI actions at all
 NO_SOUNDS = False					# skip all sound effects
 GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-03-10'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-03-17'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -400,125 +400,67 @@ class AI:
 		if self.owner.dummy:
 			text += ' (dummy)'
 		print text
-		
-		for position in self.owner.crew_positions:
-			if position.crewman is None: continue
-			text = ('AI SPY:  ' + position.crewman.GetFullName() +
-					', in ' + position.name + ' position, current action: ' + 
-					position.crewman.current_action)
-			print text
 	
 	# do activation for this unit
 	def DoActivation(self):
 		
 		if not self.owner.alive: return
 		
+		scenario.active_unit = self.owner
+		
 		self.owner.DoPreActivation()
 		
-		# TEMP
-		self.owner.DoPostActivation()
-		return
+		# Step 1: Determine unit disposition for this activation
 		
-		# Crew Actions
-		if scenario.game_turn['current_phase'] == 'Crew Actions':
+		roll = GetPercentileRoll()
 			
-			# set unit disposition for this turn
-			roll = GetPercentileRoll()
-			
-			# much more likely to attack if already have an acquired target
-			if self.owner.acquired_target is not None:
-				roll -= 20.0
-			
-			# guns have fewer options for actions
-			if self.owner.GetStat('category') == 'Gun':
-				if roll >= 70.0:
-					self.disposition = None
-				else:
-					self.disposition = 'Combat'
-			
-			elif self.owner.GetStat('category') == 'Infantry':
-				if roll <= 50.0:
-					self.disposition = 'Combat'
-				elif roll <= 60.0:
-					if self.owner.pinned:
-						self.disposition = 'Combat'
-					else:
-						self.disposition = 'Movement'
-				else:
-					self.disposition = None
-			
+		# much more likely to attack if already have an acquired target
+		if self.owner.acquired_target is not None:
+			roll -= 20.0
+		
+		# guns have fewer options for actions
+		if self.owner.GetStat('category') == 'Gun':
+			if roll >= 70.0:
+				self.disposition = None
 			else:
-			
-				if roll >= 80.0:
-					self.disposition = None
-				elif roll <= 50.0:
+				self.disposition = 'Combat'
+		
+		elif self.owner.GetStat('category') == 'Infantry':
+			if roll <= 50.0:
+				self.disposition = 'Combat'
+			elif roll <= 60.0:
+				if self.owner.pinned:
 					self.disposition = 'Combat'
 				else:
-					if self.owner.pinned:
-						self.disposition = 'Combat'
-					else:
-						self.disposition = 'Movement'
-			
-			# dummy units never attack
-			if self.owner.dummy and self.disposition == 'Combat':
+					self.disposition = 'Movement'
+			else:
 				self.disposition = None
-			
-			# debug override
-			if AI_NO_ACTION:
-				self.disposition = None
-			
-			# set crew actions according to disposition
-			if self.disposition is None:
-				for position in self.owner.crew_positions:
-					if position.crewman is None: continue
-					position.crewman.current_action = 'Spot'
-			
-			elif self.disposition == 'Movement':
-				for position in self.owner.crew_positions:
-					if position.crewman is None: continue
-					if position.name == 'Driver':
-						position.crewman.current_action = 'Drive'
-					else:
-						position.crewman.current_action = 'Spot'
-			
-			elif self.disposition == 'Combat':
-				
-				# get the weapon that will be fired
-				# TEMP - first in list only
-				weapon = self.owner.weapon_list[0]
-				
-				for position in self.owner.crew_positions:
-					if position.crewman is None: continue
-					if position.name == 'Commander':
-						# FUTURE: direct fire
-						position.crewman.current_action = 'Spot'
-						
-					elif position.name in ['Commander/Gunner', 'Gunner/Loader', 'Gunner']:
-						
-						if weapon.GetStat('type') in ['Gun', 'Co-ax MG']:
-							position.crewman.current_action = 'Operate Gun'
-							
-						elif weapon.GetStat('type') == 'Hull MG':
-							position.crewman.current_action = 'Operate Hull MG'
-							
-					elif position.name == 'Loader':
-						if weapon.GetStat('type') == 'Gun':
-							position.crewman.current_action = 'Reload'
-						else:
-							position.crewman.current_action = 'Spot'
-					
-					else:
-						position.crewman.current_action = 'Spot'
-			
-			if AI_SPY:
-				self.DoCrewActionReport()
-			return
 		
-		# Movement
-		if scenario.game_turn['current_phase'] == 'Movement':
-			if self.disposition != 'Movement':
-				return
-			
+		else:
+		
+			if roll >= 80.0:
+				self.disposition = None
+			elif roll <= 50.0:
+				self.disposition = 'Combat'
+			else:
+				if self.owner.pinned:
+					self.disposition = 'Combat'
+				else:
+					self.disposition = 'Movement'
+		
+		# dummy units never attack
+		if self.owner.dummy and self.disposition == 'Combat':
+			self.disposition = None
+		
+		# debug override
+		if AI_NO_ACTION:
+			self.disposition = None
+		if AI_SPY:
+			self.DoCrewActionReport()
+		
+		
+		# Step 2: Determine action to take
+		if self.disposition == 'Movement':
 			move_done = False
 			while not move_done:
 				
@@ -574,13 +516,8 @@ class AI:
 				# if no more moves, end phase action
 				if self.owner.move_finished:
 					move_done = True
-			
-			return
-					
-		# Combat
-		if scenario.game_turn['current_phase'] == 'Combat':
-			if self.disposition != 'Combat':
-				return
+		
+		elif self.disposition == 'Combat':
 			
 			animate = False
 			dist = GetHexDistance(self.owner.hx, self.owner.hy, scenario.player_unit.hx,
@@ -662,6 +599,9 @@ class AI:
 					print 'AI SPY: ' + self.owner.unit_id + ': could not attack'
 					print 'AI SPY: ' + scenario.CheckAttack(self.owner, weapon, unit)
 		
+		# end activation
+		self.owner.DoPostActivation()
+	
 
 # Map Hex: a single hex-shaped block of terrain in a scenario
 # roughly scaled to 160 m. in width
@@ -2602,6 +2542,35 @@ class Unit:
 	# do automatic actions before an activation
 	def DoPreActivation(self):
 		
+		# do spot checks for unknown or unidentified enemy units
+		
+		# dummy units can't spot
+		if not self.dummy:
+		
+			# create a local list of crew positions in a random order
+			position_list = sample(self.crew_positions, len(self.crew_positions))
+			
+			for position in position_list:
+				if position.crewman is None: continue
+				if position.crewman.current_action != 'Spot': continue
+				
+				spot_list = []
+				for unit2 in scenario.units:
+					if unit2.owning_player == self.owning_player:
+						continue
+					if not unit2.alive:
+						continue
+					if unit2.known:
+						continue
+					if GetHexDistance(self.hx, self.hy, unit2.hx, unit2.hy) > MAX_LOS_DISTANCE:
+						continue
+					
+					if (unit2.hx, unit2.hy) in position.crewman.fov:
+						spot_list.append(unit2)
+				
+				if len(spot_list) > 0:
+					self.DoSpotCheck(choice(spot_list), position)
+		
 		# generate list of selectable crew actions
 		for position in self.crew_positions:
 			
@@ -2646,39 +2615,11 @@ class Unit:
 		self.ConcealmentCheck()
 		
 		# recalculate FoV
+		# TODO: still needed?
 		self.CalcFoV()
 		if self == scenario.player_unit:
 			UpdateVPCon()
 			UpdateUnitCon()
-		
-		# do spot checks for unknown or unidentified enemy units
-		
-		# dummy units can't spot
-		if not self.dummy:
-		
-			# create a local list of crew positions in a random order
-			position_list = sample(self.crew_positions, len(self.crew_positions))
-			
-			for position in position_list:
-				if position.crewman is None: continue
-				if position.crewman.current_action != 'Spot': continue
-				
-				spot_list = []
-				for unit2 in scenario.units:
-					if unit2.owning_player == self.owning_player:
-						continue
-					if not unit2.alive:
-						continue
-					if unit2.known:
-						continue
-					if GetHexDistance(self.hx, self.hy, unit2.hx, unit2.hy) > MAX_LOS_DISTANCE:
-						continue
-					
-					if (unit2.hx, unit2.hy) in position.crewman.fov:
-						spot_list.append(unit2)
-				
-				if len(spot_list) > 0:
-					self.DoSpotCheck(choice(spot_list), position)
 		
 		# Movement: reset flags
 		self.moved = False
@@ -3147,8 +3088,9 @@ class Unit:
 		# TODO: if turret weapon fired, don't allow turret rotation
 		
 		# make sure crewman is available
-		if not self.SetCrewAction(['Gunner', 'Commander/Gunner'], 'Operate Gun'):
-			return False
+		# TEMP? testing
+		#if not self.SetCrewAction(['Gunner', 'Commander/Gunner'], 'Operate Gun'):
+		#	return False
 		
 		if clockwise:
 			change = 1
@@ -3389,6 +3331,7 @@ class Unit:
 			UpdateUnitCon()
 			UpdateScenarioDisplay()
 			libtcod.console_flush()
+			Wait(15)
 		
 		return True
 	

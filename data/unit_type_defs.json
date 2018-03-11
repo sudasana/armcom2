@@ -691,7 +691,7 @@
 				"fp" : "4",
 				"rof" : "17.0",
 				"mount" : "Hull",
-				"fired_by" : ["Driver", "Assistant Driver"],
+				"fired_by" : ["Assistant Driver", "Driver"],
 				"firing_group" : "1"
 			}
 		],

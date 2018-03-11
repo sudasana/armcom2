@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_NO_ACTION = True					# no AI actions at all
 NO_SOUNDS = False					# skip all sound effects
 GODMODE = False						# player cannot be destroyed
 
@@ -142,13 +142,16 @@ CREW_NAME_MAX_LENGTH = 20
 # list of crew stat names
 STAT_NAMES = ['Strength', 'Grit', 'Perception', 'Intelligence']
 
-# list of phases in a unit activation
-PHASE_LIST = ['Crew Actions', 'Spotting', 'Movement', 'Combat']
+# list of player menus and their highlight colours
+MENU_LIST = [
+	('Command', 1, libtcod.Color(130, 0, 180)),
+	('Crew Action', 2, libtcod.Color(140, 140, 0)),
+	('Movement', 3, libtcod.Color(70, 140, 0)),
+	('Combat', 4, libtcod.Color(180, 0, 45))
+]
 
-# FUTURE full list:
-#PHASE_LIST = ['Command', 'Crew Actions', 'Spotting', 'Movement', 'Combat']
 
-# crew action definitions
+# load crew action definitions
 with open(DATAPATH + 'crew_action_defs.json') as data_file:
 	CREW_ACTIONS = json.load(data_file)
 
@@ -405,10 +408,16 @@ class AI:
 					position.crewman.current_action)
 			print text
 	
-	# do actions for this unit for this phase
-	def DoPhaseAction(self):
+	# do activation for this unit
+	def DoActivation(self):
 		
 		if not self.owner.alive: return
+		
+		self.owner.DoPreActivation()
+		
+		# TEMP
+		self.owner.DoPostActivation()
+		return
 		
 		# Crew Actions
 		if scenario.game_turn['current_phase'] == 'Crew Actions':
@@ -717,16 +726,17 @@ class Scenario:
 		
 		# game turn, active player, and phase tracker
 		self.game_turn = {
-			'turn_number' : 1,		# current turn number in the scenario
 			'hour' : 0,			# current time of day: hour in 24-hour clock
 			'minute' : 0,			# " minute "
 			'active_player' : 0,		# currently active player number
 			'goes_first' : 0,		# which player side acts first in each turn
-			'current_phase' : None		# current phase - one of PHASE_LIST
 		}
+		
+		self.active_menu = 2			# currently active player menu; 0:none
 		
 		self.units = []				# list of units in the scenario
 		self.player_unit = None			# pointer to the player unit
+		self.active_unit = None			# currently activated unit
 		
 		# player 'luck' points
 		# FUTURE move into campaign object
@@ -1123,264 +1133,17 @@ class Scenario:
 		unit_list = sample(unit_list, int(ceil(len(unit_list) * ENEMY_DUMMY_RATIO)))	
 		for unit in unit_list:
 			unit.dummy = True
-		
-	# proceed to next phase or player turn
-	# if returns True, then play proceeds to next phase/turn automatically
-	def NextPhase(self):
-		
-		# FUTURE: activate allied AI units here
-		if self.game_turn['active_player'] == 0:
-			pass
-		
-		# do end of phase stuff
-		self.DoEndOfPhase()
-		
-		i = PHASE_LIST.index(self.game_turn['current_phase'])
-		
-		# end of player turn
-		if i == len(PHASE_LIST) - 1:
-			
-			# end of first half of game turn, other player's turn
-			if self.game_turn['active_player'] == self.game_turn['goes_first']:
-				new_player = self.game_turn['active_player'] + 1
-				if new_player == 2: new_player = 0
-				self.game_turn['active_player'] = new_player
-			
-			# end of turn
-			else:
-				self.DoEndOfTurn()
-				# scenario is over
-				if self.finished:
-					return False
-			
-			# return to first phase in list
-			i = 0
-		else:
-			# next phase in list
-			i += 1
-		
-		self.game_turn['current_phase'] = PHASE_LIST[i]
-		
-		# do start of phase stuff
-		self.DoStartOfPhase()
-		
-		# if AI player active, return now
-		if self.game_turn['active_player'] == 1:
-			return False
-		
-		# check for automatic next phase
-		if self.game_turn['current_phase'] == 'Movement':
-			# check for a crewman on a move action
-			move_action = False
-			if self.player_unit.CheckCrewAction(['Driver'], ['Drive', 'Drive Cautiously']):
-				move_action = True
-			
-			if not move_action: return True
-			
-		elif self.game_turn['current_phase'] == 'Combat':
-			# check for a crewman on a combat action
-			combat_action = False
-			if self.player_unit.CheckCrewAction(['Commander/Gunner'],['Operate Gun']):
-				combat_action = True
-			
-			if not combat_action: return True
-		
-		# save game if passing back to player control
-		SaveGame()
-		
-		return False
-	
-	# take care of automatic processes for the start of the current phase
-	def DoStartOfPhase(self):
-		
-		if self.game_turn['current_phase'] == 'Crew Actions':
-			
-			# go through active units
-			for unit in self.units:
-				if unit.owning_player != self.game_turn['active_player']:
-					continue
-				if not unit.alive: continue
-				
-				# generate list of possible crew actions
-				for position in unit.crew_positions:
-					
-					# no crewman in this position
-					if position.crewman is None: continue
-					
-					action_list = []
-					
-					# crewman cannot act
-					if not position.crewman.AbleToAct():
-						action_list.append('None')
-					else:
-						for action_name in CREW_ACTIONS:
-							# skip None action
-							if action_name == 'None': continue
-							
-							# action restricted to a list of positions
-							if 'position_list' in CREW_ACTIONS[action_name]:
-								if position.name not in CREW_ACTIONS[action_name]['position_list']:
-									continue
-							action_list.append(action_name)
-					
-					# copy over the list to the crewman
-					position.crewman.action_list = action_list[:]
-					
-					# if previous action is no longer possible, set to
-					# first action in list: Spot
-					if position.crewman.current_action is not None:
-						if position.crewman.current_action not in action_list:
-							position.crewman.current_action = action_list[0]
-				
-				# decrement FP hit counter if any
-				if unit.hit_by_fp > 0:
-					unit.hit_by_fp -= 1
-				
-				# check for units regaining concealment
-				unit.ConcealmentCheck()
-		
-		elif self.game_turn['current_phase'] == 'Spotting':
-			
-			# go through each active unit and recalculate FoV and do spot checks
-			# for unknown or unidentified enemy units
-			for unit in self.units:
-				if unit.owning_player != self.game_turn['active_player']:
-					continue
-				if not unit.alive: continue
-				
-				# recalculate FoV
-				unit.CalcFoV()
-				if unit == scenario.player_unit:
-					UpdateVPCon()
-					UpdateUnitCon()
-					UpdateScenarioDisplay()
-					libtcod.console_flush()
-				
-				# dummy units can't spot
-				if unit.dummy: continue
-				
-				# create a local list of crew positions in a random order
-				position_list = sample(unit.crew_positions, len(unit.crew_positions))
-				
-				for position in position_list:
-					if position.crewman is None: continue
-					
-					# check that crewman is able to spot
-					if not position.crewman.AbleToAct(): continue
-					
-					spot_list = []
-					for unit2 in self.units:
-						if unit2.owning_player == unit.owning_player:
-							continue
-						if not unit2.alive:
-							continue
-						if unit2.known:
-							continue
-						if GetHexDistance(unit.hx, unit.hy, unit2.hx, unit2.hy) > MAX_LOS_DISTANCE:
-							continue
-						
-						if (unit2.hx, unit2.hy) in position.crewman.fov:
-							spot_list.append(unit2)
-					
-					if len(spot_list) > 0:
-						unit.DoSpotCheck(choice(spot_list), position)
-		
-		elif self.game_turn['current_phase'] == 'Movement':
-			
-			for unit in self.units:
-				if unit.owning_player != self.game_turn['active_player']:
-					continue
-				if not unit.alive: continue
-				
-				# reset flags
-				unit.moved = False
-				unit.move_finished = False
-				unit.additional_moves_taken = 0
-				unit.previous_facing = unit.facing
-				unit.previous_turret_facing = unit.turret_facing
-		
-		elif self.game_turn['current_phase'] == 'Combat':
-			
-			# if player is active, handle their selected weapon and target list
-			if self.game_turn['active_player'] == 0:
-			
-				# if no player weapon selected, try to select the first one in the list
-				if self.selected_weapon is None:
-					if len(self.player_unit.weapon_list) > 0:
-						self.selected_weapon = self.player_unit.weapon_list[0]
-					
-				# rebuild list of potential targets
-				self.RebuildPlayerTargetList()
-				
-				# clear player target if no longer possible
-				if self.player_target is not None:
-					if self.player_target not in self.player_target_list:
-						self.player_target = None
-				
-				# turn on player LoS display
-				self.player_los_active = True
-				UpdateUnitCon()
-				UpdateScenarioDisplay()
-			
-			# reset weapons for active player's units
-			for unit in self.units:
-				if unit.owning_player != self.game_turn['active_player']:
-					continue
-				if not unit.alive: continue
-				
-				unit.fired = False
-				for weapon in unit.weapon_list:
-					weapon.ResetForNewTurn()
-	
-	# do automatic events at the end of a phase
-	def DoEndOfPhase(self):
-		
-		if self.game_turn['current_phase'] == 'Movement':
-			
-			# set movement flag for units that pivoted
-			for unit in self.units:
-				if unit.owning_player != self.game_turn['active_player']:
-					continue
-				if not unit.alive:
-					continue
-				
-				# if unit moved, lose any acquired targets and lose
-				#   any acquired target status
-				if unit.moved:
-					unit.ClearAcquiredTargets()
-				
-				if unit.facing is not None:
-					if unit.facing != unit.previous_facing:
-						unit.moved = True
-						
-						# lose any of this unit's acquired targets
-						unit.acquired_target = None
-		
-		elif self.game_turn['current_phase'] == 'Combat':
-			
-			# clear any player LoS
-			if self.game_turn['active_player'] == 0:
-				self.player_los_active = False
-				UpdateUnitCon()
-				UpdateScenarioDisplay()
-			
-			# resolve unresolved hits on enemy units
-			for unit in self.units:
-				if unit.owning_player == self.game_turn['active_player']:
-					continue
-				if not unit.alive:
-					continue
-				unit.ResolveHits()
-			
-			# test for unit recovery
-			for unit in self.units:
-				if unit.owning_player != self.game_turn['active_player']:
-					continue
-				if not unit.alive: continue
-				unit.RecoveryCheck()
 
-	# do automatic events at the end of a game turn
-	def DoEndOfTurn(self):
+	# do automatic events at the end of a player turn
+	def DoEndOfPlayerTurn(self):
+		
+		# resolve hits on enemy units
+		for unit in self.units:
+			if unit.owning_player == self.game_turn['active_player']:
+				continue
+			if not unit.alive:
+				continue
+			unit.ResolveHits()
 		
 		# check for win/loss conditions
 		if not self.player_unit.alive:
@@ -1389,16 +1152,17 @@ class Scenario:
 			self.win_desc = 'Your tank was destroyed.'
 			return
 		
-		all_enemies_dead = True
-		for unit in self.units:
-			if unit.owning_player == 1 and unit.alive:
-				all_enemies_dead = False
-				break
-		if all_enemies_dead:
-			self.winner = 0
-			self.finished = True
-			self.win_desc = 'All enemy units in the area were destroyed.'
-			return
+		# TEMP disabled
+		#all_enemies_dead = True
+		#for unit in self.units:
+		#	if unit.owning_player == 1 and unit.alive:
+		#		all_enemies_dead = False
+		#		break
+		#if all_enemies_dead:
+		#	self.winner = 0
+		#	self.finished = True
+		#	self.win_desc = 'All enemy units in the area were destroyed.'
+		#	return
 		
 		all_objectives_captured = True
 		for map_hex in self.map_objectives:
@@ -1411,15 +1175,22 @@ class Scenario:
 			self.win_desc = 'All objectives in the area were captured.'
 			return
 		
-		self.game_turn['turn_number'] += 1
-		self.game_turn['active_player'] = self.game_turn['goes_first']
+		# turn half over
+		if self.game_turn['active_player'] == self.game_turn['goes_first']:
+			
+			if self.game_turn['goes_first'] == 0:
+				self.game_turn['active_player'] = 1
+			else:
+				self.game_turn['active_player'] = 0
+		else:
+			self.game_turn['active_player'] = self.game_turn['goes_first']
 		
-		# advance clock
-		self.game_turn['minute'] += 1
-		if self.game_turn['minute'] == 60:
-			self.game_turn['minute'] = 0
-			self.game_turn['hour'] += 1
-		
+			# advance clock
+			self.game_turn['minute'] += 1
+			if self.game_turn['minute'] == 60:
+				self.game_turn['minute'] = 0
+				self.game_turn['hour'] += 1
+
 		# check for objective capture
 		for map_hex in self.map_objectives:
 			if map_hex.CheckCapture():
@@ -2046,7 +1817,7 @@ class Scenario:
 			
 			# guns must have a Loader active
 			if profile['weapon'].GetStat('type') == 'Gun':
-				if not profile['attacker'].CheckCrewAction(['Loader'], ['Reload']):
+				if not profile['attacker'].CheckCrewAction(['Loader'], 'Reload'):
 					return False
 				
 				# guns must also have at least one shell available
@@ -2250,14 +2021,12 @@ class Scenario:
 		if position_list is not None:
 			weapon_type = weapon.GetStat('type')
 			if weapon_type in ['Gun', 'Co-ax MG']:
-				action_list = ['Operate Gun']
+				action = 'Operate Gun'
 			elif weapon_type == 'Hull MG':
-				action_list = ['Operate Hull MG']
+				action = 'Operate Hull MG'
 			
-			if not attacker.CheckCrewAction(position_list, action_list):
-				text = 'Crewman not on required action: '
-				# TEMP - give full list in future
-				text += action_list[0]
+			if not attacker.CrewActionPossible(position_list, action):
+				text = 'No crewman available to: ' + action
 				return text
 
 		# attack can proceed
@@ -2304,7 +2073,7 @@ class Scenario:
 					chance -= 30.0
 		
 		# direct driver modifier
-		if unit.CheckCrewAction(['Commander', 'Commander/Gunner'], ['Direct Driver']):
+		if unit.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver'):
 			chance += 15.0
 		
 		# previous bonus move modifier
@@ -2397,7 +2166,7 @@ class Crew:
 		self.status = 'Alert'				# current mental/physical status
 		
 		self.action_list = []				# list of possible special actions
-		self.current_action = 'Spot'			# currently active action
+		self.current_action = 'None'			# currently active action
 		
 		self.fov = set()				# set of visible hexes
 		
@@ -2523,8 +2292,16 @@ class Crew:
 	# set a new action; if True, select next in list, otherwise previous
 	def SetAction(self, forward):
 		
-		# no further actions possible
+		# crewman cannot act
+		if self.current_action == 'N/A':
+			return False
+		
+		# no other actions possible
 		if len(self.action_list) == 1:
+			return False
+		
+		# action was set automatically, cannot change
+		if 'selectable' not in CREW_ACTIONS[self.current_action]:
 			return False
 		
 		i = self.action_list.index(self.current_action)
@@ -2822,6 +2599,148 @@ class Unit:
 			return self.stats[stat_name]
 		return None
 	
+	# do automatic actions before an activation
+	def DoPreActivation(self):
+		
+		# generate list of selectable crew actions
+		for position in self.crew_positions:
+			
+			# no crewman in this position
+			if position.crewman is None: continue
+			
+			action_list = []
+			
+			# crewman cannot act
+			if not position.crewman.AbleToAct():
+				position.crewman.current_action = 'N/A'
+			else:
+				# reset current action unless previous was selected
+				if 'selectable' not in CREW_ACTIONS[position.crewman.current_action]:
+					position.crewman.current_action = 'None'
+				
+				for action_name in CREW_ACTIONS:
+					
+					# skip if not selectable
+					if 'selectable' not in CREW_ACTIONS[action_name]:
+						continue
+					
+					# action restricted to a list of positions
+					if 'position_list' in CREW_ACTIONS[action_name]:
+						if position.name not in CREW_ACTIONS[action_name]['position_list']:
+							continue
+					action_list.append(action_name)
+			
+			# copy over the list to the crewman
+			position.crewman.action_list = action_list[:]
+			
+			# if previous action was selected and no longer available, reset
+			if 'selectable' in CREW_ACTIONS[position.crewman.current_action]:
+				if position.crewman.current_action not in position.crewman.action_list:
+					position.crewman.current_action = 'None'
+		
+		# decrement FP hit counter if any
+		if self.hit_by_fp > 0:
+			self.hit_by_fp -= 1
+		
+		# check for regaining concealment
+		self.ConcealmentCheck()
+		
+		# recalculate FoV
+		self.CalcFoV()
+		if self == scenario.player_unit:
+			UpdateVPCon()
+			UpdateUnitCon()
+		
+		# do spot checks for unknown or unidentified enemy units
+		
+		# dummy units can't spot
+		if not self.dummy:
+		
+			# create a local list of crew positions in a random order
+			position_list = sample(self.crew_positions, len(self.crew_positions))
+			
+			for position in position_list:
+				if position.crewman is None: continue
+				
+				# check that crewman is able to spot
+				if not position.crewman.AbleToAct(): continue
+				
+				spot_list = []
+				for unit2 in scenario.units:
+					if unit2.owning_player == self.owning_player:
+						continue
+					if not unit2.alive:
+						continue
+					if unit2.known:
+						continue
+					if GetHexDistance(self.hx, self.hy, unit2.hx, unit2.hy) > MAX_LOS_DISTANCE:
+						continue
+					
+					if (unit2.hx, unit2.hy) in position.crewman.fov:
+						spot_list.append(unit2)
+				
+				if len(spot_list) > 0:
+					self.DoSpotCheck(choice(spot_list), position)
+		
+		# Movement: reset flags
+		self.moved = False
+		self.move_finished = False
+		self.additional_moves_taken = 0
+		self.previous_facing = self.facing
+		self.previous_turret_facing = self.turret_facing
+		
+		# Combat
+		
+		# if player unit, set up weapon and targets
+		if self == scenario.player_unit:
+			# if no player weapon selected, try to select the first one in the list
+			if scenario.selected_weapon is None:
+				if len(self.weapon_list) > 0:
+					scenario.selected_weapon = self.weapon_list[0]
+				
+			# rebuild list of potential targets
+			scenario.RebuildPlayerTargetList()
+			
+			# clear player target if no longer possible
+			if scenario.player_target is not None:
+				if scenario.player_target not in scenario.player_target_list:
+					scenario.player_target = None
+			
+			# turn on player LoS display
+			scenario.player_los_active = True
+			UpdateUnitCon()
+		
+		# reset flag and weapons
+		self.fired = False
+		for weapon in self.weapon_list:
+			weapon.ResetForNewTurn()
+		
+		UpdateScenarioDisplay()
+	
+	# do automatic actions after an activation
+	def DoPostActivation(self):
+		# if unit moved, lose any acquired targets and lose
+		#   any acquired target status
+		if self.moved:
+			self.ClearAcquiredTargets()
+		
+		if self.facing is not None:
+			if self.facing != self.previous_facing:
+				self.moved = True
+				
+				# lose any of this unit's acquired targets
+				self.acquired_target = None
+		
+		# clear any player LoS
+		if self == scenario.player_unit:
+			scenario.player_los_active = False
+			UpdateUnitCon()
+		
+		# test for recovery
+		self.RecoveryCheck()
+		
+		UpdateScenarioDisplay()
+	
 	# get a descriptive name of this unit
 	def GetName(self):
 		if self.owning_player == 1 and not self.known:
@@ -3096,8 +3015,8 @@ class Unit:
 		if self.move_finished:
 			return False
 		
-		# make sure crewman can drive
-		if not self.CheckCrewAction(['Driver'], ['Drive', 'Drive Cautiously']):
+		# try to set crewman action
+		if not self.SetCrewAction(['Driver'], 'Drive'):
 			return False
 		
 		# determine target hex
@@ -3186,7 +3105,7 @@ class Unit:
 			return False
 		
 		# make sure crewman can drive
-		if not self.CheckCrewAction(['Driver'], ['Drive', 'Drive Cautiously']):
+		if not self.SetCrewAction(['Driver'], 'Drive'):
 			return False
 		
 		if clockwise:
@@ -3212,8 +3131,10 @@ class Unit:
 		if self.turret_facing is None:
 			return False
 		
-		# make sure crewman on correct action
-		if not self.CheckCrewAction(['Gunner', 'Commander/Gunner'], ['Operate Gun']):
+		# TODO: if turret weapon fired, don't allow turret rotation
+		
+		# make sure crewman is available
+		if not self.SetCrewAction(['Gunner', 'Commander/Gunner'], 'Operate Gun'):
 			return False
 		
 		if clockwise:
@@ -3270,6 +3191,16 @@ class Unit:
 		# make sure attack is possible
 		if scenario.CheckAttack(self, weapon, target) != '':
 			return False
+		
+		# set crew action
+		position_list = weapon.GetStat('fired_by')
+		if position_list is not None:
+			weapon_type = weapon.GetStat('type')
+			if weapon_type in ['Gun', 'Co-ax MG']:
+				action = 'Operate Gun'
+			elif weapon_type == 'Hull MG':
+				action = 'Operate Hull MG'
+		self.SetCrewAction(position_list, action)
 		
 		# set weapon and unit fired flags
 		weapon.fired = True
@@ -3652,18 +3583,51 @@ class Unit:
 		UpdateUnitInfoCon()
 		UpdateScenarioDisplay()
 	
-	# check for a crewman in the given position and check that their action is
-	# set to one of a given list
-	def CheckCrewAction(self, position_list, action_list):
+	# returns true if a crewman in any of the given positions is avaible to have an action set
+	def CrewActionPossible(self, position_list, action):
+		for position in self.crew_positions:
+			if position.name in position_list:
+				if position.crewman is None: continue
+				if position.crewman.current_action == 'N/A': continue
+				
+				# crewman already on this action
+				# TODO: is this ok?
+				if position.crewman.current_action == action:
+					return True
+				
+				if position.crewman.current_action == 'None':
+					return True
+		return False
+	
+	# returns true if a crewman in any of the given positions is on the given action
+	def CheckCrewAction(self, position_list, action):
+		for position in self.crew_positions:
+			if position.name in position_list:
+				if position.crewman is None: continue
+				if position.crewman.current_action == action:
+					return True
+		return False
+	
+	# check for a crewman in the given position, and try to set their action
+	# assumes that the given action is available to every position in the list
+	def SetCrewAction(self, position_list, action):
 		
 		for position in self.crew_positions:
 			if position.name in position_list:
 				if position.crewman is None: continue
+				if position.crewman.current_action == 'N/A': continue
 				
-				if len(action_list) == 0: return True
-				
-				if position.crewman.current_action in action_list:
+				# crewman already on this action
+				# TODO: is this ok?
+				if position.crewman.current_action == action:
 					return True
+				
+				if position.crewman.current_action != 'None': continue
+				
+				position.crewman.current_action = action
+				UpdateCrewPositionCon()
+				return True
+				
 		return False
 
 
@@ -4949,7 +4913,8 @@ def UpdateCrewPositionCon():
 		return
 	
 	highlight_selected = False
-	if scenario.game_turn['current_phase'] == 'Crew Actions':
+	# crew action menu active
+	if scenario.active_menu == 2:
 		highlight_selected = True
 	
 	DisplayCrew(scenario.player_unit, crew_position_con, 0, 1, highlight_selected)
@@ -4957,21 +4922,47 @@ def UpdateCrewPositionCon():
 
 # list current player commands
 def UpdateCommandCon():
-	libtcod.console_clear(command_con)
 	libtcod.console_set_default_foreground(command_con, libtcod.white)
+	libtcod.console_set_default_background(command_con, libtcod.black)
+	libtcod.console_clear(command_con)
 	
-	if scenario.game_turn['current_phase'] == 'Crew Actions':
-		libtcod.console_set_default_background(command_con, libtcod.darker_yellow)
-		libtcod.console_rect(command_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(command_con, libtcod.black)
-		ConsolePrintEx(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Crew Actions')
+	# no menu if enemy is active
+	if scenario.game_turn['active_player'] == 1:
+		return
+	
+	# TODO: draw menu title based on active menu
+	x = 0
+	for (text, num, col) in MENU_LIST:
+		libtcod.console_set_default_background(command_con, col)
 		
-		if scenario.game_turn['active_player'] != 0: return
+		# menu number
+		libtcod.console_rect(command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
+		
+		# TEMP - no command options yet
+		if num == 1:
+			libtcod.console_set_default_foreground(command_con, libtcod.dark_grey)
+		ConsolePrint(command_con, x, 0, str(num))
+		libtcod.console_set_default_foreground(command_con, libtcod.white)
+		
+		x += 2
+		
+		# display menu text if active
+		if scenario.active_menu == num:
+			libtcod.console_rect(command_con, x, 0, len(text)+2, 1, True, libtcod.BKGND_SET)
+			ConsolePrint(command_con, x, 0, text)
+			x += len(text) + 2
+	
+	# fill in rest of menu line with final colour
+	libtcod.console_rect(command_con, x, 0, 24-x, 1, True, libtcod.BKGND_SET)
+	
+	libtcod.console_set_default_background(command_con, libtcod.black)
+	
+	# crew action menu
+	if scenario.active_menu == 2:
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		ConsolePrint(command_con, 2, 2, 'I/K')
-		ConsolePrint(command_con, 2, 3, 'J/L')
+		ConsolePrint(command_con, 2, 2, 'W/S')
+		ConsolePrint(command_con, 2, 3, 'A/D')
 		ConsolePrint(command_con, 2, 4, 'H')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
@@ -4979,45 +4970,19 @@ def UpdateCommandCon():
 		ConsolePrint(command_con, 9, 3, 'Set Action')
 		ConsolePrint(command_con, 9, 4, 'Toggle Hatch')
 	
-	elif scenario.game_turn['current_phase'] == 'Spotting':
-		
-		libtcod.console_set_default_background(command_con, libtcod.darker_purple)
-		libtcod.console_rect(command_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(command_con, libtcod.black)
-		ConsolePrintEx(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Spotting')
-		
-		if scenario.game_turn['active_player'] != 0: return
-	
-	elif scenario.game_turn['current_phase'] == 'Movement':
-	
-		libtcod.console_set_default_background(command_con, libtcod.darker_green)
-		libtcod.console_rect(command_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(command_con, libtcod.black)
-		ConsolePrintEx(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Movement')
-		
-		if scenario.game_turn['active_player'] != 0: return
+	# movement
+	elif scenario.active_menu == 3:
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 		ConsolePrint(command_con, 2, 2, 'W')
 		ConsolePrint(command_con, 2, 3, 'A/D')
 		
-		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 		ConsolePrint(command_con, 9, 2, 'Move Forward')
 		ConsolePrint(command_con, 9, 3, 'Pivot Hull')
 		
-	
-	elif scenario.game_turn['current_phase'] == 'Combat':
-		
-		libtcod.console_set_default_background(command_con, libtcod.darker_red)
-		libtcod.console_rect(command_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(command_con, libtcod.black)
-		ConsolePrintEx(command_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Combat')
-		
-		if scenario.game_turn['active_player'] != 0: return
+	# combat
+	elif scenario.active_menu == 4:
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 		ConsolePrint(command_con, 2, 2, 'W/S')
@@ -5036,7 +5001,7 @@ def UpdateCommandCon():
 	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 	ConsolePrint(command_con, 2, 11, 'Enter')
 	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-	ConsolePrint(command_con, 9, 11, 'Next Phase')
+	ConsolePrint(command_con, 9, 11, 'End Activation')
 	
 	
 # draw information about the hex currently under the mouse cursor to the hex terrain info
@@ -5088,13 +5053,14 @@ def UpdateHexTerrainCon():
 # draw information based on current turn phase to contextual info console
 def UpdateContextCon():
 	libtcod.console_clear(context_con)
-	
-	if scenario.game_turn['active_player'] != 0:
-		return
-	
 	libtcod.console_set_default_foreground(context_con, libtcod.white)
 	
-	if scenario.game_turn['current_phase'] == 'Crew Actions':
+	# no menu active
+	if scenario.active_menu == 0:
+		return
+	
+	# crew actions
+	elif scenario.active_menu == 2:
 		position = scenario.player_unit.crew_positions[scenario.selected_position]
 		action = position.crewman.current_action
 		
@@ -5115,7 +5081,8 @@ def UpdateContextCon():
 				y += 1
 				if y == 9: break
 	
-	elif scenario.game_turn['current_phase'] == 'Movement':
+	# movement
+	elif scenario.active_menu == 3:
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
 		if scenario.player_unit.move_finished:
@@ -5144,7 +5111,8 @@ def UpdateContextCon():
 		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
 		ConsolePrint(context_con, 1, 3, str(chance) + '%%')
 	
-	elif scenario.game_turn['current_phase'] == 'Combat':
+	# combat
+	elif scenario.active_menu == 4:
 		if scenario.selected_weapon is None: return
 		
 		weapon = scenario.selected_weapon
@@ -5431,9 +5399,8 @@ def DoScenario(load_game=False):
 		# generate a new scenario object
 		scenario = Scenario()
 		
-		# set up time of day and current phase
+		# set up time of day
 		scenario.game_turn['hour'] = 5
-		scenario.game_turn['current_phase'] = PHASE_LIST[0]
 		
 		# display scenario info, allow player to cancel start
 		if not DisplayScenInfo(): return
@@ -5499,8 +5466,9 @@ def DoScenario(load_game=False):
 		# generate and spawn initial enemy units for this scenario
 		scenario.SpawnEnemyUnits()
 		
-		# set up start of first phase
-		scenario.DoStartOfPhase()
+		# activate player unit
+		scenario.active_unit = scenario.player_unit
+		scenario.active_unit.DoPreActivation()
 		
 		SaveGame()
 	
@@ -5544,10 +5512,15 @@ def DoScenario(load_game=False):
 			for unit in scenario.units:
 				if not unit.alive: continue
 				if unit.owning_player == 1:
-					unit.ai.DoPhaseAction()
+					unit.ai.DoActivation()
 			
 			Wait(5)
-			scenario.NextPhase()
+			scenario.DoEndOfPlayerTurn()
+			
+			# activate player
+			scenario.active_unit = scenario.player_unit
+			scenario.active_unit.DoPreActivation()
+			
 			UpdatePlayerInfoCon()
 			UpdateContextCon()
 			UpdateObjectiveInfoCon()
@@ -5584,42 +5557,39 @@ def DoScenario(load_game=False):
 				UpdateScenarioDisplay()
 			continue
 		
-		# automatically trigger next phase for player
-		if scenario.game_turn['active_player'] == 0 and scenario.game_turn['current_phase'] == 'Spotting':
-			trigger_end_of_phase = True
-		
-		# next phase
-		if trigger_end_of_phase or key.vk == libtcod.KEY_ENTER:
-			trigger_end_of_phase = False
+		# end player unit activation
+		if key.vk == libtcod.KEY_ENTER:
+			scenario.player_unit.DoPostActivation()
 			
-			# check for automatic next phase and set flag if true
-			# I know this is a little awkward but it only seems to work this way
-			result = scenario.NextPhase()
-			if result:
-				trigger_end_of_phase = True
+			# FUTURE: check for allied player units to activate
 			
-			if scenario.finished:
-				continue
-			
-			UpdatePlayerInfoCon()
-			UpdateContextCon()
-			UpdateObjectiveInfoCon()
-			UpdateCrewPositionCon()
-			UpdateCommandCon()
-			UpdateScenarioDisplay()
-		
+			scenario.DoEndOfPlayerTurn()
+			continue
+
 		# skip reset of this section if no key commands in buffer
 		if key.vk == libtcod.KEY_NONE: continue
 		
 		# key commands
 		key_char = chr(key.c).lower()
 		
-		if scenario.game_turn['current_phase'] == 'Crew Actions':
+		# switch active menu
+		if key_char in ['2', '3', '4']:
+			if scenario.active_menu != int(key_char):
+				scenario.active_menu = int(key_char)
+				UpdateCommandCon()
+				UpdateContextCon()
+				UpdateCrewPositionCon()
+				UpdateScenarioDisplay()
+				continue
+		
+		
+		# crew actions
+		if scenario.active_menu == 2:
 			
 			# change selected crewman
-			if key_char in ['i', 'k'] or (libtcod.console_is_key_pressed(libtcod.KEY_ALT) and key.vk in [libtcod.KEY_UP, libtcod.KEY_DOWN]):
-				
-				if key_char == 'i' or (libtcod.console_is_key_pressed(libtcod.KEY_ALT) and key.vk == libtcod.KEY_UP):
+			if key_char in ['w', 's'] or key.vk in [libtcod.KEY_UP, libtcod.KEY_DOWN]:
+			
+				if key_char == 'w' or key.vk == libtcod.KEY_UP:
 					if scenario.selected_position > 0:
 						scenario.selected_position -= 1
 					else:
@@ -5635,13 +5605,13 @@ def DoScenario(load_game=False):
 				UpdateScenarioDisplay()
 			
 			# set action for selected crewman
-			elif key_char in ['j', 'l'] or (libtcod.console_is_key_pressed(libtcod.KEY_ALT) and key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]):
+			elif key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
 				
 				position = scenario.player_unit.crew_positions[scenario.selected_position]
 				
 				# check for empty position
 				if position.crewman is not None:
-					if key_char == 'j' or (libtcod.console_is_key_pressed(libtcod.KEY_ALT) and key.vk == libtcod.KEY_LEFT):
+					if key_char == 'a' or key.vk == libtcod.KEY_LEFT:
 						result = position.crewman.SetAction(False)
 					else:
 						result = position.crewman.SetAction(True)
@@ -5663,7 +5633,8 @@ def DoScenario(load_game=False):
 						UpdateVPCon()
 						UpdateScenarioDisplay()
 		
-		elif scenario.game_turn['current_phase'] == 'Movement':
+		# movement
+		elif scenario.active_menu == 3:
 		
 			# move player unit forward
 			if key_char == 'w' or key.vk == libtcod.KEY_UP:
@@ -5703,7 +5674,8 @@ def DoScenario(load_game=False):
 					UpdateHexTerrainCon()
 					UpdateScenarioDisplay()
 			
-		elif scenario.game_turn['current_phase'] == 'Combat':
+		# combat
+		elif scenario.active_menu == 4:
 			
 			# select weapon
 			if key_char in ['w', 's'] or key.vk in [libtcod.KEY_UP, libtcod.KEY_DOWN]:

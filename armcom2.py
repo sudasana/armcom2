@@ -2661,9 +2661,7 @@ class Unit:
 			
 			for position in position_list:
 				if position.crewman is None: continue
-				
-				# check that crewman is able to spot
-				if not position.crewman.AbleToAct(): continue
+				if position.crewman.current_action != 'Spot': continue
 				
 				spot_list = []
 				for unit2 in scenario.units:
@@ -2739,7 +2737,17 @@ class Unit:
 		# test for recovery
 		self.RecoveryCheck()
 		
+		# have any free crewmen spot
+		for position in self.crew_positions:
+			if position.crewman is None: continue
+			if not position.crewman.AbleToAct(): continue
+			if position.crewman.current_action == 'None':
+				position.crewman.current_action = 'Spot'
+		if self == scenario.player_unit:
+			UpdateCrewPositionCon()
+		
 		UpdateScenarioDisplay()
+		libtcod.console_flush()
 	
 	# get a descriptive name of this unit
 	def GetName(self):
@@ -3014,6 +3022,9 @@ class Unit:
 		# no moves remaining
 		if self.move_finished:
 			return False
+		# already fired
+		if self.fired:
+			return False
 		
 		# try to set crewman action
 		if not self.SetCrewAction(['Driver'], 'Drive'):
@@ -3102,6 +3113,8 @@ class Unit:
 		
 		# no moves remaining
 		if self.move_finished:
+			return False
+		if self.fired:
 			return False
 		
 		# make sure crewman can drive
@@ -5064,6 +5077,7 @@ def UpdateContextCon():
 		position = scenario.player_unit.crew_positions[scenario.selected_position]
 		action = position.crewman.current_action
 		
+		# TODO: is this even possible any more??
 		if action is None:
 			ConsolePrint(context_con, 0, 0, 'No action')
 			ConsolePrint(context_con, 0, 1, 'assigned')
@@ -5087,6 +5101,9 @@ def UpdateContextCon():
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
 		if scenario.player_unit.move_finished:
 			ConsolePrint(context_con, 0, 0, 'Move finished')
+			return
+		if scenario.player_unit.fired:
+			ConsolePrint(context_con, 0, 0, 'Already Fired')
 			return
 		
 		# display chance of getting a bonus move
@@ -5146,7 +5163,7 @@ def UpdateContextCon():
 			ConsolePrintEx(context_con, 7, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, weapon.stats['max_ammo'])
 			
-			# TODO: ready rack if any
+			# TODO: display contents of ready rack if any
 			
 		if scenario.player_target is None: return
 		

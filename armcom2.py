@@ -111,8 +111,26 @@ HEX_EDGE_CELLS = {
 }
 
 # list of possible keyboard layout settings
-KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']
+KEYBOARDS = ['QWERTY']
+# FUTURE list
+#KEYBOARDS = ['QWERTY', 'AZERTY', 'Numpad', 'QWERTZ', 'Dvorak']
 
+# keyboard mapping, indexed to order of KEYBOARDS
+KEYBOARD_MAPPING = [
+	{
+		'q' : 'q',
+		'w' : 'w',
+		'e' : 'e',
+		'a' : 'a',
+		's' : 's',
+		'd' : 'd',
+		'z' : 'z',
+		'x' : 'x',
+		'c' : 'c',
+		'h' : 'h',
+		'f' : 'f'
+	}
+]
 
 ##### Colour Definitions #####
 
@@ -4202,9 +4220,9 @@ def LoadCFG():
 		print 'No config file found, creating a new one'
 		config.add_section('ArmCom2')
 		config.set('ArmCom2', 'large_display_font', 'true')
-		config.set('ArmCom2', 'animation_speed', '30')
+		#config.set('ArmCom2', 'animation_speed', '30')
 		config.set('ArmCom2', 'sounds_enabled', 'true')
-		config.set('ArmCom2', 'keyboard', KEYBOARDS[0])
+		config.set('ArmCom2', 'keyboard', '0')
 		
 		# write to disk
 		with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
@@ -5566,7 +5584,7 @@ def DoScenario(load_game=False):
 		# key commands
 		key_char = chr(key.c).lower()
 		
-		# switch active menu
+		# switch active menu (same for all keyboard layouts?)
 		if key_char in ['2', '3', '4']:
 			if scenario.active_menu != int(key_char):
 				scenario.active_menu = int(key_char)
@@ -5574,8 +5592,10 @@ def DoScenario(load_game=False):
 				UpdateContextCon()
 				UpdateCrewPositionCon()
 				UpdateScenarioDisplay()
-				continue
+			continue
 		
+		# map key to keyboard layout
+		key_char = KEYBOARD_MAPPING[config.getint('ArmCom2', 'keyboard')][key_char]
 		
 		# crew actions
 		if scenario.active_menu == 2:
@@ -5874,7 +5894,7 @@ def UpdateMainMenuCon(options_menu_active):
 	
 	# display menu options
 	if options_menu_active:
-		OPTIONS = [('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]
+		OPTIONS = [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]
 		for (char, text) in OPTIONS:
 			
 			# extra spacing
@@ -5889,9 +5909,25 @@ def UpdateMainMenuCon(options_menu_active):
 			# current option settings
 			libtcod.console_set_default_foreground(main_menu_con, libtcod.light_blue)
 			
+			# toggle font size
+			if char == 'F':
+				if config.getboolean('ArmCom2', 'large_display_font'):
+					text = '16x16'
+				else:
+					text = '8x8'
+				ConsolePrint(main_menu_con, WINDOW_XM+8, y, text)
+			
+			# sound effects
+			elif char == 'S':
+				if config.getboolean('ArmCom2', 'sounds_enabled'):
+					text = 'ON'
+				else:
+					text = 'OFF'
+				ConsolePrint(main_menu_con, WINDOW_XM+8, y, text)
+			
 			# keyboard settings
-			if char == 'K':
-				ConsolePrint(main_menu_con, WINDOW_XM+6, y, config.get('ArmCom2', 'keyboard'))
+			elif char == 'K':
+				ConsolePrint(main_menu_con, WINDOW_XM+8, y, KEYBOARDS[config.getint('ArmCom2', 'keyboard')])
 			
 			y += 1
 	else:
@@ -6011,8 +6047,48 @@ while not exit_game:
 	
 	# options menu
 	else:
+		# change an option
+		if key_char in ['f', 's', 'k']:
+		
+			# switch font size
+			if key_char == 'f':
+				libtcod.console_delete(0)
+				if config.getboolean('ArmCom2', 'large_display_font'):
+					config.set('ArmCom2', 'large_display_font', 'false')
+					fontname = 'c64_8x8.png'
+				else:
+					config.set('ArmCom2', 'large_display_font', 'true')
+					fontname = 'c64_16x16.png'
+				libtcod.console_set_custom_font(DATAPATH+fontname,
+					libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
+				libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
+					NAME + ' - ' + VERSION, fullscreen = False,
+					renderer = libtcod.RENDERER_GLSL)
+			
+			# toggle sound effects on/off
+			elif key_char == 's':
+				if config.getboolean('ArmCom2', 'sounds_enabled'):
+					config.set('ArmCom2', 'sounds_enabled', 'false')
+				else:
+					config.set('ArmCom2', 'sounds_enabled', 'true')
+				
+			# switch keyboard layout
+			elif key_char == 'k':
+				i = config.getint('ArmCom2', 'keyboard')
+				if i == len(KEYBOARDS) - 1:
+					i = 0
+				else:
+					i += 1
+				config.set('ArmCom2', 'keyboard', i)
+
+			SaveCFG()
+			UpdateMainMenuCon(options_menu_active)
+			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(15)
+		
 		# exit options menu
-		if key.vk == libtcod.KEY_ESCAPE:
+		elif key.vk == libtcod.KEY_ESCAPE:
 			options_menu_active = False
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)

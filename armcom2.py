@@ -37,6 +37,7 @@
 ##### Libraries #####
 import os, sys, ctypes					# OS-related stuff
 import libtcodpy as libtcod				# The Doryen Library
+import ConfigParser					# saving and loading settings
 from random import choice, shuffle, sample
 from math import floor, cos, sin, sqrt			# math
 from math import degrees, atan2, ceil			# heading calculations
@@ -58,7 +59,6 @@ import sdl2.sdlmixer as mixer				# sound effects
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
-NO_SOUNDS = False					# skip all sound effects
 GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
@@ -109,6 +109,9 @@ HEX_EDGE_CELLS = {
 	4: [(-1,2),(-2,1),(-3,0)],
 	5: [(-3,0),(-2,-1),(-1,-2)]
 }
+
+# list of possible keyboard layout settings
+KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']
 
 
 ##### Colour Definitions #####
@@ -4187,6 +4190,36 @@ def EraseGame():
 	os.remove('savegame')
 
 
+# try to load game settings from config file
+def LoadCFG():
+	
+	global config
+	
+	config = ConfigParser.RawConfigParser()
+	
+	# create a new config file
+	if not os.path.exists(DATAPATH + 'armcom2.cfg'):
+		print 'No config file found, creating a new one'
+		config.add_section('ArmCom2')
+		config.set('ArmCom2', 'large_display_font', 'true')
+		config.set('ArmCom2', 'animation_speed', '30')
+		config.set('ArmCom2', 'sounds_enabled', 'true')
+		config.set('ArmCom2', 'keyboard', KEYBOARDS[0])
+		
+		# write to disk
+		with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
+			config.write(configfile)
+	else:
+		# load config file
+		config.read(DATAPATH + 'armcom2.cfg')
+
+
+# save current config to file
+def SaveCFG():
+	with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
+		config.write(configfile)
+
+
 ##########################################################################################
 #                                   Sounds and Music                                     #
 ##########################################################################################
@@ -4208,8 +4241,9 @@ def PlaySound(sound_name):
 # select and play a sound effect for a given situation
 def PlaySoundFor(obj, action):
 	
-	# debug flag
-	if NO_SOUNDS: return
+	# sounds disabled
+	if not config.getboolean('ArmCom2', 'sounds_enabled'):
+		return
 	
 	if action == 'fire':
 		if obj.GetStat('type') == 'Gun':
@@ -5704,11 +5738,20 @@ def DoScenario(load_game=False):
 ##########################################################################################
 
 print 'Starting ' + NAME + ' version ' + VERSION	# startup message
-os.putenv('SDL_VIDEO_CENTERED', '1')			# center game window on screen
-fontname = 'c64_16x16.png'				# default font
 
+# try to load game settings from config file, will create a new file if none present
+LoadCFG()
+
+os.putenv('SDL_VIDEO_CENTERED', '1')			# center game window on screen
+
+# determine font to use based on settings file
+if config.getboolean('ArmCom2', 'large_display_font'):
+	fontname = 'c64_16x16.png'
+else:
+	fontname = 'c64_8x8.png'
 # set up custom font for libtcod
-libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
+libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
+	0, 0)
 
 # set up root console
 libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
@@ -5729,6 +5772,9 @@ session = Session()
 # try to init sound mixer and load sounds if successful
 if session.InitMixer():
 	session.LoadSounds()
+else:
+	config.set('ArmCom2', 'sounds_enabled', 'false')
+	print 'Not able to init mixer, sounds disabled'
 
 # set up double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -5777,8 +5823,14 @@ for direction in range(6):
 #                                        Main Menu                                       #
 ##########################################################################################
 
+global main_title, tank_image
+
+main_title = LoadXP('main_title.xp')
+
 # list of unit images to display on main menu
-TANK_IMAGES = ['unit_pz_38t_a.xp']
+TANK_IMAGES = ['unit_7TP.xp', 'unit_TK3.xp', 'unit_TKS.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp',
+	'unit_pz_38t_a.xp']
+tank_image = LoadXP(choice(TANK_IMAGES))
 
 # gradient animated effect for main menu
 GRADIENT = [
@@ -5794,21 +5846,14 @@ gradient_x = WINDOW_WIDTH + 20
 
 
 # draw the main menu to the main menu console
-def UpdateMainMenuCon():
-	
-	global main_menu_con
-	
-	# generate main menu console
-	main_menu_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
-	libtcod.console_set_default_background(main_menu_con, libtcod.black)
-	libtcod.console_set_default_foreground(main_menu_con, libtcod.white)
-	libtcod.console_clear(main_menu_con)
+# if options_menu_active, draw the options menu instead
+def UpdateMainMenuCon(options_menu_active):
 	
 	# display game title
-	libtcod.console_blit(LoadXP('main_title.xp'), 0, 0, 0, 0, main_menu_con, 0, 0)
+	libtcod.console_blit(main_title, 0, 0, 0, 0, main_menu_con, 0, 0)
 	
 	# randomly display a tank image to use for this session
-	libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_menu_con, 7, 6)
+	libtcod.console_blit(tank_image, 0, 0, 0, 0, main_menu_con, 7, 6)
 	
 	# display version number and program info
 	libtcod.console_set_default_foreground(main_menu_con, libtcod.red)
@@ -5825,28 +5870,51 @@ def UpdateMainMenuCon():
 	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-2,
 		libtcod.BKGND_NONE, libtcod.CENTER, 'www.armouredcommander.com')
 	
-	# display menu options
-	OPTIONS = [('C', 'Continue'), ('N', 'New Game'), ('F', 'Toggle Font Size'), ('Q', 'Quit')]
 	y = 38
-	for (char, text) in OPTIONS:
-		# grey-out continue game option if no saved game present
-		disabled = False
-		if char == 'C' and not os.path.exists('savegame'):
-			disabled = True
-		
-		if disabled:
-			libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
-		else:
+	
+	# display menu options
+	if options_menu_active:
+		OPTIONS = [('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]
+		for (char, text) in OPTIONS:
+			
+			# extra spacing
+			if char == 'Esc': y += 1
+			
 			libtcod.console_set_default_foreground(main_menu_con, ACTION_KEY_COL)
-		ConsolePrint(main_menu_con, WINDOW_XM-5, y, char)
-		
-		if disabled:
-			libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
-		else:
+			ConsolePrint(main_menu_con, WINDOW_XM-10, y, char)
+			
 			libtcod.console_set_default_foreground(main_menu_con, libtcod.lighter_grey)
-		ConsolePrint(main_menu_con, WINDOW_XM-3, y, text)	
-		
-		y += 1
+			ConsolePrint(main_menu_con, WINDOW_XM-6, y, text)
+			
+			# current option settings
+			libtcod.console_set_default_foreground(main_menu_con, libtcod.light_blue)
+			
+			# keyboard settings
+			if char == 'K':
+				ConsolePrint(main_menu_con, WINDOW_XM+6, y, config.get('ArmCom2', 'keyboard'))
+			
+			y += 1
+	else:
+		OPTIONS = [('C', 'Continue'), ('N', 'New Game'), ('O', 'Options'), ('Q', 'Quit')]
+		for (char, text) in OPTIONS:
+			# grey-out continue game option if no saved game present
+			disabled = False
+			if char == 'C' and not os.path.exists('savegame'):
+				disabled = True
+			
+			if disabled:
+				libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
+			else:
+				libtcod.console_set_default_foreground(main_menu_con, ACTION_KEY_COL)
+			ConsolePrint(main_menu_con, WINDOW_XM-5, y, char)
+			
+			if disabled:
+				libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
+			else:
+				libtcod.console_set_default_foreground(main_menu_con, libtcod.lighter_grey)
+			ConsolePrint(main_menu_con, WINDOW_XM-3, y, text)	
+			
+			y += 1
 
 
 # update the animation effect
@@ -5866,8 +5934,18 @@ def AnimateMainMenu():
 	if gradient_x <= 0: gradient_x = WINDOW_WIDTH + 20
 
 
-# generate and display the main menu console for the first time
-UpdateMainMenuCon()
+# generate main menu console
+global main_menu_con
+main_menu_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+libtcod.console_set_default_background(main_menu_con, libtcod.black)
+libtcod.console_set_default_foreground(main_menu_con, libtcod.white)
+libtcod.console_clear(main_menu_con)
+
+# use root menu to start
+options_menu_active = False
+
+# draw the main menu console for the first time
+UpdateMainMenuCon(options_menu_active)
 libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 
 # Main Menu loop
@@ -5891,50 +5969,55 @@ while not exit_game:
 	
 	key_char = chr(key.c).lower()
 	
-	if key_char == 'q':
-		exit_game = True
-		continue
+	# root main menu
+	if not options_menu_active:
 	
-	if key_char == 'f':
-		if fontname == 'c64_16x16.png':
-			fontname = 'c64_8x8.png'
-		else:
-			fontname = 'c64_16x16.png'
-		
-		# close current console, set new font, and restart console
-		libtcod.console_delete(0)
-		libtcod.console_set_custom_font(DATAPATH+fontname,
-			libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
-		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
-			NAME + ' - ' + VERSION, fullscreen = False,
-			renderer = libtcod.RENDERER_GLSL)
-		Wait(15)
-	
-	elif key_char == 'c':
-		if not os.path.exists('savegame'):
+		if key_char == 'q':
+			exit_game = True
 			continue
-		DoScenario(load_game=True)
-		UpdateMainMenuCon()
-		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
-		Wait(15)
-	
-	elif key_char == 'n':
-		# check for overwrite of existing saved game
-		if os.path.exists('savegame'):
-			text = 'Starting a new scenario will overwrite the existing saved game.'
-			result = ShowNotification(text, confirm=True)
-			if not result:
-				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-				Wait(15)
+		
+		if key_char == 'o':
+			options_menu_active = True
+			UpdateMainMenuCon(options_menu_active)
+			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(15)
+		
+		elif key_char == 'c':
+			if not os.path.exists('savegame'):
 				continue
-		campaign = Campaign()
-		campaign.player_nation = 'Germany'
-		DoScenario()
-		UpdateMainMenuCon()
-		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
-		Wait(15)
+			DoScenario(load_game=True)
+			UpdateMainMenuCon(options_menu_active)
+			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(15)
+		
+		elif key_char == 'n':
+			# check for overwrite of existing saved game
+			if os.path.exists('savegame'):
+				text = 'Starting a new scenario will overwrite the existing saved game.'
+				result = ShowNotification(text, confirm=True)
+				if not result:
+					libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+					Wait(15)
+					continue
+			campaign = Campaign()
+			campaign.player_nation = 'Germany'
+			DoScenario()
+			UpdateMainMenuCon(options_menu_active)
+			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(15)
+	
+	# options menu
+	else:
+		# exit options menu
+		if key.vk == libtcod.KEY_ESCAPE:
+			options_menu_active = False
+			UpdateMainMenuCon(options_menu_active)
+			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(15)
 
 # END #
 

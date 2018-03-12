@@ -115,22 +115,6 @@ KEYBOARDS = ['QWERTY']
 # FUTURE list
 #KEYBOARDS = ['QWERTY', 'AZERTY', 'Numpad', 'QWERTZ', 'Dvorak']
 
-# keyboard mapping, indexed to order of KEYBOARDS
-KEYBOARD_MAPPING = [
-	{
-		'q' : 'q',
-		'w' : 'w',
-		'e' : 'e',
-		'a' : 'a',
-		's' : 's',
-		'd' : 'd',
-		'z' : 'z',
-		'x' : 'x',
-		'c' : 'c',
-		'h' : 'h',
-		'f' : 'f'
-	}
-]
 
 ##### Colour Definitions #####
 
@@ -377,6 +361,14 @@ class Session:
 						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
 			
 			self.hex_consoles[terrain_type] = consoles
+		
+		# TODO: generate keyboard mapping encode and decode dictionaries
+		self.keyboard_encode = {}
+		with open(DATAPATH + 'keyboard_mapping.json') as data_file:
+			keyboards = json.load(data_file)
+		
+		
+		
 	
 	# try to initialize SDL2 mixer
 	def InitMixer(self):

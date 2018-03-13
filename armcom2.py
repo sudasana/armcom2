@@ -111,9 +111,7 @@ HEX_EDGE_CELLS = {
 }
 
 # list of possible keyboard layout settings
-KEYBOARDS = ['QWERTY']
-# FUTURE list
-#KEYBOARDS = ['QWERTY', 'AZERTY', 'Numpad', 'QWERTZ', 'Dvorak']
+KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak', 'BEPO']
 
 
 ##### Colour Definitions #####
@@ -361,15 +359,7 @@ class Session:
 						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
 			
 			self.hex_consoles[terrain_type] = consoles
-		
-		# TODO: generate keyboard mapping encode and decode dictionaries
-		self.keyboard_encode = {}
-		with open(DATAPATH + 'keyboard_mapping.json') as data_file:
-			keyboards = json.load(data_file)
-		
-		
-		
-	
+
 	# try to initialize SDL2 mixer
 	def InitMixer(self):
 		mixer.Mix_Init(mixer.MIX_INIT_OGG)
@@ -2925,11 +2915,12 @@ class Unit:
 		else:
 			facing = self.facing
 		
-		# determine location to draw character
+		# determine location to draw turret/gun character
 		direction = ConstrainDir(facing - scenario.vp_facing)
 		x_mod, y_mod = PLOT_DIR[direction]
 		char = TURRET_CHAR[direction]
 		libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
+		
 		
 	# return the display character to use on the map viewport
 	def GetDisplayChar(self):
@@ -4230,6 +4221,33 @@ def SaveCFG():
 		config.write(configfile)
 
 
+# generate keyboard encoding and decoding dictionaries
+def GenerateKeyboards():
+	
+	global keyboard_decode, keyboard_encode
+
+	keyboard_decode = {}
+	keyboard_encode = {}
+	with open(DATAPATH + 'keyboard_mapping.json') as data_file:
+		keyboards = json.load(data_file)
+	dictionary = keyboards[KEYBOARDS[config.getint('ArmCom2', 'keyboard')]]
+	for key, value in dictionary.iteritems():
+		keyboard_decode[key] = value
+		keyboard_encode[value] = key
+
+# turn an inputted key into a standard key input
+def DecodeKey(key_char):
+	if key_char in keyboard_decode:
+		return keyboard_decode[key_char].encode('IBM850')
+	return key_char
+
+# turn a standard key into the one for the current keyboard layout
+def EncodeKey(key_char):
+	if key_char in keyboard_encode:
+		return keyboard_encode[key_char].encode('IBM850')
+	return key_char
+
+
 ##########################################################################################
 #                                   Sounds and Music                                     #
 ##########################################################################################
@@ -4243,7 +4261,7 @@ def PlaySound(sound_name):
 	
 	channel = mixer.Mix_PlayChannel(-1, session.sample[sound_name], 0)
 	if channel == -1:
-		print 'Error - could not play sound: ' + sound_name
+		print 'ERROR: could not play sound: ' + sound_name
 		print mixer.Mix_GetError()
 	return channel
 
@@ -4323,7 +4341,7 @@ def ShowGameMenu(active_tab):
 				DisplayCrewInfo(crewman, game_menu_con, 37, 8)
 			
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-			ConsolePrint(game_menu_con, 6, 40, 'I/K')
+			ConsolePrint(game_menu_con, 6, 40, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
 			
 			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
 			ConsolePrint(game_menu_con, 11, 40, 'Select Crew')
@@ -4393,10 +4411,12 @@ def ShowGameMenu(active_tab):
 		# Crew Menu
 		elif active_tab == 3:
 			
+			key_char = DecodeKey(key_char)
+			
 			# change selected crewman
-			if key_char in ['i', 'k']:
+			if key_char in ['w', 's']:
 				
-				if key_char == 'i':
+				if key_char == 'w':
 					if scenario.selected_position > 0:
 						scenario.selected_position -= 1
 					else:
@@ -4816,6 +4836,22 @@ def UpdateUnitCon():
 		if len(map_hex.unit_stack) != 0:
 			# display the top unit in the stack
 			map_hex.unit_stack[0].DrawMe(vp_hx, vp_hy)
+		
+			# draw stack unit number indicator
+			if len(map_hex.unit_stack) > 1:
+				char = str(len(map_hex.unit_stack))
+				if map_hex.unit_stack[0].turret_facing is not None:
+					facing = map_hex.unit_stack[0].turret_facing
+				else:
+					facing = map_hex.unit_stack[0].facing
+				if facing in [5,0,1]:
+					y_mod = 1
+				else:
+					y_mod = -1
+				x = map_hex.unit_stack[0].screen_x
+				y = map_hex.unit_stack[0].screen_y + y_mod
+				libtcod.console_put_char_ex(unit_con, x, y, char,
+					libtcod.light_grey, libtcod.black)
 	
 		# check for hex highlight if any
 		if scenario.highlighted_hex is not None:
@@ -4961,8 +4997,9 @@ def UpdateCommandCon():
 	if scenario.active_menu == 2:
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		ConsolePrint(command_con, 2, 2, 'W/S')
-		ConsolePrint(command_con, 2, 3, 'A/D')
+		
+		ConsolePrint(command_con, 2, 2, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
+		ConsolePrint(command_con, 2, 3, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
 		ConsolePrint(command_con, 2, 4, 'H')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
@@ -4974,8 +5011,8 @@ def UpdateCommandCon():
 	elif scenario.active_menu == 3:
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		ConsolePrint(command_con, 2, 2, 'W')
-		ConsolePrint(command_con, 2, 3, 'A/D')
+		ConsolePrint(command_con, 2, 2, EncodeKey('w').upper())
+		ConsolePrint(command_con, 2, 3, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 		ConsolePrint(command_con, 9, 2, 'Move Forward')
@@ -4985,10 +5022,10 @@ def UpdateCommandCon():
 	elif scenario.active_menu == 4:
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		ConsolePrint(command_con, 2, 2, 'W/S')
-		ConsolePrint(command_con, 2, 3, 'Q/E')
-		ConsolePrint(command_con, 2, 4, 'A/D')
-		ConsolePrint(command_con, 2, 5, 'Z/C')
+		ConsolePrint(command_con, 2, 2, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
+		ConsolePrint(command_con, 2, 3, EncodeKey('q').upper() + '/' + EncodeKey('e').upper())
+		ConsolePrint(command_con, 2, 4, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
+		ConsolePrint(command_con, 2, 5, EncodeKey('z').upper() + '/' + EncodeKey('c').upper())
 		ConsolePrint(command_con, 2, 6, 'F')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
@@ -5586,8 +5623,8 @@ def DoScenario(load_game=False):
 				UpdateScenarioDisplay()
 			continue
 		
-		# map key to keyboard layout
-		key_char = KEYBOARD_MAPPING[config.getint('ArmCom2', 'keyboard')][key_char]
+		# map key to current keyboard layout
+		key_char = DecodeKey(key_char)
 		
 		# crew actions
 		if scenario.active_menu == 2:
@@ -5749,6 +5786,8 @@ def DoScenario(load_game=False):
 #                                      Main Script                                       #
 ##########################################################################################
 
+global keyboard_decode, keyboard_encode
+
 print 'Starting ' + NAME + ' version ' + VERSION	# startup message
 
 # try to load game settings from config file, will create a new file if none present
@@ -5777,6 +5816,9 @@ libtcod.console_clear(0)
 ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
 	'Loading...')
 libtcod.console_flush()
+
+# generate keyboard mapping dictionaries
+GenerateKeyboards()
 
 # create new session object
 session = Session()
@@ -6072,6 +6114,7 @@ while not exit_game:
 				else:
 					i += 1
 				config.set('ArmCom2', 'keyboard', i)
+				GenerateKeyboards()
 
 			SaveCFG()
 			UpdateMainMenuCon(options_menu_active)

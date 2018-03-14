@@ -4888,6 +4888,7 @@ def UpdateUnitCon():
 					facing = map_hex.unit_stack[0].turret_facing
 				else:
 					facing = map_hex.unit_stack[0].facing
+				facing = ConstrainDir(facing - scenario.vp_facing)
 				if facing in [5,0,1]:
 					y_mod = 1
 				else:

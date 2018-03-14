@@ -5311,8 +5311,9 @@ def UpdateUnitInfoCon():
 	
 	# other units in stack if any
 	if len(unit_stack) > 1:
+		libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
 		text = '+' + str(len(unit_stack)-1) + ' other units'
-		ConsolePrint(unit_info_con, 0, 9, text)
+		ConsolePrint(unit_info_con, 0, 8, text)
 
 
 # update objective info console, 16x10
@@ -5628,6 +5629,25 @@ def DoScenario(load_game=False):
 			UpdateHexTerrainCon()
 			UpdateUnitInfoCon()
 			UpdateScenarioDisplay()
+		
+		# check to see if mouse wheel has moved
+		if mouse.wheel_up or mouse.wheel_down:
+			
+			# see if cursor is over a hex with 2+ units in it
+			x = mouse.cx - 31
+			y = mouse.cy - 4
+			if (x,y) in scenario.hex_map_index:
+				(hx, hy) = scenario.hex_map_index[(x,y)]
+				map_hex = scenario.map_hexes[(hx, hy)]
+				if len(map_hex.unit_stack) > 1:
+					if mouse.wheel_up:
+						map_hex.unit_stack.insert(-1, map_hex.unit_stack.pop(0))
+					else:
+						map_hex.unit_stack.insert(0, map_hex.unit_stack.pop(-1))
+					UpdateUnitCon()
+					UpdateUnitInfoCon()
+					UpdateScenarioDisplay()
+			continue
 		
 		##### Player Keyboard Commands #####
 		

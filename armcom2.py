@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 ##########################################################################################
 
 # Debug Flags
-AI_SPY = False						# write description of AI actions to console
+AI_SPY = True						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 
@@ -680,6 +680,9 @@ class Scenario:
 		self.units = []				# list of units in the scenario
 		self.player_unit = None			# pointer to the player unit
 		self.active_unit = None			# currently activated unit
+		self.activation_list = [		# activation order for player units, enemy units
+			[], []
+		]
 		
 		# player 'luck' points
 		# FUTURE move into campaign object
@@ -725,6 +728,18 @@ class Scenario:
 		
 		# dictionary of screen display locations on the VP and their corresponding map hex
 		self.hex_map_index = {}
+	
+	# generate activation order for player units and enemy units
+	def GenerateActivationOrder(self):
+		
+		for unit in self.units:
+			if unit == self.player_unit: continue
+			self.activation_list[unit.owning_player].append(unit)
+		shuffle(self.activation_list[0])
+		shuffle(self.activation_list[1])
+		
+		# add the player unit to the start of the list
+		self.activation_list[0].insert(0, self.player_unit)
 	
 	# set up map viewport hexes based on viewport center position and facing
 	def SetVPHexes(self):
@@ -1957,7 +1972,10 @@ class Scenario:
 		
 		# check that weapon can fire
 		if weapon.fired:
-			return 'Weapon already fired this turn'
+			text = 'Weapon already fired'
+			if weapon.GetStat('mount') == 'Turret':
+				text += '; turret rotation NA'
+			return text
 		
 		# check that proper crew action is set for this attack if required
 		position_list = weapon.GetStat('fired_by')
@@ -3089,12 +3107,13 @@ class Unit:
 		if self.turret_facing is None:
 			return False
 		
-		# TODO: if turret weapon fired, don't allow turret rotation
+		# if turret weapon fired, don't allow turret rotation
+		for weapon in self.weapon_list:
+			if weapon.fired:
+				if weapon.GetStat('mount') == 'Turret':
+					return False
 		
-		# make sure crewman is available
-		# TEMP? testing
-		#if not self.SetCrewAction(['Gunner', 'Commander/Gunner'], 'Operate Gun'):
-		#	return False
+		# TODO: make sure there is a crewman in the turret who can act to rotate the turret
 		
 		if clockwise:
 			change = 1
@@ -5163,6 +5182,10 @@ def UpdateContextCon():
 		ConsolePrint(context_con, 0, 0, weapon.stats['name'])
 		libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
 		
+		if weapon.GetStat('mount') is not None:
+			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+			ConsolePrint(context_con, 0, 1, weapon.stats['mount'])
+		
 		# if gun, display current ammo stats
 		if weapon.GetStat('type') == 'Gun':
 			
@@ -5314,17 +5337,10 @@ def UpdateScenarioDisplay():
 	libtcod.console_blit(objective_con, 0, 0, 0, 0, con, 74, 1)		# target info
 	libtcod.console_blit(hex_terrain_con, 0, 0, 0, 0, con, 74, 50)		# hex terrain info
 	
-	# TEMP - draw current active player and time directly to console
-	if scenario.game_turn['active_player'] == 0:
-		text = 'Player'
-	else:
-		text = 'Enemy'
-	text += ' Turn'
-	ConsolePrintEx(con, 58, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-		text)
-	text = str(scenario.game_turn['hour']) + ':' + str(scenario.game_turn['minute']).zfill(2)
-	ConsolePrintEx(con, 58, 1, libtcod.BKGND_NONE, libtcod.CENTER,
-		text)
+	# TEMP - draw current time and weather conditions directly to console
+	text = str(scenario.game_turn['hour']).zfill(2) + ':' + str(scenario.game_turn['minute']).zfill(2)
+	ConsolePrint(con, 56, 1, text)
+	ConsolePrintEx(con, 58, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
 	
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
@@ -5507,6 +5523,9 @@ def DoScenario(load_game=False):
 		# generate and spawn initial enemy units for this scenario
 		scenario.SpawnEnemyUnits()
 		
+		# set activation order
+		scenario.GenerateActivationOrder()
+		
 		# activate player unit
 		scenario.active_unit = scenario.player_unit
 		scenario.active_unit.DoPreActivation()
@@ -5550,11 +5569,9 @@ def DoScenario(load_game=False):
 		
 		# if player is not active, do AI actions
 		if scenario.game_turn['active_player'] == 1:
-			for unit in scenario.units:
+			for unit in scenario.activation_list[1]:
 				if not unit.alive: continue
-				if unit.owning_player == 1:
-					unit.ai.DoActivation()
-			
+				unit.ai.DoActivation()
 			Wait(5)
 			scenario.DoEndOfPlayerTurn()
 			

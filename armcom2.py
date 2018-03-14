@@ -1706,12 +1706,12 @@ class Scenario:
 			
 			ConsolePrint(attack_con, 1, 45, 'No Effect: ')
 			ConsolePrintEx(attack_con, 24, 45, libtcod.BKGND_NONE,
-				libtcod.RIGHT, str(profile['final_chance']) + '%%') 
+				libtcod.RIGHT, chr(243) + ' ' + str(profile['final_chance'])) 
 			y = 46
 			for result in FP_EFFECT_RESULT_LIST:
 				ConsolePrint(attack_con, 1, y, result)
 				ConsolePrintEx(attack_con, 24, y, libtcod.BKGND_NONE,
-					libtcod.RIGHT, str(profile[result]) + '%%')
+					libtcod.RIGHT, chr(243) + ' ' + str(profile[result]))
 				y += 1
 
 		elif profile['type'] == 'Area Fire':
@@ -1807,8 +1807,8 @@ class Scenario:
 		if profile['type'] == 'FP Resolution':
 			for i in range(4):
 				roll = GetPercentileRoll()
-				ConsolePrintEx(attack_con, 13, 52,
-					libtcod.BKGND_NONE, libtcod.CENTER, str(roll) + '%%')
+				ConsolePrintEx(attack_con, 13, 52, libtcod.BKGND_NONE, libtcod.CENTER,
+					str(roll))
 				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				libtcod.console_flush()
@@ -3754,8 +3754,8 @@ def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
 				else:
 					cost = 0
 				
-				if node.elevation > current.elevation:
-					cost = cost * 2
+				if node.elevation != current.elevation:
+					cost = cost * 15
 				
 			g = current.g + cost
 			

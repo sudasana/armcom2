@@ -57,8 +57,8 @@ import sdl2.sdlmixer as mixer				# sound effects
 ##########################################################################################
 
 # Debug Flags
-AI_SPY = True						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_SPY = False						# write description of AI actions to console
+AI_NO_ACTION = True					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
@@ -409,7 +409,12 @@ class AI:
 		
 		if not self.owner.alive: return
 		
+		# set as active unit and move to top of hex stack
 		scenario.active_unit = self.owner
+		self.owner.MoveToTopOfStack()
+		UpdateUnitCon()
+		UpdateScenarioDisplay()
+		libtcod.console_flush()
 		
 		self.owner.DoPreActivation()
 		
@@ -982,7 +987,9 @@ class Scenario:
 			unit_types = json.load(data_file)
 		
 		# determine how many unit groups will be spawned
-		num_unit_groups = libtcod.random_get_int(0, 2, 3)
+		#num_unit_groups = libtcod.random_get_int(0, 2, 3)
+		# TEMP testing
+		num_unit_groups = libtcod.random_get_int(0, 6, 9)
 		
 		# generate list of unit groups
 		unit_group_list = []
@@ -1065,21 +1072,24 @@ class Scenario:
 					for tries in range(300):
 						(spawn_hx, spawn_hy) = choice(hex_list)
 						
+						# TEMP
+						(spawn_hx, spawn_hy) = (0, scenario.map_radius - 4)
+						
 						# too close to player
-						if GetHexDistance(spawn_hx, spawn_hy, self.player_unit.hx, self.player_unit.hy) < 5:
-							continue
+						#if GetHexDistance(spawn_hx, spawn_hy, self.player_unit.hx, self.player_unit.hy) < 5:
+						#	continue
 						
 						# might be off map
-						if (spawn_hx, spawn_hy) not in self.map_hexes:
-							continue
+						#if (spawn_hx, spawn_hy) not in self.map_hexes:
+						#	continue
 						
 						# might not be passable
-						if self.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
-							continue
+						#if self.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
+						#	continue
 						
 						# don't stack units during spawn
-						if len(self.map_hexes[(spawn_hx, spawn_hy)].unit_stack) > 0:
-							continue
+						#if len(self.map_hexes[(spawn_hx, spawn_hy)].unit_stack) > 0:
+						#	continue
 						
 						new_unit.SpawnAt(spawn_hx, spawn_hy)
 						break
@@ -1224,10 +1234,13 @@ class Scenario:
 			else:
 				self.player_target = self.player_target_list[i]
 	
-		# see if target is valid
+		# TODO: see if target is valid?
 		self.player_attack_desc = self.CheckAttack(self.player_unit,
 			self.selected_weapon, self.player_target)
-			
+		
+		# move target to top of stack
+		self.player_target.MoveToTopOfStack()
+		
 		return True
 	
 	# calculate the odds of success of a ranged attack, returns an attack profile
@@ -2723,6 +2736,17 @@ class Unit:
 		self.hy = hy
 		scenario.map_hexes[(hx, hy)].unit_stack.append(self)
 	
+	# move to the top of its current hex stack
+	def MoveToTopOfStack(self):
+		map_hex = scenario.map_hexes[(self.hx, self.hy)]
+		
+		# only unit in stack
+		if len(map_hex.unit_stack) == 1:
+			return
+		
+		map_hex.unit_stack.remove(self)
+		map_hex.unit_stack.insert(0, self)
+	
 	# check for recovery for the unit and for personnel
 	# normally called at end of own turn
 	def RecoveryCheck(self):
@@ -3045,7 +3069,6 @@ class Unit:
 			self.anim_y = 0
 		
 		# remove unit from old map hex unit stack
-		
 		map_hex1.unit_stack.remove(self)
 		
 		self.hx = hx
@@ -4833,6 +4856,8 @@ def UpdateVPCon():
 # display units on the unit console
 # also displays map hex highlight and LoS if any
 def UpdateUnitCon():
+	libtcod.console_set_default_foreground(unit_con, libtcod.white)
+	libtcod.console_set_default_background(unit_con, KEY_COLOR)
 	libtcod.console_clear(unit_con)
 	
 	# clear unit vp_hx and vp_hy
@@ -4858,7 +4883,7 @@ def UpdateUnitCon():
 		
 			# draw stack unit number indicator
 			if len(map_hex.unit_stack) > 1:
-				char = str(len(map_hex.unit_stack))
+				text = str(len(map_hex.unit_stack))
 				if map_hex.unit_stack[0].turret_facing is not None:
 					facing = map_hex.unit_stack[0].turret_facing
 				else:
@@ -4869,8 +4894,9 @@ def UpdateUnitCon():
 					y_mod = -1
 				x = map_hex.unit_stack[0].screen_x
 				y = map_hex.unit_stack[0].screen_y + y_mod
-				libtcod.console_put_char_ex(unit_con, x, y, char,
-					libtcod.light_grey, libtcod.black)
+				libtcod.console_set_default_foreground(unit_con, libtcod.grey)
+				libtcod.console_set_default_background(unit_con, libtcod.black)
+				ConsolePrintEx(unit_con, x, y, libtcod.BKGND_SET, libtcod.CENTER, text)
 	
 		# check for hex highlight if any
 		if scenario.highlighted_hex is not None:
@@ -5246,42 +5272,47 @@ def UpdateUnitInfoCon():
 	
 	# display unit info
 	unit = unit_stack[0]
-	if unit.owning_player == 1:
-		if not unit.known:
-			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
-			ConsolePrint(unit_info_con, 0, 0, 'Possible Enemy')
-			return
+	
+	if unit.owning_player == 1 and not unit.known:
+		libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
+		ConsolePrint(unit_info_con, 0, 0, 'Possible Enemy')
+	else:
+		if unit.owning_player == 0:
+			col = libtcod.white
 		else:
 			col = ENEMY_UNIT_COL
-	else:	
-		col = libtcod.white
+
+		libtcod.console_set_default_foreground(unit_info_con, col)
+		lines = wrap(unit.unit_id, 16)
+		y = 0
+		for line in lines[:2]:
+			ConsolePrint(unit_info_con, 0, y, line)
+			y+=1
+		libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
+		ConsolePrint(unit_info_con, 0, 2, unit.GetStat('class'))
+		
+		libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
+		if scenario.player_unit.acquired_target is not None:
+			(target, level) = scenario.player_unit.acquired_target 
+			if target == unit:
+				text = 'Acquired target'
+				if level:
+					text += '+'
+				ConsolePrint(unit_info_con, 0, 4, text)
+		
+		# active status
+		libtcod.console_set_default_foreground(unit_info_con, libtcod.light_red)
+		text = ''
+		if unit.broken:
+			text = 'Broken'
+		elif unit.pinned:
+			text = 'Pinned'
+		ConsolePrint(unit_info_con, 0, 5, text)
 	
-	libtcod.console_set_default_foreground(unit_info_con, col)
-	lines = wrap(unit.unit_id, 16)
-	y = 0
-	for line in lines[:2]:
-		ConsolePrint(unit_info_con, 0, y, line)
-		y+=1
-	libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
-	ConsolePrint(unit_info_con, 0, 2, unit.GetStat('class'))
-	
-	libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
-	if scenario.player_unit.acquired_target is not None:
-		(target, level) = scenario.player_unit.acquired_target 
-		if target == unit:
-			text = 'Acquired target'
-			if level:
-				text += '+'
-			ConsolePrint(unit_info_con, 0, 4, text)
-	
-	# active status
-	libtcod.console_set_default_foreground(unit_info_con, libtcod.light_red)
-	text = ''
-	if unit.broken:
-		text = 'Broken'
-	elif unit.pinned:
-		text = 'Pinned'
-	ConsolePrint(unit_info_con, 0, 5, text)
+	# other units in stack if any
+	if len(unit_stack) > 1:
+		text = '+' + str(len(unit_stack)-1) + ' other units'
+		ConsolePrint(unit_info_con, 0, 9, text)
 
 
 # update objective info console, 16x10

@@ -1089,9 +1089,10 @@ class Scenario:
 		for unit in self.units:
 			if unit.owning_player == 1:
 				unit_list.append(unit)
-		unit_list = sample(unit_list, int(ceil(len(unit_list) * ENEMY_DUMMY_RATIO)))	
-		for unit in unit_list:
-			unit.dummy = True
+		if len(unit_list) >= 4:
+			unit_list = sample(unit_list, int(ceil(len(unit_list) * ENEMY_DUMMY_RATIO)))	
+			for unit in unit_list:
+				unit.dummy = True
 
 	# do automatic events at the end of a player turn
 	def DoEndOfPlayerTurn(self):
@@ -3190,7 +3191,7 @@ class Unit:
 				action = 'Operate Gun'
 			elif weapon_type == 'Hull MG':
 				action = 'Operate Hull MG'
-		self.SetCrewAction(position_list, action)
+			self.SetCrewAction(position_list, action)
 		
 		# set weapon and unit fired flags
 		weapon.fired = True
@@ -5065,9 +5066,9 @@ def UpdateCommandCon():
 		ConsolePrint(command_con, 9, 6, 'Fire')
 		
 	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-	ConsolePrint(command_con, 2, 11, 'Enter')
+	ConsolePrint(command_con, 2, 10, 'Enter')
 	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-	ConsolePrint(command_con, 9, 11, 'End Activation')
+	ConsolePrint(command_con, 9, 10, 'End Turn')
 	
 	
 # draw information about the hex currently under the mouse cursor to the hex terrain info

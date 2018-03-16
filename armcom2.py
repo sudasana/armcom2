@@ -4163,12 +4163,6 @@ def Wait(wait_time):
 	wait_time = wait_time * 0.01
 	start_time = time.time()
 	while time.time() - start_time < wait_time:
-	
-		# added this to avoid the spinning wheel of death in Windows
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-			key, mouse)
-		if libtcod.console_is_window_closed(): sys.exit()
-			
 		libtcod.console_flush()
 
 

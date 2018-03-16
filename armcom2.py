@@ -58,7 +58,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
@@ -573,9 +573,6 @@ class AI:
 				if 'AP' in weapon.stats['ammo_type_list']:
 					weapon.current_ammo = 'AP'
 			
-			# Following is a bit of a hack because it takes place in the Combat phase
-			# FUTURE: identify target in action phase
-			
 			# if weapon is hull mounted, pivot to face target
 			if weapon.GetStat('mount') == 'Hull':
 				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
@@ -990,9 +987,7 @@ class Scenario:
 			unit_types = json.load(data_file)
 		
 		# determine how many unit groups will be spawned
-		#num_unit_groups = libtcod.random_get_int(0, 2, 3)
-		# TEMP testing
-		num_unit_groups = libtcod.random_get_int(0, 6, 9)
+		num_unit_groups = libtcod.random_get_int(0, 2, 3)
 		
 		# generate list of unit groups
 		unit_group_list = []
@@ -1075,24 +1070,17 @@ class Scenario:
 					for tries in range(300):
 						(spawn_hx, spawn_hy) = choice(hex_list)
 						
-						# TEMP
-						(spawn_hx, spawn_hy) = (0, scenario.map_radius - 4)
-						
 						# too close to player
-						#if GetHexDistance(spawn_hx, spawn_hy, self.player_unit.hx, self.player_unit.hy) < 5:
-						#	continue
+						if GetHexDistance(spawn_hx, spawn_hy, self.player_unit.hx, self.player_unit.hy) < 5:
+							continue
 						
-						# might be off map
-						#if (spawn_hx, spawn_hy) not in self.map_hexes:
-						#	continue
+						# off map
+						if (spawn_hx, spawn_hy) not in self.map_hexes:
+							continue
 						
-						# might not be passable
-						#if self.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
-						#	continue
-						
-						# don't stack units during spawn
-						#if len(self.map_hexes[(spawn_hx, spawn_hy)].unit_stack) > 0:
-						#	continue
+						# not passable
+						if self.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
+							continue
 						
 						new_unit.SpawnAt(spawn_hx, spawn_hy)
 						break
@@ -1123,17 +1111,16 @@ class Scenario:
 			self.win_desc = 'Your tank was destroyed.'
 			return
 		
-		# TEMP disabled
-		#all_enemies_dead = True
-		#for unit in self.units:
-		#	if unit.owning_player == 1 and unit.alive:
-		#		all_enemies_dead = False
-		#		break
-		#if all_enemies_dead:
-		#	self.winner = 0
-		#	self.finished = True
-		#	self.win_desc = 'All enemy units in the area were destroyed.'
-		#	return
+		all_enemies_dead = True
+		for unit in self.units:
+			if unit.owning_player == 1 and unit.alive:
+				all_enemies_dead = False
+				break
+		if all_enemies_dead:
+			self.winner = 0
+			self.finished = True
+			self.win_desc = 'All enemy units in the area were destroyed.'
+			return
 		
 		all_objectives_captured = True
 		for map_hex in self.map_objectives:
@@ -1258,7 +1245,6 @@ class Scenario:
 		
 		# determine attack type: point or area; AP results are handled by CalcAP()
 		
-		# TEMP - check for active ammo type in future
 		weapon_type = weapon.GetStat('type')
 		if weapon_type == 'Gun':
 			profile['type'] = 'Point Fire'
@@ -5114,8 +5100,10 @@ def UpdateHexTerrainCon():
 	text = HEX_TERRAIN_DESC[map_hex.terrain_type]
 	ConsolePrint(hex_terrain_con, 0, 0, text)
 	
-	# TEMP - don't display this in production version
+	# TEMP - don't display hex coordinate in production version?
 	ConsolePrint(hex_terrain_con, 0, 1, str(hx) + ',' + str(hy))
+	
+	# elevation
 	text = str(map_hex.elevation * ELEVATION_M) + ' m.'
 	ConsolePrintEx(hex_terrain_con, 15, 1, libtcod.BKGND_NONE,
 		libtcod.RIGHT, text)

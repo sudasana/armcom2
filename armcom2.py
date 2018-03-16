@@ -5390,6 +5390,7 @@ def DoScenario(load_game=False):
 	global attack_con, fov_con, hex_fov, popup_bkg, hex_objective_neutral
 	global hex_highlight
 	global tile_offmap
+	global old_key
 	
 	# set up consoles
 	
@@ -5575,12 +5576,13 @@ def DoScenario(load_game=False):
 	UpdateUnitInfoCon()
 	UpdateObjectiveInfoCon()
 	UpdateScenarioDisplay()
+	libtcod.console_flush()
 	
 	# record mouse cursor position to check when it has moved
 	mouse_x = -1
 	mouse_y = -1
 	
-	# keyboard repeat hack
+	# wait a short time before starting scenario loop
 	Wait(15)
 	
 	trigger_end_of_phase = False
@@ -5605,6 +5607,7 @@ def DoScenario(load_game=False):
 			for unit in scenario.activation_list[1]:
 				if not unit.alive: continue
 				unit.ai.DoActivation()
+			# pause a short time between enemy unit activations
 			Wait(5)
 			scenario.DoEndOfPlayerTurn()
 			
@@ -5676,11 +5679,13 @@ def DoScenario(load_game=False):
 			scenario.DoEndOfPlayerTurn()
 			continue
 
-		# skip reset of this section if no key commands in buffer
-		if key.vk == libtcod.KEY_NONE: continue
-		
 		# key commands
 		key_char = chr(key.c).lower()
+		
+		# avoid repeat keys
+		if key_char == old_key:
+			continue
+		old_key = key_char
 		
 		# switch active menu (same for all keyboard layouts?)
 		if key_char in ['2', '3', '4']:
@@ -5845,9 +5850,6 @@ def DoScenario(load_game=False):
 					UpdateUnitCon()
 					UpdateScenarioDisplay()
 					SaveGame()
-		
-		# wait for a short time to avoid repeated keyboard inputs
-		Wait(15)
 
 
 
@@ -5947,6 +5949,7 @@ for direction in range(6):
 ##########################################################################################
 
 global main_title, tank_image
+global old_key
 
 main_title = LoadXP('main_title.xp')
 
@@ -6089,6 +6092,7 @@ libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 
 # Main Menu loop
 exit_game = False
+old_key = None
 
 while not exit_game:
 	
@@ -6104,9 +6108,12 @@ while not exit_game:
 	# exit right away
 	if libtcod.console_is_window_closed(): sys.exit()
 	
-	if key is None: continue
-	
 	key_char = chr(key.c).lower()
+
+	# avoid repeat keys
+	if key_char == old_key:
+		continue
+	old_key = key_char
 	
 	# root main menu
 	if not options_menu_active:
@@ -6119,8 +6126,6 @@ while not exit_game:
 			options_menu_active = True
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-			Wait(15)
 		
 		elif key_char == 'c':
 			if not os.path.exists('savegame'):
@@ -6128,8 +6133,6 @@ while not exit_game:
 			DoScenario(load_game=True)
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-			Wait(15)
 		
 		elif key_char == 'n':
 			# check for overwrite of existing saved game
@@ -6145,8 +6148,6 @@ while not exit_game:
 			DoScenario()
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-			Wait(15)
 	
 	# options menu
 	else:
@@ -6188,16 +6189,12 @@ while not exit_game:
 			SaveCFG()
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-			Wait(15)
 		
 		# exit options menu
 		elif key.vk == libtcod.KEY_ESCAPE:
 			options_menu_active = False
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-			Wait(15)
 
 # END #
 

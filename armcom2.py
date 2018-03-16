@@ -336,6 +336,9 @@ class Campaign:
 class Session:
 	def __init__(self):
 		
+		# flag: the last time the keyboard was polled, a key was pressed
+		self.key_down = False
+		
 		# generate hex console images for scenario map
 		self.hex_consoles = {}
 		
@@ -5390,7 +5393,6 @@ def DoScenario(load_game=False):
 	global attack_con, fov_con, hex_fov, popup_bkg, hex_objective_neutral
 	global hex_highlight
 	global tile_offmap
-	global old_key
 	
 	# set up consoles
 	
@@ -5582,18 +5584,16 @@ def DoScenario(load_game=False):
 	mouse_x = -1
 	mouse_y = -1
 	
-	# wait a short time before starting scenario loop
-	Wait(15)
-	
 	trigger_end_of_phase = False
 	exit_scenario = False
 	while not exit_scenario:
-		libtcod.console_flush()
 		
-		# emergency loop escape
+		# emergency exit in case of endless loop
 		if libtcod.console_is_window_closed(): sys.exit()
 		
-		# scenario end conditions have been met
+		libtcod.console_flush()
+		
+		# check if scenario end conditions have been met
 		if scenario.finished:
 			EraseGame()
 			# FUTURE: add more descriptive detail here
@@ -5623,7 +5623,8 @@ def DoScenario(load_game=False):
 			UpdateScenarioDisplay()
 			continue
 		
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+		# get keyboard and/or mouse event
+		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
 			key, mouse)
 		
 		# check to see if mouse cursor has moved
@@ -5655,6 +5656,22 @@ def DoScenario(load_game=False):
 		
 		##### Player Keyboard Commands #####
 		
+		# if a key was previously pressed, wait for it to be released
+		if session.key_down:
+			if event != libtcod.EVENT_KEY_RELEASE:
+				continue
+			# key was released
+			session.key_down = False
+		
+		# check for keypress, continue if none
+		if event != libtcod.EVENT_KEY_PRESS:
+			continue
+		
+		# set key pressed flag
+		session.key_down = True
+		
+		# Determine action based on key pressed
+		
 		# enter game menu
 		if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_F3]:
 			if key.vk == libtcod.KEY_ESCAPE:
@@ -5681,11 +5698,6 @@ def DoScenario(load_game=False):
 
 		# key commands
 		key_char = chr(key.c).lower()
-		
-		# avoid repeat keys
-		if key_char == old_key:
-			continue
-		old_key = key_char
 		
 		# switch active menu (same for all keyboard layouts?)
 		if key_char in ['2', '3', '4']:
@@ -5949,7 +5961,6 @@ for direction in range(6):
 ##########################################################################################
 
 global main_title, tank_image
-global old_key
 
 main_title = LoadXP('main_title.xp')
 
@@ -6092,9 +6103,11 @@ libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 
 # Main Menu loop
 exit_game = False
-old_key = None
 
 while not exit_game:
+	
+	# emergency exit in case of endless loop
+	if libtcod.console_is_window_closed(): sys.exit()
 	
 	# trigger animation and update screen
 	if time.time() - time_click >= 0.05:
@@ -6103,17 +6116,25 @@ while not exit_game:
 		time_click = time.time()
 	
 	libtcod.console_flush()
-	libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE, key, mouse)
 	
-	# exit right away
-	if libtcod.console_is_window_closed(): sys.exit()
+	# get keyboard event
+	event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse) 
+	
+	# if a key was previously pressed, wait for it to be released
+	if session.key_down:
+		if event != libtcod.EVENT_KEY_RELEASE:
+			continue
+		# key was released
+		session.key_down = False
+	
+	# check for keypress, continue if none
+	if event != libtcod.EVENT_KEY_PRESS:
+		continue
+	
+	# set key pressed flag
+	session.key_down = True
 	
 	key_char = chr(key.c).lower()
-
-	# avoid repeat keys
-	if key_char == old_key:
-		continue
-	old_key = key_char
 	
 	# root main menu
 	if not options_menu_active:

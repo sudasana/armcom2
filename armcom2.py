@@ -111,7 +111,7 @@ HEX_EDGE_CELLS = {
 }
 
 # list of possible keyboard layout settings
-KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak', 'BEPO']
+KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']
 
 
 ##### Colour Definitions #####

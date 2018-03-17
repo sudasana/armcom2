@@ -987,7 +987,7 @@ class Scenario:
 			unit_types = json.load(data_file)
 		
 		# determine how many unit groups will be spawned
-		num_unit_groups = libtcod.random_get_int(0, 2, 3)
+		num_unit_groups = libtcod.random_get_int(0, 3, 4)
 		
 		# generate list of unit groups
 		unit_group_list = []
@@ -1496,7 +1496,7 @@ class Scenario:
 				
 				# apply critical hit modifier if any
 				if profile['result'] == 'CRITICAL HIT':
-					modifier = abs(modifier) * 0.8
+					modifier = round(abs(modifier) * 0.8, 2)
 					modifier_list.append(('Critical Hit', modifier))
 				
 		
@@ -1760,7 +1760,7 @@ class Scenario:
 		
 		# display prompts
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		ConsolePrint(attack_con, 6, 57, 'Enter')
+		ConsolePrint(attack_con, 6, 57, EncodeKey('c').upper())
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		ConsolePrint(attack_con, 12, 57, 'Continue')
 		
@@ -3286,7 +3286,7 @@ class Unit:
 			
 			# pause if we're not doing a RoF attack
 			if not profile['weapon'].maintained_rof:
-				WaitForEnter()
+				WaitForContinue()
 			
 			# do the roll and display results to the screen
 			profile = scenario.DoAttackRoll(profile)
@@ -3295,17 +3295,25 @@ class Unit:
 			end_pause = False
 			attack_finished = True
 			while not end_pause:
-				libtcod.console_flush()
-				libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-					key, mouse)
 				if libtcod.console_is_window_closed(): sys.exit()
+				libtcod.console_flush()
+				event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse)
 				
-				if key.vk == libtcod.KEY_ENTER: 
+				if session.key_down:
+					if event != libtcod.EVENT_KEY_RELEASE:
+						continue
+					session.key_down = False
+				if event != libtcod.EVENT_KEY_PRESS:
+					continue
+				session.key_down = True
+				
+				key_char = DecodeKey(chr(key.c).lower())
+				
+				if key_char == 'c':
 					end_pause = True
 				
 				if self == scenario.player_unit:
-				
-					if chr(key.c).lower() == 'f' and weapon.maintained_rof:
+					if key_char == 'f' and weapon.maintained_rof:
 						attack_finished = False
 						end_pause = True
 			
@@ -3382,9 +3390,9 @@ class Unit:
 			if self.GetStat('category') != 'Vehicle':
 				profile = scenario.CalcFP(self)
 				scenario.DisplayAttack(profile)
-				WaitForEnter()
+				WaitForContinue()
 				profile = scenario.DoAttackRoll(profile)
-				WaitForEnter()
+				WaitForContinue()
 				
 				# handle results
 				if profile['result'] == 'Pin Test':
@@ -3413,9 +3421,9 @@ class Unit:
 			
 				profile = scenario.CalcAP(profile)
 				scenario.DisplayAttack(profile)
-				WaitForEnter()
+				WaitForContinue()
 				profile = scenario.DoAttackRoll(profile)
-				WaitForEnter()
+				WaitForContinue()
 				if profile['result'] == 'PENETRATED':
 					self.DestroyMe()
 					return
@@ -4167,29 +4175,28 @@ def Wait(wait_time):
 		libtcod.console_flush()
 
 
-# wait for player to press enter before continuing
+# wait for player to press continue key
 # option to allow backspace pressed instead, returns True if so 
-def WaitForEnter(allow_cancel=False):
+def WaitForContinue(allow_cancel=False):
 	end_pause = False
 	cancel = False
 	while not end_pause:
-		# get input from user
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-			key, mouse)
-		
-		# emergency exit from game
 		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse)
+		if session.key_down:
+			if event != libtcod.EVENT_KEY_RELEASE:
+				continue
+			session.key_down = False
+		if event != libtcod.EVENT_KEY_PRESS:
+			continue
+		session.key_down = True
 		
-		elif key.vk == libtcod.KEY_ENTER: 
-			end_pause = True
-		
-		elif key.vk == libtcod.KEY_BACKSPACE and allow_cancel:
+		if key.vk == libtcod.KEY_BACKSPACE and allow_cancel:
 			end_pause = True
 			cancel = True
-		
-		# refresh the screen
-		libtcod.console_flush()
-	
+		elif DecodeKey(chr(key.c).lower()) == 'c':
+			end_pause = True
 	if allow_cancel and cancel:
 		return True
 	return False
@@ -4855,18 +4862,17 @@ def UpdateUnitCon():
 		(map_hx, map_hy) = scenario.map_vp[(vp_hx, vp_hy)]
 		# hex is off-map
 		if (map_hx, map_hy) not in scenario.map_hexes: continue
-		# hex not visible to player
-		#if (map_hx, map_hy) not in scenario.player_unit.fov: continue
 		# get the map hex
 		map_hex = scenario.map_hexes[(map_hx, map_hy)]
 		
 		# any units in the stack
 		if len(map_hex.unit_stack) != 0:
 			# display the top unit in the stack
-			map_hex.unit_stack[0].DrawMe(vp_hx, vp_hy)
+			unit = map_hex.unit_stack[0]
+			unit.DrawMe(vp_hx, vp_hy)
 		
-			# draw stack unit number indicator
-			if len(map_hex.unit_stack) > 1:
+			# draw stack unit number indicator if this unit is not animating
+			if unit.anim_x == 0 and unit.anim_y == 0 and len(map_hex.unit_stack) > 1:
 				text = str(len(map_hex.unit_stack))
 				if map_hex.unit_stack[0].turret_facing is not None:
 					facing = map_hex.unit_stack[0].turret_facing
@@ -5587,6 +5593,7 @@ def DoScenario(load_game=False):
 		
 		# if player is not active, do AI actions
 		if scenario.game_turn['active_player'] == 1:
+			UpdateCommandCon()
 			for unit in scenario.activation_list[1]:
 				if not unit.alive: continue
 				unit.ai.DoActivation()

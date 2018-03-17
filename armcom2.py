@@ -62,7 +62,7 @@ AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-03-17'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-03-24'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -4392,29 +4392,29 @@ def ShowGameMenu(active_tab):
 	# generate menu console for the first time and blit to screen
 	DrawMenuCon(active_tab)
 	
-	Wait(15)
-	
 	# get input from player
 	exit_menu = False
 	result = ''
 	while not exit_menu:
-		libtcod.console_flush()
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-			key, mouse)
 		if libtcod.console_is_window_closed(): sys.exit()
-		
-		if key is None: continue
+		libtcod.console_flush()
+		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse)
+		if session.key_down:
+			if event != libtcod.EVENT_KEY_RELEASE:
+				continue
+			session.key_down = False
+		if event != libtcod.EVENT_KEY_PRESS:
+			continue
+		session.key_down = True
 		
 		# Activate Different Menu
 		if key.vk == libtcod.KEY_ESCAPE and active_tab != 0:
 			active_tab = 0
 			DrawMenuCon(active_tab)
-			Wait(15)
 			continue
 		elif key.vk == libtcod.KEY_F3 and active_tab != 3:
 			active_tab = 3
 			DrawMenuCon(active_tab)
-			Wait(15)
 			continue
 		
 		key_char = chr(key.c).lower()
@@ -4439,7 +4439,6 @@ def ShowGameMenu(active_tab):
 					exit_menu = True
 				libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 				libtcod.console_flush()
-				Wait(15)
 		
 		# Crew Menu
 		elif active_tab == 3:
@@ -4463,7 +4462,6 @@ def ShowGameMenu(active_tab):
 				UpdateContextCon()
 				UpdateCrewPositionCon()
 				DrawMenuCon(active_tab)
-				Wait(15)
 
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
@@ -4713,19 +4711,23 @@ def ShowNotification(text, confirm=False):
 	
 	# show to screen
 	libtcod.console_flush()
-	Wait(15)
 	
 	exit_menu = False
 	while not exit_menu:
-		libtcod.console_flush()
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-			key, mouse)
 		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse)
+		if session.key_down:
+			if event != libtcod.EVENT_KEY_RELEASE:
+				continue
+			session.key_down = False
+		if event != libtcod.EVENT_KEY_PRESS:
+			continue
 		
-		if key is None: continue
+		session.key_down = True
+		key_char = chr(key.c).lower()
 		
 		if confirm:
-			key_char = chr(key.c).lower()
 			
 			if key_char == 'y':
 				# restore original screen before returning
@@ -5139,19 +5141,25 @@ def UpdateContextCon():
 		position = scenario.player_unit.crew_positions[scenario.selected_position]
 		action = position.crewman.current_action
 		
+		libtcod.console_set_default_background(context_con, libtcod.darker_yellow)
+		libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
+		ConsolePrint(context_con, 0, 0, 'Crew Action')
+		libtcod.console_set_default_background(context_con, libtcod.black)
+		
+		
 		# TODO: is this even possible any more??
 		if action is None:
-			ConsolePrint(context_con, 0, 0, 'No action')
-			ConsolePrint(context_con, 0, 1, 'assigned')
+			ConsolePrint(context_con, 0, 2, 'No action')
+			ConsolePrint(context_con, 0, 3, 'assigned')
 		else:
 			libtcod.console_set_default_foreground(context_con,
 				libtcod.dark_yellow)
-			ConsolePrint(context_con, 0, 0, action)
+			ConsolePrint(context_con, 0, 2, action)
 			libtcod.console_set_default_foreground(context_con,
 				libtcod.light_grey)
 			
 			lines = wrap(CREW_ACTIONS[action]['desc'], 16)
-			y = 2
+			y = 3
 			for line in lines:
 				ConsolePrint(context_con, 0, y, line)
 				y += 1
@@ -5160,12 +5168,17 @@ def UpdateContextCon():
 	# movement
 	elif scenario.active_menu == 3:
 		
+		libtcod.console_set_default_background(context_con, libtcod.darker_green)
+		libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
+		ConsolePrint(context_con, 0, 0, 'Movement')
+		libtcod.console_set_default_background(context_con, libtcod.black)
+		
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
 		if scenario.player_unit.move_finished:
-			ConsolePrint(context_con, 0, 0, 'Move finished')
+			ConsolePrint(context_con, 0, 2, 'Move finished')
 			return
 		if scenario.player_unit.fired:
-			ConsolePrint(context_con, 0, 0, 'Already Fired')
+			ConsolePrint(context_con, 0, 2, 'Already Fired')
 			return
 		
 		# display chance of getting a bonus move
@@ -5177,18 +5190,18 @@ def UpdateContextCon():
 		
 		# display destination terrain type
 		text = HEX_TERRAIN_DESC[scenario.map_hexes[(hx, hy)].terrain_type]
-		ConsolePrint(context_con, 0, 0, text)
+		ConsolePrint(context_con, 0, 2, text)
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 		
 		# display road status if any
 		if scenario.player_unit.facing in scenario.map_hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].dirt_roads:
-			ConsolePrint(context_con, 0, 1, 'Dirt Road')
+			ConsolePrint(context_con, 0, 3, 'Dirt Road')
 		
 		# get bonus move chance
-		ConsolePrint(context_con, 0, 2, '+1 move chance:')
+		ConsolePrint(context_con, 0, 4, '+1 move chance:')
 		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
-		ConsolePrint(context_con, 1, 3, str(chance) + '%%')
+		ConsolePrint(context_con, 1, 5, str(chance) + '%%')
 	
 	# combat
 	elif scenario.active_menu == 4:
@@ -5199,7 +5212,7 @@ def UpdateContextCon():
 		libtcod.console_set_default_background(context_con, libtcod.darkest_red)
 		libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
 		ConsolePrint(context_con, 0, 0, weapon.stats['name'])
-		libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
+		libtcod.console_set_default_background(context_con, libtcod.black)
 		
 		if weapon.GetStat('mount') is not None:
 			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
@@ -5313,9 +5326,9 @@ def UpdateUnitInfoCon():
 def UpdateObjectiveInfoCon():
 	libtcod.console_clear(objective_con)
 	libtcod.console_set_default_foreground(objective_con, libtcod.light_blue)
-	ConsolePrint(objective_con, 0, 0, 'Objectives')
+	ConsolePrintEx(objective_con, 15, 0, libtcod.BKGND_NONE, libtcod.RIGHT, 'Objectives')
 	libtcod.console_set_default_foreground(objective_con, libtcod.light_grey)
-	ConsolePrint(objective_con, 0, 1, '----------------')
+	
 	y = 2
 	for map_hex in scenario.map_objectives:
 		distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
@@ -5324,8 +5337,7 @@ def UpdateObjectiveInfoCon():
 			text = str(float(distance) / 1000.0) + ' km.'
 		else:
 			text = str(distance) + ' m.'
-		ConsolePrintEx(objective_con, 13, y, libtcod.BKGND_NONE,
-			libtcod.RIGHT, text)
+		ConsolePrintEx(objective_con, 13, y, libtcod.BKGND_NONE, libtcod.RIGHT, text)
 		
 		# capture status
 		if map_hex.objective == 0:
@@ -5340,7 +5352,7 @@ def UpdateObjectiveInfoCon():
 				map_hex.hx, map_hex.hy)
 			direction = ConstrainDir(direction + (0 - scenario.player_unit.facing))
 			libtcod.console_put_char(objective_con, 15, y, GetDirectionalArrow(direction))
-		y += 2
+		y += 1
 	
 
 # draw all layers of scenario display to screen
@@ -5445,25 +5457,25 @@ def DoScenario(load_game=False):
 	
 	# hex terrain info console
 	hex_terrain_con = libtcod.console_new(16, 10)
-	libtcod.console_set_default_background(hex_terrain_con, libtcod.darkest_grey)
+	libtcod.console_set_default_background(hex_terrain_con, libtcod.black)
 	libtcod.console_set_default_foreground(hex_terrain_con, libtcod.white)
 	libtcod.console_clear(hex_terrain_con)
 	
 	# unit info console
 	unit_info_con = libtcod.console_new(16, 10)
-	libtcod.console_set_default_background(unit_info_con, libtcod.darkest_grey)
+	libtcod.console_set_default_background(unit_info_con, libtcod.black)
 	libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
 	libtcod.console_clear(unit_info_con)
 	
 	# contextual info console
 	context_con = libtcod.console_new(16, 10)
-	libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
+	libtcod.console_set_default_background(context_con, libtcod.black)
 	libtcod.console_set_default_foreground(context_con, libtcod.white)
 	libtcod.console_clear(context_con)
 	
 	# objective info console
 	objective_con = libtcod.console_new(16, 10)
-	libtcod.console_set_default_background(objective_con, libtcod.darkest_grey)
+	libtcod.console_set_default_background(objective_con, libtcod.black)
 	libtcod.console_set_default_foreground(objective_con, libtcod.white)
 	libtcod.console_clear(objective_con)
 	

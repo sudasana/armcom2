@@ -38,7 +38,7 @@
 import os, sys, ctypes					# OS-related stuff
 import libtcodpy as libtcod				# The Doryen Library
 import ConfigParser					# saving and loading settings
-from random import choice, shuffle, sample
+from random import choice, shuffle, sample		# for randomness
 from math import floor, cos, sin, sqrt			# math
 from math import degrees, atan2, ceil			# heading calculations
 import xp_loader, gzip					# loading xp image files
@@ -324,12 +324,53 @@ MAX_LOS_MOD = 60.0
 #                                         Classes                                        #
 ##########################################################################################
 
-# Campaign: stores data about a campaign in progress, made up of campaign days
+# Campaign: stores data about a campaign currently in progress, made up of 1+ campaign days
 class Campaign:
 	def __init__(self):
 		
+		# current year, month, day, hour, and minute
+		# TODO: starting date will be set by campaign type
+		self.calendar = {
+			'year' : 1939,
+			'month' : 9,
+			'day' : 1,
+			'hour' : 5,
+			'minute' : 0
+		}
+		
 		# nation of player forces; corresponds to a key in nation_defs.json
 		self.player_nation = ''
+
+
+# Campaign Map Hex: a map hex for the campaign day map, each representing map scenario hexes
+# scaled to approx. 2.7 km. wide
+class CampaignMapHex:
+	def __init__(self, hx, hy):
+		self.hx = hx
+		self.hy = hy
+
+
+# Campaign Day: represents one calendar day in a campaign with a 5x7 map of terrain hexes, each of
+# which may spawn a Scenario
+class CampaignDay:
+	def __init__(self):
+		
+		CAMPAIGN_DAY_HEXES = [
+			(0,0),(1,0),(2,0),(3,0),(4,0),
+			(0,1),(1,1),(2,1),(3,1),
+			(-1,2),(0,2),(1,2),(2,2),(3,2),
+			(-1,3),(0,3),(1,3),(2,3),
+			(-2,4),(-1,4),(0,4),(1,4),(2,4),
+			(-2,5),(-1,5),(0,5),(1,5),
+			(-3,6),(-2,6),(-1,6),(0,6),(1,6)
+		]
+		
+		# campaign day map
+		self.map_hexes = {}
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			self.map_hexes[(hx,hy)] = CampaignMapHex(hx,hy)
+				
+			
 
 
 # Session: stores data that is generated for each game session and not stored in the saved game
@@ -611,7 +652,7 @@ class AI:
 		self.owner.DoPostActivation()
 	
 
-# Map Hex: a single hex-shaped block of terrain in a scenario
+# Map Hex: a single hex-shaped block of terrain within a scenario
 # roughly scaled to 160 m. in width
 class MapHex:
 	def __init__(self, hx, hy):
@@ -674,8 +715,6 @@ class Scenario:
 		
 		# game turn, active player, and phase tracker
 		self.game_turn = {
-			'hour' : 0,			# current time of day: hour in 24-hour clock
-			'minute' : 0,			# " minute "
 			'active_player' : 0,		# currently active player number
 			'goes_first' : 0,		# which player side acts first in each turn
 		}
@@ -1144,11 +1183,11 @@ class Scenario:
 		else:
 			self.game_turn['active_player'] = self.game_turn['goes_first']
 		
-			# advance clock
-			self.game_turn['minute'] += 1
-			if self.game_turn['minute'] == 60:
-				self.game_turn['minute'] = 0
-				self.game_turn['hour'] += 1
+			# advance campaign clock
+			campaign.calendar['minute'] += 1
+			if campaign.calendar['minute'] == 60:
+				campaign.calendar['minute'] = 0
+				campaign.calendar['hour'] += 1
 
 		# check for objective capture
 		for map_hex in self.map_objectives:
@@ -4207,17 +4246,29 @@ def SaveGame():
 	save = shelve.open('savegame', 'n')
 	save['scenario'] = scenario
 	save['campaign'] = campaign
+	save['campaign_day'] = campaign_day
+	save['version'] = VERSION		# for now the saved version must be identical to the current one
 	save.close()
 
 
 # load a saved game
 def LoadGame():
-	global campaign, scenario
+	global campaign, campaign_day, scenario
 	save = shelve.open('savegame')
 	campaign = save['campaign']
+	campaign_day = save['campaign_day']
 	scenario = save['scenario']
 	save.close()
 
+
+# check the saved game to see if it is compatible with the current game version
+def CheckSavedGameVersion():
+	save = shelve.open('savegame')
+	saved_version = save['version']
+	save.close()
+	if saved_version == VERSION:
+		return True
+	return False
 
 # remove a saved game, either because the scenario is over or the player abandoned it
 def EraseGame():
@@ -4486,7 +4537,7 @@ def DisplayScenInfo():
 		libtcod.CENTER, 'Western Poland')
 	ConsolePrintEx(scen_info_con, 14, 2, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'September 1939')
-	text = str(scenario.game_turn['hour']) + ':' + str(scenario.game_turn['minute']).zfill(2)
+	text = str(campaign.calendar['hour']) + ':' + str(campaign.calendar['minute']).zfill(2)
 	ConsolePrintEx(scen_info_con, 14, 3, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 	
@@ -4679,7 +4730,7 @@ def ShowNotification(text, confirm=False):
 	
 	# determine window x, height, and y position
 	x = WINDOW_XM - 30
-	lines = wrap(text, 58)
+	lines = wrap(text, 56)
 	h = len(lines) + 6
 	y = WINDOW_YM - int(h/2)
 	
@@ -5375,7 +5426,7 @@ def UpdateScenarioDisplay():
 	libtcod.console_blit(hex_terrain_con, 0, 0, 0, 0, con, 74, 50)		# hex terrain info
 	
 	# TEMP - draw current time and weather conditions directly to console
-	text = str(scenario.game_turn['hour']).zfill(2) + ':' + str(scenario.game_turn['minute']).zfill(2)
+	text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
 	ConsolePrint(con, 56, 1, text)
 	ConsolePrintEx(con, 58, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
 	
@@ -5492,9 +5543,6 @@ def DoScenario(load_game=False):
 	
 		# generate a new scenario object
 		scenario = Scenario()
-		
-		# set up time of day
-		scenario.game_turn['hour'] = 5
 		
 		# display scenario info, allow player to cancel start
 		if not DisplayScenInfo(): return
@@ -6153,6 +6201,14 @@ while not exit_game:
 		elif key_char == 'c':
 			if not os.path.exists('savegame'):
 				continue
+			
+			# check that saved game is correct version
+			if not CheckSavedGameVersion():
+				text = 'Saved game was saved with an older version of the program, cannot continue.'
+				result = ShowNotification(text)
+				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+				continue
+			
 			DoScenario(load_game=True)
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
@@ -6164,10 +6220,10 @@ while not exit_game:
 				result = ShowNotification(text, confirm=True)
 				if not result:
 					libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
-					Wait(15)
 					continue
 			campaign = Campaign()
 			campaign.player_nation = 'Germany'
+			campaign_day = CampaignDay()
 			DoScenario()
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)

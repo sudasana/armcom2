@@ -368,7 +368,12 @@ class CampaignDay:
 		# campaign day map
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			self.map_hexes[(hx,hy)] = CampaignMapHex(hx,hy)
+			self.map_hexes[(hx,hy)] = CampaignMapHex(hx, hy)
+	
+	
+	# main campaign day input loop
+	def CampaignDayLoop(self):
+		pass
 				
 			
 

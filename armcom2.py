@@ -62,7 +62,7 @@ AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-03-24'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-03-31'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 LIMIT_FPS = 50						# maximum screen refreshes per second
@@ -5945,6 +5945,19 @@ libtcod.console_set_default_background(0, libtcod.black)
 libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
 
+# create new session object
+session = Session()
+
+# try to init sound mixer and load sounds if successful
+main_theme = None
+if session.InitMixer():
+	session.LoadSounds()
+	# start main menu theme
+	main_theme = mixer.Mix_PlayChannel(-1, mixer.Mix_LoadWAV(SOUNDPATH + 'armcom2_theme.ogg'), -1)
+else:
+	config.set('ArmCom2', 'sounds_enabled', 'false')
+	print 'Not able to init mixer, sounds disabled'
+
 # display loading screen
 ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
 	'Loading...')
@@ -5952,16 +5965,6 @@ libtcod.console_flush()
 
 # generate keyboard mapping dictionaries
 GenerateKeyboards()
-
-# create new session object
-session = Session()
-
-# try to init sound mixer and load sounds if successful
-if session.InitMixer():
-	session.LoadSounds()
-else:
-	config.set('ArmCom2', 'sounds_enabled', 'false')
-	print 'Not able to init mixer, sounds disabled'
 
 # set up double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -6160,7 +6163,7 @@ while not exit_game:
 	if libtcod.console_is_window_closed(): sys.exit()
 	
 	# trigger animation and update screen
-	if time.time() - time_click >= 0.05:
+	if time.time() - time_click >= 0.08:
 		AnimateMainMenu()
 		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 		time_click = time.time()
@@ -6209,7 +6212,16 @@ while not exit_game:
 				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 				continue
 			
+			# pause main theme if playing
+			if main_theme is not None:
+				mixer.Mix_Pause(main_theme)
+			
 			DoScenario(load_game=True)
+			
+			# resume main theme if playing
+			if main_theme is not None:
+				mixer.Mix_Resume(main_theme)
+			
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 		
@@ -6221,10 +6233,14 @@ while not exit_game:
 				if not result:
 					libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 					continue
+			if main_theme is not None:
+				mixer.Mix_Pause(main_theme)
 			campaign = Campaign()
 			campaign.player_nation = 'Germany'
 			campaign_day = CampaignDay()
 			DoScenario()
+			if main_theme is not None:
+				mixer.Mix_Resume(main_theme)
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 	

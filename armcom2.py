@@ -362,7 +362,9 @@ class CampaignDay:
 			(-1,3),(0,3),(1,3),(2,3),
 			(-2,4),(-1,4),(0,4),(1,4),(2,4),
 			(-2,5),(-1,5),(0,5),(1,5),
-			(-3,6),(-2,6),(-1,6),(0,6),(1,6)
+			(-3,6),(-2,6),(-1,6),(0,6),(1,6),
+			(-3,7),(-2,7),(-1,7),(0,7),
+			(-4,8),(-3,8),(-2,8),(-1,8),(0,8)
 		]
 		
 		# campaign day map
@@ -370,11 +372,97 @@ class CampaignDay:
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)] = CampaignMapHex(hx, hy)
 	
+	# plot the centre of a day map hex location onto the map console
+	# top left of hex 0,0 will appear at cell 1,1
+	def PlotCDHex(self, hx, hy):
+		x = (hx*6) + (hy*3)
+		y = (hy*5)
+		return (x+4,y+5)
+	
+	
+	# generate the campaign day map console
+	def UpdateCDMapCon(self):
+		libtcod.console_clear(cd_map_con)
+		
+		# draw map hexes to console
+		dayhex_openground = LoadXP('dayhex_openground.xp')
+		libtcod.console_set_key_color(dayhex_openground, KEY_COLOR)
+		
+		for key, map_hex in self.map_hexes.iteritems():
+			(x,y) = self.PlotCDHex(map_hex.hx, map_hex.hy)
+			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, cd_map_con, x-3, y-4)
+		
+	
+	
+	# draw all campaign day consoles to screen
+	def UpdateCDDisplay(self):
+		libtcod.console_clear(con)
+		libtcod.console_blit(daymap_bkg, 0, 0, 0, 0, con, 0, 0)
+		libtcod.console_blit(cd_map_con, 0, 0, 0, 0, con, 29, 5)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
 	
 	# main campaign day input loop
 	def CampaignDayLoop(self):
-		pass
-				
+		
+		global daymap_bkg, cd_map_con
+		
+		# campaign day map background
+		daymap_bkg = LoadXP('daymap_bkg.xp')
+		
+		# campaign day map console 33x51
+		cd_map_con = libtcod.console_new(33, 51)
+		libtcod.console_set_default_background(cd_map_con, libtcod.black)
+		libtcod.console_set_default_foreground(cd_map_con, libtcod.white)
+		libtcod.console_clear(cd_map_con)
+		
+		# generate consoles for the first time
+		self.UpdateCDMapCon()
+		self.UpdateCDDisplay()
+		
+		# record mouse cursor position to check when it has moved
+		mouse_x = -1
+		mouse_y = -1
+		
+		exit_loop = False
+		while not exit_loop:
+			
+			# emergency exit in case of endless loop
+			if libtcod.console_is_window_closed(): sys.exit()
+		
+			libtcod.console_flush()
+			
+			# get keyboard and/or mouse event
+			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+				key, mouse)
+			
+			# check to see if mouse cursor has moved
+			if mouse.cx != mouse_x or mouse.cy != mouse_y:
+				mouse_x = mouse.cx
+				mouse_y = mouse.cy
+			
+			##### Player Keyboard Commands #####
+			
+			if session.key_down:
+				if event != libtcod.EVENT_KEY_RELEASE:
+					continue
+				session.key_down = False
+			if event != libtcod.EVENT_KEY_PRESS:
+				continue
+			session.key_down = True
+			
+			# Determine action based on key pressed
+			
+			# TEMP exit
+			if key.vk == libtcod.KEY_ESCAPE:
+				exit_loop = True
+			
+			# key commands
+			key_char = chr(key.c).lower()
+			
+			# map key to current keyboard layout
+			key_char = DecodeKey(key_char)
+			
 			
 
 
@@ -4024,7 +4112,7 @@ def GetHexRect(hx, hy, w, h):
 	return hex_list
 
 
-# plot the center of a given in-game hex on the viewport console
+# plot the center of a given in-game hex on the scenario viewport console
 # 0,0 appears in centre of vp console
 def PlotHex(hx, hy):
 	x = hx*4 + 23
@@ -5638,7 +5726,6 @@ def DoScenario(load_game=False):
 	mouse_x = -1
 	mouse_y = -1
 	
-	trigger_end_of_phase = False
 	exit_scenario = False
 	while not exit_scenario:
 		
@@ -5836,10 +5923,6 @@ def DoScenario(load_game=False):
 					UpdateScenarioDisplay()
 					libtcod.console_flush()
 					SaveGame()
-					
-					# check for end of movement
-					if scenario.player_unit.move_finished:
-						trigger_end_of_phase = True
 			
 			# pivot hull facing
 			elif key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
@@ -5955,13 +6038,15 @@ session = Session()
 
 # try to init sound mixer and load sounds if successful
 main_theme = None
-if session.InitMixer():
-	session.LoadSounds()
-	# start main menu theme
-	main_theme = mixer.Mix_PlayChannel(-1, mixer.Mix_LoadWAV(SOUNDPATH + 'armcom2_theme.ogg'), -1)
-else:
-	config.set('ArmCom2', 'sounds_enabled', 'false')
-	print 'Not able to init mixer, sounds disabled'
+
+if config.getboolean('ArmCom2', 'sounds_enabled'):
+	if session.InitMixer():
+		session.LoadSounds()
+		# start main menu theme
+		main_theme = mixer.Mix_PlayChannel(-1, mixer.Mix_LoadWAV(SOUNDPATH + 'armcom2_theme.ogg'), -1)
+	else:
+		config.set('ArmCom2', 'sounds_enabled', 'false')
+		print 'Not able to init mixer, sounds disabled'
 
 # display loading screen
 ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -6243,7 +6328,11 @@ while not exit_game:
 			campaign = Campaign()
 			campaign.player_nation = 'Germany'
 			campaign_day = CampaignDay()
-			DoScenario()
+			
+			campaign_day.CampaignDayLoop()
+			
+			
+			#DoScenario()
 			if main_theme is not None:
 				mixer.Mix_Resume(main_theme)
 			UpdateMainMenuCon(options_menu_active)

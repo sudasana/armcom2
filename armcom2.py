@@ -69,8 +69,12 @@ LIMIT_FPS = 50						# maximum screen refreshes per second
 WINDOW_WIDTH, WINDOW_HEIGHT = 90, 60			# size of game window in character cells
 WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of game window
 
+
+##### Hex geometry definitions #####
+
 # directional and positional constants
 DESTHEX = [(0,-1), (1,-1), (1,0), (0,1), (-1,1), (-1,0)]	# change in hx, hy values for hexes in each direction
+CD_DESTHEX = [(1,-1), (1,0), (0,1), (-1,1), (-1,0), (0,-1)]	# same for pointy-top campaign day hexes
 PLOT_DIR = [(0,-1), (1,-1), (1,1), (0,1), (-1,1), (-1,-1)]	# position of direction indicator
 TURRET_CHAR = [254, 47, 92, 254, 47, 92]			# characters to use for turret display
 
@@ -110,9 +114,28 @@ HEX_EDGE_CELLS = {
 	5: [(-3,0),(-2,-1),(-1,-2)]
 }
 
-# list of possible keyboard layout settings
-KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']
+# same for campaign day hexes (pointy-topped)
+CD_HEX_EDGE_CELLS = {
+	0: [(0,-4),(1,-3),(2,-2),(3,-1)],
+	1: [(3,-1),(3,0),(3,1)],
+	2: [(3,1),(2,2),(1,3),(0,4)],
+	3: [(0,4),(-1,3),(-2,2),(-3,1)],
+	4: [(-3,1),(-3,0),(-3,-1)],
+	5: [(-3,-1),(-2,-2),(-1,-3),(0,-4)]
+}
 
+# hexes on campaign day map
+CAMPAIGN_DAY_HEXES = [
+	(0,0),(1,0),(2,0),(3,0),(4,0),
+	(0,1),(1,1),(2,1),(3,1),
+	(-1,2),(0,2),(1,2),(2,2),(3,2),
+	(-1,3),(0,3),(1,3),(2,3),
+	(-2,4),(-1,4),(0,4),(1,4),(2,4),
+	(-2,5),(-1,5),(0,5),(1,5),
+	(-3,6),(-2,6),(-1,6),(0,6),(1,6),
+	(-3,7),(-2,7),(-1,7),(0,7),
+	(-4,8),(-3,8),(-2,8),(-1,8),(0,8)
+]
 
 ##### Colour Definitions #####
 
@@ -127,6 +150,9 @@ ENEMY_UNIT_COL = libtcod.light_red			# known "
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
 RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
 
+
+# list of possible keyboard layout settings
+KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']
 
 # hex terrain types
 HEX_TERRAIN_TYPES = [
@@ -348,6 +374,7 @@ class CampaignMapHex:
 	def __init__(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
+		self.controlled_by = 1		# which player side currently controls this zone
 
 
 # Campaign Day: represents one calendar day in a campaign with a 5x7 map of terrain hexes, each of
@@ -355,29 +382,24 @@ class CampaignMapHex:
 class CampaignDay:
 	def __init__(self):
 		
-		CAMPAIGN_DAY_HEXES = [
-			(0,0),(1,0),(2,0),(3,0),(4,0),
-			(0,1),(1,1),(2,1),(3,1),
-			(-1,2),(0,2),(1,2),(2,2),(3,2),
-			(-1,3),(0,3),(1,3),(2,3),
-			(-2,4),(-1,4),(0,4),(1,4),(2,4),
-			(-2,5),(-1,5),(0,5),(1,5),
-			(-3,6),(-2,6),(-1,6),(0,6),(1,6),
-			(-3,7),(-2,7),(-1,7),(0,7),
-			(-4,8),(-3,8),(-2,8),(-1,8),(0,8)
-		]
-		
 		# campaign day map
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)] = CampaignMapHex(hx, hy)
+		
+		# player unit group location
+		self.player_unit_location = (-2, 8)
+		
+		# set player location to player control
+		self.map_hexes[(-2, 8)].controlled_by = 0
+		
 	
 	# plot the centre of a day map hex location onto the map console
-	# top left of hex 0,0 will appear at cell 1,1
+	# top left of hex 0,0 will appear at cell 2,2
 	def PlotCDHex(self, hx, hy):
 		x = (hx*6) + (hy*3)
 		y = (hy*5)
-		return (x+4,y+5)
+		return (x+5,y+6)
 	
 	
 	# generate the campaign day map console
@@ -391,33 +413,99 @@ class CampaignDay:
 		for key, map_hex in self.map_hexes.iteritems():
 			(x,y) = self.PlotCDHex(map_hex.hx, map_hex.hy)
 			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, cd_map_con, x-3, y-4)
+	
+		# draw hex row guides
+		for i in range(0, 9):
+			libtcod.console_put_char_ex(cd_map_con, 0, 6+(i*5), chr(i+65),
+				libtcod.light_green, libtcod.black)
 		
+		# draw hex column guides
+		for i in range(0, 5):
+			libtcod.console_put_char_ex(cd_map_con, 7+(i*6), 50, chr(i+49),
+				libtcod.light_green, libtcod.black)
+		for i in range(5, 9):
+			libtcod.console_put_char_ex(cd_map_con, 32, 39-((i-5)*10), chr(i+49),
+				libtcod.light_green, libtcod.black)
+	
+	# update the campaign day unit layer console
+	def UpdateCDUnitCon(self):
+		libtcod.console_clear(cd_unit_con)
+		
+		# draw player unit group
+		(hx, hy) = self.player_unit_location
+		(x,y) = self.PlotCDHex(hx, hy)
+		libtcod.console_put_char_ex(cd_unit_con, x, y, '@', libtcod.white, libtcod.black)
+	
+	
+	# update the zone control console, showing the battlefront between two sides
+	def UpdateCDControlCon(self):
+		libtcod.console_clear(cd_control_con)
+		
+		# run through every hex, if it's under player control, see if there an adjacent
+		# enemy-controlled hex and if so, draw a border there
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			if self.map_hexes[(hx,hy)].controlled_by != 0: continue
+			
+			for direction in range(6):
+				(hx_m, hy_m) = CD_DESTHEX[direction]
+				hx2 = hx+hx_m
+				hy2 = hy+hy_m
+				
+				# hex is off map
+				if (hx2, hy2) not in self.map_hexes: continue
+				# hex is friendly controlled
+				if self.map_hexes[(hx2,hy2)].controlled_by == 0: continue
+				
+				# draw a border
+				(x,y) = self.PlotCDHex(hx, hy)
+				for (xm,ym) in CD_HEX_EDGE_CELLS[direction]:
+					libtcod.console_put_char_ex(cd_control_con, x+xm,
+						y+ym, chr(249), libtcod.red, libtcod.black)
 	
 	
 	# draw all campaign day consoles to screen
 	def UpdateCDDisplay(self):
 		libtcod.console_clear(con)
-		libtcod.console_blit(daymap_bkg, 0, 0, 0, 0, con, 0, 0)
-		libtcod.console_blit(cd_map_con, 0, 0, 0, 0, con, 29, 5)
+		libtcod.console_blit(daymap_bkg, 0, 0, 0, 0, con, 0, 0)			# background frame
+		libtcod.console_blit(cd_map_con, 0, 0, 0, 0, con, 28, 4)		# terrain map
+		libtcod.console_blit(cd_control_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# zone control layer
+		libtcod.console_blit(cd_unit_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# unit group layer
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
 	
 	# main campaign day input loop
 	def CampaignDayLoop(self):
 		
-		global daymap_bkg, cd_map_con
+		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con
+		
+		# create consoles
 		
 		# campaign day map background
 		daymap_bkg = LoadXP('daymap_bkg.xp')
 		
-		# campaign day map console 33x51
-		cd_map_con = libtcod.console_new(33, 51)
+		# campaign day map console 35x53
+		cd_map_con = libtcod.console_new(35, 53)
 		libtcod.console_set_default_background(cd_map_con, libtcod.black)
 		libtcod.console_set_default_foreground(cd_map_con, libtcod.white)
 		libtcod.console_clear(cd_map_con)
 		
+		# campaign day unit group console 35x53
+		cd_unit_con = libtcod.console_new(35, 53)
+		libtcod.console_set_default_background(cd_unit_con, KEY_COLOR)
+		libtcod.console_set_default_foreground(cd_unit_con, libtcod.white)
+		libtcod.console_clear(cd_unit_con)
+		
+		# campaign day hex zone control console 35x53
+		cd_control_con = libtcod.console_new(35, 53)
+		libtcod.console_set_default_background(cd_control_con, KEY_COLOR)
+		libtcod.console_set_default_foreground(cd_control_con, libtcod.red)
+		libtcod.console_clear(cd_control_con)
+		
+		
 		# generate consoles for the first time
 		self.UpdateCDMapCon()
+		self.UpdateCDControlCon()
+		self.UpdateCDUnitCon()
 		self.UpdateCDDisplay()
 		
 		# record mouse cursor position to check when it has moved

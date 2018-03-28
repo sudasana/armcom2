@@ -171,7 +171,7 @@ CREW_NAME_MAX_LENGTH = 20
 # list of crew stat names
 STAT_NAMES = ['Strength', 'Grit', 'Perception', 'Intelligence']
 
-# list of player menus and their highlight colours
+# list of scenario menus and their highlight colours
 MENU_LIST = [
 	('Command', 1, libtcod.Color(130, 0, 180)),
 	('Crew Action', 2, libtcod.Color(140, 140, 0)),
@@ -179,6 +179,19 @@ MENU_LIST = [
 	('Combat', 4, libtcod.Color(180, 0, 45))
 ]
 
+# list of campaign day menus and their highlight colours
+CD_MENU_LIST = [
+	('Support', 1, libtcod.Color(128, 128, 128)),
+	('Crew', 2, libtcod.Color(140, 140, 0)),
+	('Travel', 3, libtcod.Color(70, 140, 0)),
+	('Group', 4, libtcod.Color(180, 0, 45)),
+	('Supply', 5, libtcod.Color(128, 100, 64))
+]
+
+# list of commands for travel in campaign day
+CD_TRAVEL_CMDS = [
+	('e',2,-2,228), ('d',2,0,26), ('c',2,2,229), ('z',-2,2,230), ('a',-2,0,27), ('q',-2,-2,231)
+]
 
 # load crew action definitions
 with open(DATAPATH + 'crew_action_defs.json') as data_file:
@@ -382,6 +395,9 @@ class CampaignMapHex:
 class CampaignDay:
 	def __init__(self):
 		
+		# number of currently active command menu
+		self.active_menu = 3
+		
 		# campaign day map
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
@@ -402,7 +418,7 @@ class CampaignDay:
 		return (x+5,y+6)
 	
 	
-	# generate the campaign day map console
+	# generate/update the campaign day map console
 	def UpdateCDMapCon(self):
 		libtcod.console_clear(cd_map_con)
 		
@@ -427,7 +443,8 @@ class CampaignDay:
 			libtcod.console_put_char_ex(cd_map_con, 32, 39-((i-5)*10), chr(i+49),
 				libtcod.light_green, libtcod.black)
 	
-	# update the campaign day unit layer console
+	
+	# generate/update the campaign day unit layer console
 	def UpdateCDUnitCon(self):
 		libtcod.console_clear(cd_unit_con)
 		
@@ -437,7 +454,7 @@ class CampaignDay:
 		libtcod.console_put_char_ex(cd_unit_con, x, y, '@', libtcod.white, libtcod.black)
 	
 	
-	# update the zone control console, showing the battlefront between two sides
+	# generate/update the zone control console, showing the battlefront between two sides
 	def UpdateCDControlCon(self):
 		libtcod.console_clear(cd_control_con)
 		
@@ -463,20 +480,82 @@ class CampaignDay:
 						y+ym, chr(249), libtcod.red, libtcod.black)
 	
 	
+	# generate/update the command menu console
+	def UpdateCDCommandCon(self):
+		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+		libtcod.console_clear(cd_command_con)
+		
+		x = 0
+		for (text, num, col) in CD_MENU_LIST:
+			libtcod.console_set_default_background(cd_command_con, col)
+			libtcod.console_rect(cd_command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
+			
+			# TEMP - only travel active for now
+			if num != 3:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
+			# menu number
+			ConsolePrint(cd_command_con, x, 0, str(num))
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			
+			x += 2
+			
+			# display menu text if active
+			if self.active_menu == num:
+				libtcod.console_rect(cd_command_con, x, 0, len(text)+2, 1,
+					True, libtcod.BKGND_SET)
+				ConsolePrint(cd_command_con, x, 0, text)
+				x += len(text) + 2
+		
+		# fill in rest of menu line with final colour
+		libtcod.console_rect(cd_command_con, x, 0, 24-x, 1, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(cd_command_con, libtcod.black)
+		
+		# travel menu
+		if self.active_menu == 3:
+			
+			libtcod.console_put_char(cd_command_con, 11, 4, '@')
+			
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
+			for direction in range(6):
+				(key, x, y, char) = CD_TRAVEL_CMDS[direction]
+				libtcod.console_put_char(cd_command_con, 11+x, 4+y, EncodeKey(key).upper())
+				if direction <= 2:
+					x+=1
+				else:
+					x-=1
+				libtcod.console_put_char(cd_command_con, 11+x, 4+y, chr(char))
+			
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			ConsolePrintEx(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Select Direction')
+	
+	
+	# generate/update the time and weather console
+	# FUTURE: will also be used in scenario display
+	def UpdateTimeWeatherDisplay(self):
+		libtcod.console_clear(time_weather_con)
+		text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
+		ConsolePrint(time_weather_con, 14, 1, text)
+		ConsolePrintEx(time_weather_con, 16, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
+		
+		
 	# draw all campaign day consoles to screen
 	def UpdateCDDisplay(self):
 		libtcod.console_clear(con)
 		libtcod.console_blit(daymap_bkg, 0, 0, 0, 0, con, 0, 0)			# background frame
 		libtcod.console_blit(cd_map_con, 0, 0, 0, 0, con, 28, 4)		# terrain map
+		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 29, 0)		# time and weather
 		libtcod.console_blit(cd_control_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# zone control layer
 		libtcod.console_blit(cd_unit_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# unit group layer
+		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
 	
 	# main campaign day input loop
 	def CampaignDayLoop(self):
 		
-		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con
+		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
+		global time_weather_con
 		
 		# create consoles
 		
@@ -501,11 +580,25 @@ class CampaignDay:
 		libtcod.console_set_default_foreground(cd_control_con, libtcod.red)
 		libtcod.console_clear(cd_control_con)
 		
+		# time and weather console
+		time_weather_con = libtcod.console_new(33, 4)
+		libtcod.console_set_default_background(time_weather_con, libtcod.black)
+		libtcod.console_set_default_foreground(time_weather_con, libtcod.white)
+		libtcod.console_clear(time_weather_con)
+		
+		# command menu console 24x24
+		cd_command_con = libtcod.console_new(24, 24)
+		libtcod.console_set_default_background(cd_command_con, libtcod.black)
+		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+		libtcod.console_clear(cd_command_con)
+		
 		
 		# generate consoles for the first time
 		self.UpdateCDMapCon()
 		self.UpdateCDControlCon()
 		self.UpdateCDUnitCon()
+		self.UpdateTimeWeatherDisplay()
+		self.UpdateCDCommandCon()
 		self.UpdateCDDisplay()
 		
 		# record mouse cursor position to check when it has moved
@@ -5236,17 +5329,16 @@ def UpdateCommandCon():
 	if scenario.game_turn['active_player'] == 1:
 		return
 	
-	# TODO: draw menu title based on active menu
+	# draw menu title based on active menu
 	x = 0
 	for (text, num, col) in MENU_LIST:
 		libtcod.console_set_default_background(command_con, col)
-		
-		# menu number
 		libtcod.console_rect(command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
 		
 		# TEMP - no command options yet
 		if num == 1:
 			libtcod.console_set_default_foreground(command_con, libtcod.dark_grey)
+		# menu number
 		ConsolePrint(command_con, x, 0, str(num))
 		libtcod.console_set_default_foreground(command_con, libtcod.white)
 		
@@ -5607,6 +5699,7 @@ def UpdateScenarioDisplay():
 	libtcod.console_blit(hex_terrain_con, 0, 0, 0, 0, con, 74, 50)		# hex terrain info
 	
 	# TEMP - draw current time and weather conditions directly to console
+	# FUTURE: use time_weather_con generated by campaign day
 	text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
 	ConsolePrint(con, 56, 1, text)
 	ConsolePrintEx(con, 58, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')

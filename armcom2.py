@@ -379,6 +379,16 @@ class Campaign:
 		
 		# nation of player forces; corresponds to a key in nation_defs.json
 		self.player_nation = ''
+	
+	# advance the current campaign time
+	# TODO: how to handle rolling over into new day?
+	def AdvanceClock(self, hours, minutes):
+		self.calendar['hour'] += hours
+		self.calendar['minute'] += minutes
+		while self.calendar['minute'] >= 60:
+			self.calendar['hour'] += 1
+			self.calendar['minute'] -= 60
+		
 
 
 # Campaign Map Hex: a map hex for the campaign day map, each representing map scenario hexes
@@ -395,19 +405,17 @@ class CampaignMapHex:
 class CampaignDay:
 	def __init__(self):
 		
-		# number of currently active command menu
-		self.active_menu = 3
-		
 		# campaign day map
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)] = CampaignMapHex(hx, hy)
 		
-		# player unit group location
-		self.player_unit_location = (-2, 8)
+		self.player_unit_location = (-2, 8)		# set player unit group location
+		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
 		
-		# set player location to player control
-		self.map_hexes[(-2, 8)].controlled_by = 0
+		
+		self.active_menu = 3				# number of currently active command menu
+		self.travel_direction = None			# selected direction of travel
 		
 	
 	# plot the centre of a day map hex location onto the map console
@@ -416,6 +424,12 @@ class CampaignDay:
 		x = (hx*6) + (hy*3)
 		y = (hy*5)
 		return (x+5,y+6)
+	
+	
+	# returns the hx, hy location of the adjacent hex in direction
+	def GetAdjacentCDHex(self, hx1, hy1, direction):
+		(hx_m, hy_m) = CD_DESTHEX[direction]
+		return (hx1+hx_m, hy1+hy_m)
 	
 	
 	# generate/update the campaign day map console
@@ -515,8 +529,13 @@ class CampaignDay:
 			
 			libtcod.console_put_char(cd_command_con, 11, 4, '@')
 			
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
 			for direction in range(6):
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
+				
+				if self.travel_direction is not None:
+					if self.travel_direction == direction:
+						libtcod.console_set_default_foreground(cd_command_con, libtcod.blue)
+				
 				(key, x, y, char) = CD_TRAVEL_CMDS[direction]
 				libtcod.console_put_char(cd_command_con, 11+x, 4+y, EncodeKey(key).upper())
 				if direction <= 2:
@@ -525,9 +544,21 @@ class CampaignDay:
 					x-=1
 				libtcod.console_put_char(cd_command_con, 11+x, 4+y, chr(char))
 			
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			ConsolePrintEx(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Select Direction')
+			if self.travel_direction is None:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+				ConsolePrintEx(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
+					'Select Direction')
+			else:
+				
+				# check to see whether travel is possible
+				(hx, hy) = self.player_unit_location
+				(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
+				if (hx, hy) in self.map_hexes:
+				
+					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+					ConsolePrint(cd_command_con, 5, 22, 'Enter')
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+					ConsolePrint(cd_command_con, 12, 22, 'Proceed')
 	
 	
 	# generate/update the time and weather console
@@ -644,7 +675,54 @@ class CampaignDay:
 			# map key to current keyboard layout
 			key_char = DecodeKey(key_char)
 			
-			
+			# travel menu active
+			if self.active_menu == 3:
+				
+				# set travel direction
+				DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
+				if key_char in DIRECTION_KEYS:
+					direction = DIRECTION_KEYS.index(key_char)
+					if self.travel_direction is None:
+						self.travel_direction = direction
+					else:
+						# cancel direction
+						if self.travel_direction == direction:
+							self.travel_direction = None
+						else:
+							self.travel_direction = direction
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					continue
+				
+				# proceed with travel
+				if key.vk == libtcod.KEY_ENTER and self.travel_direction is not None:
+					
+					# ensure that travel is possible
+					(hx, hy) = self.player_unit_location
+					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
+					if (hx, hy) not in self.map_hexes:
+						continue
+					
+					# TEMP: move player
+					self.player_unit_location = (hx, hy)
+					
+					# clear travel direction
+					self.travel_direction = None
+					
+					# advance campaign clock
+					campaign.AdvanceClock(0, 15)
+					
+					# if location was captured from enemy control, set control
+					# and update control console
+					if self.map_hexes[(hx, hy)].controlled_by == 1:
+						self.map_hexes[(hx, hy)].controlled_by = 0
+						self.UpdateCDControlCon()
+
+					# update rest of consoles
+					self.UpdateCDUnitCon()
+					self.UpdateTimeWeatherDisplay()
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
 
 
 # Session: stores data that is generated for each game session and not stored in the saved game
@@ -1457,11 +1535,8 @@ class Scenario:
 		else:
 			self.game_turn['active_player'] = self.game_turn['goes_first']
 		
-			# advance campaign clock
-			campaign.calendar['minute'] += 1
-			if campaign.calendar['minute'] == 60:
-				campaign.calendar['minute'] = 0
-				campaign.calendar['hour'] += 1
+			# advance campaign clock one minute
+			campaign.AdvanceClock(0, 1)
 
 		# check for objective capture
 		for map_hex in self.map_objectives:

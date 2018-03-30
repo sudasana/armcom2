@@ -201,9 +201,18 @@ with open(DATAPATH + 'crew_action_defs.json') as data_file:
 AMMO_TYPES = ['HE', 'AP']
 
 
-
+#################################
 ##### Game Engine Constants #####
-# Can be modified for a different game experience
+#################################
+
+# TODO: move to a json file
+
+# base chance of triggering a battle when entering an enemy-held hex on the campaign day map
+CD_BATTLE_BASE_CHANCE = 45.0
+# effect of each point of strength on chance
+CD_BATTLE_STR_MOD = 4.0
+# effect of each point of organization <> 5 on chance
+CD_BATTLE_ORGANIZATION_MOD = 5.0
 
 # of all enemy units initially spawned in a scenario, portion that are spawned as dummy units
 ENEMY_DUMMY_RATIO = 0.25
@@ -319,8 +328,6 @@ MAX_LOS_DISTANCE = 6
 
 ELEVATION_M = 10.0			# each elevation level represents x meters of height
 
-# TODO: move following to a json file
-
 # percentile LoS modifiers for terrain types
 TERRAIN_LOS_MODS = {
 	'openground' : 0.0,
@@ -396,657 +403,8 @@ class Campaign:
 		while self.calendar['minute'] >= 60:
 			self.calendar['hour'] += 1
 			self.calendar['minute'] -= 60
-		
 
 
-# Campaign Map Hex: a map hex for the campaign day map, each representing map scenario hexes
-# scaled to approx. 2.7 km. wide
-class CampaignMapHex:
-	def __init__(self, hx, hy):
-		self.hx = hx
-		self.hy = hy
-		self.controlled_by = 1		# which player side currently controls this zone
-		
-		# real enemy strength and organization, 0-9
-		r = -9 + libtcod.random_get_int(0, 1, 6) + libtcod.random_get_int(0, 1, 6) + libtcod.random_get_int(0, 1, 6)
-		if r < 0: r = 0
-		self.enemy_strength = r
-		
-		if r > 0:
-			r = 1 + libtcod.random_get_int(0, 0, 4) + libtcod.random_get_int(0, 0, 4)
-		self.enemy_organization = r
-		
-
-
-# Campaign Day: represents one calendar day in a campaign with a 5x7 map of terrain hexes, each of
-# which may spawn a Scenario
-class CampaignDay:
-	def __init__(self):
-		
-		# campaign day map
-		self.map_hexes = {}
-		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			self.map_hexes[(hx,hy)] = CampaignMapHex(hx, hy)
-		
-		self.player_unit_location = (-2, 8)		# set player unit group location
-		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
-		
-		
-		self.active_menu = 3				# number of currently active command menu
-		self.travel_direction = None			# selected direction of travel
-		
-	
-	# plot the centre of a day map hex location onto the map console
-	# top left of hex 0,0 will appear at cell 2,2
-	def PlotCDHex(self, hx, hy):
-		x = (hx*6) + (hy*3)
-		y = (hy*5)
-		return (x+5,y+6)
-	
-	
-	# returns the hx, hy location of the adjacent hex in direction
-	def GetAdjacentCDHex(self, hx1, hy1, direction):
-		(hx_m, hy_m) = CD_DESTHEX[direction]
-		return (hx1+hx_m, hy1+hy_m)
-	
-	
-	# generate/update the campaign day map console
-	def UpdateCDMapCon(self):
-		libtcod.console_clear(cd_map_con)
-		
-		# draw map hexes to console
-		dayhex_openground = LoadXP('dayhex_openground.xp')
-		libtcod.console_set_key_color(dayhex_openground, KEY_COLOR)
-		
-		for key, map_hex in self.map_hexes.iteritems():
-			(x,y) = self.PlotCDHex(map_hex.hx, map_hex.hy)
-			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, cd_map_con, x-3, y-4)
-	
-		# draw hex row guides
-		for i in range(0, 9):
-			libtcod.console_put_char_ex(cd_map_con, 0, 6+(i*5), chr(i+65),
-				libtcod.light_green, libtcod.black)
-		
-		# draw hex column guides
-		for i in range(0, 5):
-			libtcod.console_put_char_ex(cd_map_con, 7+(i*6), 50, chr(i+49),
-				libtcod.light_green, libtcod.black)
-		for i in range(5, 9):
-			libtcod.console_put_char_ex(cd_map_con, 32, 39-((i-5)*10), chr(i+49),
-				libtcod.light_green, libtcod.black)
-	
-	
-	# generate/update the campaign day unit layer console
-	def UpdateCDUnitCon(self):
-		libtcod.console_clear(cd_unit_con)
-		libtcod.console_set_default_foreground(cd_unit_con, libtcod.white)
-		
-		# draw player unit group
-		(hx, hy) = self.player_unit_location
-		(x,y) = self.PlotCDHex(hx, hy)
-		libtcod.console_put_char_ex(cd_unit_con, x, y, '@', libtcod.white, libtcod.black)
-		
-		# draw enemy strength and organization levels
-		libtcod.console_set_default_foreground(cd_unit_con, libtcod.red)
-		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			if self.map_hexes[(hx,hy)].controlled_by == 1:
-				text = str(self.map_hexes[(hx,hy)].enemy_strength)
-				text += ' '
-				text += str(self.map_hexes[(hx,hy)].enemy_organization)
-				(x,y) = self.PlotCDHex(hx, hy)
-				ConsolePrint(cd_unit_con, x-1, y, text)
-	
-	
-	# generate/update the zone control console, showing the battlefront between two sides
-	def UpdateCDControlCon(self):
-		libtcod.console_clear(cd_control_con)
-		
-		# run through every hex, if it's under player control, see if there an adjacent
-		# enemy-controlled hex and if so, draw a border there
-		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			if self.map_hexes[(hx,hy)].controlled_by != 0: continue
-			
-			for direction in range(6):
-				(hx_m, hy_m) = CD_DESTHEX[direction]
-				hx2 = hx+hx_m
-				hy2 = hy+hy_m
-				
-				# hex is off map
-				if (hx2, hy2) not in self.map_hexes: continue
-				# hex is friendly controlled
-				if self.map_hexes[(hx2,hy2)].controlled_by == 0: continue
-				
-				# draw a border
-				(x,y) = self.PlotCDHex(hx, hy)
-				for (xm,ym) in CD_HEX_EDGE_CELLS[direction]:
-					libtcod.console_put_char_ex(cd_control_con, x+xm,
-						y+ym, chr(249), libtcod.red, libtcod.black)
-	
-	
-	# generate/update the player unit console
-	def UpdateCDPlayerUnitCon(self):
-		libtcod.console_clear(cd_player_unit_con)
-		campaign.player_unit.DisplayMyInfo(cd_player_unit_con, 0, 0, status=False)
-	
-	
-	# generate/update the command menu console
-	def UpdateCDCommandCon(self):
-		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-		libtcod.console_clear(cd_command_con)
-		
-		x = 0
-		for (text, num, col) in CD_MENU_LIST:
-			libtcod.console_set_default_background(cd_command_con, col)
-			libtcod.console_rect(cd_command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
-			
-			# TEMP - only travel active for now
-			if num != 3:
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
-			# menu number
-			ConsolePrint(cd_command_con, x, 0, str(num))
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			
-			x += 2
-			
-			# display menu text if active
-			if self.active_menu == num:
-				libtcod.console_rect(cd_command_con, x, 0, len(text)+2, 1,
-					True, libtcod.BKGND_SET)
-				ConsolePrint(cd_command_con, x, 0, text)
-				x += len(text) + 2
-		
-		# fill in rest of menu line with final colour
-		libtcod.console_rect(cd_command_con, x, 0, 24-x, 1, True, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(cd_command_con, libtcod.black)
-		
-		# travel menu
-		if self.active_menu == 3:
-			
-			libtcod.console_put_char(cd_command_con, 11, 4, '@')
-			
-			for direction in range(6):
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
-				
-				if self.travel_direction is not None:
-					if self.travel_direction == direction:
-						libtcod.console_set_default_foreground(cd_command_con, libtcod.blue)
-				
-				(key, x, y, char) = CD_TRAVEL_CMDS[direction]
-				libtcod.console_put_char(cd_command_con, 11+x, 4+y, EncodeKey(key).upper())
-				if direction <= 2:
-					x+=1
-				else:
-					x-=1
-				libtcod.console_put_char(cd_command_con, 11+x, 4+y, chr(char))
-			
-			if self.travel_direction is None:
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				ConsolePrintEx(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
-					'Select Direction')
-			else:
-				
-				# check to see whether travel is possible
-				(hx, hy) = self.player_unit_location
-				(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
-				if (hx, hy) in self.map_hexes:
-				
-					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-					ConsolePrint(cd_command_con, 5, 22, 'Enter')
-					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-					ConsolePrint(cd_command_con, 12, 22, 'Proceed')
-	
-	
-	# generate/update the time and weather console
-	# FUTURE: will also be used in scenario display
-	def UpdateTimeWeatherDisplay(self):
-		libtcod.console_clear(time_weather_con)
-		text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
-		ConsolePrint(time_weather_con, 14, 1, text)
-		ConsolePrintEx(time_weather_con, 16, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
-		
-		
-	# draw all campaign day consoles to screen
-	def UpdateCDDisplay(self):
-		libtcod.console_clear(con)
-		libtcod.console_blit(daymap_bkg, 0, 0, 0, 0, con, 0, 0)			# background frame
-		libtcod.console_blit(cd_map_con, 0, 0, 0, 0, con, 28, 4)		# terrain map
-		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 29, 0)		# time and weather
-		libtcod.console_blit(cd_control_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# zone control layer
-		libtcod.console_blit(cd_unit_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# unit group layer
-		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
-		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-	
-	
-	# main campaign day input loop
-	def CampaignDayLoop(self):
-		
-		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
-		global cd_player_unit_con
-		global time_weather_con
-		
-		# create consoles
-		
-		# campaign day map background
-		daymap_bkg = LoadXP('daymap_bkg.xp')
-		
-		# campaign day map console 35x53
-		cd_map_con = libtcod.console_new(35, 53)
-		libtcod.console_set_default_background(cd_map_con, libtcod.black)
-		libtcod.console_set_default_foreground(cd_map_con, libtcod.white)
-		libtcod.console_clear(cd_map_con)
-		
-		# campaign day unit group console 35x53
-		cd_unit_con = libtcod.console_new(35, 53)
-		libtcod.console_set_default_background(cd_unit_con, KEY_COLOR)
-		libtcod.console_set_default_foreground(cd_unit_con, libtcod.white)
-		libtcod.console_clear(cd_unit_con)
-		
-		# campaign day hex zone control console 35x53
-		cd_control_con = libtcod.console_new(35, 53)
-		libtcod.console_set_default_background(cd_control_con, KEY_COLOR)
-		libtcod.console_set_default_foreground(cd_control_con, libtcod.red)
-		libtcod.console_clear(cd_control_con)
-		
-		# time and weather console
-		time_weather_con = libtcod.console_new(33, 4)
-		libtcod.console_set_default_background(time_weather_con, libtcod.black)
-		libtcod.console_set_default_foreground(time_weather_con, libtcod.white)
-		libtcod.console_clear(time_weather_con)
-		
-		# player unit console 24x16
-		cd_player_unit_con = libtcod.console_new(24, 16)
-		libtcod.console_set_default_background(cd_player_unit_con, libtcod.black)
-		libtcod.console_set_default_foreground(cd_player_unit_con, libtcod.white)
-		libtcod.console_clear(cd_player_unit_con)
-		
-		# command menu console 24x24
-		cd_command_con = libtcod.console_new(24, 24)
-		libtcod.console_set_default_background(cd_command_con, libtcod.black)
-		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-		libtcod.console_clear(cd_command_con)
-		
-		
-		# generate consoles for the first time
-		self.UpdateCDMapCon()
-		self.UpdateCDControlCon()
-		self.UpdateCDUnitCon()
-		self.UpdateTimeWeatherDisplay()
-		self.UpdateCDPlayerUnitCon()
-		self.UpdateCDCommandCon()
-		self.UpdateCDDisplay()
-		
-		# record mouse cursor position to check when it has moved
-		mouse_x = -1
-		mouse_y = -1
-		
-		exit_loop = False
-		while not exit_loop:
-			
-			# emergency exit in case of endless loop
-			if libtcod.console_is_window_closed(): sys.exit()
-		
-			libtcod.console_flush()
-			
-			# get keyboard and/or mouse event
-			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-				key, mouse)
-			
-			# check to see if mouse cursor has moved
-			if mouse.cx != mouse_x or mouse.cy != mouse_y:
-				mouse_x = mouse.cx
-				mouse_y = mouse.cy
-			
-			##### Player Keyboard Commands #####
-			
-			if session.key_down:
-				if event != libtcod.EVENT_KEY_RELEASE:
-					continue
-				session.key_down = False
-			if event != libtcod.EVENT_KEY_PRESS:
-				continue
-			session.key_down = True
-			
-			# Determine action based on key pressed
-			
-			# TEMP exit
-			if key.vk == libtcod.KEY_ESCAPE:
-				exit_loop = True
-			
-			# key commands
-			key_char = chr(key.c).lower()
-			
-			# map key to current keyboard layout
-			key_char = DecodeKey(key_char)
-			
-			# travel menu active
-			if self.active_menu == 3:
-				
-				# set travel direction
-				DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
-				if key_char in DIRECTION_KEYS:
-					direction = DIRECTION_KEYS.index(key_char)
-					if self.travel_direction is None:
-						self.travel_direction = direction
-					else:
-						# cancel direction
-						if self.travel_direction == direction:
-							self.travel_direction = None
-						else:
-							self.travel_direction = direction
-					self.UpdateCDCommandCon()
-					self.UpdateCDDisplay()
-					continue
-				
-				# proceed with travel
-				if key.vk == libtcod.KEY_ENTER and self.travel_direction is not None:
-					
-					# ensure that travel is possible
-					(hx, hy) = self.player_unit_location
-					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
-					if (hx, hy) not in self.map_hexes:
-						continue
-					
-					# TEMP: move player
-					self.player_unit_location = (hx, hy)
-					
-					# clear travel direction
-					self.travel_direction = None
-					
-					# advance campaign clock
-					campaign.AdvanceClock(0, 15)
-					
-					# if location was captured from enemy control, set control
-					# and update control console
-					if self.map_hexes[(hx, hy)].controlled_by == 1:
-						self.map_hexes[(hx, hy)].controlled_by = 0
-						self.UpdateCDControlCon()
-
-					# update rest of consoles
-					self.UpdateCDUnitCon()
-					self.UpdateTimeWeatherDisplay()
-					self.UpdateCDCommandCon()
-					self.UpdateCDDisplay()
-
-
-# Session: stores data that is generated for each game session and not stored in the saved game
-class Session:
-	def __init__(self):
-		
-		# flag: the last time the keyboard was polled, a key was pressed
-		self.key_down = False
-		
-		# generate hex console images for scenario map
-		self.hex_consoles = {}
-		
-		for terrain_type in HEX_TERRAIN_TYPES:
-			
-			# generate consoles for 4 different terrain heights
-			consoles = []
-			for elevation in range(4):
-				consoles.append(libtcod.console_new(7, 5))
-				libtcod.console_blit(LoadXP('hex_' + terrain_type + '.xp'),
-					0, 0, 7, 5, consoles[elevation], 0, 0)
-				libtcod.console_set_key_color(consoles[elevation], KEY_COLOR)
-			
-			# apply colour modifier to elevations 0, 2, 3
-			for elevation in [0, 2, 3]:
-				for y in range(5):
-					for x in range(7):
-						bg = libtcod.console_get_char_background(consoles[elevation],x,y)
-						if bg == KEY_COLOR: continue
-						bg = bg * (1.0 + float(elevation-1) * ELEVATION_SHADE)
-						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
-			
-			self.hex_consoles[terrain_type] = consoles
-
-	# try to initialize SDL2 mixer
-	def InitMixer(self):
-		mixer.Mix_Init(mixer.MIX_INIT_OGG)
-		if mixer.Mix_OpenAudio(48000, mixer.MIX_DEFAULT_FORMAT,	2, 1024) == -1:
-			print 'ERROR in Mix_OpenAudio: ' + mixer.Mix_GetError()
-			return False
-		mixer.Mix_AllocateChannels(16)
-		return True
-	
-	def LoadSounds(self):
-		self.sample = {}
-		
-		SOUND_LIST = [
-			'menu_select',
-			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
-			'37mm_he_explosion_00', '37mm_he_explosion_01',
-			'at_rifle_firing',
-			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
-			'zb_53_mg_00'
-		]
-		
-		# because the function returns NULL if the file failed to load, Python does not seem
-		# to have any way of detecting this and there's no error checking
-		for sound_name in SOUND_LIST:
-			self.sample[sound_name] = mixer.Mix_LoadWAV(SOUNDPATH + sound_name + '.ogg')
-		
-
-# AI: controller for enemy and player-allied units
-class AI:
-	def __init__(self, owner):
-		self.owner = owner
-		self.disposition = None
-	
-	# print an AI report re: crew actions for this unit to the console, used for debugging
-	def DoCrewActionReport(self):
-		text = '\nAI SPY: ' + self.owner.unit_id + ' set to disposition: '
-		if self.disposition is None:
-			text += 'Wait'
-		else:
-			text += self.disposition
-		if self.owner.dummy:
-			text += ' (dummy)'
-		print text
-	
-	# do activation for this unit
-	def DoActivation(self):
-		
-		if not self.owner.alive: return
-		
-		# set as active unit and move to top of hex stack
-		scenario.active_unit = self.owner
-		self.owner.MoveToTopOfStack()
-		UpdateUnitCon()
-		UpdateScenarioDisplay()
-		libtcod.console_flush()
-		
-		self.owner.DoPreActivation()
-		
-		# Step 1: Determine unit disposition for this activation
-		
-		roll = GetPercentileRoll()
-			
-		# much more likely to attack if already have an acquired target
-		if self.owner.acquired_target is not None:
-			roll -= 20.0
-		
-		# guns have fewer options for actions
-		if self.owner.GetStat('category') == 'Gun':
-			if roll >= 70.0:
-				self.disposition = None
-			else:
-				self.disposition = 'Combat'
-		
-		elif self.owner.GetStat('category') == 'Infantry':
-			if roll <= 50.0:
-				self.disposition = 'Combat'
-			elif roll <= 60.0:
-				if self.owner.pinned:
-					self.disposition = 'Combat'
-				else:
-					self.disposition = 'Movement'
-			else:
-				self.disposition = None
-		
-		else:
-		
-			if roll >= 80.0:
-				self.disposition = None
-			elif roll <= 50.0:
-				self.disposition = 'Combat'
-			else:
-				if self.owner.pinned:
-					self.disposition = 'Combat'
-				else:
-					self.disposition = 'Movement'
-		
-		# dummy units never attack
-		if self.owner.dummy and self.disposition == 'Combat':
-			self.disposition = None
-		
-		# debug override
-		if AI_NO_ACTION:
-			self.disposition = None
-		if AI_SPY:
-			self.DoCrewActionReport()
-		
-		
-		# Step 2: Determine action to take
-		if self.disposition == 'Movement':
-			move_done = False
-			while not move_done:
-				
-				animate = False
-				dist = GetHexDistance(self.owner.hx, self.owner.hy, scenario.player_unit.hx,
-					scenario.player_unit.hy)
-				if dist <= 7:
-					animate = True
-				
-				# pick a random direction for move
-				dir_list = [0,1,2,3,4,5]
-				shuffle(dir_list)
-				for direction in dir_list:
-					(hx, hy) = GetAdjacentHex(self.owner.hx, self.owner.hy, direction)
-					if (hx, hy) not in scenario.map_hexes: continue
-					if scenario.map_hexes[(hx, hy)].terrain_type == 'pond':
-						continue
-					break
-				
-				if AI_SPY:
-					text = ('AI SPY: ' + self.owner.unit_id + ' is moving to ' +
-						str(hx) + ',' + str(hy))
-					print text
-				
-				# pivot to face new direction if not already
-				if self.owner.facing != direction:
-					
-					change = direction - self.owner.facing
-					self.owner.facing = direction
-					
-					# rotate turret if any
-					if self.owner.turret_facing is not None:
-						self.owner.turret_facing = self.owner.facing
-					
-					if animate and self.owner.GetStat('category') != 'Infantry':
-						UpdateUnitCon()
-						UpdateScenarioDisplay()
-						libtcod.console_flush()
-						Wait(10)
-				
-				# do the move
-				result = self.owner.MoveForward()
-				if animate:
-					UpdateUnitCon()
-					UpdateUnitInfoCon()
-					UpdateScenarioDisplay()
-					libtcod.console_flush()
-					Wait(10)
-				
-				# if move was not possible, end phase action
-				if result == False:
-					move_done = True
-				# if no more moves, end phase action
-				if self.owner.move_finished:
-					move_done = True
-		
-		elif self.disposition == 'Combat':
-			
-			animate = False
-			dist = GetHexDistance(self.owner.hx, self.owner.hy, scenario.player_unit.hx,
-				scenario.player_unit.hy)
-			if dist <= 7:
-				animate = True
-			
-			# see if there are any potential targets
-			target_list = []
-			for unit in scenario.units:
-				if not unit.alive: continue
-				if unit.owning_player == self.owner.owning_player: continue
-				if GetHexDistance(self.owner.hx, self.owner.hy, unit.hx,
-					unit.hy) > 6: continue
-				if (unit.hx, unit.hy) not in self.owner.fov: continue
-				if not unit.known: continue
-				target_list.append(unit)
-			
-			if len(target_list) == 0:
-				if AI_SPY:
-					print 'AI SPY: ' + self.owner.unit_id + ': no possible targets'
-				return
-			
-			# select our target unit
-			unit = None
-			
-			# if one of these is our acquired target, choose that one
-			if self.owner.acquired_target is not None:
-				(target, level) = self.owner.acquired_target
-				if target in target_list:
-					unit = target
-			
-			if unit is None:
-				# select a random target from list
-				unit = choice(target_list)
-			
-			# TEMP - can select first weapon only
-			weapon = self.owner.weapon_list[0]
-			
-			# TEMP - choose AP ammo only
-			if weapon.GetStat('type') == 'Gun':
-				if 'AP' in weapon.stats['ammo_type_list']:
-					weapon.current_ammo = 'AP'
-			
-			# if weapon is hull mounted, pivot to face target
-			if weapon.GetStat('mount') == 'Hull':
-				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
-					unit.hy)
-				if self.owner.facing != direction:
-					self.owner.facing = direction
-					self.owner.moved = True
-					
-					if animate:
-						UpdateUnitCon()
-						UpdateScenarioDisplay()
-						libtcod.console_flush()
-						Wait(10)
-			
-			# otherwise, rotate turret if any to face target
-			elif self.owner.turret_facing is not None:
-				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
-					unit.hy)
-				if self.owner.turret_facing != direction:
-					self.owner.turret_facing = direction
-					
-					if animate:
-						UpdateUnitCon()
-						UpdateScenarioDisplay()
-						libtcod.console_flush()
-						Wait(10)
-			
-			# try the attack
-			result = self.owner.Attack(weapon, unit)
-			if not result:
-				if AI_SPY:
-					print 'AI SPY: ' + self.owner.unit_id + ': could not attack'
-					print 'AI SPY: ' + scenario.CheckAttack(self.owner, weapon, unit)
-		
-		# end activation
-		self.owner.DoPostActivation()
-	
 
 # Map Hex: a single hex-shaped block of terrain within a scenario
 # roughly scaled to 160 m. in width
@@ -1055,7 +413,7 @@ class MapHex:
 		self.hx = hx			# hex coordinates in the map
 		self.hy = hy			# 0,0 is centre of map
 		self.terrain_type = 'openground'
-		self.variant = 0		# varient of hex depiction, no effect on gameplay
+		self.variant = 0		# FUTURE: variant of visual depiction, no effect on gameplay
 		self.elevation = 1		# elevation in steps above baseline
 		self.river_edges = []		# list of edges bounded by a river
 		self.dirt_roads = []		# list of directions linked by a dirt road
@@ -1101,52 +459,41 @@ class MapHex:
 			if unit.owning_player != self.objective:
 				self.objective = unit.owning_player
 				return True
-				
-		
 
 
-# Scenario: represents a single battle encounter
-class Scenario:
-	def __init__(self):
+
+# Campaign Map Hex: a map hex for the campaign day map, each representing a map scenario hexes
+# scaled to approx. 2.7 km. wide
+class CampaignMapHex:
+	def __init__(self, hx, hy):
+		self.hx = hx
+		self.hy = hy
+		self.controlled_by = 1		# which player side currently controls this zone
 		
-		# game turn, active player, and phase tracker
-		self.game_turn = {
-			'active_player' : 0,		# currently active player number
-			'goes_first' : 0,		# which player side acts first in each turn
-		}
+		# real enemy strength and organization, each 1-9
+		self.enemy_strength = -9 + libtcod.random_get_int(0, 1, 6) + libtcod.random_get_int(0, 1, 6) + libtcod.random_get_int(0, 1, 6)
 		
-		self.active_menu = 2			# currently active player menu; 0:none
+		if self.enemy_strength < 1:
+			self.enemy_strength = 1
 		
-		self.units = []				# list of units in the scenario
-		self.player_unit = None			# pointer to the player unit
-		self.active_unit = None			# currently activated unit
-		self.activation_list = [		# activation order for player units, enemy units
-			[], []
-		]
+		self.enemy_organization = 1 + libtcod.random_get_int(0, 0, 4) + libtcod.random_get_int(0, 0, 4)
 		
-		# player 'luck' points
-		# FUTURE move into campaign object
-		self.player_luck = 2 + libtcod.random_get_int(0, 1, 3)
+		# calculate encounter chance
+		self.encounter_chance = CD_BATTLE_BASE_CHANCE
+		self.encounter_chance += (self.enemy_strength * CD_BATTLE_STR_MOD)
+		self.encounter_chance += ((self.enemy_organization - 5) * CD_BATTLE_ORGANIZATION_MOD)
+		self.encounter_chance = round(self.encounter_chance, 2)
 		
-		self.finished = False			# have win/loss conditions been met
-		self.winner = -1			# player number of scenario winner, -1 if None
-		self.win_desc = ''			# description of win/loss conditions met
+		if self.encounter_chance > 97.0:
+			self.encounter_chance = 97.0
 		
-		self.selected_position = 0		# index of selected crewman in player unit
-		self.selected_weapon = None		# currently selected weapon on player unit
-		
-		self.player_target_list = []		# list of possible enemy targets for player unit
-		self.player_target = None		# current target of player unit
-		self.player_attack_desc = ''		# text description of attack on player target
-		self.player_los_active = False		# display of player's LoS to target is active
-		
-		###### Hex Map and Map Viewport #####
-		
-		# generate the hex map in the shape of a pointy-top hex
-		# radius does not include centre hex
+		# create an empty placeholder for a hex map; will be generated if a scenario takes place here
 		self.map_hexes = {}
 		self.map_radius = 8
 		
+	# create a hex map for a scenario within this map hex
+	def GenerateHexMap(self):
+		# generate the hex map in the shape of a pointy-top hex; radius does not include centre hex
 		# create centre hex
 		self.map_hexes[(0,0)] = MapHex(0,0)
 		
@@ -1156,54 +503,15 @@ class Scenario:
 			for (hx, hy) in hex_list:
 				self.map_hexes[(hx,hy)] = MapHex(hx,hy)
 		
-		self.map_objectives = []		# list of map hex objectives
-		self.highlighted_hex = None		# currently highlighted map hex
-		
-		##### Map VP
-		self.map_vp = {}			# dictionary of map viewport hexes and
-							#   their corresponding map hexes
-		self.vp_hx = 0				# location and facing of center of
-		self.vp_hy = 0				#   viewport on map
-		self.vp_facing = 0
-		
-		# dictionary of screen display locations on the VP and their corresponding map hex
-		self.hex_map_index = {}
-	
-	# generate activation order for player units and enemy units
-	def GenerateActivationOrder(self):
-		
-		for unit in self.units:
-			if unit == self.player_unit: continue
-			self.activation_list[unit.owning_player].append(unit)
-		shuffle(self.activation_list[0])
-		shuffle(self.activation_list[1])
-		
-		# add the player unit to the start of the list
-		self.activation_list[0].insert(0, self.player_unit)
-	
-	# set up map viewport hexes based on viewport center position and facing
-	def SetVPHexes(self):
-		for (hx, hy) in VP_HEXES:
-			map_hx = hx + self.vp_hx
-			map_hy = hy + self.vp_hy
-			# rotate based on viewport facing
-			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - self.vp_facing))
-			self.map_vp[(hx, hy)] = (map_hx, map_hy)
-	
-	# center the map viewport on the player unit and rotate so that player unit is facing up
-	def CenterVPOnPlayer(self):
-		self.vp_hx = self.player_unit.hx
-		self.vp_hy = self.player_unit.hy
-		self.vp_facing = self.player_unit.facing
+		# generate terrain
+		self.GenerateTerrain()
 	
 	# fill the hex map with terrain
-	# does not (yet) clear any pre-existing terrain from the map!
 	def GenerateTerrain(self):
 		
-		# return a path from hx1,hy1 to hx2,hy2 suitable for a dirt road
+		# get a path from hx1,hy1 to hx2,hy2 suitable for a dirt road and create it
 		def GenerateRoad(hx1, hy1, hx2, hy2):
-			
-			path = GetHexPath(hx1, hy1, hx2, hy2, road_path=True)
+			path = GetHexPath(self.map_hexes, hx1, hy1, hx2, hy2, road_path=True)
 			
 			# no path was possible
 			if len(path) == 0:
@@ -1390,10 +698,759 @@ class Scenario:
 		hx1, hy1 = 0, self.map_radius
 		hx2, hy2 = 0, 0 - self.map_radius
 		GenerateRoad(hx1, hy1, hx2, hy2)
+
+
+
+# Campaign Day: represents one calendar day in a campaign with a 5x7 map of terrain hexes, each of
+# which may spawn a Scenario
+class CampaignDay:
+	def __init__(self):
+		
+		# campaign day map
+		self.map_hexes = {}
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			self.map_hexes[(hx,hy)] = CampaignMapHex(hx, hy)
+		
+		self.player_unit_location = (-2, 8)		# set player unit group location
+		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
+		
+		self.active_menu = 3				# number of currently active command menu
+		self.travel_direction = None			# selected direction of travel
+		
+		self.scenario = None				# currently active scenario in progress
+		
+	
+	# initiate a battle encounter scenario and store it in the CD object
+	def InitScenario(self, hx, hy):
+		self.scenario = Scenario(self.map_hexes[(hx, hy)])
+		
+	
+	# plot the centre of a day map hex location onto the map console
+	# top left of hex 0,0 will appear at cell 2,2
+	def PlotCDHex(self, hx, hy):
+		x = (hx*6) + (hy*3)
+		y = (hy*5)
+		return (x+5,y+6)
+	
+	
+	# returns the hx, hy location of the adjacent hex in direction
+	def GetAdjacentCDHex(self, hx1, hy1, direction):
+		(hx_m, hy_m) = CD_DESTHEX[direction]
+		return (hx1+hx_m, hy1+hy_m)
+	
+	
+	# generate/update the campaign day map console
+	def UpdateCDMapCon(self):
+		libtcod.console_clear(cd_map_con)
+		
+		# draw map hexes to console
+		dayhex_openground = LoadXP('dayhex_openground.xp')
+		libtcod.console_set_key_color(dayhex_openground, KEY_COLOR)
+		
+		for key, map_hex in self.map_hexes.iteritems():
+			(x,y) = self.PlotCDHex(map_hex.hx, map_hex.hy)
+			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, cd_map_con, x-3, y-4)
+	
+		# draw hex row guides
+		for i in range(0, 9):
+			libtcod.console_put_char_ex(cd_map_con, 0, 6+(i*5), chr(i+65),
+				libtcod.light_green, libtcod.black)
+		
+		# draw hex column guides
+		for i in range(0, 5):
+			libtcod.console_put_char_ex(cd_map_con, 7+(i*6), 50, chr(i+49),
+				libtcod.light_green, libtcod.black)
+		for i in range(5, 9):
+			libtcod.console_put_char_ex(cd_map_con, 32, 39-((i-5)*10), chr(i+49),
+				libtcod.light_green, libtcod.black)
+	
+	
+	# generate/update the campaign day unit layer console
+	def UpdateCDUnitCon(self):
+		libtcod.console_clear(cd_unit_con)
+		libtcod.console_set_default_foreground(cd_unit_con, libtcod.white)
+		
+		# draw enemy strength and organization levels
+		libtcod.console_set_default_foreground(cd_unit_con, libtcod.red)
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			if self.map_hexes[(hx,hy)].controlled_by == 1:
+				text = str(self.map_hexes[(hx,hy)].enemy_strength)
+				text += ' '
+				text += str(self.map_hexes[(hx,hy)].enemy_organization)
+				(x,y) = self.PlotCDHex(hx, hy)
+				ConsolePrint(cd_unit_con, x-1, y, text)
+		
+		# draw player unit group
+		(hx, hy) = self.player_unit_location
+		(x,y) = self.PlotCDHex(hx, hy)
+		libtcod.console_put_char_ex(cd_unit_con, x, y, '@', libtcod.white, libtcod.black)
+	
+	
+	# generate/update the zone control console, showing the battlefront between two sides
+	def UpdateCDControlCon(self):
+		libtcod.console_clear(cd_control_con)
+		
+		# run through every hex, if it's under player control, see if there an adjacent
+		# enemy-controlled hex and if so, draw a border there
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			if self.map_hexes[(hx,hy)].controlled_by != 0: continue
+			
+			for direction in range(6):
+				(hx_m, hy_m) = CD_DESTHEX[direction]
+				hx2 = hx+hx_m
+				hy2 = hy+hy_m
+				
+				# hex is off map
+				if (hx2, hy2) not in self.map_hexes: continue
+				# hex is friendly controlled
+				if self.map_hexes[(hx2,hy2)].controlled_by == 0: continue
+				
+				# draw a border
+				(x,y) = self.PlotCDHex(hx, hy)
+				for (xm,ym) in CD_HEX_EDGE_CELLS[direction]:
+					libtcod.console_put_char_ex(cd_control_con, x+xm,
+						y+ym, chr(249), libtcod.red, libtcod.black)
+	
+	
+	# generate/update the player unit console
+	def UpdateCDPlayerUnitCon(self):
+		libtcod.console_clear(cd_player_unit_con)
+		campaign.player_unit.DisplayMyInfo(cd_player_unit_con, 0, 0, status=False)
+	
+	
+	# generate/update the command menu console
+	def UpdateCDCommandCon(self):
+		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+		libtcod.console_clear(cd_command_con)
+		
+		x = 0
+		for (text, num, col) in CD_MENU_LIST:
+			libtcod.console_set_default_background(cd_command_con, col)
+			libtcod.console_rect(cd_command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
+			
+			# TEMP - only travel active for now
+			if num != 3:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
+			# menu number
+			ConsolePrint(cd_command_con, x, 0, str(num))
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			
+			x += 2
+			
+			# display menu text if active
+			if self.active_menu == num:
+				libtcod.console_rect(cd_command_con, x, 0, len(text)+2, 1,
+					True, libtcod.BKGND_SET)
+				ConsolePrint(cd_command_con, x, 0, text)
+				x += len(text) + 2
+		
+		# fill in rest of menu line with final colour
+		libtcod.console_rect(cd_command_con, x, 0, 24-x, 1, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(cd_command_con, libtcod.black)
+		
+		# travel menu
+		if self.active_menu == 3:
+			
+			libtcod.console_put_char(cd_command_con, 11, 4, '@')
+			
+			for direction in range(6):
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
+				
+				if self.travel_direction is not None:
+					if self.travel_direction == direction:
+						libtcod.console_set_default_foreground(cd_command_con, libtcod.blue)
+				
+				(key, x, y, char) = CD_TRAVEL_CMDS[direction]
+				libtcod.console_put_char(cd_command_con, 11+x, 4+y, EncodeKey(key).upper())
+				if direction <= 2:
+					x+=1
+				else:
+					x-=1
+				libtcod.console_put_char(cd_command_con, 11+x, 4+y, chr(char))
+			
+			if self.travel_direction is None:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+				ConsolePrintEx(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
+					'Select Direction')
+				return
+							
+			# check to see whether travel in this direction is not possible
+			(hx, hy) = self.player_unit_location
+			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
+			if (hx, hy) not in self.map_hexes: return
+				
+			# display enemy strength/organization if any and chance of encounter
+			map_hex = self.map_hexes[(hx,hy)]
+			if map_hex.controlled_by == 1:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
+				ConsolePrint(cd_command_con, 1, 9, 'Enemy Controlled')
+				ConsolePrint(cd_command_con, 2, 10, 'Strength: ' + str(map_hex.enemy_strength))
+				ConsolePrint(cd_command_con, 2, 11, 'Organization: ' + str(map_hex.enemy_organization))
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+				ConsolePrint(cd_command_con, 0, 13, 'Encounter Chance: ' + str(map_hex.encounter_chance) + '%%')
+				ConsolePrint(cd_command_con, 0, 14, 'Travel Time: 15 mins.')
+		
+			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+			ConsolePrint(cd_command_con, 5, 22, 'Enter')
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			ConsolePrint(cd_command_con, 12, 22, 'Proceed')
+	
+	
+	# generate/update the time and weather console
+	# FUTURE: will also be used in scenario display
+	def UpdateTimeWeatherDisplay(self):
+		libtcod.console_clear(time_weather_con)
+		text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
+		ConsolePrint(time_weather_con, 14, 1, text)
+		ConsolePrintEx(time_weather_con, 16, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
+		
+		
+	# draw all campaign day consoles to screen
+	def UpdateCDDisplay(self):
+		libtcod.console_clear(con)
+		libtcod.console_blit(daymap_bkg, 0, 0, 0, 0, con, 0, 0)			# background frame
+		libtcod.console_blit(cd_map_con, 0, 0, 0, 0, con, 28, 4)		# terrain map
+		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 29, 0)		# time and weather
+		libtcod.console_blit(cd_control_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# zone control layer
+		libtcod.console_blit(cd_unit_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# unit group layer
+		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
+		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
+	
+	# main campaign day input loop
+	def CampaignDayLoop(self):
+		
+		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
+		global cd_player_unit_con
+		global time_weather_con
+		
+		# create consoles
+		
+		# campaign day map background
+		daymap_bkg = LoadXP('daymap_bkg.xp')
+		
+		# campaign day map console 35x53
+		cd_map_con = libtcod.console_new(35, 53)
+		libtcod.console_set_default_background(cd_map_con, libtcod.black)
+		libtcod.console_set_default_foreground(cd_map_con, libtcod.white)
+		libtcod.console_clear(cd_map_con)
+		
+		# campaign day unit group console 35x53
+		cd_unit_con = libtcod.console_new(35, 53)
+		libtcod.console_set_default_background(cd_unit_con, KEY_COLOR)
+		libtcod.console_set_default_foreground(cd_unit_con, libtcod.white)
+		libtcod.console_clear(cd_unit_con)
+		
+		# campaign day hex zone control console 35x53
+		cd_control_con = libtcod.console_new(35, 53)
+		libtcod.console_set_default_background(cd_control_con, KEY_COLOR)
+		libtcod.console_set_default_foreground(cd_control_con, libtcod.red)
+		libtcod.console_clear(cd_control_con)
+		
+		# time and weather console
+		time_weather_con = libtcod.console_new(33, 4)
+		libtcod.console_set_default_background(time_weather_con, libtcod.black)
+		libtcod.console_set_default_foreground(time_weather_con, libtcod.white)
+		libtcod.console_clear(time_weather_con)
+		
+		# player unit console 24x16
+		cd_player_unit_con = libtcod.console_new(24, 16)
+		libtcod.console_set_default_background(cd_player_unit_con, libtcod.black)
+		libtcod.console_set_default_foreground(cd_player_unit_con, libtcod.white)
+		libtcod.console_clear(cd_player_unit_con)
+		
+		# command menu console 24x24
+		cd_command_con = libtcod.console_new(24, 24)
+		libtcod.console_set_default_background(cd_command_con, libtcod.black)
+		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+		libtcod.console_clear(cd_command_con)
+		
+		
+		# generate consoles for the first time
+		self.UpdateCDMapCon()
+		self.UpdateCDControlCon()
+		self.UpdateCDUnitCon()
+		self.UpdateTimeWeatherDisplay()
+		self.UpdateCDPlayerUnitCon()
+		self.UpdateCDCommandCon()
+		self.UpdateCDDisplay()
+		
+		# record mouse cursor position to check when it has moved
+		mouse_x = -1
+		mouse_y = -1
+		
+		SaveGame()
+		
+		exit_loop = False
+		while not exit_loop:
+			
+			# emergency exit in case of endless loop
+			if libtcod.console_is_window_closed(): sys.exit()
+		
+			libtcod.console_flush()
+			
+			# if we've initiated a scenario or are resuming a saved game with a scenario
+			# running, go to the scenario loop now
+			if self.scenario is not None:
+				DoScenario()
+			
+			# get keyboard and/or mouse event
+			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+				key, mouse)
+			
+			# check to see if mouse cursor has moved
+			if mouse.cx != mouse_x or mouse.cy != mouse_y:
+				mouse_x = mouse.cx
+				mouse_y = mouse.cy
+			
+			##### Player Keyboard Commands #####
+			
+			if session.key_down:
+				if event != libtcod.EVENT_KEY_RELEASE:
+					continue
+				session.key_down = False
+			if event != libtcod.EVENT_KEY_PRESS:
+				continue
+			session.key_down = True
+			
+			# Determine action based on key pressed
+			
+			# TEMP exit
+			if key.vk == libtcod.KEY_ESCAPE:
+				exit_loop = True
+			
+			# key commands
+			key_char = chr(key.c).lower()
+			
+			# map key to current keyboard layout
+			key_char = DecodeKey(key_char)
+			
+			# travel menu active
+			if self.active_menu == 3:
+				
+				# set travel direction
+				DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
+				if key_char in DIRECTION_KEYS:
+					direction = DIRECTION_KEYS.index(key_char)
+					if self.travel_direction is None:
+						self.travel_direction = direction
+					else:
+						# cancel direction
+						if self.travel_direction == direction:
+							self.travel_direction = None
+						else:
+							self.travel_direction = direction
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					continue
+				
+				# proceed with travel
+				if key.vk == libtcod.KEY_ENTER and self.travel_direction is not None:
+					
+					# ensure that travel is possible
+					(hx, hy) = self.player_unit_location
+					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
+					if (hx, hy) not in self.map_hexes:
+						continue
+					
+					# set new player location
+					self.player_unit_location = (hx, hy)
+					
+					# clear travel direction
+					self.travel_direction = None
+					
+					# advance campaign clock
+					campaign.AdvanceClock(0, 15)
+					
+					# roll for battle encounter if enemy-controlled
+					if self.map_hexes[(hx, hy)].controlled_by == 1:
+						roll = GetPercentileRoll()
+						# TEMP
+						roll = 0.0
+						if roll <= self.map_hexes[(hx,hy)].encounter_chance:
+							ShowNotification('You encounter enemy resistance and a battle ensues!')
+							self.InitScenario(hx,hy)
+						else:
+							ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
+							self.map_hexes[(hx, hy)].controlled_by = 0
+							self.UpdateCDControlCon()
+
+					# update rest of consoles
+					self.UpdateCDUnitCon()
+					self.UpdateTimeWeatherDisplay()
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+
+
+# Session: stores data that is generated for each game session and not stored in the saved game
+class Session:
+	def __init__(self):
+		
+		# flag: the last time the keyboard was polled, a key was pressed
+		self.key_down = False
+		
+		# generate hex console images for scenario map
+		self.hex_consoles = {}
+		
+		for terrain_type in HEX_TERRAIN_TYPES:
+			
+			# generate consoles for 4 different terrain heights
+			consoles = []
+			for elevation in range(4):
+				consoles.append(libtcod.console_new(7, 5))
+				libtcod.console_blit(LoadXP('hex_' + terrain_type + '.xp'),
+					0, 0, 7, 5, consoles[elevation], 0, 0)
+				libtcod.console_set_key_color(consoles[elevation], KEY_COLOR)
+			
+			# apply colour modifier to elevations 0, 2, 3
+			for elevation in [0, 2, 3]:
+				for y in range(5):
+					for x in range(7):
+						bg = libtcod.console_get_char_background(consoles[elevation],x,y)
+						if bg == KEY_COLOR: continue
+						bg = bg * (1.0 + float(elevation-1) * ELEVATION_SHADE)
+						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
+			
+			self.hex_consoles[terrain_type] = consoles
+
+	# try to initialize SDL2 mixer
+	def InitMixer(self):
+		mixer.Mix_Init(mixer.MIX_INIT_OGG)
+		if mixer.Mix_OpenAudio(48000, mixer.MIX_DEFAULT_FORMAT,	2, 1024) == -1:
+			print 'ERROR in Mix_OpenAudio: ' + mixer.Mix_GetError()
+			return False
+		mixer.Mix_AllocateChannels(16)
+		return True
+	
+	def LoadSounds(self):
+		self.sample = {}
+		
+		SOUND_LIST = [
+			'menu_select',
+			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
+			'37mm_he_explosion_00', '37mm_he_explosion_01',
+			'at_rifle_firing',
+			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
+			'zb_53_mg_00'
+		]
+		
+		# because the function returns NULL if the file failed to load, Python does not seem
+		# to have any way of detecting this and there's no error checking
+		for sound_name in SOUND_LIST:
+			self.sample[sound_name] = mixer.Mix_LoadWAV(SOUNDPATH + sound_name + '.ogg')
+		
+
+# AI: controller for enemy and player-allied units
+class AI:
+	def __init__(self, owner):
+		self.owner = owner
+		self.disposition = None
+	
+	# print an AI report re: crew actions for this unit to the console, used for debugging
+	def DoCrewActionReport(self):
+		text = '\nAI SPY: ' + self.owner.unit_id + ' set to disposition: '
+		if self.disposition is None:
+			text += 'Wait'
+		else:
+			text += self.disposition
+		if self.owner.dummy:
+			text += ' (dummy)'
+		print text
+	
+	# do activation for this unit
+	def DoActivation(self):
+		
+		if not self.owner.alive: return
+		
+		# set as active unit and move to top of hex stack
+		scenario.active_unit = self.owner
+		self.owner.MoveToTopOfStack()
+		UpdateUnitCon()
+		UpdateScenarioDisplay()
+		libtcod.console_flush()
+		
+		self.owner.DoPreActivation()
+		
+		# Step 1: Determine unit disposition for this activation
+		
+		roll = GetPercentileRoll()
+			
+		# much more likely to attack if already have an acquired target
+		if self.owner.acquired_target is not None:
+			roll -= 20.0
+		
+		# guns have fewer options for actions
+		if self.owner.GetStat('category') == 'Gun':
+			if roll >= 70.0:
+				self.disposition = None
+			else:
+				self.disposition = 'Combat'
+		
+		elif self.owner.GetStat('category') == 'Infantry':
+			if roll <= 50.0:
+				self.disposition = 'Combat'
+			elif roll <= 60.0:
+				if self.owner.pinned:
+					self.disposition = 'Combat'
+				else:
+					self.disposition = 'Movement'
+			else:
+				self.disposition = None
+		
+		else:
+		
+			if roll >= 80.0:
+				self.disposition = None
+			elif roll <= 50.0:
+				self.disposition = 'Combat'
+			else:
+				if self.owner.pinned:
+					self.disposition = 'Combat'
+				else:
+					self.disposition = 'Movement'
+		
+		# dummy units never attack
+		if self.owner.dummy and self.disposition == 'Combat':
+			self.disposition = None
+		
+		# debug override
+		if AI_NO_ACTION:
+			self.disposition = None
+		if AI_SPY:
+			self.DoCrewActionReport()
+		
+		
+		# Step 2: Determine action to take
+		if self.disposition == 'Movement':
+			move_done = False
+			while not move_done:
+				
+				animate = False
+				dist = GetHexDistance(self.owner.hx, self.owner.hy, scenario.player_unit.hx,
+					scenario.player_unit.hy)
+				if dist <= 7:
+					animate = True
+				
+				# pick a random direction for move
+				dir_list = [0,1,2,3,4,5]
+				shuffle(dir_list)
+				for direction in dir_list:
+					(hx, hy) = GetAdjacentHex(self.owner.hx, self.owner.hy, direction)
+					if (hx, hy) not in scenario.cd_hex.map_hexes: continue
+					if scenario.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
+						continue
+					break
+				
+				if AI_SPY:
+					text = ('AI SPY: ' + self.owner.unit_id + ' is moving to ' +
+						str(hx) + ',' + str(hy))
+					print text
+				
+				# pivot to face new direction if not already
+				if self.owner.facing != direction:
+					
+					change = direction - self.owner.facing
+					self.owner.facing = direction
+					
+					# rotate turret if any
+					if self.owner.turret_facing is not None:
+						self.owner.turret_facing = self.owner.facing
+					
+					if animate and self.owner.GetStat('category') != 'Infantry':
+						UpdateUnitCon()
+						UpdateScenarioDisplay()
+						libtcod.console_flush()
+						Wait(10)
+				
+				# do the move
+				result = self.owner.MoveForward()
+				if animate:
+					UpdateUnitCon()
+					UpdateUnitInfoCon()
+					UpdateScenarioDisplay()
+					libtcod.console_flush()
+					Wait(10)
+				
+				# if move was not possible, end phase action
+				if result == False:
+					move_done = True
+				# if no more moves, end phase action
+				if self.owner.move_finished:
+					move_done = True
+		
+		elif self.disposition == 'Combat':
+			
+			animate = False
+			dist = GetHexDistance(self.owner.hx, self.owner.hy, scenario.player_unit.hx,
+				scenario.player_unit.hy)
+			if dist <= 7:
+				animate = True
+			
+			# see if there are any potential targets
+			target_list = []
+			for unit in scenario.units:
+				if not unit.alive: continue
+				if unit.owning_player == self.owner.owning_player: continue
+				if GetHexDistance(self.owner.hx, self.owner.hy, unit.hx,
+					unit.hy) > 6: continue
+				if (unit.hx, unit.hy) not in self.owner.fov: continue
+				if not unit.known: continue
+				target_list.append(unit)
+			
+			if len(target_list) == 0:
+				if AI_SPY:
+					print 'AI SPY: ' + self.owner.unit_id + ': no possible targets'
+				return
+			
+			# select our target unit
+			unit = None
+			
+			# if one of these is our acquired target, choose that one
+			if self.owner.acquired_target is not None:
+				(target, level) = self.owner.acquired_target
+				if target in target_list:
+					unit = target
+			
+			if unit is None:
+				# select a random target from list
+				unit = choice(target_list)
+			
+			# TEMP - can select first weapon only
+			weapon = self.owner.weapon_list[0]
+			
+			# TEMP - choose AP ammo only
+			if weapon.GetStat('type') == 'Gun':
+				if 'AP' in weapon.stats['ammo_type_list']:
+					weapon.current_ammo = 'AP'
+			
+			# if weapon is hull mounted, pivot to face target
+			if weapon.GetStat('mount') == 'Hull':
+				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
+					unit.hy)
+				if self.owner.facing != direction:
+					self.owner.facing = direction
+					self.owner.moved = True
+					
+					if animate:
+						UpdateUnitCon()
+						UpdateScenarioDisplay()
+						libtcod.console_flush()
+						Wait(10)
+			
+			# otherwise, rotate turret if any to face target
+			elif self.owner.turret_facing is not None:
+				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
+					unit.hy)
+				if self.owner.turret_facing != direction:
+					self.owner.turret_facing = direction
+					
+					if animate:
+						UpdateUnitCon()
+						UpdateScenarioDisplay()
+						libtcod.console_flush()
+						Wait(10)
+			
+			# try the attack
+			result = self.owner.Attack(weapon, unit)
+			if not result:
+				if AI_SPY:
+					print 'AI SPY: ' + self.owner.unit_id + ': could not attack'
+					print 'AI SPY: ' + scenario.CheckAttack(self.owner, weapon, unit)
+		
+		# end activation
+		self.owner.DoPostActivation()
+	
+
+
+				
+		
+
+
+# Scenario: represents a single battle encounter
+class Scenario:
+	def __init__(self, cd_hex):
+		
+		# pointer to map hex on campaign day map
+		self.cd_hex = cd_hex
+		
+		# game turn, active player, and phase tracker
+		self.game_turn = {
+			'active_player' : 0,		# currently active player number
+			'goes_first' : 0,		# which player side acts first in each turn
+		}
+		
+		self.active_menu = 2			# currently active player menu; 0:none
+		
+		self.units = []				# list of units in the scenario
+		self.player_unit = None			# pointer to the player unit
+		self.active_unit = None			# currently activated unit
+		self.activation_list = [		# activation order for player units, enemy units
+			[], []
+		]
+		
+		# player 'luck' points
+		# FUTURE move into campaign object
+		self.player_luck = 2 + libtcod.random_get_int(0, 1, 3)
+		
+		self.finished = False			# have win/loss conditions been met
+		self.winner = -1			# player number of scenario winner, -1 if None
+		self.win_desc = ''			# description of win/loss conditions met
+		
+		self.selected_position = 0		# index of selected crewman in player unit
+		self.selected_weapon = None		# currently selected weapon on player unit
+		
+		self.player_target_list = []		# list of possible enemy targets for player unit
+		self.player_target = None		# current target of player unit
+		self.player_attack_desc = ''		# text description of attack on player target
+		self.player_los_active = False		# display of player's LoS to target is active
+		
+		###### Hex Map and Map Viewport #####
+		self.map_objectives = []		# list of map hex objectives
+		self.highlighted_hex = None		# currently highlighted map hex
+		
+		self.map_vp = {}			# dictionary of map viewport hexes and
+							#   their corresponding map hexes
+		self.vp_hx = 0				# location and facing of center of
+		self.vp_hy = 0				#   viewport on map
+		self.vp_facing = 0
+		
+		# dictionary of screen display locations on the VP and their corresponding map hex
+		self.hex_map_index = {}
+		
+		# flag for when scenario has been set up by DoScenario()
+		self.init_complete = False
+	
+	# generate activation order for player units and enemy units
+	def GenerateActivationOrder(self):
+		
+		for unit in self.units:
+			if unit == self.player_unit: continue
+			self.activation_list[unit.owning_player].append(unit)
+		shuffle(self.activation_list[0])
+		shuffle(self.activation_list[1])
+		
+		# add the player unit to the start of the list
+		self.activation_list[0].insert(0, self.player_unit)
+	
+	# set up map viewport hexes based on viewport center position and facing
+	def SetVPHexes(self):
+		for (hx, hy) in VP_HEXES:
+			map_hx = hx + self.vp_hx
+			map_hy = hy + self.vp_hy
+			# rotate based on viewport facing
+			(hx, hy) = RotateHex(hx, hy, ConstrainDir(0 - self.vp_facing))
+			self.map_vp[(hx, hy)] = (map_hx, map_hy)
+	
+	# center the map viewport on the player unit and rotate so that player unit is facing up
+	def CenterVPOnPlayer(self):
+		self.vp_hx = self.player_unit.hx
+		self.vp_hy = self.player_unit.hy
+		self.vp_facing = self.player_unit.facing
 			
 	# set a given map hex as an objective, and set initial control state
 	def SetObjectiveHex(self, hx, hy, owning_player):
-		map_hex = self.map_hexes[(hx, hy)]
+		map_hex = self.cd_hex.map_hexes[(hx, hy)]
 		map_hex.objective = owning_player
 		self.map_objectives.append(map_hex)
 	
@@ -1459,7 +1516,7 @@ class Scenario:
 				hy = None
 				for tries in range(300):
 					close_enough = False
-					(hx, hy) = choice(self.map_hexes.keys())
+					(hx, hy) = choice(self.cd_hex.map_hexes.keys())
 					
 					# too close to player
 					if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) < 5:
@@ -1510,11 +1567,11 @@ class Scenario:
 							continue
 						
 						# off map
-						if (spawn_hx, spawn_hy) not in self.map_hexes:
+						if (spawn_hx, spawn_hy) not in self.cd_hex.map_hexes:
 							continue
 						
 						# not passable
-						if self.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
+						if self.cd_hex.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
 							continue
 						
 						new_unit.SpawnAt(spawn_hx, spawn_hy)
@@ -1727,8 +1784,8 @@ class Scenario:
 				modifier_list.append(('Terrain', 0.0 - los))
 			
 			# elevation
-			elevation1 = self.map_hexes[(attacker.hx, attacker.hy)].elevation
-			elevation2 = self.map_hexes[(target.hx, target.hy)].elevation
+			elevation1 = self.cd_hex.map_hexes[(attacker.hx, attacker.hy)].elevation
+			elevation2 = self.cd_hex.map_hexes[(target.hx, target.hy)].elevation
 			if elevation2 > elevation1:
 				modifier_list.append(('Higher Elevation', -20.0))
 			
@@ -1807,8 +1864,8 @@ class Scenario:
 				modifier_list.append(('Terrain', 0.0 - los))
 			
 			# elevation
-			elevation1 = self.map_hexes[(attacker.hx, attacker.hy)].elevation
-			elevation2 = self.map_hexes[(target.hx, target.hy)].elevation
+			elevation1 = self.cd_hex.map_hexes[(attacker.hx, attacker.hy)].elevation
+			elevation2 = self.cd_hex.map_hexes[(target.hx, target.hy)].elevation
 			if elevation2 > elevation1:
 				modifier_list.append(('Higher Elevation', -20.0))
 			
@@ -2433,26 +2490,26 @@ class Scenario:
 	def CalcBonusMove(self, unit, hx, hy):
 		
 		# none for ponds
-		if self.map_hexes[(hx, hy)].terrain_type == 'pond':
+		if self.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
 			return 0.0
 		
 		# none for river crossings
-		if len(self.map_hexes[(unit.hx, unit.hy)].river_edges) > 0:
+		if len(self.cd_hex.map_hexes[(unit.hx, unit.hy)].river_edges) > 0:
 			direction = GetDirectionToAdjacent(unit.hx, unit.hy, hx, hy)
-			if direction in self.map_hexes[(unit.hx, unit.hy)].river_edges:
+			if direction in self.cd_hex.map_hexes[(unit.hx, unit.hy)].river_edges:
 				return 0.0
 		
 		# check for dirt road link
 		direction = GetDirectionToAdjacent(unit.hx, unit.hy, hx, hy)
 		dirt_road = False
-		if direction in self.map_hexes[(unit.hx, unit.hy)].dirt_roads:
+		if direction in self.cd_hex.map_hexes[(unit.hx, unit.hy)].dirt_roads:
 			chance = DIRT_ROAD_BONUS_CHANCE
 			dirt_road = True
 		else:
-			chance = TERRAIN_BONUS_CHANCE[self.map_hexes[(hx, hy)].terrain_type]
+			chance = TERRAIN_BONUS_CHANCE[self.cd_hex.map_hexes[(hx, hy)].terrain_type]
 		
 		# elevation change modifier
-		if self.map_hexes[(hx, hy)].elevation > self.map_hexes[(unit.hx, unit.hy)].elevation:
+		if self.cd_hex.map_hexes[(hx, hy)].elevation > self.cd_hex.map_hexes[(unit.hx, unit.hy)].elevation:
 			chance = chance * 0.5
 		
 		# movement class modifier
@@ -3058,9 +3115,9 @@ class Unit:
 			libtcod.console_rect(player_info_con, x, y+ys, 24, 2, True, libtcod.BKGND_SET)
 			
 			text = ''
-			if unit.moved:
+			if self.moved:
 				text += 'Moved '
-			if unit.fired:
+			if self.fired:
 				text += 'Fired '
 			ConsolePrint(console, x, y+ys+1, text)
 			
@@ -3234,11 +3291,11 @@ class Unit:
 	def SpawnAt(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
-		scenario.map_hexes[(hx, hy)].unit_stack.append(self)
+		scenario.cd_hex.map_hexes[(hx, hy)].unit_stack.append(self)
 	
 	# move to the top of its current hex stack
 	def MoveToTopOfStack(self):
-		map_hex = scenario.map_hexes[(self.hx, self.hy)]
+		map_hex = scenario.cd_hex.map_hexes[(self.hx, self.hy)]
 		
 		# only unit in stack
 		if len(map_hex.unit_stack) == 1:
@@ -3380,7 +3437,7 @@ class Unit:
 					hy = self.hy + hym
 					
 					# check that it's on the map
-					if (hx, hy) not in scenario.map_hexes:
+					if (hx, hy) not in scenario.cd_hex.map_hexes:
 						continue
 					
 					# check for LoS to hex
@@ -3521,11 +3578,11 @@ class Unit:
 		(hx, hy) = GetAdjacentHex(self.hx, self.hy, self.facing)
 		
 		# target hex is off map
-		if (hx, hy) not in scenario.map_hexes:
+		if (hx, hy) not in scenario.cd_hex.map_hexes:
 			return False
 		
-		map_hex1 = scenario.map_hexes[(self.hx, self.hy)]
-		map_hex2 = scenario.map_hexes[(hx, hy)]
+		map_hex1 = scenario.cd_hex.map_hexes[(self.hx, self.hy)]
+		map_hex2 = scenario.cd_hex.map_hexes[(hx, hy)]
 		
 		# target hex can't be entered
 		if map_hex2.terrain_type == 'pond':
@@ -4002,7 +4059,7 @@ class Unit:
 			return
 		
 		self.alive = False
-		scenario.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
+		scenario.cd_hex.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
 		self.ClearAcquiredTargets()
 		UpdateUnitCon()
 		UpdateScenarioDisplay()
@@ -4181,7 +4238,7 @@ def LoadXP(filename):
 # based on function from ArmCom 1, which was based on:
 # http://stackoverflow.com/questions/4159331/python-speed-up-an-a-star-pathfinding-algorithm
 # http://www.policyalmanac.org/games/aStarTutorial.htm
-def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
+def GetHexPath(hex_list, hx1, hy1, hx2, hy2, unit=None, road_path=False):
 	
 	# retrace a set of nodes and return the best path
 	def RetracePath(end_node):
@@ -4196,11 +4253,11 @@ def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
 		return path
 	
 	# clear any old pathfinding info
-	for key, map_hex in scenario.map_hexes.iteritems():
+	for key, map_hex in hex_list.iteritems():
 		map_hex.ClearPathInfo()
 	
-	node1 = scenario.map_hexes[(hx1, hy1)]
-	node2 = scenario.map_hexes[(hx2, hy2)]
+	node1 = hex_list[(hx1, hy1)]
+	node2 = hex_list[(hx2, hy2)]
 	open_list = set()	# contains the nodes that may be traversed by the path
 	closed_list = set()	# contains the nodes that will be traversed by the path
 	start = node1
@@ -4229,9 +4286,9 @@ def GetHexPath(hx1, hy1, hx2, hy2, unit=None, road_path=False):
 			hx, hy = GetAdjacentHex(current.hx, current.hy, direction)
 			
 			# no map hex exists here, skip
-			if (hx, hy) not in scenario.map_hexes: continue
+			if (hx, hy) not in hex_list: continue
 			
-			node = scenario.map_hexes[(hx, hy)]
+			node = hex_list[(hx, hy)]
 			
 			# ignore nodes on closed list
 			if node in closed_list: continue
@@ -4574,15 +4631,15 @@ def GetLoS(hx1, hy1, hx2, hy2):
 	
 	# same hex
 	if hx1 == hx2 and hy1 == hy2:
-		return scenario.map_hexes[(hx2, hy2)].GetTerrainMod()
+		return scenario.cd_hex.map_hexes[(hx2, hy2)].GetTerrainMod()
 	
 	# adjacent hex
 	if distance == 1:
-		return scenario.map_hexes[(hx2, hy2)].GetTerrainMod()
+		return scenario.cd_hex.map_hexes[(hx2, hy2)].GetTerrainMod()
 	
 	# store info about the starting and ending hexes for this LoS
-	start_elevation = float(scenario.map_hexes[(hx1, hy1)].elevation)
-	end_elevation = float(scenario.map_hexes[(hx2, hy2)].elevation)
+	start_elevation = float(scenario.cd_hex.map_hexes[(hx1, hy1)].elevation)
+	end_elevation = float(scenario.cd_hex.map_hexes[(hx2, hy2)].elevation)
 	# calculate the slope from start to end hex
 	los_slope = ((end_elevation - start_elevation) * ELEVATION_M) / (float(distance) * 160.0)
 	
@@ -4601,7 +4658,7 @@ def GetLoS(hx1, hy1, hx2, hy2):
 		
 		while hx != hx2 or hy != hy2:
 			# break if we've gone off map
-			if (hx, hy) not in scenario.map_hexes: break
+			if (hx, hy) not in scenario.cd_hex.map_hexes: break
 			
 			# emergency escape in case of stuck loop
 			if libtcod.console_is_window_closed(): sys.exit()
@@ -4633,12 +4690,12 @@ def GetLoS(hx1, hy1, hx2, hy2):
 	for (hx, hy) in hex_list:
 		
 		# hex is off map
-		if (hx, hy) not in scenario.map_hexes: continue
+		if (hx, hy) not in scenario.cd_hex.map_hexes: continue
 		
 		# hex is beyond the maximum LoS distance (should not happen)
 		if GetHexDistance(hx1, hy1, hx, hy) > MAX_LOS_DISTANCE: return -1
 		
-		map_hex = scenario.map_hexes[(hx, hy)]
+		map_hex = scenario.cd_hex.map_hexes[(hx, hy)]
 		elevation = (float(map_hex.elevation) - start_elevation) * ELEVATION_M
 		distance = float(GetHexDistance(hx1, hy1, hx, hy))
 		floor_slope = elevation / (distance * 160.0)
@@ -4715,7 +4772,6 @@ def WaitForContinue(allow_cancel=False):
 # save the current game in progress
 def SaveGame():
 	save = shelve.open('savegame', 'n')
-	save['scenario'] = scenario
 	save['campaign'] = campaign
 	save['campaign_day'] = campaign_day
 	save['version'] = VERSION		# for now the saved version must be identical to the current one
@@ -4724,11 +4780,10 @@ def SaveGame():
 
 # load a saved game
 def LoadGame():
-	global campaign, campaign_day, scenario
+	global campaign, campaign_day
 	save = shelve.open('savegame')
 	campaign = save['campaign']
 	campaign_day = save['campaign_day']
-	scenario = save['scenario']
 	save.close()
 
 
@@ -5279,7 +5334,7 @@ def UpdateVPCon():
 	
 	# draw off-map hexes first
 	for (hx, hy), (map_hx, map_hy) in scenario.map_vp.items():
-		if (map_hx, map_hy) not in scenario.map_hexes:
+		if (map_hx, map_hy) not in scenario.cd_hex.map_hexes:
 			(x,y) = PlotHex(hx, hy)
 			libtcod.console_blit(tile_offmap, 0, 0, 0, 0, map_vp_con, x-3, y-2)
 			
@@ -5287,9 +5342,9 @@ def UpdateVPCon():
 	for elevation in range(4):
 		for (hx, hy) in VP_HEXES:
 			(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
-			if (map_hx, map_hy) not in scenario.map_hexes:
+			if (map_hx, map_hy) not in scenario.cd_hex.map_hexes:
 				continue
-			map_hex = scenario.map_hexes[(map_hx, map_hy)]
+			map_hex = scenario.cd_hex.map_hexes[(map_hx, map_hy)]
 			
 			if map_hex.elevation != elevation: continue
 			(x,y) = PlotHex(hx, hy)
@@ -5311,9 +5366,9 @@ def UpdateVPCon():
 	# draw river edges
 	for (hx, hy) in VP_HEXES:
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
-		if (map_hx, map_hy) not in scenario.map_hexes:
+		if (map_hx, map_hy) not in scenario.cd_hex.map_hexes:
 			continue
-		map_hex = scenario.map_hexes[(map_hx, map_hy)]
+		map_hex = scenario.cd_hex.map_hexes[(map_hx, map_hy)]
 		
 		if len(map_hex.river_edges) == 0: continue
 		
@@ -5326,9 +5381,9 @@ def UpdateVPCon():
 	# draw roads
 	for (hx, hy) in VP_HEXES:
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
-		if (map_hx, map_hy) not in scenario.map_hexes:
+		if (map_hx, map_hy) not in scenario.cd_hex.map_hexes:
 			continue
-		map_hex = scenario.map_hexes[(map_hx, map_hy)]
+		map_hex = scenario.cd_hex.map_hexes[(map_hx, map_hy)]
 		# no road here
 		if len(map_hex.dirt_roads) == 0: continue
 		for direction in map_hex.dirt_roads:
@@ -5360,8 +5415,8 @@ def UpdateVPCon():
 	# highlight objective hexes
 	for (hx, hy) in VP_HEXES:
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
-		if (map_hx, map_hy) not in scenario.map_hexes: continue
-		map_hex = scenario.map_hexes[(map_hx, map_hy)]
+		if (map_hx, map_hy) not in scenario.cd_hex.map_hexes: continue
+		map_hex = scenario.cd_hex.map_hexes[(map_hx, map_hy)]
 		if map_hex.objective is not None:
 			(x,y) = PlotHex(hx, hy)
 			libtcod.console_blit(hex_objective_neutral, 0, 0, 0, 0,
@@ -5385,9 +5440,9 @@ def UpdateUnitCon():
 		# determine which map hex this viewport hex displays
 		(map_hx, map_hy) = scenario.map_vp[(vp_hx, vp_hy)]
 		# hex is off-map
-		if (map_hx, map_hy) not in scenario.map_hexes: continue
+		if (map_hx, map_hy) not in scenario.cd_hex.map_hexes: continue
 		# get the map hex
-		map_hex = scenario.map_hexes[(map_hx, map_hy)]
+		map_hex = scenario.cd_hex.map_hexes[(map_hx, map_hy)]
 		
 		# any units in the stack
 		if len(map_hex.unit_stack) != 0:
@@ -5553,7 +5608,7 @@ def UpdateHexTerrainCon():
 	libtcod.console_set_default_foreground(hex_terrain_con, libtcod.white)
 	
 	(hx, hy) = scenario.hex_map_index[(x,y)]
-	map_hex = scenario.map_hexes[(hx, hy)]
+	map_hex = scenario.cd_hex.map_hexes[(hx, hy)]
 	text = HEX_TERRAIN_DESC[map_hex.terrain_type]
 	ConsolePrint(hex_terrain_con, 0, 0, text)
 	
@@ -5640,16 +5695,16 @@ def UpdateContextCon():
 			scenario.player_unit.facing)
 		
 		# off map
-		if (hx, hy) not in scenario.map_hexes: return
+		if (hx, hy) not in scenario.cd_hex.map_hexes: return
 		
 		# display destination terrain type
-		text = HEX_TERRAIN_DESC[scenario.map_hexes[(hx, hy)].terrain_type]
+		text = HEX_TERRAIN_DESC[scenario.cd_hex.map_hexes[(hx, hy)].terrain_type]
 		ConsolePrint(context_con, 0, 2, text)
 		
 		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 		
 		# display road status if any
-		if scenario.player_unit.facing in scenario.map_hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].dirt_roads:
+		if scenario.player_unit.facing in scenario.cd_hex.map_hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].dirt_roads:
 			ConsolePrint(context_con, 0, 3, 'Dirt Road')
 		
 		# get bonus move chance
@@ -5727,7 +5782,7 @@ def UpdateUnitInfoCon():
 	
 	(hx, hy) = scenario.hex_map_index[(x,y)]
 	
-	unit_stack = scenario.map_hexes[(hx, hy)].unit_stack
+	unit_stack = scenario.cd_hex.map_hexes[(hx, hy)].unit_stack
 	if len(unit_stack) == 0: return
 	
 	# display unit info
@@ -5841,9 +5896,8 @@ def UpdateScenarioDisplay():
 #                                 Main Scenario Loop                                     #
 ##########################################################################################
 
-def DoScenario(load_game=False):
+def DoScenario():
 	
-	global scenario
 	global bkg_console, map_vp_con, unit_con, player_info_con, hex_terrain_con
 	global crew_position_con, command_con, context_con, unit_info_con, objective_con
 	global attack_con, fov_con, hex_fov, popup_bkg, hex_objective_neutral
@@ -5940,39 +5994,32 @@ def DoScenario(load_game=False):
 	libtcod.console_set_default_foreground(attack_con, libtcod.white)
 	libtcod.console_clear(attack_con)
 	
-	# load a saved game or start a new game
-	if load_game:
-		LoadGame()
-	else:
+	# create a global pointer - TEMP
+	global scenario
+	scenario = campaign_day.scenario
 	
-		# generate a new scenario object
-		scenario = Scenario()
+	# init scenario if not already; only called when started a new one, not when loading from saved
+	if not scenario.init_complete:
 		
 		# display scenario info, allow player to cancel start
-		if not DisplayScenInfo(): return
+		#if not DisplayScenInfo(): return
 		
-		# generate scenario terrain
-		scenario.GenerateTerrain()
+		# generate hex map if needed
+		if scenario.cd_hex.map_hexes == {}:
+			scenario.cd_hex.GenerateHexMap()
 		
 		# generate scenario units
 		
-		# spawn player tank
-		new_unit = Unit('Panzer 38(t) A')
-		if new_unit.unit_id is not None:
-			new_unit.owning_player = 0
-			new_unit.nation = 'Germany'
-			new_unit.facing = 0
-			new_unit.turret_facing = 0
-			new_unit.base_morale_level = 'Confident'
-			
-			# spawn into map: 2 hexes up from bottom corner
-			new_unit.SpawnAt(0, scenario.map_radius - 2)
+		# spawn player tank into scenario
+		unit = campaign.player_unit
 		
-			# generate a new crew for this unit
-			new_unit.GenerateNewCrew()
-			scenario.units.append(new_unit)
-			scenario.player_unit = new_unit
-			new_unit.CalcFoV()
+		# spawn into map: 2 hexes up from bottom corner, and set facings
+		unit.SpawnAt(0, scenario.cd_hex.map_radius - 2)
+		unit.facing = 0
+		unit.turret_facing = 0	
+		scenario.units.append(unit)
+		scenario.player_unit = unit
+		unit.CalcFoV()
 		
 		# set up VP hexes and generate initial VP console
 		scenario.CenterVPOnPlayer()
@@ -5981,11 +6028,11 @@ def DoScenario(load_game=False):
 		# set up map objectives for this scenario
 		for i in range(3):
 			for tries in range(300):
-				(hx, hy) = choice(scenario.map_hexes.keys())
+				(hx, hy) = choice(scenario.cd_hex.map_hexes.keys())
 				# already an objective
-				if scenario.map_hexes[(hx, hy)].objective is not None:
+				if scenario.cd_hex.map_hexes[(hx, hy)].objective is not None:
 					continue
-				if scenario.map_hexes[(hx, hy)].terrain_type == 'pond':
+				if scenario.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
 					continue
 				if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 5:
 					continue
@@ -6001,7 +6048,7 @@ def DoScenario(load_game=False):
 				# too close to map edge
 				hex_ring = GetHexRing(hx, hy, 1)
 				for (hx2, hy2) in hex_ring:
-					if (hx2, hy2) not in scenario.map_hexes:
+					if (hx2, hy2) not in scenario.cd_hex.map_hexes:
 						too_close = True
 						break
 				if too_close: continue
@@ -6018,6 +6065,8 @@ def DoScenario(load_game=False):
 		# activate player unit
 		scenario.active_unit = scenario.player_unit
 		scenario.active_unit.DoPreActivation()
+		
+		scenario.init_complete = True
 		
 		SaveGame()
 	
@@ -6096,7 +6145,7 @@ def DoScenario(load_game=False):
 			y = mouse.cy - 4
 			if (x,y) in scenario.hex_map_index:
 				(hx, hy) = scenario.hex_map_index[(x,y)]
-				map_hex = scenario.map_hexes[(hx, hy)]
+				map_hex = scenario.cd_hex.map_hexes[(hx, hy)]
 				if len(map_hex.unit_stack) > 1:
 					if mouse.wheel_up:
 						map_hex.unit_stack.insert(-1, map_hex.unit_stack.pop(0))
@@ -6415,6 +6464,7 @@ for direction in range(6):
 ##########################################################################################
 
 global main_title, tank_image
+global campaign, campaign_day
 
 main_title = LoadXP('main_title.xp')
 
@@ -6617,7 +6667,14 @@ while not exit_game:
 			if main_theme is not None:
 				mixer.Mix_Pause(main_theme)
 			
-			DoScenario(load_game=True)
+			libtcod.console_clear(0)
+			ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Loading...')
+			libtcod.console_flush()
+			
+			# load the game info and go into the campaign day loop
+			LoadGame()
+			campaign_day.CampaignDayLoop()
 			
 			# resume main theme if playing
 			if main_theme is not None:
@@ -6636,14 +6693,22 @@ while not exit_game:
 					continue
 			if main_theme is not None:
 				mixer.Mix_Pause(main_theme)
+			
+			# show loading screen - there is a pause while terrain is generated
+			libtcod.console_clear(0)
+			ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Loading...')
+			libtcod.console_flush()
+			
+			# generate a new campaign and campaign day object
 			campaign = Campaign()
 			campaign.player_nation = 'Germany'
 			campaign_day = CampaignDay()
 			
+			# go to the campaign day loop
 			campaign_day.CampaignDayLoop()
 			
-			
-			#DoScenario()
+			# resume theme music if active
 			if main_theme is not None:
 				mixer.Mix_Resume(main_theme)
 			UpdateMainMenuCon(options_menu_active)

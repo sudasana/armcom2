@@ -988,12 +988,21 @@ class CampaignDay:
 			# emergency exit in case of endless loop
 			if libtcod.console_is_window_closed(): sys.exit()
 		
-			libtcod.console_flush()
-			
 			# if we've initiated a scenario or are resuming a saved game with a scenario
 			# running, go to the scenario loop now
 			if self.scenario is not None:
 				DoScenario()
+				
+				self.UpdateCDDisplay()
+				libtcod.console_flush()
+				
+				# we're exiting to main menu, game is already saved
+				if session.exiting_to_main_menu:
+					session.exiting_to_main_menu = False
+					exit_loop = True
+					continue
+			
+			libtcod.console_flush()
 			
 			# get keyboard and/or mouse event
 			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
@@ -1089,6 +1098,9 @@ class Session:
 		
 		# flag: the last time the keyboard was polled, a key was pressed
 		self.key_down = False
+		
+		# flag to say that we are exiting to main menu
+		self.exiting_to_main_menu = False
 		
 		# generate hex console images for scenario map
 		self.hex_consoles = {}
@@ -3128,6 +3140,8 @@ class Unit:
 		libtcod.console_set_default_background(console, libtcod.darker_cyan)
 		libtcod.console_rect(console, x, y+ys, 24, 1, True, libtcod.BKGND_SET)
 		ConsolePrint(console, x, y+ys, self.morale_desc)
+		
+		libtcod.console_set_default_background(console, libtcod.black)
 
 	
 	# do automatic actions before an activation
@@ -4917,7 +4931,8 @@ def PlaySoundFor(obj, action):
 #                              In-Game Menus and Displays                                #
 ##########################################################################################
 
-# display the game menu to screen, with the given tab active
+# display the in-game menu to screen, with the given tab active
+# TODO: can be called from campaign calendar, campaign day, or scenario interfaces
 def ShowGameMenu(active_tab):
 	
 	# draw the contents of the currently active tab to the menu console
@@ -5004,6 +5019,7 @@ def ShowGameMenu(active_tab):
 			
 			elif key_char == 'q':
 				SaveGame()
+				session.exiting_to_main_menu = True
 				result = 'exit_game'
 				exit_menu = True
 			
@@ -5012,6 +5028,7 @@ def ShowGameMenu(active_tab):
 				result = ShowNotification(text, confirm=True)
 				if result:
 					EraseGame()
+					session.exiting_to_main_menu = True
 					result = 'exit_game'
 					exit_menu = True
 				libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)

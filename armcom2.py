@@ -201,6 +201,11 @@ with open(DATAPATH + 'crew_action_defs.json') as data_file:
 # order to display ammo types
 AMMO_TYPES = ['HE', 'AP']
 
+# text names for months
+MONTH_NAMES = [
+	'', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+	'September', 'October', 'November', 'December'
+]
 
 #################################
 ##### Game Engine Constants #####
@@ -432,11 +437,24 @@ class Campaign:
 			text += nation_name
 		ConsolePrintEx(con, 45, 31, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
-		# TODO: calendar range and total combat days
+		# calendar range and total combat days
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		text = GetDateText(selected_campaign['start_date']) + ' to'
+		ConsolePrintEx(con, 45, 33, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		text = GetDateText(selected_campaign['end_date'])
+		ConsolePrintEx(con, 45, 34, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
-		# TODO: wrapped description text
+		text = 'Combat Days: ' + selected_campaign['action_days']
+		ConsolePrintEx(con, 45, 36, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
-		
+		# wrapped description text
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		y = 39
+		lines = wrap(selected_campaign['desc'], 33)
+		for line in lines[:10]:
+			ConsolePrint(con, 28, y, line)
+			y+=1
+			
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		ConsolePrint(con, 32, 53, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
 		ConsolePrint(con, 32, 55, 'Enter')
@@ -453,7 +471,7 @@ class Campaign:
 		
 		# load basic information of campaigns into a list of dictionaries
 		BASIC_INFO = [
-			'name', 'start_date', 'action_days', 'player_nation',
+			'name', 'start_date', 'end_date', 'action_days', 'player_nation',
 			'enemy_nations', 'desc'
 		]
 		
@@ -468,7 +486,6 @@ class Campaign:
 				new_campaign[k] = campaign_data[k]
 			campaign_list.append(new_campaign)
 			del campaign_data
-			print 'DEBUG: added campaign to list: ' + new_campaign['name']
 		
 		# FUTURE: sort campaigns by start date
 		
@@ -4373,6 +4390,13 @@ def ConsolePrint(console, x, y, text):
 	libtcod.console_print(console, x, y, str(text))
 def ConsolePrintEx(console, x, y, flag1, flag2, text):
 	libtcod.console_print_ex(console, x, y, flag1, flag2, str(text))
+
+
+# return a descriptive text string given a date dictionary
+def GetDateText(dictionary):
+	text = MONTH_NAMES[int(dictionary['month'])] + ' '
+	text += dictionary['day'] + ', ' + dictionary['year']
+	return text
 
 
 # return a random float between 0.0 and 100.0

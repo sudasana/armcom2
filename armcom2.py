@@ -65,6 +65,7 @@ NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-03-31'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
+CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
 LIMIT_FPS = 50						# maximum screen refreshes per second
 WINDOW_WIDTH, WINDOW_HEIGHT = 90, 60			# size of game window in character cells
 WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of game window
@@ -374,6 +375,8 @@ MAX_LOS_MOD = 60.0
 class Campaign:
 	def __init__(self):
 		
+		# TEMP: following will be set by CampaignSelectionMenu eventually
+		
 		# current year, month, day, hour, and minute
 		# TODO: starting date will be set by campaign type
 		self.calendar = {
@@ -393,8 +396,139 @@ class Campaign:
 		self.player_unit.nation = self.player_nation
 		self.player_unit.base_morale_level = 'Confident'
 		self.player_unit.GenerateNewCrew()
-		
 	
+	# update screen with info about the currently selected campaign
+	def UpdateCampaignSelectionScreen(self, selected_campaign):
+		libtcod.console_clear(con)
+		DrawFrame(con, 26, 1, 37, 58)
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		ConsolePrintEx(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Campaign Selection')
+		libtcod.console_set_default_background(con, libtcod.dark_blue)
+		libtcod.console_rect(con, 27, 5, 35, 3, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(con, libtcod.black)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		ConsolePrintEx(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
+			selected_campaign['name'])
+		
+		# player nation flag
+		if selected_campaign['player_nation'] in session.flags:
+			libtcod.console_blit(session.flags[selected_campaign['player_nation']],
+				0, 0, 0, 0, con, 30, 10)
+		
+		# player and enemy forces
+		ConsolePrintEx(con, 45, 26, libtcod.BKGND_NONE, libtcod.CENTER,
+			'PLAYER FORCE')
+		ConsolePrintEx(con, 45, 30, libtcod.BKGND_NONE, libtcod.CENTER,
+			'ENEMY FORCES')
+		
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		ConsolePrintEx(con, 45, 27, libtcod.BKGND_NONE, libtcod.CENTER,
+			selected_campaign['player_nation'])
+		text = ''
+		for nation_name in selected_campaign['enemy_nations']:
+			if selected_campaign['enemy_nations'].index(nation_name) != 0:
+				text += ', '
+			text += nation_name
+		ConsolePrintEx(con, 45, 31, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		# TODO: calendar range and total combat days
+		
+		# TODO: wrapped description text
+		
+		
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		ConsolePrint(con, 32, 53, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
+		ConsolePrint(con, 32, 55, 'Enter')
+		ConsolePrint(con, 32, 56, 'Esc')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		ConsolePrint(con, 38, 53, 'Change Campaign')
+		ConsolePrint(con, 38, 55, 'Proceed')
+		ConsolePrint(con, 38, 56, 'Return to Main Menu')
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
+	# menu to select campaign
+	def CampaignSelectionMenu(self):
+		
+		# load basic information of campaigns into a list of dictionaries
+		BASIC_INFO = [
+			'name', 'start_date', 'action_days', 'player_nation',
+			'enemy_nations', 'desc'
+		]
+		
+		campaign_list = []
+		
+		for filename in os.listdir(CAMPAIGNPATH):
+			if not filename.endswith('.json'): continue
+			with open(CAMPAIGNPATH + filename) as data_file:
+				campaign_data = json.load(data_file)
+			new_campaign = {}
+			for k in BASIC_INFO:
+				new_campaign[k] = campaign_data[k]
+			campaign_list.append(new_campaign)
+			del campaign_data
+			print 'DEBUG: added campaign to list: ' + new_campaign['name']
+		
+		# FUTURE: sort campaigns by start date
+		
+		# select first campaign by default
+		selected_campaign = campaign_list[0]
+		
+		# draw menu screen for first time
+		self.UpdateCampaignSelectionScreen(selected_campaign)
+		
+		exit_loop = False
+		while not exit_loop:
+			
+			# emergency exit in case of endless loop
+			if libtcod.console_is_window_closed(): sys.exit()
+			
+			libtcod.console_flush()
+			
+			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+				key, mouse)
+			
+			##### Player Keyboard Commands #####
+			if session.key_down:
+				if event != libtcod.EVENT_KEY_RELEASE:
+					continue
+				session.key_down = False
+			if event != libtcod.EVENT_KEY_PRESS:
+				continue
+			session.key_down = True
+			
+			# TEMP? exit
+			if key.vk == libtcod.KEY_ESCAPE:
+				return False
+			
+			# proceed with selected campaign
+			elif key.vk == libtcod.KEY_ENTER:
+				exit_loop = True
+			
+			key_char = DecodeKey(chr(key.c).lower())
+			
+			# change selected campaign
+			if key_char in ['a', 'd']:
+				
+				i = campaign_list.index(selected_campaign)
+				
+				if key_char == 'd':
+					if i == len(campaign_list) - 1:
+						selected_campaign = campaign_list[0]
+					else:
+						selected_campaign = campaign_list[i+1]
+				else:
+					if i == 0:
+						selected_campaign = campaign_list[-1]
+					else:
+						selected_campaign = campaign_list[i-1]
+				self.UpdateCampaignSelectionScreen(selected_campaign)
+		
+		# TODO: set up campaign info here
+		
+		return True
+		
 	# advance the current campaign time
 	# TODO: how to handle rolling over into new day?
 	def AdvanceClock(self, hours, minutes):
@@ -532,8 +666,8 @@ class CampaignMapHex:
 		
 		# create a local list of all hx, hy locations in map
 		map_hex_list = []
-		for key, map_hex in self.map_hexes.iteritems():
-			map_hex_list.append(key)
+		for k, map_hex in self.map_hexes.iteritems():
+			map_hex_list.append(k)
 		
 		# record total number of hexes in the map
 		hex_num = len(map_hex_list)
@@ -747,7 +881,7 @@ class CampaignDay:
 		dayhex_openground = LoadXP('dayhex_openground.xp')
 		libtcod.console_set_key_color(dayhex_openground, KEY_COLOR)
 		
-		for key, map_hex in self.map_hexes.iteritems():
+		for k, map_hex in self.map_hexes.iteritems():
 			(x,y) = self.PlotCDHex(map_hex.hx, map_hex.hy)
 			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, cd_map_con, x-3, y-4)
 	
@@ -860,8 +994,8 @@ class CampaignDay:
 					if self.travel_direction == direction:
 						libtcod.console_set_default_foreground(cd_command_con, libtcod.blue)
 				
-				(key, x, y, char) = CD_TRAVEL_CMDS[direction]
-				libtcod.console_put_char(cd_command_con, 11+x, 4+y, EncodeKey(key).upper())
+				(k, x, y, char) = CD_TRAVEL_CMDS[direction]
+				libtcod.console_put_char(cd_command_con, 11+x, 4+y, EncodeKey(k).upper())
 				if direction <= 2:
 					x+=1
 				else:
@@ -1102,9 +1236,8 @@ class Session:
 		# flag to say that we are exiting to main menu
 		self.exiting_to_main_menu = False
 		
-		# generate hex console images for scenario map
+		# load and generate hex console images for scenario map
 		self.hex_consoles = {}
-		
 		for terrain_type in HEX_TERRAIN_TYPES:
 			
 			# generate consoles for 4 different terrain heights
@@ -1125,6 +1258,16 @@ class Session:
 						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
 			
 			self.hex_consoles[terrain_type] = consoles
+		
+		# TODO: load unit portraits
+		
+		# load national flag images
+		self.flags = {}
+		with open(DATAPATH + 'nation_defs.json') as data_file:
+			nations = json.load(data_file)
+		for name, data in nations.iteritems():
+			self.flags[name] = LoadXP(data['flag_image'])
+		del nations
 
 	# try to initialize SDL2 mixer
 	def InitMixer(self):
@@ -1471,7 +1614,13 @@ class Scenario:
 	# FUTURE: will take list of unit groups for this area from Campaign object
 	def SpawnEnemyUnits(self):
 		
-		# FUTURE - get from nation_defs eventually
+		# spawn one unit at a time
+		# once a tank, armoured car, or gun is spawned, set that as the type for
+		# this scenario; any further spawns of this class will be of this type
+		
+		
+		
+		# FUTURE - get from campaign object
 		enemy_unit_list = [
 			('TK-3', 2, 3, 95.0),
 			('TKS', 2, 3, 85.0),
@@ -2743,9 +2892,9 @@ class Crew:
 		
 		if self.morale > 100.0:
 			self.morale = 100.0
-		for key, (min_lvl, max_lvl) in MORALE_LEVELS.iteritems():
+		for k, (min_lvl, max_lvl) in MORALE_LEVELS.iteritems():
 			if min_lvl < self.morale < max_lvl:
-				self.morale_desc = key
+				self.morale_desc = k
 				break
 	
 	# returns True if this crewman is currently able to choose an action
@@ -3477,9 +3626,9 @@ class Unit:
 		for crewman in self.crew_list:
 			total_morale += crewman.morale
 		total_morale = total_morale / len(self.crew_list)
-		for key, (min_lvl, max_lvl) in MORALE_LEVELS.iteritems():
+		for k, (min_lvl, max_lvl) in MORALE_LEVELS.iteritems():
 			if min_lvl < total_morale < max_lvl:
-				self.morale_desc = key
+				self.morale_desc = k
 				break
 	
 	# draw this unit to the given viewport hex on the unit console
@@ -3878,7 +4027,8 @@ class Unit:
 			while not end_pause:
 				if libtcod.console_is_window_closed(): sys.exit()
 				libtcod.console_flush()
-				event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse)
+				event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
+					key, mouse)
 				
 				if session.key_down:
 					if event != libtcod.EVENT_KEY_RELEASE:
@@ -4267,7 +4417,7 @@ def GetHexPath(hex_list, hx1, hy1, hx2, hy2, unit=None, road_path=False):
 		return path
 	
 	# clear any old pathfinding info
-	for key, map_hex in hex_list.iteritems():
+	for k, map_hex in hex_list.iteritems():
 		map_hex.ClearPathInfo()
 	
 	node1 = hex_list[(hx1, hy1)]
@@ -4764,7 +4914,8 @@ def WaitForContinue(allow_cancel=False):
 	while not end_pause:
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
-		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse)
+		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
+			key, mouse)
 		if session.key_down:
 			if event != libtcod.EVENT_KEY_RELEASE:
 				continue
@@ -4855,9 +5006,9 @@ def GenerateKeyboards():
 	with open(DATAPATH + 'keyboard_mapping.json') as data_file:
 		keyboards = json.load(data_file)
 	dictionary = keyboards[KEYBOARDS[config.getint('ArmCom2', 'keyboard')]]
-	for key, value in dictionary.iteritems():
+	for k, value in dictionary.iteritems():
 		keyboard_decode[key] = value
-		keyboard_encode[value] = key
+		keyboard_encode[value] = k
 
 # turn an inputted key into a standard key input
 def DecodeKey(key_char):
@@ -4990,7 +5141,8 @@ def ShowGameMenu(active_tab):
 	while not exit_menu:
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
-		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse)
+		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
+			key, mouse)
 		if session.key_down:
 			if event != libtcod.EVENT_KEY_RELEASE:
 				continue
@@ -5310,7 +5462,8 @@ def ShowNotification(text, confirm=False):
 	while not exit_menu:
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
-		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse)
+		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
+			key, mouse)
 		if session.key_down:
 			if event != libtcod.EVENT_KEY_RELEASE:
 				continue
@@ -6410,6 +6563,11 @@ libtcod.console_set_default_background(0, libtcod.black)
 libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
 
+# display loading screen
+ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+	'Loading...')
+libtcod.console_flush()
+
 # create new session object
 session = Session()
 
@@ -6424,11 +6582,6 @@ if config.getboolean('ArmCom2', 'sounds_enabled'):
 	else:
 		config.set('ArmCom2', 'sounds_enabled', 'false')
 		print 'Not able to init mixer, sounds disabled'
-
-# display loading screen
-ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
-	'Loading...')
-libtcod.console_flush()
 
 # generate keyboard mapping dictionaries
 GenerateKeyboards()
@@ -6569,7 +6722,7 @@ def UpdateMainMenuCon(options_menu_active):
 			
 			y += 1
 	else:
-		OPTIONS = [('C', 'Continue'), ('N', 'New Game'), ('O', 'Options'), ('Q', 'Quit')]
+		OPTIONS = [('C', 'Continue'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]
 		for (char, text) in OPTIONS:
 			# grey-out continue game option if no saved game present
 			disabled = False
@@ -6639,7 +6792,8 @@ while not exit_game:
 	libtcod.console_flush()
 	
 	# get keyboard event
-	event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS, key, mouse) 
+	event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
+		key, mouse) 
 	
 	# if a key was previously pressed, wait for it to be released
 	if session.key_down:
@@ -6668,6 +6822,9 @@ while not exit_game:
 			options_menu_active = True
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+		
+		# TODO: combine new campaign and continue campaign elif sections
+		
 		
 		elif key_char == 'c':
 			if not os.path.exists('savegame'):
@@ -6700,16 +6857,28 @@ while not exit_game:
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 		
+		# start new campaign
 		elif key_char == 'n':
 			# check for overwrite of existing saved game
 			if os.path.exists('savegame'):
-				text = 'Starting a new scenario will overwrite the existing saved game.'
+				text = 'Starting a new campaign will PERMANTLY ERASE the existing saved campaign.'
 				result = ShowNotification(text, confirm=True)
+				# cancel and return to main menu
 				if not result:
 					libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 					continue
 			if main_theme is not None:
 				mixer.Mix_Pause(main_theme)
+			
+			# create a new campaign object and select a campaign
+			campaign = Campaign()
+			result = campaign.CampaignSelectionMenu()
+			if not result:
+				del campaign
+				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+				if main_theme is not None:
+					mixer.Mix_Resume(main_theme)
+				continue
 			
 			# show loading screen - there is a pause while terrain is generated
 			libtcod.console_clear(0)
@@ -6717,9 +6886,7 @@ while not exit_game:
 				'Loading...')
 			libtcod.console_flush()
 			
-			# generate a new campaign and campaign day object
-			campaign = Campaign()
-			campaign.player_nation = 'Germany'
+			# generate a new campaign day object
 			campaign_day = CampaignDay()
 			
 			# go to the campaign day loop

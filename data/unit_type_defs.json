@@ -47,6 +47,7 @@
 			"it is being widely deployed as part of infantry and cavalry ",
 			"companies."
 		],
+		"ubiquity" : "95",
 		"op_value" : "19"
 	},
 	
@@ -94,6 +95,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "85",
 		"op_value" : "0"
 	},
 	
@@ -145,6 +147,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "40",
 		"op_value" : "0"
 	},
 	
@@ -209,6 +212,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "30",
 		"op_value" : "0"
 	},
 	
@@ -272,6 +276,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "50",
 		"op_value" : "0"
 	},
 	
@@ -316,6 +321,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "75",
 		"op_value" : "0"
 	},
 	
@@ -364,6 +370,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "50",
 		"op_value" : "0"
 	},
 	
@@ -395,6 +402,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "60",
 		"op_value" : "0"
 	},
 	
@@ -430,6 +438,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "22",
 		"op_value" : "0"
 	},
 	
@@ -465,6 +474,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "13",
 		"op_value" : "0"
 	},
 	
@@ -1199,6 +1209,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "100",
 		"op_value" : "0"
 	}
 }

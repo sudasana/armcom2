@@ -1,0 +1,40 @@
+{
+	"name" : "The September Campaign",
+	"start_date" : {
+		"year" : "1939",
+		"month" : "9",
+		"day" : "1"
+	},
+	"end_date" : {
+		"year" : "1939",
+		"month" : "10",
+		"day" : "6"
+	},
+	"action_days" : "20",
+	"player_nation" : "Poland",
+	"enemy_nations" : ["Germany"],
+	"desc" : "The Polish defense against the German invasion, 1939.",
+	"player_unit_list" : [
+		"TKS (20mm)", "Vickers 6-Ton Mark E", "7TP"
+	],
+	"enemy_unit_list" : [
+		"Riflemen"
+	],
+	"calendar": [
+		{
+			"year" : "1939",
+			"month" : "9",
+			"day" : "1",
+			"desc" : "The Polish Border",
+			"enemy_unit_class_odds" : {
+				"Tankette" : "80",
+				"Light Tank" : "10",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "90",
+				"Field Gun" : "10",
+				"Anti-Aircraft Gun" : "20",
+				"Infantry Squad" : "100"
+			}
+		}
+	]
+}

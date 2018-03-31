@@ -376,9 +376,12 @@ MAX_LOS_MOD = 60.0
 #                                         Classes                                        #
 ##########################################################################################
 
-# Campaign: stores data about a campaign currently in progress, made up of 1+ campaign days
+# Campaign: stores data about a campaign currently in progress
 class Campaign:
 	def __init__(self):
+		
+		# placeholder for copy of campaign info that will be set by CampaignSelectionMenu
+		self.stats = {}
 		
 		# TEMP: following will be set by CampaignSelectionMenu eventually
 		
@@ -466,6 +469,7 @@ class Campaign:
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
+	
 	# menu to select campaign
 	def CampaignSelectionMenu(self):
 		
@@ -482,6 +486,7 @@ class Campaign:
 			with open(CAMPAIGNPATH + filename) as data_file:
 				campaign_data = json.load(data_file)
 			new_campaign = {}
+			new_campaign['filename'] = filename
 			for k in BASIC_INFO:
 				new_campaign[k] = campaign_data[k]
 			campaign_list.append(new_campaign)
@@ -542,10 +547,110 @@ class Campaign:
 						selected_campaign = campaign_list[i-1]
 				self.UpdateCampaignSelectionScreen(selected_campaign)
 		
-		# TODO: set up campaign info here
+		# create a local copy of selected scenario stats
+		with open(CAMPAIGNPATH + selected_campaign['filename']) as data_file:
+			self.stats = json.load(data_file)
 		
 		return True
+	
+	# update tank selection menu
+	def UpdateTankSelectionScreen(self, selected_unit):
+		libtcod.console_clear(con)
+		DrawFrame(con, 26, 1, 37, 58)
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		ConsolePrintEx(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Player Vehicle Selection')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		DrawFrame(con, 32, 8, 26, 18)
+		selected_unit.DisplayMyInfo(con, 33, 9, status=False, morale=False)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		ConsolePrint(con, 33, 24, 'Crew: ' + str(len(selected_unit.GetStat('crew_positions'))))
 		
+		text = ''
+		for t in selected_unit.GetStat('description'):
+			text += t
+		
+		lines = wrap(text, 33)
+		y = 29
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		for line in lines[:20]:
+			ConsolePrint(con, 28, y, line)
+			y+=1
+		
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		ConsolePrint(con, 32, 53, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
+		ConsolePrint(con, 32, 55, 'Enter')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		ConsolePrint(con, 38, 53, 'Select Unit Type')
+		ConsolePrint(con, 38, 55, 'Proceed')
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
+	
+	# menu to select player tank
+	# FUTURE: can be used when replacing a tank mid-campaign as well
+	def TankSelectionMenu(self):
+		
+		# generate tempoary list of units, one per possible unit type
+		unit_list = []
+		
+		for unit_id in self.stats['player_unit_list']:
+			new_unit = Unit(unit_id)
+			unit_list.append(new_unit)
+		
+		# select first tank by default
+		selected_unit = unit_list[0]
+		
+		# draw menu screen for first time
+		self.UpdateTankSelectionScreen(selected_unit)
+		
+		exit_loop = False
+		while not exit_loop:
+			
+			# emergency exit in case of endless loop
+			if libtcod.console_is_window_closed(): sys.exit()
+			
+			libtcod.console_flush()
+			
+			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+				key, mouse)
+			
+			##### Player Keyboard Commands #####
+			if session.key_down:
+				if event != libtcod.EVENT_KEY_RELEASE:
+					continue
+				session.key_down = False
+			if event != libtcod.EVENT_KEY_PRESS:
+				continue
+			session.key_down = True
+			
+			# proceed with selected tank
+			if key.vk == libtcod.KEY_ENTER:
+				exit_loop = True
+			
+			key_char = DecodeKey(chr(key.c).lower())
+			
+			# change selected tank
+			if key_char in ['a', 'd']:
+				
+				i = unit_list.index(selected_unit)
+				
+				if key_char == 'd':
+					if i == len(unit_list) - 1:
+						selected_unit = unit_list[0]
+					else:
+						selected_unit = unit_list[i+1]
+				else:
+					if i == 0:
+						selected_unit = unit_list[-1]
+					else:
+						selected_unit = unit_list[i-1]
+				self.UpdateTankSelectionScreen(selected_unit)
+		
+		# TODO: generate player unit and store in campaign object
+			
+	
+	
 	# advance the current campaign time
 	# TODO: how to handle rolling over into new day?
 	def AdvanceClock(self, hours, minutes):
@@ -3232,7 +3337,7 @@ class Unit:
 	
 	# display info on this unit to a given console starting at x,y
 	# if status is False, don't display status flags (used in campaign day display)
-	def DisplayMyInfo(self, console, x, y, status=True):
+	def DisplayMyInfo(self, console, x, y, status=True, morale=True):
 		
 		libtcod.console_set_default_background(console, libtcod.black)
 		libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
@@ -3283,6 +3388,14 @@ class Unit:
 		ConsolePrintEx(console, x+23, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,
 			self.GetStat('movement_class'))
 		
+		# size class
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		size_class = self.GetStat('size_class')
+		if size_class is not None:
+			if size_class != 'Normal':
+				ConsolePrintEx(console, x+23, y+13, libtcod.BKGND_NONE,
+					libtcod.RIGHT, size_class)
+			
 		# mark place in case we skip unit status display
 		ys = 15
 		if status:
@@ -3301,11 +3414,12 @@ class Unit:
 			
 			ys = 17
 		
-		# morale level of unit overall
-		libtcod.console_set_default_foreground(console, libtcod.white)
-		libtcod.console_set_default_background(console, libtcod.darker_cyan)
-		libtcod.console_rect(console, x, y+ys, 24, 1, True, libtcod.BKGND_SET)
-		ConsolePrint(console, x, y+ys, self.morale_desc)
+		# morale level
+		if morale:
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			libtcod.console_set_default_background(console, libtcod.darker_cyan)
+			libtcod.console_rect(console, x, y+ys, 24, 1, True, libtcod.BKGND_SET)
+			ConsolePrint(console, x, y+ys, self.morale_desc)
 		
 		libtcod.console_set_default_background(console, libtcod.black)
 
@@ -6903,6 +7017,8 @@ while not exit_game:
 				if main_theme is not None:
 					mixer.Mix_Resume(main_theme)
 				continue
+			
+			campaign.TankSelectionMenu()
 			
 			# show loading screen - there is a pause while terrain is generated
 			libtcod.console_clear(0)

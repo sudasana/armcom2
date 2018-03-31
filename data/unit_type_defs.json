@@ -93,7 +93,9 @@
 			}
 		],
 		"description" : [
-			""
+			"The TKS tankette is an advanced version of the TK-3 designed in ",
+			"1933, with an improved hull, suspention, and a Polish-built Fiat ",
+			"engine."
 		],
 		"ubiquity" : "85",
 		"op_value" : "0"
@@ -145,9 +147,11 @@
 			}
 		],
 		"description" : [
-			""
+			"The TKS tankette is an advanced version of the TK-3 designed in ",
+			"1933, with an improved hull, suspention, and a Polish-built Fiat ",
+			"engine. This version is rare variant armed with a 20mm gun."
 		],
-		"ubiquity" : "40",
+		"ubiquity" : "20",
 		"op_value" : "0"
 	},
 	
@@ -210,7 +214,10 @@
 			}
 		],
 		"description" : [
-			""
+			"First built in 1928, the Vickers Mark E was designed in Britain ",
+			"but all production models were licensed and built abroad. This is ",
+			"a Type B model, with a single turret mounting a short-barreled ",
+			"47mm gun."
 		],
 		"ubiquity" : "30",
 		"op_value" : "0"
@@ -274,7 +281,10 @@
 			}
 		],
 		"description" : [
-			""
+			"The design of the 7TP (7-tonne Polish) tank was based upon the ",
+			"the British Vickers Mark E, but this design is more advanced and ",
+			"better armed. It is, however, still a light tank, and is vulnerable ",
+			"to anti-tank fire."
 		],
 		"ubiquity" : "50",
 		"op_value" : "0"
@@ -583,7 +593,11 @@
 			}
 		],
 		"description" : [
-			""
+			"First designed in 1934, the Panzer II was always intended to be ",
+			"a stop-gap solution until other planned models of medium tank could ",
+			"be designed and built. Even so, it has proved to be a highly capable ",
+			"light tank. This version entered production in 1937 and carries a ",
+			"20mm gun as its main armament."
 		],
 		"op_value" : "35"
 	},
@@ -657,7 +671,10 @@
 			}
 		],
 		"description" : [
-			""
+			"The LT-35 was originally built in Czechoslovakia, but over 200 vehicles ",
+			"were seized by Germany in March 1939 and it entered German service ",
+			"as the Panzerkampfwagen 35(t). Compared to most other light tanks ",
+			"of 1939 it is well-armoured and carries a powerful 37mm main gun."
 		],
 		"op_value" : "40"
 	},
@@ -732,7 +749,10 @@
 			}
 		],
 		"description" : [
-			""
+			"The LT-38 was designed in Czechoslovakia, and after Germany occupied ",
+			"the country in March 1939 it entered production as the ",
+			"Panzerkampfwagen 38(t). This model A of the light tank is armed ",
+			"with a long-barreled 37mm main gun."
 		],
 		"op_value" : "43"
 	},
@@ -814,8 +834,11 @@
 			}
 		],
 		"description" : [
-			""
+			"First designed in 1934, the Panzer III was intended to be the main ",
+			"battle tank of the German armoured forces. The D model is a prototype ",
+			"model and only a very small number ever entered service."
 		],
+		"ubiquity" : "5",
 		"op_value" : "41"
 	},
 	
@@ -896,7 +919,9 @@
 			}
 		],
 		"description" : [
-			""
+			"The model F of the Panzer III is the first model to enter mass ",
+			"production. It serves as the main battle tank of the German armoured ",
+			"forces in 1939."
 		],
 		"op_value" : "45"
 	},

@@ -1,6 +1,10 @@
 {
-	"None": {
+	"N/A": {
 		"desc" : "Crewman unable to act"
+	},
+	"None": {
+		"desc" : "No action set",
+		"selectable" : "TRUE"
 	},
 	"Spot": {
 		"desc" : "Scan terrain for enemies"
@@ -9,7 +13,8 @@
 		"desc" : "Help direct the driver",
 		"position_list" : ["Commander", "Commander/Gunner"],
 		"fov_hextants" : ["5", "0", "1"],
-		"fov_range" : "6"
+		"fov_range" : "6",
+		"selectable" : "TRUE"
 	},
 	"Operate Gun" : {
 		"desc" : "Operate the main gun and the turret",
@@ -17,11 +22,12 @@
 		"fov_hextants" : ["0"],
 		"fov_range" : "6"
 	},
-	"Load Gun" : {
-		"desc" : "Reload the main gun as needed",
+	"Reload" : {
+		"desc" : "Reload the main gun as needed, increasing fire rate",
 		"position_list" : ["Loader"],
 		"fov_hextants" : [],
-		"fov_range" : "1"
+		"fov_range" : "1",
+		"selectable" : "TRUE"
 	},
 	"Drive" : {
 		"desc" : "Drive the vehicle",
@@ -30,10 +36,11 @@
 		"fov_range" : "2"
 	},
 	"Drive Cautiously" : {
-		"desc" : "Advance slowly, watching for obstacles",
+		"desc" : "Drive slowly, watching for obstacles",
 		"position_list" : [],
 		"fov_hextants" : ["0"],
-		"fov_range" : "1"
+		"fov_range" : "1",
+		"selectable" : "TRUE"
 	},
 	"Operate Hull MG" : {
 		"desc" : "Operate the hull-mounted MG",

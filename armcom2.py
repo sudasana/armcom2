@@ -220,7 +220,14 @@ CD_BATTLE_STR_MOD = 4.0
 # effect of each point of organization <> 5 on chance
 CD_BATTLE_ORGANIZATION_MOD = 5.0
 
-# of all enemy units initially spawned in a scenario, portion that are spawned as dummy units
+# scenarios will have 1-4 enemy units
+# base odds of 4,3,2 units
+ENEMY_NUMBER_BASE_ODDS = [97.0, 80.0, 60.0]
+# effect of each point of strength on odds
+CD_ENEMY_STRENGTH_EFFECT = -5.0
+
+# for each enemy unit initially spawned in a scenario, ratio of additional dummy units spawned
+# (rounded up, minimum 1)
 ENEMY_DUMMY_RATIO = 0.25
 
 # critical hit and miss thresholds
@@ -383,6 +390,9 @@ class Campaign:
 		# placeholder for copy of campaign info that will be set by CampaignSelectionMenu
 		self.stats = {}
 		
+		# placeholder for pointer to current calendar day
+		self.today = None
+		
 		# placeholder for player unit
 		self.player_unit = None			
 		
@@ -543,6 +553,9 @@ class Campaign:
 		with open(CAMPAIGNPATH + selected_campaign['filename']) as data_file:
 			self.stats = json.load(data_file)
 		
+		# TEMP set current day to firest day in calendar
+		self.today = self.stats['calendar'][0]
+		
 		return True
 	
 	# update tank selection menu
@@ -659,10 +672,6 @@ class Campaign:
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		ConsolePrint(con, 30, 19, 'Good morning, commander.')
 		ConsolePrint(con, 30, 20, 'Please confirm your identity.')
-		
-		#libtcod.console_set_default_background(con, libtcod.dark_blue)
-		#libtcod.console_rect(con, 27, 24, 35, 3, True, libtcod.BKGND_SET)
-		#libtcod.console_set_default_background(con, libtcod.black)
 		
 		# first name
 		text = crewman.first_name.encode('IBM850')
@@ -1855,62 +1864,90 @@ class Scenario:
 		self.map_objectives.append(map_hex)
 	
 	# generate enemy units for this scenario
-	# assumes that enemy are on defense, already in place in area before player arrives
-	# FUTURE: will take list of unit groups for this area from Campaign object
+	# TEMP: assumes that enemy are on defense, already in place in area before player arrives
 	def SpawnEnemyUnits(self):
 		
-		# spawn one unit at a time
-		# once a tank, armoured car, or gun is spawned, set that as the type for
-		# this scenario; any further spawns of this class will be of this type
+		# roll for initial number of enemy units to be spawned
 		
+		# base odds
+		odds = ENEMY_NUMBER_BASE_ODDS
 		
+		# effect of enemy strength in zone
+		str_effect = CD_ENEMY_STRENGTH_EFFECT * self.cd_hex.enemy_strength
+		for i in range(len(odds)):
+			odds[i] += str_effect
+			if odds[i] < 0.0:
+				odds[i] = 0.0
 		
-		# FUTURE - get from campaign object
-		enemy_unit_list = [
-			('TK-3', 2, 3, 95.0),
-			('TKS', 2, 3, 85.0),
-			('TKS (20mm)', 1, 2, 40.0),
-			('Vickers 6-Ton Mark E', 1, 1, 30.0),
-			('7TP', 1, 1, 50.0),
-			('wz. 34 (MG)', 1, 2, 75.0),
-			('wz. 34 (37mm)', 1, 2, 50.0),
-			('37mm wz. 36', 2, 3, 60.0),
-			('75mm wz. 02/26', 1, 1, 22.0),
-			('75mm wz. 97/25', 1, 1, 13.0),
-			('Riflemen', 1, 3, 100.0)
-		]
+		roll = GetPercentileRoll()
+		enemy_unit_num = 4
+		for chance in odds:
+			if roll > chance:
+				break
+			enemy_unit_num -= 1
 		
-		# load unit stats from JSON file
+		# load unit stats for reference from JSON file
 		with open(DATAPATH + 'unit_type_defs.json') as data_file:
 			unit_types = json.load(data_file)
 		
-		# determine how many unit groups will be spawned
-		num_unit_groups = libtcod.random_get_int(0, 3, 4)
+		# create a local pointer to current calendar day class odds
+		class_odds = campaign.today['enemy_unit_class_odds']
 		
-		# generate list of unit groups
-		unit_group_list = []
-		while len(unit_group_list) < num_unit_groups:
-			(unit_id, min_num, max_num, rarity) = choice(enemy_unit_list)
-			
-			# do rarity test
-			roll = GetPercentileRoll()
-			if roll > rarity:
-				continue
-			
-			unit_group_list.append((unit_id, min_num, max_num, rarity))
+		# TODO:
+		# once a tank, armoured car, or gun is spawned, set that as the type for
+		# this scenario; any further spawns of this class will be of this type
+		tank_type = None
+		ac_type = None
+		gun_type = None
 		
-		CATEGORY_LIST = ['Gun', 'Infantry', 'Vehicle']
-		for category in CATEGORY_LIST:
-			for (unit_id, min_num, max_num, rarity) in unit_group_list:
-				if unit_id not in unit_types:
-					print 'ERROR: Could not find unit id: ' + unit_id
+		enemy_unit_list = []
+		while len(enemy_unit_list) < enemy_unit_num:
+			
+			# choose a random unit class, rolling against its ubiquity factor
+			unit_class = None
+			while unit_class is None:
+				k, value = choice(list(class_odds.items()))
+				if GetPercentileRoll() <= float(value):
+					unit_class = k
+			
+			# TODO: if class unit type has already been set, use that one instead
+			
+			# choose a random unit type
+			type_list = []
+			for unit_id in campaign.stats['enemy_unit_list']:
+				# unrecognized unit id
+				if unit_id not in unit_types: continue
+				# not the right class
+				if unit_types[unit_id]['class'] != unit_class: continue
+				type_list.append(unit_id)
+			
+			# no units of the correct class found
+			if len(type_list) == 0: continue
+			
+			selected_unit_id = None
+			while selected_unit_id is None:
+				unit_id = choice(type_list)
+				# no ubiquity rating, select automatically
+				if 'ubiquity' not in unit_types[unit_id]:
+					selected_unit_id = unit_id
 					continue
 				
-				unit_stats = unit_types[unit_id]
-				if unit_stats['category'] != category:
+				# roll for ubiquity rating
+				if GetPercentileRoll() <= float(unit_types[unit_id]['ubiquity']):
+					selected_unit_id = unit_id
 					continue
+			
+			# add the final selected unit id
+			enemy_unit_list.append(selected_unit_id)
+			
+			# TODO: set class type if not set already
+		
+		# spawn each unit in the list in order of these categories
+		for category in ['Gun', 'Infantry', 'Vehicle']:
+			for unit_id in enemy_unit_list:
+				if unit_types[unit_id]['category'] != category: continue
 				
-				# determine where to place center point of group
+				# determine where to place new unit
 				if category == 'Gun':
 					ideal_distance = 1
 				elif category == 'Infantry':
@@ -1928,10 +1965,16 @@ class Scenario:
 					if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) < 5:
 						continue
 					
+					# not passable
+					if self.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
+						continue
+					
+					# close enough to an objective
 					for map_hex in self.map_objectives:
 						if GetHexDistance(hx, hy, map_hex.hx, map_hex.hy) <= ideal_distance:
 							close_enough = True
 							break
+					
 					if close_enough:
 						break
 				
@@ -1939,50 +1982,30 @@ class Scenario:
 					print 'ERROR: Could not find a location close enough to an objective to spawn!'
 					continue
 				
-				# spawn each unit within the group close to hx, hy
-				unit_num = libtcod.random_get_int(0, min_num, max_num)
-				for i in range(unit_num):
+				# create the unit
+				new_unit = Unit(unit_id)
+				new_unit.owning_player = 1
+				new_unit.ai = AI(new_unit)
+				
+				# TEMP
+				new_unit.nation = campaign.stats['enemy_nations'][0]
+				new_unit.facing = 3
+				if 'turret' in new_unit.stats:
+					new_unit.turret_facing = 3
+				
+				new_unit.base_morale_level = 'Fearless'
+				new_unit.GenerateNewCrew()
+				
+				# deploy if gun
+				if new_unit.GetStat('category') == 'Gun':
+					new_unit.deployed = True
+				self.units.append(new_unit)
+				new_unit.SpawnAt(hx, hy)
+				
+				print 'DEBUG: spawned a ' + unit_id + ' at ' + str(hx) + ',' + str(hy)
 					
-					# create the unit
-					new_unit = Unit(unit_id)
-					new_unit.owning_player = 1
-					new_unit.ai = AI(new_unit)
-					new_unit.nation = 'Poland'
-					new_unit.facing = 3
-					if 'turret' in new_unit.stats:
-						new_unit.turret_facing = 3
-					new_unit.base_morale_level = 'Fearless'
-					new_unit.GenerateNewCrew()
-					# deploy if gun
-					if new_unit.GetStat('category') == 'Gun':
-						new_unit.deployed = True
-					self.units.append(new_unit)
-					
-					# build a list of hexes within the ideal distance of hx,hy
-					hex_list = []
-					hex_list.append((hx, hy))
-					for r in range(1, ideal_distance+1):
-						hex_list.extend(GetHexRing(hx, hy, r))
-					
-					# find a random location and place the unit there
-					for tries in range(300):
-						(spawn_hx, spawn_hy) = choice(hex_list)
-						
-						# too close to player
-						if GetHexDistance(spawn_hx, spawn_hy, self.player_unit.hx, self.player_unit.hy) < 5:
-							continue
-						
-						# off map
-						if (spawn_hx, spawn_hy) not in self.cd_hex.map_hexes:
-							continue
-						
-						# not passable
-						if self.cd_hex.map_hexes[(spawn_hx, spawn_hy)].terrain_type == 'pond':
-							continue
-						
-						new_unit.SpawnAt(spawn_hx, spawn_hy)
-						break
-		
+		return
+		# TODO: clone dummy units
 		unit_list = []
 		for unit in self.units:
 			if unit.owning_player == 1:
@@ -6452,7 +6475,8 @@ def DoScenario():
 		# spawn player tank into scenario
 		unit = campaign.player_unit
 		
-		# spawn into map: 2 hexes up from bottom corner, and set facings
+		# spawn player into map: 2 hexes up from bottom corner, and set facings
+		# FUTURE: spawn location changes based on from where player unit entered area
 		unit.SpawnAt(0, scenario.cd_hex.map_radius - 2)
 		unit.facing = 0
 		unit.turret_facing = 0	

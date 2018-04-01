@@ -1379,17 +1379,39 @@ class CampaignDay:
 			# if we've initiated a scenario or are resuming a saved game with a scenario
 			# running, go to the scenario loop now
 			if self.scenario is not None:
-				DoScenario()
 				
-				self.UpdateCDDisplay()
-				libtcod.console_flush()
+				DoScenario()
 				
 				# we're exiting to main menu, game is already saved
 				if session.exiting_to_main_menu:
 					session.exiting_to_main_menu = False
 					exit_loop = True
 					continue
-			
+				
+				self.UpdateCDDisplay()
+				libtcod.console_flush()
+				
+				# handle result of a completed scenario
+				
+				# player was destroyed
+				if self.scenario.winner == 1:
+					EraseGame()
+					session.exiting_to_main_menu = False
+					exit_loop = True
+					continue
+				
+				# player won
+				elif self.scenario.winner == 0:
+					ShowNotification('You have defeated all enemy resistance and now control this area.')
+					self.map_hexes[self.player_unit_location].controlled_by = 0
+					self.UpdateCDControlCon()
+					self.UpdateCDUnitCon()
+					self.UpdateCDDisplay()
+					
+					# delete completed scenario
+					self.scenario = None
+					SaveGame()
+				
 			libtcod.console_flush()
 			
 			# get keyboard and/or mouse event
@@ -1478,6 +1500,7 @@ class CampaignDay:
 					self.UpdateTimeWeatherDisplay()
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
+					SaveGame()
 
 
 # Session: stores data that is generated for each game session and not stored in the saved game
@@ -1866,6 +1889,9 @@ class Scenario:
 	# generate enemy units for this scenario
 	# TEMP: assumes that enemy are on defense, already in place in area before player arrives
 	def SpawnEnemyUnits(self):
+		
+		# TEMP - no enemies
+		return
 		
 		# roll for initial number of enemy units to be spawned
 		
@@ -6559,8 +6585,6 @@ def DoScenario():
 		
 		# check if scenario end conditions have been met
 		if scenario.finished:
-			EraseGame()
-			# FUTURE: add more descriptive detail here
 			text = 'The scenario is over: ' + scenario.win_desc
 			ShowNotification(text)
 			exit_scenario = True

@@ -62,7 +62,7 @@ AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-03-31'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-04-01'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -220,8 +220,8 @@ CD_BATTLE_STR_MOD = 4.0
 # effect of each point of organization <> 5 on chance
 CD_BATTLE_ORGANIZATION_MOD = 5.0
 
-# scenarios will have 1-4 enemy units
-# base odds of 4,3,2 units
+# scenarios will have 2-5 enemy units
+# base odds of 5,4,3 units
 ENEMY_NUMBER_BASE_ODDS = [97.0, 80.0, 60.0]
 # effect of each point of strength on odds
 CD_ENEMY_STRENGTH_EFFECT = -5.0
@@ -553,7 +553,7 @@ class Campaign:
 		with open(CAMPAIGNPATH + selected_campaign['filename']) as data_file:
 			self.stats = json.load(data_file)
 		
-		# TEMP set current day to firest day in calendar
+		# TEMP set current day to first day in calendar
 		self.today = self.stats['calendar'][0]
 		
 		return True
@@ -1485,8 +1485,6 @@ class CampaignDay:
 					# roll for battle encounter if enemy-controlled
 					if self.map_hexes[(hx, hy)].controlled_by == 1:
 						roll = GetPercentileRoll()
-						# TEMP
-						roll = 0.0
 						if roll <= self.map_hexes[(hx,hy)].encounter_chance:
 							ShowNotification('You encounter enemy resistance and a battle ensues!')
 							self.InitScenario(hx,hy)
@@ -1890,9 +1888,6 @@ class Scenario:
 	# TEMP: assumes that enemy are on defense, already in place in area before player arrives
 	def SpawnEnemyUnits(self):
 		
-		# TEMP - no enemies
-		return
-		
 		# roll for initial number of enemy units to be spawned
 		
 		# base odds
@@ -1906,7 +1901,7 @@ class Scenario:
 				odds[i] = 0.0
 		
 		roll = GetPercentileRoll()
-		enemy_unit_num = 4
+		enemy_unit_num = 5
 		for chance in odds:
 			if roll > chance:
 				break
@@ -2010,6 +2005,7 @@ class Scenario:
 				
 				# create the unit
 				new_unit = Unit(unit_id)
+				new_unit.InitScenarioStats()
 				new_unit.owning_player = 1
 				new_unit.ai = AI(new_unit)
 				
@@ -3451,8 +3447,6 @@ class Unit:
 			
 			# clear this stat since we don't need it any more
 			self.stats['weapon_list'] = None
-		
-		self.InitScenarioStats()
 
 	# set up any data that is unique to a scenario
 	def InitScenarioStats(self):
@@ -6500,6 +6494,7 @@ def DoScenario():
 		
 		# spawn player tank into scenario
 		unit = campaign.player_unit
+		unit.InitScenarioStats()
 		
 		# spawn player into map: 2 hexes up from bottom corner, and set facings
 		# FUTURE: spawn location changes based on from where player unit entered area

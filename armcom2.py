@@ -150,7 +150,7 @@ UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.light_red			# known "
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
 RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
-
+GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
 
 # list of possible keyboard layout settings
 KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']
@@ -166,8 +166,8 @@ HEX_TERRAIN_DESC = {
 	'pond' : 'Pond', 'roughground' : 'Rough Ground', 'village' : 'Village'
 }
 
-# maximum length for randomly generated crew names
-CREW_NAME_MAX_LENGTH = 20
+# maximum length for crew first or last names
+CREW_NAME_MAX_LENGTH = 18
 
 # list of crew stat names
 STAT_NAMES = ['Strength', 'Grit', 'Perception', 'Intelligence']
@@ -383,10 +383,11 @@ class Campaign:
 		# placeholder for copy of campaign info that will be set by CampaignSelectionMenu
 		self.stats = {}
 		
-		# TEMP: following will be set by CampaignSelectionMenu eventually
+		# placeholder for player unit
+		self.player_unit = None			
 		
+		# TEMP: following will be set by CampaignSelectionMenu eventually
 		# current year, month, day, hour, and minute
-		# TODO: starting date will be set by campaign type
 		self.calendar = {
 			'year' : 1939,
 			'month' : 9,
@@ -395,16 +396,7 @@ class Campaign:
 			'minute' : 0
 		}
 		
-		# nation of player forces; corresponds to a key in nation_defs.json
-		self.player_nation = 'Germany'
 		
-		# TEMP: set up player unit
-		self.player_unit = Unit('Panzer 38(t) A')
-		self.player_unit.owning_player = 0
-		self.player_unit.nation = self.player_nation
-		self.player_unit.base_morale_level = 'Confident'
-		self.player_unit.GenerateNewCrew()
-	
 	# update screen with info about the currently selected campaign
 	def UpdateCampaignSelectionScreen(self, selected_campaign):
 		libtcod.console_clear(con)
@@ -647,9 +639,140 @@ class Campaign:
 						selected_unit = unit_list[i-1]
 				self.UpdateTankSelectionScreen(selected_unit)
 		
-		# TODO: generate player unit and store in campaign object
-			
+		# generate player unit based on selection and store in campaign object
+		self.player_unit = Unit(selected_unit.unit_id)
+		self.player_unit.owning_player = 0
+		self.player_unit.nation = self.stats['player_nation']
+		self.player_unit.base_morale_level = 'Confident'
+		self.player_unit.GenerateNewCrew()
 	
+	
+	# update the commander name menu
+	def UpdateCommanderNameMenu(self, crewman, editing_first_name):
+		libtcod.console_clear(con)
+		
+		libtcod.console_set_default_foreground(con, GOLD_COL)
+		for x in [26,27,28,60,61,62]:
+			libtcod.console_put_char(con, x, 19, chr(247))
+			libtcod.console_put_char(con, x, 20, chr(247))
+		
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		ConsolePrint(con, 30, 19, 'Good morning, commander.')
+		ConsolePrint(con, 30, 20, 'Please confirm your identity.')
+		
+		#libtcod.console_set_default_background(con, libtcod.dark_blue)
+		#libtcod.console_rect(con, 27, 24, 35, 3, True, libtcod.BKGND_SET)
+		#libtcod.console_set_default_background(con, libtcod.black)
+		
+		# first name
+		text = crewman.first_name.encode('IBM850')
+		if editing_first_name:
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		ConsolePrintEx(con, 44, 25, libtcod.BKGND_NONE, libtcod.RIGHT, text)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		
+		# last name
+		text = crewman.last_name.encode('IBM850')
+		if not editing_first_name:
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		ConsolePrint(con, 46, 25, text)
+		
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		DrawFrame(con, 26, 23, 37, 5)
+		
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		ConsolePrint(con, 31, 29, 'Del')
+		ConsolePrint(con, 31, 30, 'Space')
+		ConsolePrint(con, 31, 31, 'Tab')
+		ConsolePrint(con, 31, 32, 'Enter')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		ConsolePrint(con, 37, 29, 'Clear Name')
+		ConsolePrint(con, 37, 30, 'Toggle First/Last Name')
+		ConsolePrint(con, 37, 31, 'Generate Random Name')
+		ConsolePrint(con, 37, 32, 'Confirm and Continue')
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
+	# allow the player to enter their character's name, or generate a random one
+	def CommanderNameMenu(self):
+		
+		crewman = self.player_unit.crew_positions[0].crewman
+		editing_first_name = True
+		
+		self.UpdateCommanderNameMenu(crewman, editing_first_name)
+		
+		exit_loop = False
+		while not exit_loop:
+			
+			# emergency exit in case of endless loop
+			if libtcod.console_is_window_closed(): sys.exit()
+			
+			libtcod.console_flush()
+			
+			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+				key, mouse)
+			
+			##### Player Keyboard Commands #####
+			if session.key_down:
+				if event != libtcod.EVENT_KEY_RELEASE:
+					continue
+				session.key_down = False
+			# ignore other events and shift key being pressed
+			if event != libtcod.EVENT_KEY_PRESS or key.vk == libtcod.KEY_SHIFT:
+				continue
+			session.key_down = True
+			
+			if key.vk == libtcod.KEY_ENTER:
+				# must have something in both name slots
+				if len(crewman.first_name) == 0 or len(crewman.last_name) == 0:
+					continue
+				exit_loop = True
+				continue
+				
+			elif key.vk == libtcod.KEY_TAB:
+				crewman.GenerateName()
+			
+			elif key.vk == libtcod.KEY_DELETE:
+				if editing_first_name:
+					crewman.first_name = ''
+				else:
+					crewman.last_name = ''
+			
+			elif key.vk == libtcod.KEY_SPACE:
+				editing_first_name = not editing_first_name
+			
+			elif key.vk == libtcod.KEY_BACKSPACE:
+				if editing_first_name:
+					if len(crewman.first_name) == 0: continue
+					crewman.first_name = crewman.first_name[:-1]
+				else:
+					if len(crewman.last_name) == 0: continue
+					crewman.last_name = crewman.last_name[:-1]
+			
+			else:
+				# add a character
+				if key.c == 0: continue
+				
+				# don't decode key.c, we want the raw input
+				key_char = chr(key.c)
+				
+				if key.shift: key_char = key_char.upper()
+				
+				# filter key input
+				if not ((65 <= ord(key_char) <= 90) or (97 <= ord(key_char) <= 122)):
+					continue
+				
+				if editing_first_name:
+					if len(crewman.first_name) == CREW_NAME_MAX_LENGTH:
+						continue
+					crewman.first_name += key_char
+				else:
+					if len(crewman.last_name) == CREW_NAME_MAX_LENGTH:
+						continue
+					crewman.last_name += key_char
+				
+			self.UpdateCommanderNameMenu(crewman, editing_first_name)
+			
 	
 	# advance the current campaign time
 	# TODO: how to handle rolling over into new day?
@@ -2942,7 +3065,7 @@ class Crew:
 		last_name = choice(nations[self.nation]['surnames'])
 		self.last_name = FixName(last_name)
 			
-	# return the crewman's full name as an encoded string
+	# return the crewman's full name
 	def GetFullName(self):
 		return (self.first_name + ' ' + self.last_name)
 	
@@ -3658,6 +3781,14 @@ class Unit:
 		UpdateUnitCon()
 		UpdateUnitInfoCon()
 		UpdateScenarioDisplay()
+	
+	# return the crewman currently in the given position
+	def GetCrewmanByPosition(self, position_name):
+		for position in self.crew_positions:
+			if position.crewman is None: continue
+			if position.name == position_name:
+				return position.crewman
+		return None
 	
 	# calculate which hexes are visible to this unit
 	def CalcFoV(self):
@@ -7018,13 +7149,9 @@ while not exit_game:
 					mixer.Mix_Resume(main_theme)
 				continue
 			
+			# allow player to select their tank and enter their character name
 			campaign.TankSelectionMenu()
-			
-			# show loading screen - there is a pause while terrain is generated
-			libtcod.console_clear(0)
-			ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Loading...')
-			libtcod.console_flush()
+			campaign.CommanderNameMenu()
 			
 			# generate a new campaign day object
 			campaign_day = CampaignDay()

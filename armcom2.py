@@ -1640,6 +1640,7 @@ class Session:
 			'menu_select',
 			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
 			'37mm_he_explosion_00', '37mm_he_explosion_01',
+			'vehicle_explosion_00',
 			'at_rifle_firing',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'zb_53_mg_00'
@@ -4611,12 +4612,15 @@ class Unit:
 			print 'DEBUG: Player saved from destruction'
 			return
 		
+		if self.GetStat('category') == 'Vehicle':
+			PlaySoundFor(self, 'vehicle_explosion')
+		
 		self.alive = False
 		scenario.cd_hex.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
 		self.ClearAcquiredTargets()
 		UpdateUnitCon()
 		UpdateScenarioDisplay()
-	
+		
 	# roll a spotting check from this unit to another using the given crew position
 	def DoSpotCheck(self, target, position):
 		
@@ -5472,6 +5476,10 @@ def PlaySoundFor(obj, action):
 			n = libtcod.random_get_int(0, 0, 2)
 			PlaySound('light_tank_moving_0' + str(n))
 			return
+	
+	elif action == 'vehicle_explosion':
+		PlaySound('vehicle_explosion_00')
+		return
 
 
 ##########################################################################################

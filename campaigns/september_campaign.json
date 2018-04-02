@@ -18,7 +18,9 @@
 		"TKS (20mm)", "Vickers 6-Ton Mark E", "7TP"
 	],
 	"enemy_unit_list" : [
-		"Riflemen"
+		"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", 
+		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",
+		"PSW 222", "3.7cm PaK 35/36", "8.8cm FlaK 18 o. 36", "Riflemen"
 	],
 	"calendar": [
 		{
@@ -27,12 +29,11 @@
 			"day" : "1",
 			"desc" : "The Polish Border",
 			"enemy_unit_class_odds" : {
-				"Tankette" : "80",
-				"Light Tank" : "10",
+				"Light Tank" : "80",
+				"Medium Tank" : "15",
 				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "90",
-				"Field Gun" : "10",
-				"Anti-Aircraft Gun" : "20",
+				"Anti-Tank Gun" : "60",
+				"Anti-Aircraft Gun" : "5",
 				"Infantry Squad" : "100"
 			}
 		}

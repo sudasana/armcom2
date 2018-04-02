@@ -62,7 +62,7 @@ AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-04-01'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-04-07'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -211,7 +211,10 @@ MONTH_NAMES = [
 ##### Game Engine Constants #####
 #################################
 
-# TODO: move to a json file
+# TODO: move these to json file
+
+# radius in hexes of a zone on the campaign day map; does not include centre hex
+CD_MAP_HEX_RADIUS = 6
 
 # base chance of triggering a battle when entering an enemy-held hex on the campaign day map
 CD_BATTLE_BASE_CHANCE = 45.0
@@ -228,7 +231,11 @@ CD_ENEMY_STRENGTH_EFFECT = -5.0
 
 # for each enemy unit initially spawned in a scenario, ratio of additional dummy units spawned
 # (rounded up, minimum 1)
+# TEMP: not used right now
 ENEMY_DUMMY_RATIO = 0.25
+
+# minimum distance from the player that an enemy will be spawned in a scenario
+ENEMY_SPAWN_MIN_DISTANCE = 3
 
 # critical hit and miss thresholds
 CRITICAL_HIT = 3.0
@@ -877,7 +884,7 @@ class CampaignMapHex:
 		
 		# create an empty placeholder for a hex map; will be generated if a scenario takes place here
 		self.map_hexes = {}
-		self.map_radius = 8
+		self.map_radius = CD_MAP_HEX_RADIUS
 		
 	# create a hex map for a scenario within this map hex
 	def GenerateHexMap(self):
@@ -1972,9 +1979,9 @@ class Scenario:
 				if category == 'Gun':
 					ideal_distance = 1
 				elif category == 'Infantry':
-					ideal_distance = 3
+					ideal_distance = 2
 				else:
-					ideal_distance = 12
+					ideal_distance = 6
 				
 				hx = None
 				hy = None
@@ -1983,7 +1990,7 @@ class Scenario:
 					(hx, hy) = choice(self.cd_hex.map_hexes.keys())
 					
 					# too close to player
-					if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) < 5:
+					if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) < ENEMY_SPAWN_MIN_DISTANCE:
 						continue
 					
 					# not passable
@@ -6496,9 +6503,9 @@ def DoScenario():
 		unit = campaign.player_unit
 		unit.InitScenarioStats()
 		
-		# spawn player into map: 2 hexes up from bottom corner, and set facings
+		# spawn player into map and set facings
 		# FUTURE: spawn location changes based on from where player unit entered area
-		unit.SpawnAt(0, scenario.cd_hex.map_radius - 2)
+		unit.SpawnAt(0, scenario.cd_hex.map_radius)
 		unit.facing = 0
 		unit.turret_facing = 0	
 		scenario.units.append(unit)
@@ -6518,13 +6525,13 @@ def DoScenario():
 					continue
 				if scenario.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
 					continue
-				if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 5:
+				if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 3:
 					continue
 				
 				# too close to an existing objective
 				too_close = False
 				for map_hex in scenario.map_objectives:
-					if GetHexDistance(hx, hy, map_hex.hx, map_hex.hy) < 6:
+					if GetHexDistance(hx, hy, map_hex.hx, map_hex.hy) < 3:
 						too_close = True
 						break
 				if too_close: continue

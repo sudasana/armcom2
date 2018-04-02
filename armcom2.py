@@ -409,8 +409,13 @@ class Campaign:
 			'year' : 1939,
 			'month' : 9,
 			'day' : 1,
-			'hour' : 5,
-			'minute' : 0
+			'hour' : 4,
+			'minute' : 45
+		}
+		
+		self.end_of_day = {
+			'hour' : 19,
+			'minute' : 15
 		}
 		
 		

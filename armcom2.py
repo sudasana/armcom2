@@ -1127,7 +1127,16 @@ class CampaignDay:
 		self.travel_direction = None			# selected direction of travel
 		
 		self.scenario = None				# currently active scenario in progress
-		
+	
+	# resupply the player unit (FUTURE: and other units in the battlegroup)
+	def ResupplyPlayer(self):
+		campaign.AdvanceClock(0, 30)
+		ShowNotification('You contact HQ for resupply, which arrives 30 minutes later.')
+		for weapon in campaign.player_unit.weapon_list:
+			if weapon.ammo_stores is not None:
+				weapon.LoadGunAmmo()
+				text = weapon.stats['name'] + ' gun has been fully restocked with ammo.'
+				ShowNotification(text)
 	
 	# initiate a battle encounter scenario and store it in the CD object
 	def InitScenario(self, hx, hy):
@@ -1240,8 +1249,8 @@ class CampaignDay:
 			libtcod.console_set_default_background(cd_command_con, col)
 			libtcod.console_rect(cd_command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
 			
-			# TEMP - only travel active for now
-			if num != 3:
+			# TEMP - only travel and supply menus active for now
+			if num not in [3, 5]:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
 			# menu number
 			ConsolePrint(cd_command_con, x, 0, str(num))
@@ -1306,6 +1315,18 @@ class CampaignDay:
 			ConsolePrint(cd_command_con, 5, 22, 'Enter')
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 			ConsolePrint(cd_command_con, 12, 22, 'Proceed')
+		
+		# resupply menu
+		elif self.active_menu == 5:
+			
+			ConsolePrintEx(cd_command_con, 12, 10, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Request resupply:')
+			ConsolePrintEx(cd_command_con, 12, 11, libtcod.BKGND_NONE, libtcod.CENTER,
+				'30 mins.')
+			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+			ConsolePrint(cd_command_con, 8, 22, 'R')
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			ConsolePrint(cd_command_con, 10, 22, 'Resupply')
 	
 	
 	# generate/update the time and weather console
@@ -1469,10 +1490,20 @@ class CampaignDay:
 			
 			# TEMP exit
 			if key.vk == libtcod.KEY_ESCAPE:
+				SaveGame()
 				exit_loop = True
+				continue
 			
 			# key commands
 			key_char = chr(key.c).lower()
+			
+			# switch active menu
+			if key_char in ['3', '5']:
+				if self.active_menu != int(key_char):
+					self.active_menu = int(key_char)
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+				continue
 			
 			# map key to current keyboard layout
 			key_char = DecodeKey(key_char)
@@ -1536,6 +1567,16 @@ class CampaignDay:
 					self.UpdateCDUnitCon()
 					self.UpdateTimeWeatherDisplay()
 					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					SaveGame()
+			
+			# supply menu active
+			elif self.active_menu == 5:
+				
+				# request resupply
+				if key_char == 'r':
+					self.ResupplyPlayer()
+					self.UpdateTimeWeatherDisplay()
 					self.UpdateCDDisplay()
 					SaveGame()
 
@@ -3326,28 +3367,32 @@ class Weapon:
 		self.ammo_stores = None
 		if self.GetStat('type') == 'Gun' and 'ammo_type_list' in self.stats:
 			self.ammo_stores = {}
-			
-			# set up empty categories first
-			for ammo_type in self.stats['ammo_type_list']:
-				self.ammo_stores[ammo_type] = 0
-			
-			# now determine loadout
-			max_ammo = int(self.stats['max_ammo'])
-			
-			# only one type, fill it up
-			if len(self.stats['ammo_type_list']) == 1:
-				ammo_type = self.stats['ammo_type_list'][0]
-				self.ammo_stores[ammo_type] = max_ammo
-			
-			# HE and AP: 70% and 30%
-			else:
-				if self.stats['ammo_type_list'] == ['HE', 'AP']:
-					self.ammo_stores['HE'] = int(max_ammo * 0.7)
-					self.ammo_stores['AP'] = max_ammo - self.ammo_stores['HE']
-		
+			self.LoadGunAmmo()
+
 		# TODO: set up ready rack if any
 		
 		self.InitScenarioStats()
+
+	# load this gun full of ammo
+	def LoadGunAmmo(self):
+		# set up empty categories first
+		for ammo_type in self.stats['ammo_type_list']:
+			self.ammo_stores[ammo_type] = 0
+		
+		# now determine loadout
+		max_ammo = int(self.stats['max_ammo'])
+		
+		# only one type, fill it up
+		if len(self.stats['ammo_type_list']) == 1:
+			ammo_type = self.stats['ammo_type_list'][0]
+			self.ammo_stores[ammo_type] = max_ammo
+		
+		# HE and AP: 70% and 30%
+		else:
+			if self.stats['ammo_type_list'] == ['HE', 'AP']:
+				self.ammo_stores['HE'] = int(max_ammo * 0.7)
+				self.ammo_stores['AP'] = max_ammo - self.ammo_stores['HE']
+		
 
 	# set up any data that is unique to a scenario
 	def InitScenarioStats(self):

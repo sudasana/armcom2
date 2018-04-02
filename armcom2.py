@@ -1166,14 +1166,17 @@ class CampaignDay:
 		libtcod.console_set_default_foreground(cd_unit_con, libtcod.white)
 		
 		# draw enemy strength and organization levels
+		# only display if adjacent to player
 		libtcod.console_set_default_foreground(cd_unit_con, libtcod.red)
+		(player_hx, player_hy) = self.player_unit_location
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			if self.map_hexes[(hx,hy)].controlled_by == 1:
-				text = str(self.map_hexes[(hx,hy)].enemy_strength)
-				text += ' '
-				text += str(self.map_hexes[(hx,hy)].enemy_organization)
-				(x,y) = self.PlotCDHex(hx, hy)
-				ConsolePrint(cd_unit_con, x-1, y, text)
+			if self.map_hexes[(hx,hy)].controlled_by == 0: continue
+			if GetHexDistance(player_hx, player_hy, hx, hy) > 1: continue
+			text = str(self.map_hexes[(hx,hy)].enemy_strength)
+			text += ' '
+			text += str(self.map_hexes[(hx,hy)].enemy_organization)
+			(x,y) = self.PlotCDHex(hx, hy)
+			ConsolePrint(cd_unit_con, x-1, y, text)
 		
 		# draw player unit group
 		(hx, hy) = self.player_unit_location
@@ -6896,8 +6899,9 @@ main_theme = None
 if config.getboolean('ArmCom2', 'sounds_enabled'):
 	if session.InitMixer():
 		session.LoadSounds()
-		# start main menu theme
-		main_theme = mixer.Mix_PlayChannel(-1, mixer.Mix_LoadWAV(SOUNDPATH + 'armcom2_theme.ogg'), -1)
+		# load and play main menu theme
+		main_theme = mixer.Mix_LoadMUS(SOUNDPATH + 'armcom2_theme.ogg')
+		mixer.Mix_PlayMusic(main_theme, -1)
 	else:
 		config.set('ArmCom2', 'sounds_enabled', 'false')
 		print 'Not able to init mixer, sounds disabled'
@@ -7158,7 +7162,7 @@ while not exit_game:
 			
 			# pause main theme if playing
 			if main_theme is not None:
-				mixer.Mix_Pause(main_theme)
+				mixer.Mix_PauseMusic()
 			
 			libtcod.console_clear(0)
 			ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -7169,9 +7173,10 @@ while not exit_game:
 			LoadGame()
 			campaign_day.CampaignDayLoop()
 			
-			# resume main theme if playing
+			# restart main theme if playing
 			if main_theme is not None:
-				mixer.Mix_Resume(main_theme)
+				mixer.Mix_RewindMusic()
+				mixer.Mix_ResumeMusic()
 			
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
@@ -7187,7 +7192,7 @@ while not exit_game:
 					libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 					continue
 			if main_theme is not None:
-				mixer.Mix_Pause(main_theme)
+				mixer.Mix_PauseMusic()
 			
 			# create a new campaign object and select a campaign
 			campaign = Campaign()
@@ -7196,7 +7201,8 @@ while not exit_game:
 				del campaign
 				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 				if main_theme is not None:
-					mixer.Mix_Resume(main_theme)
+					mixer.Mix_RewindMusic()
+					mixer.Mix_ResumeMusic()
 				continue
 			
 			# allow player to select their tank and enter their character name
@@ -7211,7 +7217,8 @@ while not exit_game:
 			
 			# resume theme music if active
 			if main_theme is not None:
-				mixer.Mix_Resume(main_theme)
+				mixer.Mix_RewindMusic()
+				mixer.Mix_ResumeMusic()
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 	

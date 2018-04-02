@@ -803,6 +803,15 @@ class Campaign:
 		while self.calendar['minute'] >= 60:
 			self.calendar['hour'] += 1
 			self.calendar['minute'] -= 60
+	
+	# returns true if clock has reached or past end of day
+	def EndOfDay(self):
+		if self.calendar['hour'] > self.end_of_day['hour']:
+			return True
+		if self.calendar['hour'] == self.end_of_day['hour']:
+			if self.calendar['minute'] >= self.end_of_day['minute']:
+				return True
+		return False
 
 
 
@@ -1426,6 +1435,14 @@ class CampaignDay:
 					# delete completed scenario
 					self.scenario = None
 					SaveGame()
+					
+					# check for end of day
+					if campaign.EndOfDay():
+						ShowNotification('Your combat day has ended.')
+						EraseGame()
+						session.exiting_to_main_menu = False
+						exit_loop = True
+						continue
 				
 			libtcod.console_flush()
 			
@@ -1507,6 +1524,13 @@ class CampaignDay:
 							ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
 							self.map_hexes[(hx, hy)].controlled_by = 0
 							self.UpdateCDControlCon()
+							# check for end of day
+							if campaign.EndOfDay():
+								ShowNotification('Your combat day has ended.')
+								EraseGame()
+								session.exiting_to_main_menu = False
+								exit_loop = True
+								continue
 
 					# update rest of consoles
 					self.UpdateCDUnitCon()
@@ -7165,10 +7189,6 @@ while not exit_game:
 				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 				continue
 			
-			# pause main theme if playing
-			if main_theme is not None:
-				mixer.Mix_PauseMusic()
-			
 			libtcod.console_clear(0)
 			ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Loading...')
@@ -7176,6 +7196,11 @@ while not exit_game:
 			
 			# load the game info and go into the campaign day loop
 			LoadGame()
+			
+			# pause main theme if playing
+			if main_theme is not None:
+				mixer.Mix_PauseMusic()
+			
 			campaign_day.CampaignDayLoop()
 			
 			# restart main theme if playing
@@ -7196,8 +7221,6 @@ while not exit_game:
 				if not result:
 					libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 					continue
-			if main_theme is not None:
-				mixer.Mix_PauseMusic()
 			
 			# create a new campaign object and select a campaign
 			campaign = Campaign()
@@ -7216,6 +7239,10 @@ while not exit_game:
 			
 			# generate a new campaign day object
 			campaign_day = CampaignDay()
+			
+			# pause main theme if playing
+			if main_theme is not None:
+				mixer.Mix_PauseMusic()
 			
 			# go to the campaign day loop
 			campaign_day.CampaignDayLoop()

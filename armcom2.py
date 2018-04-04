@@ -871,13 +871,13 @@ class MapHex:
 
 
 
-# Campaign Map Hex: a map hex for the campaign day map, each representing a map scenario hexes
-# scaled to approx. 2.7 km. wide
+# Campaign Map Hex: a map hex for the campaign day map, each representing a map of scenario hexes
 class CampaignMapHex:
 	def __init__(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
 		self.controlled_by = 1		# which player side currently controls this zone
+		self.known_to_player = False	# player knows enemy strength and organization in this zone
 		
 		# real enemy strength and organization, each 1-9
 		self.enemy_strength = -9 + libtcod.random_get_int(0, 1, 6) + libtcod.random_get_int(0, 1, 6) + libtcod.random_get_int(0, 1, 6)
@@ -1194,6 +1194,7 @@ class CampaignDay:
 		(player_hx, player_hy) = self.player_unit_location
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			if self.map_hexes[(hx,hy)].controlled_by == 0: continue
+			if not self.map_hexes[(hx,hy)].known_to_player: continue
 			if GetHexDistance(player_hx, player_hy, hx, hy) > 1: continue
 			text = str(self.map_hexes[(hx,hy)].enemy_strength)
 			text += ' '
@@ -1303,13 +1304,25 @@ class CampaignDay:
 			# display enemy strength/organization if any and chance of encounter
 			map_hex = self.map_hexes[(hx,hy)]
 			if map_hex.controlled_by == 1:
+				
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
 				ConsolePrint(cd_command_con, 1, 9, 'Enemy Controlled')
-				ConsolePrint(cd_command_con, 2, 10, 'Strength: ' + str(map_hex.enemy_strength))
-				ConsolePrint(cd_command_con, 2, 11, 'Organization: ' + str(map_hex.enemy_organization))
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				ConsolePrint(cd_command_con, 0, 13, 'Encounter Chance: ' + str(map_hex.encounter_chance) + '%%')
-				ConsolePrint(cd_command_con, 0, 14, 'Travel Time: 15 mins.')
+				
+				if not map_hex.known_to_player:
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+					ConsolePrint(cd_command_con, 0, 13, 'Recon: 15 mins.')
+					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+					ConsolePrint(cd_command_con, 5, 21, 'R')
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+					ConsolePrint(cd_command_con, 12, 21, 'Recon')
+				else:
+					ConsolePrint(cd_command_con, 2, 10, 'Strength: ' + str(map_hex.enemy_strength))
+					ConsolePrint(cd_command_con, 2, 11, 'Organization: ' + str(map_hex.enemy_organization))
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+					ConsolePrint(cd_command_con, 0, 13, 'Encounter Chance: ' + str(map_hex.encounter_chance) + '%%')
+			
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			ConsolePrint(cd_command_con, 0, 14, 'Travel Time: 15 mins.')
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			ConsolePrint(cd_command_con, 5, 22, 'Enter')
@@ -1449,6 +1462,7 @@ class CampaignDay:
 				elif self.scenario.winner == 0:
 					ShowNotification('You have defeated all enemy resistance and now control this area.')
 					self.map_hexes[self.player_unit_location].controlled_by = 0
+					self.UpdateTimeWeatherDisplay()
 					self.UpdateCDControlCon()
 					self.UpdateCDUnitCon()
 					self.UpdateCDDisplay()
@@ -1527,14 +1541,35 @@ class CampaignDay:
 					self.UpdateCDDisplay()
 					continue
 				
-				# proceed with travel
-				if key.vk == libtcod.KEY_ENTER and self.travel_direction is not None:
+				# recon or proceed with travel
+				elif key_char == 'r' or key.vk == libtcod.KEY_ENTER:
 					
-					# ensure that travel is possible
+					# no direction set
+					if self.travel_direction is None: continue
+					
+					# ensure that travel/recon is possible
 					(hx, hy) = self.player_unit_location
 					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
 					if (hx, hy) not in self.map_hexes:
 						continue
+					
+					# recon
+					if key_char == 'r':
+						map_hex = self.map_hexes[(hx,hy)]
+						if map_hex.known_to_player: continue
+						map_hex.known_to_player = True
+						campaign.AdvanceClock(0, 15)
+						text = 'Estimated enemy strength in zone: ' + str(map_hex.enemy_strength)
+						text += '; estimated organization: ' + str(map_hex.enemy_organization) + '.'
+						ShowNotification(text)
+						self.UpdateTimeWeatherDisplay()
+						self.UpdateCDUnitCon()
+						self.UpdateCDCommandCon()
+						self.UpdateCDDisplay()
+						SaveGame()
+						continue
+					
+					# proceed with travel
 					
 					# set new player location
 					self.player_unit_location = (hx, hy)
@@ -1554,7 +1589,6 @@ class CampaignDay:
 						else:
 							ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
 							self.map_hexes[(hx, hy)].controlled_by = 0
-							self.UpdateCDControlCon()
 							# check for end of day
 							if campaign.EndOfDay():
 								ShowNotification('Your combat day has ended.')
@@ -1562,12 +1596,13 @@ class CampaignDay:
 								session.exiting_to_main_menu = False
 								exit_loop = True
 								continue
-
-					# update rest of consoles
-					self.UpdateCDUnitCon()
+					
 					self.UpdateTimeWeatherDisplay()
+					self.UpdateCDControlCon()
+					self.UpdateCDUnitCon()
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
+					
 					SaveGame()
 			
 			# supply menu active
@@ -2104,8 +2139,6 @@ class Scenario:
 					new_unit.deployed = True
 				self.units.append(new_unit)
 				new_unit.SpawnAt(hx, hy)
-				
-				print 'DEBUG: spawned a ' + unit_id + ' at ' + str(hx) + ',' + str(hy)
 					
 		return
 		# TODO: clone dummy units
@@ -4609,7 +4642,7 @@ class Unit:
 		
 		# debug flag
 		if GODMODE and self == scenario.player_unit:
-			print 'DEBUG: Player saved from destruction'
+			print 'GODMODE: Player saved from destruction'
 			return
 		
 		if self.GetStat('category') == 'Vehicle':

@@ -1155,7 +1155,6 @@
 	"3.7cm PaK 35/36": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
-		"portrait" : "",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",
@@ -1172,6 +1171,15 @@
 				"max_ammo" : "180"
 			}
 		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
 		"description" : [
 			""
 		],
@@ -1182,7 +1190,6 @@
 	"8.8cm FlaK 18 o. 36": {
 		"category" : "Gun",
 		"class" : "Anti-Aircraft Gun",
-		"portrait" : "",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",
@@ -1198,6 +1205,15 @@
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
 		],
 		"description" : [
 			""

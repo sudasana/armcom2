@@ -2255,6 +2255,11 @@ class Scenario:
 			
 			if (unit.hx, unit.hy) not in scenario.player_unit.fov: continue
 			self.player_target_list.append(unit)
+		
+		# clear player target if no longer possible
+		if self.player_target is not None:
+			if self.player_target not in self.player_target_list:
+				self.player_target = None
 	
 	# select the next enemy target for the player unit, looping around the list
 	def SelectNextTarget(self, forward):
@@ -3808,11 +3813,6 @@ class Unit:
 				
 			# rebuild list of potential targets
 			scenario.RebuildPlayerTargetList()
-			
-			# clear player target if no longer possible
-			if scenario.player_target is not None:
-				if scenario.player_target not in scenario.player_target_list:
-					scenario.player_target = None
 			
 			# turn on player LoS display
 			scenario.player_los_active = True
@@ -6074,6 +6074,13 @@ def UpdateUnitCon():
 				libtcod.console_set_default_foreground(unit_con, libtcod.grey)
 				libtcod.console_set_default_background(unit_con, libtcod.black)
 				ConsolePrintEx(unit_con, x, y, libtcod.BKGND_SET, libtcod.CENTER, text)
+			
+			# record vp location of other units in the stack
+			if len(map_hex.unit_stack) > 1:
+				for unit in map_hex.unit_stack[1:]:
+					unit.vp_hx = vp_hx
+					unit.vp_hy = vp_hy
+			
 	
 		# check for hex highlight if any
 		if scenario.highlighted_hex is not None:
@@ -6878,6 +6885,7 @@ def DoScenario():
 			if key_char == 'w' or key.vk == libtcod.KEY_UP:
 				
 				if scenario.player_unit.MoveForward():
+					scenario.RebuildPlayerTargetList()
 					UpdatePlayerInfoCon()
 					UpdateContextCon()
 					UpdateCrewPositionCon()
@@ -6899,6 +6907,7 @@ def DoScenario():
 				else:
 					result = scenario.player_unit.Pivot(True)
 				if result:
+					scenario.RebuildPlayerTargetList()
 					scenario.CenterVPOnPlayer()
 					scenario.SetVPHexes()
 					UpdateContextCon()

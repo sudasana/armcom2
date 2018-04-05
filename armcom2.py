@@ -60,9 +60,11 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
+ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
+PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-04-07'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-04-14'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -148,8 +150,12 @@ ACTION_KEY_COL = libtcod.Color(51, 153, 255)		# colour for key commands
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.light_red			# known "
+
+HEX_BORDER_COL = libtcod.Color(0, 90, 0)		# foreground colour for hex border depiction
+OG_BG_COL = libtcod.Color(0, 70, 0)			# background colour for open ground
+
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
-RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
+RIVER_BG_COL = libtcod.Color(0, 0, 140)			# background color for river edges and ponds
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
 
 # list of possible keyboard layout settings
@@ -158,6 +164,11 @@ KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']
 # hex terrain types
 HEX_TERRAIN_TYPES = [
 	'openground', 'forest', 'fields_in_season', 'pond', 'roughground', 'village'
+]
+
+# list of all inner cells in a hex console image
+HEX_CONSOLE_LOCATIONS = [
+	(2,1),(3,1),(4,1),(1,2),(2,2),(3,2),(4,2),(5,2),(2,3),(3,3),(4,3)
 ]
 
 # descriptive text for terrain types
@@ -187,6 +198,11 @@ CD_MENU_LIST = [
 	('Travel', 3, libtcod.Color(70, 140, 0)),
 	('Group', 4, libtcod.Color(180, 0, 45)),
 	('Supply', 5, libtcod.Color(128, 100, 64))
+]
+
+# directional arrows for directions on the campaign day map
+CD_DIR_ARROW = [
+	228,26,229,230,27,231
 ]
 
 # list of commands for travel in campaign day
@@ -394,6 +410,8 @@ MAX_LOS_MOD = 60.0
 class Campaign:
 	def __init__(self):
 		
+		self.player_vp = 0		# player victory points
+		
 		# placeholder for copy of campaign info that will be set by CampaignSelectionMenu
 		self.stats = {}
 		
@@ -418,7 +436,10 @@ class Campaign:
 			'minute' : 15
 		}
 		
-		
+	# award VP to the player
+	def AwardVP(self, vp_to_add):
+		self.player_vp += vp_to_add
+	
 	# update screen with info about the currently selected campaign
 	def UpdateCampaignSelectionScreen(self, selected_campaign):
 		libtcod.console_clear(con)
@@ -819,13 +840,18 @@ class Campaign:
 # roughly scaled to 160 m. in width
 class MapHex:
 	def __init__(self, hx, hy):
-		self.hx = hx			# hex coordinates in the map
-		self.hy = hy			# 0,0 is centre of map
-		self.terrain_type = 'openground'
-		self.variant = 0		# FUTURE: variant of visual depiction, no effect on gameplay
+		self.hx = hx						# hex coordinates in the map
+		self.hy = hy						# 0,0 is centre of map
+		self.terrain_type = 'openground'			# type of terrain in hex
+		self.console_seed = libtcod.random_get_int(0, 1, 128)	# seed for console image generation
+		
 		self.elevation = 1		# elevation in steps above baseline
 		self.river_edges = []		# list of edges bounded by a river
+		self.cliff_edges = []		# list of edges bounded by a cliff
 		self.dirt_roads = []		# list of directions linked by a dirt road
+		self.stone_roads = []		# " stone road
+		
+		self.mud = 0			# level of mud present in the hex
 		
 		self.unit_stack = []		# stack of units present in this hex
 		self.objective = None		# status as an objective; if -1, not controlled
@@ -1115,6 +1141,14 @@ class CampaignMapHex:
 class CampaignDay:
 	def __init__(self):
 		
+		# victory point rewards for this campaign day
+		self.capture_zone_vp = 3
+		self.unit_destruction_vp = {
+			'Infantry': 1,
+			'Gun' : 2,
+			'Vehicle': 5 
+		}
+		
 		# campaign day map
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
@@ -1128,6 +1162,7 @@ class CampaignDay:
 		
 		self.scenario = None				# currently active scenario in progress
 	
+	
 	# resupply the player unit (FUTURE: and other units in the battlegroup)
 	def ResupplyPlayer(self):
 		campaign.AdvanceClock(0, 30)
@@ -1137,6 +1172,7 @@ class CampaignDay:
 				weapon.LoadGunAmmo()
 				text = weapon.stats['name'] + ' gun has been fully restocked with ammo.'
 				ShowNotification(text)
+	
 	
 	# initiate a battle encounter scenario and store it in the CD object
 	def InitScenario(self, hx, hy):
@@ -1232,6 +1268,28 @@ class CampaignDay:
 				for (xm,ym) in CD_HEX_EDGE_CELLS[direction]:
 					libtcod.console_put_char_ex(cd_control_con, x+xm,
 						y+ym, chr(249), libtcod.red, libtcod.black)
+	
+	
+	# generate/update the GUI console
+	def UpdateCDGUICon(self):
+		libtcod.console_clear(cd_gui_con)
+		
+		# movement menu, direction currently selected
+		if self.active_menu == 3 and self.travel_direction is not None:
+			
+			# draw directional line
+			(hx, hy) = self.player_unit_location
+			(x1,y1) = self.PlotCDHex(hx, hy)
+			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
+			if (hx, hy) in self.map_hexes:
+				(x2,y2) = self.PlotCDHex(hx, hy)
+				line = GetLine(x1,y1,x2,y2)
+				for (x,y) in line[1:-1]:
+					libtcod.console_put_char_ex(cd_gui_con, x, y, 250, libtcod.green,
+						libtcod.black)
+				(x,y) = line[-1]
+				libtcod.console_put_char_ex(cd_gui_con, x, y, CD_DIR_ARROW[self.travel_direction],
+					libtcod.green, libtcod.black)
 	
 	
 	# generate/update the player unit console
@@ -1349,26 +1407,41 @@ class CampaignDay:
 		text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
 		ConsolePrint(time_weather_con, 14, 1, text)
 		ConsolePrintEx(time_weather_con, 16, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
+	
+	
+	# generate/update the campaign info console
+	def UpdateCDCampaignCon(self):
+		libtcod.console_clear(cd_campaign_con)
+		
+		# current VP total
+		libtcod.console_set_default_foreground(cd_campaign_con, ACTION_KEY_COL)
+		ConsolePrint(cd_campaign_con, 0, 0, 'Campaign Info')
+		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
+		ConsolePrint(cd_campaign_con, 1, 2, 'VP: ' + str(campaign.player_vp))
 		
 		
 	# draw all campaign day consoles to screen
 	def UpdateCDDisplay(self):
 		libtcod.console_clear(con)
+		
 		libtcod.console_blit(daymap_bkg, 0, 0, 0, 0, con, 0, 0)			# background frame
 		libtcod.console_blit(cd_map_con, 0, 0, 0, 0, con, 28, 4)		# terrain map
-		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 29, 0)		# time and weather
 		libtcod.console_blit(cd_control_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# zone control layer
 		libtcod.console_blit(cd_unit_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# unit group layer
+		libtcod.console_blit(cd_gui_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# GUI layer
+		
+		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 29, 0)		# time and weather
+		
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
 		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
+		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 1)		# campaign info menu
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-	
 	
 	# main campaign day input loop
 	def CampaignDayLoop(self):
 		
 		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
-		global cd_player_unit_con
+		global cd_player_unit_con, cd_campaign_con, cd_gui_con
 		global time_weather_con
 		
 		# create consoles
@@ -1394,6 +1467,12 @@ class CampaignDay:
 		libtcod.console_set_default_foreground(cd_control_con, libtcod.red)
 		libtcod.console_clear(cd_control_con)
 		
+		# campaign day GUI console
+		cd_gui_con = libtcod.console_new(35, 53)
+		libtcod.console_set_default_background(cd_gui_con, KEY_COLOR)
+		libtcod.console_set_default_foreground(cd_gui_con, libtcod.red)
+		libtcod.console_clear(cd_gui_con)
+		
 		# time and weather console
 		time_weather_con = libtcod.console_new(33, 4)
 		libtcod.console_set_default_background(time_weather_con, libtcod.black)
@@ -1412,14 +1491,22 @@ class CampaignDay:
 		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 		libtcod.console_clear(cd_command_con)
 		
+		# campaign info console 23x16
+		cd_campaign_con = libtcod.console_new(23, 16)
+		libtcod.console_set_default_background(cd_campaign_con, libtcod.black)
+		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
+		libtcod.console_clear(cd_campaign_con)
+		
 		
 		# generate consoles for the first time
 		self.UpdateCDMapCon()
 		self.UpdateCDControlCon()
 		self.UpdateCDUnitCon()
+		self.UpdateCDGUICon()
 		self.UpdateTimeWeatherDisplay()
 		self.UpdateCDPlayerUnitCon()
 		self.UpdateCDCommandCon()
+		self.UpdateCDCampaignCon()
 		self.UpdateCDDisplay()
 		
 		# record mouse cursor position to check when it has moved
@@ -1469,6 +1556,11 @@ class CampaignDay:
 					
 					# delete completed scenario
 					self.scenario = None
+					
+					# award vp to player
+					campaign.AwardVP(self.capture_zone_vp)
+					self.UpdateCDCampaignCon()
+					
 					SaveGame()
 					
 					# check for end of day
@@ -1515,6 +1607,7 @@ class CampaignDay:
 			if key_char in ['3', '5']:
 				if self.active_menu != int(key_char):
 					self.active_menu = int(key_char)
+					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
 				continue
@@ -1537,6 +1630,7 @@ class CampaignDay:
 							self.travel_direction = None
 						else:
 							self.travel_direction = direction
+					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
 					continue
@@ -1576,6 +1670,7 @@ class CampaignDay:
 					
 					# clear travel direction
 					self.travel_direction = None
+					self.UpdateCDGUICon()
 					
 					# advance campaign clock
 					campaign.AdvanceClock(0, 15)
@@ -1583,12 +1678,17 @@ class CampaignDay:
 					# roll for battle encounter if enemy-controlled
 					if self.map_hexes[(hx, hy)].controlled_by == 1:
 						roll = GetPercentileRoll()
-						if roll <= self.map_hexes[(hx,hy)].encounter_chance:
+						if roll <= self.map_hexes[(hx,hy)].encounter_chance or ALWAYS_ENCOUNTER:
 							ShowNotification('You encounter enemy resistance and a battle ensues!')
 							self.InitScenario(hx,hy)
 						else:
 							ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
 							self.map_hexes[(hx, hy)].controlled_by = 0
+							
+							# award vp to player
+							campaign.AwardVP(self.capture_zone_vp)
+							self.UpdateCDCampaignCon()
+							
 							# check for end of day
 							if campaign.EndOfDay():
 								ShowNotification('Your combat day has ended.')
@@ -1626,28 +1726,8 @@ class Session:
 		# flag to say that we are exiting to main menu
 		self.exiting_to_main_menu = False
 		
-		# load and generate hex console images for scenario map
+		# placeholder for hex console images
 		self.hex_consoles = {}
-		for terrain_type in HEX_TERRAIN_TYPES:
-			
-			# generate consoles for 4 different terrain heights
-			consoles = []
-			for elevation in range(4):
-				consoles.append(libtcod.console_new(7, 5))
-				libtcod.console_blit(LoadXP('hex_' + terrain_type + '.xp'),
-					0, 0, 7, 5, consoles[elevation], 0, 0)
-				libtcod.console_set_key_color(consoles[elevation], KEY_COLOR)
-			
-			# apply colour modifier to elevations 0, 2, 3
-			for elevation in [0, 2, 3]:
-				for y in range(5):
-					for x in range(7):
-						bg = libtcod.console_get_char_background(consoles[elevation],x,y)
-						if bg == KEY_COLOR: continue
-						bg = bg * (1.0 + float(elevation-1) * ELEVATION_SHADE)
-						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
-			
-			self.hex_consoles[terrain_type] = consoles
 		
 		# TODO: load unit portraits
 		
@@ -1658,6 +1738,152 @@ class Session:
 		for name, data in nations.iteritems():
 			self.flags[name] = LoadXP(data['flag_image'])
 		del nations
+
+	# generate map hex consoles for all hexes in a scenario map
+	def GenerateHexConsoles(self):
+		
+		# return a random x,y location within a hex console image
+		def GetRandomLocation(gen):
+			return HEX_CONSOLE_LOCATIONS[libtcod.random_get_int(generator, 0, 10)]
+		
+		self.hex_consoles = {}
+		
+		for k, map_hex in scenario.cd_hex.map_hexes.iteritems():
+			
+			# generate basic hex console image
+			# FUTURE: can change colours used here based on environment/weather
+			console = libtcod.console_new(7, 5)
+			libtcod.console_set_default_background(console, KEY_COLOR)
+			libtcod.console_clear(console)
+			
+			libtcod.console_set_default_foreground(console, HEX_BORDER_COL)
+			
+			# draw hex border
+			for x in [2,3,4]:
+				libtcod.console_put_char_ex(console, x, 0, 250,
+					HEX_BORDER_COL, OG_BG_COL)
+				libtcod.console_put_char_ex(console, x, 4, 250,
+					HEX_BORDER_COL, OG_BG_COL)
+			for x in [1,5]:
+				libtcod.console_put_char_ex(console, x, 1, 250,
+					HEX_BORDER_COL, OG_BG_COL)
+				libtcod.console_put_char_ex(console, x, 3, 250,
+					HEX_BORDER_COL, OG_BG_COL)
+			libtcod.console_put_char_ex(console, 0, 2, 250, HEX_BORDER_COL,
+				OG_BG_COL)
+			libtcod.console_put_char_ex(console, 6, 2, 250, HEX_BORDER_COL,
+				OG_BG_COL)
+			
+			# draw hex interior
+			if map_hex.terrain_type == 'pond':
+				libtcod.console_set_default_background(console, RIVER_BG_COL)
+			else:
+				libtcod.console_set_default_background(console, OG_BG_COL)
+			libtcod.console_rect(console, 2, 1, 3, 1, True, libtcod.BKGND_SET)
+			libtcod.console_rect(console, 1, 2, 5, 1, True, libtcod.BKGND_SET)
+			libtcod.console_rect(console, 2, 3, 3, 1, True, libtcod.BKGND_SET)
+			
+			# add random greebles
+			generator = libtcod.random_new_from_seed(map_hex.console_seed)
+			
+			# open ground
+			if map_hex.terrain_type == 'openground':
+				if libtcod.random_get_int(generator, 1, 10) == 1:
+					(x,y) = GetRandomLocation(generator)
+					libtcod.console_put_char_ex(console, x, y, 247,
+						HEX_BORDER_COL, OG_BG_COL)
+			
+			# rough ground
+			elif map_hex.terrain_type == 'roughground':
+				elements = libtcod.random_get_int(generator, 2, 5)
+				while elements > 0:
+					(x,y) = GetRandomLocation(generator)
+					# skip if a greeble is already there
+					if libtcod.console_get_char(console, x, y) != 32:
+						continue
+					(char, col) = [(249, libtcod.grey), (247, libtcod.sepia)][libtcod.random_get_int(generator, 0, 1)]
+					libtcod.console_put_char_ex(console, x, y, char,
+						col, OG_BG_COL)
+					elements -= 1
+			
+			# forest
+			elif map_hex.terrain_type == 'forest':
+				for (x,y) in HEX_CONSOLE_LOCATIONS:
+					roll = libtcod.random_get_int(generator, 1, 10)
+					if roll == 1:
+						char = 32
+					elif roll < 9:
+						char = 6
+					else:
+						char = 5
+					if libtcod.random_get_int(generator, 1, 8) < 8:
+						col = libtcod.Color(0,libtcod.random_get_int(generator, 100, 170),0)
+					else:
+						col = libtcod.dark_sepia
+					libtcod.console_put_char_ex(console, x, y, char, col, OG_BG_COL)
+			
+			# fields in season
+			elif map_hex.terrain_type == 'fields_in_season':
+				for (x,y) in HEX_CONSOLE_LOCATIONS:
+					c = libtcod.random_get_int(generator, 120, 190)
+					libtcod.console_put_char_ex(console, x, y, 177, libtcod.Color(c,c,0), OG_BG_COL)
+			
+			# pond
+			elif map_hex.terrain_type == 'pond':
+				elements = libtcod.random_get_int(generator, 3, 6)
+				while elements > 0:
+					(x,y) = GetRandomLocation(generator)
+					if libtcod.console_get_char(console, x, y) != 32:
+						continue
+					libtcod.console_put_char_ex(console, x, y, 247,
+						libtcod.Color(45,0,180), RIVER_BG_COL)
+					elements -= 1
+			
+			# village
+			elif map_hex.terrain_type == 'village':
+				for (x,y) in HEX_CONSOLE_LOCATIONS:
+					roll = libtcod.random_get_int(generator, 1, 10)
+					
+					# blank
+					if roll < 5:
+						continue
+					# small hut
+					if roll < 7:
+						char = 250
+						fc = libtcod.sepia
+						bc = OG_BG_COL
+					# haystack
+					elif roll < 9:
+						char = 4
+						fc = libtcod.sepia
+						bc = OG_BG_COL
+					# building 1
+					elif roll == 9:
+						char = 249
+						fc = libtcod.grey
+						bc = libtcod.dark_sepia
+					# building 2
+					else:
+						char = 206
+						fc = libtcod.dark_sepia
+						bc = libtcod.darkest_grey
+					libtcod.console_put_char_ex(console, x, y, char, fc, bc)
+			
+			libtcod.random_delete(generator)
+
+			libtcod.console_set_key_color(console, KEY_COLOR)
+			
+			# apply elevation shading
+			if map_hex.elevation != 1:
+				for y in range(5):
+					for x in range(7):
+						bg = libtcod.console_get_char_background(console,x,y)
+						if bg == KEY_COLOR: continue
+						bg = bg * (1.0 + float(map_hex.elevation-1) * ELEVATION_SHADE)
+						libtcod.console_set_char_background(console,x,y,bg)
+			
+			# save to dictionary
+			self.hex_consoles[(map_hex.hx, map_hex.hy)] = console
 
 	# try to initialize SDL2 mixer
 	def InitMixer(self):
@@ -2829,7 +3055,7 @@ class Scenario:
 		libtcod.console_flush()
 	
 	# do a roll, animate the attack console, and display the results
-	# returns an altered attack profile
+	# returns an modified attack profile
 	def DoAttackRoll(self, profile):
 		
 		# check to see if this weapon maintains Rate of Fire
@@ -2895,6 +3121,10 @@ class Scenario:
 					# generate a random result that would save the player
 					minimum = int(profile['final_chance'] * 10.0)
 					roll = float(libtcod.random_get_int(0, minimum+1, 1000)) / 10.0
+		
+		# check for debug flag
+		if profile['target'].owning_player == 1 and PLAYER_ALWAYS_HITS:
+			roll = 2.0
 		
 		# to-hit or area fire attack, or AP roll
 		if profile['type'] != 'FP Resolution':
@@ -4651,6 +4881,11 @@ class Unit:
 		self.alive = False
 		scenario.cd_hex.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
 		self.ClearAcquiredTargets()
+		
+		# award VP to player for unit destruction
+		if self.owning_player == 1:
+			campaign.AwardVP(campaign_day.unit_destruction_vp[self.GetStat('category')])
+		
 		UpdateUnitCon()
 		UpdateScenarioDisplay()
 		
@@ -5532,6 +5767,9 @@ def ShowGameMenu(active_tab):
 		
 		# Game Menu
 		if active_tab == 0:
+			
+			# TEMP - move to campaign tab later on
+			ConsolePrint(game_menu_con, 25, 18, 'Current VP: ' + str(campaign.player_vp))
 		
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
 			ConsolePrint(game_menu_con, 25, 22, 'Esc')
@@ -5956,7 +6194,7 @@ def UpdateVPCon():
 			if map_hex.elevation != elevation: continue
 			(x,y) = PlotHex(hx, hy)
 			
-			libtcod.console_blit(session.hex_consoles[map_hex.terrain_type][map_hex.elevation],
+			libtcod.console_blit(session.hex_consoles[(map_hx, map_hy)],
 				0, 0, 0, 0, map_vp_con, x-3, y-2)
 			
 			# if this hex is visible, unmask it in the FoV mask
@@ -6678,6 +6916,9 @@ def DoScenario():
 		# set activation order
 		scenario.GenerateActivationOrder()
 		
+		# have to generate hex consoles before activating first unit
+		session.GenerateHexConsoles()
+		
 		# activate player unit
 		scenario.active_unit = scenario.player_unit
 		scenario.active_unit.DoPreActivation()
@@ -6685,6 +6926,10 @@ def DoScenario():
 		scenario.init_complete = True
 		
 		SaveGame()
+	
+	else:
+	
+		session.GenerateHexConsoles()
 	
 	# generate consoles for first time
 	UpdateVPCon()

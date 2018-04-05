@@ -2353,9 +2353,13 @@ class Scenario:
 				
 				# TEMP
 				new_unit.nation = campaign.stats['enemy_nations'][0]
-				new_unit.facing = 3
+				
+				# set facing toward player
+				direction = GetDirectionToward(new_unit.hx, new_unit.hy,
+					scenario.player_unit.hx, scenario.player_unit.hy)
+				new_unit.facing = direction
 				if 'turret' in new_unit.stats:
-					new_unit.turret_facing = 3
+					new_unit.turret_facing = direction
 				
 				new_unit.base_morale_level = 'Fearless'
 				new_unit.GenerateNewCrew()
@@ -2568,7 +2572,15 @@ class Scenario:
 			# attacker moved
 			if attacker.moved:
 				modifier_list.append(('Attacker Moved', -60.0))
-			# TODO: elif weapon turret rotated
+			
+			# attacker pivoted
+			elif attacker.facing != attacker.previous_facing:
+				modifier_list.append(('Attacker Pivoted', -40.0))
+
+			# weapon turret rotated
+			elif weapon.GetStat('mount') == 'Turret':
+				if attacker.turret_facing != attacker.previous_turret_facing:
+					modifier_list.append(('Turret Rotated', -20.0))
 			
 			# attacker pinned
 			if attacker.pinned:
@@ -2610,9 +2622,9 @@ class Scenario:
 				size_class = target.GetStat('size_class')
 				if size_class is not None:
 					if size_class == 'Small':
-						modifier_list.append(('Small Target', -7.0))
+						modifier_list.append(('Small Target', -12.0))
 					elif size_class == 'Very Small':
-						modifier_list.append(('Very Small Target', -18.0))
+						modifier_list.append(('Very Small Target', -28.0))
 		
 		# area fire
 		elif profile['type'] == 'Area Fire':
@@ -2644,6 +2656,17 @@ class Scenario:
 			if attacker.moved:
 				mod = round(base_chance / 2.0, 2)
 				modifier_list.append(('Attacker Moved', 0.0 - mod))
+			
+			# attacker pivoted
+			elif attacker.facing != attacker.previous_facing:
+				mod = round(base_chance / 3.0, 2)
+				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
+
+			# weapon turret rotated
+			elif weapon.GetStat('mount') == 'Turret':
+				if attacker.turret_facing != attacker.previous_turret_facing:
+					mod = round(base_chance / 4.0, 2)
+					modifier_list.append(('Turret Rotated', 0.0 - mod))
 			
 			# attacker pinned
 			if attacker.pinned:
@@ -2678,9 +2701,9 @@ class Scenario:
 				size_class = target.GetStat('size_class')
 				if size_class is not None:
 					if size_class == 'Small':
-						modifier_list.append(('Small Target', -7.0))
+						modifier_list.append(('Small Target', -12.0))
 					elif size_class == 'Very Small':
-						modifier_list.append(('V. Small Target', -18.0))
+						modifier_list.append(('V. Small Target', -28.0))
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -4794,7 +4817,7 @@ class Unit:
 				elif profile['result'] == 'Destroyed':
 					self.DestroyMe()
 					return
-					
+			
 			self.fp_to_resolve = 0
 		
 		# handle AP hits
@@ -4938,6 +4961,7 @@ class Unit:
 		
 		# target was hit by effective fp last turn
 		if target.hit_by_fp > 0:
+			print 'DEBUG: target was hit by fp and is automatically spotted'
 			chance = 100.0
 		
 		roll = GetPercentileRoll()

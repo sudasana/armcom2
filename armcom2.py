@@ -200,6 +200,11 @@ CD_MENU_LIST = [
 	('Supply', 5, libtcod.Color(128, 100, 64))
 ]
 
+# directional arrows for directions on the campaign day map
+CD_DIR_ARROW = [
+	228,26,229,230,27,231
+]
+
 # list of commands for travel in campaign day
 CD_TRAVEL_CMDS = [
 	('e',2,-2,228), ('d',2,0,26), ('c',2,2,229), ('z',-2,2,230), ('a',-2,0,27), ('q',-2,-2,231)
@@ -1157,6 +1162,7 @@ class CampaignDay:
 		
 		self.scenario = None				# currently active scenario in progress
 	
+	
 	# resupply the player unit (FUTURE: and other units in the battlegroup)
 	def ResupplyPlayer(self):
 		campaign.AdvanceClock(0, 30)
@@ -1166,6 +1172,7 @@ class CampaignDay:
 				weapon.LoadGunAmmo()
 				text = weapon.stats['name'] + ' gun has been fully restocked with ammo.'
 				ShowNotification(text)
+	
 	
 	# initiate a battle encounter scenario and store it in the CD object
 	def InitScenario(self, hx, hy):
@@ -1261,6 +1268,28 @@ class CampaignDay:
 				for (xm,ym) in CD_HEX_EDGE_CELLS[direction]:
 					libtcod.console_put_char_ex(cd_control_con, x+xm,
 						y+ym, chr(249), libtcod.red, libtcod.black)
+	
+	
+	# generate/update the GUI console
+	def UpdateCDGUICon(self):
+		libtcod.console_clear(cd_gui_con)
+		
+		# movement menu, direction currently selected
+		if self.active_menu == 3 and self.travel_direction is not None:
+			
+			# draw directional line
+			(hx, hy) = self.player_unit_location
+			(x1,y1) = self.PlotCDHex(hx, hy)
+			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
+			if (hx, hy) in self.map_hexes:
+				(x2,y2) = self.PlotCDHex(hx, hy)
+				line = GetLine(x1,y1,x2,y2)
+				for (x,y) in line[1:-1]:
+					libtcod.console_put_char_ex(cd_gui_con, x, y, 250, libtcod.green,
+						libtcod.black)
+				(x,y) = line[-1]
+				libtcod.console_put_char_ex(cd_gui_con, x, y, CD_DIR_ARROW[self.travel_direction],
+					libtcod.green, libtcod.black)
 	
 	
 	# generate/update the player unit console
@@ -1394,11 +1423,15 @@ class CampaignDay:
 	# draw all campaign day consoles to screen
 	def UpdateCDDisplay(self):
 		libtcod.console_clear(con)
+		
 		libtcod.console_blit(daymap_bkg, 0, 0, 0, 0, con, 0, 0)			# background frame
 		libtcod.console_blit(cd_map_con, 0, 0, 0, 0, con, 28, 4)		# terrain map
-		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 29, 0)		# time and weather
 		libtcod.console_blit(cd_control_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# zone control layer
 		libtcod.console_blit(cd_unit_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# unit group layer
+		libtcod.console_blit(cd_gui_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# GUI layer
+		
+		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 29, 0)		# time and weather
+		
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
 		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
 		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 1)		# campaign info menu
@@ -1408,7 +1441,7 @@ class CampaignDay:
 	def CampaignDayLoop(self):
 		
 		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
-		global cd_player_unit_con, cd_campaign_con
+		global cd_player_unit_con, cd_campaign_con, cd_gui_con
 		global time_weather_con
 		
 		# create consoles
@@ -1433,6 +1466,12 @@ class CampaignDay:
 		libtcod.console_set_default_background(cd_control_con, KEY_COLOR)
 		libtcod.console_set_default_foreground(cd_control_con, libtcod.red)
 		libtcod.console_clear(cd_control_con)
+		
+		# campaign day GUI console
+		cd_gui_con = libtcod.console_new(35, 53)
+		libtcod.console_set_default_background(cd_gui_con, KEY_COLOR)
+		libtcod.console_set_default_foreground(cd_gui_con, libtcod.red)
+		libtcod.console_clear(cd_gui_con)
 		
 		# time and weather console
 		time_weather_con = libtcod.console_new(33, 4)
@@ -1463,6 +1502,7 @@ class CampaignDay:
 		self.UpdateCDMapCon()
 		self.UpdateCDControlCon()
 		self.UpdateCDUnitCon()
+		self.UpdateCDGUICon()
 		self.UpdateTimeWeatherDisplay()
 		self.UpdateCDPlayerUnitCon()
 		self.UpdateCDCommandCon()
@@ -1567,6 +1607,7 @@ class CampaignDay:
 			if key_char in ['3', '5']:
 				if self.active_menu != int(key_char):
 					self.active_menu = int(key_char)
+					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
 				continue
@@ -1589,6 +1630,7 @@ class CampaignDay:
 							self.travel_direction = None
 						else:
 							self.travel_direction = direction
+					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
 					continue
@@ -1628,6 +1670,7 @@ class CampaignDay:
 					
 					# clear travel direction
 					self.travel_direction = None
+					self.UpdateCDGUICon()
 					
 					# advance campaign clock
 					campaign.AdvanceClock(0, 15)

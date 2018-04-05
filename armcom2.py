@@ -60,6 +60,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
+ALWAYS_ENCOUNTER = False					# every enemy-controlled zone results in a battle
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-04-14'				# game version in Semantic Versioning format: http://semver.org/
@@ -153,7 +154,7 @@ HEX_BORDER_COL = libtcod.Color(0, 90, 0)		# foreground colour for hex border dep
 OG_BG_COL = libtcod.Color(0, 70, 0)			# background colour for open ground
 
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
-RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
+RIVER_BG_COL = libtcod.Color(0, 0, 140)			# background color for river edges and ponds
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
 
 # list of possible keyboard layout settings
@@ -162,6 +163,11 @@ KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']
 # hex terrain types
 HEX_TERRAIN_TYPES = [
 	'openground', 'forest', 'fields_in_season', 'pond', 'roughground', 'village'
+]
+
+# list of all inner cells in a hex console image
+HEX_CONSOLE_LOCATIONS = [
+	(2,1),(3,1),(4,1),(1,2),(2,2),(3,2),(4,2),(5,2),(2,3),(3,3),(4,3)
 ]
 
 # descriptive text for terrain types
@@ -1592,7 +1598,7 @@ class CampaignDay:
 					# roll for battle encounter if enemy-controlled
 					if self.map_hexes[(hx, hy)].controlled_by == 1:
 						roll = GetPercentileRoll()
-						if roll <= self.map_hexes[(hx,hy)].encounter_chance:
+						if roll <= self.map_hexes[(hx,hy)].encounter_chance or ALWAYS_ENCOUNTER:
 							ShowNotification('You encounter enemy resistance and a battle ensues!')
 							self.InitScenario(hx,hy)
 						else:
@@ -1653,78 +1659,133 @@ class Session:
 		
 		# return a random x,y location within a hex console image
 		def GetRandomLocation(gen):
-			y = libtcod.random_get_int(gen, 1, 3)
-			if y in [1,3]:
-				x = libtcod.random_get_int(gen, 2, 4)
-			else:
-				x = libtcod.random_get_int(gen, 1, 5)
-			return (x,y)
+			return HEX_CONSOLE_LOCATIONS[libtcod.random_get_int(generator, 0, 10)]
 		
 		self.hex_consoles = {}
 		
 		for k, map_hex in scenario.cd_hex.map_hexes.iteritems():
 			
 			# generate basic hex console image
+			# FUTURE: can change colours used here based on environment/weather
+			console = libtcod.console_new(7, 5)
+			libtcod.console_set_default_background(console, KEY_COLOR)
+			libtcod.console_clear(console)
 			
-			if map_hex.terrain_type in ['openground', 'roughground']:
-				
-				# FUTURE: can change colours used here based on environment/weather
-				console = libtcod.console_new(7, 5)
-				libtcod.console_set_default_background(console, KEY_COLOR)
-				libtcod.console_clear(console)
-				
-				libtcod.console_set_default_foreground(console, HEX_BORDER_COL)
-				
-				# draw hex border
-				for x in [2,3,4]:
-					libtcod.console_put_char_ex(console, x, 0, 250,
-						HEX_BORDER_COL, OG_BG_COL)
-					libtcod.console_put_char_ex(console, x, 4, 250,
-						HEX_BORDER_COL, OG_BG_COL)
-				for x in [1,5]:
-					libtcod.console_put_char_ex(console, x, 1, 250,
-						HEX_BORDER_COL, OG_BG_COL)
-					libtcod.console_put_char_ex(console, x, 3, 250,
-						HEX_BORDER_COL, OG_BG_COL)
-				libtcod.console_put_char_ex(console, 0, 2, 250, HEX_BORDER_COL,
-					OG_BG_COL)
-				libtcod.console_put_char_ex(console, 6, 2, 250, HEX_BORDER_COL,
-					OG_BG_COL)
-				
-				# draw hex interior
-				libtcod.console_set_default_background(console, OG_BG_COL)
-				libtcod.console_rect(console, 2, 1, 3, 1, True, libtcod.BKGND_SET)
-				libtcod.console_rect(console, 1, 2, 5, 1, True, libtcod.BKGND_SET)
-				libtcod.console_rect(console, 2, 3, 3, 1, True, libtcod.BKGND_SET)
-				
-				# add random greebles
-				generator = libtcod.random_new_from_seed(map_hex.console_seed)
-				
-				# open ground
-				if map_hex.terrain_type == 'openground':
-					if libtcod.random_get_int(generator, 1, 10) == 1:
-						(x,y) = GetRandomLocation(generator)
-						libtcod.console_put_char_ex(console, x, y, 247,
-							HEX_BORDER_COL, OG_BG_COL)
-				
-				# rough ground
-				elif map_hex.terrain_type == 'roughground':
-					elements = libtcod.random_get_int(generator, 3, 7)
-					while elements > 0:
-						(x,y) = GetRandomLocation(generator)
-						# skip if a greeble is already there
-						if libtcod.console_get_char(console, x, y) != 32:
-							continue
-						(char, col) = [(249, libtcod.grey), (247, libtcod.sepia)][libtcod.random_get_int(generator, 0, 1)]
-						libtcod.console_put_char_ex(console, x, y, char,
-							col, OG_BG_COL)
-						elements -= 1
-				
-				libtcod.random_delete(generator)
-				
+			libtcod.console_set_default_foreground(console, HEX_BORDER_COL)
+			
+			# draw hex border
+			for x in [2,3,4]:
+				libtcod.console_put_char_ex(console, x, 0, 250,
+					HEX_BORDER_COL, OG_BG_COL)
+				libtcod.console_put_char_ex(console, x, 4, 250,
+					HEX_BORDER_COL, OG_BG_COL)
+			for x in [1,5]:
+				libtcod.console_put_char_ex(console, x, 1, 250,
+					HEX_BORDER_COL, OG_BG_COL)
+				libtcod.console_put_char_ex(console, x, 3, 250,
+					HEX_BORDER_COL, OG_BG_COL)
+			libtcod.console_put_char_ex(console, 0, 2, 250, HEX_BORDER_COL,
+				OG_BG_COL)
+			libtcod.console_put_char_ex(console, 6, 2, 250, HEX_BORDER_COL,
+				OG_BG_COL)
+			
+			# draw hex interior
+			if map_hex.terrain_type == 'pond':
+				libtcod.console_set_default_background(console, RIVER_BG_COL)
 			else:
+				libtcod.console_set_default_background(console, OG_BG_COL)
+			libtcod.console_rect(console, 2, 1, 3, 1, True, libtcod.BKGND_SET)
+			libtcod.console_rect(console, 1, 2, 5, 1, True, libtcod.BKGND_SET)
+			libtcod.console_rect(console, 2, 3, 3, 1, True, libtcod.BKGND_SET)
 			
-				console = LoadXP('hex_' + map_hex.terrain_type + '.xp')
+			# add random greebles
+			generator = libtcod.random_new_from_seed(map_hex.console_seed)
+			
+			# open ground
+			if map_hex.terrain_type == 'openground':
+				if libtcod.random_get_int(generator, 1, 10) == 1:
+					(x,y) = GetRandomLocation(generator)
+					libtcod.console_put_char_ex(console, x, y, 247,
+						HEX_BORDER_COL, OG_BG_COL)
+			
+			# rough ground
+			elif map_hex.terrain_type == 'roughground':
+				elements = libtcod.random_get_int(generator, 2, 5)
+				while elements > 0:
+					(x,y) = GetRandomLocation(generator)
+					# skip if a greeble is already there
+					if libtcod.console_get_char(console, x, y) != 32:
+						continue
+					(char, col) = [(249, libtcod.grey), (247, libtcod.sepia)][libtcod.random_get_int(generator, 0, 1)]
+					libtcod.console_put_char_ex(console, x, y, char,
+						col, OG_BG_COL)
+					elements -= 1
+			
+			# forest
+			elif map_hex.terrain_type == 'forest':
+				for (x,y) in HEX_CONSOLE_LOCATIONS:
+					roll = libtcod.random_get_int(generator, 1, 10)
+					if roll == 1:
+						char = 32
+					elif roll < 9:
+						char = 6
+					else:
+						char = 5
+					if libtcod.random_get_int(generator, 1, 8) < 8:
+						col = libtcod.Color(0,libtcod.random_get_int(generator, 100, 170),0)
+					else:
+						col = libtcod.dark_sepia
+					libtcod.console_put_char_ex(console, x, y, char, col, OG_BG_COL)
+			
+			# fields in season
+			elif map_hex.terrain_type == 'fields_in_season':
+				for (x,y) in HEX_CONSOLE_LOCATIONS:
+					c = libtcod.random_get_int(generator, 120, 190)
+					libtcod.console_put_char_ex(console, x, y, 177, libtcod.Color(c,c,0), OG_BG_COL)
+			
+			# pond
+			elif map_hex.terrain_type == 'pond':
+				elements = libtcod.random_get_int(generator, 3, 6)
+				while elements > 0:
+					(x,y) = GetRandomLocation(generator)
+					if libtcod.console_get_char(console, x, y) != 32:
+						continue
+					libtcod.console_put_char_ex(console, x, y, 247,
+						libtcod.Color(45,0,180), RIVER_BG_COL)
+					elements -= 1
+			
+			# village
+			elif map_hex.terrain_type == 'village':
+				for (x,y) in HEX_CONSOLE_LOCATIONS:
+					roll = libtcod.random_get_int(generator, 1, 10)
+					
+					# blank
+					if roll < 5:
+						continue
+					# small hut
+					if roll < 7:
+						char = 250
+						fc = libtcod.sepia
+						bc = OG_BG_COL
+					# haystack
+					elif roll < 9:
+						char = 4
+						fc = libtcod.sepia
+						bc = OG_BG_COL
+					# building 1
+					elif roll == 9:
+						char = 249
+						fc = libtcod.grey
+						bc = libtcod.dark_sepia
+					# building 2
+					else:
+						char = 206
+						fc = libtcod.dark_sepia
+						bc = libtcod.darkest_grey
+					libtcod.console_put_char_ex(console, x, y, char, fc, bc)
+			
+			libtcod.random_delete(generator)
+
 			libtcod.console_set_key_color(console, KEY_COLOR)
 			
 			# apply elevation shading

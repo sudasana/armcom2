@@ -62,7 +62,7 @@ AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-04-07'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-04-14'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -819,13 +819,17 @@ class Campaign:
 # roughly scaled to 160 m. in width
 class MapHex:
 	def __init__(self, hx, hy):
-		self.hx = hx			# hex coordinates in the map
-		self.hy = hy			# 0,0 is centre of map
-		self.terrain_type = 'openground'
-		self.variant = 0		# FUTURE: variant of visual depiction, no effect on gameplay
+		self.hx = hx						# hex coordinates in the map
+		self.hy = hy						# 0,0 is centre of map
+		self.terrain_type = 'openground'			# type of terrain in hex
+		self.console_seed = libtcod.random_get_int(0, 1, 128)	# seed for console image generation
+		
 		self.elevation = 1		# elevation in steps above baseline
 		self.river_edges = []		# list of edges bounded by a river
 		self.dirt_roads = []		# list of directions linked by a dirt road
+		self.stone_roads = []		# " stone road
+		
+		self.mud = 0			# level of mud present in the hex
 		
 		self.unit_stack = []		# stack of units present in this hex
 		self.objective = None		# status as an objective; if -1, not controlled
@@ -1626,28 +1630,8 @@ class Session:
 		# flag to say that we are exiting to main menu
 		self.exiting_to_main_menu = False
 		
-		# load and generate hex console images for scenario map
+		# placeholder for hex console images
 		self.hex_consoles = {}
-		for terrain_type in HEX_TERRAIN_TYPES:
-			
-			# generate consoles for 4 different terrain heights
-			consoles = []
-			for elevation in range(4):
-				consoles.append(libtcod.console_new(7, 5))
-				libtcod.console_blit(LoadXP('hex_' + terrain_type + '.xp'),
-					0, 0, 7, 5, consoles[elevation], 0, 0)
-				libtcod.console_set_key_color(consoles[elevation], KEY_COLOR)
-			
-			# apply colour modifier to elevations 0, 2, 3
-			for elevation in [0, 2, 3]:
-				for y in range(5):
-					for x in range(7):
-						bg = libtcod.console_get_char_background(consoles[elevation],x,y)
-						if bg == KEY_COLOR: continue
-						bg = bg * (1.0 + float(elevation-1) * ELEVATION_SHADE)
-						libtcod.console_set_char_background(consoles[elevation],x,y,bg)
-			
-			self.hex_consoles[terrain_type] = consoles
 		
 		# TODO: load unit portraits
 		
@@ -1658,6 +1642,28 @@ class Session:
 		for name, data in nations.iteritems():
 			self.flags[name] = LoadXP(data['flag_image'])
 		del nations
+
+	# generate map hex consoles for all hexes in a scenario map
+	def GenerateHexConsoles(self):
+		
+		self.hex_consoles = {}
+		
+		for k, map_hex in scenario.cd_hex.map_hexes.iteritems():
+			
+			console = LoadXP('hex_' + map_hex.terrain_type + '.xp')
+			libtcod.console_set_key_color(console, KEY_COLOR)
+			
+			# apply elevation shading
+			if map_hex.elevation != 1:
+				for y in range(5):
+					for x in range(7):
+						bg = libtcod.console_get_char_background(console,x,y)
+						if bg == KEY_COLOR: continue
+						bg = bg * (1.0 + float(map_hex.elevation-1) * ELEVATION_SHADE)
+						libtcod.console_set_char_background(console,x,y,bg)
+			
+			# save to dictionary
+			self.hex_consoles[(map_hex.hx, map_hex.hy)] = console
 
 	# try to initialize SDL2 mixer
 	def InitMixer(self):
@@ -5956,7 +5962,7 @@ def UpdateVPCon():
 			if map_hex.elevation != elevation: continue
 			(x,y) = PlotHex(hx, hy)
 			
-			libtcod.console_blit(session.hex_consoles[map_hex.terrain_type][map_hex.elevation],
+			libtcod.console_blit(session.hex_consoles[(map_hx, map_hy)],
 				0, 0, 0, 0, map_vp_con, x-3, y-2)
 			
 			# if this hex is visible, unmask it in the FoV mask
@@ -6671,6 +6677,9 @@ def DoScenario():
 		# set activation order
 		scenario.GenerateActivationOrder()
 		
+		# have to generate hex consoles before activating first unit
+		session.GenerateHexConsoles()
+		
 		# activate player unit
 		scenario.active_unit = scenario.player_unit
 		scenario.active_unit.DoPreActivation()
@@ -6678,6 +6687,10 @@ def DoScenario():
 		scenario.init_complete = True
 		
 		SaveGame()
+	
+	else:
+	
+		session.GenerateHexConsoles()
 	
 	# generate consoles for first time
 	UpdateVPCon()

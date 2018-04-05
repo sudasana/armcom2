@@ -1651,13 +1651,23 @@ class Session:
 	# generate map hex consoles for all hexes in a scenario map
 	def GenerateHexConsoles(self):
 		
+		# return a random x,y location within a hex console image
+		def GetRandomLocation(gen):
+			y = libtcod.random_get_int(gen, 1, 3)
+			if y in [1,3]:
+				x = libtcod.random_get_int(gen, 2, 4)
+			else:
+				x = libtcod.random_get_int(gen, 1, 5)
+			return (x,y)
+		
 		self.hex_consoles = {}
 		
 		for k, map_hex in scenario.cd_hex.map_hexes.iteritems():
 			
-			if map_hex.terrain_type == 'openground':
+			# generate basic hex console image
+			
+			if map_hex.terrain_type in ['openground', 'roughground']:
 				
-				# generate basic hex console image
 				# FUTURE: can change colours used here based on environment/weather
 				console = libtcod.console_new(7, 5)
 				libtcod.console_set_default_background(console, KEY_COLOR)
@@ -1687,18 +1697,28 @@ class Session:
 				libtcod.console_rect(console, 1, 2, 5, 1, True, libtcod.BKGND_SET)
 				libtcod.console_rect(console, 2, 3, 3, 1, True, libtcod.BKGND_SET)
 				
-				
-				
 				# add random greebles
 				generator = libtcod.random_new_from_seed(map_hex.console_seed)
 				
 				# open ground
+				if map_hex.terrain_type == 'openground':
+					if libtcod.random_get_int(generator, 1, 10) == 1:
+						(x,y) = GetRandomLocation(generator)
+						libtcod.console_put_char_ex(console, x, y, 247,
+							HEX_BORDER_COL, OG_BG_COL)
 				
-				if libtcod.random_get_int(generator, 1, 10) == 1:
-					x = libtcod.random_get_int(generator, 2, 4)
-					y = libtcod.random_get_int(generator, 1, 3)
-					libtcod.console_put_char_ex(console, x, y, 247,
-						HEX_BORDER_COL, OG_BG_COL)
+				# rough ground
+				elif map_hex.terrain_type == 'roughground':
+					elements = libtcod.random_get_int(generator, 3, 7)
+					while elements > 0:
+						(x,y) = GetRandomLocation(generator)
+						# skip if a greeble is already there
+						if libtcod.console_get_char(console, x, y) != 32:
+							continue
+						(char, col) = [(249, libtcod.grey), (247, libtcod.sepia)][libtcod.random_get_int(generator, 0, 1)]
+						libtcod.console_put_char_ex(console, x, y, char,
+							col, OG_BG_COL)
+						elements -= 1
 				
 				libtcod.random_delete(generator)
 				

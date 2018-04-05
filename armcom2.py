@@ -148,6 +148,10 @@ ACTION_KEY_COL = libtcod.Color(51, 153, 255)		# colour for key commands
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.light_red			# known "
+
+HEX_BORDER_COL = libtcod.Color(0, 90, 0)		# foreground colour for hex border depiction
+OG_BG_COL = libtcod.Color(0, 70, 0)			# background colour for open ground
+
 DIRT_ROAD_COL = libtcod.Color(50, 40, 25)		# background color for dirt roads
 RIVER_BG_COL = libtcod.Color(0, 0, 217)			# background color for river edges
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
@@ -826,6 +830,7 @@ class MapHex:
 		
 		self.elevation = 1		# elevation in steps above baseline
 		self.river_edges = []		# list of edges bounded by a river
+		self.cliff_edges = []		# list of edges bounded by a cliff
 		self.dirt_roads = []		# list of directions linked by a dirt road
 		self.stone_roads = []		# " stone road
 		
@@ -1650,7 +1655,56 @@ class Session:
 		
 		for k, map_hex in scenario.cd_hex.map_hexes.iteritems():
 			
-			console = LoadXP('hex_' + map_hex.terrain_type + '.xp')
+			if map_hex.terrain_type == 'openground':
+				
+				# generate basic hex console image
+				# FUTURE: can change colours used here based on environment/weather
+				console = libtcod.console_new(7, 5)
+				libtcod.console_set_default_background(console, KEY_COLOR)
+				libtcod.console_clear(console)
+				
+				libtcod.console_set_default_foreground(console, HEX_BORDER_COL)
+				
+				# draw hex border
+				for x in [2,3,4]:
+					libtcod.console_put_char_ex(console, x, 0, 250,
+						HEX_BORDER_COL, OG_BG_COL)
+					libtcod.console_put_char_ex(console, x, 4, 250,
+						HEX_BORDER_COL, OG_BG_COL)
+				for x in [1,5]:
+					libtcod.console_put_char_ex(console, x, 1, 250,
+						HEX_BORDER_COL, OG_BG_COL)
+					libtcod.console_put_char_ex(console, x, 3, 250,
+						HEX_BORDER_COL, OG_BG_COL)
+				libtcod.console_put_char_ex(console, 0, 2, 250, HEX_BORDER_COL,
+					OG_BG_COL)
+				libtcod.console_put_char_ex(console, 6, 2, 250, HEX_BORDER_COL,
+					OG_BG_COL)
+				
+				# draw hex interior
+				libtcod.console_set_default_background(console, OG_BG_COL)
+				libtcod.console_rect(console, 2, 1, 3, 1, True, libtcod.BKGND_SET)
+				libtcod.console_rect(console, 1, 2, 5, 1, True, libtcod.BKGND_SET)
+				libtcod.console_rect(console, 2, 3, 3, 1, True, libtcod.BKGND_SET)
+				
+				
+				
+				# add random greebles
+				generator = libtcod.random_new_from_seed(map_hex.console_seed)
+				
+				# open ground
+				
+				if libtcod.random_get_int(generator, 1, 10) == 1:
+					x = libtcod.random_get_int(generator, 2, 4)
+					y = libtcod.random_get_int(generator, 1, 3)
+					libtcod.console_put_char_ex(console, x, y, 247,
+						HEX_BORDER_COL, OG_BG_COL)
+				
+				libtcod.random_delete(generator)
+				
+			else:
+			
+				console = LoadXP('hex_' + map_hex.terrain_type + '.xp')
 			libtcod.console_set_key_color(console, KEY_COLOR)
 			
 			# apply elevation shading

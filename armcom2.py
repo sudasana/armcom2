@@ -60,7 +60,8 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = False					# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
+PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.1.0-2018-04-14'				# game version in Semantic Versioning format: http://semver.org/
@@ -404,6 +405,8 @@ MAX_LOS_MOD = 60.0
 class Campaign:
 	def __init__(self):
 		
+		self.player_vp = 0		# player victory points
+		
 		# placeholder for copy of campaign info that will be set by CampaignSelectionMenu
 		self.stats = {}
 		
@@ -428,7 +431,10 @@ class Campaign:
 			'minute' : 15
 		}
 		
-		
+	# award VP to the player
+	def AwardVP(self, vp_to_add):
+		self.player_vp += vp_to_add
+	
 	# update screen with info about the currently selected campaign
 	def UpdateCampaignSelectionScreen(self, selected_campaign):
 		libtcod.console_clear(con)
@@ -1130,6 +1136,14 @@ class CampaignMapHex:
 class CampaignDay:
 	def __init__(self):
 		
+		# victory point rewards for this campaign day
+		self.capture_zone_vp = 3
+		self.unit_destruction_vp = {
+			'Infantry': 1,
+			'Gun' : 2,
+			'Vehicle': 5 
+		}
+		
 		# campaign day map
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
@@ -1364,6 +1378,17 @@ class CampaignDay:
 		text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
 		ConsolePrint(time_weather_con, 14, 1, text)
 		ConsolePrintEx(time_weather_con, 16, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
+	
+	
+	# generate/update the campaign info console
+	def UpdateCDCampaignCon(self):
+		libtcod.console_clear(cd_campaign_con)
+		
+		# current VP total
+		libtcod.console_set_default_foreground(cd_campaign_con, ACTION_KEY_COL)
+		ConsolePrint(cd_campaign_con, 0, 0, 'Campaign Info')
+		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
+		ConsolePrint(cd_campaign_con, 1, 2, 'VP: ' + str(campaign.player_vp))
 		
 		
 	# draw all campaign day consoles to screen
@@ -1376,14 +1401,14 @@ class CampaignDay:
 		libtcod.console_blit(cd_unit_con, 0, 0, 0, 0, con, 28, 4, 1.0, 0.0)	# unit group layer
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
 		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
+		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 1)		# campaign info menu
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-	
 	
 	# main campaign day input loop
 	def CampaignDayLoop(self):
 		
 		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
-		global cd_player_unit_con
+		global cd_player_unit_con, cd_campaign_con
 		global time_weather_con
 		
 		# create consoles
@@ -1427,6 +1452,12 @@ class CampaignDay:
 		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 		libtcod.console_clear(cd_command_con)
 		
+		# campaign info console 23x16
+		cd_campaign_con = libtcod.console_new(23, 16)
+		libtcod.console_set_default_background(cd_campaign_con, libtcod.black)
+		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
+		libtcod.console_clear(cd_campaign_con)
+		
 		
 		# generate consoles for the first time
 		self.UpdateCDMapCon()
@@ -1435,6 +1466,7 @@ class CampaignDay:
 		self.UpdateTimeWeatherDisplay()
 		self.UpdateCDPlayerUnitCon()
 		self.UpdateCDCommandCon()
+		self.UpdateCDCampaignCon()
 		self.UpdateCDDisplay()
 		
 		# record mouse cursor position to check when it has moved
@@ -1484,6 +1516,11 @@ class CampaignDay:
 					
 					# delete completed scenario
 					self.scenario = None
+					
+					# award vp to player
+					campaign.AwardVP(self.capture_zone_vp)
+					self.UpdateCDCampaignCon()
+					
 					SaveGame()
 					
 					# check for end of day
@@ -1604,6 +1641,11 @@ class CampaignDay:
 						else:
 							ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
 							self.map_hexes[(hx, hy)].controlled_by = 0
+							
+							# award vp to player
+							campaign.AwardVP(self.capture_zone_vp)
+							self.UpdateCDCampaignCon()
+							
 							# check for end of day
 							if campaign.EndOfDay():
 								ShowNotification('Your combat day has ended.')
@@ -2965,7 +3007,7 @@ class Scenario:
 		libtcod.console_flush()
 	
 	# do a roll, animate the attack console, and display the results
-	# returns an altered attack profile
+	# returns an modified attack profile
 	def DoAttackRoll(self, profile):
 		
 		# check to see if this weapon maintains Rate of Fire
@@ -3031,6 +3073,10 @@ class Scenario:
 					# generate a random result that would save the player
 					minimum = int(profile['final_chance'] * 10.0)
 					roll = float(libtcod.random_get_int(0, minimum+1, 1000)) / 10.0
+		
+		# check for debug flag
+		if profile['target'].owning_player == 1 and PLAYER_ALWAYS_HITS:
+			roll = 2.0
 		
 		# to-hit or area fire attack, or AP roll
 		if profile['type'] != 'FP Resolution':
@@ -4792,6 +4838,11 @@ class Unit:
 		self.alive = False
 		scenario.cd_hex.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
 		self.ClearAcquiredTargets()
+		
+		# award VP to player for unit destruction
+		if self.owning_player == 1:
+			campaign.AwardVP(campaign_day.unit_destruction_vp[self.GetStat('category')])
+		
 		UpdateUnitCon()
 		UpdateScenarioDisplay()
 		
@@ -5673,6 +5724,9 @@ def ShowGameMenu(active_tab):
 		
 		# Game Menu
 		if active_tab == 0:
+			
+			# TEMP - move to campaign tab later on
+			ConsolePrint(game_menu_con, 25, 18, 'Current VP: ' + str(campaign.player_vp))
 		
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
 			ConsolePrint(game_menu_con, 25, 22, 'Esc')

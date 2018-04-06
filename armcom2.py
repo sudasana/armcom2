@@ -61,6 +61,7 @@ AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
+NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
@@ -898,10 +899,15 @@ class MapHex:
 
 
 # Campaign Map Hex: a map hex for the campaign day map, each representing a map of scenario hexes
+# scale width depends on CD_MAP_HEX_RADIUS; currently 2.08 km.
 class CampaignMapHex:
 	def __init__(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
+		
+		self.dirt_roads = []		# directions linked by a dirt road
+		self.stone_roads = []		# " stone road
+		
 		self.controlled_by = 1		# which player side currently controls this zone
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
 		
@@ -1154,6 +1160,9 @@ class CampaignDay:
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)] = CampaignMapHex(hx, hy)
 		
+		# generate dirt roads
+		self.GenerateRoads()
+		
 		self.player_unit_location = (-2, 8)		# set player unit group location
 		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
 		
@@ -1162,6 +1171,48 @@ class CampaignDay:
 		
 		self.scenario = None				# currently active scenario in progress
 	
+	# generate roads linking zones; only dirt roads for now
+	def GenerateRoads(self):
+		
+		# generate one road from the bottom to the top of the map
+		hx = choice([-4,-3,-2,-1,0])
+		for hy in range(8, -1, -1):
+			direction = choice([5,0])
+			(hx2,hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+			if (hx2,hy2) not in self.map_hexes:
+				if direction == 0:
+					direction = 5
+				else:
+					direction = 0
+				(hx2,hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+			self.map_hexes[(hx,hy)].dirt_roads.append(direction)
+			# avoid looking for final hex off-map
+			if (hx2,hy2) in self.map_hexes:
+				self.map_hexes[(hx2,hy2)].dirt_roads.append(ConstrainDir(direction + 3))
+			hx = hx2
+		
+		# 1-2 branch roads
+		target_hy_list = sample(range(0, 9), libtcod.random_get_int(0, 1, 3))
+		for target_hy in target_hy_list:
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				if hy != target_hy: continue
+				if len(self.map_hexes[(hx,hy)].dirt_roads) == 0: continue
+				
+				direction = choice([1,4])
+				# make sure can take at least one step in this direction
+				if self.GetAdjacentCDHex(hx, hy, direction) not in self.map_hexes:
+					if direction == 1:
+						direction = 4
+					else:
+						direction = 1
+				
+				# create road
+				while (hx,hy) in self.map_hexes:
+					self.map_hexes[(hx,hy)].dirt_roads.append(direction)
+					(hx,hy) = self.GetAdjacentCDHex(hx, hy, direction)
+					if (hx,hy) in self.map_hexes:
+						self.map_hexes[(hx,hy)].dirt_roads.append(ConstrainDir(direction + 3))
+			
 	
 	# resupply the player unit (FUTURE: and other units in the battlegroup)
 	def ResupplyPlayer(self):
@@ -1201,10 +1252,37 @@ class CampaignDay:
 		dayhex_openground = LoadXP('dayhex_openground.xp')
 		libtcod.console_set_key_color(dayhex_openground, KEY_COLOR)
 		
-		for k, map_hex in self.map_hexes.iteritems():
-			(x,y) = self.PlotCDHex(map_hex.hx, map_hex.hy)
+		for (hx, hy), map_hex in self.map_hexes.iteritems():
+			(x,y) = self.PlotCDHex(hx, hy)
 			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, cd_map_con, x-3, y-4)
-	
+		
+		# draw dirt roads overtop
+		for (hx, hy), map_hex in self.map_hexes.iteritems():
+			if len(map_hex.dirt_roads) == 0: continue
+			for direction in map_hex.dirt_roads:
+				# only draw if in direction 0-2
+				if direction > 2: continue
+				# get the other zone linked by road
+				(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+				if (hx2, hy2) not in self.map_hexes: continue
+				
+				# paint road
+				(x1, y1) = self.PlotCDHex(hx, hy)
+				(x2, y2) = self.PlotCDHex(hx2, hy2)
+				line = GetLine(x1, y1, x2, y2)
+				for (x, y) in line:
+				
+					# don't paint over outside of map area
+					if libtcod.console_get_char_background(cd_map_con, x, y) == libtcod.black:
+						continue
+					
+					libtcod.console_set_char_background(cd_map_con, x, y,
+						DIRT_ROAD_COL, libtcod.BKGND_SET)
+					
+					# if character is not blank or hex edge, remove it
+					#if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
+					#	libtcod.console_set_char(map_vp_con, x, y, 0)
+				
 		# draw hex row guides
 		for i in range(0, 9):
 			libtcod.console_put_char_ex(cd_map_con, 0, 6+(i*5), chr(i+65),
@@ -1380,7 +1458,13 @@ class CampaignDay:
 					ConsolePrint(cd_command_con, 0, 13, 'Encounter Chance: ' + str(map_hex.encounter_chance) + '%%')
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			ConsolePrint(cd_command_con, 0, 14, 'Travel Time: 15 mins.')
+			text = 'Travel Time: '
+			if self.travel_direction in map_hex.dirt_roads:
+				text += '15'
+			else:
+				text += '30'
+			text += ' mins.'
+			ConsolePrint(cd_command_con, 0, 14, text)
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			ConsolePrint(cd_command_con, 5, 22, 'Enter')
@@ -1643,18 +1727,19 @@ class CampaignDay:
 					
 					# ensure that travel/recon is possible
 					(hx, hy) = self.player_unit_location
+					map_hex1 = self.map_hexes[(hx,hy)]
 					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
 					if (hx, hy) not in self.map_hexes:
 						continue
+					map_hex2 = self.map_hexes[(hx,hy)]
 					
 					# recon
 					if key_char == 'r':
-						map_hex = self.map_hexes[(hx,hy)]
-						if map_hex.known_to_player: continue
-						map_hex.known_to_player = True
+						if map_hex2.known_to_player: continue
+						map_hex2.known_to_player = True
 						campaign.AdvanceClock(0, 15)
-						text = 'Estimated enemy strength in zone: ' + str(map_hex.enemy_strength)
-						text += '; estimated organization: ' + str(map_hex.enemy_organization) + '.'
+						text = 'Estimated enemy strength in zone: ' + str(map_hex2.enemy_strength)
+						text += '; estimated organization: ' + str(map_hex2.enemy_organization) + '.'
 						ShowNotification(text)
 						self.UpdateTimeWeatherDisplay()
 						self.UpdateCDUnitCon()
@@ -1665,25 +1750,27 @@ class CampaignDay:
 					
 					# proceed with travel
 					
-					# set new player location
-					self.player_unit_location = (hx, hy)
+					# advance clock
+					if self.travel_direction in map_hex1.dirt_roads:
+						mins = 15
+					else:
+						mins = 30
+					campaign.AdvanceClock(0, mins)
 					
-					# clear travel direction
+					# set new player location and clear travel direction
+					self.player_unit_location = (hx, hy)
 					self.travel_direction = None
 					self.UpdateCDGUICon()
 					
-					# advance campaign clock
-					campaign.AdvanceClock(0, 15)
-					
 					# roll for battle encounter if enemy-controlled
-					if self.map_hexes[(hx, hy)].controlled_by == 1:
+					if map_hex2.controlled_by == 1:
 						roll = GetPercentileRoll()
-						if roll <= self.map_hexes[(hx,hy)].encounter_chance or ALWAYS_ENCOUNTER:
+						if (roll <= map_hex2.encounter_chance or ALWAYS_ENCOUNTER) and not NEVER_ENCOUNTER:
 							ShowNotification('You encounter enemy resistance and a battle ensues!')
-							self.InitScenario(hx,hy)
+							self.InitScenario(hx, hy)
 						else:
 							ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
-							self.map_hexes[(hx, hy)].controlled_by = 0
+							map_hex2.controlled_by = 0
 							
 							# award vp to player
 							campaign.AwardVP(self.capture_zone_vp)

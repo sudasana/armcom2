@@ -58,9 +58,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_NO_ACTION = True					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
@@ -2457,6 +2457,9 @@ class Scenario:
 					new_unit.deployed = True
 				self.units.append(new_unit)
 				new_unit.SpawnAt(hx, hy)
+				
+				# check for hull down status
+				new_unit.CheckHullDownGain()
 					
 		# create dummy units
 		unit_list = []
@@ -2824,12 +2827,11 @@ class Scenario:
 		weapon = profile['weapon']
 		target = profile['target']
 		
-		# determine location hit on target
-		if libtcod.random_get_int(0, 1, 6) <= 4:
-			location = 'Hull'
+		# get location hit on target
+		location = profile['location']
+		if location == 'Hull':
 			turret_facing = False
 		else:
-			location = 'Turret'
 			turret_facing = True
 		
 		facing = GetFacing(attacker, target, turret_facing=turret_facing)
@@ -3289,6 +3291,7 @@ class Scenario:
 		
 		# point fire attack
 		else:
+			
 			if roll >= CRITICAL_MISS:
 				result_text = 'MISS'
 			elif roll <= CRITICAL_HIT:
@@ -3297,6 +3300,21 @@ class Scenario:
 				result_text = 'HIT'
 			else:
 				result_text = 'MISS'
+			
+			if result_text in ['HIT', 'CRITICAL HIT']:
+				
+				# determine location hit on target
+				if libtcod.random_get_int(0, 1, 6) <= 4:
+					profile['location'] = 'Hull'
+				else:
+					profile['location'] = 'Turret'
+				
+				# if hull hit and target is hull down toward this direction,
+				# result is saved by HD instead
+				if profile['location'] == 'Hull':
+					facing = GetFacing(profile['attacker'], profile['target'])
+					if facing in profile['target'].hull_down:
+						result_text = 'MISS - HULL DOWN'
 		
 		profile['result'] = result_text
 		
@@ -3930,7 +3948,7 @@ class Unit:
 		self.previous_facing = None		# hull facing before current action
 		self.turret_facing = None		# facing of main turret on unit
 		self.previous_turret_facing = None	# turret facing before current action
-		self.misses_turns = 0			# turns outstanding left to be missed
+		self.hull_down = []			# list of directions in HD status
 		
 		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
 		
@@ -4028,6 +4046,14 @@ class Unit:
 		# mark place in case we skip unit status display
 		ys = 15
 		if status:
+			
+			# Hull Down status if any
+			if len(self.hull_down) > 0:
+				libtcod.console_set_default_foreground(console, libtcod.sepia)
+				text = 'HD'
+				text += GetDirectionalArrow(ConstrainDir(self.hull_down[0] - scenario.vp_facing))
+				ConsolePrintEx(console, x+23, ys-1, libtcod.BKGND_NONE,
+					libtcod.RIGHT, text)
 		
 			# unit status
 			libtcod.console_set_default_foreground(console, libtcod.light_grey)
@@ -4052,6 +4078,35 @@ class Unit:
 		
 		libtcod.console_set_default_background(console, libtcod.black)
 
+	# roll for random HD status gain after moving into a hex
+	def CheckHullDownGain(self):
+		# vehicles only
+		if self.GetStat('category') != 'Vehicle': return
+		
+		# use terrain modifier of current location as base chance
+		chance = scenario.cd_hex.map_hexes[(self.hx, self.hy)].GetTerrainMod()
+		
+		# if open ground, only a very small unmodified base chance
+		if chance == 0.0:
+			chance = 3.0
+		else:
+			# apply size modifier
+			size_class = self.GetStat('size_class')
+			if size_class is not None:
+				if size_class == 'Small':
+					chance += 6.0
+				elif size_class == 'Very Small':
+					chance += 12.0
+		
+		roll = GetPercentileRoll()
+		if roll <= chance:
+			self.SetHullDown(choice(range(6)))
+
+	# gain/update hull down status centered on given direction
+	def SetHullDown(self, direction):
+		self.hull_down = [direction]
+		self.hull_down.append(ConstrainDir(direction + 1))
+		self.hull_down.append(ConstrainDir(direction - 1))
 	
 	# do automatic actions before an activation
 	def DoPreActivation(self):
@@ -4554,10 +4609,12 @@ class Unit:
 		# remove unit from old map hex unit stack
 		map_hex1.unit_stack.remove(self)
 		
+		# lose any HD status
+		self.hull_down = []
+		
+		# move to new location and add to new map hex unit stack
 		self.hx = hx
 		self.hy = hy
-		
-		# add to new map hex unit stack
 		map_hex2.unit_stack.append(self)
 		
 		# recalculate new FoV for unit
@@ -4572,6 +4629,9 @@ class Unit:
 			self.additional_moves_taken += 1
 		else:
 			self.move_finished = True
+		
+		# check for random HD status gain
+		self.CheckHullDownGain()
 		
 		return True
 	
@@ -6786,6 +6846,20 @@ def UpdateUnitInfoCon():
 		elif unit.pinned:
 			text = 'Pinned'
 		ConsolePrint(unit_info_con, 0, 5, text)
+		
+		# facing if any
+		if unit.facing is not None:
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
+			text = 'H'
+			text += GetDirectionalArrow(ConstrainDir(unit.facing - scenario.vp_facing))
+			ConsolePrint(unit_info_con, 0, 6, text)
+		
+		# HD status if any
+		if len(unit.hull_down) > 0:
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
+			text = 'HD'
+			text += GetDirectionalArrow(ConstrainDir(unit.hull_down[0] - scenario.vp_facing))
+			ConsolePrint(unit_info_con, 3, 6, text)
 	
 	# other units in stack if any
 	if len(unit_stack) > 1:
@@ -6977,12 +7051,14 @@ def DoScenario():
 		unit = campaign.player_unit
 		unit.InitScenarioStats()
 		
-		# spawn player into map and set facings
+		# spawn player into map
 		# FUTURE: spawn location changes based on from where player unit entered area
-		unit.SpawnAt(0, scenario.cd_hex.map_radius)
 		unit.facing = 0
-		unit.turret_facing = 0	
+		unit.turret_facing = 0
 		scenario.units.append(unit)
+		unit.SpawnAt(0, scenario.cd_hex.map_radius)
+		unit.CheckHullDownGain()
+		
 		scenario.player_unit = unit
 		unit.CalcFoV()
 		
@@ -7266,6 +7342,7 @@ def DoScenario():
 					scenario.RebuildPlayerTargetList()
 					scenario.CenterVPOnPlayer()
 					scenario.SetVPHexes()
+					UpdatePlayerInfoCon()
 					UpdateContextCon()
 					UpdateVPCon()
 					UpdateUnitCon()

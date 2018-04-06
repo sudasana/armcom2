@@ -246,10 +246,8 @@ ENEMY_NUMBER_BASE_ODDS = [97.0, 80.0, 60.0]
 # effect of each point of strength on odds
 CD_ENEMY_STRENGTH_EFFECT = -5.0
 
-# for each enemy unit initially spawned in a scenario, ratio of additional dummy units spawned
-# (rounded up, minimum 1)
-# TEMP: not used right now
-ENEMY_DUMMY_RATIO = 0.25
+# number of additional dummy units spawned in a scenario
+ENEMY_DUMMY_UNITS = 2
 
 # minimum distance from the player that an enemy will be spawned in a scenario
 ENEMY_SPAWN_MIN_DISTANCE = 3
@@ -2336,6 +2334,9 @@ class Scenario:
 				break
 			enemy_unit_num -= 1
 		
+		# add dummy units
+		enemy_unit_num += ENEMY_DUMMY_UNITS
+		
 		# load unit stats for reference from JSON file
 		with open(DATAPATH + 'unit_type_defs.json') as data_file:
 			unit_types = json.load(data_file)
@@ -2457,16 +2458,15 @@ class Scenario:
 				self.units.append(new_unit)
 				new_unit.SpawnAt(hx, hy)
 					
-		return
-		# TODO: clone dummy units
+		# create dummy units
 		unit_list = []
 		for unit in self.units:
 			if unit.owning_player == 1:
 				unit_list.append(unit)
-		if len(unit_list) >= 4:
-			unit_list = sample(unit_list, int(ceil(len(unit_list) * ENEMY_DUMMY_RATIO)))	
-			for unit in unit_list:
-				unit.dummy = True
+		unit_list = sample(unit_list, ENEMY_DUMMY_UNITS)	
+		for unit in unit_list:
+			unit.dummy = True
+			print 'DEBUG: created a dummy unit: ' + unit.unit_id
 
 	# do automatic events at the end of a player turn
 	def DoEndOfPlayerTurn(self):

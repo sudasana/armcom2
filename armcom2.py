@@ -65,7 +65,7 @@ NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-04-14'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-04-07'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2518,11 +2518,12 @@ class Scenario:
 				self.game_turn['active_player'] = 1
 			else:
 				self.game_turn['active_player'] = 0
+		# end of turn
 		else:
 			self.game_turn['active_player'] = self.game_turn['goes_first']
 		
-			# advance campaign clock one minute
-			campaign.AdvanceClock(0, 1)
+		# advance campaign clock
+		campaign.AdvanceClock(0, 1)
 
 		# check for objective capture
 		for map_hex in self.map_objectives:
@@ -5090,7 +5091,7 @@ class Unit:
 			print 'GODMODE: Player saved from destruction'
 			return
 		
-		if self.GetStat('category') == 'Vehicle':
+		if not self.dummy and self.GetStat('category') == 'Vehicle':
 			PlaySoundFor(self, 'vehicle_explosion')
 		
 		self.alive = False

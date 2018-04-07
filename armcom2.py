@@ -2452,7 +2452,7 @@ class Scenario:
 				new_unit.base_morale_level = 'Fearless'
 				new_unit.GenerateNewCrew()
 				
-				# deploy if gun
+				# deploy immediately if gun
 				if new_unit.GetStat('category') == 'Gun':
 					new_unit.deployed = True
 				self.units.append(new_unit)
@@ -3312,8 +3312,10 @@ class Scenario:
 				# if hull hit and target is hull down toward this direction,
 				# result is saved by HD instead
 				if profile['location'] == 'Hull':
-					facing = GetFacing(profile['attacker'], profile['target'])
-					if facing in profile['target'].hull_down:
+					direction = GetDirectionToward(profile['target'].hx,
+						profile['target'].hy, profile['attacker'].hx,
+						profile['attacker'].hy)
+					if direction in profile['target'].hull_down:
 						result_text = 'MISS - HULL DOWN'
 		
 		profile['result'] = result_text
@@ -3360,21 +3362,6 @@ class Scenario:
 			if weapon.current_ammo == 'AP' and target.GetStat('category') == 'Gun':
 				return 'AP cannot harm guns'
 		
-		# check range to target
-		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
-		if distance > weapon.max_range:
-			return 'Beyond maximum weapon range'
-		
-		# check covered arc
-		mount = weapon.GetStat('mount')
-		if mount is not None:
-			if weapon.GetStat('mount') == 'Turret':
-				direction = attacker.turret_facing
-			else:
-				direction = attacker.facing
-			if (target.hx - attacker.hx, target.hy - attacker.hy) not in HEXTANTS[direction]:
-				return "Outside of weapon's covered arc"
-		
 		# don't allow firing if another weapon in this group has already fired
 		firing_group = weapon.GetStat('firing_group')
 		if firing_group is not None:
@@ -3409,6 +3396,29 @@ class Scenario:
 			if not attacker.CrewActionPossible(position_list, action):
 				text = 'No crewman available to: ' + action
 				return text
+
+		# check for hull-mounted weapons being blocked
+		mount = weapon.GetStat('mount')
+		if mount is not None:
+			if mount == 'Hull' and len(attacker.hull_down) > 0:
+				direction = GetDirectionToward(attacker.hx, attacker.hy,
+					target.hx, target.hy)
+				if direction in attacker.hull_down:
+					return 'Weapon blocked by Hull Down status'
+
+		# check range to target
+		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+		if distance > weapon.max_range:
+			return 'Beyond maximum weapon range'
+		
+		# check covered arc
+		if mount is not None:
+			if mount == 'Turret':
+				direction = attacker.turret_facing
+			else:
+				direction = attacker.facing
+			if (target.hx - attacker.hx, target.hy - attacker.hy) not in HEXTANTS[direction]:
+				return "Outside of weapon's covered arc"
 
 		# attack can proceed
 		return ''
@@ -4366,6 +4376,9 @@ class Unit:
 			position.crewman.fov = set()
 			position.crewman.fov.add((self.hx, self.hy))
 			
+			# to start, all visible ehxtants assume that unit is facing
+			# direction 0, all hextants will be rotated to match crewman's
+			# actual facing as final step
 			visible_hextants = []
 			
 			# infantry and gun crew can see all around
@@ -4388,16 +4401,30 @@ class Unit:
 			# special action last turn
 			if position.crewman.current_action is not None:
 				action = CREW_ACTIONS[position.crewman.current_action]
+				
+				# possible visible hextants are limited by current action
 				if 'fov_hextants' in action:
-					visible_hextants = []
+					limited_hextants = []
 					for text in action['fov_hextants']:
-						visible_hextants.append(int(text))
+						limited_hextants.append(int(text))
+					for hextant in reversed(visible_hextants):
+						if hextant not in limited_hextants:
+							visible_hextants.remove(hextant)
+						
+				# maximum range limited by current action
 				if 'fov_range' in action:
 					if int(action['fov_range']) < max_distance:
 						max_distance = int(action['fov_range'])
 			
+			# further restrict vision if hull crewman and vehicle is HD
+			if len(self.hull_down) > 0 and position.location == 'Hull':
+				for hextant in reversed(visible_hextants):
+					if hextant not in self.hull_down:
+						visible_hextants.remove(hextant)
+						print 'DEBUG: removed a visible hextant b/c of HD: ' + int(hextant)
+			
+			# rotate visible hextants based on current turret/hull facing
 			if self.facing is not None:
-				# rotate visible hextants based on current turret/hull facing
 				if position.location == 'Turret':
 					direction = self.turret_facing
 				else:
@@ -5618,7 +5645,6 @@ def GetFacing(attacker, target, turret_facing=False):
 	if bearing >= 300 or bearing <= 60:
 		return 'Front'
 	return 'Side'
-
 
 # check for an unblocked line of sight between two hexes
 # returns -1.0 if no LoS, otherwise returns total terrain modifier for the line

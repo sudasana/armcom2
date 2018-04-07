@@ -58,9 +58,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
@@ -2469,7 +2469,6 @@ class Scenario:
 		unit_list = sample(unit_list, ENEMY_DUMMY_UNITS)	
 		for unit in unit_list:
 			unit.dummy = True
-			print 'DEBUG: created a dummy unit: ' + unit.unit_id
 
 	# do automatic events at the end of a player turn
 	def DoEndOfPlayerTurn(self):
@@ -4107,8 +4106,11 @@ class Unit:
 					chance += 6.0
 				elif size_class == 'Very Small':
 					chance += 12.0
-		
 		roll = GetPercentileRoll()
+		
+		# TEMP TESTING
+		roll = 1.0
+		
 		if roll <= chance:
 			self.SetHullDown(choice(range(6)))
 
@@ -4416,13 +4418,6 @@ class Unit:
 					if int(action['fov_range']) < max_distance:
 						max_distance = int(action['fov_range'])
 			
-			# further restrict vision if hull crewman and vehicle is HD
-			if len(self.hull_down) > 0 and position.location == 'Hull':
-				for hextant in reversed(visible_hextants):
-					if hextant not in self.hull_down:
-						visible_hextants.remove(hextant)
-						print 'DEBUG: removed a visible hextant b/c of HD: ' + int(hextant)
-			
 			# rotate visible hextants based on current turret/hull facing
 			if self.facing is not None:
 				if position.location == 'Turret':
@@ -4432,6 +4427,12 @@ class Unit:
 				if direction != 0:
 					for i, hextant in enumerate(visible_hextants):
 						visible_hextants[i] = ConstrainDir(hextant + direction)
+			
+			# restrict vision if hull crewman and vehicle is HD
+			if len(self.hull_down) > 0 and position.location == 'Hull':
+				for hextant in reversed(visible_hextants):
+					if hextant in self.hull_down:
+						visible_hextants.remove(hextant)
 			
 			# go through hexes in each hextant and check LoS if within spotting distance
 			for hextant in visible_hextants:
@@ -6572,6 +6573,7 @@ def UpdateCommandCon():
 		# TEMP - no command options yet
 		if num == 1:
 			libtcod.console_set_default_foreground(command_con, libtcod.dark_grey)
+		
 		# menu number
 		ConsolePrint(command_con, x, 0, str(num))
 		libtcod.console_set_default_foreground(command_con, libtcod.white)
@@ -6632,8 +6634,10 @@ def UpdateCommandCon():
 		ConsolePrint(command_con, 9, 6, 'Fire')
 		
 	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+	ConsolePrint(command_con, 2, 9, '2-4')
 	ConsolePrint(command_con, 2, 10, 'Enter')
 	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
+	ConsolePrint(command_con, 9, 9, 'Switch Menu')
 	ConsolePrint(command_con, 9, 10, 'End Turn')
 	
 	
@@ -6874,7 +6878,7 @@ def UpdateUnitInfoCon():
 		ConsolePrint(unit_info_con, 0, 5, text)
 		
 		# facing if any
-		if unit.facing is not None:
+		if unit.facing is not None and unit.GetStat('category') != 'Infantry':
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
 			text = 'H'
 			text += GetDirectionalArrow(ConstrainDir(unit.facing - scenario.vp_facing))
@@ -6890,7 +6894,8 @@ def UpdateUnitInfoCon():
 	# other units in stack if any
 	if len(unit_stack) > 1:
 		libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
-		text = '+' + str(len(unit_stack)-1) + ' other units'
+		text = '+' + str(len(unit_stack)-1) + ' other unit'
+		if len(unit_stack) > 2: text += 's'
 		ConsolePrint(unit_info_con, 0, 8, text)
 
 

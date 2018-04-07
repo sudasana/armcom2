@@ -554,7 +554,7 @@ class Campaign:
 				continue
 			session.key_down = True
 			
-			# TEMP? exit
+			# TEMP: no menu yet, just exit directly
 			if key.vk == libtcod.KEY_ESCAPE:
 				return False
 			
@@ -1647,7 +1647,8 @@ class CampaignDay:
 					
 					# check for end of day
 					if campaign.EndOfDay():
-						ShowNotification('Your combat day has ended.')
+						text = 'Your combat day has ended. Final VP: ' + str(campaign.player_vp)
+						ShowNotification(text)
 						EraseGame()
 						session.exiting_to_main_menu = False
 						exit_loop = True
@@ -1676,7 +1677,7 @@ class CampaignDay:
 			
 			# Determine action based on key pressed
 			
-			# TEMP exit
+			# TEMP: no menu yet, just exit directly
 			if key.vk == libtcod.KEY_ESCAPE:
 				SaveGame()
 				exit_loop = True
@@ -2485,7 +2486,7 @@ class Scenario:
 		if not self.player_unit.alive:
 			self.winner = 1
 			self.finished = True
-			self.win_desc = 'Your tank was destroyed.'
+			self.win_desc = 'Your tank was destroyed. Final VP: ' + str(campaign.player_vp)
 			return
 		
 		all_enemies_dead = True
@@ -4086,11 +4087,19 @@ class Unit:
 			ConsolePrint(console, x, y+ys, self.morale_desc)
 		
 		libtcod.console_set_default_background(console, libtcod.black)
-
-	# roll for random HD status gain after moving into a hex
-	def CheckHullDownGain(self):
-		# vehicles only
-		if self.GetStat('category') != 'Vehicle': return
+	
+	# return the chance of gaining HD status
+	def GetHullDownChance(self):
+		if self.GetStat('category') != 'Vehicle': return 0.0
+		if self.fired: return 0.0
+		if self.moved: return 0.0
+		if self.additional_moves_taken > 0: return 0.0
+		
+		for position in self.crew_positions:
+			if position.name != 'Driver': continue
+			if position.crewman is None: return 0.0
+			if not position.crewman.AbleToAct(): return 0.0
+			break
 		
 		# use terrain modifier of current location as base chance
 		chance = scenario.cd_hex.map_hexes[(self.hx, self.hy)].GetTerrainMod()
@@ -4106,13 +4115,21 @@ class Unit:
 					chance += 6.0
 				elif size_class == 'Very Small':
 					chance += 12.0
+		
+		return chance
+
+	# roll for random HD status gain
+	# if direction is provided, any HD status will be centered on that direction
+	# returns True if successful
+	def CheckHullDownGain(self, direction=None):
+		chance = self.GetHullDownChance()
+		if chance == 0.0: return False
 		roll = GetPercentileRoll()
-		
-		# TEMP TESTING
-		roll = 1.0
-		
-		if roll <= chance:
-			self.SetHullDown(choice(range(6)))
+		if roll > chance: return False
+		if direction is None:
+			direction = choice(range(6))
+		self.SetHullDown(direction)
+		return True
 
 	# gain/update hull down status centered on given direction
 	def SetHullDown(self, direction):
@@ -6611,10 +6628,12 @@ def UpdateCommandCon():
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 		ConsolePrint(command_con, 2, 2, EncodeKey('w').upper())
 		ConsolePrint(command_con, 2, 3, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
+		ConsolePrint(command_con, 2, 4, 'H')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 		ConsolePrint(command_con, 9, 2, 'Move Forward')
 		ConsolePrint(command_con, 9, 3, 'Pivot Hull')
+		ConsolePrint(command_con, 9, 4, 'Go Hull Down')
 		
 	# combat
 	elif scenario.active_menu == 4:
@@ -6764,6 +6783,11 @@ def UpdateContextCon():
 		ConsolePrint(context_con, 0, 4, '+1 move chance:')
 		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
 		ConsolePrint(context_con, 1, 5, str(chance) + '%%')
+		
+		# display HD chance if any
+		chance = scenario.player_unit.GetHullDownChance()
+		if chance > 0.0:
+			ConsolePrint(context_con, 0, 6, 'HD Chance: ' + str(chance) + '%%')
 	
 	# combat
 	elif scenario.active_menu == 4:
@@ -7380,6 +7404,29 @@ def DoScenario():
 					UpdateObjectiveInfoCon()
 					UpdateHexTerrainCon()
 					UpdateScenarioDisplay()
+			
+			# attempt Hull Down
+			elif key_char == 'h':
+				
+				# not possible
+				if scenario.player_unit.GetHullDownChance() == 0.0: continue
+				
+				# attempt HD
+				result = scenario.player_unit.CheckHullDownGain(direction=scenario.player_unit.facing)
+				scenario.player_unit.moved = True
+				scenario.player_unit.move_finished = True
+				
+				# was attempt successful
+				if result:
+					text = 'You move into a Hull Down position.'
+				else:
+					text = 'You were unable to move into a Hull Down position.'
+				scenario.ShowMessage(text, hx=scenario.player_unit.hx, hy=scenario.player_unit.hy)
+				UpdatePlayerInfoCon()
+				UpdateContextCon()
+				UpdateVPCon()
+				UpdateUnitInfoCon()
+				UpdateScenarioDisplay()	
 			
 		# combat
 		elif scenario.active_menu == 4:

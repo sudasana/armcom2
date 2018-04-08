@@ -65,7 +65,7 @@ NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-04-07'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = '0.1.0-2018-04-14'				# game version in Semantic Versioning format: http://semver.org/
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -234,7 +234,7 @@ MONTH_NAMES = [
 CD_MAP_HEX_RADIUS = 6
 
 # base chance of triggering a battle when entering an enemy-held hex on the campaign day map
-CD_BATTLE_BASE_CHANCE = 45.0
+CD_BATTLE_BASE_CHANCE = 65.0
 # effect of each point of strength on chance
 CD_BATTLE_STR_MOD = 4.0
 # effect of each point of organization <> 5 on chance
@@ -332,10 +332,7 @@ RESOLVE_FP_CHANCE_STEP = 5.0
 RESOLVE_FP_CHANCE_MOD = 1.05
 
 # list of possible results from fp resolution, in addition to no effect
-FP_EFFECT_RESULT_LIST = ['Pin Test', 'Destroyed']
-
-# FUTURE full list:
-#FP_EFFECT_RESULT_LIST = ['Pin Test', 'Break Test', 'Reduction', 'Destroyed']
+FP_EFFECT_RESULT_LIST = ['Break Test', 'Reduction', 'Destroyed']
 
 # each point of FP applies this as a negative modifier to a morale check
 FP_MORALE_CHECK_MOD = 5.0
@@ -1634,14 +1631,15 @@ class CampaignDay:
 					self.UpdateTimeWeatherDisplay()
 					self.UpdateCDControlCon()
 					self.UpdateCDUnitCon()
-					self.UpdateCDDisplay()
-					
-					# delete completed scenario
-					self.scenario = None
 					
 					# award vp to player
 					campaign.AwardVP(self.capture_zone_vp)
 					self.UpdateCDCampaignCon()
+					
+					self.UpdateCDDisplay()
+					
+					# delete completed scenario
+					self.scenario = None
 					
 					SaveGame()
 					
@@ -2688,9 +2686,9 @@ class Scenario:
 			if elevation2 > elevation1:
 				modifier_list.append(('Higher Elevation', -20.0))
 			
-			# unknown target
+			# unknown target - should not be possible
 			if not target.known:
-				modifier_list.append(('Unknown Target', -20.0))
+				modifier_list.append(('Unknown Target', -10.0))
 			
 			# known target
 			else:
@@ -2780,7 +2778,7 @@ class Scenario:
 				modifier_list.append(('Higher Elevation', -20.0))
 			
 			if not target.known:
-				modifier_list.append(('Unknown Target', -20.0))
+				modifier_list.append(('Unknown Target', -10.0))
 			else:
 			
 				# target is infantry and moved
@@ -2839,7 +2837,7 @@ class Scenario:
 		hit_location = (location + '_' + facing).lower()
 		
 		# generate a text description of location hit
-		if target.turret_facing is None:
+		if turret_facing and target.turret_facing is None:
 			location = 'Upper Hull'
 		profile['location_desc'] = location + ' ' + facing
 		
@@ -3037,19 +3035,21 @@ class Scenario:
 			if portrait is not None:
 				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 13)
 		
-		# base chance
-		text = 'Base Chance '
-		if profile['type'] == 'ap':
-			text += 'to Penetrate'
-		elif profile['type'] in ['FP Resolution', 'Area Fire']:
-			text += 'of Effect'
-		else:
-			text += 'to Hit'
-		ConsolePrintEx(attack_con, 13, 23, libtcod.BKGND_NONE,
-			libtcod.CENTER, text)
-		text = str(profile['base_chance']) + '%%'
-		ConsolePrintEx(attack_con, 13, 24, libtcod.BKGND_NONE,
-			libtcod.CENTER, text)
+		# base chance; don't show for FP resolution
+		if profile['type'] != 'FP Resolution':
+		
+			text = 'Base Chance '
+			if profile['type'] == 'ap':
+				text += 'to Penetrate'
+			elif profile['type'] == 'Area Fire':
+				text += 'of Effect'
+			else:
+				text += 'to Hit'
+			ConsolePrintEx(attack_con, 13, 23, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
+			text = str(profile['base_chance']) + '%%'
+			ConsolePrintEx(attack_con, 13, 24, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
 		
 		# modifiers
 		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
@@ -3092,12 +3092,12 @@ class Scenario:
 		# display chance graph
 		if profile['type'] == 'FP Resolution':
 			
-			ConsolePrint(attack_con, 1, 45, 'No Effect: ')
+			ConsolePrint(attack_con, 1, 45, 'No Effect:')
 			ConsolePrintEx(attack_con, 24, 45, libtcod.BKGND_NONE,
 				libtcod.RIGHT, chr(243) + ' ' + str(profile['final_chance'])) 
 			y = 46
 			for result in FP_EFFECT_RESULT_LIST:
-				ConsolePrint(attack_con, 1, y, result)
+				ConsolePrint(attack_con, 1, y, result + ':')
 				ConsolePrintEx(attack_con, 24, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, chr(243) + ' ' + str(profile[result]))
 				y += 1
@@ -3252,6 +3252,12 @@ class Scenario:
 			libtcod.console_put_char(attack_con, x, 45, 233)
 			libtcod.console_put_char(attack_con, x, 49, 232)
 		
+		# determine location hit on target (not always used)
+		if libtcod.random_get_int(0, 1, 6) <= 4:
+			profile['location'] = 'Hull'
+		else:
+			profile['location'] = 'Turret'
+		
 		# armour penetration roll
 		if profile['type'] == 'ap':
 			
@@ -3278,7 +3284,19 @@ class Scenario:
 				profile['effective_fp'] = int(floor(profile['base_fp'] / 2))
 			else:
 				result_text = 'NO EFFECT'
-		
+			
+			# might be converted into an AP MG hit
+			if result_text in ['FULL EFFECT', 'CRITICAL EFFECT']:
+				if profile['weapon'].GetStat('type') in ['Co-ax MG', 'Hull MG'] and profile['target'].GetStat('armour') is not None:
+					distance = GetHexDistance(profile['attacker'].hx,
+						profile['attacker'].hy, profile['target'].hx,
+						profile['target'].hy)
+					if distance <= MG_AP_RANGE:
+						if result_text == 'FULL EFFECT':
+							result_text = 'HIT'
+						else:
+							result_text = 'CRITICAL HIT'
+			
 		# FP resolution
 		elif profile['type'] == 'FP Resolution':
 			
@@ -3301,23 +3319,16 @@ class Scenario:
 				result_text = 'HIT'
 			else:
 				result_text = 'MISS'
+		
+		# if point fire hit or AP MG hit, may be saved by HD status
+		if result_text in ['HIT', 'CRITICAL HIT'] and len(profile['target'].hull_down) > 0:
 			
-			if result_text in ['HIT', 'CRITICAL HIT']:
-				
-				# determine location hit on target
-				if libtcod.random_get_int(0, 1, 6) <= 4:
-					profile['location'] = 'Hull'
-				else:
-					profile['location'] = 'Turret'
-				
-				# if hull hit and target is hull down toward this direction,
-				# result is saved by HD instead
-				if profile['location'] == 'Hull':
-					direction = GetDirectionToward(profile['target'].hx,
-						profile['target'].hy, profile['attacker'].hx,
-						profile['attacker'].hy)
-					if direction in profile['target'].hull_down:
-						result_text = 'MISS - HULL DOWN'
+			if profile['location'] == 'Hull':
+				direction = GetDirectionToward(profile['target'].hx,
+					profile['target'].hy, profile['attacker'].hx,
+					profile['attacker'].hy)
+				if direction in profile['target'].hull_down:
+					result_text = 'MISS - HULL DOWN'
 		
 		profile['result'] = result_text
 		
@@ -4926,16 +4937,15 @@ class Unit:
 				
 				if profile['result'] in ['CRITICAL EFFECT', 'FULL EFFECT', 'PARTIAL EFFECT']:
 					
-					# possible to apply an AP hit if MG within range
-					if weapon.GetStat('type') in ['Co-ax MG', 'Hull MG'] and target.GetStat('armour') is not None:
-						if GetHexDistance(self.hx, self.hy, target.hx, target.hy) <= MG_AP_RANGE:
-							target.ap_hits_to_resolve.append(profile)
-					
 					target.fp_to_resolve += profile['effective_fp']
 					
 					# target will automatically be spotted next turn if possible
 					if not target.known:
 						target.hit_by_fp = 2
+				
+				# possible it was converted into an AP MG hit
+				elif profile['result'] in ['HIT', 'CRITICAL HIT']:	
+					target.ap_hits_to_resolve.append(profile)
 			
 			# ap attack hit
 			elif profile['result'] in ['CRITICAL HIT', 'HIT']:
@@ -4994,22 +5004,19 @@ class Unit:
 				profile = scenario.DoAttackRoll(profile)
 				WaitForContinue()
 				
-				# handle results
-				if profile['result'] == 'Pin Test':
-					modifier = self.fp_to_resolve * FP_MORALE_CHECK_MOD
-					if not self.MoraleCheck(modifier):
-						self.PinMe()
-					else:
-						text = self.GetName() + ' avoided being Pinned.'
-						scenario.ShowMessage(text, self.hx, self.hy)
-					
-				# TODO: Handle Broken result
-				elif profile['result'] == 'Break Test':
+				# TODO: handle results
+				if profile['result'] == 'Break Test':
 					pass
-					
+				
+				elif profile['result'] == 'Reduction':
+					pass
+				
 				elif profile['result'] == 'Destroyed':
 					self.DestroyMe()
 					return
+				
+				# do pin test
+				self.PinTest(self.fp_to_resolve)
 			
 			self.fp_to_resolve = 0
 		
@@ -5073,6 +5080,15 @@ class Unit:
 		if passed >= half_crew:
 			return True
 		return False
+	
+	# do a pin test on this unit
+	def PinTest(self, fp):
+		chance = float(fp) * 10.0
+		chance -= scenario.cd_hex.map_hexes[(self.hx, self.hy)].GetTerrainMod()
+		chance = RestrictChance(chance)
+		roll = GetPercentileRoll()
+		if roll > chance:
+			self.PinMe()
 	
 	# pin this unit
 	def PinMe(self):
@@ -5177,7 +5193,7 @@ class Unit:
 				scenario.ShowMessage(text, hx=target.hx, hy=target.hy, portrait=portrait)
 			else:
 				text = 'You have been spotted!'
-				scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
+				scenario.ShowMessage(text, hx=target.hx, hy=target.hy)
 			
 	# reveal this unit after being spotted
 	def SpotMe(self):
@@ -6755,6 +6771,7 @@ def UpdateContextCon():
 		ConsolePrint(context_con, 0, 0, 'Movement')
 		libtcod.console_set_default_background(context_con, libtcod.black)
 		
+		# display movement status
 		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
 		if scenario.player_unit.move_finished:
 			ConsolePrint(context_con, 0, 2, 'Move finished')
@@ -6763,32 +6780,30 @@ def UpdateContextCon():
 			ConsolePrint(context_con, 0, 2, 'Already Fired')
 			return
 		
-		# display chance of getting a bonus move
+		# display HD chance if any in current terrain
+		chance = scenario.player_unit.GetHullDownChance()
+		if chance > 0.0:
+			ConsolePrint(context_con, 0, 2, 'HD Chance: ' + str(chance) + '%%')
+		
+		# see if there's a hex in front of us
 		(hx, hy) = GetAdjacentHex(scenario.player_unit.hx, scenario.player_unit.hy,
 			scenario.player_unit.facing)
-		
-		# off map
 		if (hx, hy) not in scenario.cd_hex.map_hexes: return
+		
+		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+		ConsolePrint(context_con, 0, 4, 'Terrain ahead:')
 		
 		# display destination terrain type
 		text = HEX_TERRAIN_DESC[scenario.cd_hex.map_hexes[(hx, hy)].terrain_type]
-		ConsolePrint(context_con, 0, 2, text)
-		
-		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+		ConsolePrint(context_con, 1, 5, text)
 		
 		# display road status if any
 		if scenario.player_unit.facing in scenario.cd_hex.map_hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].dirt_roads:
-			ConsolePrint(context_con, 0, 3, 'Dirt Road')
+			ConsolePrint(context_con, 1, 6, 'Dirt Road')
 		
-		# get bonus move chance
-		ConsolePrint(context_con, 0, 4, '+1 move chance:')
+		# display chance of getting a bonus move
 		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
-		ConsolePrint(context_con, 1, 5, str(chance) + '%%')
-		
-		# display HD chance if any
-		chance = scenario.player_unit.GetHullDownChance()
-		if chance > 0.0:
-			ConsolePrint(context_con, 0, 6, 'HD Chance: ' + str(chance) + '%%')
+		ConsolePrint(context_con, 0, 7, '+1 move: ' + str(chance) + '%%')
 	
 	# combat
 	elif scenario.active_menu == 4:

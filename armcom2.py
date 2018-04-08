@@ -414,8 +414,9 @@ class Campaign:
 		# placeholder for pointer to current calendar day
 		self.today = None
 		
-		# placeholder for player unit
-		self.player_unit = None			
+		# placeholder for player unit and player unit group
+		self.player_unit = None
+		self.player_unit_group = []
 		
 		# TEMP: following will be set by CampaignSelectionMenu eventually
 		# current year, month, day, hour, and minute
@@ -1813,6 +1814,9 @@ class Session:
 		# placeholder for hex console images
 		self.hex_consoles = {}
 		
+		# placeholder for sound samples
+		self.sample = {}
+		
 		# TODO: load unit portraits
 		
 		# load national flag images
@@ -1979,7 +1983,6 @@ class Session:
 		return True
 	
 	def LoadSounds(self):
-		self.sample = {}
 		
 		SOUND_LIST = [
 			'menu_select',
@@ -7902,6 +7905,10 @@ while not exit_game:
 					config.set('ArmCom2', 'sounds_enabled', 'false')
 				else:
 					config.set('ArmCom2', 'sounds_enabled', 'true')
+					# init mixer and load sound samples if required
+					if len(session.sample) == 0:
+						session.InitMixer()
+						session.LoadSounds()
 				
 			# switch keyboard layout
 			elif key_char == 'k':

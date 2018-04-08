@@ -688,7 +688,8 @@ class Campaign:
 		self.player_unit.nation = self.stats['player_nation']
 		self.player_unit.base_morale_level = 'Confident'
 		self.player_unit.GenerateNewCrew()
-	
+		
+		# TODO: generate rest of player squadron into self.player_unit_group
 	
 	# update the commander name menu
 	def UpdateCommanderNameMenu(self, crewman, editing_first_name):
@@ -2004,6 +2005,7 @@ class Session:
 class AI:
 	def __init__(self, owner):
 		self.owner = owner
+		self.group_leader = None		# if set, unit will mirror actions of this lead unit
 		self.disposition = None
 	
 	# print an AI report re: crew actions for this unit to the console, used for debugging
@@ -3246,11 +3248,16 @@ class Scenario:
 		if profile['type'] != 'FP Resolution':
 		
 			# display final roll indicators
-			x = int(ceil(24.0 * roll / 100.0))
+			x = int(24.0 * roll / 100.0) + 1
+			if x < 1:
+				x = 1
+			elif x > 24:
+				x = 24
 			
 			# make sure only critical hits and misses appear in their bands
-			if roll > CRITICAL_HIT and x == 1: x = 2
-			if roll < CRITICAL_MISS and x == 24: x = 23
+			if profile['type'] == 'Point Fire':
+				if roll > CRITICAL_HIT and x == 1: x = 2
+				if roll < CRITICAL_MISS and x == 24: x = 23
 			
 			libtcod.console_put_char(attack_con, x, 45, 233)
 			libtcod.console_put_char(attack_con, x, 49, 232)
@@ -5173,7 +5180,6 @@ class Unit:
 		
 		# target was hit by effective fp last turn
 		if target.hit_by_fp > 0:
-			print 'DEBUG: target was hit by fp and is automatically spotted'
 			chance = 100.0
 		
 		roll = GetPercentileRoll()
@@ -6563,12 +6569,14 @@ def UpdateUnitCon():
 					x-3, y-2)
 		
 	# display LoS if applicable
-	if scenario.player_los_active and scenario.player_target is not None:
-		line = GetLine(scenario.player_unit.screen_x, scenario.player_unit.screen_y,
-			scenario.player_target.screen_x, scenario.player_target.screen_y)
-		for (x,y) in line[2:-1]:
-			libtcod.console_put_char_ex(unit_con, x, y, 250, libtcod.red,
-				libtcod.black)
+	if scenario.game_turn['active_player'] == 1: return
+	if scenario.active_menu != 4: return
+	if scenario.player_target is None: return
+	line = GetLine(scenario.player_unit.screen_x, scenario.player_unit.screen_y,
+		scenario.player_target.screen_x, scenario.player_target.screen_y)
+	for (x,y) in line[2:-1]:
+		libtcod.console_put_char_ex(unit_con, x, y, 250, libtcod.red,
+			libtcod.black)
 
 
 # display information about the player unit
@@ -7226,6 +7234,7 @@ def DoScenario():
 		# if player is not active, do AI actions
 		if scenario.game_turn['active_player'] == 1:
 			UpdateCommandCon()
+			UpdateUnitCon()
 			for unit in scenario.activation_list[1]:
 				if not unit.alive: continue
 				unit.ai.DoActivation()
@@ -7242,6 +7251,7 @@ def DoScenario():
 			UpdateObjectiveInfoCon()
 			UpdateCrewPositionCon()
 			UpdateCommandCon()
+			UpdateUnitCon()
 			UpdateScenarioDisplay()
 			continue
 		
@@ -7326,6 +7336,7 @@ def DoScenario():
 			if scenario.active_menu != int(key_char):
 				scenario.active_menu = int(key_char)
 				UpdateCommandCon()
+				UpdateUnitCon()				# to show/hide LoS
 				UpdateContextCon()
 				UpdateCrewPositionCon()
 				UpdateScenarioDisplay()

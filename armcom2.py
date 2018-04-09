@@ -60,7 +60,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
@@ -689,7 +689,26 @@ class Campaign:
 		self.player_unit.base_morale_level = 'Confident'
 		self.player_unit.GenerateNewCrew()
 		
-		# TODO: generate rest of player squadron into self.player_unit_group
+		# generate rest of player squadron into 
+		# determine number of other tanks in group
+		op_value = int(self.player_unit.GetStat('op_value'))
+		
+		if op_value >= 39:
+			num = 2
+		elif op_value >= 29:
+			num = 3
+		else:
+			num = 4
+		for i in range(num):
+			new_unit = Unit(selected_unit.unit_id)
+			new_unit.owning_player = 0
+			new_unit.nation = self.stats['player_nation']
+			new_unit.base_morale_level = 'Confident'
+			new_unit.GenerateNewCrew()
+			new_unit.ai = AI(new_unit)
+			new_unit.ai.group_leader = self.player_unit
+			self.player_unit_group.append(new_unit)
+		
 	
 	# update the commander name menu
 	def UpdateCommanderNameMenu(self, crewman, editing_first_name):
@@ -2071,6 +2090,19 @@ class AI:
 				else:
 					self.disposition = 'Movement'
 		
+		# check for group leader
+		if self.group_leader is not None:
+			
+			# in same hex as group leader
+			if GetHexDistance(self.owner.hx, self.owner.hy, self.group_leader.hx, self.group_leader.hy) == 0:
+				if self.disposition == 'Movement':
+					self.disposition = 'Combat'
+			
+			# TEMP - player allied unit
+			if self.owner.owning_player == 0:
+				if self.disposition is None:
+					self.disposition = 'Combat'
+		
 		# dummy units never attack
 		if self.owner.dummy and self.disposition == 'Combat':
 			self.disposition = None
@@ -2221,11 +2253,7 @@ class AI:
 		
 		# end activation
 		self.owner.DoPostActivation()
-	
 
-
-				
-		
 
 
 # Scenario: represents a single battle encounter
@@ -2284,15 +2312,11 @@ class Scenario:
 	
 	# generate activation order for player units and enemy units
 	def GenerateActivationOrder(self):
-		
 		for unit in self.units:
 			if unit == self.player_unit: continue
 			self.activation_list[unit.owning_player].append(unit)
 		shuffle(self.activation_list[0])
 		shuffle(self.activation_list[1])
-		
-		# add the player unit to the start of the list
-		self.activation_list[0].insert(0, self.player_unit)
 	
 	# set up map viewport hexes based on viewport center position and facing
 	def SetVPHexes(self):
@@ -2960,6 +2984,11 @@ class Scenario:
 	# display an attack or AP profile to the screen and prompt to proceed
 	# does not alter the profile
 	def DisplayAttack(self, profile):
+		
+		# don't display if player is not involved
+		if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
+			return
+		
 		libtcod.console_clear(attack_con)
 		
 		# display the background outline
@@ -3195,40 +3224,45 @@ class Scenario:
 			if roll <= base_chance:
 				return True
 			return False
-			
-		# FP resolution uses a different animation
-		if profile['type'] == 'FP Resolution':
-			for i in range(4):
-				roll = GetPercentileRoll()
-				ConsolePrintEx(attack_con, 13, 52, libtcod.BKGND_NONE, libtcod.CENTER,
-					str(roll))
-				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-				libtcod.console_flush()
-				# don't wait on final roll, this is the real one
-				if i != 3:
-					Wait(20)
-					ConsolePrintEx(attack_con, 13, 52,
-						libtcod.BKGND_NONE, libtcod.CENTER, '      ')
 		
-		else:
-			
-			# animate roll indicators randomly
-			for i in range(3):
-				x = libtcod.random_get_int(0, 1, 24)
-				libtcod.console_put_char(attack_con, x, 45, 233)
-				libtcod.console_put_char(attack_con, x, 49, 232)
-				
-				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-				libtcod.console_flush()
-				
-				Wait(20)
-				
-				libtcod.console_put_char(attack_con, x, 45, 0)
-				libtcod.console_put_char(attack_con, x, 49, 0)
-		
+		# don't animate indicators/percentage if player is not involved
+		if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
 			roll = GetPercentileRoll()
+		else:
+		
+			# FP resolution uses a different animation
+			if profile['type'] == 'FP Resolution':
+				for i in range(4):
+					roll = GetPercentileRoll()
+					ConsolePrintEx(attack_con, 13, 52, libtcod.BKGND_NONE, libtcod.CENTER,
+						str(roll))
+					libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+					libtcod.console_flush()
+					# don't wait on final roll, this is the real one
+					if i != 3:
+						Wait(20)
+						ConsolePrintEx(attack_con, 13, 52,
+							libtcod.BKGND_NONE, libtcod.CENTER, '      ')
+			
+			else:
+				
+				# animate roll indicators randomly
+				for i in range(3):
+					x = libtcod.random_get_int(0, 1, 24)
+					libtcod.console_put_char(attack_con, x, 45, 233)
+					libtcod.console_put_char(attack_con, x, 49, 232)
+					
+					libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+					libtcod.console_flush()
+					
+					Wait(20)
+					
+					libtcod.console_put_char(attack_con, x, 45, 0)
+					libtcod.console_put_char(attack_con, x, 49, 0)
+			
+				roll = GetPercentileRoll()
 		
 		# at this point, if the player tank would be penetrated, they have a chance
 		# to survive using luck
@@ -3245,22 +3279,23 @@ class Scenario:
 			roll = 2.0
 		
 		# to-hit or area fire attack, or AP roll
-		if profile['type'] != 'FP Resolution':
-		
-			# display final roll indicators
-			x = int(24.0 * roll / 100.0) + 1
-			if x < 1:
-				x = 1
-			elif x > 24:
-				x = 24
+		if profile['attacker'] == self.player_unit or profile['target'] == self.player_unit:
+			if profile['type'] != 'FP Resolution':
 			
-			# make sure only critical hits and misses appear in their bands
-			if profile['type'] == 'Point Fire':
-				if roll > CRITICAL_HIT and x == 1: x = 2
-				if roll < CRITICAL_MISS and x == 24: x = 23
-			
-			libtcod.console_put_char(attack_con, x, 45, 233)
-			libtcod.console_put_char(attack_con, x, 49, 232)
+				# display final roll indicators
+				x = int(24.0 * roll / 100.0) + 1
+				if x < 1:
+					x = 1
+				elif x > 24:
+					x = 24
+				
+				# make sure only critical hits and misses appear in their bands
+				if profile['type'] == 'Point Fire':
+					if roll > CRITICAL_HIT and x == 1: x = 2
+					if roll < CRITICAL_MISS and x == 24: x = 23
+				
+				libtcod.console_put_char(attack_con, x, 45, 233)
+				libtcod.console_put_char(attack_con, x, 49, 232)
 		
 		# determine location hit on target (not always used)
 		if libtcod.random_get_int(0, 1, 6) <= 4:
@@ -3341,6 +3376,10 @@ class Scenario:
 					result_text = 'MISS - HULL DOWN'
 		
 		profile['result'] = result_text
+		
+		# TEMP if player is not involved, we can return here
+		if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
+			return profile
 		
 		ConsolePrintEx(attack_con, 13, 51, libtcod.BKGND_NONE,
 			libtcod.CENTER, result_text)
@@ -4904,39 +4943,41 @@ class Unit:
 			# display the attack to the screen
 			scenario.DisplayAttack(profile)
 			
-			# pause if we're not doing a RoF attack
-			if not profile['weapon'].maintained_rof:
-				WaitForContinue()
+			# pause if we're not doing a RoF attack and player is involved
+			if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
+				if not profile['weapon'].maintained_rof:
+					WaitForContinue()
 			
 			# do the roll and display results to the screen
 			profile = scenario.DoAttackRoll(profile)
 			
 			# if we maintain RoF, we might choose to attack again here
-			end_pause = False
-			attack_finished = True
-			while not end_pause:
-				if libtcod.console_is_window_closed(): sys.exit()
-				libtcod.console_flush()
-				event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
-					key, mouse)
-				
-				if session.key_down:
-					if event != libtcod.EVENT_KEY_RELEASE:
+			if profile['attacker'] == self.player_unit:
+				end_pause = False
+				attack_finished = True
+				while not end_pause:
+					if libtcod.console_is_window_closed(): sys.exit()
+					libtcod.console_flush()
+					event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
+						key, mouse)
+					
+					if session.key_down:
+						if event != libtcod.EVENT_KEY_RELEASE:
+							continue
+						session.key_down = False
+					if event != libtcod.EVENT_KEY_PRESS:
 						continue
-					session.key_down = False
-				if event != libtcod.EVENT_KEY_PRESS:
-					continue
-				session.key_down = True
-				
-				key_char = DecodeKey(chr(key.c).lower())
-				
-				if key_char == 'c':
-					end_pause = True
-				
-				if self == scenario.player_unit:
-					if key_char == 'f' and weapon.maintained_rof:
-						attack_finished = False
+					session.key_down = True
+					
+					key_char = DecodeKey(chr(key.c).lower())
+					
+					if key_char == 'c':
 						end_pause = True
+					
+					if self == scenario.player_unit:
+						if key_char == 'f' and weapon.maintained_rof:
+							attack_finished = False
+							end_pause = True
 			
 			# add acquired target if firing gun
 			if weapon.GetStat('type') == 'Gun':
@@ -4990,6 +5031,7 @@ class Unit:
 						target.ap_hits_to_resolve.append(profile)
 		
 		# attack is over, re-enable LoS if player unit
+		# TODO: remove, no longer needed?
 		if self == scenario.player_unit:
 			scenario.player_los_active = True
 			UpdateUnitCon()
@@ -7130,19 +7172,30 @@ def DoScenario():
 		# generate scenario units
 		
 		# spawn player tank into scenario
+		# FUTURE: spawn location changes based on from where player unit entered area
+		
+		hx = 0
+		hy = scenario.cd_hex.map_radius
+		
 		unit = campaign.player_unit
 		unit.InitScenarioStats()
-		
-		# spawn player into map
-		# FUTURE: spawn location changes based on from where player unit entered area
 		unit.facing = 0
 		unit.turret_facing = 0
 		scenario.units.append(unit)
-		unit.SpawnAt(0, scenario.cd_hex.map_radius)
+		unit.SpawnAt(hx, hy)
 		unit.CheckHullDownGain()
-		
 		scenario.player_unit = unit
 		unit.CalcFoV()
+		
+		# spawn rest of player group
+		for unit in campaign.player_unit_group:
+			unit.InitScenarioStats()
+			unit.facing = 0
+			unit.turret_facing = 0
+			scenario.units.append(unit)
+			unit.SpawnAt(hx, hy)
+			unit.CheckHullDownGain()
+			unit.CalcFoV()
 		
 		# set up VP hexes and generate initial VP console
 		scenario.CenterVPOnPlayer()
@@ -7242,8 +7295,12 @@ def DoScenario():
 			Wait(5)
 			scenario.DoEndOfPlayerTurn()
 			
-			# activate player
+			# activate player again
 			scenario.active_unit = scenario.player_unit
+			scenario.active_unit.MoveToTopOfStack()
+			UpdateUnitCon()
+			UpdateScenarioDisplay()
+			libtcod.console_flush()
 			scenario.active_unit.DoPreActivation()
 			
 			UpdatePlayerInfoCon()
@@ -7323,7 +7380,15 @@ def DoScenario():
 		if key.vk == libtcod.KEY_ENTER:
 			scenario.player_unit.DoPostActivation()
 			
-			# FUTURE: check for allied player units to activate
+			# activate allied player units
+			for unit in scenario.activation_list[0]:
+				if not unit.alive: continue
+				if unit.ai is None:
+					print 'ERROR: tried to activate a unit with no AI!'
+				else:
+					unit.ai.DoActivation()
+			
+			Wait(5)
 			
 			scenario.DoEndOfPlayerTurn()
 			continue

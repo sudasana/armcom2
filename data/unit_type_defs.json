@@ -48,7 +48,7 @@
 			"companies."
 		],
 		"ubiquity" : "95",
-		"op_value" : "19"
+		"op_value" : "17"
 	},
 	
 	"TKS" : {
@@ -98,7 +98,7 @@
 			"engine."
 		],
 		"ubiquity" : "85",
-		"op_value" : "0"
+		"op_value" : "19"
 	},
 	
 	"TKS (20mm)" : {
@@ -152,7 +152,7 @@
 			"engine. This version is rare variant armed with a 20mm gun."
 		],
 		"ubiquity" : "20",
-		"op_value" : "0"
+		"op_value" : "21"
 	},
 	
 	"Vickers 6-Ton Mark E": {
@@ -220,7 +220,7 @@
 			"47mm gun."
 		],
 		"ubiquity" : "30",
-		"op_value" : "0"
+		"op_value" : "29"
 	},
 	
 	"7TP": {
@@ -287,7 +287,7 @@
 			"to anti-tank fire."
 		],
 		"ubiquity" : "50",
-		"op_value" : "0"
+		"op_value" : "33"
 	},
 	
 	"wz. 34 (MG)": {
@@ -332,7 +332,7 @@
 			""
 		],
 		"ubiquity" : "75",
-		"op_value" : "0"
+		"op_value" : "19"
 	},
 	
 	"wz. 34 (37mm)": {
@@ -381,7 +381,7 @@
 			""
 		],
 		"ubiquity" : "50",
-		"op_value" : "0"
+		"op_value" : "20"
 	},
 	
 	"37mm wz. 36": {
@@ -413,7 +413,7 @@
 			""
 		],
 		"ubiquity" : "60",
-		"op_value" : "0"
+		"op_value" : "26"
 	},
 	
 	"75mm wz. 02/26": {
@@ -449,7 +449,7 @@
 			""
 		],
 		"ubiquity" : "22",
-		"op_value" : "0"
+		"op_value" : "29"
 	},
 	
 	"75mm wz. 97/25": {
@@ -485,7 +485,7 @@
 			""
 		],
 		"ubiquity" : "13",
-		"op_value" : "0"
+		"op_value" : "27"
 	},
 	
 	

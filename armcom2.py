@@ -2245,7 +2245,7 @@ class AI:
 						continue
 					if self.fired:
 						continue
-					if self.owner.GetStat('category') == 'Vehicle' and not self.owner.CrewActionPossible(['Driver', 'Drive'):
+					if self.owner.GetStat('category') == 'Vehicle' and not self.owner.CrewActionPossible(['Driver'], 'Drive'):
 						continue
 				
 				# set ammo type if required

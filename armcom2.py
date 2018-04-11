@@ -2169,6 +2169,8 @@ class AI:
 		
 		elif self.disposition == 'Combat':
 			
+			print '\nDEBUG: Starting a combat action for ' + self.owner.unit_id
+			
 			animate = False
 			dist = GetHexDistance(self.owner.hx, self.owner.hy, scenario.player_unit.hx,
 				scenario.player_unit.hy)
@@ -2200,18 +2202,24 @@ class AI:
 					
 					# gun weapons need to check multiple ammo type combinations
 					if weapon.GetStat('type') == 'Gun':
-						for ammo_type in weapon.stats['ammo_type_list']:
+						ammo_list = weapon.stats['ammo_type_list']
+						for ammo_type in ammo_list:
+							
+							# always choose AP over HE if target is armoured
+							if ammo_type != 'AP' and target.GetStat('armour') is not None and 'AP' in ammo_list:
+								continue
+							
 							weapon.current_ammo = ammo_type
 							result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
 							if result != '':
-								print 'DEBUG: ' + self.owner.unit_id + ',' + weapon + ',' + ammo_type + ',' + target.unit_id + ': ' + result
+								print 'DEBUG: ' + self.owner.unit_id + ',' + weapon.stats['name'] + ',' + ammo_type + ',' + target.unit_id + ': ' + result
 								continue
 							attack_list.append((weapon, target, ammo_type))
 						continue
 					
 					result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
 					if result != '':
-						print 'DEBUG: ' + self.owner.unit_id + ',' + weapon + ',' + target.unit_id + ': ' + result
+						print 'DEBUG: ' + self.owner.unit_id + ',' + weapon.stats['name'] + ',' + target.unit_id + ': ' + result
 						continue
 					attack_list.append((weapon, target, ''))
 				
@@ -2243,7 +2251,7 @@ class AI:
 				if pivot_req:
 					if self.owner.move_finished:
 						continue
-					if self.fired:
+					if self.owner.fired:
 						continue
 					if self.owner.GetStat('category') == 'Vehicle' and not self.owner.CrewActionPossible(['Driver'], 'Drive'):
 						continue
@@ -2253,11 +2261,15 @@ class AI:
 					weapon.current_ammo = ammo_type
 				
 				# calculate odds of attack
-				profile = scenario.CalcAttack(self, weapon, target, pivot=pivot_req, turret_rotate=turret_rotate_req)
+				profile = scenario.CalcAttack(self.owner, weapon, target, pivot=pivot_req, turret_rotate=turret_rotate_req)
 				score = profile['final_chance']
+				
+				# TODO: modify score by chance of penetration
 				
 				# add to list
 				scored_list.append((score, weapon, target, ammo_type))
+				print 'DEBUG: Added an attack with score of ' + str(score) + ': ' + weapon.stats['name'] + '(' + ammo_type + ') against ' + target.unit_id
+				
 						
 			# no possible attacks
 			if len(scored_list) == 0:
@@ -2266,70 +2278,37 @@ class AI:
 				self.owner.DoPostActivation()
 				return
 			
-			# TODO: select best scored attack from list
+			# sort list by score then select best attack
+			scored_list.sort(key=lambda x:x[0], reverse=True)
+			(score, weapon, target, ammo_type) = scored_list[0]
 			
+			print 'DEBUG: Best attack with score of ' + str(score) + ': ' + weapon.stats['name'] + '(' + ammo_type + ') against ' + target.unit_id
 			
-			# TEMP
-			self.owner.DoPostActivation()
-			return
+			# do the attack
+			if ammo_type != '':
+				weapon.current_ammo = ammo_type
 			
+			# pivot or rotate turret if needed
+			direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx,
+				target.hy)
+			mount = weapon.GetStat('mount')
+			if mount is not None:
+				if mount == 'Turret':
+					if (target.hx - self.owner.hx, target.hy - self.owner.hy) not in HEXTANTS[self.owner.turret_facing]:
+						self.owner.turret_facing = direction
+						
+				else:
+					if (target.hx - self.owner.hx, target.hy - self.owner.hy) not in HEXTANTS[self.owner.facing]:
+						self.owner.facing = direction
 			
+			result = self.owner.Attack(weapon, target)
 			
-			
-			# select our target unit
-			unit = None
-			
-			# if one of these is our acquired target, choose that one
-			if self.owner.acquired_target is not None:
-				(target, level) = self.owner.acquired_target
-				if target in target_list:
-					unit = target
-			
-			if unit is None:
-				# select a random target from list
-				unit = choice(target_list)
-			
-			# TEMP - can select first weapon only
-			weapon = self.owner.weapon_list[0]
-			
-			# TEMP - choose AP ammo only
-			if weapon.GetStat('type') == 'Gun':
-				if 'AP' in weapon.stats['ammo_type_list']:
-					weapon.current_ammo = 'AP'
-			
-			# if required, pivot or rotate turret 
-			if weapon.GetStat('mount') == 'Hull':
-				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
-					unit.hy)
-				if self.owner.facing != direction:
-					self.owner.facing = direction
-					self.owner.moved = True
-					
-					if animate:
-						UpdateUnitCon()
-						UpdateScenarioDisplay()
-						libtcod.console_flush()
-						Wait(10)
-			
-			# otherwise, rotate turret if any to face target
-			elif self.owner.turret_facing is not None:
-				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
-					unit.hy)
-				if self.owner.turret_facing != direction:
-					self.owner.turret_facing = direction
-					
-					if animate:
-						UpdateUnitCon()
-						UpdateScenarioDisplay()
-						libtcod.console_flush()
-						Wait(10)
-			
-			# try the attack
-			result = self.owner.Attack(weapon, unit)
 			if not result:
 				if AI_SPY:
 					print 'AI SPY: ' + self.owner.unit_id + ': could not attack'
 					print 'AI SPY: ' + scenario.CheckAttack(self.owner, weapon, unit)
+		
+			print 'DEBUG: Ending combat action for ' + self.owner.unit_id
 		
 		# end activation
 		self.owner.DoPostActivation()
@@ -5051,7 +5030,7 @@ class Unit:
 			scenario.DisplayAttack(profile)
 			
 			# pause if we're not doing a RoF attack and player is involved
-			if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
+			if profile['attacker'] == scenario.player_unit or profile['target'] == scenario.player_unit:
 				if not profile['weapon'].maintained_rof:
 					WaitForContinue()
 			
@@ -5059,9 +5038,9 @@ class Unit:
 			profile = scenario.DoAttackRoll(profile)
 			
 			# if we maintain RoF, we might choose to attack again here
-			if profile['attacker'] == self.player_unit:
+			attack_finished = True
+			if profile['attacker'] == scenario.player_unit:
 				end_pause = False
-				attack_finished = True
 				while not end_pause:
 					if libtcod.console_is_window_closed(): sys.exit()
 					libtcod.console_flush()
@@ -5085,6 +5064,7 @@ class Unit:
 						if key_char == 'f' and weapon.maintained_rof:
 							attack_finished = False
 							end_pause = True
+			
 			
 			# add acquired target if firing gun
 			if weapon.GetStat('type') == 'Gun':
@@ -5159,9 +5139,11 @@ class Unit:
 			if self.GetStat('category') != 'Vehicle':
 				profile = scenario.CalcFP(self)
 				scenario.DisplayAttack(profile)
-				WaitForContinue()
+				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
+					WaitForContinue()
 				profile = scenario.DoAttackRoll(profile)
-				WaitForContinue()
+				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
+					WaitForContinue()
 				
 				# TODO: handle results
 				if profile['result'] == 'Break Test':
@@ -5187,9 +5169,11 @@ class Unit:
 			
 				profile = scenario.CalcAP(profile)
 				scenario.DisplayAttack(profile)
-				WaitForContinue()
+				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
+					WaitForContinue()
 				profile = scenario.DoAttackRoll(profile)
-				WaitForContinue()
+				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
+					WaitForContinue()
 				if profile['result'] == 'PENETRATED':
 					self.DestroyMe()
 					return
@@ -7499,9 +7483,10 @@ def DoScenario():
 				else:
 					unit.ai.DoActivation()
 			
-			Wait(5)
+			print 'Player AI activations are finished'
 			
 			scenario.DoEndOfPlayerTurn()
+			print 'Player turn is finished'
 			continue
 
 		# key commands

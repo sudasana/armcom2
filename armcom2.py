@@ -2194,7 +2194,92 @@ class AI:
 			if len(target_list) == 0:
 				if AI_SPY:
 					print 'AI SPY: ' + self.owner.unit_id + ': no possible targets'
+				self.owner.DoPostActivation()
 				return
+			
+			# score possible weapon-target combinations
+			attack_list = []
+			
+			for target in target_list:
+				for weapon in self.owner.weapon_list:
+					
+					# gun weapons need to check multiple ammo type combinations
+					if weapon.GetStat('type') == 'Gun':
+						for ammo_type in weapon.stats['ammo_type_list']:
+							weapon.current_ammo = ammo_type
+							result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
+							if result != '':
+								print 'DEBUG: ' + self.owner.unit_id + ',' + weapon + ',' + ammo_type + ',' + target.unit_id + ': ' + result
+								continue
+							attack_list.append((weapon, target, ammo_type))
+						continue
+					
+					result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
+					if result != '':
+						print 'DEBUG: ' + self.owner.unit_id + ',' + weapon + ',' + target.unit_id + ': ' + result
+						continue
+					attack_list.append((weapon, target, ''))
+				
+			# no possible attacks
+			if len(attack_list) == 0:
+				if AI_SPY:
+					print 'AI SPY: ' + self.owner.unit_id + ': no possible attacks on targets'
+				self.owner.DoPostActivation()
+				return	
+						
+			# score each attack
+			scored_list = []
+			for (weapon, target, ammo_type) in attack_list:
+				
+				# determine if a pivot or turret rotation would be required
+				pivot_req = None
+				turret_rotate_req = None
+				
+				mount = weapon.GetStat('mount')
+				if mount is not None:
+					if mount == 'Turret':
+						if (target.hx - self.owner.hx, target.hy - self.owner.hy) not in HEXTANTS[self.owner.turret_facing]:
+							turret_rotate_req = True
+					else:
+						if (target.hx - self.owner.hx, target.hy - self.owner.hy) not in HEXTANTS[self.owner.facing]:
+							pivot_req = True
+				
+				# can't pivot if already moved
+				if pivot_req:
+					if self.owner.move_finished:
+						continue
+					if self.fired:
+						continue
+					if self.owner.GetStat('category') == 'Vehicle' and not self.owner.CrewActionPossible(['Driver', 'Drive'):
+						continue
+				
+				# set ammo type if required
+				if ammo_type != '':
+					weapon.current_ammo = ammo_type
+				
+				# calculate odds of attack
+				profile = scenario.CalcAttack(self, weapon, target, pivot=pivot_req, turret_rotate=turret_rotate_req)
+				score = profile['final_chance']
+				
+				# add to list
+				scored_list.append((score, weapon, target, ammo_type))
+						
+			# no possible attacks
+			if len(scored_list) == 0:
+				if AI_SPY:
+					print 'AI SPY: ' + self.owner.unit_id + ': no possible scored attacks on targets'
+				self.owner.DoPostActivation()
+				return
+			
+			# TODO: select best scored attack from list
+			
+			
+			# TEMP
+			self.owner.DoPostActivation()
+			return
+			
+			
+			
 			
 			# select our target unit
 			unit = None
@@ -2217,7 +2302,7 @@ class AI:
 				if 'AP' in weapon.stats['ammo_type_list']:
 					weapon.current_ammo = 'AP'
 			
-			# if weapon is hull mounted, pivot to face target
+			# if required, pivot or rotate turret 
 			if weapon.GetStat('mount') == 'Hull':
 				direction = GetDirectionToward(self.owner.hx, self.owner.hy, unit.hx,
 					unit.hy)
@@ -2642,7 +2727,9 @@ class Scenario:
 		return True
 	
 	# calculate the odds of success of a ranged attack, returns an attack profile
-	def CalcAttack(self, attacker, weapon, target):
+	# if pivot or turret_rotate are set to True or False, will override
+	# any actual attacker status
+	def CalcAttack(self, attacker, weapon, target, pivot=None, turret_rotate=None):
 		
 		profile = {}
 		profile['attacker'] = attacker
@@ -3411,7 +3498,8 @@ class Scenario:
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
 	# valid attack; if not, return a text description of why not
-	def CheckAttack(self, attacker, weapon, target):
+	# if ignore_facing is true, we don't check whether weapon is facing correct direction
+	def CheckAttack(self, attacker, weapon, target, ignore_facing=False):
 		
 		if weapon.GetStat('type') == 'Gun' and weapon.current_ammo is not None:
 			if weapon.ammo_stores[weapon.current_ammo] == 0:
@@ -3471,6 +3559,9 @@ class Scenario:
 		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 		if distance > weapon.max_range:
 			return 'Beyond maximum weapon range'
+		
+		if ignore_facing:
+			return ''
 		
 		# check covered arc
 		if mount is not None:

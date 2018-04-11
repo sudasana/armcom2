@@ -1839,13 +1839,14 @@ class Session:
 		
 		# TODO: load unit portraits
 		
+		# store nation definition info
+		with open(DATAPATH + 'nation_defs.json') as data_file:
+			self.nations = json.load(data_file)
+		
 		# load national flag images
 		self.flags = {}
-		with open(DATAPATH + 'nation_defs.json') as data_file:
-			nations = json.load(data_file)
-		for name, data in nations.iteritems():
+		for name, data in self.nations.iteritems():
 			self.flags[name] = LoadXP(data['flag_image'])
-		del nations
 
 	# generate map hex consoles for all hexes in a scenario map
 	def GenerateHexConsoles(self):
@@ -2093,15 +2094,9 @@ class AI:
 		# check for group leader
 		if self.group_leader is not None:
 			
-			# in same hex as group leader
-			if GetHexDistance(self.owner.hx, self.owner.hy, self.group_leader.hx, self.group_leader.hy) == 0:
-				if self.disposition == 'Movement':
-					self.disposition = 'Combat'
-			
-			# TEMP - player allied unit
+			# TEMP - player allied unit: combat only
 			if self.owner.owning_player == 0:
-				if self.disposition is None:
-					self.disposition = 'Combat'
+				self.disposition = 'Combat'
 		
 		# dummy units never attack
 		if self.owner.dummy and self.disposition == 'Combat':
@@ -3648,14 +3643,10 @@ class Crew:
 				else:
 					fixed_name += text[i]
 			return fixed_name
-			
-		# get list of possible first and last names
-		with open(DATAPATH + 'nation_defs.json') as data_file:
-			nations = json.load(data_file)
 		
-		first_name = choice(nations[self.nation]['first_names'])
+		first_name = choice(session.nations[self.nation]['first_names'])
 		self.first_name = FixName(first_name)
-		last_name = choice(nations[self.nation]['surnames'])
+		last_name = choice(session.nations[self.nation]['surnames'])
 		self.last_name = FixName(last_name)
 			
 	# return the crewman's full name
@@ -3692,10 +3683,7 @@ class Crew:
 		else:
 			self.rank = 1
 		
-		with open(DATAPATH + 'nation_defs.json') as data_file:
-			nations = json.load(data_file)
-		
-		self.rank_desc = nations[self.nation]['rank_names'][str(self.rank)]
+		self.rank_desc = session.nations[self.nation]['rank_names'][str(self.rank)]
 	
 	# generate a new set of stats for this crewman
 	def GenerateStats(self):
@@ -4646,7 +4634,7 @@ class Unit:
 		# default
 		return '!'
 	
-	# attempt to move forward into next map hex
+	# attempt to move unit in hull facing direction into next map hex
 	# returns True if move was a success, false if not
 	def MoveForward(self):
 		
@@ -4670,6 +4658,7 @@ class Unit:
 		
 		map_hex1 = scenario.cd_hex.map_hexes[(self.hx, self.hy)]
 		map_hex2 = scenario.cd_hex.map_hexes[(hx, hy)]
+		direction = GetDirectionToAdjacent(self.hx, self.hy, hx, hy)
 		
 		# target hex can't be entered
 		if map_hex2.terrain_type == 'pond':
@@ -4690,8 +4679,43 @@ class Unit:
 		# calculate bonus move chance
 		chance = scenario.CalcBonusMove(self, hx, hy)
 		
+		# do the move
+		self.MoveInto(hx, hy)
+		
+		# move any unit group members as well
+		# TEMP - does not check if it's possible for them to move
+		
+		for unit in scenario.units:
+			if not unit.alive: continue
+			if unit.owning_player != self.owning_player: continue
+			if unit.ai is None: continue
+			if unit.ai.group_leader is None: continue
+			if unit.ai.group_leader != self: continue
+			if unit.facing is not None:
+				unit.facing = direction
+			if unit.turret_facing is not None:
+				unit.turret_facing = direction
+			unit.MoveInto(hx, hy, effects=False)
+		
+		# check for bonus move
+		roll = GetPercentileRoll()
+		if roll <= chance:
+			self.additional_moves_taken += 1
+		else:
+			self.move_finished = True
+		
+		return True
+	
+	# moves the unit into hx, hy
+	# does not check whether move is possible but does set proper flags
+	# if effects is true, animation and sound effects may be triggered
+	def MoveInto(self, hx, hy, effects=True):
+		
+		map_hex1 = scenario.cd_hex.map_hexes[(self.hx, self.hy)]
+		map_hex2 = scenario.cd_hex.map_hexes[(hx, hy)]
+		
 		# do movement animation and sound if applicable
-		if self.vp_hx is not None and self.vp_hy is not None:
+		if effects and self.vp_hx is not None and self.vp_hy is not None:
 			x1, y1 = self.screen_x, self.screen_y
 			direction = GetDirectionToAdjacent(self.hx, self.hy, hx, hy)
 			direction = ConstrainDir(direction - scenario.player_unit.facing)
@@ -4729,17 +4753,9 @@ class Unit:
 		# set flag
 		self.moved = True
 		
-		# check for bonus move
-		roll = GetPercentileRoll()
-		if roll <= chance:
-			self.additional_moves_taken += 1
-		else:
-			self.move_finished = True
-		
 		# check for random HD status gain
 		self.CheckHullDownGain()
 		
-		return True
 	
 	# pivot the unit facing one hextant
 	def Pivot(self, clockwise):
@@ -5230,7 +5246,8 @@ class Unit:
 			target.SpotMe()
 			# display pop-up message window
 			
-			if self == scenario.player_unit:
+			# FUTURE: need difference message if it's an allied unit doing the spotting
+			if self.owning_player == 0:
 				
 				if target.dummy:
 					text = (position.crewman.GetFullName() + ' says: ' + 
@@ -5242,7 +5259,7 @@ class Unit:
 					text += ' spotted!'
 					portrait = target.GetStat('portrait')
 				scenario.ShowMessage(text, hx=target.hx, hy=target.hy, portrait=portrait)
-			else:
+			elif target == scenario.player_unit:
 				text = 'You have been spotted!'
 				scenario.ShowMessage(text, hx=target.hx, hy=target.hy)
 			
@@ -6938,7 +6955,9 @@ def UpdateUnitInfoCon():
 		libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
 		ConsolePrint(unit_info_con, 0, 0, 'Possible Enemy')
 	else:
-		if unit.owning_player == 0:
+		if unit == scenario.player_unit:
+			col = libtcod.light_blue
+		elif unit.owning_player == 0:
 			col = libtcod.white
 		else:
 			col = ENEMY_UNIT_COL
@@ -6950,6 +6969,7 @@ def UpdateUnitInfoCon():
 			ConsolePrint(unit_info_con, 0, y, line)
 			y+=1
 		libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
+		ConsolePrint(unit_info_con, 0, 1, session.nations[unit.nation]['adjective'])
 		ConsolePrint(unit_info_con, 0, 2, unit.GetStat('class'))
 		
 		libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
@@ -7335,7 +7355,7 @@ def DoScenario():
 				map_hex = scenario.cd_hex.map_hexes[(hx, hy)]
 				if len(map_hex.unit_stack) > 1:
 					if mouse.wheel_up:
-						map_hex.unit_stack.insert(-1, map_hex.unit_stack.pop(0))
+						map_hex.unit_stack[:] = map_hex.unit_stack[1:] + [map_hex.unit_stack[0]]
 					else:
 						map_hex.unit_stack.insert(0, map_hex.unit_stack.pop(-1))
 					UpdateUnitCon()

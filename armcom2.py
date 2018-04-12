@@ -331,13 +331,10 @@ RESOLVE_FP_CHANCE_MOD = 1.05
 # base chance of passing a morale check
 MORALE_CHECK_BASE_CHANCE = 70.0
 
-# each point of FP applies this as a negative modifier to a morale check
-FP_MORALE_CHECK_MOD = 5.0
-
 # modifier to morale checks for broken units
 BROKEN_MORALE_MOD = -40.0
 
-# list of unit leader positions: they check morale first for the unit
+# list of unit leader positions: FUTURE will check their traits for certain actions
 UNIT_LEADER_POSITIONS = [
 	'Commander', 'Commander/Gunner', 'NCO'
 ]
@@ -6251,8 +6248,8 @@ def DisplayCrewInfo(crewman, console, x, y):
 	libtcod.console_hline(console, x+1, y+6, 29)
 	libtcod.console_hline(console, x+1, y+8, 29)
 	libtcod.console_hline(console, x+1, y+10, 29)
-	libtcod.console_hline(console, x+1, y+14, 29)
-	libtcod.console_hline(console, x+1, y+23, 29)
+	libtcod.console_hline(console, x+1, y+13, 29)
+	libtcod.console_hline(console, x+1, y+24, 29)
 	
 	# section titles
 	libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
@@ -6262,7 +6259,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+1, y+9, 'Rank')
 	ConsolePrint(console, x+1, y+11, 'Current')
 	ConsolePrint(console, x+1, y+12, 'Position')
-	ConsolePrint(console, x+1, y+15, 'Assessment')
+	ConsolePrint(console, x+1, y+14, 'Traits')
 	
 	# info
 	libtcod.console_set_default_foreground(console, libtcod.white)
@@ -6271,6 +6268,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+10, y+9, crewman.rank_desc)
 	ConsolePrint(console, x+10, y+11, scenario.player_unit.unit_id)
 	ConsolePrint(console, x+10, y+12, crewman.current_position.name)
+	ConsolePrint(console, x+1, y+16, 'None')
 	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)

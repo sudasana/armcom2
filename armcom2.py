@@ -237,11 +237,11 @@ CD_BATTLE_STR_MOD = 4.0
 # effect of each point of organization <> 5 on chance
 CD_BATTLE_ORGANIZATION_MOD = 5.0
 
-# scenarios will have 2-5 enemy units
-# base odds of 5,4,3 units
+# scenarios will have 1-4 enemy units
+# base odds of 4,3,2 units
 ENEMY_NUMBER_BASE_ODDS = [97.0, 80.0, 60.0]
 # effect of each point of strength on odds
-CD_ENEMY_STRENGTH_EFFECT = -5.0
+CD_ENEMY_STRENGTH_EFFECT = -3.0
 
 # number of additional dummy units spawned in a scenario
 ENEMY_DUMMY_UNITS = 2
@@ -2403,7 +2403,7 @@ class Scenario:
 				odds[i] = 0.0
 		
 		roll = GetPercentileRoll()
-		enemy_unit_num = 5
+		enemy_unit_num = 4
 		for chance in odds:
 			if roll > chance:
 				break

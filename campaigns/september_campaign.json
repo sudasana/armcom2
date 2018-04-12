@@ -29,10 +29,10 @@
 			"day" : "1",
 			"desc" : "The Polish Border",
 			"enemy_unit_class_odds" : {
-				"Light Tank" : "80",
+				"Light Tank" : "70",
 				"Medium Tank" : "15",
 				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "60",
+				"Anti-Tank Gun" : "35",
 				"Anti-Aircraft Gun" : "5",
 				"Infantry Squad" : "100"
 			}

@@ -1213,7 +1213,7 @@ class CampaignDay:
 						self.map_hexes[(hx,hy)].dirt_roads.append(ConstrainDir(direction + 3))
 			
 	
-	# resupply the player unit (FUTURE: and other units in the battlegroup)
+	# resupply the player unit and other units in the player's unit group
 	def ResupplyPlayer(self):
 		campaign.AdvanceClock(0, 30)
 		ShowNotification('You contact HQ for resupply, which arrives 30 minutes later.')
@@ -1222,6 +1222,11 @@ class CampaignDay:
 				weapon.LoadGunAmmo()
 				text = weapon.stats['name'] + ' gun has been fully restocked with ammo.'
 				ShowNotification(text)
+		# resupply allies too
+		for unit in campaign.player_unit_group:
+			for weapon in unit.weapon_list:
+				if weapon.ammo_stores is not None:
+					weapon.LoadGunAmmo()
 	
 	
 	# initiate a battle encounter scenario and store it in the CD object
@@ -2155,8 +2160,8 @@ class AI:
 					move_done = True
 		
 		elif self.disposition == 'Combat':
-			
-			print '\nDEBUG: Starting a combat action for ' + self.owner.unit_id
+			if AI_SPY:
+				print '\nAI SPY: Starting a combat action for ' + self.owner.unit_id
 			
 			animate = False
 			dist = GetHexDistance(self.owner.hx, self.owner.hy, scenario.player_unit.hx,
@@ -2199,14 +2204,12 @@ class AI:
 							weapon.current_ammo = ammo_type
 							result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
 							if result != '':
-								print 'DEBUG: ' + self.owner.unit_id + ',' + weapon.stats['name'] + ',' + ammo_type + ',' + target.unit_id + ': ' + result
 								continue
 							attack_list.append((weapon, target, ammo_type))
 						continue
 					
 					result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
 					if result != '':
-						print 'DEBUG: ' + self.owner.unit_id + ',' + weapon.stats['name'] + ',' + target.unit_id + ': ' + result
 						continue
 					attack_list.append((weapon, target, ''))
 				
@@ -2255,7 +2258,6 @@ class AI:
 				
 				# add to list
 				scored_list.append((score, weapon, target, ammo_type))
-				print 'DEBUG: Added an attack with score of ' + str(score) + ': ' + weapon.stats['name'] + '(' + ammo_type + ') against ' + target.unit_id
 				
 						
 			# no possible attacks
@@ -2269,7 +2271,8 @@ class AI:
 			scored_list.sort(key=lambda x:x[0], reverse=True)
 			(score, weapon, target, ammo_type) = scored_list[0]
 			
-			print 'DEBUG: Best attack with score of ' + str(score) + ': ' + weapon.stats['name'] + '(' + ammo_type + ') against ' + target.unit_id
+			if AI_SPY:
+				print 'AI SPY: Best attack with score of ' + str(score) + ': ' + weapon.stats['name'] + '(' + ammo_type + ') against ' + target.unit_id
 			
 			# do the attack
 			if ammo_type != '':
@@ -2295,7 +2298,9 @@ class AI:
 					print 'AI SPY: ' + self.owner.unit_id + ': could not attack'
 					print 'AI SPY: ' + scenario.CheckAttack(self.owner, weapon, unit)
 		
-			print 'DEBUG: Ending combat action for ' + self.owner.unit_id
+			if AI_SPY:
+		
+				print 'AI SPY: Ending combat action for ' + self.owner.unit_id
 		
 		# end activation
 		self.owner.DoPostActivation()
@@ -2323,10 +2328,6 @@ class Scenario:
 		self.activation_list = [		# activation order for player units, enemy units
 			[], []
 		]
-		
-		# player 'luck' points
-		# FUTURE move into campaign object
-		self.player_luck = 2 + libtcod.random_get_int(0, 1, 3)
 		
 		self.finished = False			# have win/loss conditions been met
 		self.winner = -1			# player number of scenario winner, -1 if None
@@ -2960,7 +2961,7 @@ class Scenario:
 		if armour is not None:
 			target_armour = int(armour[hit_location])
 			if target_armour > 0:
-				modifier = -7.0
+				modifier = -9.0
 				for i in range(target_armour - 1):
 					modifier = modifier * 1.8
 				
@@ -3197,7 +3198,7 @@ class Scenario:
 				if not profile['attacker'].CheckCrewAction(['Loader'], 'Reload'):
 					return False
 				
-				# guns must also have at least one shell available
+				# guns must also have at least one shell of the current type available
 				if profile['weapon'].current_ammo is not None:
 					if profile['weapon'].ammo_stores[profile['weapon'].current_ammo] == 0:
 						return False			
@@ -3229,16 +3230,6 @@ class Scenario:
 				libtcod.console_put_char(attack_con, x, 49, 0)
 		
 			roll = GetPercentileRoll()
-		
-		# at this point, if the player tank would be penetrated, they have a chance
-		# to survive using luck
-		if profile['target'] == self.player_unit and profile['type'] == 'ap':
-			if roll <= profile['final_chance']:
-				if self.player_luck > 0:
-					self.player_luck -= 1
-					# generate a random result that would save the player
-					minimum = int(profile['final_chance'] * 10.0)
-					roll = float(libtcod.random_get_int(0, minimum+1, 1000)) / 10.0
 		
 		# check for debug flag
 		if profile['target'].owning_player == 1 and PLAYER_ALWAYS_HITS:
@@ -4971,6 +4962,11 @@ class Unit:
 				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
 					WaitForContinue()
 				if profile['result'] == 'PENETRATED':
+					
+					# if player was not involved, display a message
+					if profile['attacker'] != scenario.player_unit and self != scenario.player_unit:
+						text = self.GetName() + ' was destroyed.'
+						scenario.ShowMessage(text, self.hx, self.hy)
 					self.DestroyMe()
 					return
 		
@@ -5001,9 +4997,6 @@ class Unit:
 		
 		base_chance = RestrictChance(base_chance)
 		broken_chance = RestrictChance(broken_chance)
-		
-		print 'DEBUG: Resolving ' + str(self.fp_to_resolve) + ' FP on ' + self.unit_id
-		print 'DEBUG: chances: ' + str(base_chance) + '/' + str(broken_chance)
 		
 		# roll for effect
 		roll = GetPercentileRoll()

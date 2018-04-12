@@ -31,9 +31,9 @@
 			"desc" : "The Polish Border",
 			"enemy_unit_class_odds" : {
 				"Tankette" : "80",
-				"Light Tank" : "10",
+				"Light Tank" : "30",
 				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "90",
+				"Anti-Tank Gun" : "40",
 				"Field Gun" : "10",
 				"Anti-Aircraft Gun" : "20",
 				"Infantry Squad" : "100"

@@ -59,8 +59,8 @@ import sdl2.sdlmixer as mixer				# sound effects
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
-GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
+GODMODE = True						# player cannot be destroyed
+ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
@@ -180,9 +180,6 @@ HEX_TERRAIN_DESC = {
 
 # maximum length for crew first or last names
 CREW_NAME_MAX_LENGTH = 18
-
-# list of crew stat names
-STAT_NAMES = ['Strength', 'Grit', 'Perception', 'Intelligence']
 
 # list of scenario menus and their highlight colours
 MENU_LIST = [
@@ -330,6 +327,9 @@ RESOLVE_FP_BASE_CHANCE = 95.0
 RESOLVE_FP_CHANCE_STEP = 5.0
 # additional firepower modifier increased by this much beyond 1
 RESOLVE_FP_CHANCE_MOD = 1.05
+
+# base chance of passing a morale check
+MORALE_CHECK_BASE_CHANCE = 70.0
 
 # each point of FP applies this as a negative modifier to a morale check
 FP_MORALE_CHECK_MOD = 5.0
@@ -3556,6 +3556,7 @@ class Scenario:
 
 
 # Crew Class: represents a crewman in a vehicle or a single member of a unit's personnel
+# TODO: chance to personnel
 class Crew:
 	def __init__(self, nation, position):
 		self.first_name = u''				# name, set by GenerateName()
@@ -3579,11 +3580,7 @@ class Crew:
 		
 		self.fov = set()				# set of visible hexes
 		
-		self.stats = {}					# dictionary of stat values
-		for stat_name in STAT_NAMES:
-			self.stats[stat_name] = 0
-		
-		self.GenerateStats()
+		self.traits = {}				# FUTURE: dictionary of traits and trait levels
 
 	# generate a random first and last name for this crewman
 	# TEMP: have to normalize extended characters so they can be displayed on screen
@@ -3646,28 +3643,6 @@ class Crew:
 			self.rank = 1
 		
 		self.rank_desc = session.nations[self.nation]['rank_names'][str(self.rank)]
-	
-	# generate a new set of stats for this crewman
-	def GenerateStats(self):
-		
-		for tries in range(300):
-			value_list = []
-			total = 0
-			for i in range(4):
-				new_value = libtcod.random_get_int(0, 5, 50) + libtcod.random_get_int(0, 5, 50)
-				new_value = int(new_value / 10)
-				value_list.append(new_value)
-				total += new_value
-			
-			# check that total stat values fall within a given range
-			if 12 <= total <= 32:
-				break
-		
-		# set stat values
-		i = 0
-		for key in STAT_NAMES:
-			self.stats[key] = value_list[i]
-			i+=1
 	
 	# returns True if this crewman is currently able to choose an action
 	def AbleToAct(self):
@@ -4886,9 +4861,9 @@ class Unit:
 			# display the attack to the screen
 			scenario.DisplayAttack(profile)
 			
-			# pause if we're not doing a RoF attack and player is involved
-			if profile['attacker'] == scenario.player_unit or profile['target'] == scenario.player_unit:
-				if not profile['weapon'].maintained_rof:
+			# pause if player is involved and we didn't maintain RoF
+			if self == scenario.player_unit or target == scenario.player_unit:
+				if not weapon.maintained_rof:
 					WaitForContinue()
 			
 			# do the roll and display results to the screen
@@ -4896,7 +4871,7 @@ class Unit:
 			
 			# if we maintain RoF, we might choose to attack again here
 			attack_finished = True
-			if profile['attacker'] == scenario.player_unit:
+			if self == scenario.player_unit or target == scenario.player_unit:
 				end_pause = False
 				while not end_pause:
 					if libtcod.console_is_window_closed(): sys.exit()
@@ -4957,8 +4932,6 @@ class Unit:
 						if profile['result'] == 'CRITICAL HIT':
 							effective_fp = effective_fp * 2 
 					
-						# TODO: apply infantry moved modifier
-						
 						target.fp_to_resolve += effective_fp
 						
 						if not target.known:
@@ -4974,14 +4947,8 @@ class Unit:
 					if target.GetStat('category') == 'Vehicle':
 						target.ap_hits_to_resolve.append(profile)
 		
-		# attack is over, re-enable LoS if player unit
-		# TODO: remove, no longer needed?
-		if self == scenario.player_unit:
-			scenario.player_los_active = True
-			UpdateUnitCon()
-			UpdateScenarioDisplay()
-			libtcod.console_flush()
-			Wait(15)
+		# reset weapon RoF - needed?
+		weapon.maintained_rof = False
 		
 		return True
 	
@@ -5025,50 +4992,56 @@ class Unit:
 		
 		# calculate base chance of no effect
 		base_chance = RESOLVE_FP_BASE_CHANCE
-		for i in range(2, unit.fp_to_resolve + 1):
+		for i in range(2, self.fp_to_resolve + 1):
 			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
 		base_chance = round(base_chance, 2)
+		
+		# TODO: calculate modifiers: unit statuses, personnel traits
+		
+		
+		# calculate chances of broken based on base chance
+		broken_chance = round(base_chance + (base_chance * 0.2), 2)
+		
 		base_chance = RestrictChance(base_chance)
+		broken_chance = RestrictChance(broken_chance)
 		
-		# TODO: calculate modifiers: eg. personnel traits
-		
-		# calculate chances of destroyed based on base chance
-		destroyed_chance = round((base_chance / 2.0), 2)
-		destroyed_chance = RestrictChance(destroyed_chance)
-		
-		print 'DEBUG: Resolving ' + str(self.fp_to_resolve) + ' on ' + self.unit_id
-		print 'DEBUG: chances: ' + str(destroyed_chance) + '/' + str(base_chance)
+		print 'DEBUG: Resolving ' + str(self.fp_to_resolve) + ' FP on ' + self.unit_id
+		print 'DEBUG: chances: ' + str(base_chance) + '/' + str(broken_chance)
 		
 		# roll for effect
 		roll = GetPercentileRoll()
-		if roll <= destroyed_chance:
-			text = self.GetName() + ' was destroyed.'
-			scenario.ShowMessage(text, self.hx, self.hy)
-			self.DestroyMe()
 		
-		elif roll <= base_chance:
+		if roll <= base_chance:
+			# no effect, but do pin test (handles message itself)
+			self.PinTest(self.fp_to_resolve)
+		
+		elif roll <= broken_chance:
 			text = self.GetName() + ' was Broken.'
 			scenario.ShowMessage(text, self.hx, self.hy)
 			self.BreakMe()
 		
 		else:
-		
-			# do pin test (handles message itself)
-			self.PinTest(self.fp_to_resolve)
+			text = self.GetName() + ' was destroyed.'
+			scenario.ShowMessage(text, self.hx, self.hy)
+			self.DestroyMe()
 		
 		self.fp_to_resolve = 0
 	
-	# do a morale check for this unit, result of FP attack, etc.
+	# do a morale check for this unit to recover from Broken or Pinned status
 	def MoraleCheck(self, modifier):
 		
-		modifier = float(0 - modifier)
+		chance = MORALE_CHECK_BASE_CHANCE + modifier
 		
 		# TODO: apply terrain modifiers
 		
 		# TODO: check for personnel traits
 		
-		# TEMP: always passes
-		return True
+		chance = RestrictChance(chance)
+		
+		roll = GetPercentileRoll()
+		if roll <= chance:
+			return True
+		return False
 		
 	# do a pin test on this unit
 	def PinTest(self, fp):
@@ -5155,8 +5128,7 @@ class Unit:
 		if self.GetStat('category') == 'Infantry':
 			chance = chance * 0.5
 		
-		# crew perception modifier
-		chance += (position.crewman.stats['Perception'] - 5) * 5.0
+		# FUTURE: personnel trait modifiers if any
 		
 		chance = RestrictChance(chance)
 		
@@ -6300,21 +6272,6 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+10, y+11, scenario.player_unit.unit_id)
 	ConsolePrint(console, x+10, y+12, crewman.current_position.name)
 	
-	# crew stats
-	libtcod.console_set_default_background(console, libtcod.darkest_grey)
-	background_shade = False
-	i = 0
-	for stat_name in STAT_NAMES:
-		libtcod.console_set_default_foreground(console, libtcod.white)
-		ConsolePrint(console, x+8, y+17+i, stat_name)
-		libtcod.console_set_default_foreground(console, libtcod.light_grey)
-		ConsolePrintEx(console, x+23, y+17+i, libtcod.BKGND_NONE, 
-			libtcod.RIGHT, str(crewman.stats[stat_name]))
-		if background_shade:
-			libtcod.console_rect(console, x+8, y+17+i, 16, 1, False, libtcod.BKGND_SET)
-		background_shade = not background_shade
-		i+=1
-	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)
 		
@@ -7328,15 +7285,9 @@ def DoScenario():
 			# activate allied player units
 			for unit in scenario.activation_list[0]:
 				if not unit.alive: continue
-				if unit.ai is None:
-					print 'ERROR: tried to activate a unit with no AI!'
-				else:
-					unit.ai.DoActivation()
-			
-			print 'Player AI activations are finished'
+				unit.ai.DoActivation()
 			
 			scenario.DoEndOfPlayerTurn()
-			print 'Player turn is finished'
 			continue
 
 		# key commands

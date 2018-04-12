@@ -331,23 +331,11 @@ RESOLVE_FP_CHANCE_STEP = 5.0
 # additional firepower modifier increased by this much beyond 1
 RESOLVE_FP_CHANCE_MOD = 1.05
 
-# list of possible results from fp resolution, in addition to no effect
-FP_EFFECT_RESULT_LIST = ['Break Test', 'Reduction', 'Destroyed']
-
 # each point of FP applies this as a negative modifier to a morale check
 FP_MORALE_CHECK_MOD = 5.0
 
 # modifier to morale checks for broken units
 BROKEN_MORALE_MOD = -40.0
-
-# ranges for morale level descriptions
-MORALE_LEVELS = {
-	'Reluctant': (51.0, 60.9),
-	'Regular': (61.0, 70.9),
-	'Confident': (71.0, 80.9),
-	'Fearless': (81.0, 90.9),
-	'Fanatic': (91.0, 100.0)
-}
 
 # list of unit leader positions: they check morale first for the unit
 UNIT_LEADER_POSITIONS = [
@@ -597,7 +585,7 @@ class Campaign:
 			'Player Vehicle Selection')
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		DrawFrame(con, 32, 8, 26, 18)
-		selected_unit.DisplayMyInfo(con, 33, 9, status=False, morale=False)
+		selected_unit.DisplayMyInfo(con, 33, 9, status=False)
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		ConsolePrint(con, 33, 24, 'Crew: ' + str(len(selected_unit.GetStat('crew_positions'))))
 		
@@ -686,7 +674,6 @@ class Campaign:
 		self.player_unit = Unit(selected_unit.unit_id)
 		self.player_unit.owning_player = 0
 		self.player_unit.nation = self.stats['player_nation']
-		self.player_unit.base_morale_level = 'Confident'
 		self.player_unit.GenerateNewCrew()
 		
 		# generate rest of player squadron into 
@@ -703,7 +690,6 @@ class Campaign:
 			new_unit = Unit(selected_unit.unit_id)
 			new_unit.owning_player = 0
 			new_unit.nation = self.stats['player_nation']
-			new_unit.base_morale_level = 'Confident'
 			new_unit.GenerateNewCrew()
 			new_unit.ai = AI(new_unit)
 			new_unit.ai.group_leader = self.player_unit
@@ -2102,6 +2088,10 @@ class AI:
 		if self.owner.dummy and self.disposition == 'Combat':
 			self.disposition = None
 		
+		# broken units cannot act
+		if self.owner.broken:
+			self.disposition = None
+		
 		# debug override
 		if AI_NO_ACTION:
 			self.disposition = None
@@ -2536,7 +2526,6 @@ class Scenario:
 				if 'turret' in new_unit.stats:
 					new_unit.turret_facing = direction
 				
-				new_unit.base_morale_level = 'Fearless'
 				new_unit.GenerateNewCrew()
 				
 				# deploy immediately if gun
@@ -2999,49 +2988,7 @@ class Scenario:
 		
 		return profile
 	
-	# calculate the resolution of FP attacks on a unit
-	def CalcFP(self, unit):
-		
-		profile = {}
-		profile['target'] = unit
-		profile['type'] = 'FP Resolution'
-		profile['effective_fp'] = unit.fp_to_resolve
-		
-		# calculate base chance of no effect
-		base_chance = RESOLVE_FP_BASE_CHANCE
-		for i in range(2, unit.fp_to_resolve + 1):
-			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
-		profile['base_chance'] = round(base_chance, 2)
-		
-		# TODO: calculate modifiers: eg. morale level
-		modifier_list = []
-		
-		profile['modifier_list'] = modifier_list[:]
-		
-		# calculate total modifier
-		total_modifier = 0.0
-		for (desc, mod) in modifier_list:
-			total_modifier += mod
-		
-		# calculate the raw final chance of no effect
-		# we'll use this to calculate other result bands
-		result_chance = profile['base_chance'] + total_modifier
-		
-		# record the effective final chance of no effect
-		profile['final_chance'] = RestrictChance(result_chance)
-		
-		# calculate additional result bands
-		for result in FP_EFFECT_RESULT_LIST:
-			
-			if result == 'Destroyed':
-				result_chance = 100.0
-				profile[result] = 100.0
-			else:
-				result_chance = round(result_chance + ((100.0 - base_chance) / 4.0), 2)
-				profile[result] = RestrictChance(result_chance)
-		
-		return profile
-		
+	
 	# display an attack or AP profile to the screen and prompt to proceed
 	# does not alter the profile
 	def DisplayAttack(self, profile):
@@ -3061,19 +3008,16 @@ class Scenario:
 		libtcod.console_set_default_background(attack_con, libtcod.black)
 		
 		# set flags on whether attacker/target is known to player
-		# not used in FP resolution
+		
 		attacker_known = True
+		if profile['attacker'].owning_player == 1 and not profile['attacker'].known:
+			attacker_known = False
 		target_known = True
-		if profile['type'] != 'FP Resolution':
-			if profile['attacker'].owning_player == 1 and not profile['attacker'].known:
-				attacker_known = False
-			if profile['target'].owning_player == 1 and not profile['target'].known:
-				target_known = False
+		if profile['target'].owning_player == 1 and not profile['target'].known:
+			target_known = False
 		
 		if profile['type'] == 'ap':
 			text = 'Armour Penetration'
-		elif profile['type'] == 'FP Resolution':
-			text = 'FP Resolution'
 		else:
 			text = 'Ranged Attack'
 		ConsolePrintEx(attack_con, 13, 1, libtcod.BKGND_NONE,
@@ -3101,10 +3045,6 @@ class Scenario:
 			if profile['ammo_type'] is not None:
 				text2 += ' (' + profile['ammo_type'] + ')'
 			text3 = 'in ' + profile['location_desc']
-		elif profile['type'] == 'FP Resolution':
-			text1 = profile['target'].GetName()
-			text2 = 'hit by ' + str(profile['effective_fp']) + ' FP'
-			text3 = ''
 		else:
 			text1 = profile['attacker'].GetName()
 			if attacker_known:
@@ -3130,21 +3070,19 @@ class Scenario:
 			if portrait is not None:
 				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 13)
 		
-		# base chance; don't show for FP resolution
-		if profile['type'] != 'FP Resolution':
-		
-			text = 'Base Chance '
-			if profile['type'] == 'ap':
-				text += 'to Penetrate'
-			elif profile['type'] == 'Area Fire':
-				text += 'of Effect'
-			else:
-				text += 'to Hit'
-			ConsolePrintEx(attack_con, 13, 23, libtcod.BKGND_NONE,
-				libtcod.CENTER, text)
-			text = str(profile['base_chance']) + '%%'
-			ConsolePrintEx(attack_con, 13, 24, libtcod.BKGND_NONE,
-				libtcod.CENTER, text)
+		# base chance
+		text = 'Base Chance '
+		if profile['type'] == 'ap':
+			text += 'to Penetrate'
+		elif profile['type'] == 'Area Fire':
+			text += 'of Effect'
+		else:
+			text += 'to Hit'
+		ConsolePrintEx(attack_con, 13, 23, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
+		text = str(profile['base_chance']) + '%%'
+		ConsolePrintEx(attack_con, 13, 24, libtcod.BKGND_NONE,
+			libtcod.CENTER, text)
 		
 		# modifiers
 		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
@@ -3185,19 +3123,7 @@ class Scenario:
 			libtcod.CENTER, 'Final Chance')
 		
 		# display chance graph
-		if profile['type'] == 'FP Resolution':
-			
-			ConsolePrint(attack_con, 1, 45, 'No Effect:')
-			ConsolePrintEx(attack_con, 24, 45, libtcod.BKGND_NONE,
-				libtcod.RIGHT, chr(243) + ' ' + str(profile['final_chance'])) 
-			y = 46
-			for result in FP_EFFECT_RESULT_LIST:
-				ConsolePrint(attack_con, 1, y, result + ':')
-				ConsolePrintEx(attack_con, 24, y, libtcod.BKGND_NONE,
-					libtcod.RIGHT, chr(243) + ' ' + str(profile[result]))
-				y += 1
-
-		elif profile['type'] == 'Area Fire':
+		if profile['type'] == 'Area Fire':
 			# area fire has partial, full, and critical outcomes possible
 			
 			# no effect
@@ -3290,40 +3216,22 @@ class Scenario:
 		if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
 			roll = GetPercentileRoll()
 		else:
-		
-			# FP resolution uses a different animation
-			if profile['type'] == 'FP Resolution':
-				for i in range(4):
-					roll = GetPercentileRoll()
-					ConsolePrintEx(attack_con, 13, 52, libtcod.BKGND_NONE, libtcod.CENTER,
-						str(roll))
-					libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-					libtcod.console_flush()
-					# don't wait on final roll, this is the real one
-					if i != 3:
-						Wait(20)
-						ConsolePrintEx(attack_con, 13, 52,
-							libtcod.BKGND_NONE, libtcod.CENTER, '      ')
-			
-			else:
+			# animate roll indicators randomly
+			for i in range(3):
+				x = libtcod.random_get_int(0, 1, 24)
+				libtcod.console_put_char(attack_con, x, 45, 233)
+				libtcod.console_put_char(attack_con, x, 49, 232)
 				
-				# animate roll indicators randomly
-				for i in range(3):
-					x = libtcod.random_get_int(0, 1, 24)
-					libtcod.console_put_char(attack_con, x, 45, 233)
-					libtcod.console_put_char(attack_con, x, 49, 232)
-					
-					libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-					libtcod.console_flush()
-					
-					Wait(20)
-					
-					libtcod.console_put_char(attack_con, x, 45, 0)
-					libtcod.console_put_char(attack_con, x, 49, 0)
-			
-				roll = GetPercentileRoll()
+				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_flush()
+				
+				Wait(20)
+				
+				libtcod.console_put_char(attack_con, x, 45, 0)
+				libtcod.console_put_char(attack_con, x, 49, 0)
+		
+			roll = GetPercentileRoll()
 		
 		# at this point, if the player tank would be penetrated, they have a chance
 		# to survive using luck
@@ -3339,24 +3247,22 @@ class Scenario:
 		if profile['target'].owning_player == 1 and PLAYER_ALWAYS_HITS:
 			roll = 2.0
 		
-		# to-hit or area fire attack, or AP roll
+		# if player is involved
 		if profile['attacker'] == self.player_unit or profile['target'] == self.player_unit:
-			if profile['type'] != 'FP Resolution':
+			# display final roll indicators
+			x = int(24.0 * roll / 100.0) + 1
+			if x < 1:
+				x = 1
+			elif x > 24:
+				x = 24
 			
-				# display final roll indicators
-				x = int(24.0 * roll / 100.0) + 1
-				if x < 1:
-					x = 1
-				elif x > 24:
-					x = 24
-				
-				# make sure only critical hits and misses appear in their bands
-				if profile['type'] == 'Point Fire':
-					if roll > CRITICAL_HIT and x == 1: x = 2
-					if roll < CRITICAL_MISS and x == 24: x = 23
-				
-				libtcod.console_put_char(attack_con, x, 45, 233)
-				libtcod.console_put_char(attack_con, x, 49, 232)
+			# make sure only critical hits and misses appear in their bands
+			if profile['type'] == 'Point Fire':
+				if roll > CRITICAL_HIT and x == 1: x = 2
+				if roll < CRITICAL_MISS and x == 24: x = 23
+			
+			libtcod.console_put_char(attack_con, x, 45, 233)
+			libtcod.console_put_char(attack_con, x, 49, 232)
 		
 		# determine location hit on target (not always used)
 		if libtcod.random_get_int(0, 1, 6) <= 4:
@@ -3402,18 +3308,7 @@ class Scenario:
 							result_text = 'HIT'
 						else:
 							result_text = 'CRITICAL HIT'
-			
-		# FP resolution
-		elif profile['type'] == 'FP Resolution':
-			
-			if roll <= profile['final_chance']:
-				result_text = 'No Effect'
-			else:
-				for result in FP_EFFECT_RESULT_LIST:
-					if roll <= profile[result]:
-						result_text = result
-						break
-		
+
 		# point fire attack
 		else:
 			
@@ -3445,13 +3340,13 @@ class Scenario:
 		ConsolePrintEx(attack_con, 13, 51, libtcod.BKGND_NONE,
 			libtcod.CENTER, result_text)
 		
-		# display effect FP if it was successful area fire attack
+		# display effective FP if it was successful area fire attack
 		if profile['type'] == 'Area Fire' and result_text != 'NO EFFECT':
 			ConsolePrintEx(attack_con, 13, 52, libtcod.BKGND_NONE,
 				libtcod.CENTER, str(profile['effective_fp']) + ' FP')
 		
 		# check for RoF for gun / MG attacks
-		if profile['type'] not in ['ap', 'FP Resolution'] and profile['weapon'].GetStat('rof') is not None:
+		if profile['type'] != 'ap' and profile['weapon'].GetStat('rof') is not None:
 			# TEMP: player only for now
 			if profile['attacker'] == scenario.player_unit:
 				profile['weapon'].maintained_rof = CheckRoF(profile) 
@@ -3677,9 +3572,6 @@ class Crew:
 		self.rank_desc = ''				# text name for rank
 		self.SetRank()
 		
-		self.morale = 0.0				# morale level, will be set later on
-		self.morale_desc = ''				# text description of morale
-		
 		self.status = 'Alert'				# current mental/physical status
 		
 		self.action_list = []				# list of possible special actions
@@ -3776,22 +3668,6 @@ class Crew:
 		for key in STAT_NAMES:
 			self.stats[key] = value_list[i]
 			i+=1
-	
-	# set this crewman's morale level based on base level for unit
-	def SetMorale(self, base_level):
-		(min_lvl, max_lvl) = MORALE_LEVELS[base_level]
-		base_level = (min_lvl + max_lvl) / 2.0
-		self.morale = base_level - 5.0 + float(libtcod.random_get_int(0, 0, 5) + libtcod.random_get_int(0, 0, 5))
-		
-		if self.current_position.name in ['Commander', 'Commander/Gunner']:
-			self.morale += 5.0
-		
-		if self.morale > 100.0:
-			self.morale = 100.0
-		for k, (min_lvl, max_lvl) in MORALE_LEVELS.iteritems():
-			if min_lvl < self.morale < max_lvl:
-				self.morale_desc = k
-				break
 	
 	# returns True if this crewman is currently able to choose an action
 	def AbleToAct(self):
@@ -4014,8 +3890,6 @@ class Unit:
 		self.nation = None			# nation of unit's crew
 		
 		self.crew_list = []			# list of pointers to crew/personnel
-		self.base_morale_level = ''		# base morale level for personnel
-		self.morale_desc = ''			# description of current effective morale level
 		self.crew_positions = []		# list of crew positions
 		
 		if 'crew_positions' in self.stats:
@@ -4113,7 +3987,7 @@ class Unit:
 	
 	# display info on this unit to a given console starting at x,y
 	# if status is False, don't display status flags (used in campaign day display)
-	def DisplayMyInfo(self, console, x, y, status=True, morale=True):
+	def DisplayMyInfo(self, console, x, y, status=True):
 		
 		libtcod.console_set_default_background(console, libtcod.black)
 		libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
@@ -4197,14 +4071,7 @@ class Unit:
 			ConsolePrint(console, x, y+ys+1, text)
 			
 			ys = 17
-		
-		# morale level
-		if morale:
-			libtcod.console_set_default_foreground(console, libtcod.white)
-			libtcod.console_set_default_background(console, libtcod.darker_cyan)
-			libtcod.console_rect(console, x, y+ys, 24, 1, True, libtcod.BKGND_SET)
-			ConsolePrint(console, x, y+ys, self.morale_desc)
-		
+
 		libtcod.console_set_default_background(console, libtcod.black)
 	
 	# return the chance of gaining HD status
@@ -4600,18 +4467,8 @@ class Unit:
 	def GenerateNewCrew(self):
 		for position in self.crew_positions:
 			new_crew = Crew(self.nation, position)
-			new_crew.SetMorale(self.base_morale_level)
 			self.crew_list.append(new_crew)
 			position.crewman = self.crew_list[-1]
-		# set current average morale level description
-		total_morale = 0.0
-		for crewman in self.crew_list:
-			total_morale += crewman.morale
-		total_morale = total_morale / len(self.crew_list)
-		for k, (min_lvl, max_lvl) in MORALE_LEVELS.iteritems():
-			if min_lvl < total_morale < max_lvl:
-				self.morale_desc = k
-				break
 	
 	# draw this unit to the given viewport hex on the unit console
 	def DrawMe(self, vp_hx, vp_hy):
@@ -5133,33 +4990,8 @@ class Unit:
 	def ResolveHits(self):
 		
 		# handle FP first
-		if self.fp_to_resolve > 0:
-			
-			# TODO: handle possible crew injury for vehicle units
-			if self.GetStat('category') != 'Vehicle':
-				profile = scenario.CalcFP(self)
-				scenario.DisplayAttack(profile)
-				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
-					WaitForContinue()
-				profile = scenario.DoAttackRoll(profile)
-				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
-					WaitForContinue()
-				
-				# TODO: handle results
-				if profile['result'] == 'Break Test':
-					pass
-				
-				elif profile['result'] == 'Reduction':
-					pass
-				
-				elif profile['result'] == 'Destroyed':
-					self.DestroyMe()
-					return
-				
-				# do pin test
-				self.PinTest(self.fp_to_resolve)
-			
-			self.fp_to_resolve = 0
+		self.ResolveFP()
+		if not self.alive: return
 		
 		# handle AP hits
 		for profile in self.ap_hits_to_resolve:
@@ -5181,6 +5013,51 @@ class Unit:
 		# clear unresolved hits
 		self.ap_hits_to_resolve = []
 	
+	
+	# resolve FP on this unit if any
+	def ResolveFP(self):
+		if self.fp_to_resolve == 0: return
+		
+		# FUTURE: handle possible crew injury for vehicle units
+		if self.GetStat('category') == 'Vehicle':
+			self.fp_to_resolve = 0
+			return
+		
+		# calculate base chance of no effect
+		base_chance = RESOLVE_FP_BASE_CHANCE
+		for i in range(2, unit.fp_to_resolve + 1):
+			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
+		base_chance = round(base_chance, 2)
+		base_chance = RestrictChance(base_chance)
+		
+		# TODO: calculate modifiers: eg. personnel traits
+		
+		# calculate chances of destroyed based on base chance
+		destroyed_chance = round((base_chance / 2.0), 2)
+		destroyed_chance = RestrictChance(destroyed_chance)
+		
+		print 'DEBUG: Resolving ' + str(self.fp_to_resolve) + ' on ' + self.unit_id
+		print 'DEBUG: chances: ' + str(destroyed_chance) + '/' + str(base_chance)
+		
+		# roll for effect
+		roll = GetPercentileRoll()
+		if roll <= destroyed_chance:
+			text = self.GetName() + ' was destroyed.'
+			scenario.ShowMessage(text, self.hx, self.hy)
+			self.DestroyMe()
+		
+		elif roll <= base_chance:
+			text = self.GetName() + ' was Broken.'
+			scenario.ShowMessage(text, self.hx, self.hy)
+			self.BreakMe()
+		
+		else:
+		
+			# do pin test (handles message itself)
+			self.PinTest(self.fp_to_resolve)
+		
+		self.fp_to_resolve = 0
+	
 	# do a morale check for this unit, result of FP attack, etc.
 	def MoraleCheck(self, modifier):
 		
@@ -5188,42 +5065,11 @@ class Unit:
 		
 		# TODO: apply terrain modifiers
 		
-		# check against unit leader first
-		leader = None
-		for crewman in self.crew_list:
-			if crewman.current_position.name in UNIT_LEADER_POSITIONS:
-				leader = crewman
-				break
+		# TODO: check for personnel traits
 		
-		if leader is not None:
-			if leader.AbleToAct():
-				effective_morale = leader.morale + modifier
-				roll = GetPercentileRoll()
-				if roll <= effective_morale:
-					return True
+		# TEMP: always passes
+		return True
 		
-		# no leader or leader has failed check, check against remaining personnel
-		crew_list = []
-		for crewman in self.crew_list:
-			if crewman.current_position in UNIT_LEADER_POSITIONS:
-				continue
-			# check for personnel incapacitated
-			if not crewman.AbleToAct():
-				continue
-			crew_list.append(crewman)
-		
-		passed = 0
-		half_crew = int(floor(len(self.crew_list) / 2))
-		for crewman in crew_list:
-			effective_morale = crewman.morale + modifier
-			roll = GetPercentileRoll()
-			if roll <= effective_morale:
-				passed += 1
-		
-		if passed >= half_crew:
-			return True
-		return False
-	
 	# do a pin test on this unit
 	def PinTest(self, fp):
 		chance = float(fp) * 10.0
@@ -5241,7 +5087,14 @@ class Unit:
 		UpdateScenarioDisplay()
 		text = self.GetName() + ' is now Pinned.'
 		scenario.ShowMessage(text, self.hx, self.hy)
-		
+	
+	# break this unit
+	def BreakMe(self):
+		self.broken = True
+		self.acquired_target = None
+		UpdateUnitInfoCon()
+		UpdateScenarioDisplay()
+	
 	# destroy this unit and remove it from the scenario map
 	def DestroyMe(self):
 		
@@ -6461,9 +6314,6 @@ def DisplayCrewInfo(crewman, console, x, y):
 			libtcod.console_rect(console, x+8, y+17+i, 16, 1, False, libtcod.BKGND_SET)
 		background_shade = not background_shade
 		i+=1
-	
-	# morale level
-	ConsolePrint(console, x+1, y+22, crewman.morale_desc)
 	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)

@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
-GODMODE = True						# player cannot be destroyed
+GODMODE = False						# player cannot be destroyed
 ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
@@ -5080,8 +5080,13 @@ class Unit:
 		scenario.cd_hex.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
 		self.ClearAcquiredTargets()
 		
+		# remove player ally from campaign list
+		if self != scenario.player_unit and self.owning_player == 0:
+			if self in campaign.player_unit_group:
+				campaign.player_unit_group.remove(self)
+		
 		# award VP to player for unit destruction
-		if self.owning_player == 1:
+		elif self.owning_player == 1:
 			campaign.AwardVP(campaign_day.unit_destruction_vp[self.GetStat('category')])
 		
 		UpdateUnitCon()

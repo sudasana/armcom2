@@ -414,8 +414,8 @@ class Campaign:
 		}
 		
 		self.end_of_day = {
-			'hour' : 19,
-			'minute' : 15
+			'hour' : 12,
+			'minute' : 0
 		}
 		
 	# award VP to the player
@@ -3321,7 +3321,8 @@ class Scenario:
 		
 		profile['result'] = result_text
 		
-		# TEMP if player is not involved, we can return here
+		# if player is not involved, we can return here
+		# FUTURE: AI will check for RoF too
 		if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
 			return profile
 		
@@ -6654,7 +6655,7 @@ def UpdateHexTerrainCon():
 	text = HEX_TERRAIN_DESC[map_hex.terrain_type]
 	ConsolePrint(hex_terrain_con, 0, 0, text)
 	
-	# TEMP - don't display hex coordinate in production version?
+	# TEMP - display hex coordinate in production version?
 	ConsolePrint(hex_terrain_con, 0, 1, str(hx) + ',' + str(hy))
 	
 	# elevation

@@ -65,7 +65,7 @@ NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.1.0-2018-04-14'				# game version in Semantic Versioning format: http://semver.org/
+VERSION = 'Alpha 1.0.0-rc1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -5820,9 +5820,14 @@ def CheckSavedGameVersion():
 	save = shelve.open('savegame')
 	saved_version = save['version']
 	save.close()
-	if saved_version == VERSION:
-		return True
-	return False
+	version_list = saved_version.split('.')
+	major_saved_version = version_list[0] + version_list[1]
+	version_list = VERSION.split('.')
+	major_current_version = version_list[0] + version_list[1]
+	if major_saved_version == major_current_version:
+		return ''
+	return saved_version
+
 
 # remove a saved game, either because the scenario is over or the player abandoned it
 def EraseGame():
@@ -7777,9 +7782,10 @@ while not exit_game:
 				continue
 			
 			# check that saved game is correct version
-			if not CheckSavedGameVersion():
-				text = 'Saved game was saved with an older version of the program, cannot continue.'
-				result = ShowNotification(text)
+			result = CheckSavedGameVersion() 
+			if result != '':
+				text = 'Saved game was saved with an older version of the program (' + result + '), cannot continue.'
+				ShowNotification(text)
 				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 				continue
 			

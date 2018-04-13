@@ -920,9 +920,10 @@
 		],
 		"description" : [
 			"The model F of the Panzer III is the first model to enter mass ",
-			"production. It serves as the main battle tank of the German armoured ",
-			"forces in 1939."
+			"production. It is intended to serve the main battle tank of the ",
+			"German armoured forces in 1939 but supplies remain limited."
 		],
+		"ubiquity" : "5",
 		"op_value" : "45"
 	},
 	
@@ -1005,6 +1006,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "15",
 		"op_value" : "42"
 	},
 	
@@ -1079,6 +1081,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "25",
 		"op_value" : "46"
 	},
 	
@@ -1145,6 +1148,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "75",
 		"op_value" : "36"
 	},
 	
@@ -1171,6 +1175,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "80",
 		"op_value" : "30"
 	},
 	
@@ -1197,6 +1202,7 @@
 		"description" : [
 			""
 		],
+		"ubiquity" : "20",
 		"op_value" : "55"
 	},
 	

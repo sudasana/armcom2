@@ -239,7 +239,7 @@ CD_BATTLE_ORGANIZATION_MOD = 5.0
 
 # scenarios will have 1-4 enemy units
 # base odds of 4,3,2 units
-ENEMY_NUMBER_BASE_ODDS = [97.0, 80.0, 60.0]
+ENEMY_NUMBER_BASE_ODDS = [97.0, 85.0, 70.0]
 # effect of each point of strength on odds
 CD_ENEMY_STRENGTH_EFFECT = -3.0
 
@@ -247,7 +247,7 @@ CD_ENEMY_STRENGTH_EFFECT = -3.0
 ENEMY_DUMMY_UNITS = 2
 
 # minimum distance from the player that an enemy will be spawned in a scenario
-ENEMY_SPAWN_MIN_DISTANCE = 3
+ENEMY_SPAWN_MIN_DISTANCE = 5
 
 # critical hit and miss thresholds
 CRITICAL_HIT = 3.0

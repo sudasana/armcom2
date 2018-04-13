@@ -413,10 +413,23 @@ class Campaign:
 			'minute' : 45
 		}
 		
+		self.start_of_day = {
+			'hour' : 4,
+			'minute' : 45
+		}
+		
 		self.end_of_day = {
 			'hour' : 12,
 			'minute' : 0
 		}
+		
+		# combat day length in minutes
+		hours = self.end_of_day['hour'] - self.calendar['hour']
+		minutes = self.end_of_day['minute'] - self.calendar['minute']
+		if minutes < 0:
+			hours -= 1
+			minutes += 60
+		self.day_length = minutes + (hours * 60)
 		
 	# award VP to the player
 	def AwardVP(self, vp_to_add):
@@ -1488,10 +1501,26 @@ class CampaignDay:
 			ConsolePrint(cd_command_con, 10, 22, 'Resupply')
 	
 	
-	# generate/update the time and weather console
+	# generate/update the time and weather console 33x4
 	# FUTURE: will also be used in scenario display
 	def UpdateTimeWeatherDisplay(self):
 		libtcod.console_clear(time_weather_con)
+		
+		# time remaining in combat day
+		libtcod.console_set_default_background(time_weather_con, libtcod.darker_yellow)
+		libtcod.console_rect(time_weather_con, 1, 1, 31, 1, True, libtcod.BKGND_SET)
+		
+		hours = campaign.calendar['hour'] - campaign.start_of_day['hour']
+		minutes = campaign.calendar['minute'] - campaign.start_of_day['minute']
+		if minutes < 0:
+			hours -= 1
+			minutes += 60
+		minutes += (hours * 60)
+		x = int(31.0 * float(minutes) / float(campaign.day_length))
+		libtcod.console_set_default_background(time_weather_con, libtcod.dark_yellow)
+		libtcod.console_rect(time_weather_con, 1, 1, x, 1, True, libtcod.BKGND_SET)
+		
+		libtcod.console_set_default_background(time_weather_con, libtcod.black)
 		text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
 		ConsolePrint(time_weather_con, 14, 1, text)
 		ConsolePrintEx(time_weather_con, 16, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
@@ -1608,7 +1637,7 @@ class CampaignDay:
 			
 			# emergency exit in case of endless loop
 			if libtcod.console_is_window_closed(): sys.exit()
-		
+			
 			# if we've initiated a scenario or are resuming a saved game with a scenario
 			# running, go to the scenario loop now
 			if self.scenario is not None:
@@ -1650,9 +1679,8 @@ class CampaignDay:
 					# delete completed scenario
 					self.scenario = None
 					
-					SaveGame()
-					
 					# check for end of day
+					# FUTURE: must be wat to do this once in the loop
 					if campaign.EndOfDay():
 						text = 'Your combat day has ended. Final VP: ' + str(campaign.player_vp)
 						ShowNotification(text)
@@ -1660,7 +1688,9 @@ class CampaignDay:
 						session.exiting_to_main_menu = False
 						exit_loop = True
 						continue
-				
+					
+					SaveGame()
+					
 			libtcod.console_flush()
 			
 			# get keyboard and/or mouse event
@@ -1751,51 +1781,42 @@ class CampaignDay:
 						self.UpdateCDUnitCon()
 						self.UpdateCDCommandCon()
 						self.UpdateCDDisplay()
-						SaveGame()
-						continue
-					
+						
 					# proceed with travel
-					
-					# advance clock
-					if self.travel_direction in map_hex1.dirt_roads:
-						mins = 15
 					else:
-						mins = 30
-					campaign.AdvanceClock(0, mins)
 					
-					# set new player location and clear travel direction
-					self.player_unit_location = (hx, hy)
-					self.travel_direction = None
-					self.UpdateCDGUICon()
-					
-					# roll for battle encounter if enemy-controlled
-					if map_hex2.controlled_by == 1:
-						roll = GetPercentileRoll()
-						if (roll <= map_hex2.encounter_chance or ALWAYS_ENCOUNTER) and not NEVER_ENCOUNTER:
-							ShowNotification('You encounter enemy resistance and a battle ensues!')
-							self.InitScenario(hx, hy)
+						# advance clock
+						if self.travel_direction in map_hex1.dirt_roads:
+							mins = 15
 						else:
-							ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
-							map_hex2.controlled_by = 0
-							
-							# award vp to player
-							campaign.AwardVP(self.capture_zone_vp)
-							self.UpdateCDCampaignCon()
-							
-							# check for end of day
-							if campaign.EndOfDay():
-								ShowNotification('Your combat day has ended.')
-								EraseGame()
-								session.exiting_to_main_menu = False
-								exit_loop = True
-								continue
-					
-					self.UpdateTimeWeatherDisplay()
-					self.UpdateCDControlCon()
-					self.UpdateCDUnitCon()
-					self.UpdateCDCommandCon()
-					self.UpdateCDDisplay()
-					
+							mins = 30
+						campaign.AdvanceClock(0, mins)
+						
+						# set new player location and clear travel direction
+						self.player_unit_location = (hx, hy)
+						self.travel_direction = None
+						self.UpdateCDGUICon()
+						
+						# roll for battle encounter if enemy-controlled
+						if map_hex2.controlled_by == 1:
+							roll = GetPercentileRoll()
+							if (roll <= map_hex2.encounter_chance or ALWAYS_ENCOUNTER) and not NEVER_ENCOUNTER:
+								ShowNotification('You encounter enemy resistance and a battle ensues!')
+								self.InitScenario(hx, hy)
+							else:
+								ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
+								map_hex2.controlled_by = 0
+								
+								# award vp to player
+								campaign.AwardVP(self.capture_zone_vp)
+								self.UpdateCDCampaignCon()
+								
+						self.UpdateTimeWeatherDisplay()
+						self.UpdateCDControlCon()
+						self.UpdateCDUnitCon()
+						self.UpdateCDCommandCon()
+						self.UpdateCDDisplay()
+						
 					SaveGame()
 			
 			# supply menu active
@@ -1807,6 +1828,15 @@ class CampaignDay:
 					self.UpdateTimeWeatherDisplay()
 					self.UpdateCDDisplay()
 					SaveGame()
+			
+			# check for end of day
+			if campaign.EndOfDay():
+				text = 'Your combat day has ended. Final VP: ' + str(campaign.player_vp)
+				ShowNotification(text)
+				EraseGame()
+				session.exiting_to_main_menu = False
+				exit_loop = True
+				continue
 
 
 # Session: stores data that is generated for each game session and not stored in the saved game
@@ -2273,6 +2303,11 @@ class AI:
 			
 			if AI_SPY:
 				print 'AI SPY: Best attack with score of ' + str(score) + ': ' + weapon.stats['name'] + '(' + ammo_type + ') against ' + target.unit_id
+			
+			# not good enough!
+			if score == 3.0:
+				self.owner.DoPostActivation()
+				return
 			
 			# do the attack
 			if ammo_type != '':
@@ -4307,6 +4342,11 @@ class Unit:
 			self.unknown = True
 			return
 		
+		# no message if allied unit
+		if self.owning_player == 0 and self != scenario.player_unit:
+			self.known = False
+			return
+		
 		if self == scenario.player_unit:
 			text = 'You are now concealed from the enemy'
 		else:
@@ -4797,7 +4837,7 @@ class Unit:
 						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 						libtcod.console_put_char(0, x+31, y+4, 250)
 						libtcod.console_flush()
-						Wait(8)
+						Wait(6)
 					
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 					libtcod.console_flush()

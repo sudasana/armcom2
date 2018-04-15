@@ -61,11 +61,11 @@ AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
-NEVER_ENCOUNTER = False					# no "
+NEVER_ENCOUNTER = True					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.1.0'					# game version
+VERSION = 'Alpha 1.0.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -418,8 +418,14 @@ class Campaign:
 			'minute' : 45
 		}
 		
+		#self.end_of_day = {
+		#	'hour' : 12,
+		#	'minute' : 0
+		#}
+		
+		# TEMP
 		self.end_of_day = {
-			'hour' : 12,
+			'hour' : 5,
 			'minute' : 0
 		}
 		
@@ -1167,6 +1173,11 @@ class CampaignDay:
 			'Vehicle': 5 
 		}
 		
+		# TODO: records for end-of-day summary
+		self.records = {
+			'Map Areas Captured' : 0
+		}
+		
 		# campaign day map
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
@@ -1667,6 +1678,7 @@ class CampaignDay:
 				elif self.scenario.winner == 0:
 					ShowNotification('You have defeated all enemy resistance and now control this area.')
 					self.map_hexes[self.player_unit_location].controlled_by = 0
+					self.records['Map Areas Captured'] += 1
 					self.UpdateTimeWeatherDisplay()
 					self.UpdateCDControlCon()
 					self.UpdateCDUnitCon()
@@ -1808,6 +1820,7 @@ class CampaignDay:
 							else:
 								ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
 								map_hex2.controlled_by = 0
+								self.records['Map Areas Captured'] += 1
 								
 								# award vp to player
 								campaign.AwardVP(self.capture_zone_vp)
@@ -5868,13 +5881,19 @@ def CheckSavedGameVersion():
 	save = shelve.open('savegame')
 	saved_version = save['version']
 	save.close()
-	version_list = saved_version.split('.')
-	major_saved_version = version_list[0] + version_list[1]
-	version_list = VERSION.split('.')
-	major_current_version = version_list[0] + version_list[1]
-	if major_saved_version == major_current_version:
+	
+	# for now, version must be the same, but future will have backward-compatable updates
+	if saved_version == VERSION:
 		return ''
 	return saved_version
+	
+	#version_list = saved_version.split('.')
+	#major_saved_version = version_list[0] + version_list[1]
+	#version_list = VERSION.split('.')
+	#major_current_version = version_list[0] + version_list[1]
+	#if major_saved_version == major_current_version:
+	#	return ''
+	#return saved_version
 
 
 # remove a saved game, either because the scenario is over or the player abandoned it
@@ -6182,8 +6201,15 @@ def DisplayCampaignDaySummary():
 	ConsolePrintEx(temp_con, 14, 13, libtcod.BKGND_NONE, libtcod.CENTER,
 		str(campaign.player_vp))
 	
-	# FUTURE: map areas captured, enemy vehicles destroyed, enemy guns destroyed,
-	# enemy infantry destroyed, allied tanks lost
+	# day stats
+	y = 17
+	for text, value in campaign_day.records.iteritems():
+		ConsolePrint(temp_con, 2, y, text + ':')
+		ConsolePrintEx(temp_con, 26, y, libtcod.BKGND_NONE, libtcod.RIGHT,
+			str(value))
+		y += 1
+		if y == 49:
+			break
 	
 	libtcod.console_set_default_foreground(temp_con, ACTION_KEY_COL)
 	ConsolePrint(temp_con, 7, 51, 'Enter')

@@ -65,7 +65,7 @@ NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-rc1'				# game version
+VERSION = 'Alpha 1.1.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1658,6 +1658,7 @@ class CampaignDay:
 				# player was destroyed
 				if self.scenario.winner == 1:
 					EraseGame()
+					DisplayCampaignDaySummary()
 					session.exiting_to_main_menu = False
 					exit_loop = True
 					continue
@@ -1682,9 +1683,10 @@ class CampaignDay:
 					# check for end of day
 					# FUTURE: must be wat to do this once in the loop
 					if campaign.EndOfDay():
-						text = 'Your combat day has ended. Final VP: ' + str(campaign.player_vp)
+						text = 'Your combat day has ended.'
 						ShowNotification(text)
 						EraseGame()
+						DisplayCampaignDaySummary()
 						session.exiting_to_main_menu = False
 						exit_loop = True
 						continue
@@ -1831,9 +1833,10 @@ class CampaignDay:
 			
 			# check for end of day
 			if campaign.EndOfDay():
-				text = 'Your combat day has ended. Final VP: ' + str(campaign.player_vp)
+				text = 'Your combat day has ended.'
 				ShowNotification(text)
 				EraseGame()
+				DisplayCampaignDaySummary()
 				session.exiting_to_main_menu = False
 				exit_loop = True
 				continue
@@ -2174,7 +2177,7 @@ class AI:
 						Wait(10)
 				
 				# do the move
-				result = self.owner.MoveForward()
+				result = self.owner.MoveForward(false)
 				if animate:
 					UpdateUnitCon()
 					UpdateUnitInfoCon()
@@ -3874,6 +3877,7 @@ class Unit:
 	def __init__(self, unit_id):
 		
 		self.unit_id = unit_id			# unique ID for unit type
+		self.alive = True			# unit is alive
 		self.ai = None				# AI controller
 		self.dummy = False			# unit is a false report, erased upon reveal
 		
@@ -3933,8 +3937,6 @@ class Unit:
 
 	# set up any data that is unique to a scenario
 	def InitScenarioStats(self):
-		self.alive = True			# unit is not out of action
-		self.dummy = False			# unit will disappear when spotted - AI units only
 		self.known = False			# unit is known to the opposing side
 		self.identified = False			# FUTURE: unit type has been identifed
 		
@@ -4567,7 +4569,7 @@ class Unit:
 	
 	# attempt to move unit in hull facing direction into next map hex
 	# returns True if move was a success, false if not
-	def MoveForward(self):
+	def MoveForward(self, reverse):
 		
 		# no moves remaining
 		if self.move_finished:
@@ -4581,7 +4583,10 @@ class Unit:
 			return False
 		
 		# determine target hex
-		(hx, hy) = GetAdjacentHex(self.hx, self.hy, self.facing)
+		if reverse:
+			(hx, hy) = GetAdjacentHex(self.hx, self.hy, ConstrainDir(self.facing + 3))
+		else:
+			(hx, hy) = GetAdjacentHex(self.hx, self.hy, self.facing)
 		
 		# target hex is off map
 		if (hx, hy) not in scenario.cd_hex.map_hexes:
@@ -4597,7 +4602,6 @@ class Unit:
 		
 		# river on edge and no road link
 		if len(map_hex1.river_edges) > 0:
-			direction = GetDirectionToAdjacent(self.hx, self.hy, hx, hy)
 			if direction in map_hex1.river_edges:
 				if direction not in map_hex1.dirt_roads:
 					return False
@@ -4608,7 +4612,10 @@ class Unit:
 				return False
 		
 		# calculate bonus move chance
-		chance = scenario.CalcBonusMove(self, hx, hy)
+		if reverse:
+			chance = 0.0
+		else:
+			chance = scenario.CalcBonusMove(self, hx, hy)
 		
 		# do the move
 		self.MoveInto(hx, hy)
@@ -5276,7 +5283,7 @@ def ConsolePrintEx(console, x, y, flag1, flag2, text):
 # return a descriptive text string given a date dictionary
 def GetDateText(dictionary):
 	text = MONTH_NAMES[int(dictionary['month'])] + ' '
-	text += dictionary['day'] + ', ' + dictionary['year']
+	text += str(dictionary['day']) + ', ' + str(dictionary['year'])
 	return text
 
 
@@ -6130,8 +6137,8 @@ def ShowGameMenu(active_tab):
 	return result
 
 
-# display information about a scenario about to start
-def DisplayScenInfo():
+# display a summary of a completed campaign day
+def DisplayCampaignDaySummary():
 	
 	# create a local copy of the current screen to re-draw when we're done
 	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -6140,74 +6147,70 @@ def DisplayScenInfo():
 	# darken screen background
 	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
 	
-	# load and build scenario info window
-	scen_info_con = LoadXP('scen_summary_bkg.xp')
-	# TEMP: most of this will be drawn from scenario object in future
-	libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
-	ConsolePrintEx(scen_info_con, 14, 1, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Western Poland')
-	ConsolePrintEx(scen_info_con, 14, 2, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'September 1939')
-	text = str(campaign.calendar['hour']) + ':' + str(campaign.calendar['minute']).zfill(2)
-	ConsolePrintEx(scen_info_con, 14, 3, libtcod.BKGND_NONE,
-		libtcod.CENTER, text)
+	# build info window
+	temp_con = libtcod.console_new(29, 54)
+	libtcod.console_set_default_background(temp_con, libtcod.black)
+	libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+	libtcod.console_clear(temp_con)
+	DrawFrame(temp_con, 0, 0, 29, 54)
+	libtcod.console_set_default_foreground(temp_con, libtcod.white)
 	
-	libtcod.console_set_default_foreground(scen_info_con, libtcod.light_grey)
-	text = ('You have advanced into an area held by enemy forces. You must capture this area ' +
-		'in order to continue your advance.')
-	lines = wrap(text, 25)
-	y = 7
-	for line in lines[:9]:
-		ConsolePrint(scen_info_con, 2, y, line)
-		y+=1
+	# campaign and calendar day info
+	ConsolePrintEx(temp_con, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+		campaign.stats['name'])
+	ConsolePrintEx(temp_con, 14, 4, libtcod.BKGND_NONE, libtcod.CENTER,
+		GetDateText(campaign.calendar))
 	
-	ConsolePrintEx(scen_info_con, 14, 20, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Light Armour')
+	# day result: survived or destroyed
+	ConsolePrintEx(temp_con, 14, 7, libtcod.BKGND_NONE, libtcod.CENTER,
+		'Outcome of Day:')
 	
-	ConsolePrint(scen_info_con, 1, 27, '1) Capture all objectives')
-	ConsolePrintEx(scen_info_con, 14, 29, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'OR')
-	ConsolePrint(scen_info_con, 1, 31, '2) Destroy all enemy units')
+	if campaign.player_unit.alive:
+		col = GOLD_COL
+		text = 'SURVIVED'
+	else:
+		col = ENEMY_UNIT_COL
+		text = 'DESTROYED'
+	libtcod.console_set_default_foreground(temp_con, col)
+	ConsolePrintEx(temp_con, 14, 8, libtcod.BKGND_NONE, libtcod.CENTER,
+		text)
 	
-	ConsolePrintEx(scen_info_con, 14, 40, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Light Armour')
-	ConsolePrintEx(scen_info_con, 14, 41, libtcod.BKGND_NONE,
-		libtcod.CENTER, 'Infantry')
+	# total VP
+	libtcod.console_set_default_foreground(temp_con, libtcod.white)
+	ConsolePrintEx(temp_con, 14, 11, libtcod.BKGND_NONE, libtcod.CENTER,
+		'Total VP Earned:')
+	ConsolePrintEx(temp_con, 14, 13, libtcod.BKGND_NONE, libtcod.CENTER,
+		str(campaign.player_vp))
+	
+	# FUTURE: map areas captured, enemy vehicles destroyed, enemy guns destroyed,
+	# enemy infantry destroyed, allied tanks lost
+	
+	libtcod.console_set_default_foreground(temp_con, ACTION_KEY_COL)
+	ConsolePrint(temp_con, 7, 51, 'Enter')
+	libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+	ConsolePrint(temp_con, 14, 51, 'Continue')
 	
 	# display to screen
-	libtcod.console_blit(scen_info_con, 0, 0, 0, 0, 0, 31, 3)
-	
-	Wait(15)
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 31, 3)
 	
 	# get input from player
 	exit_menu = False
-	result = ''
 	while not exit_menu:
-		libtcod.console_flush()
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-			key, mouse)
 		if libtcod.console_is_window_closed(): sys.exit()
-		
-		if key is None: continue
-		
-		# cancel scenario start
-		if key.vk == libtcod.KEY_ESCAPE:
-			result = False
-			exit_menu = True
-		
-		# confirm and continue
-		elif key.vk == libtcod.KEY_ENTER:
-			result = True
-			exit_menu = True
-	
-	# replace original screen if canceling
-	if not result:
-		libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
-		Wait(15)
-	del temp_con
-	del scen_info_con
-	return result
+		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+			key, mouse)
+		if session.key_down:
+			if event != libtcod.EVENT_KEY_RELEASE: continue
+			session.key_down = False
+		if event != libtcod.EVENT_KEY_PRESS: continue
+		session.key_down = True
+		
+		# end menu
+		if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_ENTER]:
+			exit_menu = True
+
+
 
 
 ##########################################################################################
@@ -6624,51 +6627,51 @@ def UpdateCommandCon():
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 		
-		ConsolePrint(command_con, 2, 2, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
-		ConsolePrint(command_con, 2, 3, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
-		ConsolePrint(command_con, 2, 4, 'H')
+		ConsolePrint(command_con, 1, 2, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
+		ConsolePrint(command_con, 1, 3, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
+		ConsolePrint(command_con, 1, 4, 'H')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		ConsolePrint(command_con, 9, 2, 'Select Crew')
-		ConsolePrint(command_con, 9, 3, 'Set Action')
-		ConsolePrint(command_con, 9, 4, 'Toggle Hatch')
+		ConsolePrint(command_con, 6, 2, 'Select Crew')
+		ConsolePrint(command_con, 6, 3, 'Set Action')
+		ConsolePrint(command_con, 6, 4, 'Toggle Hatch')
 	
 	# movement
 	elif scenario.active_menu == 3:
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		ConsolePrint(command_con, 2, 2, EncodeKey('w').upper())
-		ConsolePrint(command_con, 2, 3, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
-		ConsolePrint(command_con, 2, 4, 'H')
+		ConsolePrint(command_con, 1, 2, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
+		ConsolePrint(command_con, 1, 3, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
+		ConsolePrint(command_con, 1, 4, 'H')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		ConsolePrint(command_con, 9, 2, 'Move Forward')
-		ConsolePrint(command_con, 9, 3, 'Pivot Hull')
-		ConsolePrint(command_con, 9, 4, 'Go Hull Down')
+		ConsolePrint(command_con, 6, 2, 'Forward/Backward')
+		ConsolePrint(command_con, 6, 3, 'Pivot Hull')
+		ConsolePrint(command_con, 6, 4, 'Attempt Hull Down')
 		
 	# combat
 	elif scenario.active_menu == 4:
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		ConsolePrint(command_con, 2, 2, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
-		ConsolePrint(command_con, 2, 3, EncodeKey('q').upper() + '/' + EncodeKey('e').upper())
-		ConsolePrint(command_con, 2, 4, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
-		ConsolePrint(command_con, 2, 5, EncodeKey('z').upper() + '/' + EncodeKey('c').upper())
-		ConsolePrint(command_con, 2, 6, 'F')
+		ConsolePrint(command_con, 1, 2, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
+		ConsolePrint(command_con, 1, 3, EncodeKey('q').upper() + '/' + EncodeKey('e').upper())
+		ConsolePrint(command_con, 1, 4, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
+		ConsolePrint(command_con, 1, 5, EncodeKey('z').upper() + '/' + EncodeKey('c').upper())
+		ConsolePrint(command_con, 1, 6, 'F')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		ConsolePrint(command_con, 9, 2, 'Select Weapon')
-		ConsolePrint(command_con, 9, 3, 'Rotate Turret')
-		ConsolePrint(command_con, 9, 4, 'Select Target')
-		ConsolePrint(command_con, 9, 5, 'Select Ammo')
-		ConsolePrint(command_con, 9, 6, 'Fire')
+		ConsolePrint(command_con, 6, 2, 'Select Weapon')
+		ConsolePrint(command_con, 6, 3, 'Rotate Turret')
+		ConsolePrint(command_con, 6, 4, 'Select Target')
+		ConsolePrint(command_con, 6, 5, 'Select Ammo')
+		ConsolePrint(command_con, 6, 6, 'Fire')
 		
 	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-	ConsolePrint(command_con, 2, 9, '2-4')
-	ConsolePrint(command_con, 2, 10, 'Enter')
+	ConsolePrint(command_con, 1, 9, '2-4')
+	ConsolePrint(command_con, 1, 10, 'Enter')
 	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-	ConsolePrint(command_con, 9, 9, 'Switch Menu')
-	ConsolePrint(command_con, 9, 10, 'End Turn')
+	ConsolePrint(command_con, 7, 9, 'Switch Menu')
+	ConsolePrint(command_con, 7, 10, 'End Turn')
 	
 	
 # draw information about the hex currently under the mouse cursor to the hex terrain info
@@ -7106,9 +7109,6 @@ def DoScenario():
 	# init scenario if not already; only called when started a new one, not when loading from saved
 	if not scenario.init_complete:
 		
-		# display scenario info, allow player to cancel start
-		#if not DisplayScenInfo(): return
-		
 		# generate hex map if needed
 		if scenario.cd_hex.map_hexes == {}:
 			scenario.cd_hex.GenerateHexMap()
@@ -7181,23 +7181,9 @@ def DoScenario():
 		
 		# set activation order
 		scenario.GenerateActivationOrder()
-		
-		# have to generate hex consoles before activating first unit
-		session.GenerateHexConsoles()
-		
-		# activate player unit
-		scenario.active_unit = scenario.player_unit
-		scenario.active_unit.DoPreActivation()
-		
-		scenario.init_complete = True
-		
-		SaveGame()
 	
-	else:
-	
-		session.GenerateHexConsoles()
-	
-	# generate consoles for first time
+	# do this for both new and loaded scenarios
+	session.GenerateHexConsoles()
 	UpdateVPCon()
 	UpdateUnitCon()
 	UpdatePlayerInfoCon()
@@ -7208,6 +7194,18 @@ def DoScenario():
 	UpdateObjectiveInfoCon()
 	UpdateScenarioDisplay()
 	libtcod.console_flush()
+	
+		
+	# only do if starting a new scenario
+	if not scenario.init_complete:
+		
+		# activate player unit
+		scenario.active_unit = scenario.player_unit
+		scenario.active_unit.DoPreActivation()
+		
+		scenario.init_complete = True
+		
+		SaveGame()
 	
 	# record mouse cursor position to check when it has moved
 	mouse_x = -1
@@ -7402,10 +7400,14 @@ def DoScenario():
 		# movement
 		elif scenario.active_menu == 3:
 		
-			# move player unit forward
-			if key_char == 'w' or key.vk == libtcod.KEY_UP:
+			# move player unit forward / backward
+			if key_char in ['w', 's'] or key.vk in [libtcod.KEY_UP, libtcod.KEY_DOWN]:
 				
-				if scenario.player_unit.MoveForward():
+				reverse = False
+				if key_char == 's' or key.vk == libtcod.KEY_DOWN:
+					reverse = True
+				
+				if scenario.player_unit.MoveForward(reverse):
 					scenario.RebuildPlayerTargetList()
 					UpdatePlayerInfoCon()
 					UpdateContextCon()

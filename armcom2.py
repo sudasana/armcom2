@@ -65,7 +65,7 @@ NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0'					# game version
+VERSION = 'Alpha 1.0.0-rc2'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -403,7 +403,7 @@ class Campaign:
 		self.player_unit = None
 		self.player_unit_group = []
 		
-		# TEMP: following will be set by CampaignSelectionMenu eventually
+		# FUTURE will be set by CampaignSelectionMenu
 		# current year, month, day, hour, and minute
 		self.calendar = {
 			'year' : 1939,
@@ -581,7 +581,7 @@ class Campaign:
 		with open(CAMPAIGNPATH + selected_campaign['filename']) as data_file:
 			self.stats = json.load(data_file)
 		
-		# TEMP set current day to first day in calendar
+		# set current day to first day in calendar
 		self.today = self.stats['calendar'][0]
 		
 		return True
@@ -1412,7 +1412,7 @@ class CampaignDay:
 			libtcod.console_set_default_background(cd_command_con, col)
 			libtcod.console_rect(cd_command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
 			
-			# TEMP - only travel and supply menus active for now
+			# only travel and supply menus active for now
 			if num not in [3, 5]:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
 			# menu number
@@ -3076,7 +3076,7 @@ class Scenario:
 			libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
 			libtcod.console_rect(attack_con, 1, 2, 24, 8, False, libtcod.BKGND_SET)
 		
-			# TEMP: in future will store portraits for every active unit type in session object
+			# FUTURE: store portraits for every active unit type in session object
 			if attacker_known:
 				portrait = profile['attacker'].GetStat('portrait')
 				if portrait is not None:
@@ -3111,7 +3111,7 @@ class Scenario:
 		libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
 		libtcod.console_rect(attack_con, 1, 13, 24, 8, False, libtcod.BKGND_SET)
 		
-		# TEMP: in future will store portraits for every active unit type in session object
+		# FUTURE: store portraits for every active unit type in session object
 		if target_known:
 			portrait = profile['target'].GetStat('portrait')
 			if portrait is not None:
@@ -4632,8 +4632,7 @@ class Unit:
 		self.MoveInto(hx, hy)
 		
 		# move any unit group members as well
-		# TEMP - does not check if it's possible for them to move
-		
+		# note - does not check if it's possible for them to move
 		for unit in scenario.units:
 			if not unit.alive: continue
 			if unit.owning_player != self.owning_player: continue
@@ -4840,7 +4839,7 @@ class Unit:
 			# play sound and show animation if both units on viewport
 			if self.vp_hx is not None and self.vp_hy is not None and target.vp_hx is not None and target.vp_hy is not None:
 				
-				# TEMP: uses the root console, future will have an animation console
+				# uses the root console, FUTURE: will have an animation console
 				
 				# Gun animation
 				if weapon.GetStat('type') == 'Gun':
@@ -6001,18 +6000,15 @@ def PlaySoundFor(obj, action):
 				PlaySound('at_rifle_firing')
 				return
 			
-			# TEMP - can add more detail in future
 			n = libtcod.random_get_int(0, 0, 3)
 			PlaySound('37mm_firing_0' + str(n))
 			return
 			
-		# TEMP - only one MG sound effect for now
 		if obj.stats['type'] in ['Co-ax MG', 'Hull MG']:
 			PlaySound('zb_53_mg_00')
 			return
 	 
 	elif action == 'he_explosion':
-		# TEMP - more detail to come
 		n = libtcod.random_get_int(0, 0, 1)
 		PlaySound('37mm_he_explosion_0' + str(n))
 		return
@@ -6046,7 +6042,7 @@ def ShowGameMenu(active_tab):
 		# Game Menu
 		if active_tab == 0:
 			
-			# TEMP - move to campaign tab later on
+			# FUTURE: - move to campaign tab
 			ConsolePrint(game_menu_con, 25, 18, 'Current VP: ' + str(campaign.player_vp))
 		
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
@@ -6646,7 +6642,7 @@ def UpdateCommandCon():
 		libtcod.console_set_default_background(command_con, col)
 		libtcod.console_rect(command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
 		
-		# TEMP - no command options yet
+		# no command options yet
 		if num == 1:
 			libtcod.console_set_default_foreground(command_con, libtcod.dark_grey)
 		
@@ -6743,7 +6739,7 @@ def UpdateHexTerrainCon():
 	text = HEX_TERRAIN_DESC[map_hex.terrain_type]
 	ConsolePrint(hex_terrain_con, 0, 0, text)
 	
-	# TEMP - display hex coordinate in production version?
+	# FUTURE: display hex coordinate in production version?
 	ConsolePrint(hex_terrain_con, 0, 1, str(hx) + ',' + str(hy))
 	
 	# elevation
@@ -7036,7 +7032,7 @@ def UpdateScenarioDisplay():
 	libtcod.console_blit(objective_con, 0, 0, 0, 0, con, 74, 1)		# target info
 	libtcod.console_blit(hex_terrain_con, 0, 0, 0, 0, con, 74, 50)		# hex terrain info
 	
-	# TEMP - draw current time and weather conditions directly to console
+	# draw current time and weather conditions directly to console
 	# FUTURE: use time_weather_con generated by campaign day
 	text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
 	ConsolePrint(con, 56, 1, text)
@@ -7147,7 +7143,7 @@ def DoScenario():
 	libtcod.console_set_default_foreground(attack_con, libtcod.white)
 	libtcod.console_clear(attack_con)
 	
-	# create a global pointer - TEMP
+	# create a global pointer
 	global scenario
 	scenario = campaign_day.scenario
 	

@@ -61,7 +61,7 @@ AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
-NEVER_ENCOUNTER = True					# no "
+NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
@@ -418,14 +418,8 @@ class Campaign:
 			'minute' : 45
 		}
 		
-		#self.end_of_day = {
-		#	'hour' : 12,
-		#	'minute' : 0
-		#}
-		
-		# TEMP
 		self.end_of_day = {
-			'hour' : 5,
+			'hour' : 12,
 			'minute' : 0
 		}
 		
@@ -1166,16 +1160,20 @@ class CampaignDay:
 	def __init__(self):
 		
 		# victory point rewards for this campaign day
-		self.capture_zone_vp = 3
+		self.capture_zone_vp = 2
 		self.unit_destruction_vp = {
 			'Infantry': 1,
 			'Gun' : 2,
-			'Vehicle': 5 
+			'Vehicle': 4 
 		}
 		
-		# TODO: records for end-of-day summary
+		# records for end-of-day summary
 		self.records = {
-			'Map Areas Captured' : 0
+			'Map Areas Captured' : 0,
+			'Gun Hits' : 0,
+			'Vehicles Destroyed' : 0,
+			'Guns Destroyed' : 0,
+			'Infantry Destroyed' : 0
 		}
 		
 		# campaign day map
@@ -2190,7 +2188,7 @@ class AI:
 						Wait(10)
 				
 				# do the move
-				result = self.owner.MoveForward(false)
+				result = self.owner.MoveForward(False)
 				if animate:
 					UpdateUnitCon()
 					UpdateUnitInfoCon()
@@ -4995,6 +4993,10 @@ class Unit:
 					# also handles AP rolls for HE hits
 					if target.GetStat('category') == 'Vehicle':
 						target.ap_hits_to_resolve.append(profile)
+				
+				# add to record if player
+				if self == scenario.player_unit:
+					campaign_day.records['Gun Hits'] += 1
 		
 		# reset weapon RoF - needed?
 		weapon.maintained_rof = False
@@ -5142,6 +5144,15 @@ class Unit:
 		# award VP to player for unit destruction
 		elif self.owning_player == 1:
 			campaign.AwardVP(campaign_day.unit_destruction_vp[self.GetStat('category')])
+			
+			# add to day records
+			category = self.GetStat('category')
+			if category == 'Vehicle':
+				campaign_day.records['Vehicles Destroyed'] += 1
+			elif category == 'Gun':
+				campaign_day.records['Guns Destroyed'] += 1
+			elif category == 'Infantry':
+				campaign_day.records['Infantry Destroyed'] += 1
 		
 		UpdateUnitCon()
 		UpdateScenarioDisplay()
@@ -6159,6 +6170,14 @@ def ShowGameMenu(active_tab):
 # display a summary of a completed campaign day
 def DisplayCampaignDaySummary():
 	
+	RECORD_ORDER = [
+		'Map Areas Captured',
+		'Gun Hits',
+		'Vehicles Destroyed',
+		'Guns Destroyed',
+		'Infantry Destroyed'
+	]
+	
 	# create a local copy of the current screen to re-draw when we're done
 	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
 	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
@@ -6203,10 +6222,10 @@ def DisplayCampaignDaySummary():
 	
 	# day stats
 	y = 17
-	for text, value in campaign_day.records.iteritems():
+	for text in RECORD_ORDER:
 		ConsolePrint(temp_con, 2, y, text + ':')
 		ConsolePrintEx(temp_con, 26, y, libtcod.BKGND_NONE, libtcod.RIGHT,
-			str(value))
+			str(campaign_day.records[text]))
 		y += 1
 		if y == 49:
 			break

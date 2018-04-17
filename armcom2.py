@@ -65,7 +65,7 @@ NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-rc2'				# game version
+VERSION = 'Alpha 1.0.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files

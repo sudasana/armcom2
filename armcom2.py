@@ -65,7 +65,7 @@ NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0'					# game version
+VERSION = 'Alpha 1.0.0-2018-04-18'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -538,17 +538,7 @@ class Campaign:
 			
 			libtcod.console_flush()
 			
-			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-				key, mouse)
-			
-			##### Player Keyboard Commands #####
-			if session.key_down:
-				if event != libtcod.EVENT_KEY_RELEASE:
-					continue
-				session.key_down = False
-			if event != libtcod.EVENT_KEY_PRESS:
-				continue
-			session.key_down = True
+			if not GetInputEvent(): continue
 			
 			# TEMP: no menu yet, just exit directly
 			if key.vk == libtcod.KEY_ESCAPE:
@@ -644,18 +634,7 @@ class Campaign:
 			if libtcod.console_is_window_closed(): sys.exit()
 			
 			libtcod.console_flush()
-			
-			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-				key, mouse)
-			
-			##### Player Keyboard Commands #####
-			if session.key_down:
-				if event != libtcod.EVENT_KEY_RELEASE:
-					continue
-				session.key_down = False
-			if event != libtcod.EVENT_KEY_PRESS:
-				continue
-			session.key_down = True
+			if not GetInputEvent(): continue
 			
 			# proceed with selected tank
 			if key.vk == libtcod.KEY_ENTER:
@@ -764,18 +743,12 @@ class Campaign:
 			
 			libtcod.console_flush()
 			
-			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-				key, mouse)
+			if not GetInputEvent(): continue
 			
-			##### Player Keyboard Commands #####
-			if session.key_down:
-				if event != libtcod.EVENT_KEY_RELEASE:
-					continue
+			# ignore shift key being pressed
+			if key.vk == libtcod.KEY_SHIFT:
 				session.key_down = False
-			# ignore other events and shift key being pressed
-			if event != libtcod.EVENT_KEY_PRESS or key.vk == libtcod.KEY_SHIFT:
 				continue
-			session.key_down = True
 			
 			if key.vk == libtcod.KEY_ENTER:
 				# must have something in both name slots
@@ -1706,8 +1679,7 @@ class CampaignDay:
 			libtcod.console_flush()
 			
 			# get keyboard and/or mouse event
-			event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-				key, mouse)
+			keypress = GetInputEvent()
 			
 			# check to see if mouse cursor has moved
 			if mouse.cx != mouse_x or mouse.cy != mouse_y:
@@ -1715,14 +1687,7 @@ class CampaignDay:
 				mouse_y = mouse.cy
 			
 			##### Player Keyboard Commands #####
-			
-			if session.key_down:
-				if event != libtcod.EVENT_KEY_RELEASE:
-					continue
-				session.key_down = False
-			if event != libtcod.EVENT_KEY_PRESS:
-				continue
-			session.key_down = True
+			if not keypress: continue
 			
 			# Determine action based on key pressed
 			
@@ -4922,16 +4887,7 @@ class Unit:
 				while not end_pause:
 					if libtcod.console_is_window_closed(): sys.exit()
 					libtcod.console_flush()
-					event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
-						key, mouse)
-					
-					if session.key_down:
-						if event != libtcod.EVENT_KEY_RELEASE:
-							continue
-						session.key_down = False
-					if event != libtcod.EVENT_KEY_PRESS:
-						continue
-					session.key_down = True
+					if not GetInputEvent(): continue
 					
 					key_char = DecodeKey(chr(key.c).lower())
 					
@@ -5301,6 +5257,21 @@ def ConsolePrint(console, x, y, text):
 	libtcod.console_print(console, x, y, str(text))
 def ConsolePrintEx(console, x, y, flag1, flag2, text):
 	libtcod.console_print_ex(console, x, y, flag1, flag2, str(text))
+
+
+# get keyboard and/or mouse event
+# returns False if no new key press
+def GetInputEvent():
+	event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
+		key, mouse)
+	if session.key_down:
+		if event != libtcod.EVENT_KEY_RELEASE:
+			return False
+		session.key_down = False
+	if event != libtcod.EVENT_KEY_PRESS:
+		return False
+	session.key_down = True
+	return True
 
 
 # return a descriptive text string given a date dictionary
@@ -5848,15 +5819,9 @@ def WaitForContinue(allow_cancel=False):
 	while not end_pause:
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
-		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
-			key, mouse)
-		if session.key_down:
-			if event != libtcod.EVENT_KEY_RELEASE:
-				continue
-			session.key_down = False
-		if event != libtcod.EVENT_KEY_PRESS:
-			continue
-		session.key_down = True
+		
+		# get keyboard and/or mouse event
+		if not GetInputEvent(): continue
 		
 		if key.vk == libtcod.KEY_BACKSPACE and allow_cancel:
 			end_pause = True
@@ -6090,15 +6055,9 @@ def ShowGameMenu(active_tab):
 	while not exit_menu:
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
-		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
-			key, mouse)
-		if session.key_down:
-			if event != libtcod.EVENT_KEY_RELEASE:
-				continue
-			session.key_down = False
-		if event != libtcod.EVENT_KEY_PRESS:
-			continue
-		session.key_down = True
+		
+		# get keyboard and/or mouse event
+		if not GetInputEvent(): continue
 		
 		# Activate Different Menu
 		if key.vk == libtcod.KEY_ESCAPE and active_tab != 0:
@@ -6239,13 +6198,9 @@ def DisplayCampaignDaySummary():
 	while not exit_menu:
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
-		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-			key, mouse)
-		if session.key_down:
-			if event != libtcod.EVENT_KEY_RELEASE: continue
-			session.key_down = False
-		if event != libtcod.EVENT_KEY_PRESS: continue
-		session.key_down = True
+		
+		# get keyboard and/or mouse event
+		if not GetInputEvent(): continue
 		
 		# end menu
 		if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_ENTER]:
@@ -6405,16 +6360,8 @@ def ShowNotification(text, confirm=False):
 	while not exit_menu:
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
-		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
-			key, mouse)
-		if session.key_down:
-			if event != libtcod.EVENT_KEY_RELEASE:
-				continue
-			session.key_down = False
-		if event != libtcod.EVENT_KEY_PRESS:
-			continue
 		
-		session.key_down = True
+		if not GetInputEvent(): continue
 		key_char = chr(key.c).lower()
 		
 		if confirm:
@@ -7296,8 +7243,7 @@ def DoScenario():
 			continue
 		
 		# get keyboard and/or mouse event
-		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
-			key, mouse)
+		keypress = GetInputEvent()
 		
 		# check to see if mouse cursor has moved
 		if mouse.cx != mouse_x or mouse.cy != mouse_y:
@@ -7327,20 +7273,7 @@ def DoScenario():
 			continue
 		
 		##### Player Keyboard Commands #####
-		
-		# if a key was previously pressed, wait for it to be released
-		if session.key_down:
-			if event != libtcod.EVENT_KEY_RELEASE:
-				continue
-			# key was released
-			session.key_down = False
-		
-		# check for keypress, continue if none
-		if event != libtcod.EVENT_KEY_PRESS:
-			continue
-		
-		# set key pressed flag
-		session.key_down = True
+		if not keypress: continue
 		
 		# Determine action based on key pressed
 		
@@ -7826,23 +7759,7 @@ while not exit_game:
 	
 	libtcod.console_flush()
 	
-	# get keyboard event
-	event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS,
-		key, mouse) 
-	
-	# if a key was previously pressed, wait for it to be released
-	if session.key_down:
-		if event != libtcod.EVENT_KEY_RELEASE:
-			continue
-		# key was released
-		session.key_down = False
-	
-	# check for keypress, continue if none
-	if event != libtcod.EVENT_KEY_PRESS:
-		continue
-	
-	# set key pressed flag
-	session.key_down = True
+	if not GetInputEvent(): continue
 	
 	key_char = chr(key.c).lower()
 	

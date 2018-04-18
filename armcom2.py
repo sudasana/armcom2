@@ -2777,7 +2777,7 @@ class Scenario:
 			if elevation2 > elevation1:
 				modifier_list.append(('Higher Elevation', -20.0))
 			
-			# unknown target - should not be possible
+			# unknown target
 			if not target.known:
 				modifier_list.append(('Unknown Target', -10.0))
 			
@@ -2805,6 +2805,14 @@ class Scenario:
 						modifier_list.append(('Small Target', -12.0))
 					elif size_class == 'Very Small':
 						modifier_list.append(('Very Small Target', -28.0))
+			
+			# long / short-barreled gun
+			long_range = weapon.GetStat('long_range')
+			if long_range is not None:
+				if long_range == 'S' and distance >= 3:
+					modifier_list.append(('Short-Barreled Gun', -12.0))
+				elif long_range == 'L' and distance >= 3:
+					modifier_list.append(('Long-Barreled Gun', 12.0))
 		
 		# area fire
 		elif profile['type'] == 'Area Fire':
@@ -3479,6 +3487,8 @@ class Scenario:
 		if movement_class is not None:
 			if movement_class == 'Fast Tank':
 				chance += 15.0
+			elif movement_class == 'Slow Tank':
+				chance -= 60.0
 			elif movement_class == 'Infantry':
 				chance -= 50.0
 			elif movement_class == 'Wheeled':
@@ -3496,7 +3506,9 @@ class Scenario:
 			for i in range(unit.additional_moves_taken):
 				chance = chance * BONUS_CHANCE_MULTIPLIER
 		
-		return RestrictChance(chance)
+		if chance < 0.0:
+			chance = 0.0
+		return chance
 	
 	# display a pop-up message overtop the map viewport
 	# if hx and hy are not none, highlight this hex on the map viewport
@@ -5276,14 +5288,13 @@ def GetInputEvent():
 
 # return a descriptive text string given a date dictionary
 def GetDateText(dictionary):
-	text = MONTH_NAMES[int(dictionary['month'])] + ' '
-	text += str(dictionary['day']) + ', ' + str(dictionary['year'])
-	return text
+	return (MONTH_NAMES[int(dictionary['month'])] + ' ' + str(dictionary['day']) + 
+		', ' + str(dictionary['year']))
 
 
 # return a random float between 0.0 and 100.0
 def GetPercentileRoll():
-	return float(libtcod.random_get_int(0, 1, 1000)) / 10.0
+	return float(libtcod.random_get_int(0, 0, 1000)) / 10.0
 
 
 # restrict odds to between 3.0 and 97.0
@@ -5979,7 +5990,7 @@ def PlaySoundFor(obj, action):
 		return
 	
 	elif action == 'movement':
-		if obj.GetStat('movement_class') == 'Fast Tank':
+		if obj.GetStat('class') == 'Light Tank':
 			n = libtcod.random_get_int(0, 0, 2)
 			PlaySound('light_tank_moving_0' + str(n))
 			return

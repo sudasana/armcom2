@@ -2330,8 +2330,11 @@ class Scenario:
 			[], []
 		]
 		
-		self.objective_control = 1		# player that currently controls the objective
-		self.objective_timer = 0		# minutes left to control before defender is forced out
+		self.objective_timer = [0, None]	# remaining minutes needed for each player to
+							# control objective and gain control of zone
+							# if None, not possible
+		
+		self.objective_timer[0] = self.cd_hex.enemy_organization * 2
 		
 		self.finished = False			# have win/loss conditions been met
 		self.winner = -1			# player number of scenario winner, -1 if None
@@ -2569,7 +2572,33 @@ class Scenario:
 			self.win_desc = 'All enemy units in the area were destroyed.'
 			return
 		
-		# TODO: check for objective timer
+		# check for objective hold
+		for player in [0, 1]:
+			# player can't win by holding objective
+			if scenario.objective_timer[player] is None: continue
+			# no units in objective
+			map_hex = scenario.cd_hex.map_hexes[(0,0)]
+			if len(map_hex.unit_stack) == 0: continue
+			# not the right player's unit
+			if map_hex.unit_stack[0].owning_player != player: continue
+			# player's unit is holding the objective, decrement the timer
+			scenario.objective_timer[player] -= 1
+		
+		# check for objective timer completion
+		for player in [0, 1]:
+			# player can't win by holding objective
+			if scenario.objective_timer[player] is None: continue
+			# timer has run out
+			if scenario.objective_timer[player] <= 0:
+				self.winner = player
+				self.finished = True
+				if player == 0:
+					text = 'You'
+				else:
+					text = 'The enemy'
+				text += ' held the objective and all opposing forces were forced to fall back'
+				self.win_desc = text
+				return
 		
 		# turn half over
 		if self.game_turn['active_player'] == self.game_turn['goes_first']:
@@ -3476,8 +3505,12 @@ class Scenario:
 			for i in range(unit.additional_moves_taken):
 				chance = chance * BONUS_CHANCE_MULTIPLIER
 		
+		# constrain final chance
 		if chance < 0.0:
 			chance = 0.0
+		elif chance > 97.0:
+			chance = 97.0
+		
 		return chance
 	
 	# display a pop-up message overtop the map viewport
@@ -6948,9 +6981,14 @@ def UpdateUnitInfoCon():
 # update objective info console, 16x10
 def UpdateObjectiveInfoCon():
 	libtcod.console_clear(objective_con)
+	ConsolePrint(objective_con, 0, 0, 'Objective Hold:')
+	
+	if scenario.objective_timer[0] is not None:
+		ConsolePrint(objective_con, 1, 2, '-' + str(scenario.objective_timer[0]) + ' mins.')
+	else:
+		ConsolePrint(objective_con, 1, 2, 'N/A')
 	
 	
-
 # draw all layers of scenario display to screen
 def UpdateScenarioDisplay():
 	libtcod.console_clear(con)

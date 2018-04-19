@@ -228,7 +228,7 @@ MONTH_NAMES = [
 # TODO: move these to json file
 
 # radius in hexes of a zone on the campaign day map; does not include centre hex
-CD_MAP_HEX_RADIUS = 6
+CD_MAP_HEX_RADIUS = 7
 
 # base chance of triggering a battle when entering an enemy-held hex on the campaign day map
 CD_BATTLE_BASE_CHANCE = 65.0
@@ -242,6 +242,9 @@ CD_BATTLE_ORGANIZATION_MOD = 5.0
 ENEMY_NUMBER_BASE_ODDS = [97.0, 85.0, 70.0]
 # effect of each point of strength on odds
 CD_ENEMY_STRENGTH_EFFECT = -3.0
+
+# time in minutes to capture a zone by holding its objective hex = enemy organization times this number
+OBJECTIVE_CAPTURE_MULTIPLIER = 3
 
 # number of additional dummy units spawned in a scenario
 ENEMY_DUMMY_UNITS = 2
@@ -2334,7 +2337,7 @@ class Scenario:
 							# control objective and gain control of zone
 							# if None, not possible
 		
-		self.objective_timer[0] = self.cd_hex.enemy_organization * 2
+		self.objective_timer[0] = self.cd_hex.enemy_organization * OBJECTIVE_CAPTURE_MULTIPLIER
 		
 		self.finished = False			# have win/loss conditions been met
 		self.winner = -1			# player number of scenario winner, -1 if None

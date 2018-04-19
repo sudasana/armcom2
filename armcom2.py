@@ -58,9 +58,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
-GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
+AI_NO_ACTION = True					# no AI actions at all
+GODMODE = True						# player cannot be destroyed
+ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
@@ -840,8 +840,6 @@ class MapHex:
 		self.mud = 0			# level of mud present in the hex
 		
 		self.unit_stack = []		# stack of units present in this hex
-		self.objective = None		# status as an objective; if -1, not controlled
-						#   by either player, otherwise 0 or 1
 		
 		# Pathfinding stuff
 		self.parent = None
@@ -869,17 +867,6 @@ class MapHex:
 	# FUTURE: can also calculate effect of smoke, rain, etc.
 	def GetTerrainMod(self):
 		return TERRAIN_LOS_MODS[self.terrain_type]
-	
-	# check to see if this objective hex has been captured
-	def CheckCapture(self):
-		if self.objective is None: return False
-		if len(self.unit_stack) == 0: return False
-		
-		for unit in self.unit_stack:
-			if unit.dummy: continue
-			if unit.owning_player != self.objective:
-				self.objective = unit.owning_player
-				return True
 
 
 
@@ -2343,6 +2330,9 @@ class Scenario:
 			[], []
 		]
 		
+		self.objective_control = 1		# player that currently controls the objective
+		self.objective_timer = 0		# minutes left to control before defender is forced out
+		
 		self.finished = False			# have win/loss conditions been met
 		self.winner = -1			# player number of scenario winner, -1 if None
 		self.win_desc = ''			# description of win/loss conditions met
@@ -2356,7 +2346,6 @@ class Scenario:
 		self.player_los_active = False		# display of player's LoS to target is active
 		
 		###### Hex Map and Map Viewport #####
-		self.map_objectives = []		# list of map hex objectives
 		self.highlighted_hex = None		# currently highlighted map hex
 		
 		self.map_vp = {}			# dictionary of map viewport hexes and
@@ -2393,12 +2382,6 @@ class Scenario:
 		self.vp_hx = self.player_unit.hx
 		self.vp_hy = self.player_unit.hy
 		self.vp_facing = self.player_unit.facing
-			
-	# set a given map hex as an objective, and set initial control state
-	def SetObjectiveHex(self, hx, hy, owning_player):
-		map_hex = self.cd_hex.map_hexes[(hx, hy)]
-		map_hex.objective = owning_player
-		self.map_objectives.append(map_hex)
 	
 	# generate enemy units for this scenario
 	# TEMP: assumes that enemy are on defense, already in place in area before player arrives
@@ -2509,11 +2492,10 @@ class Scenario:
 					if self.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
 						continue
 					
-					# close enough to an objective
-					for map_hex in self.map_objectives:
-						if GetHexDistance(hx, hy, map_hex.hx, map_hex.hy) <= ideal_distance:
-							close_enough = True
-							break
+					# close enough to objective
+					if GetHexDistance(hx, hy, 0, 0) <= ideal_distance:
+						close_enough = True
+						break
 					
 					if close_enough:
 						break
@@ -2587,16 +2569,7 @@ class Scenario:
 			self.win_desc = 'All enemy units in the area were destroyed.'
 			return
 		
-		all_objectives_captured = True
-		for map_hex in self.map_objectives:
-			if map_hex.objective == 1:
-				all_objectives_captured = False
-				break
-		if all_objectives_captured:
-			self.winner = 0
-			self.finished = True
-			self.win_desc = 'All objectives in the area were captured.'
-			return
+		# TODO: check for objective timer
 		
 		# turn half over
 		if self.game_turn['active_player'] == self.game_turn['goes_first']:
@@ -2611,16 +2584,6 @@ class Scenario:
 		
 		# advance campaign clock
 		campaign.AdvanceClock(0, 1)
-
-		# check for objective capture
-		for map_hex in self.map_objectives:
-			if map_hex.CheckCapture():
-				text = 'An objective was captured by '
-				if map_hex.objective == 0:
-					text += 'your forces'
-				else:
-					text += 'enemy forces'
-				self.ShowMessage(text, hx=map_hex.hx, hy=map_hex.hy)
 				
 	
 	# select the next or previous weapon on the player unit, looping around the list
@@ -3274,7 +3237,15 @@ class Scenario:
 			libtcod.console_put_char(attack_con, x, 49, 232)
 		
 		# determine location hit on target (not always used)
-		if libtcod.random_get_int(0, 1, 6) <= 4:
+		roll = GetPercentileRoll()
+		
+		# apply modifier if target is higher elevation
+		elevation1 = self.cd_hex.map_hexes[(profile['attacker'].hx, profile['attacker'].hy)].elevation
+		elevation2 = self.cd_hex.map_hexes[(profile['target'].hx, profile['target'].hy)].elevation
+		if elevation1 < elevation2:
+			roll -= 10.0
+		
+		if roll <= 75.0:
 			profile['location'] = 'Hull'
 		else:
 			profile['location'] = 'Turret'
@@ -4133,6 +4104,10 @@ class Unit:
 					chance += 6.0
 				elif size_class == 'Very Small':
 					chance += 12.0
+		
+		# bonus if commander is on Direct Driver action
+		if self.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver'):
+			chance += 15.0
 		
 		return chance
 
@@ -6525,17 +6500,15 @@ def UpdateVPCon():
 				# if character is not blank or hex edge, remove it
 				if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
 					libtcod.console_set_char(map_vp_con, x, y, 0)
-			
-	# highlight objective hexes
+
+	# highlight objective
 	for (hx, hy) in VP_HEXES:
-		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
-		if (map_hx, map_hy) not in scenario.cd_hex.map_hexes: continue
-		map_hex = scenario.cd_hex.map_hexes[(map_hx, map_hy)]
-		if map_hex.objective is not None:
-			(x,y) = PlotHex(hx, hy)
-			libtcod.console_blit(hex_objective_neutral, 0, 0, 0, 0,
-				map_vp_con, x-3, y-2, 1.0, 0.0)
-			
+		if scenario.map_vp[(hx, hy)] != (0,0): continue
+		(x,y) = PlotHex(hx, hy)
+		libtcod.console_blit(hex_objective, 0, 0, 0, 0, map_vp_con, x-3, y-2, 1.0, 0.0)
+		break
+
+
 
 # display units on the unit console
 # also displays map hex highlight and LoS if any
@@ -6748,17 +6721,8 @@ def UpdateHexTerrainCon():
 	ConsolePrintEx(hex_terrain_con, 15, 1, libtcod.BKGND_NONE,
 		libtcod.RIGHT, text)
 	
-	if map_hex.objective is not None:
-		libtcod.console_set_default_foreground(hex_terrain_con, libtcod.light_blue)
-		ConsolePrint(hex_terrain_con, 0, 2, 'Objective')
-		if map_hex.objective == -1:
-			return
-		if map_hex.objective == 0:
-			text = 'Player Held'
-		else:
-			text = 'Enemy Held'
-		libtcod.console_set_default_foreground(hex_terrain_con, libtcod.white)
-		ConsolePrint(hex_terrain_con, 0, 3, text)
+	if hx == 0 and hy == 0:
+		ConsolePrint(hex_terrain_con, 0, 3, 'Objective')
 	
 	if len(map_hex.dirt_roads) > 0:
 		ConsolePrint(hex_terrain_con, 0, 9, 'Dirt Road')
@@ -6984,34 +6948,7 @@ def UpdateUnitInfoCon():
 # update objective info console, 16x10
 def UpdateObjectiveInfoCon():
 	libtcod.console_clear(objective_con)
-	libtcod.console_set_default_foreground(objective_con, libtcod.light_blue)
-	ConsolePrintEx(objective_con, 15, 0, libtcod.BKGND_NONE, libtcod.RIGHT, 'Objectives')
-	libtcod.console_set_default_foreground(objective_con, libtcod.light_grey)
 	
-	y = 2
-	for map_hex in scenario.map_objectives:
-		distance = GetHexDistance(scenario.player_unit.hx, scenario.player_unit.hy,
-			map_hex.hx, map_hex.hy) * 160
-		if distance > 1000:
-			text = str(float(distance) / 1000.0) + ' km.'
-		else:
-			text = str(distance) + ' m.'
-		ConsolePrintEx(objective_con, 13, y, libtcod.BKGND_NONE, libtcod.RIGHT, text)
-		
-		# capture status
-		if map_hex.objective == 0:
-			char = 251
-		else:
-			char = 120
-		libtcod.console_put_char(objective_con, 0, y, char)
-		
-		# directional arrow if required
-		if distance > 0:
-			direction = GetDirectionToward(scenario.player_unit.hx, scenario.player_unit.hy,
-				map_hex.hx, map_hex.hy)
-			direction = ConstrainDir(direction + (0 - scenario.player_unit.facing))
-			libtcod.console_put_char(objective_con, 15, y, GetDirectionalArrow(direction))
-		y += 1
 	
 
 # draw all layers of scenario display to screen
@@ -7050,7 +6987,7 @@ def DoScenario():
 	
 	global bkg_console, map_vp_con, unit_con, player_info_con, hex_terrain_con
 	global crew_position_con, command_con, context_con, unit_info_con, objective_con
-	global attack_con, fov_con, hex_fov, popup_bkg, hex_objective_neutral
+	global attack_con, fov_con, hex_fov, popup_bkg, hex_objective
 	global hex_highlight
 	global tile_offmap
 	
@@ -7065,8 +7002,8 @@ def DoScenario():
 	popup_bkg = LoadXP('popup_bkg.xp')
 	
 	# highlight for objective hexes
-	hex_objective_neutral = LoadXP('hex_objective_neutral.xp')
-	libtcod.console_set_key_color(hex_objective_neutral, KEY_COLOR)
+	hex_objective = LoadXP('hex_objective.xp')
+	libtcod.console_set_key_color(hex_objective, KEY_COLOR)
 	
 	# highlight for in-game messages
 	hex_highlight = LoadXP('hex_highlight.xp')
@@ -7186,37 +7123,6 @@ def DoScenario():
 		# set up VP hexes and generate initial VP console
 		scenario.CenterVPOnPlayer()
 		scenario.SetVPHexes()
-		
-		# set up map objectives for this scenario
-		for i in range(3):
-			for tries in range(300):
-				(hx, hy) = choice(scenario.cd_hex.map_hexes.keys())
-				# already an objective
-				if scenario.cd_hex.map_hexes[(hx, hy)].objective is not None:
-					continue
-				if scenario.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
-					continue
-				if GetHexDistance(hx, hy, scenario.player_unit.hx, scenario.player_unit.hy) < 3:
-					continue
-				
-				# too close to an existing objective
-				too_close = False
-				for map_hex in scenario.map_objectives:
-					if GetHexDistance(hx, hy, map_hex.hx, map_hex.hy) < 3:
-						too_close = True
-						break
-				if too_close: continue
-				
-				# too close to map edge
-				hex_ring = GetHexRing(hx, hy, 1)
-				for (hx2, hy2) in hex_ring:
-					if (hx2, hy2) not in scenario.cd_hex.map_hexes:
-						too_close = True
-						break
-				if too_close: continue
-				
-				scenario.SetObjectiveHex(hx, hy, 1)
-				break
 		
 		# generate and spawn initial enemy units for this scenario
 		scenario.SpawnEnemyUnits()

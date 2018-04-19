@@ -3008,7 +3008,6 @@ class Scenario:
 		
 		return profile
 	
-	
 	# display an attack or AP profile to the screen and prompt to proceed
 	# does not alter the profile
 	def DisplayAttack(self, profile):
@@ -3568,6 +3567,50 @@ class Scenario:
 		else:
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
+	
+	# display a pop-up window with info on a unit
+	def ShowUnitInfoWindow(self, unit):
+		
+		# create a local copy of the current screen to re-draw when we're done
+		temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+		libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+		# darken screen background
+		libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+		
+		# create window and draw fram
+		window_con = libtcod.console_new(26, 26)
+		libtcod.console_set_default_background(window_con, libtcod.black)
+		libtcod.console_set_default_foreground(window_con, libtcod.white)
+		DrawFrame(window_con, 0, 0, 26, 26)
+		
+		# draw unit info and command instructions
+		unit.DisplayMyInfo(window_con, 1, 1)
+		libtcod.console_set_default_foreground(window_con, ACTION_KEY_COL)
+		ConsolePrint(window_con, 7, 24, 'ESC')
+		libtcod.console_set_default_foreground(window_con, libtcod.lighter_grey)
+		ConsolePrint(window_con, 12, 24, 'Return')
+		
+		# blit window to screen and then delete
+		libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM-13, WINDOW_YM-13)
+		del window_con
+		
+		# wait for player to exit view
+		exit = False
+		while not exit:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			
+			# get keyboard and/or mouse event
+			if not GetInputEvent(): continue
+			
+			if key.vk == libtcod.KEY_ESCAPE:
+				exit = True
+		
+		# re-draw original view
+		libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+		del temp_con
+		
 
 
 # Crew Class: represents a crewman in a vehicle or a single member of a unit's personnel
@@ -4050,7 +4093,7 @@ class Unit:
 			# unit status
 			libtcod.console_set_default_foreground(console, libtcod.light_grey)
 			libtcod.console_set_default_background(console, libtcod.darkest_blue)
-			libtcod.console_rect(player_info_con, x, y+ys, 24, 2, True, libtcod.BKGND_SET)
+			libtcod.console_rect(console, x, y+ys, 24, 2, True, libtcod.BKGND_SET)
 			
 			text = ''
 			if self.moved:
@@ -7282,6 +7325,21 @@ def DoScenario():
 					UpdateUnitInfoCon()
 					UpdateScenarioDisplay()
 			continue
+		
+		# mouse button clicked
+		if mouse.rbutton_pressed:
+			x = mouse.cx - 31
+			y = mouse.cy - 4
+			if (x,y) in scenario.hex_map_index:
+				(hx, hy) = scenario.hex_map_index[(x,y)]
+				map_hex = scenario.cd_hex.map_hexes[(hx, hy)]
+				if len(map_hex.unit_stack) > 0:
+					unit = map_hex.unit_stack[0]
+					if not (unit.owning_player == 1 and not unit.known):
+						# display info on top unit in stack
+						scenario.ShowUnitInfoWindow(unit)
+					continue
+		
 		
 		##### Player Keyboard Commands #####
 		if not keypress: continue

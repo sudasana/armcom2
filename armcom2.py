@@ -673,11 +673,11 @@ class Campaign:
 		op_value = int(self.player_unit.GetStat('op_value'))
 		
 		if op_value >= 39:
-			num = 2
+			num = 1
 		elif op_value >= 29:
-			num = 3
+			num = 2
 		else:
-			num = 4
+			num = 3
 		for i in range(num):
 			new_unit = Unit(selected_unit.unit_id)
 			new_unit.owning_player = 0
@@ -5359,6 +5359,18 @@ def GetInputEvent():
 	return True
 
 
+# clear all keyboard events
+def FlushKeyboardEvents():
+	exit = False
+	while not exit:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS, key, mouse)
+		if event != libtcod.EVENT_KEY_PRESS:
+			exit = True
+	session.key_down = False
+	
+
 # return a descriptive text string given a date dictionary
 def GetDateText(dictionary):
 	return (MONTH_NAMES[int(dictionary['month'])] + ' ' + str(dictionary['day']) + 
@@ -7248,6 +7260,10 @@ def DoScenario():
 			scenario.DoEndOfPlayerTurn()
 			
 			# activate player again
+			
+			# clear keyboard events
+			FlushKeyboardEvents()
+			
 			scenario.active_unit = scenario.player_unit
 			scenario.active_unit.MoveToTopOfStack()
 			UpdateUnitCon()

@@ -16,6 +16,13 @@
 		"fov_range" : "6",
 		"selectable" : "TRUE"
 	},
+	"Direct Gunner" : {
+		"desc" : "Bonus to hit for Gunner",
+		"position_list" : ["Commander"],
+		"fov_hextants" : ["5", "0", "1"],
+		"fov_range" : "6",
+		"selectable" : "TRUE"
+	},
 	"Operate Gun" : {
 		"desc" : "Operate the main gun and the turret",
 		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],

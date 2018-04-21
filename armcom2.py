@@ -1818,6 +1818,9 @@ class Session:
 		# flag to say that we are exiting to main menu
 		self.exiting_to_main_menu = False
 		
+		# flag to hide player LoS depiction on unit console
+		self.hide_player_los = False
+		
 		# placeholder for hex console images
 		self.hex_consoles = {}
 		
@@ -2349,7 +2352,6 @@ class Scenario:
 		self.player_target_list = []		# list of possible enemy targets for player unit
 		self.player_target = None		# current target of player unit
 		self.player_attack_desc = ''		# text description of attack on player target
-		self.player_los_active = False		# display of player's LoS to target is active
 		
 		###### Hex Map and Map Viewport #####
 		self.highlighted_hex = None		# currently highlighted map hex
@@ -2720,10 +2722,13 @@ class Scenario:
 			print 'ERROR: Weapon type not recognized: ' + weapon.stats['name']
 			return None
 		
-		modifier_list = []
-		
 		# calculate distance to target
 		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+		
+		# list of modifiers
+		# [maximum displayable modifier description length is 17 characters]
+		
+		modifier_list = []
 		
 		# point fire attacks (eg. large guns)
 		if profile['type'] == 'Point Fire':
@@ -2771,6 +2776,10 @@ class Scenario:
 			elevation2 = self.cd_hex.map_hexes[(target.hx, target.hy)].elevation
 			if elevation2 > elevation1:
 				modifier_list.append(('Higher Elevation', -20.0))
+			
+			# Commander directing fire
+			if attacker.CheckCrewAction(['Commander'], 'Direct Gunner'):
+				modifier_list.append(('Cmdr Direction', 20.0))
 			
 			# unknown target
 			if not target.known:
@@ -3111,7 +3120,8 @@ class Scenario:
 				libtcod.CENTER, 'None')
 		else:
 			for (desc, mod) in profile['modifier_list']:
-				ConsolePrint(attack_con, 2, y, desc)
+				# max displayable length is 17 chars
+				ConsolePrint(attack_con, 2, y, desc[:17])
 				
 				if mod > 0.0:
 					col = libtcod.green
@@ -3251,7 +3261,11 @@ class Scenario:
 		if profile['target'].owning_player == 1 and PLAYER_ALWAYS_HITS:
 			roll = 2.0
 		
-		# if player is involved
+		# record the final roll in the attack profile
+		profile['roll'] = roll
+		
+		
+		# if player is involved, display roll indicator
 		if profile['attacker'] == self.player_unit or profile['target'] == self.player_unit:
 			# display final roll indicators
 			x = int(24.0 * roll / 100.0) + 1
@@ -3269,18 +3283,17 @@ class Scenario:
 			libtcod.console_put_char(attack_con, x, 49, 232)
 		
 		# determine location hit on target (not always used)
-		roll = GetPercentileRoll()
-		
+		location_roll = GetPercentileRoll()
 		# apply modifier if target is higher elevation
 		elevation1 = self.cd_hex.map_hexes[(profile['attacker'].hx, profile['attacker'].hy)].elevation
 		elevation2 = self.cd_hex.map_hexes[(profile['target'].hx, profile['target'].hy)].elevation
 		if elevation1 < elevation2:
-			roll -= 10.0
-		
-		if roll <= 75.0:
+			location_roll -= 10.0
+		if location_roll <= 75.0:
 			profile['location'] = 'Hull'
 		else:
 			profile['location'] = 'Turret'
+		
 		
 		# armour penetration roll
 		if profile['type'] == 'ap':
@@ -4267,8 +4280,7 @@ class Unit:
 			# rebuild list of potential targets
 			scenario.RebuildPlayerTargetList()
 			
-			# turn on player LoS display
-			scenario.player_los_active = True
+			# update unit console to show player LoS display
 			UpdateUnitCon()
 		
 		# reset flag and weapons
@@ -4291,11 +4303,6 @@ class Unit:
 				
 				# lose any of this unit's acquired targets
 				self.acquired_target = None
-		
-		# clear any player LoS
-		if self == scenario.player_unit:
-			scenario.player_los_active = False
-			UpdateUnitCon()
 		
 		# test for recovery
 		self.RecoveryCheck()
@@ -4856,9 +4863,9 @@ class Unit:
 			text = self.GetName() + ' fires at you!'
 			scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
 		
-		# clear LoS if any
+		# hide player LoS
 		if self == scenario.player_unit:
-			scenario.player_los_active = False
+			session.hide_player_los = True
 			UpdateUnitCon()
 			UpdateScenarioDisplay()
 			libtcod.console_flush()
@@ -4866,6 +4873,8 @@ class Unit:
 		# attack loop, can do multiple shots if maintain RoF
 		attack_finished = False
 		while not attack_finished: 
+			
+			##### Attack Animation and Sound Effects #####
 		
 			# play sound and show animation if both units on viewport
 			if self.vp_hx is not None and self.vp_hy is not None and target.vp_hx is not None and target.vp_hy is not None:
@@ -5022,6 +5031,13 @@ class Unit:
 		# reset weapon RoF - needed?
 		weapon.maintained_rof = False
 		
+		# re-enable player LoS
+		if self == scenario.player_unit:
+			session.hide_player_los = False
+			UpdateUnitCon()
+			UpdateScenarioDisplay()
+			libtcod.console_flush()
+		
 		return True
 	
 	# resolve all unresolved AP hits and FP on this unit
@@ -5046,6 +5062,9 @@ class Unit:
 				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
 					WaitForContinue()
 				if profile['result'] == 'PENETRATED':
+					
+					# TODO: roll for penetration result here, use the
+					# final 'roll' difference vs. 'final_chance' as modifier
 					
 					# if player was not involved, display a message
 					if profile['attacker'] != scenario.player_unit and self != scenario.player_unit:
@@ -5953,7 +5972,6 @@ def LoadCFG():
 		print 'No config file found, creating a new one'
 		config.add_section('ArmCom2')
 		config.set('ArmCom2', 'large_display_font', 'true')
-		#config.set('ArmCom2', 'animation_speed', '30')
 		config.set('ArmCom2', 'sounds_enabled', 'true')
 		config.set('ArmCom2', 'keyboard', '0')
 		
@@ -5985,11 +6003,13 @@ def GenerateKeyboards():
 		keyboard_decode[key] = value
 		keyboard_encode[value] = k
 
+
 # turn an inputted key into a standard key input
 def DecodeKey(key_char):
 	if key_char in keyboard_decode:
 		return keyboard_decode[key_char].encode('IBM850')
 	return key_char
+
 
 # turn a standard key into the one for the current keyboard layout
 def EncodeKey(key_char):
@@ -6609,6 +6629,7 @@ def UpdateUnitCon():
 	if scenario.game_turn['active_player'] == 1: return
 	if scenario.active_menu != 4: return
 	if scenario.player_target is None: return
+	if session.hide_player_los: return
 	line = GetLine(scenario.player_unit.screen_x, scenario.player_unit.screen_y,
 		scenario.player_target.screen_x, scenario.player_target.screen_y)
 	for (x,y) in line[2:-1]:

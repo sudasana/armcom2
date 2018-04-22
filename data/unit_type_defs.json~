@@ -155,6 +155,59 @@
 		"op_value" : "21"
 	},
 	
+	"Renault FT": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_FT-17C.xp",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"turret" : "TRUE",
+		"unreliable" : "TRUE",
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "S",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "233"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"open_visible" : ["0", "1", "5"],
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First developed during the Great War, the Renault FT was the world's",
+			"first modern tank. By the outbreak of the Second World War several ",
+			"thousand were still in use throughout the world."
+		],
+		"ubiquity" : "50",
+		"op_value" : "16"
+	},
+	
 	"Vickers 6-Ton Mark E": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",

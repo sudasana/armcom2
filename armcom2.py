@@ -2007,6 +2007,7 @@ class Session:
 			'vehicle_explosion_00',
 			'at_rifle_firing',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
+			'wheeled_moving_00', 'wheeled_moving_01', 'wheeled_moving_02',
 			'zb_53_mg_00'
 		]
 		
@@ -6119,6 +6120,11 @@ def PlaySoundFor(obj, action):
 		return
 	
 	elif action == 'movement':
+		if obj.GetStat('movement_class') == 'Wheeled':
+			n = libtcod.random_get_int(0, 0, 2)
+			PlaySound('wheeled_moving_0' + str(n))
+			return
+		
 		if obj.GetStat('class') == 'Light Tank':
 			n = libtcod.random_get_int(0, 0, 2)
 			PlaySound('light_tank_moving_0' + str(n))

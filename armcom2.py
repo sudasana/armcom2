@@ -2290,14 +2290,24 @@ class AI:
 				target.hy)
 			mount = weapon.GetStat('mount')
 			if mount is not None:
+				changed_facing = False
 				if mount == 'Turret':
 					if (target.hx - self.owner.hx, target.hy - self.owner.hy) not in HEXTANTS[self.owner.turret_facing]:
 						self.owner.turret_facing = direction
+						changed_facing = True
 						
 				else:
 					if (target.hx - self.owner.hx, target.hy - self.owner.hy) not in HEXTANTS[self.owner.facing]:
 						self.owner.facing = direction
+						changed_facing = True
+				
+				if animate and changed_facing:
+					UpdateUnitCon()
+					UpdateScenarioDisplay()
+					libtcod.console_flush()
+					Wait(10)
 			
+			# do the attack
 			result = self.owner.Attack(weapon, target)
 			
 			if not result:

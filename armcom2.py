@@ -5215,6 +5215,10 @@ class Unit:
 		scenario.cd_hex.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
 		self.ClearAcquiredTargets()
 		
+		# clear if this unit was player target
+		if scenario.player_target == self:
+			scenario.player_target = None
+		
 		# remove player ally from campaign list
 		if self != scenario.player_unit and self.owning_player == 0:
 			if self in campaign.player_unit_group:

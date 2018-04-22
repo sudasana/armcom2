@@ -2730,7 +2730,7 @@ class Scenario:
 		weapon_type = weapon.GetStat('type')
 		if weapon_type == 'Gun':
 			profile['type'] = 'Point Fire'
-		elif weapon_type in ['Co-ax MG', 'Hull MG']:
+		elif weapon_type in ['Co-ax MG', 'Hull MG', 'AA MG']:
 			profile['type'] = 'Area Fire'
 			profile['effective_fp'] = 0		# placeholder for effective fp
 		else:
@@ -2962,7 +2962,7 @@ class Scenario:
 		# calculate base chance of penetration
 		if weapon.GetStat('name') == 'AT Rifle':
 			base_chance = AP_BASE_CHANCE['AT Rifle']
-		elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG']:
+		elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG', 'AA MG']:
 			base_chance = AP_BASE_CHANCE['MG']
 		else:
 			gun_rating = weapon.GetStat('calibre')
@@ -3346,7 +3346,7 @@ class Scenario:
 			
 			# might be converted into an AP MG hit
 			if result_text in ['FULL EFFECT', 'CRITICAL EFFECT']:
-				if profile['weapon'].GetStat('type') in ['Co-ax MG', 'Hull MG'] and profile['target'].GetStat('armour') is not None:
+				if profile['weapon'].GetStat('type') in ['Co-ax MG', 'Hull MG', 'AA MG'] and profile['target'].GetStat('armour') is not None:
 					distance = GetHexDistance(profile['attacker'].hx,
 						profile['attacker'].hy, profile['target'].hx,
 						profile['target'].hy)
@@ -3456,6 +3456,8 @@ class Scenario:
 			weapon_type = weapon.GetStat('type')
 			if weapon_type in ['Gun', 'Co-ax MG']:
 				action = 'Operate Gun'
+			elif weapon_type == 'AA MG':
+				action = 'Operate AA MG'
 			elif weapon_type == 'Hull MG':
 				action = 'Operate Hull MG'
 			
@@ -3784,7 +3786,7 @@ class Crew:
 
 # Crew Position class: represents a crew position on a vehicle or gun
 class CrewPosition:
-	def __init__(self, name, location, hatch, hatch_group, open_visible, closed_visible):
+	def __init__(self, name, location, hatch, hatch_group, open_top, open_visible, closed_visible):
 		self.name = name
 		self.location = location
 		self.crewman = None			# pointer to crewman currently in this position
@@ -3795,6 +3797,7 @@ class CrewPosition:
 		self.hatch_group = None
 		if hatch_group is not None:
 			self.hatch_group = int(hatch_group)
+		self.open_top = open_top
 		
 		# visible hextants when hatch is open/closed
 		self.open_visible = []
@@ -3809,6 +3812,7 @@ class CrewPosition:
 	# toggle hatch open/closed status
 	def ToggleHatch(self):
 		if not self.hatch: return False
+		if self.open_top: return False
 		self.hatch_open = not self.hatch_open
 		# FUTURE: also toggle hatches in same group
 		return True
@@ -3835,7 +3839,7 @@ class Weapon:
 			self.max_range = int(self.stats['max_range'])
 			del self.stats['max_range']
 		else:
-			if self.stats['type'] == 'Co-ax MG':
+			if self.stats['type'] in ['Co-ax MG', 'AA MG']:
 				self.max_range = 3
 			elif self.stats['type'] == 'Hull MG':
 				self.max_range = 1
@@ -3985,6 +3989,10 @@ class Unit:
 				if 'hatch_group' in position:
 					hatch_group = position['hatch_group']
 				
+				open_top = False
+				if 'open_top' in position:
+					open_top = True
+				
 				open_visible = None
 				if 'open_visible' in position:
 					open_visible = position['open_visible']
@@ -3994,7 +4002,7 @@ class Unit:
 					closed_visible = position['closed_visible']
 				
 				self.crew_positions.append(CrewPosition(name, location,
-					hatch, hatch_group, open_visible, closed_visible))
+					hatch, hatch_group, open_top, open_visible, closed_visible))
 		
 		self.weapon_list = []			# list of weapon systems
 		weapon_list = self.stats['weapon_list']
@@ -4877,6 +4885,8 @@ class Unit:
 			weapon_type = weapon.GetStat('type')
 			if weapon_type in ['Gun', 'Co-ax MG']:
 				action = 'Operate Gun'
+			elif weapon_type == 'AA MG':
+				action = 'Operate AA MG'
 			elif weapon_type == 'Hull MG':
 				action = 'Operate Hull MG'
 			self.SetCrewAction(position_list, action)
@@ -4941,7 +4951,7 @@ class Unit:
 						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 						libtcod.console_flush()
 				
-				elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG']:
+				elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG', 'AA MG']:
 					
 					x1, y1 = self.screen_x, self.screen_y
 					x2, y2 = target.screen_x, target.screen_y
@@ -6099,7 +6109,7 @@ def PlaySoundFor(obj, action):
 			PlaySound('37mm_firing_0' + str(n))
 			return
 			
-		if obj.stats['type'] in ['Co-ax MG', 'Hull MG']:
+		if obj.stats['type'] in ['Co-ax MG', 'Hull MG', 'AA MG']:
 			PlaySound('zb_53_mg_00')
 			return
 	 

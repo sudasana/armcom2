@@ -1138,6 +1138,56 @@
 		"op_value" : "46"
 	},
 	
+	"Sd. Kfz. 13": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_sd_kfz_13.xp",
+		"size_class" : "Very Small",
+		"movement_class" : "Wheeled",
+		"open_topped" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "1",
+			"hull_front" : "0",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : "0"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Hull",
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Kfz 13 was converted from an Adler touring car in 1935. Although ",
+			"lightly armoured, the vehicle is completely open on its top."
+		],
+		"ubiquity" : "65",
+		"op_value" : "23"
+	},
+	
 	"PSW 222": {
 		"category" : "Vehicle",
 		"class" : "Armoured Car",

@@ -29,6 +29,12 @@
 		"fov_hextants" : ["0"],
 		"fov_range" : "6"
 	},
+	"Operate AA MG" : {
+		"desc" : "Operate the AA MG",
+		"position_list" : ["Commander", "Gunner", "Commander/Gunner", "Gunner/Loader"],
+		"fov_hextants" : ["0", "1", "2", "3", "4", "5"],
+		"fov_range" : "6"
+	},
 	"Reload" : {
 		"desc" : "Reload the main gun as needed, increasing fire rate",
 		"position_list" : ["Loader"],

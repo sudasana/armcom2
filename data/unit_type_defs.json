@@ -1188,6 +1188,57 @@
 		"op_value" : "23"
 	},
 	
+	"PSW 221": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_psw_221.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"open_topped" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : "0"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "2", "3", "4", "5"],
+				"closed_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"open_visible" : ["0", "1", "5"],
+				"closed_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Sd.Kfz.221 was designed in secret as an all-terrain armoured ",
+			"car, to replace the more limited Kfz.13. Although it is fast and ",
+			"has an excellent operational range, its off-road capabilities are ",
+			"fairly limited."
+		],
+		"ubiquity" : "75",
+		"op_value" : "27"
+	},
+	
 	"PSW 222": {
 		"category" : "Vehicle",
 		"class" : "Armoured Car",

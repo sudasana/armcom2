@@ -16,7 +16,7 @@
 	"desc" : "German invasion of Poland, 1939.",
 	"player_unit_list" : [
 		"Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", "Panzer III D",
-		"Panzer III F"
+		"Panzer III F", "PSW 221"
 	],
 	"enemy_unit_list" : [
 		"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Vickers 6-Ton Mark E", "7TP",

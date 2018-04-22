@@ -20,8 +20,8 @@
 	"enemy_unit_list" : [
 		"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", 
 		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",
-		"Sd. Kfz. 13", "PSW 222", "3.7cm PaK 35/36", "8.8cm FlaK 18 o. 36",
-		"Riflemen"
+		"Sd. Kfz. 13", "PSW 221", "PSW 222", "3.7cm PaK 35/36",
+		"8.8cm FlaK 18 o. 36", "Riflemen"
 	],
 	"calendar": [
 		{

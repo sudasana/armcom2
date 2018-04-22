@@ -10,7 +10,7 @@
 		"desc" : "Scan terrain for enemies"
 	},
 	"Direct Driver" : {
-		"desc" : "Help direct the driver",
+		"desc" : "Makes bonus moves, HD more likely",
 		"position_list" : ["Commander", "Commander/Gunner"],
 		"fov_hextants" : ["5", "0", "1"],
 		"fov_range" : "6",
@@ -39,8 +39,7 @@
 		"desc" : "Drive slowly, watching for obstacles",
 		"position_list" : [],
 		"fov_hextants" : ["0"],
-		"fov_range" : "1",
-		"selectable" : "TRUE"
+		"fov_range" : "1"
 	},
 	"Operate Hull MG" : {
 		"desc" : "Operate the hull-mounted MG",

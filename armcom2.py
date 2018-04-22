@@ -58,8 +58,8 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
-GODMODE = True						# player cannot be destroyed
+AI_NO_ACTION = False					# no AI actions at all
+GODMODE = False						# player cannot be destroyed
 ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
@@ -221,6 +221,8 @@ MONTH_NAMES = [
 	'September', 'October', 'November', 'December'
 ]
 
+
+
 #################################
 ##### Game Engine Constants #####
 #################################
@@ -251,6 +253,9 @@ ENEMY_DUMMY_UNITS = 2
 
 # minimum distance from the player that an enemy will be spawned in a scenario
 ENEMY_SPAWN_MIN_DISTANCE = 5
+
+# base chance to spot and reveal unknown enemy units
+SPOT_BASE_CHANCE = 80.0
 
 # critical hit and miss thresholds
 CRITICAL_HIT = 3.0
@@ -3278,16 +3283,23 @@ class Scenario:
 		# if player is involved, display roll indicator
 		if profile['attacker'] == self.player_unit or profile['target'] == self.player_unit:
 			# display final roll indicators
-			x = int(24.0 * roll / 100.0) + 1
+			x = int(ceil(24.0 * roll / 100.0))
 			if x < 1:
 				x = 1
 			elif x > 24:
 				x = 24
 			
+			# make sure indicator ends up on correct side of band boundary
+			if profile['type'] != 'Area Fire':
+				hit_band_x = int(ceil(24.0 * profile['final_chance'] / 100.0))
+				if x < hit_band_x and roll > profile['final_chance']:
+					print 'DEBUG: moved a roll indicator slightly'
+					x += 1
+			
 			# make sure only critical hits and misses appear in their bands
 			if profile['type'] == 'Point Fire':
-				if roll > CRITICAL_HIT and x == 1: x = 2
-				if roll < CRITICAL_MISS and x == 24: x = 23
+				if roll > CRITICAL_HIT and x <= 1: x = 2
+				if roll < CRITICAL_MISS and x >= 24: x = 23
 			
 			libtcod.console_put_char(attack_con, x, 45, 233)
 			libtcod.console_put_char(attack_con, x, 49, 232)
@@ -4014,6 +4026,7 @@ class Unit:
 		self.turret_facing = None		# facing of main turret on unit
 		self.previous_turret_facing = None	# turret facing before current action
 		self.hull_down = []			# list of directions in HD status
+		self.dug_in = False			# unit is dug-in (infantry and guns only)
 		
 		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
 		
@@ -4347,6 +4360,10 @@ class Unit:
 		
 		# only unit in stack
 		if len(map_hex.unit_stack) == 1:
+			return
+		
+		# not actually in stack
+		if self not in map_hex.unit_stack:
 			return
 		
 		map_hex.unit_stack.remove(self)
@@ -5078,7 +5095,7 @@ class Unit:
 					
 					# if player was not involved, display a message
 					if profile['attacker'] != scenario.player_unit and self != scenario.player_unit:
-						text = self.GetName() + ' was destroyed.'
+						text = self.GetName() + ' was destroyed by ' + profile['attacker'].GetName()
 						scenario.ShowMessage(text, self.hx, self.hy)
 					self.DestroyMe()
 					return
@@ -5183,6 +5200,7 @@ class Unit:
 			PlaySoundFor(self, 'vehicle_explosion')
 		
 		self.alive = False
+		
 		scenario.cd_hex.map_hexes[(self.hx, self.hy)].unit_stack.remove(self)
 		self.ClearAcquiredTargets()
 		
@@ -5210,7 +5228,7 @@ class Unit:
 	# roll a spotting check from this unit to another using the given crew position
 	def DoSpotCheck(self, target, position):
 		
-		chance = 100.0
+		chance = SPOT_BASE_CHANCE
 		
 		# distance modifier
 		distance = GetHexDistance(self.hx, self.hy, target.hx, target.hy)
@@ -5250,7 +5268,7 @@ class Unit:
 		chance = RestrictChance(chance)
 		
 		# special: automatic spot cases
-		if distance <= 2 and los == 0.0:
+		if distance <= 1 and los == 0.0:
 			chance = 100.0
 		
 		# target was hit by effective fp last turn
@@ -5263,15 +5281,20 @@ class Unit:
 			target.SpotMe()
 			# display pop-up message window
 			
-			# FUTURE: need difference message if it's an allied unit doing the spotting
 			if self.owning_player == 0:
 				
+				# need different message if it's an allied unit doing the spotting
+				if self == scenario.player_unit:
+					text = ''
+				else:
+					text = 'Report incoming: '
+				
 				if target.dummy:
-					text = (position.crewman.GetFullName() + ' says: ' + 
+					text += (position.crewman.GetFullName() + ' says: ' + 
 						"Thought there was something there, but I don't see anything.")
 					portrait = None
 				else:
-					text = position.crewman.GetFullName() + ' says: '
+					text += position.crewman.GetFullName() + ' says: '
 					text += target.GetName() + ' ' + target.GetStat('class')
 					text += ' spotted!'
 					portrait = target.GetStat('portrait')
@@ -6648,7 +6671,7 @@ def UpdateUnitCon():
 					x-3, y-2)
 		
 	# display LoS if applicable
-	if scenario.game_turn['active_player'] == 1: return
+	if scenario.active_unit != scenario.player_unit: return
 	if scenario.active_menu != 4: return
 	if scenario.player_target is None: return
 	if session.hide_player_los: return
@@ -7265,15 +7288,14 @@ def DoScenario():
 			for unit in scenario.activation_list[1]:
 				if not unit.alive: continue
 				unit.ai.DoActivation()
-			# pause a short time between enemy unit activations
-			Wait(5)
+				# pause a short time between enemy unit activations
+				Wait(5)
 			scenario.DoEndOfPlayerTurn()
-			
-			# activate player again
 			
 			# clear keyboard events
 			FlushKeyboardEvents()
 			
+			# activate player again
 			scenario.active_unit = scenario.player_unit
 			scenario.active_unit.MoveToTopOfStack()
 			UpdateUnitCon()

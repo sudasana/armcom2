@@ -3458,10 +3458,10 @@ class Scenario:
 				text = 'No crewman available to: ' + action
 				return text
 			
-			# TODO: check that firer doesn't have to be CE to fire
+			# check that firer doesn't have to be CE to fire
 			if weapon.GetStat('ce_to_fire') is not None:
-				if not position.hatch_open:
-					return 'Crewman must open hatch to fire'
+				if not position.crewman.ce:
+					return 'Crewman must be exposed to fire'
 		
 		# check LoS
 		if GetLoS(attacker.hx, attacker.hy, target.hx, target.hy) == -1.0:
@@ -3667,7 +3667,7 @@ class Scenario:
 
 
 # Crew Class: represents a crewman in a vehicle or a single member of a unit's personnel
-# TODO: chance to personnel
+# TODO: change to personnel
 class Crew:
 	def __init__(self, nation, position):
 		self.first_name = u''				# name, set by GenerateName()
@@ -3688,6 +3688,9 @@ class Crew:
 		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'None'			# currently active action
+		
+		self.ce = True					# Crew Exposed / Buttoned Up
+		self.CheckCE()					# check to see if no hatch, must be BU
 		
 		self.fov = set()				# set of visible hexes
 		
@@ -3791,40 +3794,67 @@ class Crew:
 				self.current_action = self.action_list[i-1]
 		
 		return True
+	
+	# check current CE/BU status and fix if required
+	def CheckCE(self):
+		if not self.current_position.hatch:
+			self.ce = False
+		elif self.current_position.crew_always_ce:
+			self.ce = True
+	
+	# toggle crew exposed / button up status
+	def ToggleCE(self):
+		
+		# can't go CE
+		if not self.ce and not self.current_position.hatch:
+			return False
+		
+		# always CE
+		if self.ce and self.current_position.crew_always_ce:
+			return False
+		
+		self.ce = not self.ce
+		return True
 
 
 # Crew Position class: represents a crew position on a vehicle or gun
 class CrewPosition:
-	def __init__(self, name, location, hatch, hatch_group, open_top, open_visible, closed_visible):
-		self.name = name
-		self.location = location
-		self.crewman = None			# pointer to crewman currently in this position
+	def __init__(self, position_dict):
 		
-		# hatch existence and status
-		self.hatch_open = True
-		self.hatch = hatch
+		self.name = position_dict['name']
+		
+		self.location = None
+		if 'location' in position_dict:
+			self.location = position_dict['location']
+		
+		self.hatch = False
+		if 'hatch' in position_dict:
+			self.hatch = True
+		
 		self.hatch_group = None
-		if hatch_group is not None:
-			self.hatch_group = int(hatch_group)
-		self.open_top = open_top
+		if 'hatch_group' in position_dict:
+			self.hatch_group = int(position_dict['hatch_group'])
 		
-		# visible hextants when hatch is open/closed
-		self.open_visible = []
-		if open_visible is not None:
-			for direction in open_visible:
-				self.open_visible.append(int(direction))
-		self.closed_visible = []
-		if closed_visible is not None:
-			for direction in closed_visible:
-				self.closed_visible.append(int(direction))
-	
-	# toggle hatch open/closed status
-	def ToggleHatch(self):
-		if not self.hatch: return False
-		if self.open_top: return False
-		self.hatch_open = not self.hatch_open
-		# FUTURE: also toggle hatches in same group
-		return True
+		self.open_top = False
+		if 'open_top' in position_dict:
+			self.open_top = True
+		
+		self.crew_always_ce = False
+		if 'crew_always_exposed' in position_dict:
+			self.crew_always_ce = True
+		
+		self.ce_visible = []
+		if 'ce_visible' in position_dict:
+			for direction in position_dict['ce_visible']:
+				self.ce_visible.append(int(direction))
+		
+		self.bu_visible = []
+		if 'bu_visible' in position_dict:
+			for direction in position_dict['bu_visible']:
+				self.bu_visible.append(int(direction))
+		
+		# crewman currently in this position
+		self.crewman = None
 
 
 # Weapon Class: represents a weapon mounted on or carried by a unit
@@ -3979,48 +4009,17 @@ class Unit:
 		self.nation = None			# nation of unit's crew
 		
 		self.crew_list = []			# list of pointers to crew/personnel
-		self.crew_positions = []		# list of crew positions
 		
+		self.crew_positions = []		# list of crew positions
 		if 'crew_positions' in self.stats:
-			for position in self.stats['crew_positions']:
-				name = position['name']
-				
-				# infantry units don't have locations as such
-				location = None
-				if 'location' in position:
-					location = position['location']
-				
-				hatch = False
-				if 'hatch' in position:
-					hatch = True
-				
-				hatch_group = None
-				if 'hatch_group' in position:
-					hatch_group = position['hatch_group']
-				
-				open_top = False
-				if 'open_top' in position:
-					open_top = True
-				
-				open_visible = None
-				if 'open_visible' in position:
-					open_visible = position['open_visible']
-				
-				closed_visible = None
-				if 'closed_visible' in position:
-					closed_visible = position['closed_visible']
-				
-				self.crew_positions.append(CrewPosition(name, location,
-					hatch, hatch_group, open_top, open_visible, closed_visible))
+			for position_dict in self.stats['crew_positions']:
+				self.crew_positions.append(CrewPosition(position_dict))
 		
 		self.weapon_list = []			# list of weapon systems
 		weapon_list = self.stats['weapon_list']
 		if weapon_list is not None:
-			for weapon in weapon_list:
-				
-				# create a Weapon object and store in unit's weapon list
-				new_weapon = Weapon(weapon)
-				self.weapon_list.append(new_weapon)
+			for weapon_dict in weapon_list:
+				self.weapon_list.append(Weapon(weapon_dict))
 			
 			# clear this stat since we don't need it any more
 			self.stats['weapon_list'] = None
@@ -4491,14 +4490,14 @@ class Unit:
 				max_distance = MAX_LOS_DISTANCE
 			else:
 				if not position.hatch:
-					visible_hextants = position.closed_visible[:]
+					visible_hextants = position.bu_visible[:]
 					max_distance = MAX_BU_LOS_DISTANCE
 				else:
-					if position.hatch_open:
-						visible_hextants = position.open_visible[:]
+					if position.crewman.ce:
+						visible_hextants = position.ce_visible[:]
 						max_distance = MAX_LOS_DISTANCE
 					else:
-						visible_hextants = position.closed_visible[:]
+						visible_hextants = position.bu_visible[:]
 						max_distance = MAX_BU_LOS_DISTANCE
 			
 			# restrict visible hextants and max distance if crewman did a
@@ -6402,23 +6401,20 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		ConsolePrintEx(console, x+23, y, libtcod.BKGND_NONE, 
 			libtcod.RIGHT, position.location)
-		if not position.hatch:
-			text = '--'
-		else:
-			if position.hatch_open:
-				text = 'Open'
-			else:
-				text = 'Shut'
-		ConsolePrintEx(console, x+23, y+1, libtcod.BKGND_NONE, 
-			libtcod.RIGHT, text)
 		
 		if position.crewman is None:
-			text = 'Empty'
+			ConsolePrint(console, x, y+1, 'Empty')
 		else:
 			text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
 		
-		# names might have special characters so we encode it before printing it
-		ConsolePrint(console, x, y+1, text.encode('IBM850'))
+			# names might have special characters so we encode it before printing it
+			ConsolePrint(console, x, y+1, text.encode('IBM850'))
+		
+			if position.crewman.ce:
+				text = 'CE'
+			else:
+				text = 'BU'
+			ConsolePrintEx(console, x+23, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
 		
 		# crewman info if any
 		if position.crewman is not None:
@@ -6774,12 +6770,12 @@ def UpdateCommandCon():
 		
 		ConsolePrint(command_con, 1, 2, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
 		ConsolePrint(command_con, 1, 3, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
-		ConsolePrint(command_con, 1, 4, 'H')
+		ConsolePrint(command_con, 1, 4, 'E')
 		
 		libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-		ConsolePrint(command_con, 6, 2, 'Select Crew')
-		ConsolePrint(command_con, 6, 3, 'Set Action')
-		ConsolePrint(command_con, 6, 4, 'Toggle Hatch')
+		ConsolePrint(command_con, 5, 2, 'Select Crew')
+		ConsolePrint(command_con, 5, 3, 'Set Action')
+		ConsolePrint(command_con, 5, 4, 'Exposed/Button Up')
 	
 	# movement
 	elif scenario.active_menu == 3:
@@ -7473,12 +7469,12 @@ def DoScenario():
 						UpdateVPCon()
 						UpdateScenarioDisplay()
 			
-			# toggle hatch for this position
-			elif key_char == 'h':
+			# toggle BU/CE for this crewman
+			elif key_char == 'e':
 				
 				position = scenario.player_unit.crew_positions[scenario.selected_position]
 				if position.crewman is not None:
-					if position.ToggleHatch():
+					if position.crewman.ToggleCE():
 						UpdateCrewPositionCon()
 						scenario.player_unit.CalcFoV()
 						UpdateVPCon()

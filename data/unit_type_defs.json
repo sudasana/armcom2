@@ -28,16 +28,16 @@
 				"location" : "Hull",
 				"hatch" : "TRUE",
 				"hatch_group" : "0",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
 				"hatch_group" : "0",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -80,16 +80,16 @@
 				"location" : "Hull",
 				"hatch" : "TRUE",
 				"hatch_group" : "0",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
 				"hatch_group" : "0",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -134,16 +134,16 @@
 				"location" : "Hull",
 				"hatch" : "TRUE",
 				"hatch_group" : "0",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
 				"hatch_group" : "0",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -187,16 +187,16 @@
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
 				"large_hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -249,21 +249,21 @@
 				"name" : "Commander",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Gunner/Loader",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
 				"large_hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -316,21 +316,21 @@
 				"name" : "Commander",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0", "1", "2", "3", "4", "5"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
 			},
 			{
 				"name" : "Gunner/Loader",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
 				"large_hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -372,13 +372,13 @@
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -421,13 +421,13 @@
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -573,15 +573,15 @@
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -629,20 +629,20 @@
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Loader",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -702,25 +702,25 @@
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0", "1", "2", "3", "4", "5"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
 			},
 			{
 				"name" : "Loader",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Assistant Driver",
 				"location" : "Hull",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -780,25 +780,25 @@
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0", "1", "2", "3", "4", "5"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
 			},
 			{
 				"name" : "Loader",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Assistant Driver",
 				"location" : "Hull",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -858,32 +858,32 @@
 				"name" : "Commander",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Gunner",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Loader",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Assistant Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -943,32 +943,32 @@
 				"name" : "Commander",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Gunner",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Loader",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Assistant Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -1028,32 +1028,32 @@
 				"name" : "Commander",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Gunner",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Loader",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Assistant Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -1103,32 +1103,32 @@
 				"name" : "Commander",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Gunner",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Loader",
 				"location" : "Turret",
-				"closed_visible" : ["0"]
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Assistant Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -1144,7 +1144,6 @@
 		"portrait" : "unit_sd_kfz_13.xp",
 		"size_class" : "Very Small",
 		"movement_class" : "Wheeled",
-		"open_topped" : "TRUE",
 		"recce" : "TRUE",
 		"armour" : {
 			"turret_front" : "0",
@@ -1167,17 +1166,22 @@
 				"location" : "Turret",
 				"hatch" : "TRUE",
 				"open_top" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"]
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
 			},
 			{
 				"name" : "Radio Operator",
 				"location" : "Hull",
-				"closed_visible" : ["0"]
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
-				"closed_visible" : ["0"]
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
 			}
 		],
 		"description" : [
@@ -1195,7 +1199,6 @@
 		"size_class" : "Small",
 		"movement_class" : "Wheeled",
 		"turret" : "TRUE",
-		"open_topped" : "TRUE",
 		"recce" : "TRUE",
 		"armour" : {
 			"turret_front" : "1",
@@ -1219,15 +1222,16 @@
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [
@@ -1247,7 +1251,6 @@
 		"size_class" : "Small",
 		"movement_class" : "Wheeled",
 		"turret" : "TRUE",
-		"open_topped" : "TRUE",
 		"recce" : "TRUE",
 		"armour" : {
 			"turret_front" : "1",
@@ -1282,22 +1285,24 @@
 				"name" : "Commander",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"open_topped" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Gunner/Loader",
 				"location" : "Turret",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "2", "3", "4", "5"],
-				"closed_visible" : ["0"]
+				"open_topped" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
 			},
 			{
 				"name" : "Driver",
 				"location" : "Hull",
 				"hatch" : "TRUE",
-				"open_visible" : ["0", "1", "5"],
-				"closed_visible" : ["0"]
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
 			}
 		],
 		"description" : [

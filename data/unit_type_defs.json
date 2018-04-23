@@ -1210,7 +1210,8 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0"
+				"firing_group" : "0",
+				"ce_to_fire" : "TRUE"
 			}
 		],
 		"crew_positions" : [

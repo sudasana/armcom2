@@ -2251,8 +2251,10 @@ class AI:
 						continue
 					if self.owner.fired:
 						continue
-					if self.owner.GetStat('category') == 'Vehicle' and not self.owner.CrewActionPossible(['Driver'], 'Drive'):
-						continue
+					if self.owner.GetStat('category') == 'Vehicle':
+						position = self.owner.CrewActionPossible(['Driver'], 'Drive')
+						if not position:
+							continue
 				
 				# set ammo type if required
 				if ammo_type != '':
@@ -3440,17 +3442,6 @@ class Scenario:
 				if not weapon2.fired: continue
 				return "Another weapon on this mount has fired"
 		
-		# check LoS
-		if GetLoS(attacker.hx, attacker.hy, target.hx, target.hy) == -1.0:
-			return 'No line of sight to target'
-		
-		# check that weapon can fire
-		if weapon.fired:
-			text = 'Weapon already fired'
-			if weapon.GetStat('mount') == 'Turret':
-				text += '; turret rotation NA'
-			return text
-		
 		# check that proper crew action is set for this attack if required
 		position_list = weapon.GetStat('fired_by')
 		if position_list is not None:
@@ -3462,10 +3453,27 @@ class Scenario:
 			elif weapon_type == 'Hull MG':
 				action = 'Operate Hull MG'
 			
-			if not attacker.CrewActionPossible(position_list, action):
+			position = attacker.CrewActionPossible(position_list, action)
+			if not position:
 				text = 'No crewman available to: ' + action
 				return text
-
+			
+			# TODO: check that firer doesn't have to be CE to fire
+			if weapon.GetStat('ce_to_fire') is not None:
+				if not position.hatch_open:
+					return 'Crewman must open hatch to fire'
+		
+		# check LoS
+		if GetLoS(attacker.hx, attacker.hy, target.hx, target.hy) == -1.0:
+			return 'No line of sight to target'
+		
+		# check that weapon can fire
+		if weapon.fired:
+			text = 'Weapon already fired'
+			if weapon.GetStat('mount') == 'Turret':
+				text += '; turret rotation NA'
+			return text
+		
 		# check for hull-mounted weapons being blocked
 		mount = weapon.GetStat('mount')
 		if mount is not None:
@@ -5341,10 +5349,10 @@ class Unit:
 				# crewman already on this action
 				# TODO: is this ok?
 				if position.crewman.current_action == action:
-					return True
+					return position
 				
 				if position.crewman.current_action == 'None':
-					return True
+					return position
 		return False
 	
 	# returns true if a crewman in any of the given positions is on the given action

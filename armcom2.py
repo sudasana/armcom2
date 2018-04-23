@@ -264,13 +264,13 @@ CRITICAL_MISS = 97.0
 # base success chances for point fire attacks
 # first column is for vehicle targets, second is everything else
 PF_BASE_CHANCE = [
-	[98.0, 88.0],			# same hex
-	[92.0, 72.0],			# 1 hex range
-	[89.5, 68.0],			# 2 hex range
-	[83.0, 58.0],			# 3 "
-	[72.0, 42.0],			# 4 "
-	[58.0, 28.0],			# 5 "
-	[42.0, 17.0]			# 6 "
+	[88.0, 78.0],			# same hex
+	[82.0, 62.0],			# 1 hex range
+	[79.5, 58.0],			# 2 hex range
+	[73.0, 48.0],			# 3 "
+	[62.0, 32.0],			# 4 "
+	[48.0, 18.0],			# 5 "
+	[32.0, 7.0]			# 6 "
 ]
 
 # base success chances for armour penetration
@@ -375,15 +375,15 @@ TERRAIN_LOS_HEIGHT = {
 
 # base chance of getting a bonus move when moving into terrain
 TERRAIN_BONUS_CHANCE = {
-	'openground' : 80.0,
-	'roughground' : 20.0,
-	'forest' : 20.0,
-	'village' : 10.0,
-	'fields_in_season' : 50.0,
+	'openground' : 70.0,
+	'roughground' : 15.0,
+	'forest' : 15.0,
+	'village' : 5.0,
+	'fields_in_season' : 40.0,
 	'pond' : 0.0
 }
 # bonus move chance when moving along a dirt road
-DIRT_ROAD_BONUS_CHANCE = 90.0
+DIRT_ROAD_BONUS_CHANCE = 80.0
 # multiplier for each extra move already taken
 BONUS_CHANCE_MULTIPLIER = 0.4
 

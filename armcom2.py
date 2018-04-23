@@ -3688,6 +3688,7 @@ class Crew:
 		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'None'			# currently active action
+		self.action_bonus_used = False
 		
 		self.ce = True					# Crew Exposed / Buttoned Up
 		self.CheckCE()					# check to see if no hatch, must be BU
@@ -3777,6 +3778,10 @@ class Crew:
 		
 		# action was set automatically, cannot change
 		if 'selectable' not in CREW_ACTIONS[self.current_action]:
+			return False
+		
+		# action bonus was already used
+		if self.action_bonus_used:
 			return False
 		
 		i = self.action_list.index(self.current_action)
@@ -4199,12 +4204,17 @@ class Unit:
 		
 		return chance
 
-	# roll for random HD status gain
+	# roll for HD status gain
 	# if direction is provided, any HD status will be centered on that direction
 	# returns True if successful
 	def CheckHullDownGain(self, direction=None):
 		chance = self.GetHullDownChance()
 		if chance == 0.0: return False
+		
+		position = self.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
+		if position:
+			position.crewman.action_bonus_used = True
+		
 		roll = GetPercentileRoll()
 		if roll > chance: return False
 		if direction is None:
@@ -4285,6 +4295,9 @@ class Unit:
 			if 'selectable' in CREW_ACTIONS[position.crewman.current_action]:
 				if position.crewman.current_action not in position.crewman.action_list:
 					position.crewman.current_action = 'None'
+			
+			# reset bonus flag
+			position.crewman.action_bonus_used = False
 		
 		# decrement FP hit counter if any
 		if self.hit_by_fp > 0:
@@ -4708,6 +4721,10 @@ class Unit:
 			chance = 0.0
 		else:
 			chance = scenario.CalcBonusMove(self, hx, hy)
+			# set bonus used flag if applicable
+			position = self.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
+			if position:
+				position.crewman.action_bonus_used = True
 		
 		# do the move
 		self.MoveInto(hx, hy)
@@ -4988,6 +5005,12 @@ class Unit:
 			
 			# something went wrong!
 			if profile is None: return False
+			
+			# set bonus used flag if applicable
+			if profile['type'] == 'Point Fire':
+				position = self.CheckCrewAction(['Commander'], 'Direct Gunner')
+				if position:
+					position.crewman.action_bonus_used = True
 			
 			# display the attack to the screen
 			scenario.DisplayAttack(profile)
@@ -5360,7 +5383,7 @@ class Unit:
 			if position.name in position_list:
 				if position.crewman is None: continue
 				if position.crewman.current_action == action:
-					return True
+					return position
 		return False
 	
 	# check for a crewman in the given position, and try to set their action
@@ -6890,7 +6913,10 @@ def UpdateContextCon():
 			for line in lines:
 				ConsolePrint(context_con, 0, y, line)
 				y += 1
-				if y == 9: break
+				if y == 8: break
+			
+			if position.crewman.action_bonus_used:
+				ConsolePrint(context_con, 0, 9, 'Bonus used')
 	
 	# movement
 	elif scenario.active_menu == 3:

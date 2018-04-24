@@ -5993,7 +5993,7 @@ def Wait(wait_time):
 	wait_time = wait_time * 0.01
 	start_time = time.time()
 	while time.time() - start_time < wait_time:
-		libtcod.console_flush()
+		FlushKeyboardEvents()
 
 
 # wait for player to press continue key

@@ -382,6 +382,17 @@ TERRAIN_BONUS_CHANCE = {
 	'fields_in_season' : 40.0,
 	'pond' : 0.0
 }
+
+# base chance of bogging down when moving out of / into this terrain
+TERRAIN_BOG_CHANCE = {
+	'openground' : 0.0,
+	'roughground' : 5.0,
+	'forest' : 8.0,
+	'village' : 0.0,
+	'fields_in_season' : 2.0,
+	'pond' : 0.0
+}
+
 # bonus move chance when moving along a dirt road
 DIRT_ROAD_BONUS_CHANCE = 80.0
 # multiplier for each extra move already taken

@@ -249,7 +249,7 @@ CD_ENEMY_STRENGTH_EFFECT = -3.0
 OBJECTIVE_CAPTURE_MULTIPLIER = 3
 
 # number of additional dummy units spawned in a scenario
-ENEMY_DUMMY_UNITS = 2
+ENEMY_DUMMY_UNITS = 1
 
 # minimum distance from the player that an enemy will be spawned in a scenario
 ENEMY_SPAWN_MIN_DISTANCE = 5
@@ -4543,7 +4543,8 @@ class Unit:
 			
 			# rotate visible hextants based on current turret/hull facing
 			if self.facing is not None:
-				if position.location == 'Turret':
+				# position is in a rotatable turret
+				if position.location == 'Turret' and self.turret_facing is not None:
 					direction = self.turret_facing
 				else:
 					direction = self.facing

@@ -60,12 +60,12 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-04-18'			# game version
+VERSION = 'Alpha 1.0.0-2018-04-28'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -688,12 +688,10 @@ class Campaign:
 		# determine number of other tanks in group
 		op_value = int(self.player_unit.GetStat('op_value'))
 		
-		if op_value >= 39:
+		if op_value >= 29:
 			num = 1
-		elif op_value >= 29:
-			num = 2
 		else:
-			num = 3
+			num = 2
 		for i in range(num):
 			new_unit = Unit(selected_unit.unit_id)
 			new_unit.owning_player = 0

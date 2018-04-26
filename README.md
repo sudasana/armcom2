@@ -1,6 +1,6 @@
 # Armoured Commander II
 
-This is the work-in-progress pre-Alpha version of Armoured Commander II.
+This is the work-in-progress version of Armoured Commander II.
 
 Copyright (c) 2018 Gregory Adam Scott (sudasana@gmail.com)
 This file is part of Armoured Commander II.

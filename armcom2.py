@@ -2276,10 +2276,6 @@ class AI:
 				
 				score = profile['final_chance']
 				
-				# TEMP? skip low-chance attacks
-				if score <= 3.0:
-					continue
-				
 				# improve chance of AP attacks on armoured targets
 				if target.GetStat('armour') is not None and ammo_type == 'AP':
 					score += 25.0
@@ -2305,7 +2301,7 @@ class AI:
 				print 'AI SPY: Best attack with score of ' + str(score) + ': ' + weapon.stats['name'] + '(' + ammo_type + ') against ' + target.unit_id
 			
 			# not good enough!
-			if score == 3.0:
+			if score <= 3.0:
 				self.owner.DoPostActivation()
 				return
 			

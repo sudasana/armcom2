@@ -241,7 +241,7 @@ CD_BATTLE_ORGANIZATION_MOD = 5.0
 
 # scenarios will have 1-4 enemy units
 # base odds of 4,3,2 units
-ENEMY_NUMBER_BASE_ODDS = [97.0, 85.0, 70.0]
+ENEMY_NUMBER_BASE_ODDS = [90.0, 75.0, 60.0]
 # effect of each point of strength on odds
 CD_ENEMY_STRENGTH_EFFECT = -3.0
 
@@ -2064,19 +2064,19 @@ class AI:
 			
 		# much more likely to attack if already have an acquired target
 		if self.owner.acquired_target is not None:
-			roll -= 20.0
+			roll -= 15.0
 		
 		# guns have fewer options for actions
 		if self.owner.GetStat('category') == 'Gun':
-			if roll >= 70.0:
+			if roll >= 80.0:
 				self.disposition = None
 			else:
 				self.disposition = 'Combat'
 		
 		elif self.owner.GetStat('category') == 'Infantry':
-			if roll <= 50.0:
+			if roll <= 65.0:
 				self.disposition = 'Combat'
-			elif roll <= 60.0:
+			elif roll <= 80.0:
 				if self.owner.pinned:
 					self.disposition = 'Combat'
 				else:
@@ -2086,9 +2086,9 @@ class AI:
 		
 		else:
 		
-			if roll >= 80.0:
+			if roll >= 85.0:
 				self.disposition = None
-			elif roll <= 50.0:
+			elif roll <= 55.0:
 				self.disposition = 'Combat'
 			else:
 				if self.owner.pinned:
@@ -2214,10 +2214,6 @@ class AI:
 						ammo_list = weapon.stats['ammo_type_list']
 						for ammo_type in ammo_list:
 							
-							# always choose AP over HE if target is armoured
-							if ammo_type != 'AP' and target.GetStat('armour') is not None and 'AP' in ammo_list:
-								continue
-							
 							weapon.current_ammo = ammo_type
 							result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
 							if result != '':
@@ -2241,8 +2237,8 @@ class AI:
 			scored_list = []
 			for (weapon, target, ammo_type) in attack_list:
 				
-				# skip area fire attacks on armoured targets that have no chance of effect
-				if weapon.GetStat('type') not in ['Co-ax MG', 'Hull MG', 'AA MG'] and target.GetStat('armour') is not None:
+				# skip attacks on armoured targets that have no chance of effect
+				if weapon.GetStat('type') not in ['Gun', 'Co-ax MG', 'Hull MG', 'AA MG'] and target.GetStat('armour') is not None:
 					continue
 				
 				# determine if a pivot or turret rotation would be required
@@ -2276,9 +2272,17 @@ class AI:
 				# calculate odds of attack
 				profile = scenario.CalcAttack(self.owner, weapon, target, pivot=pivot_req, turret_rotate=turret_rotate_req)
 				
-				
+				if profile is None: continue
 				
 				score = profile['final_chance']
+				
+				# TEMP? skip low-chance attacks
+				if score <= 3.0:
+					continue
+				
+				# improve chance of AP attacks on armoured targets
+				if target.GetStat('armour') is not None and ammo_type == 'AP':
+					score += 25.0
 				
 				# TODO: modify score by chance of penetration
 				

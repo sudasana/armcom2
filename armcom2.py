@@ -2241,6 +2241,10 @@ class AI:
 			scored_list = []
 			for (weapon, target, ammo_type) in attack_list:
 				
+				# skip area fire attacks on armoured targets that have no chance of effect
+				if weapon.GetStat('type') not in ['Co-ax MG', 'Hull MG', 'AA MG'] and target.GetStat('armour') is not None:
+					continue
+				
 				# determine if a pivot or turret rotation would be required
 				pivot_req = None
 				turret_rotate_req = None
@@ -2271,6 +2275,9 @@ class AI:
 				
 				# calculate odds of attack
 				profile = scenario.CalcAttack(self.owner, weapon, target, pivot=pivot_req, turret_rotate=turret_rotate_req)
+				
+				
+				
 				score = profile['final_chance']
 				
 				# TODO: modify score by chance of penetration
@@ -2743,7 +2750,7 @@ class Scenario:
 		weapon_type = weapon.GetStat('type')
 		if weapon_type == 'Gun':
 			profile['type'] = 'Point Fire'
-		elif weapon_type in ['Co-ax MG', 'Hull MG', 'AA MG']:
+		elif weapon_type in ['Co-ax MG', 'Hull MG', 'AA MG', 'Rifles']:
 			profile['type'] = 'Area Fire'
 			profile['effective_fp'] = 0		# placeholder for effective fp
 		else:
@@ -2840,11 +2847,11 @@ class Scenario:
 			
 			# long / short-barreled gun
 			long_range = weapon.GetStat('long_range')
-			if long_range is not None:
-				if long_range == 'S' and distance >= 3:
-					modifier_list.append(('Short-Barreled Gun', -12.0))
-				elif long_range == 'L' and distance >= 3:
-					modifier_list.append(('Long-Barreled Gun', 12.0))
+			if long_range is not None and distance >= 3:
+				if long_range == 'S':
+					modifier_list.append(('Short Gun', -12.0))
+				elif long_range == 'L':
+					modifier_list.append(('Long Gun', 12.0))
 		
 		# area fire
 		elif profile['type'] == 'Area Fire':

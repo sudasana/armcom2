@@ -2247,7 +2247,7 @@ class AI:
 				
 				mount = weapon.GetStat('mount')
 				if mount is not None:
-					if mount == 'Turret':
+					if mount == 'Turret' and self.owner.turret_facing is not None:
 						if (target.hx - self.owner.hx, target.hy - self.owner.hy) not in HEXTANTS[self.owner.turret_facing]:
 							turret_rotate_req = True
 					else:
@@ -2308,7 +2308,7 @@ class AI:
 			mount = weapon.GetStat('mount')
 			if mount is not None:
 				changed_facing = False
-				if mount == 'Turret':
+				if mount == 'Turret' and self.owner.turret_facing is not None:
 					if (target.hx - self.owner.hx, target.hy - self.owner.hy) not in HEXTANTS[self.owner.turret_facing]:
 						self.owner.turret_facing = direction
 						changed_facing = True
@@ -2552,6 +2552,7 @@ class Scenario:
 				direction = GetDirectionToward(new_unit.hx, new_unit.hy,
 					scenario.player_unit.hx, scenario.player_unit.hy)
 				new_unit.facing = direction
+				# unit has rotatable turret
 				if 'turret' in new_unit.stats:
 					new_unit.turret_facing = direction
 				
@@ -2785,7 +2786,7 @@ class Scenario:
 				modifier_list.append(('Attacker Pivoted', -40.0))
 
 			# weapon turret rotated
-			elif weapon.GetStat('mount') == 'Turret':
+			elif weapon.GetStat('mount') == 'Turret' and attacker.turret_facing is not None:
 				if attacker.turret_facing != attacker.previous_turret_facing:
 					modifier_list.append(('Turret Rotated', -20.0))
 			
@@ -2882,7 +2883,7 @@ class Scenario:
 				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
 
 			# weapon turret rotated
-			elif weapon.GetStat('mount') == 'Turret':
+			elif weapon.GetStat('mount') == 'Turret' and attacker.turret_facing is not None:
 				if attacker.turret_facing != attacker.previous_turret_facing:
 					mod = round(base_chance / 4.0, 2)
 					modifier_list.append(('Turret Rotated', 0.0 - mod))
@@ -2958,7 +2959,8 @@ class Scenario:
 		
 		# get location hit on target
 		location = profile['location']
-		if location == 'Hull':
+		# hull hit or tart does not have rotatable turret
+		if location == 'Hull' or target.turret_facing is None:
 			turret_facing = False
 		else:
 			turret_facing = True
@@ -2967,7 +2969,7 @@ class Scenario:
 		hit_location = (location + '_' + facing).lower()
 		
 		# generate a text description of location hit
-		if turret_facing and target.turret_facing is None:
+		if location == 'Turret' and target.turret_facing is None:
 			location = 'Upper Hull'
 		profile['location_desc'] = location + ' ' + facing
 		
@@ -3502,7 +3504,7 @@ class Scenario:
 		
 		# check covered arc
 		if mount is not None:
-			if mount == 'Turret':
+			if mount == 'Turret' and attacker.turret_facing is not None:
 				direction = attacker.turret_facing
 			else:
 				direction = attacker.facing

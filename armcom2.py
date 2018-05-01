@@ -58,14 +58,15 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_NO_ACTION = True					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
+SHOW_HEX_SCORES = True					# displace map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-04-28'			# game version
+VERSION = 'Alpha 1.0.0-2018-05-05'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -863,6 +864,9 @@ class MapHex:
 		self.g = 0
 		self.h = 0
 		self.f = 0
+		
+		# AI scores
+		self.scores = {}
 	
 	# set elevation of hex
 	# FUTURE: handle cliff edges here?
@@ -935,6 +939,8 @@ class CampaignMapHex:
 		
 		# generate terrain
 		self.GenerateTerrain()
+		# calculate hex scores for AI
+		self.GenerateHexScores()
 	
 	# fill the hex map with terrain
 	def GenerateTerrain(self):
@@ -1128,7 +1134,36 @@ class CampaignMapHex:
 		hx1, hy1 = 0, self.map_radius
 		hx2, hy2 = 0, 0 - self.map_radius
 		GenerateRoad(hx1, hy1, hx2, hy2)
-
+	
+	# calculate terrain scores to help AI
+	def GenerateHexScores(self):
+		for (hx, hy), map_hex in self.map_hexes.iteritems():
+			
+			map_hex.scores['total_score'] = 0.0
+			
+			# distance from map objective
+			score = 8.0 - float(GetHexDistance(hx, hy, 0, 0))
+			map_hex.scores['distance_from_objective'] = score
+			map_hex.scores['total_score'] += score
+			
+			# LoS modifier
+			score = map_hex.GetTerrainMod() / 10.0
+			map_hex.scores['los_mod'] = score
+			map_hex.scores['total_score'] += score
+			
+			# terrain height
+			score = float(map_hex.elevation - 1) * 2.0
+			map_hex.scores['elevation'] = score
+			map_hex.scores['total_score'] += score
+			
+			# LoS to objective
+			score = GetLoS(hx, hy, 0, 0)
+			if score == -1.0 or score >= MAX_LOS_MOD:
+				map_hex.scores['los_to_objective'] = -10.0
+			else:
+				score = round(10.0 * ((60.0 - score) / 60.0), 2)
+				map_hex.scores['los_to_objective'] = score
+				map_hex.scores['total_score'] += score
 
 
 # Campaign Day: represents one calendar day in a campaign with a 5x7 map of terrain hexes, each of
@@ -6674,6 +6709,17 @@ def UpdateVPCon():
 		(x,y) = PlotHex(hx, hy)
 		libtcod.console_blit(hex_objective, 0, 0, 0, 0, map_vp_con, x-3, y-2, 1.0, 0.0)
 		break
+	
+	# show hex scores if flag enabled
+	if not SHOW_HEX_SCORES: return
+	
+	for (hx, hy) in VP_HEXES:
+		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
+		if (map_hx, map_hy) not in scenario.cd_hex.map_hexes:
+			continue
+		map_hex = scenario.cd_hex.map_hexes[(map_hx, map_hy)]
+		(x,y) = PlotHex(hx, hy)
+		ConsolePrint(map_vp_con, x-1, y+1, str(map_hex.scores['total_score']))
 
 
 

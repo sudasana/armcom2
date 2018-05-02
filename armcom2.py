@@ -63,7 +63,7 @@ GODMODE = False						# player cannot be destroyed
 ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
-SHOW_HEX_SCORES = True					# displace map hex scores in viewport
+SHOW_HEX_SCORES = False					# displace map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = 'Alpha 1.0.0-2018-05-05'			# game version
@@ -2547,38 +2547,69 @@ class Scenario:
 			for unit_id in enemy_unit_list:
 				if unit_types[unit_id]['category'] != category: continue
 				
-				# determine where to place new unit
-				if category == 'Gun':
-					ideal_distance = 1
-				elif category == 'Infantry':
-					ideal_distance = 2
-				else:
-					ideal_distance = 6
-				
 				hx = None
 				hy = None
-				for tries in range(300):
-					close_enough = False
-					(hx, hy) = choice(self.cd_hex.map_hexes.keys())
+				
+				# if infantry or gun, use terrain scores to select spawn location
+				if category in ['Gun', 'Infantry']:
 					
-					# too close to player
-					if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) < ENEMY_SPAWN_MIN_DISTANCE:
-						continue
+					print 'DEBUG: building scored list of map locations for ' + unit_id
 					
-					# not passable
-					if self.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
-						continue
+					scored_list = []
+					for (map_hx, map_hy), map_hex in self.cd_hex.map_hexes.iteritems():
+						scored_list.append((map_hex.scores['total_score'], map_hx, map_hy))
+					scored_list = sorted(scored_list, key=lambda x:x[0], reverse=True)
 					
-					# close enough to objective
-					if GetHexDistance(hx, hy, 0, 0) <= ideal_distance:
-						close_enough = True
-						break
-					
-					if close_enough:
+					# check locations from best score to worst
+					for (score, map_hx, map_hy) in scored_list:
+						
+						# too close to player
+						if GetHexDistance(map_hx, map_hy, self.player_unit.hx, self.player_unit.hy) < ENEMY_SPAWN_MIN_DISTANCE:
+							continue
+						
+						# not passable
+						if self.cd_hex.map_hexes[(map_hx, map_hy)].terrain_type == 'pond':
+							continue
+						
+						# stack too large
+						if len(self.cd_hex.map_hexes[(map_hx, map_hy)].unit_stack) > 1:
+							continue
+						
+						# good location
+						hx = map_hx
+						hy = map_hy
+						
+						print 'DEBUG: found a location with score: ' + str(score)
+						
 						break
 				
+				# if vehicle, use an ideal distance to objective instead
+				else:
+				
+					ideal_distance = 6
+				
+					for tries in range(300):
+						close_enough = False
+						(hx, hy) = choice(self.cd_hex.map_hexes.keys())
+						
+						# too close to player
+						if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) < ENEMY_SPAWN_MIN_DISTANCE:
+							continue
+						
+						# not passable
+						if self.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
+							continue
+						
+						# close enough to objective
+						if GetHexDistance(hx, hy, 0, 0) <= ideal_distance:
+							close_enough = True
+							break
+						
+						if close_enough:
+							break
+				
 				if hx is None and hy is None:
-					print 'ERROR: Could not find a location close enough to an objective to spawn!'
+					print 'ERROR: Could not find a good location to spawn ' + unit_id
 					continue
 				
 				# create the unit

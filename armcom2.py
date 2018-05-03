@@ -560,7 +560,7 @@ class Campaign:
 			
 			if not GetInputEvent(): continue
 			
-			# TEMP: no menu yet, just exit directly
+			# just exit directly if escape is pressed
 			if key.vk == libtcod.KEY_ESCAPE:
 				return False
 			
@@ -1730,10 +1730,18 @@ class CampaignDay:
 			
 			# Determine action based on key pressed
 			
-			# TEMP: no menu yet, just exit directly
-			if key.vk == libtcod.KEY_ESCAPE:
-				SaveGame()
-				exit_loop = True
+			# enter game menu
+			if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_F1, libtcod.KEY_F2, libtcod.KEY_F3]:
+				
+				result = ShowGameMenu()
+				
+				if result == 'exit_game':
+					SaveGame()
+					exit_loop = True
+				else:
+					# re-draw to clear game menu from screen
+					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+					UpdateScenarioDisplay()
 				continue
 			
 			# key commands
@@ -2553,8 +2561,6 @@ class Scenario:
 				# if infantry or gun, use terrain scores to select spawn location
 				if category in ['Gun', 'Infantry']:
 					
-					print 'DEBUG: building scored list of map locations for ' + unit_id
-					
 					scored_list = []
 					for (map_hx, map_hy), map_hex in self.cd_hex.map_hexes.iteritems():
 						scored_list.append((map_hex.scores['total_score'], map_hx, map_hy))
@@ -2578,8 +2584,6 @@ class Scenario:
 						# good location
 						hx = map_hx
 						hy = map_hy
-						
-						print 'DEBUG: found a location with score: ' + str(score)
 						
 						break
 				
@@ -6258,14 +6262,24 @@ def PlaySoundFor(obj, action):
 #                              In-Game Menus and Displays                                #
 ##########################################################################################
 
-# display the in-game menu to screen, with the given tab active
-# TODO: can be called from campaign calendar, campaign day, or scenario interfaces
-def ShowGameMenu(active_tab):
+# display the in-game menu to screen
+def ShowGameMenu():
 	
 	# draw the contents of the currently active tab to the menu console
 	def DrawMenuCon(active_tab):
 		# blit menu background to game menu console
 		libtcod.console_blit(game_menu_bkg, 0, 0, 0, 0, game_menu_con, 0, 0)
+		
+		# highlight active tab title
+		x1 = 2 + (active_tab * 11)
+		for x in range(x1, x1+9):
+			libtcod.console_set_char_foreground(game_menu_con, x, 1, ACTION_KEY_COL)
+			libtcod.console_set_char_foreground(game_menu_con, x, 2, libtcod.white)
+		
+		# erase part of line so it appears that tab is in foreground
+		x1 = 1 + (active_tab * 11)
+		for x in range(x1, x1+10):
+			libtcod.console_put_char(game_menu_con, x, 3, chr(0))
 		
 		# fill in active tab info
 		
@@ -6276,30 +6290,35 @@ def ShowGameMenu(active_tab):
 			ConsolePrint(game_menu_con, 25, 18, 'Current VP: ' + str(campaign.player_vp))
 		
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-			ConsolePrint(game_menu_con, 25, 22, 'Esc')
-			ConsolePrint(game_menu_con, 25, 24, 'Q')
-			ConsolePrint(game_menu_con, 25, 25, 'A')
+			ConsolePrint(game_menu_con, 25, 22, 'Q')
 			
 			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-			ConsolePrint(game_menu_con, 30, 22, 'Return to Game')
-			ConsolePrint(game_menu_con, 30, 24, 'Save and Quit to Main Menu')
-			ConsolePrint(game_menu_con, 30, 25, 'Abandon Game')
+			ConsolePrint(game_menu_con, 30, 22, 'Save and Quit to Main Menu')
 		
+		# TODO: messages
+		elif active_tab == 1:
+			pass
+		
+		# crew menu
+		elif active_tab == 2:
+			
+			# display list of crew in the player tank
+			DisplayCrew(campaign.player_unit, game_menu_con, 6, 13, False)
+			
+			# FUTURE: display info on selected crewman
+			#crewman = scenario.player_unit.crew_positions[scenario.selected_position].crewman
+			#if crewman is not None:
+			#	DisplayCrewInfo(crewman, game_menu_con, 37, 8)
+			
+			#libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
+			#ConsolePrint(game_menu_con, 6, 40, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
+			
+			#libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+			#ConsolePrint(game_menu_con, 11, 40, 'Select Crew')
+		
+		# TODO: options
 		elif active_tab == 3:
-			
-			# display list of crew
-			DisplayCrew(scenario.player_unit, game_menu_con, 6, 13, True)
-			
-			# display info on selected crewman
-			crewman = scenario.player_unit.crew_positions[scenario.selected_position].crewman
-			if crewman is not None:
-				DisplayCrewInfo(crewman, game_menu_con, 37, 8)
-			
-			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-			ConsolePrint(game_menu_con, 6, 40, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
-			
-			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-			ConsolePrint(game_menu_con, 11, 40, 'Select Crew')
+			pass
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		libtcod.console_flush()
@@ -6310,6 +6329,19 @@ def ShowGameMenu(active_tab):
 	
 	# darken screen background
 	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	
+	# determine initially active tab based on pressed key
+	if key.vk == libtcod.KEY_ESCAPE:
+		active_tab = 0
+	elif key.vk == libtcod.KEY_F1:
+		active_tab = 1
+	elif key.vk == libtcod.KEY_F2:
+		active_tab = 2
+	elif key.vk == libtcod.KEY_F3:
+		active_tab = 3
+	else:
+		# no such tab yet
+		return ''
 	
 	# generate menu console for the first time and blit to screen
 	DrawMenuCon(active_tab)
@@ -6324,14 +6356,34 @@ def ShowGameMenu(active_tab):
 		# get keyboard and/or mouse event
 		if not GetInputEvent(): continue
 		
-		# Activate Different Menu
-		if key.vk == libtcod.KEY_ESCAPE and active_tab != 0:
-			active_tab = 0
-			DrawMenuCon(active_tab)
+		# Activate Different Menu or close current menu
+		if key.vk == libtcod.KEY_ESCAPE:
+			if active_tab == 0:
+				exit_menu = True
+			else:
+				active_tab = 0
+				DrawMenuCon(active_tab)
 			continue
-		elif key.vk == libtcod.KEY_F3 and active_tab != 3:
-			active_tab = 3
-			DrawMenuCon(active_tab)
+		elif key.vk == libtcod.KEY_F1:
+			if active_tab == 1:
+				exit_menu = True
+			else:
+				active_tab = 1
+				DrawMenuCon(active_tab)
+			continue
+		elif key.vk == libtcod.KEY_F2:
+			if active_tab == 2:
+				exit_menu = True
+			else:
+				active_tab = 2
+				DrawMenuCon(active_tab)
+			continue
+		elif key.vk == libtcod.KEY_F3:
+			if active_tab == 3:
+				exit_menu = True
+			else:
+				active_tab = 3
+				DrawMenuCon(active_tab)
 			continue
 		
 		key_char = chr(key.c).lower()
@@ -6339,48 +6391,34 @@ def ShowGameMenu(active_tab):
 		# Game Menu
 		if active_tab == 0:
 			
-			if key.vk == libtcod.KEY_ESCAPE:
-				exit_menu = True
-			
-			elif key_char == 'q':
+			if key_char == 'q':
 				SaveGame()
 				session.exiting_to_main_menu = True
 				result = 'exit_game'
 				exit_menu = True
 			
-			elif key_char == 'a':
-				text = 'Abandoning will erase the saved game.'
-				result = ShowNotification(text, confirm=True)
-				if result:
-					EraseGame()
-					session.exiting_to_main_menu = True
-					result = 'exit_game'
-					exit_menu = True
-				libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
-				libtcod.console_flush()
-		
 		# Crew Menu
 		elif active_tab == 3:
 			
 			key_char = DecodeKey(key_char)
 			
 			# change selected crewman
-			if key_char in ['w', 's']:
+			#if key_char in ['w', 's']:
 				
-				if key_char == 'w':
-					if scenario.selected_position > 0:
-						scenario.selected_position -= 1
-					else:
-						scenario.selected_position = len(scenario.player_unit.crew_positions) - 1
+			#	if key_char == 'w':
+			#		if scenario.selected_position > 0:
+			#			scenario.selected_position -= 1
+			#		else:
+			#			scenario.selected_position = len(scenario.player_unit.crew_positions) - 1
 				
-				else:
-					if scenario.selected_position == len(scenario.player_unit.crew_positions) - 1:
-						scenario.selected_position = 0
-					else:
-						scenario.selected_position += 1
-				UpdateContextCon()
-				UpdateCrewPositionCon()
-				DrawMenuCon(active_tab)
+			#	else:
+			#		if scenario.selected_position == len(scenario.player_unit.crew_positions) - 1:
+			#			scenario.selected_position = 0
+			#		else:
+			#			scenario.selected_position += 1
+			#	UpdateContextCon()
+			#	UpdateCrewPositionCon()
+			#	DrawMenuCon(active_tab)
 
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
@@ -7509,12 +7547,10 @@ def DoScenario():
 		# Determine action based on key pressed
 		
 		# enter game menu
-		if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_F3]:
-			if key.vk == libtcod.KEY_ESCAPE:
-				menu_tab = 0
-			else:
-				menu_tab = 3
-			result = ShowGameMenu(menu_tab)
+		if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_F1, libtcod.KEY_F2, libtcod.KEY_F3]:
+			
+			result = ShowGameMenu()
+			
 			if result == 'exit_game':
 				exit_scenario = True
 			else:

@@ -1738,10 +1738,7 @@ class CampaignDay:
 				if result == 'exit_game':
 					SaveGame()
 					exit_loop = True
-				else:
-					# re-draw to clear game menu from screen
-					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-					UpdateScenarioDisplay()
+				
 				continue
 			
 			# key commands
@@ -6262,6 +6259,94 @@ def PlaySoundFor(obj, action):
 #                              In-Game Menus and Displays                                #
 ##########################################################################################
 
+# display a list of game options and current settings
+def DisplayGameOptions(console, x, y, skip_esc=False):
+	OPTIONS = [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]
+	for (char, text) in OPTIONS:
+		
+		if char == 'Esc' and skip_esc: continue
+		
+		# extra spacing
+		if char == 'Esc': y += 1
+		
+		libtcod.console_set_default_foreground(console, ACTION_KEY_COL)
+		ConsolePrint(console, x, y, char)
+		
+		libtcod.console_set_default_foreground(console, libtcod.lighter_grey)
+		ConsolePrint(console, x+4, y, text)
+		
+		# current option settings
+		libtcod.console_set_default_foreground(console, libtcod.light_blue)
+		
+		# toggle font size
+		if char == 'F':
+			if config.getboolean('ArmCom2', 'large_display_font'):
+				text = '16x16'
+			else:
+				text = '8x8'
+			ConsolePrint(console, x+18, y, text)
+		
+		# sound effects
+		elif char == 'S':
+			if config.getboolean('ArmCom2', 'sounds_enabled'):
+				text = 'ON'
+			else:
+				text = 'OFF'
+			ConsolePrint(console, x+18, y, text)
+		
+		# keyboard settings
+		elif char == 'K':
+			ConsolePrint(console, x+18, y, KEYBOARDS[config.getint('ArmCom2', 'keyboard')])
+		
+		y += 1
+
+
+# take a keyboard input and change game settings
+def ChangeGameSettings(key_char):
+	
+	if key_char not in ['f', 's', 'k']:
+		return
+	
+	# switch font size
+	if key_char == 'f':
+		libtcod.console_delete(0)
+		if config.getboolean('ArmCom2', 'large_display_font'):
+			config.set('ArmCom2', 'large_display_font', 'false')
+			fontname = 'c64_8x8.png'
+		else:
+			config.set('ArmCom2', 'large_display_font', 'true')
+			fontname = 'c64_16x16.png'
+		libtcod.console_set_custom_font(DATAPATH+fontname,
+			libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
+		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
+			NAME + ' - ' + VERSION, fullscreen = False,
+			renderer = libtcod.RENDERER_GLSL)
+	
+	# toggle sound effects on/off
+	elif key_char == 's':
+		if config.getboolean('ArmCom2', 'sounds_enabled'):
+			config.set('ArmCom2', 'sounds_enabled', 'false')
+		else:
+			config.set('ArmCom2', 'sounds_enabled', 'true')
+			# init mixer and load sound samples if required
+			if len(session.sample) == 0:
+				session.InitMixer()
+				session.LoadSounds()
+		
+	# switch keyboard layout
+	elif key_char == 'k':
+		i = config.getint('ArmCom2', 'keyboard')
+		if i == len(KEYBOARDS) - 1:
+			i = 0
+		else:
+			i += 1
+		config.set('ArmCom2', 'keyboard', i)
+		GenerateKeyboards()
+	
+	SaveCFG()
+	return True
+
+
 # display the in-game menu to screen
 def ShowGameMenu():
 	
@@ -6316,9 +6401,11 @@ def ShowGameMenu():
 			#libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
 			#ConsolePrint(game_menu_con, 11, 40, 'Select Crew')
 		
-		# TODO: options
+		# game settings
 		elif active_tab == 3:
-			pass
+			ConsolePrintEx(game_menu_con, 42, 14, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Game Options')
+			DisplayGameOptions(game_menu_con, WINDOW_XM-14, 24)
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		libtcod.console_flush()
@@ -6398,7 +6485,7 @@ def ShowGameMenu():
 				exit_menu = True
 			
 		# Crew Menu
-		elif active_tab == 3:
+		elif active_tab == 2:
 			
 			key_char = DecodeKey(key_char)
 			
@@ -6419,6 +6506,13 @@ def ShowGameMenu():
 			#	UpdateContextCon()
 			#	UpdateCrewPositionCon()
 			#	DrawMenuCon(active_tab)
+		
+		# Game Settings
+		elif active_tab == 3:
+			
+			key_char = DecodeKey(key_char)
+			if ChangeGameSettings(key_char):
+				DrawMenuCon(active_tab)
 
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
@@ -7555,7 +7649,6 @@ def DoScenario():
 				exit_scenario = True
 			else:
 				# re-draw to clear game menu from screen
-				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				UpdateScenarioDisplay()
 			continue
 		
@@ -7920,43 +8013,12 @@ def UpdateMainMenuCon(options_menu_active):
 	
 	# display menu options
 	if options_menu_active:
-		OPTIONS = [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]
-		for (char, text) in OPTIONS:
-			
-			# extra spacing
-			if char == 'Esc': y += 1
-			
-			libtcod.console_set_default_foreground(main_menu_con, ACTION_KEY_COL)
-			ConsolePrint(main_menu_con, WINDOW_XM-10, y, char)
-			
-			libtcod.console_set_default_foreground(main_menu_con, libtcod.lighter_grey)
-			ConsolePrint(main_menu_con, WINDOW_XM-6, y, text)
-			
-			# current option settings
-			libtcod.console_set_default_foreground(main_menu_con, libtcod.light_blue)
-			
-			# toggle font size
-			if char == 'F':
-				if config.getboolean('ArmCom2', 'large_display_font'):
-					text = '16x16'
-				else:
-					text = '8x8'
-				ConsolePrint(main_menu_con, WINDOW_XM+8, y, text)
-			
-			# sound effects
-			elif char == 'S':
-				if config.getboolean('ArmCom2', 'sounds_enabled'):
-					text = 'ON'
-				else:
-					text = 'OFF'
-				ConsolePrint(main_menu_con, WINDOW_XM+8, y, text)
-			
-			# keyboard settings
-			elif char == 'K':
-				ConsolePrint(main_menu_con, WINDOW_XM+8, y, KEYBOARDS[config.getint('ArmCom2', 'keyboard')])
-			
-			y += 1
+		
+		# display game options commands
+		DisplayGameOptions(main_menu_con, WINDOW_XM-10, 38)
+		
 	else:
+		
 		OPTIONS = [('C', 'Continue'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]
 		for (char, text) in OPTIONS:
 			# grey-out continue game option if no saved game present
@@ -8043,8 +8105,6 @@ while not exit_game:
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 		
 		# TODO: combine new campaign and continue campaign elif sections
-		
-		
 		elif key_char == 'c':
 			if not os.path.exists('savegame'):
 				continue
@@ -8124,46 +8184,8 @@ while not exit_game:
 	
 	# options menu
 	else:
-		# change an option
-		if key_char in ['f', 's', 'k']:
 		
-			# switch font size
-			if key_char == 'f':
-				libtcod.console_delete(0)
-				if config.getboolean('ArmCom2', 'large_display_font'):
-					config.set('ArmCom2', 'large_display_font', 'false')
-					fontname = 'c64_8x8.png'
-				else:
-					config.set('ArmCom2', 'large_display_font', 'true')
-					fontname = 'c64_16x16.png'
-				libtcod.console_set_custom_font(DATAPATH+fontname,
-					libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
-				libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
-					NAME + ' - ' + VERSION, fullscreen = False,
-					renderer = libtcod.RENDERER_GLSL)
-			
-			# toggle sound effects on/off
-			elif key_char == 's':
-				if config.getboolean('ArmCom2', 'sounds_enabled'):
-					config.set('ArmCom2', 'sounds_enabled', 'false')
-				else:
-					config.set('ArmCom2', 'sounds_enabled', 'true')
-					# init mixer and load sound samples if required
-					if len(session.sample) == 0:
-						session.InitMixer()
-						session.LoadSounds()
-				
-			# switch keyboard layout
-			elif key_char == 'k':
-				i = config.getint('ArmCom2', 'keyboard')
-				if i == len(KEYBOARDS) - 1:
-					i = 0
-				else:
-					i += 1
-				config.set('ArmCom2', 'keyboard', i)
-				GenerateKeyboards()
-
-			SaveCFG()
+		if ChangeGameSettings(key_char):
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 		

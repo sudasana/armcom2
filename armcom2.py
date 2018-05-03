@@ -423,6 +423,9 @@ class Campaign:
 		self.player_unit = None
 		self.player_unit_group = []
 		
+		# index of selected crew position in player unit
+		self.selected_position = 0
+		
 		# FUTURE will be set by CampaignSelectionMenu
 		# current year, month, day, hour, and minute
 		self.calendar = {
@@ -2420,7 +2423,6 @@ class Scenario:
 		self.winner = -1			# player number of scenario winner, -1 if None
 		self.win_desc = ''			# description of win/loss conditions met
 		
-		self.selected_position = 0		# index of selected crewman in player unit
 		self.selected_weapon = None		# currently selected weapon on player unit
 		
 		self.player_target_list = []		# list of possible enemy targets for player unit
@@ -6261,8 +6263,7 @@ def PlaySoundFor(obj, action):
 
 # display a list of game options and current settings
 def DisplayGameOptions(console, x, y, skip_esc=False):
-	OPTIONS = [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]
-	for (char, text) in OPTIONS:
+	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
 		
 		if char == 'Esc' and skip_esc: continue
 		
@@ -6380,32 +6381,38 @@ def ShowGameMenu():
 			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
 			ConsolePrint(game_menu_con, 30, 22, 'Save and Quit to Main Menu')
 		
-		# TODO: messages
+		# TODO: message log
 		elif active_tab == 1:
-			pass
+			
+			ConsolePrintEx(game_menu_con, 42, 5, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Message Log for ' + GetDateText(campaign.calendar))
+			
+			ConsolePrintEx(game_menu_con, 42, 7, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Not implemented yet!')
+			
 		
 		# crew menu
 		elif active_tab == 2:
 			
 			# display list of crew in the player tank
-			DisplayCrew(campaign.player_unit, game_menu_con, 6, 13, False)
+			DisplayCrew(campaign.player_unit, game_menu_con, 6, 13, True)
 			
-			# FUTURE: display info on selected crewman
-			#crewman = scenario.player_unit.crew_positions[scenario.selected_position].crewman
-			#if crewman is not None:
-			#	DisplayCrewInfo(crewman, game_menu_con, 37, 8)
+			# display info on selected crewman
+			crewman = campaign.player_unit.crew_positions[campaign.selected_position].crewman
+			if crewman is not None:
+				DisplayCrewInfo(crewman, game_menu_con, 37, 8)
 			
-			#libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-			#ConsolePrint(game_menu_con, 6, 40, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
+			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
+			ConsolePrint(game_menu_con, 6, 40, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
 			
-			#libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-			#ConsolePrint(game_menu_con, 11, 40, 'Select Crew')
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+			ConsolePrint(game_menu_con, 11, 40, 'Select Crew')
 		
 		# game settings
 		elif active_tab == 3:
 			ConsolePrintEx(game_menu_con, 42, 14, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Game Options')
-			DisplayGameOptions(game_menu_con, WINDOW_XM-14, 24)
+			DisplayGameOptions(game_menu_con, WINDOW_XM-14, 24, skip_esc=True)
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		libtcod.console_flush()
@@ -6490,22 +6497,25 @@ def ShowGameMenu():
 			key_char = DecodeKey(key_char)
 			
 			# change selected crewman
-			#if key_char in ['w', 's']:
+			if key_char in ['w', 's']:
 				
-			#	if key_char == 'w':
-			#		if scenario.selected_position > 0:
-			#			scenario.selected_position -= 1
-			#		else:
-			#			scenario.selected_position = len(scenario.player_unit.crew_positions) - 1
+				if key_char == 'w':
+					if campaign.selected_position > 0:
+						campaign.selected_position -= 1
+					else:
+						campaign.selected_position = len(campaign.player_unit.crew_positions) - 1
 				
-			#	else:
-			#		if scenario.selected_position == len(scenario.player_unit.crew_positions) - 1:
-			#			scenario.selected_position = 0
-			#		else:
-			#			scenario.selected_position += 1
-			#	UpdateContextCon()
-			#	UpdateCrewPositionCon()
-			#	DrawMenuCon(active_tab)
+				else:
+					if campaign.selected_position == len(campaign.player_unit.crew_positions) - 1:
+						campaign.selected_position = 0
+					else:
+						campaign.selected_position += 1
+				
+				# if we are running a scenario, update its consoles
+				if campaign_day.scenario is not None:
+					UpdateContextCon()
+					UpdateCrewPositionCon()
+				DrawMenuCon(active_tab)
 		
 		# Game Settings
 		elif active_tab == 3:
@@ -6631,7 +6641,7 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 		
 		# highlight selected position and crewman
 		if highlight_selected:
-			if unit.crew_positions.index(position) == scenario.selected_position:
+			if unit.crew_positions.index(position) == campaign.selected_position:
 				libtcod.console_set_default_background(console, libtcod.darker_blue)
 				libtcod.console_rect(console, x, y, 24, 4, True, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(console, libtcod.black)
@@ -6703,7 +6713,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+10, y+5, crewman.GetFullName().encode('IBM850'))
 	ConsolePrint(console, x+10, y+7, str(crewman.age))
 	ConsolePrint(console, x+10, y+9, crewman.rank_desc)
-	ConsolePrint(console, x+10, y+11, scenario.player_unit.unit_id)
+	ConsolePrint(console, x+10, y+11, campaign.player_unit.unit_id)
 	ConsolePrint(console, x+10, y+12, crewman.current_position.name)
 	ConsolePrint(console, x+1, y+16, 'None')
 	
@@ -7116,7 +7126,7 @@ def UpdateContextCon():
 	
 	# crew actions
 	elif scenario.active_menu == 2:
-		position = scenario.player_unit.crew_positions[scenario.selected_position]
+		position = scenario.player_unit.crew_positions[campaign.selected_position]
 		action = position.crewman.current_action
 		
 		libtcod.console_set_default_background(context_con, libtcod.darker_yellow)
@@ -7688,16 +7698,16 @@ def DoScenario():
 			if key_char in ['w', 's'] or key.vk in [libtcod.KEY_UP, libtcod.KEY_DOWN]:
 			
 				if key_char == 'w' or key.vk == libtcod.KEY_UP:
-					if scenario.selected_position > 0:
-						scenario.selected_position -= 1
+					if campaign.selected_position > 0:
+						campaign.selected_position -= 1
 					else:
-						scenario.selected_position = len(scenario.player_unit.crew_positions) - 1
+						campaign.selected_position = len(campaign.player_unit.crew_positions) - 1
 				
 				else:
-					if scenario.selected_position == len(scenario.player_unit.crew_positions) - 1:
-						scenario.selected_position = 0
+					if campaign.selected_position == len(campaign.player_unit.crew_positions) - 1:
+						campaign.selected_position = 0
 					else:
-						scenario.selected_position += 1
+						campaign.selected_position += 1
 				UpdateContextCon()
 				UpdateCrewPositionCon()
 				UpdateScenarioDisplay()
@@ -7705,7 +7715,7 @@ def DoScenario():
 			# set action for selected crewman
 			elif key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
 				
-				position = scenario.player_unit.crew_positions[scenario.selected_position]
+				position = scenario.player_unit.crew_positions[campaign.selected_position]
 				
 				# check for empty position
 				if position.crewman is not None:
@@ -7723,7 +7733,7 @@ def DoScenario():
 			# toggle BU/CE for this crewman
 			elif key_char == 'e':
 				
-				position = scenario.player_unit.crew_positions[scenario.selected_position]
+				position = scenario.player_unit.crew_positions[campaign.selected_position]
 				if position.crewman is not None:
 					if position.crewman.ToggleCE():
 						UpdateCrewPositionCon()
@@ -8019,8 +8029,7 @@ def UpdateMainMenuCon(options_menu_active):
 		
 	else:
 		
-		OPTIONS = [('C', 'Continue'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]
-		for (char, text) in OPTIONS:
+		for (char, text) in [('C', 'Continue'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]:
 			# grey-out continue game option if no saved game present
 			disabled = False
 			if char == 'C' and not os.path.exists('savegame'):

@@ -66,7 +66,7 @@ PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# displace map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-05-05'			# game version
+VERSION = 'Alpha 1.0.0-2018-05-12'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -999,29 +999,132 @@ class ZoneHex:
 		for k, map_hex in self.map_hexes.iteritems():
 			map_hex_list.append(k)
 		
-		# record total number of hexes in the map
-		hex_num = len(map_hex_list)
+		# terrain settings - draw upon terrain type of zone
+		if self.terrain_type == 'Flat':
+			
+			rough_ground_num = libtcod.random_get_int(0, 1, 5)		# rough ground hexes
+			
+			hill_num = libtcod.random_get_int(0, 0, 1)		# number of hills to generate
+			hill_min_size = 4			# minimum width/height of hill area
+			hill_max_size = 7			# maximum "
+			
+			forest_num = libtcod.random_get_int(0, 1, 3)		# number of forest areas to generate
+			forest_size = 4				# total maximum height + width of areas
+			
+			village_max = 2				# maximum number of villages to generate
+			village_min = 0				# minimum "
+			
+			fields_num = libtcod.random_get_int(0, 1, 2)		# number of tall field areas to generate
+			field_min_size = 1			# minimum width/height of field area
+			field_max_size = 3			# maximum "
+			
+			ponds_min = 0				# minimum number of ponds to generate
+			ponds_max = 2				# maximum "
 		
-		# terrain settings
-		# FUTURE: will be supplied by battleground settings
-		rough_ground_num = int(hex_num / 50)	# rough ground hexes
+		elif self.terrain_type == 'Forest':
+			
+			rough_ground_num = libtcod.random_get_int(0, 1, 5)
+			
+			hill_num = libtcod.random_get_int(0, 1, 2)
+			hill_min_size = 4
+			hill_max_size = 7
+			
+			forest_num = libtcod.random_get_int(0, 5, 8)
+			forest_size = 8
+			
+			village_max = 2
+			village_min = 0
+			
+			fields_num = libtcod.random_get_int(0, 0, 1)
+			field_min_size = 1
+			field_max_size = 3
+			
+			ponds_min = 1
+			ponds_max = 3
 		
-		hill_num = int(hex_num / 70)		# number of hills to generate
-		hill_min_size = 4			# minimum width/height of hill area
-		hill_max_size = 7			# maximum "
+		elif self.terrain_type == 'Hills':
+			
+			rough_ground_num = libtcod.random_get_int(0, 3, 7)
+			
+			hill_num = libtcod.random_get_int(0, 4, 6)
+			hill_min_size = 3
+			hill_max_size = 7
+			
+			forest_num = libtcod.random_get_int(0, 1, 3)
+			forest_size = 4
+			
+			village_max = 1
+			village_min = 0
+			
+			fields_num = libtcod.random_get_int(0, 0, 1)
+			field_min_size = 1
+			field_max_size = 3
+			
+			ponds_min = 0
+			ponds_max = 1
 		
-		forest_num = int(hex_num / 50)		# number of forest areas to generate
-		forest_size = 6				# total maximum height + width of areas
+		elif self.terrain_type == 'Fields':
+			
+			rough_ground_num = libtcod.random_get_int(0, 2, 4)
+			
+			hill_num = libtcod.random_get_int(0, 0, 1)
+			hill_min_size = 5
+			hill_max_size = 8
+			
+			forest_num = libtcod.random_get_int(0, 0, 2)
+			forest_size = 3
+			
+			village_max = 4
+			village_min = 2
+			
+			fields_num = libtcod.random_get_int(0, 8, 12)
+			field_min_size = 2
+			field_max_size = 6
+			
+			ponds_min = 0
+			ponds_max = 3
 		
-		village_max = int(hex_num / 100)	# maximum number of villages to generate
-		village_min = int(hex_num / 50)		# minimum "
+		elif self.terrain_type == 'Marsh':
+			
+			rough_ground_num = libtcod.random_get_int(0, 5, 9)
+			
+			hill_num = libtcod.random_get_int(0, 0, 0)
+			hill_min_size = 5
+			hill_max_size = 8
+			
+			forest_num = libtcod.random_get_int(0, 0, 2)
+			forest_size = 3
+			
+			village_max = 1
+			village_min = 0
+			
+			fields_num = libtcod.random_get_int(0, 0, 2)
+			field_min_size = 2
+			field_max_size = 6
+			
+			ponds_min = 12
+			ponds_max = 24
 		
-		fields_num = int(hex_num / 50)		# number of tall field areas to generate
-		field_min_size = 1			# minimum width/height of field area
-		field_max_size = 3			# maximum "
-		
-		ponds_min = int(hex_num / 400)		# minimum number of ponds to generate
-		ponds_max = int(hex_num / 80)		# maximum "
+		elif self.terrain_type == 'Villages':
+			
+			rough_ground_num = libtcod.random_get_int(0, 2, 5)
+			
+			hill_num = libtcod.random_get_int(0, 0, 2)
+			hill_min_size = 5
+			hill_max_size = 8
+			
+			forest_num = libtcod.random_get_int(0, 0, 2)
+			forest_size = 3
+			
+			village_max = 8
+			village_min = 4
+			
+			fields_num = libtcod.random_get_int(0, 4, 7)
+			field_min_size = 2
+			field_max_size = 6
+			
+			ponds_min = 1
+			ponds_max = 3
 		
 		
 		##### Rough Ground #####

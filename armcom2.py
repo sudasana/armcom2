@@ -894,12 +894,15 @@ class MapHex:
 
 
 
-# Campaign Map Hex: a map hex for the campaign day map, each representing a map of scenario hexes
+# Zone Hex: a position on the campaign day map, each representing a map of scenario hexes
 # scale width depends on CD_MAP_HEX_RADIUS; currently 2.08 km.
-class CampaignMapHex:
+class ZoneHex:
 	def __init__(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
+		
+		self.terrain_type = ''		# placeholder for terrain type in this zone
+		self.console_seed = libtcod.random_get_int(0, 1, 128)	# seed for console image generation
 		
 		self.dirt_roads = []		# directions linked by a dirt road
 		self.stone_roads = []		# " stone road
@@ -927,7 +930,29 @@ class CampaignMapHex:
 		# create an empty placeholder for a hex map; will be generated if a scenario takes place here
 		self.map_hexes = {}
 		self.map_radius = CD_MAP_HEX_RADIUS
+	
+	# generate a random terrain type for this hex
+	# FUTURE: can pull data from the campaign day to determine possible terrain types
+	def GenerateTerrainType(self):
 		
+		roll = GetPercentileRoll()
+		
+		# TEMP: settings are for Poland/September campaign
+		if roll <= 40.0:
+			self.terrain_type = 'Flat'
+		elif roll <= 50.0:
+			self.terrain_type = 'Forest'
+		elif roll <= 65.0:
+			self.terrain_type = 'Hills'
+		elif roll <= 75.0:
+			self.terrain_type = 'Fields'
+		elif roll <= 80.0:
+			self.terrain_type = 'Marsh'
+		elif roll <= 90.0:
+			self.terrain_type = 'Villages'
+		else:
+			self.terrain_type = 'Flat'
+	
 	# create a hex map for a scenario within this map hex
 	def GenerateHexMap(self):
 		# generate the hex map in the shape of a pointy-top hex; radius does not include centre hex
@@ -1191,10 +1216,13 @@ class CampaignDay:
 			'Infantry Destroyed' : 0
 		}
 		
-		# campaign day map
+		# generate campaign day map
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			self.map_hexes[(hx,hy)] = CampaignMapHex(hx, hy)
+			self.map_hexes[(hx,hy)] = ZoneHex(hx, hy)
+		
+			# set zone terrain type too
+			self.map_hexes[(hx,hy)].GenerateTerrainType()
 		
 		# generate dirt roads
 		self.GenerateRoads()
@@ -1287,15 +1315,91 @@ class CampaignDay:
 	
 	# generate/update the campaign day map console
 	def UpdateCDMapCon(self):
+		
+		CHAR_LOCATIONS = [
+				(3,1), (2,2), (3,2), (4,2), (1,3), (2,3), (3,3), (4,3), (5,3),
+				(1,4), (2,4), (4,4), (5,4), (1,5), (2,5), (3,5), (4,5), (5,5),
+				(2,6), (3,6), (4,6), (3,7)
+		]
+		
+		def GetRandomLocation(gen):
+			return CHAR_LOCATIONS[libtcod.random_get_int(generator, 0, 21)]
+		
+		
 		libtcod.console_clear(cd_map_con)
 		
 		# draw map hexes to console
-		dayhex_openground = LoadXP('dayhex_openground.xp')
-		libtcod.console_set_key_color(dayhex_openground, KEY_COLOR)
 		
-		for (hx, hy), map_hex in self.map_hexes.iteritems():
+		# load base zone image
+		dayhex_openground = LoadXP('dayhex_openground.xp')
+		temp_con = libtcod.console_new(7, 9)
+		libtcod.console_set_key_color(temp_con, KEY_COLOR)
+		bg_col = libtcod.Color(0,64,0)
+		
+		for (hx, hy), zone_hex in self.map_hexes.iteritems():
+			
+			# generate console image for this zone's terrain type
+			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, temp_con, 0, 0)
+			
+			generator = libtcod.random_new_from_seed(zone_hex.console_seed)
+			
+			if zone_hex.terrain_type == 'Forest':
+				
+				for (x,y) in CHAR_LOCATIONS:
+					if libtcod.random_get_int(generator, 1, 10) <= 4: continue
+					col = libtcod.Color(0,libtcod.random_get_int(generator, 100, 170),0)
+					libtcod.console_put_char_ex(temp_con, x, y, 6, col, bg_col)
+				
+			elif zone_hex.terrain_type == 'Hills':
+				
+				col = libtcod.Color(70,libtcod.random_get_int(generator, 110, 150),0)
+				x = libtcod.random_get_int(generator, 2, 3)
+				libtcod.console_put_char_ex(temp_con, x, 2, 236, col, bg_col)
+				libtcod.console_put_char_ex(temp_con, x+1, 2, 237, col, bg_col)
+				
+				if libtcod.random_get_int(generator, 0, 1) == 0:
+					x = 1
+				else:
+					x = 4
+				libtcod.console_put_char_ex(temp_con, x, 4, 236, col, bg_col)
+				libtcod.console_put_char_ex(temp_con, x+1, 4, 237, col, bg_col)
+				
+				x = libtcod.random_get_int(generator, 2, 3)
+				libtcod.console_put_char_ex(temp_con, x, 6, 236, col, bg_col)
+				libtcod.console_put_char_ex(temp_con, x+1, 6, 237, col, bg_col)
+				
+			elif zone_hex.terrain_type == 'Fields':
+				
+				for (x,y) in CHAR_LOCATIONS:
+					c = libtcod.random_get_int(generator, 120, 190)
+					libtcod.console_put_char_ex(temp_con, x, y, 176,
+						libtcod.Color(c,c,0), bg_col)
+				
+			elif zone_hex.terrain_type == 'Marsh':
+				
+				elements = libtcod.random_get_int(generator, 7, 13)
+				while elements > 0:
+					(x,y) = GetRandomLocation(generator)
+					if libtcod.console_get_char(temp_con, x, y) == 176: continue
+					libtcod.console_put_char_ex(temp_con, x, y, 176,
+						libtcod.Color(45,0,180), bg_col)
+					elements -= 1
+				
+			elif zone_hex.terrain_type == 'Villages':
+				
+				elements = libtcod.random_get_int(generator, 5, 9)
+				while elements > 0:
+					(x,y) = GetRandomLocation(generator)
+					if libtcod.console_get_char(temp_con, x, y) == 249: continue
+					libtcod.console_put_char_ex(temp_con, x, y, 249,
+						libtcod.Color(77,77,77), bg_col)
+					elements -= 1
+			
+			# draw the final image to the map console
 			(x,y) = self.PlotCDHex(hx, hy)
-			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, cd_map_con, x-3, y-4)
+			libtcod.console_blit(temp_con, 0, 0, 0, 0, cd_map_con, x-3, y-4)
+		
+		del temp_con, dayhex_openground
 		
 		# draw dirt roads overtop
 		for (hx, hy), map_hex in self.map_hexes.iteritems():
@@ -1321,8 +1425,8 @@ class CampaignDay:
 						DIRT_ROAD_COL, libtcod.BKGND_SET)
 					
 					# if character is not blank or hex edge, remove it
-					#if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
-					#	libtcod.console_set_char(map_vp_con, x, y, 0)
+					if libtcod.console_get_char(cd_map_con, x, y) not in [0, 249, 250]:
+						libtcod.console_set_char(cd_map_con, x, y, 0)
 				
 		# draw hex row guides
 		for i in range(0, 9):

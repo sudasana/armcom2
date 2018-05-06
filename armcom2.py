@@ -58,9 +58,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# displace map hex scores in viewport
@@ -2511,7 +2511,7 @@ class AI:
 					if self.owner.fired:
 						continue
 					if self.owner.GetStat('category') == 'Vehicle':
-						position = self.owner.CrewActionPossible(['Driver'], 'Drive')
+						position = self.owner.CrewActionPossible(['Driver', 'Co-Driver'], 'Drive')
 						if not position:
 							continue
 				
@@ -2525,6 +2525,10 @@ class AI:
 				if profile is None: continue
 				
 				score = profile['final_chance']
+				
+				# skip attacks with low chance of success
+				if score <= 3.0:
+					continue
 				
 				# improve chance of AP attacks on armoured targets
 				if target.GetStat('armour') is not None and ammo_type == 'AP':
@@ -2549,11 +2553,6 @@ class AI:
 			
 			if AI_SPY:
 				print 'AI SPY: Best attack with score of ' + str(score) + ': ' + weapon.stats['name'] + '(' + ammo_type + ') against ' + target.unit_id
-			
-			# not good enough!
-			if score <= 3.0:
-				self.owner.DoPostActivation()
-				return
 			
 			# do the attack
 			if ammo_type != '':
@@ -3515,7 +3514,7 @@ class Scenario:
 		
 		# display prompts
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		ConsolePrint(attack_con, 6, 57, EncodeKey('c').upper())
+		ConsolePrint(attack_con, 6, 57, 'Tab')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		ConsolePrint(attack_con, 12, 57, 'Continue')
 		
@@ -3799,7 +3798,17 @@ class Scenario:
 	
 	# calculate the chance of a unit getting a bonus move after a given move
 	# hx, hy is the move destination hex
-	def CalcBonusMove(self, unit, hx, hy):
+	def CalcBonusMove(self, unit, hx, hy, reverse=False):
+		
+		# need a reverse driver to get chance of bonus
+		if reverse:
+			if unit.GetStat('reverse_driver') is None:
+				return 0.0
+			crewman = unit.GetCrewmanByPosition('Co-Driver')
+			if crewman is None:
+				return 0.0
+			if not crewman.AbleToAct():
+				return 0.0
 		
 		# none for ponds
 		if self.cd_hex.map_hexes[(hx, hy)].terrain_type == 'pond':
@@ -3848,7 +3857,12 @@ class Scenario:
 			for i in range(unit.additional_moves_taken):
 				chance = chance * BONUS_CHANCE_MULTIPLIER
 		
-		# constrain final chance
+		# reverse driver bonus less likely
+		if reverse:
+			chance = chance * 0.5
+		
+		# round off and constrain final chance
+		chance = round(chance, 1)
 		if chance < 0.0:
 			chance = 0.0
 		elif chance > 97.0:
@@ -4046,7 +4060,7 @@ class Crew:
 	def SetRank(self):
 		if self.current_position.name in ['Commander', 'Commander/Gunner']:
 			self.rank = 3
-		elif self.current_position.name in ['Gunner', 'Driver']:
+		elif self.current_position.name in ['Gunner', 'Driver', 'Co-Driver']:
 			self.rank = 2
 		else:
 			self.rank = 1
@@ -4471,11 +4485,15 @@ class Unit:
 		if self.moved: return 0.0
 		if self.additional_moves_taken > 0: return 0.0
 		
+		driver_present = False
 		for position in self.crew_positions:
-			if position.name != 'Driver': continue
-			if position.crewman is None: return 0.0
-			if not position.crewman.AbleToAct(): return 0.0
+			if position.name not in ['Driver', 'Co-Driver']: continue
+			if position.crewman is None: continue
+			if not position.crewman.AbleToAct(): continue
+			driver_present = True
 			break
+		
+		if not driver_present: return 0.0
 		
 		# use terrain modifier of current location as base chance
 		chance = scenario.cd_hex.map_hexes[(self.hx, self.hy)].GetTerrainMod()
@@ -4979,7 +4997,16 @@ class Unit:
 			return False
 		
 		# try to set crewman action
-		if not self.SetCrewAction(['Driver'], 'Drive'):
+		action_set = False
+		if reverse and GetStat('reverse_driver') is not None:
+			if self.SetCrewAction(['Co-Driver', 'Driver'], 'Drive'):
+				action_set = True
+		else:
+			if self.SetCrewAction(['Driver'], 'Drive'):
+				action_set = True
+		
+		# unable to set required crew action
+		if not action_set:
 			return False
 		
 		# determine target hex
@@ -5012,11 +5039,10 @@ class Unit:
 				return False
 		
 		# calculate bonus move chance
-		if reverse:
-			chance = 0.0
-		else:
-			chance = scenario.CalcBonusMove(self, hx, hy)
-			# set bonus used flag if applicable
+		chance = scenario.CalcBonusMove(self, hx, hy, reverse=reverse)
+		
+		# set bonus used flag if applicable
+		if chance != 0.0:
 			position = self.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
 			if position:
 				position.crewman.action_bonus_used = True
@@ -5109,8 +5135,8 @@ class Unit:
 		if self.fired:
 			return False
 		
-		# make sure crewman can drive
-		if not self.SetCrewAction(['Driver'], 'Drive'):
+		# make sure a crewman can drive
+		if not self.SetCrewAction(['Driver', 'Co-Driver'], 'Drive'):
 			return False
 		
 		if clockwise:
@@ -5429,11 +5455,13 @@ class Unit:
 					# TODO: roll for penetration result here, use the
 					# final 'roll' difference vs. 'final_chance' as modifier
 					
+					self.DestroyMe()
+					
 					# if player was not involved, display a message
 					if profile['attacker'] != scenario.player_unit and self != scenario.player_unit:
 						text = self.GetName() + ' was destroyed by ' + profile['attacker'].GetName()
 						scenario.ShowMessage(text, self.hx, self.hy)
-					self.DestroyMe()
+					
 					return
 		
 		# clear unresolved hits
@@ -6295,7 +6323,7 @@ def WaitForContinue(allow_cancel=False):
 		if key.vk == libtcod.KEY_BACKSPACE and allow_cancel:
 			end_pause = True
 			cancel = True
-		elif DecodeKey(chr(key.c).lower()) == 'c':
+		elif key.vk == libtcod.KEY_TAB:
 			end_pause = True
 	if allow_cancel and cancel:
 		return True

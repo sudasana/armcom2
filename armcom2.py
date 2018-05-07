@@ -6764,6 +6764,65 @@ def ShowGameMenu():
 	return result
 
 
+# display a briefing for the start of the combat day
+def DisplayCampaignDayBriefing():
+	
+	# build info window
+	temp_con = libtcod.console_new(29, 54)
+	libtcod.console_set_default_background(temp_con, libtcod.black)
+	libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+	libtcod.console_clear(temp_con)
+	DrawFrame(temp_con, 0, 0, 29, 54)
+	libtcod.console_set_default_foreground(temp_con, libtcod.white)
+	
+	# campaign and calendar day info
+	ConsolePrintEx(temp_con, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+		campaign.stats['name'])
+	ConsolePrintEx(temp_con, 14, 4, libtcod.BKGND_NONE, libtcod.CENTER,
+		GetDateText(campaign.calendar))
+	
+	text = 'Start of Combat: ' + str(campaign.start_of_day['hour']).zfill(2) + ':' + str(campaign.start_of_day['minute']).zfill(2)
+	ConsolePrintEx(temp_con, 14, 7, libtcod.BKGND_NONE, libtcod.CENTER, text)
+	
+	text = 'End of Combat: ' + str(campaign.end_of_day['hour']).zfill(2) + ':' + str(campaign.end_of_day['minute']).zfill(2)
+	ConsolePrintEx(temp_con, 14, 8, libtcod.BKGND_NONE, libtcod.CENTER, text)
+	
+	libtcod.console_set_default_foreground(temp_con, libtcod.light_blue)
+	ConsolePrintEx(temp_con, 14, 12, libtcod.BKGND_NONE, libtcod.CENTER, 'Orders')
+	
+	# FUTURE: descriptive text and other data will be drawn from campaign object
+	text = ('You are commanded to lead your battlegroup into enemy territory, destroy any and all ' +
+		'enemy units that you encounter, and capture territory.')
+	libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+	y = 14
+	lines = wrap(text, 25)
+	for line in lines[:10]:
+		ConsolePrint(temp_con, 2, y, line)
+		y+=1
+	
+	libtcod.console_set_default_foreground(temp_con, ACTION_KEY_COL)
+	ConsolePrint(temp_con, 7, 51, 'Enter')
+	libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+	ConsolePrint(temp_con, 14, 51, 'Continue')
+	
+	# clear screen and blit window to screen
+	libtcod.console_clear(0)
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 31, 3)
+	
+	# get input from player
+	exit_menu = False
+	while not exit_menu:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		
+		# get keyboard and/or mouse event
+		if not GetInputEvent(): continue
+		
+		# end menu
+		if key.vk in [libtcod.KEY_ENTER]:
+			exit_menu = True
+	
+
 # display a summary of a completed campaign day
 def DisplayCampaignDaySummary():
 	
@@ -8411,6 +8470,9 @@ while not exit_game:
 			
 			# generate a new campaign day object
 			campaign_day = CampaignDay()
+			
+			# show briefing
+			DisplayCampaignDayBriefing()
 			
 			# pause main theme if playing
 			if main_theme is not None:

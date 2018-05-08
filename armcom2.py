@@ -1302,6 +1302,9 @@ class ZoneHex:
 class CampaignDay:
 	def __init__(self):
 		
+		# list of messages: each is a tuple of time and text
+		self.messages = []
+		
 		# victory point rewards for this campaign day
 		self.capture_zone_vp = 2
 		self.unit_destruction_vp = {
@@ -1337,6 +1340,10 @@ class CampaignDay:
 		self.travel_direction = None			# selected direction of travel
 		
 		self.scenario = None				# currently active scenario in progress
+	
+	# add a message with the current timestamp to the message log
+	def AddMessage(self, text):
+		self.messages.append((str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2), text))
 	
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
@@ -6368,7 +6375,7 @@ def CheckSavedGameVersion():
 	#return saved_version
 
 
-# remove a saved game, either because the scenario is over or the player abandoned it
+# remove a saved game
 def EraseGame():
 	os.remove('savegame')
 
@@ -6616,15 +6623,25 @@ def ShowGameMenu():
 			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
 			ConsolePrint(game_menu_con, 30, 22, 'Save and Quit to Main Menu')
 		
-		# TODO: message log
+		# message log
 		elif active_tab == 1:
 			
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
 			ConsolePrintEx(game_menu_con, 42, 5, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Message Log for ' + GetDateText(campaign.calendar))
 			
-			ConsolePrintEx(game_menu_con, 42, 7, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Not implemented yet!')
-			
+			y = 7
+			for (time_text, msg_text) in campaign_day.messages:
+				libtcod.console_set_default_foreground(game_menu_con, libtcod.light_blue)
+				ConsolePrint(game_menu_con, 2, y, time_text)
+				libtcod.console_set_default_foreground(game_menu_con, libtcod.light_grey)
+				for line in wrap(msg_text, 74):
+					ConsolePrint(game_menu_con, 8, y, line)
+					y += 1
+				y += 1
+				
+				# TEMP - will allow scrolling in future
+				if y >= 52: break
 		
 		# crew menu
 		elif active_tab == 2:
@@ -8468,8 +8485,9 @@ while not exit_game:
 			campaign.TankSelectionMenu()
 			campaign.CommanderNameMenu()
 			
-			# generate a new campaign day object
+			# generate a new campaign day object and record event
 			campaign_day = CampaignDay()
+			campaign_day.AddMessage('Start of combat')
 			
 			# show briefing
 			DisplayCampaignDayBriefing()

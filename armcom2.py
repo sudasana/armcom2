@@ -58,9 +58,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_NO_ACTION = True					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# displace map hex scores in viewport
@@ -857,6 +857,7 @@ class MapHex:
 		self.cliff_edges = []		# list of edges bounded by a cliff
 		self.dirt_roads = []		# list of directions linked by a dirt road
 		self.stone_roads = []		# " stone road
+		self.railroads = []		# " railroad
 		
 		self.mud = 0			# level of mud present in the hex
 		
@@ -973,11 +974,25 @@ class ZoneHex:
 	# fill the hex map with terrain
 	def GenerateTerrain(self):
 		
+		# get a path from h1,hy2 to hx2,hy2 suitable for a railroad and create it
+		def GenerateRailRoad(hx1, hy1, hx2, hy2):
+			path = GetHexPath(self.map_hexes, hx1, hy1, hx2, hy2, rail_path=True)
+			if len(path) == 0:
+				return False
+			for n in range(len(path)):
+				(hx1, hy1) = path[n]
+				if n+1 < len(path):
+					hx2, hy2 = path[n+1]
+					direction = GetDirectionToAdjacent(hx1, hy1, hx2, hy2)
+					self.map_hexes[(hx1, hy1)].railroads.append(direction)
+					
+					direction = GetDirectionToAdjacent(hx2, hy2, hx1, hy1)
+					self.map_hexes[(hx2, hy2)].railroads.append(direction)
+			return True
+		
 		# get a path from hx1,hy1 to hx2,hy2 suitable for a dirt road and create it
 		def GenerateRoad(hx1, hy1, hx2, hy2):
 			path = GetHexPath(self.map_hexes, hx1, hy1, hx2, hy2, road_path=True)
-			
-			# no path was possible
 			if len(path) == 0:
 				return False
 			
@@ -1265,6 +1280,16 @@ class ZoneHex:
 		hx1, hy1 = 0, self.map_radius
 		hx2, hy2 = 0, 0 - self.map_radius
 		GenerateRoad(hx1, hy1, hx2, hy2)
+		
+		##### Railroad #####
+		direction1 = libtcod.random_get_int(0, 0, 5)
+		direction2 = ConstrainDir(direction1 + 3)
+		hx1, hy1 = 0, 0
+		hx2, hy2 = 0, 0
+		for i in range(self.map_radius):
+			(hx1, hy1) = GetAdjacentHex(hx1, hy1, direction1)
+			(hx2, hy2) = GetAdjacentHex(hx2, hy2, direction2)
+		GenerateRailRoad(hx1, hy1, hx2, hy2)
 	
 	# calculate terrain scores to help AI
 	def GenerateHexScores(self):
@@ -5812,7 +5837,7 @@ def LoadXP(filename):
 # based on function from ArmCom 1, which was based on:
 # http://stackoverflow.com/questions/4159331/python-speed-up-an-a-star-pathfinding-algorithm
 # http://www.policyalmanac.org/games/aStarTutorial.htm
-def GetHexPath(hex_list, hx1, hy1, hx2, hy2, unit=None, road_path=False):
+def GetHexPath(hex_list, hx1, hy1, hx2, hy2, unit=None, road_path=False, rail_path=False):
 	
 	# retrace a set of nodes and return the best path
 	def RetracePath(end_node):
@@ -5895,7 +5920,25 @@ def GetHexPath(hex_list, hx1, hy1, hx2, hy2, unit=None, road_path=False):
 				
 				if node.elevation != current.elevation:
 					cost = cost * 15
+			
+			# we're creating a path for a railroad
+			elif rail_path:
 				
+				# can't overwrite an already-existing road
+				if direction in current.dirt_roads:
+					cose = 100
+				
+				# avoid elevation changes
+				elif node.elevation != current.elevation:
+					cost = 100
+					
+				# prefer to pass through villages
+				elif node.terrain_type == 'village':
+					cost = -5
+				
+				else:
+					cost = 0
+			
 			g = current.g + cost
 			
 			# if not in open list, add it
@@ -7153,39 +7196,51 @@ def UpdateVPCon():
 				libtcod.console_set_char_background(map_vp_con, x+xm, 
 					y+ym, RIVER_BG_COL)
 	
-	# draw roads
+	# draw roads and railroads
 	for (hx, hy) in VP_HEXES:
 		(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
 		if (map_hx, map_hy) not in scenario.cd_hex.map_hexes:
 			continue
 		map_hex = scenario.cd_hex.map_hexes[(map_hx, map_hy)]
 		# no road here
-		if len(map_hex.dirt_roads) == 0: continue
-		for direction in map_hex.dirt_roads:
-			
-			# get other VP hex linked by road
-			(hx2, hy2) = GetAdjacentHex(hx, hy, ConstrainDir(direction - scenario.player_unit.facing))
-			
-			# only draw if it is in direction 0-2, unless the other hex is off the VP
-			if (hx2, hy2) in VP_HEXES and 3 <= direction <= 5: continue
-			
-			# paint road
-			(x1, y1) = PlotHex(hx, hy)
-			(hx2, hy2) = GetAdjacentHex(hx, hy, ConstrainDir(direction - scenario.player_unit.facing))
-			(x2, y2) = PlotHex(hx2, hy2)
-			line = GetLine(x1, y1, x2, y2)
-			for (x, y) in line:
+		if len(map_hex.dirt_roads) >= 0:
+			for direction in map_hex.dirt_roads:
 				
-				# don't paint over outside of map area
-				if libtcod.console_get_char_background(map_vp_con, x, y) == libtcod.black:
-					continue
+				# get other VP hex linked by road
+				(hx2, hy2) = GetAdjacentHex(hx, hy, ConstrainDir(direction - scenario.player_unit.facing))
 				
-				libtcod.console_set_char_background(map_vp_con, x, y,
-					DIRT_ROAD_COL, libtcod.BKGND_SET)
+				# only draw if it is in direction 0-2, unless the other hex is off the VP
+				if (hx2, hy2) in VP_HEXES and 3 <= direction <= 5: continue
 				
-				# if character is not blank or hex edge, remove it
-				if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
-					libtcod.console_set_char(map_vp_con, x, y, 0)
+				# paint road
+				(x1, y1) = PlotHex(hx, hy)
+				#(hx2, hy2) = GetAdjacentHex(hx, hy, ConstrainDir(direction - scenario.player_unit.facing))
+				(x2, y2) = PlotHex(hx2, hy2)
+				for (x, y) in GetLine(x1, y1, x2, y2):
+					
+					# don't paint over outside of map area
+					if libtcod.console_get_char_background(map_vp_con, x, y) == libtcod.black:
+						continue
+					
+					libtcod.console_set_char_background(map_vp_con, x, y,
+						DIRT_ROAD_COL, libtcod.BKGND_SET)
+					
+					# if character is not blank or hex edge, remove it
+					if libtcod.console_get_char(map_vp_con, x, y) not in [0, 250]:
+						libtcod.console_set_char(map_vp_con, x, y, 0)
+		
+		if len(map_hex.railroads) > 0:
+			libtcod.console_set_default_foreground(map_vp_con, libtcod.dark_grey)
+			for direction in map_hex.railroads:
+				(hx2, hy2) = GetAdjacentHex(hx, hy, ConstrainDir(direction - scenario.player_unit.facing))
+				if (hx2, hy2) in VP_HEXES and 3 <= direction <= 5: continue
+				(x1, y1) = PlotHex(hx, hy)
+				(x2, y2) = PlotHex(hx2, hy2)
+				for (x, y) in GetLine(x1, y1, x2, y2):
+					if libtcod.console_get_char_background(map_vp_con, x, y) == libtcod.black:
+						continue
+					ConsolePrint(map_vp_con, x, y, '#')
+			libtcod.console_set_default_foreground(map_vp_con, libtcod.white)	
 
 	# highlight objective
 	for (hx, hy) in VP_HEXES:
@@ -7423,7 +7478,9 @@ def UpdateHexTerrainCon():
 		ConsolePrint(hex_terrain_con, 0, 3, 'Objective')
 	
 	if len(map_hex.dirt_roads) > 0:
-		ConsolePrint(hex_terrain_con, 0, 9, 'Dirt Road')
+		ConsolePrint(hex_terrain_con, 0, 8, 'Dirt Road')
+	if len(map_hex.railroads) > 0:
+		ConsolePrint(hex_terrain_con, 0, 9, 'Railroad')
 
 
 # draw information based on current turn phase to contextual info console

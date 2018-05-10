@@ -1277,19 +1277,26 @@ class ZoneHex:
 		#self.map_hexes[(0, 8)].river_edges.append(0)
 		
 		##### Dirt Road #####
-		hx1, hy1 = 0, self.map_radius
-		hx2, hy2 = 0, 0 - self.map_radius
-		GenerateRoad(hx1, hy1, hx2, hy2)
+		if libtcod.random_get_int(0, 1, 3) <= 2:
+			direction1 = libtcod.random_get_int(0, 0, 5)
+			direction2 = ConstrainDir(direction1 + 3)
+			hx1, hy1 = 0, 0
+			hx2, hy2 = 0, 0
+			for i in range(self.map_radius):
+				(hx1, hy1) = GetAdjacentHex(hx1, hy1, direction1)
+				(hx2, hy2) = GetAdjacentHex(hx2, hy2, direction2)
+			GenerateRoad(hx1, hy1, hx2, hy2)
 		
 		##### Railroad #####
-		direction1 = libtcod.random_get_int(0, 0, 5)
-		direction2 = ConstrainDir(direction1 + 3)
-		hx1, hy1 = 0, 0
-		hx2, hy2 = 0, 0
-		for i in range(self.map_radius):
-			(hx1, hy1) = GetAdjacentHex(hx1, hy1, direction1)
-			(hx2, hy2) = GetAdjacentHex(hx2, hy2, direction2)
-		GenerateRailRoad(hx1, hy1, hx2, hy2)
+		if libtcod.random_get_int(0, 1, 5) == 1:
+			direction1 = libtcod.random_get_int(0, 0, 5)
+			direction2 = ConstrainDir(direction1 + 3)
+			hx1, hy1 = 0, 0
+			hx2, hy2 = 0, 0
+			for i in range(self.map_radius):
+				(hx1, hy1) = GetAdjacentHex(hx1, hy1, direction1)
+				(hx2, hy2) = GetAdjacentHex(hx2, hy2, direction2)
+			GenerateRailRoad(hx1, hy1, hx2, hy2)
 	
 	# calculate terrain scores to help AI
 	def GenerateHexScores(self):

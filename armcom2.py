@@ -2304,6 +2304,7 @@ class Session:
 			'37mm_he_explosion_00', '37mm_he_explosion_01',
 			'vehicle_explosion_00',
 			'at_rifle_firing',
+			'armour_save_00', 'armour_save_01',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'wheeled_moving_00', 'wheeled_moving_01', 'wheeled_moving_02',
 			'zb_53_mg_00'
@@ -5394,7 +5395,7 @@ class Unit:
 					
 					key_char = DecodeKey(chr(key.c).lower())
 					
-					if key_char == 'c':
+					if key.vk == libtcod.KEY_TAB:
 						end_pause = True
 					
 					if self == scenario.player_unit:
@@ -5484,9 +5485,14 @@ class Unit:
 			
 				profile = scenario.CalcAP(profile)
 				scenario.DisplayAttack(profile)
+				
 				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
 					WaitForContinue()
 				profile = scenario.DoAttackRoll(profile)
+				
+				if profile['result'] == 'NO PENETRATION':
+					PlaySoundFor(self, 'armour_save')
+				
 				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
 					WaitForContinue()
 				if profile['result'] == 'PENETRATED':
@@ -6531,6 +6537,11 @@ def PlaySoundFor(obj, action):
 	elif action == 'he_explosion':
 		n = libtcod.random_get_int(0, 0, 1)
 		PlaySound('37mm_he_explosion_0' + str(n))
+		return
+	
+	elif action == 'armour_save':
+		n = libtcod.random_get_int(0, 0, 1)
+		PlaySound('armour_save_0' + str(n))
 		return
 	
 	elif action == 'movement':

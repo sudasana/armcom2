@@ -1264,6 +1264,7 @@ class ZoneHex:
 		shuffle(map_hex_list)
 		for terrain_pass in range(num_ponds):
 			for (hx, hy) in map_hex_list:
+				if hx == 0 and hy == 0: continue
 				if self.map_hexes[(hx, hy)].terrain_type != 'openground':
 					continue
 				if self.map_hexes[(hx, hy)].elevation != 1:
@@ -3139,7 +3140,7 @@ class Scenario:
 			else:
 			
 				# acquired target
-				if attacker.acquired_target is not None:
+				if not attacker.moved and attacker.facing == attacker.previous_facing and attacker.acquired_target is not None:
 					(ac_target, level) = attacker.acquired_target
 					if ac_target == target:
 						if not level:
@@ -3587,59 +3588,28 @@ class Scenario:
 				return True
 			return False
 		
-		# don't animate indicators/percentage if player is not involved
+		# don't animate percentage rolls if player is not involved
 		if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
 			roll = GetPercentileRoll()
 		else:
-			# animate roll indicators randomly
-			for i in range(3):
-				x = libtcod.random_get_int(0, 1, 24)
-				libtcod.console_put_char(attack_con, x, 45, 233)
-				libtcod.console_put_char(attack_con, x, 49, 232)
+			for i in range(6):
+				roll = GetPercentileRoll()
 				
+				# check for debug flag
+				if profile['attacker'] == self.player_unit and PLAYER_ALWAYS_HITS:
+					roll = 2.0
+				
+				text = str(roll) + '%%'
+				ConsolePrintEx(attack_con, 13, 49, libtcod.BKGND_NONE,
+					libtcod.CENTER, text)
 				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				libtcod.console_flush()
-				
-				Wait(20)
-				
-				libtcod.console_put_char(attack_con, x, 45, 0)
-				libtcod.console_put_char(attack_con, x, 49, 0)
-		
-			roll = GetPercentileRoll()
-		
-		# check for debug flag
-		if profile['target'].owning_player == 1 and PLAYER_ALWAYS_HITS:
-			roll = 2.0
+				Wait(15)
 		
 		# record the final roll in the attack profile
 		profile['roll'] = roll
-		
-		
-		# if player is involved, display roll indicator
-		if profile['attacker'] == self.player_unit or profile['target'] == self.player_unit:
-			# display final roll indicators
-			x = int(ceil(24.0 * roll / 100.0))
-			if x < 1:
-				x = 1
-			elif x > 24:
-				x = 24
 			
-			# make sure indicator ends up on correct side of band boundary
-			if profile['type'] != 'Area Fire':
-				hit_band_x = int(ceil(24.0 * profile['final_chance'] / 100.0))
-				if x < hit_band_x and roll > profile['final_chance']:
-					print 'DEBUG: moved a roll indicator slightly'
-					x += 1
-			
-			# make sure only critical hits and misses appear in their bands
-			if profile['type'] == 'Point Fire':
-				if roll > CRITICAL_HIT and x <= 1: x = 2
-				if roll < CRITICAL_MISS and x >= 24: x = 23
-			
-			libtcod.console_put_char(attack_con, x, 45, 233)
-			libtcod.console_put_char(attack_con, x, 49, 232)
-		
 		# determine location hit on target (not always used)
 		location_roll = GetPercentileRoll()
 		# apply modifier if target is higher elevation
@@ -3651,7 +3621,6 @@ class Scenario:
 			profile['location'] = 'Hull'
 		else:
 			profile['location'] = 'Turret'
-		
 		
 		# armour penetration roll
 		if profile['type'] == 'ap':
@@ -3902,13 +3871,7 @@ class Scenario:
 			chance = chance * 0.5
 		
 		# round off and constrain final chance
-		chance = round(chance, 1)
-		if chance < 0.0:
-			chance = 0.0
-		elif chance > 97.0:
-			chance = 97.0
-		
-		return chance
+		return RestrictChance(chance)
 	
 	# display a pop-up message overtop the map viewport
 	# if hx and hy are not none, highlight this hex on the map viewport
@@ -4554,7 +4517,11 @@ class Unit:
 		if self.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver'):
 			chance += 15.0
 		
-		return chance
+		# bonus if railroad in hex
+		if len(scenario.cd_hex.map_hexes[(self.hx, self.hy)].railroads) > 0:
+			chance += 15.0
+		
+		return RestrictChance(chance)
 
 	# roll for HD status gain
 	# if direction is provided, any HD status will be centered on that direction
@@ -4696,10 +4663,6 @@ class Unit:
 	
 	# do automatic actions after an activation
 	def DoPostActivation(self):
-		# if unit moved, lose any acquired targets and lose
-		#   any acquired target status
-		if self.moved:
-			self.ClearAcquiredTargets()
 		
 		if self.facing is not None:
 			if self.facing != self.previous_facing:
@@ -5087,8 +5050,9 @@ class Unit:
 			if position:
 				position.crewman.action_bonus_used = True
 		
-		# do the move
+		# do the move and clear any acquired targets
 		self.MoveInto(hx, hy)
+		self.ClearAcquiredTargets()
 		
 		# move any unit group members as well
 		# note - does not check if it's possible for them to move
@@ -5103,6 +5067,7 @@ class Unit:
 			if unit.turret_facing is not None:
 				unit.turret_facing = direction
 			unit.MoveInto(hx, hy, effects=False)
+			unit.ClearAcquiredTargets()
 		
 		# check for bonus move
 		roll = GetPercentileRoll()
@@ -5828,8 +5793,9 @@ def GetPercentileRoll():
 	return float(libtcod.random_get_int(0, 0, 1000)) / 10.0
 
 
-# restrict odds to between 3.0 and 97.0
+# round and restrict odds to between 3.0 and 97.0
 def RestrictChance(chance):
+	chance = round(chance, 1)
 	if chance < 3.0: return 3.0
 	if chance > 97.0: return 97.0
 	return chance
@@ -6550,7 +6516,8 @@ def PlaySoundFor(obj, action):
 			PlaySound('wheeled_moving_0' + str(n))
 			return
 		
-		if obj.GetStat('class') == 'Light Tank':
+		# TEMP - more sounds to come
+		if obj.GetStat('class') in ['Tankette', 'Light Tank', 'Medium Tank']:
 			n = libtcod.random_get_int(0, 0, 2)
 			PlaySound('light_tank_moving_0' + str(n))
 			return
@@ -7884,7 +7851,8 @@ def DoScenario():
 		unit = campaign.player_unit
 		unit.InitScenarioStats()
 		unit.facing = 0
-		unit.turret_facing = 0
+		if 'turret' in unit.stats:
+			unit.turret_facing = 0
 		scenario.units.append(unit)
 		unit.SpawnAt(hx, hy)
 		unit.CheckHullDownGain()

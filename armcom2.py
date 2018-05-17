@@ -1335,6 +1335,18 @@ class ZoneHex:
 class CampaignDay:
 	def __init__(self):
 		
+		# FUTURE: set by campaign object
+		if campaign.stats['player_nation'] == 'Germany':
+			self.air_support_level = 80.0
+			self.air_support_step = 10.0
+			self.arty_support_level = 0.0
+			self.arty_support_step = 0.0
+		else:
+			self.air_support_level = 0.0
+			self.air_support_step = 0.0
+			self.arty_support_level = 0.0
+			self.arty_support_step = 0.0
+		
 		# list of messages: each is a tuple of time and text
 		self.messages = []
 		
@@ -2652,6 +2664,7 @@ class Scenario:
 		}
 		
 		self.active_menu = 2			# currently active player menu; 0:none
+		self.airsup_menu_active = False		# Air Support sub-menu active
 		
 		self.units = []				# list of units in the scenario
 		self.player_unit = None			# pointer to the player unit
@@ -2675,6 +2688,8 @@ class Scenario:
 		self.player_target_list = []		# list of possible enemy targets for player unit
 		self.player_target = None		# current target of player unit
 		self.player_attack_desc = ''		# text description of attack on player target
+		
+		self.player_target_hex = None		# pointer to an entire hex being targeted (air support, etc.)
 		
 		###### Hex Map and Map Viewport #####
 		self.highlighted_hex = None		# currently highlighted map hex
@@ -6845,6 +6860,26 @@ def DisplayCampaignDayBriefing():
 		ConsolePrint(temp_con, 2, y, line)
 		y+=1
 	
+	libtcod.console_set_default_foreground(temp_con, libtcod.light_blue)
+	ConsolePrintEx(temp_con, 14, 25, libtcod.BKGND_NONE, libtcod.CENTER, 'Support')
+	
+	libtcod.console_set_default_foreground(temp_con, libtcod.white)
+	ConsolePrint(temp_con, 2, 27, 'Air Support:')
+	ConsolePrint(temp_con, 2, 28, 'Artillery Support:')
+	
+	libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+	if campaign_day.air_support_level == 0.0:
+		text = 'None'
+	else:
+		text = str(campaign_day.air_support_level) + '%%'
+	ConsolePrintEx(temp_con, 26, 27, libtcod.BKGND_NONE, libtcod.RIGHT, text)
+	
+	if campaign_day.arty_support_level == 0.0:
+		text = 'None'
+	else:
+		text = str(campaign_day.arty_support_level) + '%%'
+	ConsolePrintEx(temp_con, 26, 28, libtcod.BKGND_NONE, libtcod.RIGHT, text)
+	
 	libtcod.console_set_default_foreground(temp_con, ACTION_KEY_COL)
 	ConsolePrint(temp_con, 7, 51, 'Enter')
 	libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
@@ -7354,10 +7389,6 @@ def UpdateCommandCon():
 		libtcod.console_set_default_background(command_con, col)
 		libtcod.console_rect(command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
 		
-		# no command options yet
-		if num == 1:
-			libtcod.console_set_default_foreground(command_con, libtcod.dark_grey)
-		
 		# menu number
 		ConsolePrint(command_con, x, 0, str(num))
 		libtcod.console_set_default_foreground(command_con, libtcod.white)
@@ -7375,11 +7406,38 @@ def UpdateCommandCon():
 	
 	libtcod.console_set_default_background(command_con, libtcod.black)
 	
+	# command menu
+	if scenario.active_menu == 1:
+		
+		# air support sub-menu active
+		if scenario.airsup_menu_active:
+			libtcod.console_set_default_foreground(command_con, libtcod.white)
+			ConsolePrint(command_con, 1, 2, 'Air Support')
+			
+			libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+			ConsolePrint(command_con, 1, 4, 'R')
+			ConsolePrint(command_con, 1, 5, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
+			ConsolePrint(command_con, 1, 8, 'Q')
+			
+			libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
+			ConsolePrint(command_con, 5, 4, 'Request Attack')	# TODO: display Cancel Request if one is already submitted or in progress
+			ConsolePrint(command_con, 5, 5, 'Select Target Hex')	# TODO: don't display if request is already submitted
+			ConsolePrint(command_con, 7, 8, 'Exit sub-menu')
+			
+		else:
+		
+			libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+			ConsolePrint(command_con, 1, 2, 'A')
+			ConsolePrint(command_con, 1, 3, 'R')
+			
+			libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
+			ConsolePrint(command_con, 5, 2, 'Air Support')
+			ConsolePrint(command_con, 5, 3, 'Artillery Support')
+			
 	# crew action menu
-	if scenario.active_menu == 2:
+	elif scenario.active_menu == 2:
 		
 		libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-		
 		ConsolePrint(command_con, 1, 2, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
 		ConsolePrint(command_con, 1, 3, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
 		ConsolePrint(command_con, 1, 4, 'E')
@@ -7420,7 +7478,7 @@ def UpdateCommandCon():
 		ConsolePrint(command_con, 6, 6, 'Fire')
 		
 	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-	ConsolePrint(command_con, 1, 9, '2-4')
+	ConsolePrint(command_con, 1, 9, '1-4')
 	ConsolePrint(command_con, 1, 10, 'Enter')
 	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 	ConsolePrint(command_con, 7, 9, 'Switch Menu')
@@ -8031,8 +8089,8 @@ def DoScenario():
 		# key commands
 		key_char = chr(key.c).lower()
 		
-		# switch active menu (same for all keyboard layouts?)
-		if key_char in ['2', '3', '4']:
+		# directly switch to a different active menu (same for all keyboard layouts)
+		if key_char in ['1', '2', '3', '4']:
 			if scenario.active_menu != int(key_char):
 				scenario.active_menu = int(key_char)
 				UpdateCommandCon()
@@ -8045,8 +8103,31 @@ def DoScenario():
 		# map key to current keyboard layout
 		key_char = DecodeKey(key_char)
 		
+		# command actions
+		if scenario.active_menu == 1:
+			
+			# air support sub-menu
+			if scenario.airsup_menu_active:
+				
+				# close air support sub-menu
+				if key_char == 'q':
+					scenario.airsup_menu_active = False
+					UpdateCommandCon()
+					UpdateContextCon()
+					UpdateScenarioDisplay()
+				
+			
+			# root command menu
+			else:
+				# open air support sub-menu
+				if key_char == 'a':
+					scenario.airsup_menu_active = True
+					UpdateCommandCon()
+					UpdateContextCon()
+					UpdateScenarioDisplay()
+			
 		# crew actions
-		if scenario.active_menu == 2:
+		elif scenario.active_menu == 2:
 			
 			# change selected crewman
 			if key_char in ['w', 's'] or key.vk in [libtcod.KEY_UP, libtcod.KEY_DOWN]:

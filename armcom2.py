@@ -58,9 +58,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = False					# no AI actions at all
+AI_NO_ACTION = True					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
@@ -1386,6 +1386,12 @@ class CampaignDay:
 		
 		self.scenario = None				# currently active scenario in progress
 	
+	# reduce air support level due to a successful request
+	def ReduceAirSupLevel(self):
+		self.air_support_level -= self.air_support_step
+		if self.air_support_level < 0.0:
+			self.air_support_level = 0.0
+			
 	# add a message with the current timestamp to the message log
 	def AddMessage(self, text):
 		self.messages.append((str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2), text))
@@ -2689,7 +2695,11 @@ class Scenario:
 		self.player_target = None		# current target of player unit
 		self.player_attack_desc = ''		# text description of attack on player target
 		
+		self.player_target_hex_list = []	# list of possible target hexes for air support, etc.
 		self.player_target_hex = None		# pointer to an entire hex being targeted (air support, etc.)
+		
+		self.player_airsup_failed = False	# flag for a failed air sup request
+		self.player_airsup_success = False	# " successful #
 		
 		###### Hex Map and Map Viewport #####
 		self.highlighted_hex = None		# currently highlighted map hex
@@ -2984,7 +2994,6 @@ class Scenario:
 		
 		# advance campaign clock
 		campaign.AdvanceClock(0, 1)
-				
 	
 	# select the next or previous weapon on the player unit, looping around the list
 	def SelectNextWeapon(self, forward):
@@ -3063,6 +3072,162 @@ class Scenario:
 		self.player_target.MoveToTopOfStack()
 		
 		return True
+	
+	# rebuild the list of possible hex targets for player unit air/arty support attack
+	def RebuildTargetHexList(self):
+		self.player_target_hex_list = []
+		for unit in self.units:
+			if not unit.alive: continue
+			if unit.owning_player == 0: continue
+			if unit.vp_hx is None or unit.vp_hy is None: continue
+			if (unit.hx, unit.hy) in self.player_target_hex_list: continue
+			if (unit.hx, unit.hy) not in scenario.player_unit.fov: continue
+			self.player_target_hex_list.append((unit.hx, unit.hy))
+		
+		# reset selected hex if no longer possible
+		if self.player_target_hex is not None:
+			if self.player_target_hex not in self.player_target_hex_list:
+				self.player_target_hex = None
+	
+	# change selected target hex
+	def SelectNextTargetHex(self, reverse):
+		
+		# no target hexes possible
+		if len(self.player_target_hex_list) == 0: return
+		
+		# no hex selected yet
+		if self.player_target_hex is None:
+			if reverse:
+				self.player_target_hex = self.player_target_hex_list[-1]
+			else:
+				self.player_target_hex = self.player_target_hex_list[0]
+			return
+		
+		# select next/previous hex and loop around if required
+		i = self.player_target_hex_list.index(self.player_target_hex)
+		if reverse:
+			i-=1
+		else:
+			i+=1
+		if i < 0:
+			self.player_target_hex = self.player_target_hex_list[-1]
+		elif i > len(self.player_target_hex_list) - 1:
+			self.player_target_hex = self.player_target_hex_list[0]
+		else:
+			self.player_target_hex = self.player_target_hex_list[i]
+	
+	# request an air support attack against the target hex location
+	def RequestAirSup(self):
+		# no hex selected
+		if self.player_target_hex is None: return False
+		# already failed this turn
+		if self.player_airsup_failed: return False
+		
+		# do support roll
+		roll = GetPercentileRoll()
+		
+		# TEMP
+		roll = 10.0
+		
+		if roll > campaign_day.air_support_level:
+			self.player_airsup_failed = True
+			text = 'Unable to respond to air support request.'
+			scenario.ShowMessage(text)
+			campaign_day.AddMessage(text)
+			return True
+		
+		# reduce support level by one step
+		campaign_day.ReduceAirSupLevel()
+		
+		# set scenario flag for next player unit activation
+		self.player_airsup_success = True
+		
+		# display and record message
+		text = 'Air support request was successful, air support is now inbound.'
+		scenario.ShowMessage(text)
+		campaign_day.AddMessage(text)
+		
+		return True
+	
+	# do an air support attack against the selected hex target
+	# TEMP: assumes German 1939 air support type
+	def DoAirSupportAttack(self):
+		
+		# roll for number of planes
+		roll = libtcod.random_get_int(0, 1, 6)
+		if roll <= 2:
+			num_planes = 1
+		elif roll <= 5:
+			num_planes = 2
+		else:
+			num_planes = 3
+		
+		# display message
+		text = str(num_planes) + ' Ju 87B Stuka arrive for an attack run'
+		self.ShowMessage(text)
+		campaign_day.AddMessage(text)
+		
+		# find target hex on viewport
+		for (vp_hx, vp_hy) in VP_HEXES:
+			if self.map_vp[(vp_hx, vp_hy)] == self.player_target_hex:
+				break
+		(x2,y2) = PlotHex(vp_hx, vp_hy)
+		
+		# clear target hex
+		self.player_target_hex = None
+		UpdateUnitCon()
+		UpdateScenarioDisplay()
+		
+		# translate from vp console into screen coordinates
+		x2 += 30
+		y2 += 4
+		
+		# determine attack direction and starting position
+		x = x2
+		if y2 <= 26:
+			y1 = y2 + 20
+			if y1 > 53: y1 = 53
+			y2 += 1
+			direction = -1
+		else:
+			y1 = y2 - 20
+			if y1 < 5: y1 = 5
+			y2 -= 3
+			direction = 1
+		
+		# create and draw plane console
+		temp_con = libtcod.console_new(3, 3)
+		libtcod.console_set_default_background(temp_con, libtcod.black)
+		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+		libtcod.console_clear(temp_con)
+		
+		ConsolePrint(temp_con, 0, 1, (chr(196) + chr(197) + chr(196)))
+		if direction == -1:
+			libtcod.console_put_char(temp_con, 1, 2, chr(193))
+		else:
+			libtcod.console_put_char(temp_con, 1, 0, chr(194))
+		
+		# TODO: play plane sound
+		
+		# animate plane attack
+		for y in range(y1, y2, direction):
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, x, y, 1.0, 0.0)
+			libtcod.console_flush()
+			Wait(8)
+		
+		# TODO: do attack
+		
+		
+		Wait(30)
+		
+		# clear plane from screen
+		UpdateScenarioDisplay()
+		libtcod.console_flush()
+		
+		del temp_con
+		
 	
 	# calculate the odds of success of a ranged attack, returns an attack profile
 	# if pivot or turret_rotate are set to True or False, will override
@@ -4565,8 +4730,12 @@ class Unit:
 	# do automatic actions before an activation
 	def DoPreActivation(self):
 		
-		# do spot checks for unknown or unidentified enemy units
+		# check for air support attack trigger
+		if self == scenario.player_unit and scenario.player_airsup_success:
+			scenario.player_airsup_success = False
+			scenario.DoAirSupportAttack()
 		
+		# do spot checks for unknown or unidentified enemy units
 		# dummy units can't spot
 		if not self.dummy:
 		
@@ -4665,6 +4834,10 @@ class Unit:
 				
 			# rebuild list of potential targets
 			scenario.RebuildPlayerTargetList()
+			
+			# reset any failed request flag, rebuild list of possible support attack hexes
+			scenario.player_airsup_failed = False
+			scenario.RebuildTargetHexList()
 			
 			# update unit console to show player LoS display
 			UpdateUnitCon()
@@ -7283,7 +7456,7 @@ def UpdateVPCon():
 
 
 # display units on the unit console
-# also displays map hex highlight and LoS if any
+# also displays map hex highlight, targeted hex, and LoS if any
 def UpdateUnitCon():
 	libtcod.console_set_default_foreground(unit_con, libtcod.white)
 	libtcod.console_set_default_background(unit_con, KEY_COLOR)
@@ -7334,12 +7507,20 @@ def UpdateUnitCon():
 					unit.vp_hy = vp_hy
 			
 	
-		# check for hex highlight if any
+		# check for hex highlight
 		if scenario.highlighted_hex is not None:
 			if scenario.highlighted_hex == (map_hx, map_hy):
 				(x,y) = PlotHex(vp_hx, vp_hy)
-				libtcod.console_blit(hex_highlight, 0, 0, 0, 0, unit_con, 
-					x-3, y-2)
+				libtcod.console_blit(hex_highlight, 0, 0, 0, 0, unit_con, x-3, y-2)
+		
+		# check for target hex display
+		if scenario.player_target_hex is not None:
+			if scenario.player_target_hex == (map_hx, map_hy):
+				(x,y) = PlotHex(vp_hx, vp_hy)
+				libtcod.console_put_char_ex(unit_con, x-1, y-1, 169, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x+1, y-1, 170, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x-1, y+1, 28, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x+1, y+1, 29, libtcod.red, libtcod.black)
 		
 	# display LoS if applicable
 	if scenario.active_unit != scenario.player_unit: return
@@ -7534,6 +7715,20 @@ def UpdateContextCon():
 	# no menu active
 	if scenario.active_menu == 0:
 		return
+	
+	# command menu
+	elif scenario.active_menu == 1:
+		if scenario.airsup_menu_active:
+			ConsolePrint(context_con, 0, 0, 'Air Support')
+			
+			if scenario.player_airsup_failed:
+				ConsolePrint(context_con, 0, 2, 'Request failed')
+			elif scenario.player_airsup_success:
+				ConsolePrint(context_con, 0, 2, 'Support inbound')
+			
+			# TODO: display any helpful information here about air support
+		else:
+			pass
 	
 	# crew actions
 	elif scenario.active_menu == 2:
@@ -8109,8 +8304,23 @@ def DoScenario():
 			# air support sub-menu
 			if scenario.airsup_menu_active:
 				
+				# select target hex
+				if key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
+					reverse = False
+					if key_char == 'a' or key.vk == libtcod.KEY_LEFT:
+						reverse = True
+					scenario.SelectNextTargetHex(reverse)
+					UpdateUnitCon()
+					UpdateScenarioDisplay()
+				
+				# request support
+				if chr(key.c).lower() == 'r':
+					if scenario.RequestAirSup():
+						UpdateCommandCon()
+						UpdateContextCon()
+						UpdateScenarioDisplay()
 				# close air support sub-menu
-				if key_char == 'q':
+				elif chr(key.c).lower() == 'q':
 					scenario.airsup_menu_active = False
 					UpdateCommandCon()
 					UpdateContextCon()
@@ -8120,7 +8330,7 @@ def DoScenario():
 			# root command menu
 			else:
 				# open air support sub-menu
-				if key_char == 'a':
+				if chr(key.c).lower() == 'a':
 					scenario.airsup_menu_active = True
 					UpdateCommandCon()
 					UpdateContextCon()
@@ -8166,7 +8376,7 @@ def DoScenario():
 						UpdateScenarioDisplay()
 			
 			# toggle BU/CE for this crewman
-			elif key_char == 'e':
+			elif chr(key.c).lower() == 'e':
 				
 				position = scenario.player_unit.crew_positions[campaign.selected_position]
 				if position.crewman is not None:
@@ -8221,7 +8431,7 @@ def DoScenario():
 					UpdateScenarioDisplay()
 			
 			# attempt Hull Down
-			elif key_char == 'h':
+			elif chr(key.c).lower() == 'h':
 				
 				# not possible
 				if scenario.player_unit.GetHullDownChance() == 0.0: continue
@@ -8291,7 +8501,7 @@ def DoScenario():
 					UpdateScenarioDisplay()
 			
 			# fire the active weapon at the selected target
-			elif key_char == 'f':
+			elif chr(key.c).lower() == 'f':
 				result = scenario.player_unit.Attack(scenario.selected_weapon,
 					scenario.player_target)
 				if result:

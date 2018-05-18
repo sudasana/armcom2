@@ -274,6 +274,14 @@ PF_BASE_CHANCE = [
 	[32.0, 7.0]			# 6 "
 ]
 
+# modifier for target size if target is known
+PF_SIZE_MOD = {
+	'Very Small' : -28.0,
+	'Small' : -12.0,
+	'Large' : 12.0,
+	'Very Large' : 28.0
+}
+
 # base success chances for armour penetration
 AP_BASE_CHANCE = {
 	'MG' : 16.7,
@@ -291,26 +299,21 @@ AP_BASE_CHANCE = {
 
 # effective FP of an HE hit from different weapon calibres
 HE_FP_EFFECT = [
-	(75, 8),
-	(70, 8),
-	(65, 7),
-	(60, 7),
-	(57, 6),
-	(50, 6),
-	(45, 5),
-	(37, 5),
-	(30, 4),
-	(25, 3),
-	(20, 3)
+	(200, 36),(183, 34),(170, 32),(160, 31),(150, 30),(140, 28),(128, 26),(120, 24),
+	(107, 22),(105, 22),(100, 20),(95, 19),(88, 18),(85, 17),(80, 16),(75, 14),
+	(70, 12),(65, 10),(60, 8),(57, 7),(50, 6),(45, 5),(37, 4),(30, 2),(25, 2),(20, 1)
 ]
 
 # penetration chance on armour of HE hits
 HE_AP_CHANCE = [
+	(150, 110.0),
+	(120, 100.0),
+	(100, 91.7),
+	(80, 72.2),
 	(70, 58.4),
 	(50, 41.7),
 	(40, 27.8),
 	(30, 16.7),
-	
 ]
 
 # maximum range for an MG attack to cause an AP hit on armoured target
@@ -2323,6 +2326,7 @@ class Session:
 			'37mm_he_explosion_00', '37mm_he_explosion_01',
 			'vehicle_explosion_00',
 			'at_rifle_firing',
+			'stuka_divebomb_00',
 			'armour_save_00', 'armour_save_01',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'wheeled_moving_00', 'wheeled_moving_01', 'wheeled_moving_02',
@@ -3173,7 +3177,8 @@ class Scenario:
 				break
 		(x2,y2) = PlotHex(vp_hx, vp_hy)
 		
-		# clear target hex
+		# record target hex coordinates then clear it from the scenario object hex
+		(hx, hy) = self.player_target_hex
 		self.player_target_hex = None
 		UpdateUnitCon()
 		UpdateScenarioDisplay()
@@ -3217,8 +3222,17 @@ class Scenario:
 			libtcod.console_flush()
 			Wait(8)
 		
-		# TODO: do attack
 		
+		PlaySoundFor(None, 'stuka_divebomb')
+		
+		# TODO: do bomb animation here
+		
+		# wait for sound effect to finish
+		if config.getboolean('ArmCom2', 'sounds_enabled'):
+			Wait(300)
+		
+		# do attack
+		self.DoAirAttack(hx, hy, num_planes)
 		
 		Wait(30)
 		
@@ -3227,7 +3241,149 @@ class Scenario:
 		libtcod.console_flush()
 		
 		del temp_con
+	
+	
+	# do an air attack on the target hex
+	def DoAirAttack(self, hx, hy, num_planes):
 		
+		# get target map hex
+		map_hex = self.cd_hex.map_hexes[(hx, hy)]
+		
+		# no target possible
+		if len(map_hex.unit_stack) == 0:
+			text = 'No possible targets, calling off attack run'
+			self.ShowMessage(text, hx=hx, hy=hy)
+			campaign_day.AddMessage(text)
+			return
+		
+		# get target hex terrain modifier
+		terrain_mod = map_hex.GetTerrainMod()
+		
+		# bomb calibre for Stuka attack
+		bomb_calibre = 200
+		
+		# determine effective fp
+		for (calibre, effective_fp) in HE_FP_EFFECT:
+			if calibre <= bomb_calibre:
+				break
+		
+		# do one attack per plane
+		for i in range(num_planes):
+			
+			# no more targets possible
+			if len(map_hex.unit_stack) == 0:
+				break
+			
+			# select a random target within the hex
+			target = choice(map_hex.unit_stack)
+			#target.MoveToTopOfStack()
+			#UpdateUnitCon()
+			#UpdateScenarioDisplay()
+			#libtcod.console_flush()
+			#Wait(8)
+			
+			# calculate basic to-hit score required
+			if not target.known:
+				chance = PF_BASE_CHANCE[0][1]
+			else:
+				if target.GetStat('category') == 'Vehicle':
+					chance = PF_BASE_CHANCE[0][0]
+				else:
+					chance = PF_BASE_CHANCE[0][1]
+			
+			# apply terrain modifier for target hex
+			chance -= terrain_mod
+			
+			# air burst modifier
+			if map_hex.terrain_type == 'forest' and target.GetStat('category') != 'Vehicle':
+				chance += 20.0
+			
+			# target size
+			size_class = target.GetStat('size_class')
+			if size_class is not None:
+				if size_class != 'Normal':
+					chance += PF_SIZE_MOD[size_class]
+			
+			chance = RestrictChance(chance)
+			
+			print 'DEBUG: chance to hit target ' + target.unit_id + ': ' + str(chance) + '%%'
+			
+			# do attack roll
+			roll = GetPercentileRoll()
+			
+			# no hit
+			if roll > chance:
+				continue
+			
+			# hit
+			
+			# infantry or gun target
+			if target.GetStat('category') in ['Infantry', 'Gun']:
+				
+				# critical hit modifier
+				if roll <= 3.0:
+					effective_fp = effective_fp * 2
+				
+				target.fp_to_resolve += effective_fp
+				
+				if not target.known:
+					target.hit_by_fp = 2
+				
+				text = target.GetName() + ' was hit by air attack'
+				scenario.ShowMessage(text, target.hx, target.hy)
+			
+			# vehicle hit
+			elif target.GetStat('category') == 'Vehicle':
+				
+				# determine location hit - use side locations and modify later
+				# for aerial attack
+				if GetPercentileRoll() <= 50.0:
+					hit_location = 'hull_side'
+				else:
+					hit_location = 'turret_side'
+				
+				# determine base penetration chance
+				for (calibre, chance) in HE_AP_CHANCE:
+					if calibre <= bomb_calibre:
+						break
+				
+				# TODO: direct hit vs. near miss
+				
+				# target armour modifier
+				armour = target.GetStat('armour')
+				if armour is not None:
+					if armour[hit_location] != '-':
+						target_armour = int(armour[hit_location])
+						if target_armour >= 0:
+						
+							modifier = -9.0
+							for i in range(target_armour - 1):
+								modifier = modifier * 1.8
+							
+							chance += modifier
+							
+							# apply critical hit modifier if any
+							if roll <= 3.0:
+								modifier = round(abs(modifier) * 0.8, 2)
+								chance += modifier
+				
+				# calculate final chance
+				chance = RestrictChance(chance)
+				
+				print 'DEBUG: chance to penetrate target ' + target.unit_id + ': ' + str(chance) + '%%'
+				
+				# do AP roll
+				roll = GetPercentileRoll()
+				
+				# no penetration
+				if roll > chance:
+					continue
+				
+				# penetrated
+				target.DestroyMe()
+				text = target.GetName() + ' was destroyed by air attack'
+				scenario.ShowMessage(text, target.hx, target.hy)
+				
 	
 	# calculate the odds of success of a ranged attack, returns an attack profile
 	# if pivot or turret_rotate are set to True or False, will override
@@ -3336,10 +3492,10 @@ class Scenario:
 				# target size
 				size_class = target.GetStat('size_class')
 				if size_class is not None:
-					if size_class == 'Small':
-						modifier_list.append(('Small Target', -12.0))
-					elif size_class == 'Very Small':
-						modifier_list.append(('Very Small Target', -28.0))
+					if size_class != 'Normal':
+						text = size_class + ' Target'
+						mod = PF_SIZE_MOD[size_class]
+						modifier_list.append((text, mod))
 			
 			# long / short-barreled gun
 			long_range = weapon.GetStat('long_range')
@@ -3462,7 +3618,7 @@ class Scenario:
 		
 		# get location hit on target
 		location = profile['location']
-		# hull hit or tart does not have rotatable turret
+		# hull hit or target does not have rotatable turret
 		if location == 'Hull' or target.turret_facing is None:
 			turret_facing = False
 		else:
@@ -3515,20 +3671,25 @@ class Scenario:
 					modifier_list.append(('Long Range', -7.0))
 		
 		# target armour modifier
+		# TODO: move into GetArmourModifier function for target
+		#       use in DoAirAttack as well
 		armour = target.GetStat('armour')
 		if armour is not None:
-			target_armour = int(armour[hit_location])
-			if target_armour > 0:
-				modifier = -9.0
-				for i in range(target_armour - 1):
-					modifier = modifier * 1.8
-				
-				modifier_list.append(('Target Armour', modifier))
-				
-				# apply critical hit modifier if any
-				if profile['result'] == 'CRITICAL HIT':
-					modifier = round(abs(modifier) * 0.8, 2)
-					modifier_list.append(('Critical Hit', modifier))
+			
+			# location is armoured
+			if armour[hit_location] != '-':
+				target_armour = int(armour[hit_location])
+				if target_armour >= 0:
+					modifier = -9.0
+					for i in range(target_armour - 1):
+						modifier = modifier * 1.8
+					
+					modifier_list.append(('Target Armour', modifier))
+					
+					# apply critical hit modifier if any
+					if profile['result'] == 'CRITICAL HIT':
+						modifier = round(abs(modifier) * 0.8, 2)
+						modifier_list.append(('Critical Hit', modifier))
 				
 		
 		# save the list of modifiers
@@ -6712,6 +6873,10 @@ def PlaySoundFor(obj, action):
 	
 	elif action == 'vehicle_explosion':
 		PlaySound('vehicle_explosion_00')
+		return
+	
+	elif action == 'stuka_divebomb':
+		PlaySound('stuka_divebomb_00')
 		return
 
 

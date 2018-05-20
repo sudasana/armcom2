@@ -2326,7 +2326,7 @@ class Session:
 			'37mm_he_explosion_00', '37mm_he_explosion_01',
 			'vehicle_explosion_00',
 			'at_rifle_firing',
-			'stuka_divebomb_00',
+			'plane_incoming_00', 'stuka_divebomb_00',
 			'armour_save_00', 'armour_save_01',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'wheeled_moving_00', 'wheeled_moving_01', 'wheeled_moving_02',
@@ -3212,9 +3212,9 @@ class Scenario:
 		else:
 			libtcod.console_put_char(temp_con, 1, 0, chr(194))
 		
-		# TODO: play plane sound
+		PlaySoundFor(None, 'plane_incoming')
 		
-		# animate plane attack
+		# animate plane movement toward target hex
 		for y in range(y1, y2, direction):
 			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -3222,24 +3222,31 @@ class Scenario:
 			libtcod.console_flush()
 			Wait(8)
 		
-		
 		PlaySoundFor(None, 'stuka_divebomb')
 		
-		# TODO: do bomb animation here
+		# bomb animation here
+		for i in range(24):
+			col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+			libtcod.console_set_default_foreground(0, col)
+			libtcod.console_put_char(0, x2+1, y2-1, 42)
+			libtcod.console_flush()
+			Wait(4)
+		libtcod.console_set_default_foreground(0, libtcod.white)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
 		
 		# wait for sound effect to finish
 		if config.getboolean('ArmCom2', 'sounds_enabled'):
-			Wait(300)
+			Wait(140)
 		
 		# do attack
 		self.DoAirAttack(hx, hy, num_planes)
 		
 		Wait(30)
 		
-		# clear plane from screen
+		# clear plane from screen and delete console
 		UpdateScenarioDisplay()
 		libtcod.console_flush()
-		
 		del temp_con
 	
 	
@@ -5008,6 +5015,8 @@ class Unit:
 		for weapon in self.weapon_list:
 			weapon.ResetForNewTurn()
 		
+		# TODO: add when air support testing is finished
+		#SaveGame()
 		UpdateScenarioDisplay()
 	
 	# do automatic actions after an activation
@@ -6875,6 +6884,10 @@ def PlaySoundFor(obj, action):
 		PlaySound('vehicle_explosion_00')
 		return
 	
+	elif action == 'plane_incoming':
+		PlaySound('plane_incoming_00')
+		return
+	
 	elif action == 'stuka_divebomb':
 		PlaySound('stuka_divebomb_00')
 		return
@@ -7883,18 +7896,26 @@ def UpdateContextCon():
 	
 	# command menu
 	elif scenario.active_menu == 1:
+		libtcod.console_set_default_background(context_con, libtcod.Color(130, 0, 180))
+		libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(context_con, libtcod.black)
+		
 		if scenario.airsup_menu_active:
 			ConsolePrint(context_con, 0, 0, 'Air Support')
 			
-			if scenario.player_airsup_failed:
-				ConsolePrint(context_con, 0, 2, 'Request failed')
-			elif scenario.player_airsup_success:
-				ConsolePrint(context_con, 0, 2, 'Support inbound')
+			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+			ConsolePrint(context_con, 0, 2, 'Level: ' + str(campaign_day.air_support_level))
 			
-			# TODO: display any helpful information here about air support
+			if scenario.player_airsup_failed:
+				ConsolePrint(context_con, 0, 4, 'Request failed')
+			elif scenario.player_airsup_success:
+				ConsolePrint(context_con, 0, 4, 'Support inbound')
+			
 		else:
-			pass
-	
+			
+			ConsolePrint(context_con, 0, 0, 'Command')
+			
+			
 	# crew actions
 	elif scenario.active_menu == 2:
 		position = scenario.player_unit.crew_positions[campaign.selected_position]

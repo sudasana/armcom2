@@ -1,8 +1,9 @@
 {
 	"Trait Name": {
 		"num_levels" : "3",
-		"desc" : "",
-		"prerequites" : "",
+		"general_desc" : "",
+		"effects_desc" : "",
+		"prerequisites" : "",
 		"restrictions" : ""
 	}
 }

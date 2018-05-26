@@ -58,11 +58,11 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
-AI_NO_ACTION = True					# no AI actions at all
+AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
+ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
-PLAYER_ALWAYS_HITS = True				# player attacks always roll well
+PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
@@ -231,7 +231,7 @@ MONTH_NAMES = [
 # TODO: move these to json file
 
 # radius in hexes of a zone on the campaign day map; does not include centre hex
-CD_MAP_HEX_RADIUS = 7
+CD_MAP_HEX_RADIUS = 8
 
 # base chance of triggering a battle when entering an enemy-held hex on the campaign day map
 CD_BATTLE_BASE_CHANCE = 65.0
@@ -934,6 +934,24 @@ class ZoneHex:
 		# create an empty placeholder for a hex map; will be generated if a scenario takes place here
 		self.map_hexes = {}
 		self.map_radius = CD_MAP_HEX_RADIUS
+		
+		# locations of entry hex from each direction
+		self.entry_hexes = []
+		for direction in range(6):
+			hx = 0
+			hy = 0
+			
+			# go to edge of map
+			for i in range(self.map_radius):
+				(hx, hy) = GetAdjacentHex(hx, hy, direction)
+			
+			# count along edge to middle
+			step_direction = ConstrainDir(direction + 2)
+			for i in range(int(floor(self.map_radius / 2))):
+				(hx, hy) = GetAdjacentHex(hx, hy, step_direction)
+			
+			self.entry_hexes.append((hx, hy))
+		
 	
 	# generate a random terrain type for this hex
 	# FUTURE: can pull data from the campaign day to determine possible terrain types
@@ -1263,11 +1281,16 @@ class ZoneHex:
 				self.map_hexes[(hx, hy)].SetTerrainType('fields_in_season')
 
 		##### Ponds #####
+		
 		num_ponds = libtcod.random_get_int(0, ponds_min, ponds_max)
 		shuffle(map_hex_list)
 		for terrain_pass in range(num_ponds):
 			for (hx, hy) in map_hex_list:
+				# never create a pond in the centre hex
 				if hx == 0 and hy == 0: continue
+				# never create a pond in an entry hex
+				if (hx, hy) in self.entry_hexes: continue
+				
 				if self.map_hexes[(hx, hy)].terrain_type != 'openground':
 					continue
 				if self.map_hexes[(hx, hy)].elevation != 1:
@@ -1281,15 +1304,9 @@ class ZoneHex:
 		#self.map_hexes[(0, 8)].river_edges.append(0)
 		
 		##### Dirt Road #####
-		if libtcod.random_get_int(0, 1, 3) <= 2:
-			direction1 = libtcod.random_get_int(0, 0, 5)
-			direction2 = ConstrainDir(direction1 + 3)
-			hx1, hy1 = 0, 0
-			hx2, hy2 = 0, 0
-			for i in range(self.map_radius):
-				(hx1, hy1) = GetAdjacentHex(hx1, hy1, direction1)
-				(hx2, hy2) = GetAdjacentHex(hx2, hy2, direction2)
-			GenerateRoad(hx1, hy1, hx2, hy2)
+		for direction in self.dirt_roads:
+			(hx, hy) = self.entry_hexes[direction]
+			GenerateRoad(0, 0, hx, hy)
 		
 		##### Railroad #####
 		if libtcod.random_get_int(0, 1, 5) == 1:
@@ -1460,8 +1477,8 @@ class CampaignDay:
 	
 	
 	# initiate a battle encounter scenario and store it in the CD object
-	def InitScenario(self, hx, hy):
-		self.scenario = Scenario(self.map_hexes[(hx, hy)])
+	def InitScenario(self, hx, hy, source_direction):
+		self.scenario = Scenario(self.map_hexes[(hx, hy)], source_direction)
 		
 	
 	# plot the centre of a day map hex location onto the map console
@@ -2086,7 +2103,9 @@ class CampaignDay:
 						campaign.AdvanceClock(0, mins)
 						
 						# set new player location and clear travel direction
+						# save direction from which player entered zone
 						self.player_unit_location = (hx, hy)
+						source_direction = ConstrainDir(self.travel_direction + 3)
 						self.travel_direction = None
 						self.UpdateCDGUICon()
 						
@@ -2095,7 +2114,7 @@ class CampaignDay:
 							roll = GetPercentileRoll()
 							if (roll <= map_hex2.encounter_chance or ALWAYS_ENCOUNTER) and not NEVER_ENCOUNTER:
 								ShowNotification('You encounter enemy resistance and a battle ensues!')
-								self.InitScenario(hx, hy)
+								self.InitScenario(hx, hy, source_direction)
 							else:
 								ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
 								map_hex2.controlled_by = 0
@@ -2663,10 +2682,13 @@ class AI:
 
 # Scenario: represents a single battle encounter
 class Scenario:
-	def __init__(self, cd_hex):
+	def __init__(self, cd_hex, source_direction):
 		
 		# pointer to map hex on campaign day map
 		self.cd_hex = cd_hex
+		
+		# direction from which player entered
+		self.source_direction = source_direction
 		
 		# game turn, active player, and phase tracker
 		self.game_turn = {
@@ -3090,9 +3112,9 @@ class Scenario:
 			self.player_target_hex_list.append((unit.hx, unit.hy))
 		
 		# reset selected hex if no longer possible
-		if self.player_target_hex is not None:
-			if self.player_target_hex not in self.player_target_hex_list:
-				self.player_target_hex = None
+		#if self.player_target_hex is not None:
+		#	if self.player_target_hex not in self.player_target_hex_list:
+		#		self.player_target_hex = None
 	
 	# change selected target hex
 	def SelectNextTargetHex(self, reverse):
@@ -3594,10 +3616,11 @@ class Scenario:
 				modifier_list.append(('Unknown Target', -10.0))
 			else:
 			
-				# target is infantry and moved
-				if target.moved and target.GetStat('category') == 'Infantry':
+				# target is infantry and moved in open
+				terrain_mod = self.cd_hex.map_hexes[(target.hx, target.hy)].GetTerrainMod()
+				if terrain_mod == 0.0 and target.moved and target.GetStat('category') == 'Infantry':
 					mod = round(base_chance / 2.0, 2)
-					modifier_list.append(('Target Moved', mod))
+					modifier_list.append(('Exposed Infantry', mod))
 				
 				# target size class
 				size_class = target.GetStat('size_class')
@@ -8302,18 +8325,19 @@ def DoScenario():
 		# generate scenario units
 		
 		# spawn player tank into scenario
-		# FUTURE: spawn location changes based on from where player unit entered area
-		
-		hx = 0
-		hy = scenario.cd_hex.map_radius
+		(hx, hy) = scenario.cd_hex.entry_hexes[scenario.source_direction]
 		
 		unit = campaign.player_unit
 		unit.InitScenarioStats()
-		unit.facing = 0
-		if 'turret' in unit.stats:
-			unit.turret_facing = 0
 		scenario.units.append(unit)
 		unit.SpawnAt(hx, hy)
+		
+		# set facing toward center of map
+		direction = GetDirectionToward(hx, hy, 0, 0)
+		unit.facing = direction
+		if 'turret' in unit.stats:
+			unit.turret_facing = direction
+		
 		unit.CheckHullDownGain()
 		scenario.player_unit = unit
 		unit.CalcFoV()

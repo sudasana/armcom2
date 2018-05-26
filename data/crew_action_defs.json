@@ -9,6 +9,12 @@
 	"Spot": {
 		"desc" : "Scan terrain for enemies"
 	},
+	"Request Support" : {
+		"desc" : "Radio request for supporting attack",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"fov_hextants" : ["5", "0", "1"],
+		"fov_range" : "6"
+	},
 	"Direct Driver" : {
 		"desc" : "Makes bonus moves, HD more likely",
 		"position_list" : ["Commander", "Commander/Gunner"],

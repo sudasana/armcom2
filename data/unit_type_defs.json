@@ -1495,5 +1495,34 @@
 		],
 		"ubiquity" : "100",
 		"op_value" : "0"
+	},
+	
+	"Ju 87B Stuka": {
+		"category" : "Airplane",
+		"class" : "Dive Bomber",
+		"movement_class" : "Airplane",
+		"weapon_list" : [
+			{
+				"type" : "Ordinance",
+				"name" : "Bombs",
+				"calibre" : "200",
+				"max_range" : "1",
+				"max_ammo" : "1"
+			},
+			{
+				"type" : "MG",
+				"fp" : "5",
+				"rof" : "17.0"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Pilot"},
+			{"name" : "Radio Operator"}
+		],
+		"description" : [
+			""
+		],
+		"ubiquity" : "100",
+		"op_value" : "0"
 	}
 }

@@ -17,6 +17,9 @@
 	"player_unit_list" : [
 		"Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", "Panzer III D", "Panzer III F"
 	],
+	"player_air_support": [
+		"Ju 87B Stuka"
+	],
 	"enemy_unit_list" : [
 		"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Vickers 6-Ton Mark E", "7TP",
 		"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
@@ -28,6 +31,8 @@
 			"month" : "9",
 			"day" : "1",
 			"desc" : "The Polish Border",
+			"air_support_level" : "80.0",
+			"air_support_step" : "10.0",
 			"enemy_unit_class_odds" : {
 				"Tankette" : "80",
 				"Light Tank" : "30",

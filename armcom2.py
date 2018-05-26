@@ -62,7 +62,7 @@ AI_NO_ACTION = True					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 ALWAYS_ENCOUNTER = True				# every enemy-controlled zone results in a battle
 NEVER_ENCOUNTER = False					# no "
-PLAYER_ALWAYS_HITS = False				# player attacks always roll well
+PLAYER_ALWAYS_HITS = True				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
@@ -1338,17 +1338,18 @@ class ZoneHex:
 class CampaignDay:
 	def __init__(self):
 		
-		# FUTURE: set by campaign object
-		if campaign.stats['player_nation'] == 'Germany':
-			self.air_support_level = 80.0
-			self.air_support_step = 10.0
-			self.arty_support_level = 0.0
-			self.arty_support_step = 0.0
-		else:
-			self.air_support_level = 0.0
-			self.air_support_step = 0.0
-			self.arty_support_level = 0.0
-			self.arty_support_step = 0.0
+		# set up air and artillery support for the day
+		self.air_support_level = 0.0
+		self.air_support_step = 0.0
+		if 'air_support_level' in campaign.today:
+			self.air_support_level = float(campaign.today['air_support_level'])
+			self.air_support_step = float(campaign.today['air_support_step'])
+		
+		self.arty_support_level = 0.0
+		self.arty_support_step = 0.0
+		if 'arty_support_level' in campaign.today:
+			self.arty_support_level = float(campaign.today['arty_support_level'])
+			self.arty_support_step = float(campaign.today['arty_support_step'])
 		
 		# list of messages: each is a tuple of time and text
 		self.messages = []
@@ -3127,16 +3128,20 @@ class Scenario:
 		# already failed this turn
 		if self.player_airsup_failed: return False
 		
+		# try to set crew action
+		if not self.player_unit.SetCrewAction(['Commander', 'Commander/Gunner'], 'Request Support'):
+			return False
+		
 		# do support roll
 		roll = GetPercentileRoll()
 		
-		# TEMP
-		roll = 10.0
+		# debug flag
+		if PLAYER_ALWAYS_HITS: roll = 10.0
 		
 		if roll > campaign_day.air_support_level:
 			self.player_airsup_failed = True
 			text = 'Unable to respond to air support request.'
-			scenario.ShowMessage(text)
+			self.ShowMessage(text)
 			campaign_day.AddMessage(text)
 			return True
 		
@@ -3154,7 +3159,6 @@ class Scenario:
 		return True
 	
 	# do an air support attack against the selected hex target
-	# TEMP: assumes German 1939 air support type
 	def DoAirSupportAttack(self):
 		
 		# roll for number of planes
@@ -3166,8 +3170,13 @@ class Scenario:
 		else:
 			num_planes = 3
 		
+		# determine type of planne
+		plane_id = choice(campaign.stats['player_air_support'])
+		
 		# display message
-		text = str(num_planes) + ' Ju 87B Stuka arrive for an attack run'
+		text = str(num_planes) + ' ' + plane_id + ' arrive'
+		if num_planes == 1: text += 's'
+		text += ' for an attack run'
 		self.ShowMessage(text)
 		campaign_day.AddMessage(text)
 		
@@ -3240,7 +3249,7 @@ class Scenario:
 			Wait(140)
 		
 		# do attack
-		self.DoAirAttack(hx, hy, num_planes)
+		self.DoAirAttack(hx, hy, num_planes, plane_id)
 		
 		Wait(30)
 		
@@ -3251,7 +3260,7 @@ class Scenario:
 	
 	
 	# do an air attack on the target hex
-	def DoAirAttack(self, hx, hy, num_planes):
+	def DoAirAttack(self, hx, hy, num_planes, plane_id):
 		
 		# get target map hex
 		map_hex = self.cd_hex.map_hexes[(hx, hy)]
@@ -3263,19 +3272,29 @@ class Scenario:
 			campaign_day.AddMessage(text)
 			return
 		
-		# get target hex terrain modifier
-		terrain_mod = map_hex.GetTerrainMod()
+		# create plane units
+		unit_list = []
+		for i in range(num_planes):
+			unit_list.append(Unit(plane_id))
 		
-		# bomb calibre for Stuka attack
-		bomb_calibre = 200
+		# determine calibre for bomb attack
+		for weapon in unit_list[0].weapon_list:
+			if weapon.stats['name'] == 'Bombs':
+				bomb_calibre = int(weapon.stats['calibre'])
+				break
 		
 		# determine effective fp
 		for (calibre, effective_fp) in HE_FP_EFFECT:
 			if calibre <= bomb_calibre:
 				break
 		
+		# get target hex terrain modifier
+		terrain_mod = map_hex.GetTerrainMod()
+		
+		results = False
+		
 		# do one attack per plane
-		for i in range(num_planes):
+		for unit in unit_list:
 			
 			# no more targets possible
 			if len(map_hex.unit_stack) == 0:
@@ -3283,11 +3302,6 @@ class Scenario:
 			
 			# select a random target within the hex
 			target = choice(map_hex.unit_stack)
-			#target.MoveToTopOfStack()
-			#UpdateUnitCon()
-			#UpdateScenarioDisplay()
-			#libtcod.console_flush()
-			#Wait(8)
 			
 			# calculate basic to-hit score required
 			if not target.known:
@@ -3313,8 +3327,6 @@ class Scenario:
 			
 			chance = RestrictChance(chance)
 			
-			print 'DEBUG: chance to hit target ' + target.unit_id + ': ' + str(chance) + '%%'
-			
 			# do attack roll
 			roll = GetPercentileRoll()
 			
@@ -3323,6 +3335,7 @@ class Scenario:
 				continue
 			
 			# hit
+			results = True
 			
 			# infantry or gun target
 			if target.GetStat('category') in ['Infantry', 'Gun']:
@@ -3377,8 +3390,6 @@ class Scenario:
 				# calculate final chance
 				chance = RestrictChance(chance)
 				
-				print 'DEBUG: chance to penetrate target ' + target.unit_id + ': ' + str(chance) + '%%'
-				
 				# do AP roll
 				roll = GetPercentileRoll()
 				
@@ -3390,7 +3401,12 @@ class Scenario:
 				target.DestroyMe()
 				text = target.GetName() + ' was destroyed by air attack'
 				scenario.ShowMessage(text, target.hx, target.hy)
-				
+				campaign_day.AddMessage(text)
+		
+		if not results:
+			scenario.ShowMessage('Attack run had no effect', target.hx, target.hy)
+			campaign_day.AddMessage(text)
+	
 	
 	# calculate the odds of success of a ranged attack, returns an attack profile
 	# if pivot or turret_rotate are set to True or False, will override
@@ -5015,8 +5031,7 @@ class Unit:
 		for weapon in self.weapon_list:
 			weapon.ResetForNewTurn()
 		
-		# TODO: add when air support testing is finished
-		#SaveGame()
+		SaveGame()
 		UpdateScenarioDisplay()
 	
 	# do automatic actions after an activation
@@ -5433,6 +5448,10 @@ class Unit:
 			self.additional_moves_taken += 1
 		else:
 			self.move_finished = True
+		
+		# recalculate target hex list if player
+		if self == scenario.player_unit:
+			scenario.RebuildTargetHexList()
 		
 		return True
 	
@@ -6091,6 +6110,7 @@ class Unit:
 				if position.crewman.current_action == action:
 					return True
 				
+				# crewman already on a different action
 				if position.crewman.current_action != 'None': continue
 				
 				position.crewman.current_action = action

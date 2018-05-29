@@ -22,8 +22,8 @@
 		"fov_range" : "6",
 		"selectable" : "TRUE"
 	},
-	"Direct Gunner" : {
-		"desc" : "Bonus to hit for Gunner",
+	"Direct Fire" : {
+		"desc" : "Bonus to attacks",
 		"position_list" : ["Commander"],
 		"fov_hextants" : ["5", "0", "1"],
 		"fov_range" : "6",

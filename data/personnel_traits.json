@@ -1,9 +1,12 @@
 {
-	"Trait Name": {
+	"Sniper Spotter": {
 		"num_levels" : "3",
-		"general_desc" : "",
-		"effects_desc" : "",
-		"prerequisites" : "",
-		"restrictions" : ""
+		"percent_effect" : [
+			"2.5", "5.0", "10.0"
+		],
+		"effects_desc" : "Additional bonus when directing Gun attacks at a range of 4-6 hexes",
+		"intended_positions" : ["Commander"],
+		"prerequisites" : [],
+		"restrictions" : []
 	}
 }

@@ -3509,10 +3509,6 @@ class Scenario:
 			if elevation2 > elevation1:
 				modifier_list.append(('Higher Elevation', -20.0))
 			
-			# Commander directing fire
-			if attacker.CheckCrewAction(['Commander'], 'Direct Gunner'):
-				modifier_list.append(('Cmdr Direction', 20.0))
-			
 			# unknown target
 			if not target.known:
 				modifier_list.append(('Unknown Target', -10.0))
@@ -3629,6 +3625,10 @@ class Scenario:
 						modifier_list.append(('Small Target', -12.0))
 					elif size_class == 'Very Small':
 						modifier_list.append(('V. Small Target', -28.0))
+		
+		# Commander directing fire
+		if attacker.CheckCrewAction(['Commander'], 'Direct Fire'):
+			modifier_list.append(('Cmdr Direction', 10.0))
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -5733,8 +5733,8 @@ class Unit:
 			if profile is None: return False
 			
 			# set bonus used flag if applicable
-			if profile['type'] == 'Point Fire':
-				position = self.CheckCrewAction(['Commander'], 'Direct Gunner')
+			if profile['type'] in ['Point Fire', 'Area Fire']:
+				position = self.CheckCrewAction(['Commander'], 'Direct Fire')
 				if position:
 					position.crewman.action_bonus_used = True
 			

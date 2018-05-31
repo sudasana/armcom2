@@ -1,12 +1,81 @@
 {
-	"Sniper Spotter": {
+	"Defender of the Homeland" : {
+		"num_levels" : "1",
+		"percent_effect" : [
+			"10.0"
+		],
+		"effects_desc" : ["Bonus to morale checks when under fire."],
+		"campaign_only" : "TRUE"
+	},
+	
+	"Long Range Gun Direction": {
 		"num_levels" : "3",
 		"percent_effect" : [
 			"2.5", "5.0", "10.0"
 		],
-		"effects_desc" : "Additional bonus when directing Gun attacks at a range of 4-6 hexes",
-		"intended_positions" : ["Commander"],
-		"prerequisites" : [],
-		"restrictions" : []
+		"effects_desc" : ["Additional bonus when directing Gun attacks at a range of 4-6 hexes."],
+		"intended_positions" : ["Commander"]
+	},
+	
+	"Keeps to Cover" : {
+		"num_levels" : "3",
+		"percent_effect" : [
+			"2.5", "5.0", "10.0"
+		],
+		"effects_desc" : ["When driving a vehicle and Moving, less likely to be spotted by enemy units."],
+		"intended_positions" : ["Driver"]
+	},
+	
+	"Lead Foot" : {
+		"num_levels" : "3",
+		"percent_effect" : [
+			"10.0", "20.0", "30.0"
+		],
+		"effects_desc" : ["Reduces penalty for extra move chance beyond the first."],
+		"intended_positions" : ["Driver"]
+	},
+	
+	"Grouse Spotter" : {
+		"num_levels" : "3",
+		"percent_effect" : [
+			"2.5", "5.0", "10.0"
+		],
+		"effects_desc" : ["Additional bonus to spot unknown enemy units in concealment terrain."]
+	},
+	
+	"Leading Fire" : {
+		"num_levels" : "3",
+		"percent_effect" : [
+			"5.0", "10.0", "15.0"
+		],
+		"effects_desc" : ["Additional bonus to hit moving targets with a Gun attack."],
+		"intended_positions" : ["Gunner"]
+	},
+	
+	"Long Range Gunner" : {
+		"num_levels" : "3",
+		"percent_effect" : [
+			"5.0", "10.0", "15.0"
+		],
+		"effects_desc" : ["Any long range to-hit penalty is reduced or eliminated for Gun attacks."],
+		"intended_positions" : ["Gunner"]
+	},
+	
+	"Burst Fire" : {
+		"num_levels" : "3",
+		"percent_effect" : [
+			"3.0", "5.0", "10.0"
+		],
+		"effects_desc" : ["Bonus to Rate of Fire chance for MG attacks."]
+	},
+	
+	"Fast Hands" : {
+		"num_levels" : "3",
+		"percent_effect" : [
+			"3.0", "5.0", "10.0"
+		],
+		"effects_desc" : ["Bonus to Rate of Fire chance when reloading a Gun."],
+		"intended_positions" : ["Loader"]
 	}
+		
 }

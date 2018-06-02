@@ -17,6 +17,10 @@
 	"player_unit_list" : [
 		"TKS (20mm)", "Vickers 6-Ton Mark E", "7TP"
 	],
+	,
+	"player_arty_support": [
+		"75mm wz. 02/26"
+	],
 	"enemy_unit_list" : [
 		"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", 
 		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",
@@ -29,6 +33,8 @@
 			"month" : "9",
 			"day" : "1",
 			"desc" : "The Polish Border",
+			"arty_support_level" : "90.0",
+			"arty_support_step" : "10.0",
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Medium Tank" : "15",

@@ -14,7 +14,7 @@
 		},
 		"weapon_list" : [
 			{
-				"type" : "Hull MG",
+				"type" : "Turret MG",
 				"fp" : "4",
 				"rof" : "17.0",
 				"mount" : "Hull",
@@ -25,7 +25,7 @@
 		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
-				"location" : "Hull",
+				"location" : "Turret",
 				"hatch" : "TRUE",
 				"hatch_group" : "0",
 				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
@@ -66,7 +66,7 @@
 		},
 		"weapon_list" : [
 			{
-				"type" : "Hull MG",
+				"type" : "Turret MG",
 				"fp" : "4",
 				"rof" : "17.0",
 				"mount" : "Hull",
@@ -77,7 +77,7 @@
 		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
-				"location" : "Hull",
+				"location" : "Turret",
 				"hatch" : "TRUE",
 				"hatch_group" : "0",
 				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
@@ -121,7 +121,7 @@
 				"long_range" : "L",
 				"rof" : "17.0",
 				"rr_size" : "4",
-				"mount" : "Hull",
+				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
 				"firing_group" : "0",
 				"ammo_type_list" : ["HE", "AP"],
@@ -131,7 +131,7 @@
 		"crew_positions" : [
 			{
 				"name" : "Commander/Gunner",
-				"location" : "Hull",
+				"location" : "Turret",
 				"hatch" : "TRUE",
 				"hatch_group" : "0",
 				"ce_visible" : ["0", "1", "2", "3", "4", "5"],

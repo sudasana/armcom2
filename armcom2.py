@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 ##########################################################################################
 
 # Debug Flags
-AI_SPY = False						# write description of AI actions to console
+AI_SPY = True						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
 ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
@@ -7777,12 +7777,12 @@ def UpdateUnitCon():
 				libtcod.console_set_default_background(unit_con, libtcod.black)
 				ConsolePrintEx(unit_con, x, y, libtcod.BKGND_SET, libtcod.CENTER, text)
 			
-			# record vp location of other units in the stack
+			# record vp and screen location of other units in the stack
 			if len(map_hex.unit_stack) > 1:
 				for unit in map_hex.unit_stack[1:]:
 					unit.vp_hx = vp_hx
 					unit.vp_hy = vp_hy
-			
+					(unit.screen_x, unit.screen_y) = PlotHex(vp_hx, vp_hy)
 	
 		# check for hex highlight
 		if scenario.highlighted_hex is not None:

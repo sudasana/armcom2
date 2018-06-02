@@ -66,7 +66,7 @@ PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-05-19'			# game version
+VERSION = 'Alpha 1.0.0-2018-06-09'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -141,6 +141,7 @@ CAMPAIGN_DAY_HEXES = [
 	(-3,7),(-2,7),(-1,7),(0,7),
 	(-4,8),(-3,8),(-2,8),(-1,8),(0,8)
 ]
+
 
 ##### Colour Definitions #####
 
@@ -1982,7 +1983,7 @@ class CampaignDay:
 				# player won
 				elif self.scenario.winner == 0:
 					ShowNotification('You have defeated all enemy resistance and now control this area.')
-					campaign_day.AddMessage('We captured an enemy-controlled area.')
+					campaign_day.AddMessage('We captured the enemy-controlled area.')
 					self.map_hexes[self.player_unit_location].controlled_by = 0
 					self.records['Map Areas Captured'] += 1
 					self.UpdateTimeWeatherDisplay()
@@ -4152,6 +4153,8 @@ class Scenario:
 				action = 'Operate AA MG'
 			elif weapon_type == 'Hull MG':
 				action = 'Operate Hull MG'
+			elif weapon_type == 'Turret MG':
+				action = 'Operate Turret MG'
 			
 			position = attacker.CrewActionPossible(position_list, action)
 			if not position:
@@ -5913,9 +5916,14 @@ class Unit:
 					
 					self.DestroyMe()
 					
-					# if player was not involved, display a message
+					if self == scenario.player_unit:
+						text = 'You were'
+					else:
+						text = self.GetName() + ' was'
+					text += ' destroyed by ' + profile['attacker'].GetName()
+					
+					# if player was not involved, display the message
 					if profile['attacker'] != scenario.player_unit and self != scenario.player_unit:
-						text = self.GetName() + ' was destroyed by ' + profile['attacker'].GetName()
 						scenario.ShowMessage(text, self.hx, self.hy)
 					
 					campaign_day.AddMessage(text)
@@ -6035,6 +6043,10 @@ class Unit:
 		if self != scenario.player_unit and self.owning_player == 0:
 			if self in campaign.player_unit_group:
 				campaign.player_unit_group.remove(self)
+		
+		# set campaign unit flag
+		if self == scenario.player_unit:
+			campaign.player_unit.alive = False
 		
 		# award VP to player for unit destruction
 		elif self.owning_player == 1:
@@ -8381,22 +8393,22 @@ def DoScenario():
 		# generate scenario units
 		
 		# spawn player tank into scenario
+		scenario.player_unit = campaign.player_unit
+		
 		(hx, hy) = scenario.cd_hex.entry_hexes[scenario.source_direction]
 		
-		unit = campaign.player_unit
-		unit.InitScenarioStats()
-		scenario.units.append(unit)
-		unit.SpawnAt(hx, hy)
+		campaign.player_unit.InitScenarioStats()
+		scenario.units.append(campaign.player_unit)
+		campaign.player_unit.SpawnAt(hx, hy)
 		
 		# set facing toward center of map
 		direction = GetDirectionToward(hx, hy, 0, 0)
-		unit.facing = direction
-		if 'turret' in unit.stats:
-			unit.turret_facing = direction
+		campaign.player_unit.facing = direction
+		if 'turret' in campaign.player_unit.stats:
+			campaign.player_unit.turret_facing = direction
 		
-		unit.CheckHullDownGain()
-		scenario.player_unit = unit
-		unit.CalcFoV()
+		campaign.player_unit.CheckHullDownGain()
+		campaign.player_unit.CalcFoV()
 		
 		# spawn rest of player group
 		for unit in campaign.player_unit_group:

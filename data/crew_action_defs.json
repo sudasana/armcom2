@@ -65,6 +65,12 @@
 		"position_list" : ["Assistant Driver"],
 		"fov_hextants" : ["0"],
 		"fov_range" : "6"
+	},
+	"Operate Turret MG" : {
+		"desc" : "Operate the turret-mounted MG",
+		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
+		"fov_hextants" : ["0"],
+		"fov_range" : "6"
 	}
 	
 }

@@ -1419,7 +1419,7 @@ class CampaignDay:
 		if self.air_support_level < 0.0:
 			self.air_support_level = 0.0
 			
-	# add a message with the current timestamp to the message log
+	# add a message with the current timestamp to the journal
 	def AddMessage(self, text):
 		self.messages.append((str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2), text))
 	
@@ -1982,6 +1982,7 @@ class CampaignDay:
 				# player won
 				elif self.scenario.winner == 0:
 					ShowNotification('You have defeated all enemy resistance and now control this area.')
+					campaign_day.AddMessage('We captured an enemy-controlled area.')
 					self.map_hexes[self.player_unit_location].controlled_by = 0
 					self.records['Map Areas Captured'] += 1
 					self.UpdateTimeWeatherDisplay()
@@ -1998,9 +1999,10 @@ class CampaignDay:
 					self.scenario = None
 					
 					# check for end of day
-					# FUTURE: must be wat to do this once in the loop
+					# FUTURE: must be way to do this once in the loop
 					if campaign.EndOfDay():
 						text = 'Your combat day has ended.'
+						campaign_day.AddMessage('The combat day ends')
 						ShowNotification(text)
 						EraseGame()
 						DisplayCampaignDaySummary()
@@ -2120,9 +2122,11 @@ class CampaignDay:
 							roll = GetPercentileRoll()
 							if (roll <= map_hex2.encounter_chance or ALWAYS_ENCOUNTER) and not NEVER_ENCOUNTER:
 								ShowNotification('You encounter enemy resistance and a battle ensues!')
+								campaign_day.AddMessage('We moved into a new area and encountered enemy resistance.')
 								self.InitScenario(hx, hy, source_direction)
 							else:
 								ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
+								campaign_day.AddMessage('We moved into a new area but encountered no resistance.')
 								map_hex2.controlled_by = 0
 								self.records['Map Areas Captured'] += 1
 								
@@ -3170,7 +3174,6 @@ class Scenario:
 			self.player_airsup_failed = True
 			text = 'Unable to respond to air support request.'
 			self.ShowMessage(text)
-			campaign_day.AddMessage(text)
 			return True
 		
 		# reduce support level by one step
@@ -3182,7 +3185,6 @@ class Scenario:
 		# display and record message
 		text = 'Air support request was successful, air support is now inbound.'
 		scenario.ShowMessage(text)
-		campaign_day.AddMessage(text)
 		
 		return True
 	
@@ -3297,7 +3299,6 @@ class Scenario:
 		if len(map_hex.unit_stack) == 0:
 			text = 'No possible targets, calling off attack run'
 			self.ShowMessage(text, hx=hx, hy=hy)
-			campaign_day.AddMessage(text)
 			return
 		
 		# create plane units
@@ -3633,8 +3634,12 @@ class Scenario:
 						modifier_list.append(('V. Small Target', -28.0))
 		
 		# Commander directing fire
-		if attacker.CheckCrewAction(['Commander'], 'Direct Fire'):
-			modifier_list.append(('Cmdr Direction', 10.0))
+		position = attacker.CheckCrewAction(['Commander'], 'Direct Fire')
+		if position is not False:
+			skill_lvl = position.crewman.skills['Commander']
+			if skill_lvl > 0:
+				bonus = 10.0 + (2.0 * skill_lvl)
+				modifier_list.append(('Cmdr Direction', bonus))
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -4249,10 +4254,20 @@ class Scenario:
 					chance += 30.0
 				else:
 					chance -= 30.0
+			elif movement_class == 'Fast Wheeled':
+				if dirt_road:
+					chance += 50.0
+				else:
+					if unit.GetStat('off_road') is None:
+						chance -= 30.0
 		
 		# direct driver modifier
-		if unit.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver'):
-			chance += 15.0
+		position = unit.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
+		if position is not False:
+			skill_lvl = position.crewman.skills['Commander']
+			if skill_lvl > 0:
+				bonus = 15.0 + (2.0 * skill_lvl)
+				chance += bonus
 		
 		# previous bonus move modifier
 		if unit.additional_moves_taken > 0:
@@ -4840,12 +4855,24 @@ class Unit:
 		ConsolePrintEx(console, x+23, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,
 			self.GetStat('movement_class'))
 		
+		# recce and/or off road
+		libtcod.console_set_default_foreground(console, libtcod.dark_green)
+		text = ''
+		if self.GetStat('recce') is not None:
+			text += 'Recce'
+		if self.GetStat('off_road') is not None:
+			if text != '':
+				text += ' '
+			text += 'ATV'
+		ConsolePrintEx(console, x+23, y+13, libtcod.BKGND_NONE, libtcod.RIGHT,
+			text)
+		
 		# size class
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		size_class = self.GetStat('size_class')
 		if size_class is not None:
 			if size_class != 'Normal':
-				ConsolePrintEx(console, x+23, y+13, libtcod.BKGND_NONE,
+				ConsolePrintEx(console, x+23, y+14, libtcod.BKGND_NONE,
 					libtcod.RIGHT, size_class)
 			
 		# mark place in case we skip unit status display
@@ -4857,8 +4884,7 @@ class Unit:
 				libtcod.console_set_default_foreground(console, libtcod.sepia)
 				text = 'HD'
 				text += GetDirectionalArrow(ConstrainDir(self.hull_down[0] - scenario.vp_facing))
-				ConsolePrintEx(console, x+23, ys-1, libtcod.BKGND_NONE,
-					libtcod.RIGHT, text)
+				ConsolePrint(console, x+8, ys-1, text)
 		
 			# unit status
 			libtcod.console_set_default_foreground(console, libtcod.light_grey)
@@ -5306,8 +5332,8 @@ class Unit:
 					if position_type == 'Driver' and position.name == 'Assistant Driver':
 						continue
 					new_crew.skills[position_type] += 1
-					# commanders get bonus skill levels
-					if 'Commander' in position.name:
+					# commanders get bonus skill level
+					if position_type == 'Commander':
 						new_crew.skills[position_type] += 1
 			
 			self.crew_list.append(new_crew)
@@ -5892,6 +5918,8 @@ class Unit:
 						text = self.GetName() + ' was destroyed by ' + profile['attacker'].GetName()
 						scenario.ShowMessage(text, self.hx, self.hy)
 					
+					campaign_day.AddMessage(text)
+					
 					return
 		
 		# clear unresolved hits
@@ -5937,6 +5965,7 @@ class Unit:
 		else:
 			text = self.GetName() + ' was destroyed.'
 			scenario.ShowMessage(text, self.hx, self.hy)
+			campaign_day.AddMessage(text)
 			self.DestroyMe()
 		
 		self.fp_to_resolve = 0
@@ -6932,7 +6961,7 @@ def PlaySoundFor(obj, action):
 		return
 	
 	elif action == 'movement':
-		if obj.GetStat('movement_class') == 'Wheeled':
+		if obj.GetStat('movement_class') in ['Wheeled', 'Fast Wheeled']:
 			n = libtcod.random_get_int(0, 0, 2)
 			PlaySound('wheeled_moving_0' + str(n))
 			return
@@ -7512,7 +7541,6 @@ def DisplayCrewInfo(crewman, console, x, y):
 			ConsolePrint(console, x+18, y+y1, str(crewman.skills[position_type]))
 			y1 += 1
 			
-	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)
 		

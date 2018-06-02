@@ -15,7 +15,8 @@
 	"enemy_nations" : ["Poland"],
 	"desc" : "German invasion of Poland, 1939.",
 	"player_unit_list" : [
-		"Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", "Panzer III D", "Panzer III F"
+		"Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", "Panzer III D",
+		"Panzer III F", "PSW 231 (8 rad)"
 	],
 	"player_air_support": [
 		"Ju 87B Stuka"

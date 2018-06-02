@@ -1388,6 +1388,83 @@
 		"op_value" : "32"
 	},
 	
+	"PSW 231 (8 rad)": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_psw_231_8rad.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Wheeled",
+		"off_road" : "TRUE",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"reverse_driver" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "20",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0",
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : "0"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Co-Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["2", "1", "3"],
+				"bu_visible" : ["2"]
+			}
+		],
+		"description" : [
+			"The poor off-road performance of the 6-wheeled Sd.Kfz. 231 ",
+			"prompted the development of this model, which placed the engine ",
+			"at the rear and gave the driver better visability. Production ",
+			"began in 1937 but 6-wheeled units continue to be deployed in ",
+			"reconnaissance roles."
+		],
+		"ubiquity" : "65",
+		"op_value" : "32"
+	},
+	
 	
 	"3.7cm PaK 35/36": {
 		"category" : "Gun",

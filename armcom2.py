@@ -346,9 +346,15 @@ MORALE_CHECK_BASE_CHANCE = 70.0
 # modifier to morale checks for broken units
 BROKEN_MORALE_MOD = -40.0
 
-# list of unit leader positions: FUTURE will check their traits for certain actions
+# list of basic positions, in some units these may be combined, eg. Commander/Gunner
+POSITIONS = [
+	'Commander', 'Gunner', 'Loader', 'Driver', 'Assistant Driver',
+	'Radio Operator', 'NCO', 'Rifleman', 'Spotter', 'Ammo Handler', 'Pilot'
+]
+
+# FUTURE: list of unit leader positions
 UNIT_LEADER_POSITIONS = [
-	'Commander', 'Commander/Gunner', 'NCO'
+	'Commander', 'Commander/Gunner', 'NCO', 'Pilot'
 ]
 
 # visible distances for crewmen when buttoned up and exposed
@@ -4393,7 +4399,9 @@ class Crew:
 		
 		self.fov = set()				# set of visible hexes
 		
-		self.traits = {}				# FUTURE: dictionary of traits and trait levels
+		self.skills = {}				# dictionary of position skill levels
+		for position_type in POSITIONS:
+			self.skills[position_type] = 0
 
 	# generate a random first and last name for this crewman
 	# TEMP: have to normalize extended characters so they can be displayed on screen
@@ -5290,6 +5298,18 @@ class Unit:
 	def GenerateNewCrew(self):
 		for position in self.crew_positions:
 			new_crew = Crew(self.nation, position)
+			
+			# set position skill levels
+			for position_type in POSITIONS:
+				if position_type in position.name:
+					# exception: asst driver is its own position
+					if position_type == 'Driver' and position.name == 'Assistant Driver':
+						continue
+					new_crew.skills[position_type] += 1
+					# commanders get bonus skill levels
+					if 'Commander' in position.name:
+						new_crew.skills[position_type] += 1
+			
 			self.crew_list.append(new_crew)
 			position.crewman = self.crew_list[-1]
 	
@@ -5893,7 +5913,7 @@ class Unit:
 			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
 		base_chance = round(base_chance, 2)
 		
-		# TODO: calculate modifiers: unit statuses, personnel traits
+		# TODO: calculate modifiers: unit statuses, position skills
 		
 		
 		# calculate chances of broken based on base chance
@@ -5928,7 +5948,7 @@ class Unit:
 		
 		# TODO: apply terrain modifiers
 		
-		# TODO: check for personnel traits
+		# TODO: check for leader skill
 		
 		chance = RestrictChance(chance)
 		
@@ -6041,7 +6061,7 @@ class Unit:
 		if self.GetStat('category') == 'Infantry':
 			chance = chance * 0.5
 		
-		# FUTURE: personnel trait modifiers if any
+		# FUTURE: position skill modifiers if any
 		
 		chance = RestrictChance(chance)
 		
@@ -7474,7 +7494,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+1, y+9, 'Rank')
 	ConsolePrint(console, x+1, y+11, 'Current')
 	ConsolePrint(console, x+1, y+12, 'Position')
-	ConsolePrint(console, x+1, y+14, 'Traits')
+	ConsolePrint(console, x+1, y+14, 'Skill Levels')
 	
 	# info
 	libtcod.console_set_default_foreground(console, libtcod.white)
@@ -7483,7 +7503,15 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+10, y+9, crewman.rank_desc)
 	ConsolePrint(console, x+10, y+11, campaign.player_unit.unit_id)
 	ConsolePrint(console, x+10, y+12, crewman.current_position.name)
-	ConsolePrint(console, x+1, y+16, 'None')
+	
+	# list position skills
+	y1 = 16
+	for position_type in POSITIONS:
+		if crewman.skills[position_type] > 0:
+			ConsolePrint(console, x+1, y+y1, position_type)
+			ConsolePrint(console, x+18, y+y1, str(crewman.skills[position_type]))
+			y1 += 1
+			
 	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)

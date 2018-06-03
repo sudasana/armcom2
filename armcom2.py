@@ -3639,8 +3639,8 @@ class Scenario:
 				else:
 					target.fp_to_resolve += effective_fp
 				
-				if not unit.known:
-					unit.hit_by_fp = 2
+				if not target.known:
+					target.hit_by_fp = 2
 				
 				text = target.GetName() + ' was hit by artillery attack'
 				scenario.ShowMessage(text, target.hx, target.hy)
@@ -3692,6 +3692,8 @@ class Scenario:
 					text = target.GetName() + ' was hit by artillery attack but is unharmed.'
 					scenario.ShowMessage(text, target.hx, target.hy)
 					campaign_day.AddMessage(text)
+					if not target.known:
+						target.hit_by_fp = 2
 					continue
 				
 				# penetrated

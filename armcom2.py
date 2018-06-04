@@ -66,7 +66,7 @@ PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-06-03'			# game version
+VERSION = 'Alpha 1.0.0-2018-06-09'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -8254,14 +8254,28 @@ def UpdateCommandCon():
 			else:
 				ConsolePrint(command_con, 1, 2, 'Artillery Support')
 			
-			libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-			ConsolePrint(command_con, 1, 4, 'R')
-			ConsolePrint(command_con, 1, 5, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
-			ConsolePrint(command_con, 1, 8, 'Q')
+			# if artillery support in progress, only option is to cancel
+			if scenario.player_artsup_success:
+				libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+				ConsolePrint(command_con, 1, 4, 'C')
+				libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
+				ConsolePrint(command_con, 5, 4, 'Cancel Attack')
 			
+			# if air support in progress, no other options
+			elif scenario.player_airsup_success:
+				pass
+			
+			else:
+				libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+				ConsolePrint(command_con, 1, 4, 'R')
+				ConsolePrint(command_con, 1, 5, EncodeKey('a').upper() + '/' + EncodeKey('d').upper())
+				libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
+				ConsolePrint(command_con, 5, 4, 'Request Attack')
+				ConsolePrint(command_con, 5, 5, 'Select Target Hex')
+				
+			libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+			ConsolePrint(command_con, 1, 8, 'Q')
 			libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-			ConsolePrint(command_con, 5, 4, 'Request Attack')	# TODO: display Cancel Request if one is already submitted or in progress
-			ConsolePrint(command_con, 5, 5, 'Select Target Hex')	# TODO: don't display if request is already submitted
 			ConsolePrint(command_con, 7, 8, 'Exit sub-menu')
 		
 		else:
@@ -8972,29 +8986,47 @@ def DoScenario():
 			# air or artillery support sub-menu
 			if scenario.airsup_menu_active or scenario.artsup_menu_active:
 				
-				# select target hex
-				if key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
-					reverse = False
-					if key_char == 'a' or key.vk == libtcod.KEY_LEFT:
-						reverse = True
-					scenario.SelectNextTargetHex(reverse)
-					UpdateUnitCon()
-					UpdateScenarioDisplay()
-				
-				# request support
-				if chr(key.c).lower() == 'r':
+				# if artillery support in progress, only option is to cancel
+				if scenario.player_artsup_success:
 					
-					if scenario.airsup_menu_active:
-						result = scenario.RequestAirSup()
-					else:
-						result = scenario.RequestArtySup()
-					
-					if result:
+					# cancel request
+					if chr(key.c).lower() == 'c':
+						scenario.player_artsup_success = False
+						scenario.player_artsup_failed = True
 						UpdateCommandCon()
-						UpdateContextCon()
+						UpdateUnitCon()
 						UpdateScenarioDisplay()
+						text = 'Artillery support request cancelled.'
+						scenario.ShowMessage(text)
+						continue
+				
+				# if air support inbound, don't allow these options
+				elif not scenario.player_airsup_success:
+				
+					# select target hex
+					if key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
+						reverse = False
+						if key_char == 'a' or key.vk == libtcod.KEY_LEFT:
+							reverse = True
+						scenario.SelectNextTargetHex(reverse)
+						UpdateUnitCon()
+						UpdateScenarioDisplay()
+					
+					# request support
+					if chr(key.c).lower() == 'r':
+						
+						if scenario.airsup_menu_active:
+							result = scenario.RequestAirSup()
+						else:
+							result = scenario.RequestArtySup()
+						
+						if result:
+							UpdateCommandCon()
+							UpdateContextCon()
+							UpdateScenarioDisplay()
+				
 				# close sub-menu
-				elif chr(key.c).lower() == 'q':
+				if chr(key.c).lower() == 'q':
 					if scenario.airsup_menu_active:
 						scenario.airsup_menu_active = False
 					else:

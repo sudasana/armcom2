@@ -915,6 +915,8 @@ class ZoneHex:
 		self.hx = hx
 		self.hy = hy
 		
+		self.coordinate = (chr(hy+65) + str(5 + int(hx - (hy - hy&1) / 2)))
+		
 		self.terrain_type = ''		# placeholder for terrain type in this zone
 		self.console_seed = libtcod.random_get_int(0, 1, 128)	# seed for console image generation
 		
@@ -1406,7 +1408,10 @@ class CampaignDay:
 			# set zone terrain type too
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
 		
-		# generate dirt roads
+		# dictionary of screen display locations on the display console and their corresponding map hex
+		self.zone_map_index = {}
+		
+		# generate dirt roads on campaign day map
 		self.GenerateRoads()
 		
 		self.player_unit_location = (-2, 8)		# set player unit group location
@@ -1504,7 +1509,6 @@ class CampaignDay:
 		y = (hy*5)
 		return (x+5,y+6)
 	
-	
 	# returns the hx, hy location of the adjacent hex in direction
 	def GetAdjacentCDHex(self, hx1, hy1, direction):
 		(hx_m, hy_m) = CD_DESTHEX[direction]
@@ -1523,8 +1527,8 @@ class CampaignDay:
 		def GetRandomLocation(gen):
 			return CHAR_LOCATIONS[libtcod.random_get_int(generator, 0, 21)]
 		
-		
 		libtcod.console_clear(cd_map_con)
+		self.zone_map_index = {}
 		
 		# draw map hexes to console
 		
@@ -1596,7 +1600,21 @@ class CampaignDay:
 			# draw the final image to the map console
 			(x,y) = self.PlotCDHex(hx, hy)
 			libtcod.console_blit(temp_con, 0, 0, 0, 0, cd_map_con, x-3, y-4)
-		
+			
+			# record screen locations of hex
+			# strictly speaking this only needs to be done once ever, but in
+			# the future it might be possible to scroll the campaign day map
+			# so we'd need to update this anyway
+			self.zone_map_index[(x, y-3)] = (hx, hy)
+			for x1 in range(x-1, x+2):
+				self.zone_map_index[(x1, y-2)] = (hx, hy)
+				self.zone_map_index[(x1, y+2)] = (hx, hy)
+			for x1 in range(x-2, x+3):
+				self.zone_map_index[(x1, y-1)] = (hx, hy)
+				self.zone_map_index[(x1, y)] = (hx, hy)
+				self.zone_map_index[(x1, y+1)] = (hx, hy)
+			self.zone_map_index[(x, y+3)] = (hx, hy)
+			
 		del temp_con, dayhex_openground
 		
 		# draw dirt roads overtop
@@ -1861,8 +1879,51 @@ class CampaignDay:
 		ConsolePrint(cd_campaign_con, 0, 0, 'Campaign Info')
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
 		ConsolePrint(cd_campaign_con, 1, 2, 'VP: ' + str(campaign.player_vp))
+	
+	
+	# generate/update the zone info console
+	def UpdateCDZoneInfoCon(self):
+		libtcod.console_clear(cd_zone_info_con)
 		
+		libtcod.console_set_default_foreground(cd_zone_info_con, ACTION_KEY_COL)
+		ConsolePrint(cd_zone_info_con, 0, 0, 'Zone Info')
 		
+		# mouse cursor outside of map area
+		if mouse.cx < 31 or mouse.cx > 59:
+			return
+		x = mouse.cx - 28
+		y = mouse.cy - 4
+		
+		# no zone here
+		if (x,y) not in self.zone_map_index: return
+		
+		(hx, hy) = self.zone_map_index[(x,y)]
+		zone_hex = self.map_hexes[(hx, hy)]
+		
+		# display hex zone coordinates
+		libtcod.console_set_default_foreground(cd_zone_info_con, libtcod.light_green)
+		ConsolePrint(cd_zone_info_con, 11, 0, zone_hex.coordinate)
+		
+		# terrain
+		libtcod.console_set_default_foreground(cd_zone_info_con, libtcod.light_grey)
+		ConsolePrint(cd_zone_info_con, 0, 1, zone_hex.terrain_type)
+		
+		# control
+		if zone_hex.controlled_by == 0:
+			ConsolePrint(cd_zone_info_con, 0, 2, 'Friendly controlled')
+		else:
+			ConsolePrint(cd_zone_info_con, 0, 2, 'Enemy controlled')
+			if zone_hex.known_to_player:
+				ConsolePrint(cd_zone_info_con, 0, 3, 'Strength: ' + 
+					str(zone_hex.enemy_strength))
+				ConsolePrint(cd_zone_info_con, 0, 4, 'Organization: ' + 
+					str(zone_hex.enemy_organization))
+		
+		# roads
+		if len(zone_hex.dirt_roads) > 0:
+			ConsolePrint(cd_zone_info_con, 0, 8, 'Dirt roads')
+	
+	
 	# draw all campaign day consoles to screen
 	def UpdateCDDisplay(self):
 		libtcod.console_clear(con)
@@ -1877,14 +1938,16 @@ class CampaignDay:
 		
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
 		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
-		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 1)		# campaign info menu
+		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 1)		# campaign info
+		libtcod.console_blit(cd_zone_info_con, 0, 0, 0, 0, con, 66, 50)		# zone info
+		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
 	# main campaign day input loop
 	def CampaignDayLoop(self):
 		
 		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
-		global cd_player_unit_con, cd_campaign_con, cd_gui_con
+		global cd_player_unit_con, cd_campaign_con, cd_gui_con, cd_zone_info_con
 		global time_weather_con
 		
 		# create consoles
@@ -1940,6 +2003,12 @@ class CampaignDay:
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
 		libtcod.console_clear(cd_campaign_con)
 		
+		# zone info console 23x9
+		cd_zone_info_con = libtcod.console_new(23, 9)
+		libtcod.console_set_default_background(cd_zone_info_con, libtcod.black)
+		libtcod.console_set_default_foreground(cd_zone_info_con, libtcod.white)
+		libtcod.console_clear(cd_zone_info_con)
+		
 		
 		# generate consoles for the first time
 		self.UpdateCDMapCon()
@@ -1950,6 +2019,7 @@ class CampaignDay:
 		self.UpdateCDPlayerUnitCon()
 		self.UpdateCDCommandCon()
 		self.UpdateCDCampaignCon()
+		self.UpdateCDZoneInfoCon()
 		self.UpdateCDDisplay()
 		
 		# record mouse cursor position to check when it has moved
@@ -1998,6 +2068,7 @@ class CampaignDay:
 					self.UpdateTimeWeatherDisplay()
 					self.UpdateCDControlCon()
 					self.UpdateCDUnitCon()
+					self.UpdateCDZoneInfoCon()
 					
 					# award vp to player
 					campaign.AwardVP(self.capture_zone_vp)
@@ -2031,6 +2102,8 @@ class CampaignDay:
 			if mouse.cx != mouse_x or mouse.cy != mouse_y:
 				mouse_x = mouse.cx
 				mouse_y = mouse.cy
+				self.UpdateCDZoneInfoCon()
+				self.UpdateCDDisplay()
 			
 			##### Player Keyboard Commands #####
 			if not keypress: continue
@@ -2108,6 +2181,7 @@ class CampaignDay:
 						self.UpdateTimeWeatherDisplay()
 						self.UpdateCDUnitCon()
 						self.UpdateCDCommandCon()
+						self.UpdateCDZoneInfoCon()
 						self.UpdateCDDisplay()
 						
 					# proceed with travel
@@ -2148,6 +2222,7 @@ class CampaignDay:
 						self.UpdateCDControlCon()
 						self.UpdateCDUnitCon()
 						self.UpdateCDCommandCon()
+						self.UpdateCDZoneInfoCon()
 						self.UpdateCDDisplay()
 						
 					SaveGame()

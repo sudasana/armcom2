@@ -4692,7 +4692,7 @@ class Scenario:
 		libtcod.console_flush()
 		
 		# FUTURE: get message pause time from settings
-		wait_time = 60 + (len(lines) * 60)
+		wait_time = 40 + (len(lines) * 80)
 		Wait(wait_time)
 		
 		# clear hex highlight if any
@@ -6315,7 +6315,7 @@ class Unit:
 			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
 		base_chance = round(base_chance, 2)
 		
-		# TODO: calculate modifiers: unit statuses, position skills
+		# TODO: calculate modifiers
 		
 		
 		# calculate chances of broken based on base chance
@@ -6323,6 +6323,14 @@ class Unit:
 		
 		base_chance = RestrictChance(base_chance)
 		broken_chance = RestrictChance(broken_chance)
+		
+		# display pop-up message if unit is known and on VP
+		if (self.owning_player == 0 or (self.owning_player == 1 and self.known)) and self.vp_hx is not None:
+			text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + ': '
+			text += 'Pin Test: ' + str(base_chance) + '%%; '
+			text += 'Broken: ' + str(broken_chance - base_chance) + '%%; '
+			text += 'Destroyed: ' + str(100.0 - broken_chance) + '%%'
+			scenario.ShowMessage(text, self.hx, self.hy)
 		
 		# roll for effect
 		roll = GetPercentileRoll()

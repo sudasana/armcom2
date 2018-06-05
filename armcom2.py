@@ -9258,21 +9258,20 @@ if config.getboolean('ArmCom2', 'large_display_font'):
 	fontname = 'c64_16x16.png'
 else:
 	fontname = 'c64_8x8.png'
-# set up custom font for libtcod
-libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
-	0, 0)
 
-# set up root console
+# set up custom font and root console
+libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
+        0, 0)
 libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
 	fullscreen = False, renderer = libtcod.RENDERER_GLSL)
+
 libtcod.sys_set_fps(LIMIT_FPS)
 libtcod.console_set_default_background(0, libtcod.black)
 libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
 
 # display loading screen
-ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
-	'Loading...')
+ConsolePrintEx(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER, 'Loading...')
 libtcod.console_flush()
 
 # create new session object

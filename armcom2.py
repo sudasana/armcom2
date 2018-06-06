@@ -2082,9 +2082,8 @@ class CampaignDay:
 					# check for end of day
 					# FUTURE: must be way to do this once in the loop
 					if campaign.EndOfDay():
-						text = 'Your combat day has ended.'
+						ShowNotification('Your combat day has ended.') 
 						campaign_day.AddMessage('The combat day ends')
-						ShowNotification(text)
 						EraseGame()
 						DisplayCampaignDaySummary()
 						session.exiting_to_main_menu = False
@@ -3523,7 +3522,8 @@ class Scenario:
 				campaign_day.AddMessage(text)
 		
 		if not results:
-			scenario.ShowMessage('Attack run had no effect', hx, hy)
+			text = 'Attack run had no effect'
+			scenario.ShowMessage(text, hx, hy)
 			campaign_day.AddMessage(text)
 		
 		# clear selected target
@@ -3779,7 +3779,8 @@ class Scenario:
 			
 		if not results:
 			(hx, hy) = self.player_target_hex
-			scenario.ShowMessage('Artillery attack had no effect', hx, hy)
+			text = 'Artillery attack had no effect'
+			scenario.ShowMessage(text, hx, hy)
 			campaign_day.AddMessage(text)
 		
 		# clear selected target

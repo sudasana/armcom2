@@ -7277,9 +7277,9 @@ def GenerateKeyboards():
 	with open(DATAPATH + 'keyboard_mapping.json') as data_file:
 		keyboards = json.load(data_file)
 	dictionary = keyboards[KEYBOARDS[config.getint('ArmCom2', 'keyboard')]]
-	for k, value in dictionary.iteritems():
+	for key, value in dictionary.iteritems():
 		keyboard_decode[key] = value
-		keyboard_encode[value] = k
+		keyboard_encode[value] = key
 
 
 # turn an inputted key into a standard key input

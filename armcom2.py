@@ -66,7 +66,7 @@ PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-06-09'			# game version
+VERSION = 'Alpha 1.0.0-2018-06-16'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -7520,7 +7520,7 @@ def ShowGameMenu():
 		elif active_tab == 2:
 			
 			# display list of crew in the player tank
-			DisplayCrew(campaign.player_unit, game_menu_con, 6, 13, True)
+			DisplayCrew(campaign.player_unit, game_menu_con, 6, 13, True, skip_action=True)
 			
 			# display info on selected crewman
 			crewman = campaign.player_unit.crew_positions[campaign.selected_position].crewman
@@ -7839,7 +7839,7 @@ def DrawFrame(console, x, y, w, h):
 
 
 # draw info about a series of crew positions and their crewmen to a console
-def DisplayCrew(unit, console, x, y, highlight_selected):
+def DisplayCrew(unit, console, x, y, highlight_selected, skip_action=False):
 	
 	for position in unit.crew_positions:
 		
@@ -7847,22 +7847,23 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 		if highlight_selected:
 			if unit.crew_positions.index(position) == campaign.selected_position:
 				libtcod.console_set_default_background(console, libtcod.darker_blue)
-				libtcod.console_rect(console, x, y, 24, 4, True, libtcod.BKGND_SET)
+				libtcod.console_rect(console, x, y, 24, 3, True, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(console, libtcod.black)
 		
+		# display position name and location in vehicle (eg. turret/hull)
 		libtcod.console_set_default_foreground(console, libtcod.light_blue)
 		ConsolePrint(console, x, y, position.name)
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		ConsolePrintEx(console, x+23, y, libtcod.BKGND_NONE, 
 			libtcod.RIGHT, position.location)
 		
+		# display last name of crewman and buttoned up / exposed status if any
 		if position.crewman is None:
 			ConsolePrint(console, x, y+1, 'Empty')
 		else:
-			text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
-		
+			
 			# names might have special characters so we encode it before printing it
-			ConsolePrint(console, x, y+1, text.encode('IBM850'))
+			ConsolePrint(console, x, y+1, position.crewman.last_name.encode('IBM850'))
 		
 			if position.crewman.ce:
 				text = 'CE'
@@ -7870,23 +7871,26 @@ def DisplayCrew(unit, console, x, y, highlight_selected):
 				text = 'BU'
 			ConsolePrintEx(console, x+23, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
 		
-		# crewman info if any
-		if position.crewman is not None:
-			
-			# current action
-			if position.crewman.current_action is not None:
-				libtcod.console_set_default_foreground(console,
-					libtcod.dark_yellow)
-				ConsolePrint(console, x, y+2,
-					position.crewman.current_action)
+			# display current action
+			if not skip_action:
+				# truncate string if required
+				text = position.crewman.current_action
+				if len(text) + len(position.crewman.status) > 23:
+					text = text[:(19 - len(position.crewman.status))] + '...'
 				
-			
-			# status
-			libtcod.console_set_default_foreground(console, libtcod.grey)
-			ConsolePrint(console, x, y+3, position.crewman.status)
+				libtcod.console_set_default_foreground(console, libtcod.dark_yellow)
+				ConsolePrint(console, x, y+2, text)
+				
+			# display current status on same line
+			if position.crewman.status == 'Alert':
+				libtcod.console_set_default_foreground(console, libtcod.grey)
+			else:
+				libtcod.console_set_default_foreground(console, libtcod.light_red)
+			ConsolePrintEx(console, x+23, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
+				position.crewman.status)
 			
 		libtcod.console_set_default_foreground(console, libtcod.white)
-		y += 5
+		y += 4
 
 
 # display info about a crewman to a console
@@ -8204,10 +8208,12 @@ def UpdatePlayerInfoCon():
 	scenario.player_unit.DisplayMyInfo(player_info_con, 0, 0)
 
 
-# list player unit crew positions and current crewmen if any
+# update crew position console 24x26
+# displaying player unit crew positions and current crewmen if any
 def UpdateCrewPositionCon():
 	libtcod.console_clear(crew_position_con)
 	
+	# no crew positions in this unit
 	if len(scenario.player_unit.crew_positions) == 0: return
 	
 	highlight_selected = False

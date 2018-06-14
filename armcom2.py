@@ -365,6 +365,11 @@ UNIT_LEADER_POSITIONS = [
 MAX_BU_LOS_DISTANCE = 3
 MAX_LOS_DISTANCE = 6
 
+# list of possible personnel statuses
+CREW_STATUS_LIST = [
+	'Alert', 'Lax', 'Shaken', 'Wounded', 'Stunned', 'Dead'
+]
+
 ELEVATION_M = 5.0			# each elevation level represents x meters of height
 MAX_ELEVATION = 3			# maximum height in elevation levels of map hexes
 
@@ -416,6 +421,10 @@ BONUS_CHANCE_MULTIPLIER = 0.4
 # maximum total modifer before a LoS is blocked by terrain
 MAX_LOS_MOD = 60.0
 
+# base chance of random event per turn at start of scenario or after event triggered
+SCENARIO_RANDOM_EVENT_CHANCE = 3.0
+# increase every time event is not triggered
+SCENARIO_RANDOM_EVENT_STEP = 1.0
 
 ##########################################################################################
 #                                         Classes                                        #
@@ -2495,8 +2504,15 @@ class AI:
 		if self.owner.acquired_target is not None:
 			roll -= 15.0
 		
-		# guns have fewer options for actions
-		if self.owner.GetStat('category') == 'Gun':
+		# sniper units have separate list of actions
+		if self.owner.unit_id == 'Sniper':
+			if roll >= 90.0:
+				self.disposition = None
+			else:
+				self.disposition = 'Combat'
+		
+		# guns have few options for actions
+		elif self.owner.GetStat('category') == 'Gun':
 			if roll >= 80.0:
 				self.disposition = None
 			else:
@@ -2803,6 +2819,12 @@ class Scenario:
 			[], []
 		]
 		
+		# current chance of random event being triggered
+		self.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
+		
+		# TEMP - chance starts very high
+		self.random_event_chance = 100.0
+		
 		self.objective_timer = [0, None]	# remaining minutes needed for each player to
 							# control objective and gain control of zone
 							# if None, not possible
@@ -2843,6 +2865,76 @@ class Scenario:
 		
 		# flag for when scenario has been set up by DoScenario()
 		self.init_complete = False
+	
+	# roll to see if a random event takes place, triggered before start of player activation
+	def RandomEventRoll(self):
+		
+		roll = GetPercentileRoll()
+		
+		# no event this turn
+		if roll > self.random_event_chance:
+			# increase chance
+			self.random_event_chance += SCENARIO_RANDOM_EVENT_STEP
+			print 'DEBUG: no random event, chance is now: ' + str(self.random_event_chance) + '%%'
+			return
+		
+		# reset event chance
+		self.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
+		
+		# TODO: roll for type of random event
+		
+		# TEMP for now, only enemy sniper event possible
+		self.SpawnSniper(1)
+		
+	# spawn a sniper unit into the game on player_num's side
+	def SpawnSniper(self, player_num):
+		
+		print 'DEBUG: Spawning an enemy sniper unit'
+		
+		# determine spawn location
+		hex_list = []
+		for distance in range(1, 4):
+			hex_list.extend(GetHexRing(self.player_unit.hx, self.player_unit.hy, distance))
+		shuffle(hex_list)
+		
+		good_location = False
+		for (hx, hy) in hex_list:
+			
+			# hex is off map
+			if (hx, hy) not in self.cd_hex.map_hexes: continue
+			
+			map_hex = self.cd_hex.map_hexes[(hx, hy)]
+			
+			# not passable
+			if map_hex.terrain_type == 'pond':
+				continue
+			
+			# not enough terrain
+			if map_hex.GetTerrainMod() == 0.0:
+				continue
+			
+			good_location = True
+			break
+		
+		if not good_location:
+			print 'DEBUG: Could not find a suitable location to spawn'
+			return
+		
+		new_unit = Unit('Sniper')
+		new_unit.InitScenarioStats()
+		new_unit.owning_player = 1
+		new_unit.ai = AI(new_unit)
+		new_unit.nation = campaign.stats['enemy_nations'][0]
+		new_unit.GenerateNewCrew()
+		self.units.append(new_unit)
+		new_unit.SpawnAt(hx, hy)
+		
+		UpdateUnitCon()
+		UpdateUnitInfoCon()
+		UpdateScenarioDisplay()
+		
+		print 'DEBUG: Spawned enemy sniper in ' + str(hx) + ',' + str(hy)
+		
 	
 	# generate activation order for player units and enemy units
 	def GenerateActivationOrder(self):
@@ -3026,7 +3118,7 @@ class Scenario:
 				
 				# set facing toward player
 				direction = GetDirectionToward(new_unit.hx, new_unit.hy,
-					scenario.player_unit.hx, scenario.player_unit.hy)
+					self.player_unit.hx, self.player_unit.hy)
 				new_unit.facing = direction
 				# unit has rotatable turret
 				if 'turret' in new_unit.stats:
@@ -3986,6 +4078,9 @@ class Scenario:
 				if terrain_mod == 0.0 and target.moved and target.GetStat('category') == 'Infantry':
 					mod = round(base_chance / 2.0, 2)
 					modifier_list.append(('Exposed Infantry', mod))
+				else:
+					if target.GetStat('class') == 'Team':
+						modifier_list.append(('Small Team', -20.0))
 				
 				# target size
 				size_class = target.GetStat('size_class')
@@ -4765,7 +4860,8 @@ class Scenario:
 # Crew Class: represents a crewman in a vehicle or a single member of a unit's personnel
 # TODO: change to personnel
 class Crew:
-	def __init__(self, nation, position):
+	def __init__(self, unit, nation, position):
+		self.unit = unit				# which unit this personnel is part of
 		self.first_name = u''				# name, set by GenerateName()
 		self.last_name = u''
 		self.nation = nation
@@ -4857,13 +4953,30 @@ class Crew:
 		
 		self.rank_desc = session.nations[self.nation]['rank_names'][str(self.rank)]
 	
+	# set crewman's status, updating action if required
+	def SetStatus(self, new_status):
+		
+		# status not possible!
+		if new_status not in CREW_STATUS_LIST:
+			return
+		
+		self.status = new_status
+		
+		# show player message if part of player crew
+		if self.unit == campaign.player_unit:
+			text = self.GetFullName() + ' is now ' + self.status
+			if scenario is not None:
+				scenario.ShowMessage(text)
+			if campaign_day is not None:
+				campaign_day.AddMessage(text)
+	
 	# returns True if this crewman is currently able to choose an action
 	def AbleToAct(self):
-		if self.status in ['Unconscious', 'Dead']:
+		if self.status in ['Wounded', 'Stunned', 'Dead']:
 			return False
 		return True
 	
-	# set a new action; if True, select next in list, otherwise previous
+	# set a new action; if forward is True, select next in list, otherwise previous
 	def SetAction(self, forward):
 		
 		# crewman cannot act
@@ -5705,7 +5818,7 @@ class Unit:
 	# generate a new crew sufficent to man all crew positions
 	def GenerateNewCrew(self):
 		for position in self.crew_positions:
-			new_crew = Crew(self.nation, position)
+			new_crew = Crew(self, self.nation, position)
 			
 			# set position skill levels
 			for position_type in POSITIONS:
@@ -5783,6 +5896,9 @@ class Unit:
 		if self.owning_player == 1 and not self.known: return '?'
 		
 		unit_category = self.GetStat('category')
+		
+		# sniper
+		if self.unit_id == 'Sniper': return 248
 		
 		# infantry
 		if unit_category == 'Infantry': return 176
@@ -6489,6 +6605,10 @@ class Unit:
 		if self.GetStat('category') == 'Infantry':
 			chance = chance * 0.5
 		
+		# snipers are hard to spot
+		if target.unit_id == 'Sniper':
+			chance = chance * 0.25
+		
 		# FUTURE: position skill modifiers if any
 		
 		chance = RestrictChance(chance)
@@ -6542,7 +6662,7 @@ class Unit:
 		UpdateUnitInfoCon()
 		UpdateScenarioDisplay()
 	
-	# returns true if a crewman in any of the given positions is avaible to have an action set
+	# returns true if a crewman in any of the given positions can have an action set
 	def CrewActionPossible(self, position_list, action):
 		for position in self.crew_positions:
 			if position.name in position_list:
@@ -8898,6 +9018,9 @@ def DoScenario():
 			
 			# clear keyboard events
 			FlushKeyboardEvents()
+			
+			# check for random event
+			scenario.RandomEventRoll()
 			
 			# activate player again
 			scenario.active_unit = scenario.player_unit

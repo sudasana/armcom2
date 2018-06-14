@@ -1574,6 +1574,29 @@
 		"op_value" : "0"
 	},
 	
+	"Sniper": {
+		"category" : "Infantry",
+		"class" : "Team",
+		"movement_class" : "Infantry",
+		"weapon_list" : [
+			{
+				"type" : "Small Arms",
+				"name" : "Rifle",
+				"fp" : "2",
+				"max_range" : "3"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Sniper"},
+			{"name" : "Spotter"}
+		],
+		"description" : [
+			""
+		],
+		"ubiquity" : "100",
+		"op_value" : "0"
+	},
+	
 	"Ju 87B Stuka": {
 		"category" : "Airplane",
 		"class" : "Dive Bomber",

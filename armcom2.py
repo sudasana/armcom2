@@ -145,7 +145,7 @@ CAMPAIGN_DAY_HEXES = [
 
 ##### Colour Definitions #####
 
-ELEVATION_SHADE = 0.15					# difference in shading for map hexes of
+ELEVATION_SHADE = 0.06					# difference in shading for map hexes of
 							#   different elevations
 FOV_SHADE = 0.5						# alpha level for FoV mask layer
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
@@ -365,7 +365,8 @@ UNIT_LEADER_POSITIONS = [
 MAX_BU_LOS_DISTANCE = 3
 MAX_LOS_DISTANCE = 6
 
-ELEVATION_M = 10.0			# each elevation level represents x meters of height
+ELEVATION_M = 5.0			# each elevation level represents x meters of height
+MAX_ELEVATION = 3			# maximum height in elevation levels of map hexes
 
 # percentile LoS modifiers for terrain types
 TERRAIN_LOS_MODS = {
@@ -865,7 +866,7 @@ class MapHex:
 		self.terrain_type = 'openground'			# type of terrain in hex
 		self.console_seed = libtcod.random_get_int(0, 1, 128)	# seed for console image generation
 		
-		self.elevation = 1		# elevation in steps above baseline
+		self.elevation = 0		# elevation in steps above baseline
 		self.river_edges = []		# list of edges bounded by a river
 		self.cliff_edges = []		# list of edges bounded by a cliff
 		self.dirt_roads = []		# list of directions linked by a dirt road
@@ -886,7 +887,7 @@ class MapHex:
 		self.scores = {}
 	
 	# set elevation of hex
-	# FUTURE: handle cliff edges here?
+	# FUTURE: handle creation of cliff edges here?
 	def SetElevation(self, elevation):
 		self.elevation = elevation
 	
@@ -1052,9 +1053,9 @@ class ZoneHex:
 			
 			rough_ground_num = libtcod.random_get_int(0, 1, 5)		# rough ground hexes
 			
-			hill_num = libtcod.random_get_int(0, 0, 1)		# number of hills to generate
-			hill_min_size = 4			# minimum width/height of hill area
-			hill_max_size = 7			# maximum "
+			hill_num = libtcod.random_get_int(0, 2, 4)		# number of hills to generate
+			hill_min_size = 7			# minimum width/height of hill area
+			hill_max_size = 14			# maximum "
 			
 			forest_num = libtcod.random_get_int(0, 1, 3)		# number of forest areas to generate
 			forest_size = 4				# total maximum height + width of areas
@@ -1073,9 +1074,9 @@ class ZoneHex:
 			
 			rough_ground_num = libtcod.random_get_int(0, 1, 5)
 			
-			hill_num = libtcod.random_get_int(0, 1, 2)
-			hill_min_size = 4
-			hill_max_size = 7
+			hill_num = libtcod.random_get_int(0, 2, 4)
+			hill_min_size = 7
+			hill_max_size = 10
 			
 			forest_num = libtcod.random_get_int(0, 5, 8)
 			forest_size = 8
@@ -1094,9 +1095,9 @@ class ZoneHex:
 			
 			rough_ground_num = libtcod.random_get_int(0, 3, 7)
 			
-			hill_num = libtcod.random_get_int(0, 4, 6)
-			hill_min_size = 3
-			hill_max_size = 7
+			hill_num = libtcod.random_get_int(0, 8, 12)
+			hill_min_size = 2
+			hill_max_size = 8
 			
 			forest_num = libtcod.random_get_int(0, 1, 3)
 			forest_size = 4
@@ -1115,9 +1116,9 @@ class ZoneHex:
 			
 			rough_ground_num = libtcod.random_get_int(0, 2, 4)
 			
-			hill_num = libtcod.random_get_int(0, 0, 1)
-			hill_min_size = 5
-			hill_max_size = 8
+			hill_num = libtcod.random_get_int(0, 2, 4)
+			hill_min_size = 6
+			hill_max_size = 10
 			
 			forest_num = libtcod.random_get_int(0, 0, 2)
 			forest_size = 3
@@ -1136,9 +1137,9 @@ class ZoneHex:
 			
 			rough_ground_num = libtcod.random_get_int(0, 5, 9)
 			
-			hill_num = libtcod.random_get_int(0, 0, 0)
-			hill_min_size = 5
-			hill_max_size = 8
+			hill_num = libtcod.random_get_int(0, 0, 2)
+			hill_min_size = 6
+			hill_max_size = 10
 			
 			forest_num = libtcod.random_get_int(0, 0, 2)
 			forest_size = 3
@@ -1157,9 +1158,9 @@ class ZoneHex:
 			
 			rough_ground_num = libtcod.random_get_int(0, 2, 5)
 			
-			hill_num = libtcod.random_get_int(0, 0, 2)
-			hill_min_size = 5
-			hill_max_size = 8
+			hill_num = libtcod.random_get_int(0, 1, 3)
+			hill_min_size = 6
+			hill_max_size = 12
 			
 			forest_num = libtcod.random_get_int(0, 0, 2)
 			forest_size = 3
@@ -1209,7 +1210,10 @@ class ZoneHex:
 			# apply the hill locations if they are on map
 			for (hx, hy) in hex_list:
 				if (hx, hy) in self.map_hexes:
-					self.map_hexes[(hx, hy)].SetElevation(2)
+					elevation = self.map_hexes[(hx, hy)].elevation + 1
+					if elevation > MAX_ELEVATION:
+						elevation = MAX_ELEVATION
+					self.map_hexes[(hx, hy)].SetElevation(elevation)
 		
 		##### Forests #####
 		if forest_size < 2: forest_size = 2
@@ -1305,8 +1309,6 @@ class ZoneHex:
 				
 				if self.map_hexes[(hx, hy)].terrain_type != 'openground':
 					continue
-				if self.map_hexes[(hx, hy)].elevation != 1:
-					continue
 				self.map_hexes[(hx, hy)].SetTerrainType('pond')
 				break
 		
@@ -1348,7 +1350,7 @@ class ZoneHex:
 			map_hex.scores['total_score'] += score
 			
 			# terrain height
-			score = float(map_hex.elevation - 1) * 2.0
+			score = float(map_hex.elevation)
 			map_hex.scores['elevation'] = score
 			map_hex.scores['total_score'] += score
 			
@@ -2412,12 +2414,12 @@ class Session:
 			libtcod.console_set_key_color(console, KEY_COLOR)
 			
 			# apply elevation shading
-			if map_hex.elevation != 1:
+			if map_hex.elevation != 0:
 				for y in range(5):
 					for x in range(7):
 						bg = libtcod.console_get_char_background(console,x,y)
 						if bg == KEY_COLOR: continue
-						bg = bg * (1.0 + float(map_hex.elevation-1) * ELEVATION_SHADE)
+						bg = bg * (1.0 + float(map_hex.elevation) * ELEVATION_SHADE)
 						libtcod.console_set_char_background(console,x,y,bg)
 			
 			# save to dictionary
@@ -3864,7 +3866,12 @@ class Scenario:
 			elevation1 = self.cd_hex.map_hexes[(attacker.hx, attacker.hy)].elevation
 			elevation2 = self.cd_hex.map_hexes[(target.hx, target.hy)].elevation
 			if elevation2 > elevation1:
-				modifier_list.append(('Higher Elevation', -20.0))
+				# within one elevation step
+				if elevation2 - elevation1 == 1:
+					modifier_list.append(('Height Advantage', -10.0))
+				# two or more elevation steps
+				else:
+					modifier_list.append(('Height Advantage', -20.0))
 			
 			# unknown target
 			if not target.known:
@@ -3963,7 +3970,12 @@ class Scenario:
 			elevation1 = self.cd_hex.map_hexes[(attacker.hx, attacker.hy)].elevation
 			elevation2 = self.cd_hex.map_hexes[(target.hx, target.hy)].elevation
 			if elevation2 > elevation1:
-				modifier_list.append(('Higher Elevation', -20.0))
+				# within one elevation step
+				if elevation2 - elevation1 == 1:
+					modifier_list.append(('Height Advantage', -10.0))
+				# two or more elevation steps
+				else:
+					modifier_list.append(('Height Advantage', -20.0))
 			
 			if not target.known:
 				modifier_list.append(('Unknown Target', -10.0))
@@ -4603,7 +4615,7 @@ class Scenario:
 		
 		# elevation change modifier
 		if self.cd_hex.map_hexes[(hx, hy)].elevation > self.cd_hex.map_hexes[(unit.hx, unit.hy)].elevation:
-			chance = chance * 0.5
+			chance = chance * 0.75
 		
 		# movement class modifier
 		movement_class = unit.GetStat('movement_class')
@@ -6735,7 +6747,7 @@ def GetHexPath(hex_list, hx1, hy1, hx2, hy2, unit=None, road_path=False, rail_pa
 					cost = 0
 				
 				if node.elevation != current.elevation:
-					cost = cost * 15
+					cost = cost * 8
 			
 			# we're creating a path for a railroad
 			elif rail_path:
@@ -8018,7 +8030,7 @@ def UpdateVPCon():
 			libtcod.console_blit(tile_offmap, 0, 0, 0, 0, map_vp_con, x-3, y-2)
 			
 	# draw on-map hexes starting with lowest elevation
-	for elevation in range(4):
+	for elevation in range(MAX_ELEVATION+1):
 		for (hx, hy) in VP_HEXES:
 			(map_hx, map_hy) = scenario.map_vp[(hx, hy)]
 			if (map_hx, map_hy) not in scenario.cd_hex.map_hexes:

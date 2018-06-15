@@ -7,3 +7,6 @@ savegame
 *.json~
 *.json~
 *.pyc
+data/unit_type_defs.json~
+build/*.*
+dist/*.*

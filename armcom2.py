@@ -2922,12 +2922,13 @@ class Scenario:
 		
 		new_unit = Unit('Sniper')
 		new_unit.InitScenarioStats()
-		new_unit.owning_player = 1
+		new_unit.owning_player = player_num
 		new_unit.ai = AI(new_unit)
 		new_unit.nation = campaign.stats['enemy_nations'][0]
 		new_unit.GenerateNewCrew()
 		self.units.append(new_unit)
 		new_unit.SpawnAt(hx, hy)
+		self.activation_list[player_num].append(new_unit)
 		
 		UpdateUnitCon()
 		UpdateUnitInfoCon()

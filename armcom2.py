@@ -36,7 +36,11 @@
 
 ##### Libraries #####
 import os, sys						# OS-related stuff
-import libtcodpy as libtcod				# The Doryen Library
+# if linux - load system libtcodpy
+if os.name == 'posix':
+	import libtcodpy as libtcod				# The Doryen Library
+else:
+	import libtcodpy_local as libtcod
 import ConfigParser					# saving and loading settings
 from random import choice, shuffle, sample		# for randomness
 from math import floor, cos, sin, sqrt			# math

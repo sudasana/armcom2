@@ -5949,7 +5949,7 @@ class Unit:
 		
 		# try to set crewman action
 		action_set = False
-		if reverse and GetStat('reverse_driver') is not None:
+		if reverse and self.GetStat('reverse_driver') is not None:
 			if self.SetCrewAction(['Co-Driver', 'Driver'], 'Drive'):
 				action_set = True
 		else:

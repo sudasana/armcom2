@@ -70,6 +70,13 @@ VERSION = 'Alpha 1.0.0-2018-06-16'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
+
+# linux (and OS X?) has to use SDL for some reason
+if os.name == 'posix':
+	RENDERER = libtcod.RENDERER_SDL
+else:
+	RENDERER = libtcod.RENDERER_GLSL
+
 LIMIT_FPS = 50						# maximum screen refreshes per second
 WINDOW_WIDTH, WINDOW_HEIGHT = 90, 60			# size of game window in character cells
 WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of game window
@@ -7569,7 +7576,7 @@ def ChangeGameSettings(key_char):
 			libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
 		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
 			NAME + ' - ' + VERSION, fullscreen = False,
-			renderer = libtcod.RENDERER_GLSL)
+			renderer = RENDERER)
 	
 	# toggle sound effects on/off
 	elif key_char == 's':
@@ -9406,7 +9413,7 @@ else:
 libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
         0, 0)
 libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
-	fullscreen = False, renderer = libtcod.RENDERER_GLSL)
+	fullscreen = False, renderer = RENDERER)
 
 libtcod.sys_set_fps(LIMIT_FPS)
 libtcod.console_set_default_background(0, libtcod.black)

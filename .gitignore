@@ -1,12 +1,6 @@
 *.spec
-*.py~
+*.*~
 *.pyc
 savegame
-*.md~
-*.pyc
-*.json~
-*.json~
-*.pyc
-data/unit_type_defs.json~
-build/*.*
-dist/*.*
+/build/*
+/dist/*

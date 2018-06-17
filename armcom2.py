@@ -2693,8 +2693,8 @@ class AI:
 			scored_list = []
 			for (weapon, target, ammo_type) in attack_list:
 				
-				# skip attacks on armoured targets that have no chance of effect
-				if weapon.GetStat('type') not in ['Gun', 'Co-ax MG', 'Hull MG', 'AA MG'] and target.GetStat('armour') is not None:
+				# skip small arms attacks on targets that have no chance of effect
+				if weapon.GetStat('type') not in ['Gun', 'Co-ax MG', 'Hull MG', 'AA MG'] and not target.VulnerableToSAFireFrom(self.owner):
 					continue
 				
 				# determine if a pivot or turret rotation would be required
@@ -6083,8 +6083,7 @@ class Unit:
 		
 		# check for random HD status gain
 		self.CheckHullDownGain()
-		
-	
+			
 	# pivot the unit facing one hextant
 	def Pivot(self, clockwise):
 		
@@ -6578,7 +6577,35 @@ class Unit:
 		
 		UpdateUnitCon()
 		UpdateScenarioDisplay()
+	
+	# returns true if this unit would be vulnerable to small arms fire from the given attacker
+	def VulnerableToSAFireFrom(self, attacker):
 		
+		# infantry and guns always vulnerable
+		if self.GetStat('category') in ['Infantry', 'Gun']: return True
+		
+		# unarmoured vehicles are always vulnerable
+		armour = self.GetStat('armour')
+		if armour is None: return True
+		
+		# check possible turret hit
+		turret_facing = False
+		if self.turret_facing is not None:
+			turret_facing = True
+		facing = GetFacing(attacker, self, turret_facing=turret_facing).lower()
+		if self.armour['turret_' + facing] == '-': return True
+		
+		# check possible hull hit
+		facing = GetFacing(attacker, self, turret_facing=False).lower()
+		if self.armour['hull_' + facing] == '-': return True
+		
+		# check exposed crew
+		for position in self.crew_positions:
+			if position.crewman is None: continue
+			if position.crewman.ce: return True
+		
+		return False
+	
 	# roll a spotting check from this unit to another using the given crew position
 	def DoSpotCheck(self, target, position):
 		

@@ -41,7 +41,7 @@ if os.name == 'posix':
 	import libtcodpy_local as libtcod				# The Doryen Library
 else:
 	import libtcodpy as libtcod
-import ConfigParser					# saving and loading settings
+from configparser import ConfigParser			# saving and loading settings
 from random import choice, shuffle, sample		# for randomness
 from math import floor, cos, sin, sqrt			# math
 from math import degrees, atan2, ceil			# heading calculations
@@ -70,7 +70,7 @@ PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-06-16'			# game version
+VERSION = 'Alpha 1.0.0-2018-07-21'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -222,7 +222,7 @@ CD_TRAVEL_CMDS = [
 ]
 
 # load crew action definitions
-with open(DATAPATH + 'crew_action_defs.json') as data_file:
+with open(DATAPATH + 'crew_action_defs.json', encoding='utf8') as data_file:
 	CREW_ACTIONS = json.load(data_file)
 
 # order to display ammo types
@@ -243,20 +243,20 @@ MONTH_NAMES = [
 # TODO: move these to json file
 
 # radius in hexes of a zone on the campaign day map; does not include centre hex
-CD_MAP_HEX_RADIUS = 8
+CD_MAP_HEX_RADIUS = 6
 
 # base chance of triggering a battle when entering an enemy-held hex on the campaign day map
-CD_BATTLE_BASE_CHANCE = 65.0
+CD_BATTLE_BASE_CHANCE = 52.0
 # effect of each point of strength on chance
-CD_BATTLE_STR_MOD = 4.0
+CD_BATTLE_STR_MOD = 5.0
 # effect of each point of organization <> 5 on chance
 CD_BATTLE_ORGANIZATION_MOD = 5.0
 
-# scenarios will have 1-4 enemy units
-# base odds of 4,3,2 units
-ENEMY_NUMBER_BASE_ODDS = [90.0, 75.0, 60.0]
-# effect of each point of strength on odds
-CD_ENEMY_STRENGTH_EFFECT = -3.0
+# scenarios will have 1-3 enemy units
+# chance to spawn 3 or 2 units
+ENEMY_NUMBER_ODDS = [5.0, 15.0]
+# effect of each point of strength (range 1-9) on odds
+CD_ENEMY_STRENGTH_EFFECT = 8.0
 
 # time in minutes to capture a zone by holding its objective hex = enemy organization times this number
 OBJECTIVE_CAPTURE_MULTIPLIER = 3
@@ -570,7 +570,7 @@ class Campaign:
 		
 		for filename in os.listdir(CAMPAIGNPATH):
 			if not filename.endswith('.json'): continue
-			with open(CAMPAIGNPATH + filename) as data_file:
+			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
 				campaign_data = json.load(data_file)
 			new_campaign = {}
 			new_campaign['filename'] = filename
@@ -625,7 +625,7 @@ class Campaign:
 				self.UpdateCampaignSelectionScreen(selected_campaign)
 		
 		# create a local copy of selected scenario stats
-		with open(CAMPAIGNPATH + selected_campaign['filename']) as data_file:
+		with open(CAMPAIGNPATH + selected_campaign['filename'], encoding='utf8') as data_file:
 			self.stats = json.load(data_file)
 		
 		# set current day to first day in calendar
@@ -959,10 +959,12 @@ class ZoneHex:
 		self.encounter_chance = CD_BATTLE_BASE_CHANCE
 		self.encounter_chance += (self.enemy_strength * CD_BATTLE_STR_MOD)
 		self.encounter_chance += ((self.enemy_organization - 5) * CD_BATTLE_ORGANIZATION_MOD)
-		self.encounter_chance = round(self.encounter_chance, 2)
+		self.encounter_chance = round(self.encounter_chance, 1)
 		
 		if self.encounter_chance > 97.0:
 			self.encounter_chance = 97.0
+		if self.encounter_chance < 3.0:
+			self.encounter_chance = 3.0
 		
 		# create an empty placeholder for a hex map; will be generated if a scenario takes place here
 		self.map_hexes = {}
@@ -1065,7 +1067,7 @@ class ZoneHex:
 		
 		# create a local list of all hx, hy locations in map
 		map_hex_list = []
-		for k, map_hex in self.map_hexes.iteritems():
+		for k, map_hex in self.map_hexes.items():
 			map_hex_list.append(k)
 		
 		# terrain settings - draw upon terrain type of zone
@@ -1355,7 +1357,7 @@ class ZoneHex:
 	
 	# calculate terrain scores to help AI
 	def GenerateHexScores(self):
-		for (hx, hy), map_hex in self.map_hexes.iteritems():
+		for (hx, hy), map_hex in self.map_hexes.items():
 			
 			map_hex.scores['total_score'] = 0.0
 			
@@ -1560,7 +1562,7 @@ class CampaignDay:
 		libtcod.console_set_key_color(temp_con, KEY_COLOR)
 		bg_col = libtcod.Color(0,64,0)
 		
-		for (hx, hy), zone_hex in self.map_hexes.iteritems():
+		for (hx, hy), zone_hex in self.map_hexes.items():
 			
 			# generate console image for this zone's terrain type
 			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, temp_con, 0, 0)
@@ -1640,7 +1642,7 @@ class CampaignDay:
 		del temp_con, dayhex_openground
 		
 		# draw dirt roads overtop
-		for (hx, hy), map_hex in self.map_hexes.iteritems():
+		for (hx, hy), map_hex in self.map_hexes.items():
 			if len(map_hex.dirt_roads) == 0: continue
 			for direction in map_hex.dirt_roads:
 				# only draw if in direction 0-2
@@ -2291,12 +2293,12 @@ class Session:
 		# TODO: load unit portraits
 		
 		# store nation definition info
-		with open(DATAPATH + 'nation_defs.json') as data_file:
+		with open(DATAPATH + 'nation_defs.json', encoding='utf8') as data_file:
 			self.nations = json.load(data_file)
 		
 		# load national flag images
 		self.flags = {}
-		for name, data in self.nations.iteritems():
+		for name, data in self.nations.items():
 			self.flags[name] = LoadXP(data['flag_image'])
 
 	# generate map hex consoles for all hexes in a scenario map
@@ -2308,7 +2310,7 @@ class Session:
 		
 		self.hex_consoles = {}
 		
-		for k, map_hex in scenario.cd_hex.map_hexes.iteritems():
+		for k, map_hex in scenario.cd_hex.map_hexes.items():
 			
 			# generate basic hex console image
 			# FUTURE: can change colours used here based on environment/weather
@@ -2449,7 +2451,7 @@ class Session:
 	def InitMixer(self):
 		mixer.Mix_Init(mixer.MIX_INIT_OGG)
 		if mixer.Mix_OpenAudio(48000, mixer.MIX_DEFAULT_FORMAT,	2, 1024) == -1:
-			print 'ERROR in Mix_OpenAudio: ' + mixer.Mix_GetError()
+			print('ERROR in Mix_OpenAudio: ' + mixer.Mix_GetError())
 			return False
 		mixer.Mix_AllocateChannels(16)
 		return True
@@ -2472,7 +2474,8 @@ class Session:
 		# because the function returns NULL if the file failed to load, Python does not seem
 		# to have any way of detecting this and there's no error checking
 		for sound_name in SOUND_LIST:
-			self.sample[sound_name] = mixer.Mix_LoadWAV(SOUNDPATH + sound_name + '.ogg')
+			filename = SOUNDPATH + sound_name + '.ogg'
+			self.sample[sound_name] = mixer.Mix_LoadWAV(filename.encode('ascii'))
 		
 
 # AI: controller for enemy and player-allied units
@@ -2491,7 +2494,7 @@ class AI:
 			text += self.disposition
 		if self.owner.dummy:
 			text += ' (dummy)'
-		print text
+		print(text)
 	
 	# do activation for this unit
 	def DoActivation(self):
@@ -2598,7 +2601,7 @@ class AI:
 				if AI_SPY:
 					text = ('AI SPY: ' + self.owner.unit_id + ' is moving to ' +
 						str(hx) + ',' + str(hy))
-					print text
+					print(text)
 				
 				# pivot to face new direction if not already
 				if self.owner.facing != direction:
@@ -2634,7 +2637,7 @@ class AI:
 		
 		elif self.disposition == 'Combat':
 			if AI_SPY:
-				print '\nAI SPY: Starting a combat action for ' + self.owner.unit_id
+				print('\nAI SPY: Starting a combat action for ' + self.owner.unit_id)
 			
 			animate = False
 			dist = GetHexDistance(self.owner.hx, self.owner.hy, scenario.player_unit.hx,
@@ -2655,7 +2658,7 @@ class AI:
 			
 			if len(target_list) == 0:
 				if AI_SPY:
-					print 'AI SPY: ' + self.owner.unit_id + ': no possible targets'
+					print('AI SPY: ' + self.owner.unit_id + ': no possible targets')
 				self.owner.DoPostActivation()
 				return
 			
@@ -2685,7 +2688,7 @@ class AI:
 			# no possible attacks
 			if len(attack_list) == 0:
 				if AI_SPY:
-					print 'AI SPY: ' + self.owner.unit_id + ': no possible attacks on targets'
+					print('AI SPY: ' + self.owner.unit_id + ': no possible attacks on targets')
 				self.owner.DoPostActivation()
 				return	
 						
@@ -2749,7 +2752,7 @@ class AI:
 			# no possible attacks
 			if len(scored_list) == 0:
 				if AI_SPY:
-					print 'AI SPY: ' + self.owner.unit_id + ': no possible scored attacks on targets'
+					print('AI SPY: ' + self.owner.unit_id + ': no possible scored attacks on targets')
 				self.owner.DoPostActivation()
 				return
 			
@@ -2758,7 +2761,9 @@ class AI:
 			(score, weapon, target, ammo_type) = scored_list[0]
 			
 			if AI_SPY:
-				print 'AI SPY: Best attack with score of ' + str(score) + ': ' + weapon.stats['name'] + '(' + ammo_type + ') against ' + target.unit_id
+				print('AI SPY: Best attack with score of ' + str(score) + ': ' + 
+					weapon.stats['name'] + '(' + ammo_type + ') against ' + 
+					target.unit_id)
 			
 			# do the attack
 			if ammo_type != '':
@@ -2791,12 +2796,11 @@ class AI:
 			
 			if not result:
 				if AI_SPY:
-					print 'AI SPY: ' + self.owner.unit_id + ': could not attack'
-					print 'AI SPY: ' + scenario.CheckAttack(self.owner, weapon, unit)
+					print('AI SPY: ' + self.owner.unit_id + ': could not attack')
+					print('AI SPY: ' + scenario.CheckAttack(self.owner, weapon, unit))
 		
 			if AI_SPY:
-		
-				print 'AI SPY: Ending combat action for ' + self.owner.unit_id
+				print('AI SPY: Ending combat action for ' + self.owner.unit_id)
 		
 		# end activation
 		self.owner.DoPostActivation()
@@ -2886,7 +2890,7 @@ class Scenario:
 		if roll > self.random_event_chance:
 			# increase chance
 			self.random_event_chance += SCENARIO_RANDOM_EVENT_STEP
-			print 'DEBUG: no random event, chance is now: ' + str(self.random_event_chance) + '%%'
+			print('DEBUG: no random event, chance is now: ' + str(self.random_event_chance) + '%')
 			return
 		
 		# reset event chance
@@ -2900,7 +2904,7 @@ class Scenario:
 	# spawn a sniper unit into the game on player_num's side
 	def SpawnSniper(self, player_num):
 		
-		print 'DEBUG: Spawning an enemy sniper unit'
+		print('DEBUG: Spawning an enemy sniper unit')
 		
 		# determine spawn location
 		hex_list = []
@@ -2928,7 +2932,7 @@ class Scenario:
 			break
 		
 		if not good_location:
-			print 'DEBUG: Could not find a suitable location to spawn'
+			print('DEBUG: Could not find a suitable location to spawn')
 			return
 		
 		new_unit = Unit('Sniper')
@@ -2945,7 +2949,7 @@ class Scenario:
 		UpdateUnitInfoCon()
 		UpdateScenarioDisplay()
 		
-		print 'DEBUG: Spawned enemy sniper in ' + str(hx) + ',' + str(hy)
+		print('DEBUG: Spawned enemy sniper in ' + str(hx) + ',' + str(hy))
 		
 	
 	# generate activation order for player units and enemy units
@@ -2978,19 +2982,19 @@ class Scenario:
 		# roll for initial number of enemy units to be spawned
 		
 		# base odds
-		odds = ENEMY_NUMBER_BASE_ODDS
+		odds = ENEMY_NUMBER_ODDS
 		
 		# effect of enemy strength in zone
 		str_effect = CD_ENEMY_STRENGTH_EFFECT * self.cd_hex.enemy_strength
 		for i in range(len(odds)):
 			odds[i] += str_effect
-			if odds[i] < 0.0:
-				odds[i] = 0.0
+			if odds[i] > 97.0:
+				odds[i] = 97.0
 		
 		roll = GetPercentileRoll()
-		enemy_unit_num = 4
+		enemy_unit_num = 3
 		for chance in odds:
-			if roll > chance:
+			if roll <= chance:
 				break
 			enemy_unit_num -= 1
 		
@@ -2998,7 +3002,7 @@ class Scenario:
 		enemy_unit_num += ENEMY_DUMMY_UNITS
 		
 		# load unit stats for reference from JSON file
-		with open(DATAPATH + 'unit_type_defs.json') as data_file:
+		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
 			unit_types = json.load(data_file)
 		
 		# create a local pointer to current calendar day class odds
@@ -3065,7 +3069,7 @@ class Scenario:
 				if category in ['Gun', 'Infantry']:
 					
 					scored_list = []
-					for (map_hx, map_hy), map_hex in self.cd_hex.map_hexes.iteritems():
+					for (map_hx, map_hy), map_hex in self.cd_hex.map_hexes.items():
 						scored_list.append((map_hex.scores['total_score'], map_hx, map_hy))
 					scored_list = sorted(scored_list, key=lambda x:x[0], reverse=True)
 					
@@ -3116,7 +3120,7 @@ class Scenario:
 							break
 				
 				if hx is None and hy is None:
-					print 'ERROR: Could not find a good location to spawn ' + unit_id
+					print('ERROR: Could not find a good location to spawn ' + unit_id)
 					continue
 				
 				# create the unit
@@ -3669,7 +3673,7 @@ class Scenario:
 		(hx2, hy2) = self.player_target_hex
 		self.player_artsup_los = GetLoS(self.player_unit.hx, self.player_unit.hy,
 			hx2, hy2)
-		print 'DEBUG: LoS is ' + str(self.player_artsup_los)
+		print('DEBUG: LoS is ' + str(self.player_artsup_los))
 		
 		# display and record message
 		text = 'Artillery support request was successful, spotting rounds inbound.'
@@ -3803,8 +3807,6 @@ class Scenario:
 			chance = round(chance, 2)
 			roll = GetPercentileRoll()
 			
-			print 'DEBUG: rolled to hit ' + target.unit_id + ', chance is ' + str(chance)
-			
 			# no effect
 			if roll > chance:
 				continue
@@ -3863,8 +3865,6 @@ class Scenario:
 				# calculate final chance of AP
 				chance = RestrictChance(chance)
 				
-				print 'DEBUG: rolling to penetrate ' + target.unit_id + ', chance: ' + str(chance)
-				
 				# do AP roll
 				roll = GetPercentileRoll()
 				
@@ -3914,7 +3914,7 @@ class Scenario:
 			profile['type'] = 'Area Fire'
 			profile['effective_fp'] = 0		# placeholder for effective fp
 		else:
-			print 'ERROR: Weapon type not recognized: ' + weapon.stats['name']
+			print('ERROR: Weapon type not recognized: ' + weapon.stats['name'])
 			return None
 		
 		# calculate distance to target
@@ -4173,7 +4173,7 @@ class Scenario:
 				if weapon.GetStat('long_range') is not None:
 					gun_rating += weapon.GetStat('long_range')
 				if gun_rating not in AP_BASE_CHANCE:
-					print 'ERROR: No AP base chance found for: ' + gun_rating
+					print('ERROR: No AP base chance found for: ' + gun_rating)
 					return None
 				base_chance = AP_BASE_CHANCE[gun_rating]
 		
@@ -5181,27 +5181,27 @@ class Weapon:
 	# return the effective FP of an HE hit from this gun
 	def GetEffectiveFP(self):
 		if self.GetStat('type') != 'Gun':
-			print 'ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate effective FP'
+			print('ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate effective FP')
 			return 1
 		
 		for (calibre, fp) in HE_FP_EFFECT:
 			if calibre <= int(self.GetStat('calibre')):
 				return fp
 		
-		print 'ERROR: Could not find effective FP for: ' + self.stats['name']
+		print('ERROR: Could not find effective FP for: ' + self.stats['name'])
 		return 1
 	
 	# return the base penetration chance of an HE hit from this gun
 	def GetBaseHEPenetrationChance(self):
 		if self.GetStat('type') != 'Gun':
-			print 'ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate HE AP chance'
+			print('ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate HE AP chance')
 			return 0.0
 		
 		for (calibre, chance) in HE_AP_CHANCE:
 			if calibre <= int(self.GetStat('calibre')):
 				return chance
 		
-		print 'ERROR: Could not find HE AP chance for: ' + self.stats['name']
+		print('ERROR: Could not find HE AP chance for: ' + self.stats['name'])
 		return 0.0
 	
 	# reset gun for start of new turn
@@ -5226,10 +5226,10 @@ class Unit:
 		self.dummy = False			# unit is a false report, erased upon reveal
 		
 		# load unit stats from JSON file
-		with open(DATAPATH + 'unit_type_defs.json') as data_file:
+		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
 			unit_types = json.load(data_file)
 		if unit_id not in unit_types:
-			print 'ERROR: Could not find unit id: ' + unit_id
+			print('ERROR: Could not find unit id: ' + unit_id)
 			self.unit_id = None
 			return
 		self.stats = unit_types[unit_id].copy()
@@ -5825,7 +5825,7 @@ class Unit:
 		
 		#end_time = time.time()
 		#time_taken = round((end_time - start_time) * 1000, 3) 
-		#print 'FoV calculation for ' + self.unit_id + ' took ' + str(time_taken) + ' ms.'
+		#print('FoV calculation for ' + self.unit_id + ' took ' + str(time_taken) + ' ms.')
 	
 	# generate a new crew sufficent to man all crew positions
 	def GenerateNewCrew(self):
@@ -6538,7 +6538,7 @@ class Unit:
 		
 		# debug flag
 		if GODMODE and self == scenario.player_unit:
-			print 'GODMODE: Player saved from destruction'
+			print('GODMODE: Player saved from destruction')
 			return
 		
 		if not self.dummy and self.GetStat('category') == 'Vehicle':
@@ -6839,7 +6839,7 @@ def GetHexPath(hex_list, hx1, hy1, hx2, hy2, unit=None, road_path=False, rail_pa
 		return path
 	
 	# clear any old pathfinding info
-	for k, map_hex in hex_list.iteritems():
+	for k, map_hex in hex_list.items():
 		map_hex.ClearPathInfo()
 	
 	node1 = hex_list[(hx1, hy1)]
@@ -7064,7 +7064,6 @@ def GetDirectionalArrow(direction):
 		return chr(230)
 	elif direction == 5:
 		return chr(231)
-	print 'ERROR: Direction not recognized: ' + str(direction)
 	return ''
 
 
@@ -7415,11 +7414,10 @@ def LoadCFG():
 	
 	global config
 	
-	config = ConfigParser.RawConfigParser()
+	config = ConfigParser()
 	
 	# create a new config file
 	if not os.path.exists(DATAPATH + 'armcom2.cfg'):
-		print 'No config file found, creating a new one'
 		config.add_section('ArmCom2')
 		config.set('ArmCom2', 'large_display_font', 'true')
 		config.set('ArmCom2', 'sounds_enabled', 'true')
@@ -7446,10 +7444,10 @@ def GenerateKeyboards():
 
 	keyboard_decode = {}
 	keyboard_encode = {}
-	with open(DATAPATH + 'keyboard_mapping.json') as data_file:
+	with open(DATAPATH + 'keyboard_mapping.json', encoding='utf8') as data_file:
 		keyboards = json.load(data_file)
 	dictionary = keyboards[KEYBOARDS[config.getint('ArmCom2', 'keyboard')]]
-	for key, value in dictionary.iteritems():
+	for key, value in dictionary.items():
 		keyboard_decode[key] = value
 		keyboard_encode[value] = key
 
@@ -7476,13 +7474,13 @@ def EncodeKey(key_char):
 def PlaySound(sound_name):
 	
 	if sound_name not in session.sample:
-		print 'ERROR: Sound not found: ' + sound_name
+		print('ERROR: Sound not found: ' + sound_name)
 		return
 	
 	channel = mixer.Mix_PlayChannel(-1, session.sample[sound_name], 0)
 	if channel == -1:
-		print 'ERROR: could not play sound: ' + sound_name
-		print mixer.Mix_GetError()
+		print('ERROR: could not play sound: ' + sound_name)
+		print(mixer.Mix_GetError())
 	return channel
 
 
@@ -9427,7 +9425,7 @@ def DoScenario():
 
 global keyboard_decode, keyboard_encode
 
-print 'Starting ' + NAME + ' version ' + VERSION	# startup message
+print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
 # try to load game settings from config file, will create a new file if none present
 LoadCFG()
@@ -9465,11 +9463,11 @@ if config.getboolean('ArmCom2', 'sounds_enabled'):
 	if session.InitMixer():
 		session.LoadSounds()
 		# load and play main menu theme
-		main_theme = mixer.Mix_LoadMUS(SOUNDPATH + 'armcom2_theme.ogg')
+		main_theme = mixer.Mix_LoadMUS((SOUNDPATH + 'armcom2_theme.ogg').encode('ascii'))
 		mixer.Mix_PlayMusic(main_theme, -1)
 	else:
 		config.set('ArmCom2', 'sounds_enabled', 'false')
-		print 'Not able to init mixer, sounds disabled'
+		print('Not able to init mixer, sounds disabled')
 
 # generate keyboard mapping dictionaries
 GenerateKeyboards()

@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-# Python 2.7.14 x64
+# Python 3.7.0 x64
 # Libtcod 1.6.4 x64
 ##########################################################################################
 #                                                                                        #
@@ -3474,7 +3474,7 @@ class Scenario:
 		libtcod.console_flush()
 		
 		# wait for sound effect to finish
-		if config.getboolean('ArmCom2', 'sounds_enabled'):
+		if config['ArmCom2'].getboolean('sounds_enabled'):
 			Wait(140)
 		
 		# do attack
@@ -7418,13 +7418,15 @@ def LoadCFG():
 	
 	# create a new config file
 	if not os.path.exists(DATAPATH + 'armcom2.cfg'):
-		config.add_section('ArmCom2')
-		config.set('ArmCom2', 'large_display_font', 'true')
-		config.set('ArmCom2', 'sounds_enabled', 'true')
-		config.set('ArmCom2', 'keyboard', '0')
+		
+		config['ArmCom2'] = {
+			'large_display_font' : 'true',
+			'sounds_enabled' : 'true',
+			'keyboard' : '0'
+		}
 		
 		# write to disk
-		with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
+		with open(DATAPATH + 'armcom2.cfg', 'w') as configfile:
 			config.write(configfile)
 	else:
 		# load config file
@@ -7433,7 +7435,7 @@ def LoadCFG():
 
 # save current config to file
 def SaveCFG():
-	with open(DATAPATH + 'armcom2.cfg', 'wb') as configfile:
+	with open(DATAPATH + 'armcom2.cfg', 'w') as configfile:
 		config.write(configfile)
 
 
@@ -7446,7 +7448,7 @@ def GenerateKeyboards():
 	keyboard_encode = {}
 	with open(DATAPATH + 'keyboard_mapping.json', encoding='utf8') as data_file:
 		keyboards = json.load(data_file)
-	dictionary = keyboards[KEYBOARDS[config.getint('ArmCom2', 'keyboard')]]
+	dictionary = keyboards[KEYBOARDS[config['ArmCom2'].getint('keyboard')]]
 	for key, value in dictionary.items():
 		keyboard_decode[key] = value
 		keyboard_encode[value] = key
@@ -7488,7 +7490,7 @@ def PlaySound(sound_name):
 def PlaySoundFor(obj, action):
 	
 	# sounds disabled
-	if not config.getboolean('ArmCom2', 'sounds_enabled'):
+	if not config['ArmCom2'].getboolean('sounds_enabled'):
 		return
 	
 	if action == 'fire':
@@ -7565,7 +7567,7 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 		
 		# toggle font size
 		if char == 'F':
-			if config.getboolean('ArmCom2', 'large_display_font'):
+			if config['ArmCom2'].getboolean('large_display_font'):
 				text = '16x16'
 			else:
 				text = '8x8'
@@ -7573,7 +7575,7 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 		
 		# sound effects
 		elif char == 'S':
-			if config.getboolean('ArmCom2', 'sounds_enabled'):
+			if config['ArmCom2'].getboolean('sounds_enabled'):
 				text = 'ON'
 			else:
 				text = 'OFF'
@@ -7581,7 +7583,7 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 		
 		# keyboard settings
 		elif char == 'K':
-			ConsolePrint(console, x+18, y, KEYBOARDS[config.getint('ArmCom2', 'keyboard')])
+			ConsolePrint(console, x+18, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
 		
 		y += 1
 
@@ -7596,10 +7598,10 @@ def ChangeGameSettings(key_char):
 	if key_char == 'f':
 		libtcod.console_delete(0)
 		if config.getboolean('ArmCom2', 'large_display_font'):
-			config.set('ArmCom2', 'large_display_font', 'false')
+			config['ArmCom2']['large_display_font'] = 'false'
 			fontname = 'c64_8x8.png'
 		else:
-			config.set('ArmCom2', 'large_display_font', 'true')
+			config['ArmCom2']['large_display_font'] = 'true'
 			fontname = 'c64_16x16.png'
 		libtcod.console_set_custom_font(DATAPATH+fontname,
 			libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
@@ -7609,10 +7611,10 @@ def ChangeGameSettings(key_char):
 	
 	# toggle sound effects on/off
 	elif key_char == 's':
-		if config.getboolean('ArmCom2', 'sounds_enabled'):
-			config.set('ArmCom2', 'sounds_enabled', 'false')
+		if config['ArmCom2'].getboolean('sounds_enabled'):
+			config['ArmCom2']['sounds_enabled'] = 'false'
 		else:
-			config.set('ArmCom2', 'sounds_enabled', 'true')
+			config['ArmCom2']['sounds_enabled'] = 'true'
 			# init mixer and load sound samples if required
 			if len(session.sample) == 0:
 				session.InitMixer()
@@ -7620,12 +7622,12 @@ def ChangeGameSettings(key_char):
 		
 	# switch keyboard layout
 	elif key_char == 'k':
-		i = config.getint('ArmCom2', 'keyboard')
+		i = config['ArmCom2'].getint('keyboard')
 		if i == len(KEYBOARDS) - 1:
 			i = 0
 		else:
 			i += 1
-		config.set('ArmCom2', 'keyboard', i)
+		config['ArmCom2']['keyboard'] = i
 		GenerateKeyboards()
 	
 	SaveCFG()
@@ -9433,7 +9435,7 @@ LoadCFG()
 os.putenv('SDL_VIDEO_CENTERED', '1')			# center game window on screen
 
 # determine font to use based on settings file
-if config.getboolean('ArmCom2', 'large_display_font'):
+if config['ArmCom2'].getboolean('large_display_font'):
 	fontname = 'c64_16x16.png'
 else:
 	fontname = 'c64_8x8.png'
@@ -9459,14 +9461,14 @@ session = Session()
 # try to init sound mixer and load sounds if successful
 main_theme = None
 
-if config.getboolean('ArmCom2', 'sounds_enabled'):
+if config['ArmCom2'].getboolean('sounds_enabled'):
 	if session.InitMixer():
 		session.LoadSounds()
 		# load and play main menu theme
 		main_theme = mixer.Mix_LoadMUS((SOUNDPATH + 'armcom2_theme.ogg').encode('ascii'))
 		mixer.Mix_PlayMusic(main_theme, -1)
 	else:
-		config.set('ArmCom2', 'sounds_enabled', 'false')
+		config['ArmCom2']['sounds_enabled'] = 'false'
 		print('Not able to init mixer, sounds disabled')
 
 # generate keyboard mapping dictionaries

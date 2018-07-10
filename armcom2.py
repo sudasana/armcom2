@@ -6755,12 +6755,12 @@ class Unit:
 #                                  General Functions                                     #
 ##########################################################################################
 
-# TESTING fix for Win10 PyInstaller overflow crash
-# wrappers to cast text as a string object before sending to libtcod
+# this was a wrapper to fix a Win10 PyInstaller overflow crash under Python 2
+# currently does nothing, in further can revert to using straight console_print
 def ConsolePrint(console, x, y, text):
-	libtcod.console_print(console, x, y, str(text))
+	libtcod.console_print(console, x, y, text)
 def ConsolePrintEx(console, x, y, flag1, flag2, text):
-	libtcod.console_print_ex(console, x, y, flag1, flag2, str(text))
+	libtcod.console_print_ex(console, x, y, flag1, flag2, text)
 
 
 # get keyboard and/or mouse event

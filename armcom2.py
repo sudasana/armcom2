@@ -3101,7 +3101,8 @@ class Scenario:
 				
 					for tries in range(300):
 						close_enough = False
-						(hx, hy) = choice(self.cd_hex.map_hexes.keys())
+						
+						(hx, hy) = choice(list(self.cd_hex.map_hexes.keys()))
 						
 						# too close to player
 						if GetHexDistance(hx, hy, self.player_unit.hx, self.player_unit.hy) < ENEMY_SPAWN_MIN_DISTANCE:

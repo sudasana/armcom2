@@ -6767,7 +6767,7 @@ def ConsolePrintEx(console, x, y, flag1, flag2, text):
 
 # highlights a menu option on the root console for a moment and plays a sound
 def HighlightMenuOption(x, y, w, h):
-	# TODO: play sound
+	PlaySoundFor(None, 'menu_select')
 	for i in [1.0, 1.4, 1.8, 1.4, 1.0, 0.0]:
 		col = HIGHLIGHT_MENU_COL * i
 		for y1 in range(y, y+h):
@@ -7507,7 +7507,11 @@ def PlaySoundFor(obj, action):
 	if not config['ArmCom2'].getboolean('sounds_enabled'):
 		return
 	
-	if action == 'fire':
+	if action == 'menu_select':
+		PlaySound('menu_select')
+		return
+	
+	elif action == 'fire':
 		if obj.GetStat('type') == 'Gun':
 			
 			if obj.GetStat('name') == 'AT Rifle':
@@ -9684,6 +9688,8 @@ while not exit_game:
 			if not os.path.exists('savegame'):
 				continue
 			
+			HighlightMenuOption(WINDOW_XM-5, 38, 15, 1)
+			
 			# check that saved game is correct version
 			result = CheckSavedGameVersion() 
 			if result != '':
@@ -9716,6 +9722,9 @@ while not exit_game:
 		
 		# start new campaign
 		elif key_char == 'n':
+			
+			HighlightMenuOption(WINDOW_XM-5, 39, 15, 1)
+			
 			# check for overwrite of existing saved game
 			if os.path.exists('savegame'):
 				text = 'Starting a new campaign will PERMANTLY ERASE the existing saved campaign.'

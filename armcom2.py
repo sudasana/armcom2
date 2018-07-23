@@ -70,7 +70,7 @@ PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-07-21'			# game version
+VERSION = 'Alpha 1.0.0-2018-07-28'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -161,6 +161,7 @@ ELEVATION_SHADE = 0.06					# difference in shading for map hexes of
 FOV_SHADE = 0.5						# alpha level for FoV mask layer
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
 ACTION_KEY_COL = libtcod.Color(51, 153, 255)		# colour for key commands
+HIGHLIGHT_MENU_COL = libtcod.Color(30, 70, 130)		# background highlight colour for selected menu option
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.light_red			# known "
@@ -6757,12 +6758,24 @@ class Unit:
 ##########################################################################################
 
 # this was a wrapper to fix a Win10 PyInstaller overflow crash under Python 2
-# currently does nothing, in further can revert to using straight console_print
+# currently does nothing, in future can revert to using straight console_print
 def ConsolePrint(console, x, y, text):
 	libtcod.console_print(console, x, y, text)
 def ConsolePrintEx(console, x, y, flag1, flag2, text):
 	libtcod.console_print_ex(console, x, y, flag1, flag2, text)
 
+
+# highlights a menu option on the root console for a moment and plays a sound
+def HighlightMenuOption(x, y, w, h):
+	# TODO: play sound
+	for i in [1.0, 1.4, 1.8, 1.4, 1.0, 0.0]:
+		col = HIGHLIGHT_MENU_COL * i
+		for y1 in range(y, y+h):
+			for x1 in range(x, x+w):
+				libtcod.console_set_char_background(0, x1, y1, col, libtcod.BKGND_SET)
+		libtcod.console_flush()
+		Wait(4)
+	
 
 # get keyboard and/or mouse event
 # returns False if no new key press
@@ -9529,7 +9542,7 @@ main_title = LoadXP('main_title.xp')
 
 # list of unit images to display on main menu
 TANK_IMAGES = ['unit_7TP.xp', 'unit_TK3.xp', 'unit_TKS.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp',
-	'unit_pz_38t_a.xp']
+	'unit_pz_I_B.xp', 'unit_pz_II.xp', 'unit_pz_35t.xp', 'unit_pz_38t_a.xp', 'unit_pz_III_D.xp']
 tank_image = LoadXP(choice(TANK_IMAGES))
 
 # gradient animated effect for main menu
@@ -9542,7 +9555,7 @@ GRADIENT = [
 
 # set up gradient animation timing
 time_click = time.time()
-gradient_x = WINDOW_WIDTH + 20
+gradient_x = WINDOW_WIDTH + 10
 
 
 # draw the main menu to the main menu console
@@ -9615,7 +9628,7 @@ def AnimateMainMenu():
 				libtcod.console_set_char_foreground(main_menu_con, x + gradient_x,
 					y, GRADIENT[x])
 	gradient_x -= 2
-	if gradient_x <= 0: gradient_x = WINDOW_WIDTH + 20
+	if gradient_x <= 0: gradient_x = WINDOW_WIDTH + 10
 
 
 # generate main menu console
@@ -9641,7 +9654,7 @@ while not exit_game:
 	if libtcod.console_is_window_closed(): sys.exit()
 	
 	# trigger animation and update screen
-	if time.time() - time_click >= 0.08:
+	if time.time() - time_click >= 0.06:
 		AnimateMainMenu()
 		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
 		time_click = time.time()
@@ -9656,10 +9669,12 @@ while not exit_game:
 	if not options_menu_active:
 	
 		if key_char == 'q':
+			HighlightMenuOption(WINDOW_XM-5, 41, 15, 1)  
 			exit_game = True
 			continue
 		
 		if key_char == 'o':
+			HighlightMenuOption(WINDOW_XM-5, 40, 15, 1) 
 			options_menu_active = True
 			UpdateMainMenuCon(options_menu_active)
 			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)

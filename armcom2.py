@@ -38,7 +38,7 @@
 import os, sys						# OS-related stuff
 # if linux - load system libtcodpy
 if os.name == 'posix':
-	import libtcodpy_local as libtcod				# The Doryen Library
+	import libtcodpy_local as libtcod		# The Doryen Library
 else:
 	import libtcodpy as libtcod
 from configparser import ConfigParser			# saving and loading settings
@@ -437,6 +437,12 @@ MAX_LOS_MOD = 60.0
 SCENARIO_RANDOM_EVENT_CHANCE = 3.0
 # increase every time event is not triggered
 SCENARIO_RANDOM_EVENT_STEP = 1.0
+
+# Crew Trait modifiers
+DIRECT_FIRE_MOD = 3.0		# effect Knowledge on Commander's Direct Fire action
+DIRECT_DRIVER_MOD = 2.0		# " Direct Driver action
+PERCEPTION_SPOTTING_MOD = 3.0	# effect of Perception on Spotting chances
+
 
 ##########################################################################################
 #                                         Classes                                        #
@@ -4107,8 +4113,9 @@ class Scenario:
 		# Commander directing fire
 		position = attacker.CheckCrewAction(['Commander'], 'Direct Fire')
 		if position is not False:
-			# TODO: modify based on crew knowledge
-			modifier_list.append(('Cmdr Direction', 10.0))
+			mod = 10.0 + (float(position.crewman.traits['Knowledge']) * DIRECT_FIRE_MOD)
+			print('DEBUG: Modified to-hit based on commander Knowledge of ' + str(position.crewman.traits['Knowledge']))
+			modifier_list.append(('Fire Direction', mod))
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -4748,9 +4755,9 @@ class Scenario:
 		# direct driver modifier
 		position = unit.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
 		if position is not False:
-			
-			# TODO: modify based on commander knoeldge
-			chance += 15.0
+			mod = 15.0 + (float(position.crewman.traits['Knowledge']) * DIRECT_DRIVER_MOD)
+			print('DEBUG: Modified to-hit based on commander Knowledge of ' + str(position.crewman.traits['Knowledge']))
+			chance += mod
 		
 		# previous bonus move modifier
 		if unit.additional_moves_taken > 0:
@@ -6649,7 +6656,8 @@ class Unit:
 		if target.unit_id == 'Sniper':
 			chance = chance * 0.25
 		
-		# FUTURE: position skill modifiers if any
+		# perception modifier
+		chance += float(position.crewman.traits['Perception']) * PERCEPTION_SPOTTING_MOD
 		
 		chance = RestrictChance(chance)
 		

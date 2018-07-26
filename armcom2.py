@@ -4107,10 +4107,8 @@ class Scenario:
 		# Commander directing fire
 		position = attacker.CheckCrewAction(['Commander'], 'Direct Fire')
 		if position is not False:
-			skill_lvl = position.crewman.skills['Commander']
-			if skill_lvl > 0:
-				bonus = 10.0 + (2.0 * skill_lvl)
-				modifier_list.append(('Cmdr Direction', bonus))
+			# TODO: modify based on crew knowledge
+			modifier_list.append(('Cmdr Direction', 10.0))
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -4750,10 +4748,9 @@ class Scenario:
 		# direct driver modifier
 		position = unit.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
 		if position is not False:
-			skill_lvl = position.crewman.skills['Commander']
-			if skill_lvl > 0:
-				bonus = 15.0 + (2.0 * skill_lvl)
-				chance += bonus
+			
+			# TODO: modify based on commander knoeldge
+			chance += 15.0
 		
 		# previous bonus move modifier
 		if unit.additional_moves_taken > 0:
@@ -4908,10 +4905,6 @@ class Crew:
 		self.CheckCE()					# check to see if no hatch, must be BU
 		
 		self.fov = set()				# set of visible hexes
-		
-		self.skills = {}				# dictionary of position skill levels
-		for position_type in POSITIONS:
-			self.skills[position_type] = 0
 
 	# generate a random first and last name for this crewman
 	# TEMP: have to normalize extended characters so they can be displayed on screen
@@ -4966,7 +4959,14 @@ class Crew:
 	
 	# generate a random set of trait values
 	def GenerateTraits(self):
-		pass
+		for tries in range(300):
+			total = 0
+			for key in self.traits:
+				roll = libtcod.random_get_int(0, 1, 5)
+				total += roll
+				self.traits[key] = roll
+			if 8 < total < 16:
+				return
 	
 	# set rank based on current position
 	def SetRank(self):
@@ -5844,20 +5844,7 @@ class Unit:
 	# generate a new crew sufficent to man all crew positions
 	def GenerateNewCrew(self):
 		for position in self.crew_positions:
-			new_crew = Crew(self, self.nation, position)
-			
-			# set position skill levels
-			for position_type in POSITIONS:
-				if position_type in position.name:
-					# exception: asst driver is its own position
-					if position_type == 'Driver' and position.name == 'Assistant Driver':
-						continue
-					new_crew.skills[position_type] += 1
-					# commanders get bonus skill level
-					if position_type == 'Commander':
-						new_crew.skills[position_type] += 1
-			
-			self.crew_list.append(new_crew)
+			self.crew_list.append(Crew(self, self.nation, position))
 			position.crewman = self.crew_list[-1]
 	
 	# draw this unit to the given viewport hex on the unit console
@@ -8105,6 +8092,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	libtcod.console_hline(console, x+1, y+8, 29)
 	libtcod.console_hline(console, x+1, y+10, 29)
 	libtcod.console_hline(console, x+1, y+13, 29)
+	libtcod.console_hline(console, x+1, y+16, 29)
 	libtcod.console_hline(console, x+1, y+24, 29)
 	
 	# section titles
@@ -8115,7 +8103,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+1, y+9, 'Rank')
 	ConsolePrint(console, x+1, y+11, 'Current')
 	ConsolePrint(console, x+1, y+12, 'Position')
-	ConsolePrint(console, x+1, y+14, 'Skill Levels')
+	ConsolePrint(console, x+1, y+15, 'Assessment')
 	
 	# info
 	libtcod.console_set_default_foreground(console, libtcod.white)
@@ -8125,13 +8113,19 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+10, y+11, campaign.player_unit.unit_id)
 	ConsolePrint(console, x+10, y+12, crewman.current_position.name)
 	
-	# list position skills
-	y1 = 16
-	for position_type in POSITIONS:
-		if crewman.skills[position_type] > 0:
-			ConsolePrint(console, x+1, y+y1, position_type)
-			ConsolePrint(console, x+18, y+y1, str(crewman.skills[position_type]))
-			y1 += 1
+	# list traits
+	y1 = y+17
+	libtcod.console_put_char_ex(console, x+7, y1, chr(4), libtcod.yellow, libtcod.black)
+	libtcod.console_put_char_ex(console, x+7, y1+1, chr(3), libtcod.red, libtcod.black)
+	libtcod.console_put_char_ex(console, x+7, y1+2, chr(5), libtcod.light_blue, libtcod.black)
+	libtcod.console_put_char_ex(console, x+7, y1+3, chr(6), libtcod.green, libtcod.black)
+	for t in ['Perception', 'Morale', 'Grit', 'Knowledge']:
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		ConsolePrint(console, x+9, y1, t)
+		libtcod.console_set_default_foreground(console, libtcod.grey)
+		ConsolePrintEx(console, x+21, y1, libtcod.BKGND_NONE, libtcod.RIGHT,
+			str(crewman.traits[t]))
+		y1 += 1
 			
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)

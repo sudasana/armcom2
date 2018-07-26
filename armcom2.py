@@ -4886,6 +4886,14 @@ class Crew:
 		self.age = 0					# age of crewman in years
 		self.GenerateAge()
 		
+		self.traits = {					# placeholder for traits, will be set below
+			'Perception' : 0,
+			'Morale' : 0,
+			'Grit' : 0,
+			'Knowledge' : 0
+		}
+		self.GenerateTraits()
+		
 		self.rank = 0					# rank level
 		self.rank_desc = ''				# text name for rank
 		self.SetRank()
@@ -4955,6 +4963,10 @@ class Crew:
 				self.age += 3
 			else:
 				self.age += 4
+	
+	# generate a random set of trait values
+	def GenerateTraits(self):
+		pass
 	
 	# set rank based on current position
 	def SetRank(self):

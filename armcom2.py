@@ -64,8 +64,6 @@ import sdl2.sdlmixer as mixer				# sound effects
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
 GODMODE = False						# player cannot be destroyed
-ALWAYS_ENCOUNTER = False				# every enemy-controlled zone results in a battle
-NEVER_ENCOUNTER = False					# no "
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
@@ -246,21 +244,13 @@ MONTH_NAMES = [
 # radius in hexes of a zone on the campaign day map; does not include centre hex
 CD_MAP_HEX_RADIUS = 6
 
-# base chance of triggering a battle when entering an enemy-held hex on the campaign day map
-CD_BATTLE_BASE_CHANCE = 52.0
-# effect of each point of strength on chance
-CD_BATTLE_STR_MOD = 5.0
-# effect of each point of organization <> 5 on chance
-CD_BATTLE_ORGANIZATION_MOD = 5.0
-
-# scenarios will have 1-3 enemy units
-# chance to spawn 3 or 2 units
-ENEMY_NUMBER_ODDS = [5.0, 15.0]
-# effect of each point of strength (range 1-9) on odds
-CD_ENEMY_STRENGTH_EFFECT = 8.0
+# relative odds of encountering 0, 1, 2, or 3 enemy units in an encounter scenario
+ENEMY_NUMBER_ODDS = [15.0, 25.0, 45.0, 15.0]
+# modifier of each point of strength beyond 1 on odds
+CD_ENEMY_STRENGTH_EFFECT = 15.0
 
 # time in minutes to capture a zone by holding its objective hex = enemy organization times this number
-OBJECTIVE_CAPTURE_MULTIPLIER = 3
+OBJECTIVE_CAPTURE_MULTIPLIER = 6
 
 # number of additional dummy units spawned in a scenario
 ENEMY_DUMMY_UNITS = 1
@@ -954,24 +944,22 @@ class ZoneHex:
 		self.controlled_by = 1		# which player side currently controls this zone
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
 		
-		# real enemy strength and organization, each 1-9
-		self.enemy_strength = -9 + libtcod.random_get_int(0, 1, 6) + libtcod.random_get_int(0, 1, 6) + libtcod.random_get_int(0, 1, 6)
-		
-		if self.enemy_strength < 1:
+		# real enemy strength and organization, each 1-3
+		roll = libtcod.random_get_int(0, 1, 6)
+		if roll <= 3:
 			self.enemy_strength = 1
+		elif roll < 6:
+			self.enemy_strength = 2
+		else:
+			self.enemy_strength = 3
 		
-		self.enemy_organization = 1 + libtcod.random_get_int(0, 0, 4) + libtcod.random_get_int(0, 0, 4)
-		
-		# calculate encounter chance
-		self.encounter_chance = CD_BATTLE_BASE_CHANCE
-		self.encounter_chance += (self.enemy_strength * CD_BATTLE_STR_MOD)
-		self.encounter_chance += ((self.enemy_organization - 5) * CD_BATTLE_ORGANIZATION_MOD)
-		self.encounter_chance = round(self.encounter_chance, 1)
-		
-		if self.encounter_chance > 97.0:
-			self.encounter_chance = 97.0
-		if self.encounter_chance < 3.0:
-			self.encounter_chance = 3.0
+		roll = libtcod.random_get_int(0, 1, 6)
+		if roll == 1:
+			self.enemy_organization = 1
+		elif roll <= 4:
+			self.enemy_organization = 2
+		else:
+			self.enemy_organization = 3
 		
 		# create an empty placeholder for a hex map; will be generated if a scenario takes place here
 		self.map_hexes = {}
@@ -1847,7 +1835,6 @@ class CampaignDay:
 					ConsolePrint(cd_command_con, 2, 10, 'Strength: ' + str(map_hex.enemy_strength))
 					ConsolePrint(cd_command_con, 2, 11, 'Organization: ' + str(map_hex.enemy_organization))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-					ConsolePrint(cd_command_con, 0, 13, 'Encounter Chance: ' + str(map_hex.encounter_chance) + '%%')
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			text = 'Travel Time: '
@@ -2231,23 +2218,11 @@ class CampaignDay:
 						self.travel_direction = None
 						self.UpdateCDGUICon()
 						
-						# roll for battle encounter if enemy-controlled
-						if map_hex2.controlled_by == 1:
-							roll = GetPercentileRoll()
-							if (roll <= map_hex2.encounter_chance or ALWAYS_ENCOUNTER) and not NEVER_ENCOUNTER:
-								ShowNotification('You encounter enemy resistance and a battle ensues!')
-								campaign_day.AddMessage('We moved into a new area and encountered enemy resistance.')
-								self.InitScenario(hx, hy, source_direction)
-							else:
-								ShowNotification('You encounter no enemy resistance and swiftly take control of the area.')
-								campaign_day.AddMessage('We moved into a new area but encountered no resistance.')
-								map_hex2.controlled_by = 0
-								self.records['Map Areas Captured'] += 1
-								
-								# award vp to player
-								campaign.AwardVP(self.capture_zone_vp)
-								self.UpdateCDCampaignCon()
-								
+						# trigger battle encounter if enemy-controlled
+						ShowNotification('You enter the enemy-held zone.')
+						campaign_day.AddMessage('We moved into an enemy-held area.')
+						self.InitScenario(hx, hy, source_direction)
+							
 						self.UpdateTimeWeatherDisplay()
 						self.UpdateCDControlCon()
 						self.UpdateCDUnitCon()
@@ -2987,23 +2962,18 @@ class Scenario:
 	def SpawnEnemyUnits(self):
 		
 		# roll for initial number of enemy units to be spawned
-		
-		# base odds
-		odds = ENEMY_NUMBER_ODDS
-		
-		# effect of enemy strength in zone
-		str_effect = CD_ENEMY_STRENGTH_EFFECT * self.cd_hex.enemy_strength
-		for i in range(len(odds)):
-			odds[i] += str_effect
-			if odds[i] > 97.0:
-				odds[i] = 97.0
-		
 		roll = GetPercentileRoll()
-		enemy_unit_num = 3
-		for chance in odds:
-			if roll <= chance:
+		# apply effect of enemy strength in zone
+		if self.cd_hex.enemy_strength > 1:
+			roll += CD_ENEMY_STRENGTH_EFFECT * (self.cd_hex.enemy_strength - 1)
+		if roll > 100.0: roll = 100.0
+		
+		for enemy_unit_num in range(len(ENEMY_NUMBER_ODDS)):
+			if roll <= ENEMY_NUMBER_ODDS[enemy_unit_num]:
 				break
-			enemy_unit_num -= 1
+			roll -= ENEMY_NUMBER_ODDS[enemy_unit_num]
+		
+		print('DEBUG: spawning ' + str(enemy_unit_num) + ' real enemy units')
 		
 		# add dummy units
 		enemy_unit_num += ENEMY_DUMMY_UNITS
@@ -6781,7 +6751,7 @@ def HighlightMenuOption(x, y, w, h):
 			for x1 in range(x, x+w):
 				libtcod.console_set_char_background(0, x1, y1, col, libtcod.BKGND_SET)
 		libtcod.console_flush()
-		Wait(4)
+		Wait(3)
 	
 
 # get keyboard and/or mouse event
@@ -9765,7 +9735,7 @@ while not exit_game:
 			
 			# generate a new campaign day object and record event
 			campaign_day = CampaignDay()
-			campaign_day.AddMessage('Start of combat')
+			campaign_day.AddMessage('Start of combat day')
 			
 			# show briefing
 			DisplayCampaignDayBriefing()

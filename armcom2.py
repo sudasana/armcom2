@@ -36,11 +36,10 @@
 
 ##### Libraries #####
 import os, sys						# OS-related stuff
-# if linux - load system libtcodpy
-if os.name == 'posix':
-	import libtcodpy_local as libtcod		# The Doryen Library
+if os.name == 'posix':					# if linux - load system libtcodpy
+	import libtcodpy_local as libtcod		
 else:
-	import libtcodpy as libtcod
+	import libtcodpy as libtcod			# The Doryen Library
 from configparser import ConfigParser			# saving and loading settings
 from random import choice, shuffle, sample		# for randomness
 from math import floor, cos, sin, sqrt			# math
@@ -50,7 +49,6 @@ import json						# for loading JSON data
 import time
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
-
 os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)
 import sdl2.sdlmixer as mixer				# sound effects
 
@@ -63,8 +61,8 @@ import sdl2.sdlmixer as mixer				# sound effects
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
-GODMODE = True						# player cannot be destroyed
-PLAYER_ALWAYS_HITS = True				# player attacks always roll well
+GODMODE = False						# player cannot be destroyed
+PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
@@ -73,8 +71,7 @@ DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
 
-# linux (and OS X?) has to use SDL for some reason
-if os.name == 'posix':
+if os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
 	RENDERER = libtcod.RENDERER_SDL
 else:
 	RENDERER = libtcod.RENDERER_GLSL
@@ -2890,9 +2887,6 @@ class Scenario:
 			print('DEBUG: no random event, chance is now: ' + str(campaign_day.random_event_chance) + '%')
 			return
 		
-		# event triggered, reset event chance
-		campaign_day.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
-		
 		# roll for type of random event; if event is NA, nothing happens
 		roll = GetPercentileRoll()
 		print('DEBUG: random event roll was ' + str(roll))
@@ -2906,6 +2900,12 @@ class Scenario:
 		elif roll <= 30.0:
 			# spawn enemy sniper
 			self.SpawnSniper(1)
+		else:
+			# no event
+			return
+		
+		# event triggered, reset event chance
+		campaign_day.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
 		
 	# spawn a sniper unit into the game on player_num's side
 	def SpawnSniper(self, player_num):
@@ -5400,9 +5400,9 @@ class Unit:
 			# Hull Down status if any
 			if len(self.hull_down) > 0:
 				libtcod.console_set_default_foreground(console, libtcod.sepia)
-				text = 'HD'
-				text += GetDirectionalArrow(ConstrainDir(self.hull_down[0] - scenario.vp_facing))
 				ConsolePrint(console, x+8, ys-1, text)
+				char = GetDirectionalArrow(ConstrainDir(self.hull_down[0] - scenario.vp_facing))
+				libtcod.console_put_char_ex(unit_info_con, x+11, ys-1, char, libtcod.sepia, libtcod.black)
 		
 			# unit status
 			libtcod.console_set_default_foreground(console, libtcod.light_grey)
@@ -8816,17 +8816,16 @@ def UpdateUnitInfoCon():
 		
 		# facing if any
 		if unit.facing is not None and unit.GetStat('category') != 'Infantry':
-			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
-			text = 'H'
-			text += GetDirectionalArrow(ConstrainDir(unit.facing - scenario.vp_facing))
-			ConsolePrint(unit_info_con, 0, 6, text)
+			libtcod.console_put_char_ex(unit_info_con, 0, 6, 'H', libtcod.light_grey, libtcod.black)
+			char = GetDirectionalArrow(ConstrainDir(unit.facing - scenario.vp_facing))
+			libtcod.console_put_char_ex(unit_info_con, 1, 6, char, libtcod.light_grey, libtcod.black)
 		
 		# HD status if any
 		if len(unit.hull_down) > 0:
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
-			text = 'HD'
-			text += GetDirectionalArrow(ConstrainDir(unit.hull_down[0] - scenario.vp_facing))
 			ConsolePrint(unit_info_con, 3, 6, text)
+			char = GetDirectionalArrow(ConstrainDir(unit.hull_down[0] - scenario.vp_facing))
+			libtcod.console_put_char_ex(unit_info_con, 5, 6, char, libtcod.sepia, libtcod.black)
 	
 	# other units in stack if any
 	if len(unit_stack) > 1:

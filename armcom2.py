@@ -63,8 +63,8 @@ import sdl2.sdlmixer as mixer				# sound effects
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
-GODMODE = False						# player cannot be destroyed
-PLAYER_ALWAYS_HITS = False				# player attacks always roll well
+GODMODE = True						# player cannot be destroyed
+PLAYER_ALWAYS_HITS = True				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
@@ -227,6 +227,9 @@ with open(DATAPATH + 'crew_action_defs.json', encoding='utf8') as data_file:
 # order to display ammo types
 AMMO_TYPES = ['HE', 'AP']
 
+# list of MG-type weapons
+MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG']
+
 # text names for months
 MONTH_NAMES = [
 	'', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
@@ -239,7 +242,7 @@ MONTH_NAMES = [
 ##### Game Engine Constants #####
 #################################
 
-# TODO: move these to json file
+# FUTURE: move these to a json file
 
 # radius in hexes of a zone on the campaign day map; does not include centre hex
 CD_MAP_HEX_RADIUS = 6
@@ -295,7 +298,7 @@ AP_BASE_CHANCE = {
 	'37L' : 83.0,
 	'47S' : 72.0,
 	'75S' : 91.7,
-	'75' : 120.0,		# not sure if this and below are accurate, TODO check balance
+	'75' : 120.0,		# not sure if this and below are accurate, FUTURE: check balance
 	'75L' : 160.0,
 	'88L' : 200.0
 }
@@ -855,7 +858,7 @@ class Campaign:
 			
 	
 	# advance the current campaign time
-	# TODO: how to handle rolling over into new day?
+	# FUTURE: handle rolling over into a new day: might happen eg. in days that start at dusk
 	def AdvanceClock(self, hours, minutes):
 		self.calendar['hour'] += hours
 		self.calendar['minute'] += minutes
@@ -1276,8 +1279,6 @@ class ZoneHex:
 				
 				# handle large villages; if extra hexes fall off map they won't
 				#  be added
-				# TODO: possible to lose one or more additional hexes if they
-				#   are already village hexes
 				if village_size > 1:
 					for extra_hex in range(village_size-1):
 						(hx2, hy2) = GetAdjacentHex(hx, hy, libtcod.random_get_int(0, 0, 5))
@@ -1399,6 +1400,12 @@ class CampaignDay:
 			self.arty_support_level = float(campaign.today['arty_support_level'])
 			self.arty_support_step = float(campaign.today['arty_support_step'])
 		
+		# current chance of random scenario event being triggered
+		self.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
+		
+		# TEMP - chance starts very high
+		self.random_event_chance = 100.0
+		
 		# list of messages: each is a tuple of time and text
 		self.messages = []
 		
@@ -1452,7 +1459,22 @@ class CampaignDay:
 		self.arty_support_level -= self.arty_support_step
 		if self.arty_support_level < 0.0:
 			self.arty_support_level = 0.0
-			
+	
+	# increase air or arty support level due to random event, etc.
+	# don't increase if there was none to start
+	def IncreaseSupLevel(self, air_sup):
+		if air_sup:
+			if self.air_support_step == 0.0: return
+			self.air_support_level += self.air_support_step
+			text = 'Air'
+		else:
+			if self.arty_support_step == 0.0: return
+			self.arty_support_level += arty_support_step
+			text = 'Artillery'
+		text += ' support level increased.'
+		self.AddMessage(text)
+		self.ShowMessage(text)
+		
 	# add a message with the current timestamp to the journal
 	def AddMessage(self, text):
 		self.messages.append((str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2), text))
@@ -2272,8 +2294,6 @@ class Session:
 		# placeholder for sound samples
 		self.sample = {}
 		
-		# TODO: load unit portraits
-		
 		# store nation definition info
 		with open(DATAPATH + 'nation_defs.json', encoding='utf8') as data_file:
 			self.nations = json.load(data_file)
@@ -2679,8 +2699,9 @@ class AI:
 			for (weapon, target, ammo_type) in attack_list:
 				
 				# skip small arms attacks on targets that have no chance of effect
-				if weapon.GetStat('type') not in ['Gun', 'Co-ax MG', 'Hull MG', 'AA MG'] and not target.VulnerableToSAFireFrom(self.owner):
-					continue
+				if not target.VulnerableToSAFireFrom(self.owner):
+					if weapon.GetStat('type') != 'Gun' and weapon.GetStat('type') not in MG_WEAPONS:
+						continue
 				
 				# determine if a pivot or turret rotation would be required
 				pivot_req = None
@@ -2725,7 +2746,7 @@ class AI:
 				if target.GetStat('armour') is not None and ammo_type == 'AP':
 					score += 25.0
 				
-				# TODO: modify score by chance of penetration
+				# FUTURE: modify score by chance of armour penetration if AP
 				
 				# add to list
 				scored_list.append((score, weapon, target, ammo_type))
@@ -2816,12 +2837,6 @@ class Scenario:
 			[], []
 		]
 		
-		# current chance of random event being triggered
-		self.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
-		
-		# TEMP - chance starts very high
-		self.random_event_chance = 100.0
-		
 		self.objective_timer = [0, None]	# remaining minutes needed for each player to
 							# control objective and gain control of zone
 							# if None, not possible
@@ -2869,19 +2884,28 @@ class Scenario:
 		roll = GetPercentileRoll()
 		
 		# no event this turn
-		if roll > self.random_event_chance:
+		if roll > campaign_day.random_event_chance:
 			# increase chance
-			self.random_event_chance += SCENARIO_RANDOM_EVENT_STEP
-			print('DEBUG: no random event, chance is now: ' + str(self.random_event_chance) + '%')
+			campaign_day.random_event_chance += SCENARIO_RANDOM_EVENT_STEP
+			print('DEBUG: no random event, chance is now: ' + str(campaign_day.random_event_chance) + '%')
 			return
 		
-		# reset event chance
-		self.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
+		# event triggered, reset event chance
+		campaign_day.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
 		
-		# TODO: roll for type of random event
+		# roll for type of random event; if event is NA, nothing happens
+		roll = GetPercentileRoll()
+		print('DEBUG: random event roll was ' + str(roll))
 		
-		# TEMP for now, only enemy sniper event possible
-		self.SpawnSniper(1)
+		if roll <= 10.0:
+			# increase air support level if any
+			self.IncreaseSupLevel(True)
+		elif roll <= 20.0:
+			# increase artillery support if any
+			self.IncreaseSupLevel(False)
+		elif roll <= 30.0:
+			# spawn enemy sniper
+			self.SpawnSniper(1)
 		
 	# spawn a sniper unit into the game on player_num's side
 	def SpawnSniper(self, player_num):
@@ -3888,7 +3912,7 @@ class Scenario:
 		weapon_type = weapon.GetStat('type')
 		if weapon_type == 'Gun':
 			profile['type'] = 'Point Fire'
-		elif weapon_type in ['Co-ax MG', 'Hull MG', 'AA MG', 'Rifles']:
+		elif weapon_type == 'Rifles' or weapon_type in MG_WEAPONS:
 			profile['type'] = 'Area Fire'
 			profile['effective_fp'] = 0		# placeholder for effective fp
 		else:
@@ -4138,7 +4162,7 @@ class Scenario:
 		# calculate base chance of penetration
 		if weapon.GetStat('name') == 'AT Rifle':
 			base_chance = AP_BASE_CHANCE['AT Rifle']
-		elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG', 'AA MG']:
+		elif weapon.GetStat('type') in MG_WEAPONS:
 			base_chance = AP_BASE_CHANCE['MG']
 		else:
 			gun_rating = weapon.GetStat('calibre')
@@ -4508,7 +4532,7 @@ class Scenario:
 			
 			# might be converted into an AP MG hit
 			if result_text in ['FULL EFFECT', 'CRITICAL EFFECT']:
-				if profile['weapon'].GetStat('type') in ['Co-ax MG', 'Hull MG', 'AA MG'] and profile['target'].GetStat('armour') is not None:
+				if profile['weapon'].GetStat('type') in MG_WEAPONS and profile['target'].GetStat('armour') is not None:
 					distance = GetHexDistance(profile['attacker'].hx,
 						profile['attacker'].hy, profile['target'].hx,
 						profile['target'].hy)
@@ -4747,7 +4771,8 @@ class Scenario:
 	def ShowMessage(self, message, hx=None, hy=None, portrait=None):
 		
 		# encode message for display
-		message = message.encode('IBM850')
+		# disabled - was casting the text into a dictionary?
+		#message = message.encode('IBM850')
 		
 		# enable hex highlight if any
 		if hx is not None and hy is not None:
@@ -5097,7 +5122,7 @@ class Weapon:
 			self.max_range = int(self.stats['max_range'])
 			del self.stats['max_range']
 		else:
-			if self.stats['type'] in ['Co-ax MG', 'AA MG']:
+			if self.stats['type'] in ['Turret MG', 'Co-ax MG', 'AA MG']:
 				self.max_range = 3
 			elif self.stats['type'] == 'Hull MG':
 				self.max_range = 1
@@ -6173,6 +6198,8 @@ class Unit:
 				action = 'Operate AA MG'
 			elif weapon_type == 'Hull MG':
 				action = 'Operate Hull MG'
+			elif weapon_type == 'Turret MG':
+				action = 'Operate Turret MG'
 			self.SetCrewAction(position_list, action)
 		
 		# set weapon and unit fired flags
@@ -6235,7 +6262,7 @@ class Unit:
 						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 						libtcod.console_flush()
 				
-				elif weapon.GetStat('type') in ['Co-ax MG', 'Hull MG', 'AA MG']:
+				elif weapon.GetStat('type') in MG_WEAPONS:
 					
 					x1, y1 = self.screen_x, self.screen_y
 					x2, y2 = target.screen_x, target.screen_y
@@ -6431,16 +6458,12 @@ class Unit:
 		base_chance = RESOLVE_FP_BASE_CHANCE
 		for i in range(2, self.fp_to_resolve + 1):
 			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
-		base_chance = round(base_chance, 2)
 		
 		# TODO: calculate modifiers
 		
-		
-		# calculate chances of broken based on base chance
-		broken_chance = round(base_chance + (base_chance * 0.2), 2)
-		
+		# round and restrict final chances
 		base_chance = RestrictChance(base_chance)
-		broken_chance = RestrictChance(broken_chance)
+		broken_chance = RestrictChance(base_chance * 1.2)
 		
 		# display pop-up message if unit is known and on VP
 		if (self.owning_player == 0 or (self.owning_player == 1 and self.known)) and self.vp_hx is not None:
@@ -6514,9 +6537,11 @@ class Unit:
 	# destroy this unit and remove it from the scenario map
 	def DestroyMe(self):
 		
-		# debug flag
+		# debug flag active
 		if GODMODE and self == scenario.player_unit:
-			print('GODMODE: Player saved from destruction')
+			scenario.ShowMessage('GODMODE: You were saved from destruction',
+				self.hx, self.hy)
+			self.ap_hits_to_resolve = []
 			return
 		
 		if not self.dummy and self.GetStat('category') == 'Vehicle':
@@ -6571,11 +6596,11 @@ class Unit:
 		if self.turret_facing is not None:
 			turret_facing = True
 		facing = GetFacing(attacker, self, turret_facing=turret_facing).lower()
-		if self.armour['turret_' + facing] == '-': return True
+		if armour['turret_' + facing] == '-': return True
 		
 		# check possible hull hit
 		facing = GetFacing(attacker, self, turret_facing=False).lower()
-		if self.armour['hull_' + facing] == '-': return True
+		if armour['hull_' + facing] == '-': return True
 		
 		# check exposed crew
 		for position in self.crew_positions:
@@ -6662,6 +6687,7 @@ class Unit:
 					text += target.GetName() + ' ' + target.GetStat('class')
 					text += ' spotted!'
 					portrait = target.GetStat('portrait')
+				
 				scenario.ShowMessage(text, hx=target.hx, hy=target.hy, portrait=portrait)
 			elif target == scenario.player_unit:
 				text = 'You have been spotted!'
@@ -7499,7 +7525,7 @@ def PlaySoundFor(obj, action):
 			PlaySound('37mm_firing_0' + str(n))
 			return
 			
-		if obj.stats['type'] in ['Co-ax MG', 'Hull MG', 'AA MG']:
+		if obj.stats['type'] in MG_WEAPONS:
 			PlaySound('zb_53_mg_00')
 			return
 	 

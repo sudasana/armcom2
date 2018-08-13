@@ -1400,9 +1400,6 @@ class CampaignDay:
 		# current chance of random scenario event being triggered
 		self.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
 		
-		# TEMP - chance starts very high
-		self.random_event_chance = 100.0
-		
 		# list of messages: each is a tuple of time and text
 		self.messages = []
 		
@@ -7545,7 +7542,6 @@ def PlaySoundFor(obj, action):
 			PlaySound('wheeled_moving_0' + str(n))
 			return
 		
-		# TEMP - more sounds to come
 		if obj.GetStat('class') in ['Tankette', 'Light Tank', 'Medium Tank']:
 			n = libtcod.random_get_int(0, 0, 2)
 			PlaySound('light_tank_moving_0' + str(n))

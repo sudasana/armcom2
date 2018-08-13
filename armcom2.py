@@ -250,7 +250,7 @@ ENEMY_NUMBER_ODDS = [15.0, 25.0, 45.0, 15.0]
 CD_ENEMY_STRENGTH_EFFECT = 15.0
 
 # time in minutes to capture a zone by holding its objective hex = enemy organization times this number
-OBJECTIVE_CAPTURE_MULTIPLIER = 6
+OBJECTIVE_CAPTURE_MULTIPLIER = 12
 
 # number of additional dummy units spawned in a scenario
 ENEMY_DUMMY_UNITS = 1
@@ -3443,7 +3443,9 @@ class Scenario:
 		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
 		libtcod.console_clear(temp_con)
 		
-		ConsolePrint(temp_con, 0, 1, (chr(196) + chr(197) + chr(196)))
+		libtcod.console_put_char(temp_con, 0, 1, chr(196))
+		libtcod.console_put_char(temp_con, 1, 1, chr(197))
+		libtcod.console_put_char(temp_con, 2, 1, chr(196))
 		if direction == -1:
 			libtcod.console_put_char(temp_con, 1, 2, chr(193))
 		else:
@@ -3578,6 +3580,7 @@ class Scenario:
 				
 				text = target.GetName() + ' was hit by air attack'
 				scenario.ShowMessage(text, target.hx, target.hy)
+				campaign_day.AddMessage(text)
 			
 			# vehicle hit
 			elif target.GetStat('category') == 'Vehicle':
@@ -3622,6 +3625,9 @@ class Scenario:
 				
 				# no penetration
 				if roll > chance:
+					text = target.GetName() + ' was unaffected by air attack'
+					scenario.ShowMessage(text, target.hx, target.hy)
+					campaign_day.AddMessage(text)
 					continue
 				
 				# penetrated
@@ -4797,7 +4803,7 @@ class Scenario:
 		lines = wrap(message, 27)
 		# max 7 lines tall
 		for line in lines[:7]:
-			ConsolePrint(0, 45, y, line)
+			ConsolePrint(0, 45, y, line.encode('IBM850'))
 			y += 1
 		
 		if portrait is not None:
@@ -6459,15 +6465,12 @@ class Unit:
 		# TODO: calculate modifiers
 		
 		# round and restrict final chances
-		base_chance = RestrictChance(base_chance)
 		broken_chance = RestrictChance(base_chance * 1.2)
+		base_chance = RestrictChance(base_chance)
 		
 		# display pop-up message if unit is known and on VP
 		if (self.owning_player == 0 or (self.owning_player == 1 and self.known)) and self.vp_hx is not None:
-			text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + ': '
-			text += 'Pin Test: ' + str(base_chance) + '%%; '
-			text += 'Broken: ' + str(broken_chance - base_chance) + '%%; '
-			text += 'Destroyed: ' + str(100.0 - broken_chance) + '%%'
+			text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName()
 			scenario.ShowMessage(text, self.hx, self.hy)
 		
 		# roll for effect

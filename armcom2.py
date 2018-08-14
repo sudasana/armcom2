@@ -66,7 +66,7 @@ PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-07-28'			# game version
+VERSION = 'Alpha 1.0.0-2018-08-18'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2877,16 +2877,13 @@ class Scenario:
 		
 		roll = GetPercentileRoll()
 		
-		# no event this turn
+		# no event this turn, increase chance
 		if roll > campaign_day.random_event_chance:
-			# increase chance
 			campaign_day.random_event_chance += SCENARIO_RANDOM_EVENT_STEP
-			print('DEBUG: no random event, chance is now: ' + str(campaign_day.random_event_chance) + '%')
 			return
 		
 		# roll for type of random event; if event is NA, nothing happens
 		roll = GetPercentileRoll()
-		print('DEBUG: random event roll was ' + str(roll))
 		
 		if roll <= 10.0:
 			# increase air support level if any
@@ -2898,8 +2895,8 @@ class Scenario:
 			# spawn enemy sniper
 			self.SpawnSniper(1)
 		else:
-			# no event
-			return
+			# TEMP: no event
+			pass
 		
 		# event triggered, reset event chance
 		campaign_day.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE

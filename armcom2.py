@@ -61,7 +61,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
-GODMODE = False						# player cannot be destroyed
+GODMODE = True						# player cannot be destroyed
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
@@ -233,6 +233,18 @@ MONTH_NAMES = [
 	'September', 'October', 'November', 'December'
 ]
 
+# injury locations on personnel bodies and chance of that location being injured
+BODY_LOCATIONS = [
+	'Head', 'Torso', 'Left Arm', 'Right Arm', 'Left Leg', 'Right Leg'
+]
+INJURY_CHANCES = {
+	'Head' : 10.0,
+	'Torso' : 40.0,
+	'Left Arm' : 10.0,
+	'Right Arm' : 10.0,
+	'Left Leg' : 15.0,
+	'Right Leg' : 15.0
+}
 
 
 #################################
@@ -5069,7 +5081,67 @@ class Personnel:
 		
 		self.ce = not self.ce
 		return True
-
+	
+	# test for and apply injury as a result of being exposed to firepower
+	# TODO: sniper hit modifiers
+	def DoInjuryTest(self, fp, sniper_hit = False):
+		
+		# crew is not exposed, no chance of injury
+		if not self.ce: return ''
+		
+		# roll for injury
+		
+		# TEMP - rough chance only, will be modified by fp
+		chance = 40.0
+		roll = GetPercentileRoll()
+		if roll > chance:
+			return ''
+		
+		# roll for location of injury
+		roll = GetPercentileRoll()
+		for location in BODY_LOCATIONS:
+			chance = INJURY_CHANCES[location]
+			if roll <= chance:
+				break
+			roll -= chance
+		
+		text = self.GetFullName()
+		
+		# roll for severity of injury
+		# TEMP: rough roll only, will be modified by fp
+		
+		if GetPercentileRoll() <= 80.0:
+			# light injury
+			if self.injuries[location] == 0:
+				self.injuries[location] = 1
+				text += ' was lightly injured in the ' + location + '.'
+			
+			# light -> severe injury
+			elif self.injuries[location] == 1:
+				self.injuries[location] = 2
+				text += ' was again injured in the ' + location + ' and now has a severe injury.'
+		
+			# no further effect if already severe injury
+			else:
+				text = ''
+		
+		else:
+		
+			# severe injury, or light -> severe injury
+			# no further effect if already severely injured
+			if self.injuries[location] == 2:
+				text = ''
+			else:
+				self.injuries[location] = 2
+				text += ' was severely injured in the ' + location + '.'
+		
+		# return now if no effect
+		if text == '': return text
+		
+		# TODO: roll for and apply status effects
+		
+		return text
+		
 
 # Crew Position class: represents a crew position on a vehicle or gun
 class CrewPosition:
@@ -6459,8 +6531,16 @@ class Unit:
 	def ResolveFP(self):
 		if self.fp_to_resolve == 0: return
 		
-		# FUTURE: handle possible crew injury for vehicle units
 		if self.GetStat('category') == 'Vehicle':
+			
+			# handle possible crew injury
+			for position in self.crew_positions:
+				if position.crewman is None: continue
+				text = position.crewman.DoInjuryTest(self.fp_to_resolve)
+				# display message if result and personnel is part of player unit
+				if text != '' and self == campaign.player_unit:
+					scenario.ShowMessage(text, self.hx, self.hy)
+						
 			self.fp_to_resolve = 0
 			return
 		
@@ -6609,7 +6689,7 @@ class Unit:
 		facing = GetFacing(attacker, self, turret_facing=False).lower()
 		if armour['hull_' + facing] == '-': return True
 		
-		# check exposed crew
+		# check for any exposed crew
 		for position in self.crew_positions:
 			if position.crewman is None: continue
 			if position.crewman.ce: return True
@@ -8138,20 +8218,27 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 		y1 += 1
 	
 	# list injuries
-	libtcod.console_set_default_foreground(console, libtcod.white)
 	y1 = y+21
 	no_injuries = True
-	for key in ['Head','Torso','Left Arm','Right Arm','Left Leg','Right Leg']:
+	for key in BODY_LOCATIONS:
 		if crewman.injuries[key] == 0:
 			continue
 		no_injuries = False
+		libtcod.console_set_default_foreground(console, libtcod.white)
 		ConsolePrint(console, x+2, y1, key)
 		
-		# TODO: description of injury level here at x+10, y1
+		# description of injury level
+		if crewman.injuries[key] == 0:
+			text = 'Light Injury'
+		else:
+			text = 'Severe Injury'
+		libtcod.console_set_default_foreground(console, libtcod.light_red)
+		ConsolePrint(console, x+10, y1, text)
 		
 		y1 += 1
 	
 	if no_injuries:
+		libtcod.console_set_default_foreground(console, libtcod.white)
 		ConsolePrint(console, x+2, y+22, 'None')
 	
 	libtcod.console_set_default_foreground(console, libtcod.white)

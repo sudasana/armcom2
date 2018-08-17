@@ -429,9 +429,9 @@ SCENARIO_RANDOM_EVENT_CHANCE = 3.0
 SCENARIO_RANDOM_EVENT_STEP = 1.0
 
 # Crew Trait modifiers
-DIRECT_FIRE_MOD = 3.0		# effect Knowledge on Commander's Direct Fire action
-DIRECT_DRIVER_MOD = 2.0		# " Direct Driver action
-PERCEPTION_SPOTTING_MOD = 3.0	# effect of Perception on Spotting chances
+DIRECT_FIRE_MOD = 1.0		# effect Knowledge on Commander's Direct Fire action
+DIRECT_DRIVER_MOD = 1.0		# " Direct Driver action
+PERCEPTION_SPOTTING_MOD = 2.0	# effect of Perception on Spotting chances
 
 
 ##########################################################################################
@@ -717,7 +717,7 @@ class Campaign:
 		self.player_unit = Unit(selected_unit.unit_id)
 		self.player_unit.owning_player = 0
 		self.player_unit.nation = self.stats['player_nation']
-		self.player_unit.GenerateNewCrew()
+		self.player_unit.GenerateNewPersonnel()
 		
 		# generate rest of player squadron into 
 		# determine number of other tanks in group
@@ -731,7 +731,7 @@ class Campaign:
 			new_unit = Unit(selected_unit.unit_id)
 			new_unit.owning_player = 0
 			new_unit.nation = self.stats['player_nation']
-			new_unit.GenerateNewCrew()
+			new_unit.GenerateNewPersonnel()
 			new_unit.ai = AI(new_unit)
 			new_unit.ai.group_leader = self.player_unit
 			self.player_unit_group.append(new_unit)
@@ -2481,8 +2481,8 @@ class AI:
 		self.group_leader = None		# if set, unit will mirror actions of this lead unit
 		self.disposition = None
 	
-	# print an AI report re: crew actions for this unit to the console, used for debugging
-	def DoCrewActionReport(self):
+	# print an AI report re: personnel actions for this unit to the console, used for debugging
+	def DoAIActionReport(self):
 		text = '\nAI SPY: ' + self.owner.unit_id + ' set to disposition: '
 		if self.disposition is None:
 			text += 'Wait'
@@ -2570,7 +2570,7 @@ class AI:
 		if AI_NO_ACTION:
 			self.disposition = None
 		if AI_SPY:
-			self.DoCrewActionReport()
+			self.DoAIActionReport()
 		
 		
 		# Step 2: Determine action to take
@@ -2717,7 +2717,7 @@ class AI:
 					if self.owner.fired:
 						continue
 					if self.owner.GetStat('category') == 'Vehicle':
-						position = self.owner.CrewActionPossible(['Driver', 'Co-Driver'], 'Drive')
+						position = self.owner.PersonnelActionPossible(['Driver', 'Co-Driver'], 'Drive')
 						if not position:
 							continue
 				
@@ -2940,7 +2940,7 @@ class Scenario:
 		new_unit.owning_player = player_num
 		new_unit.ai = AI(new_unit)
 		new_unit.nation = campaign.stats['enemy_nations'][0]
-		new_unit.GenerateNewCrew()
+		new_unit.GenerateNewPersonnel()
 		self.units.append(new_unit)
 		new_unit.SpawnAt(hx, hy)
 		self.activation_list[player_num].append(new_unit)
@@ -3136,7 +3136,7 @@ class Scenario:
 				if 'turret' in new_unit.stats:
 					new_unit.turret_facing = direction
 				
-				new_unit.GenerateNewCrew()
+				new_unit.GenerateNewPersonnel()
 				
 				# deploy immediately if gun
 				if new_unit.GetStat('category') == 'Gun':
@@ -3356,7 +3356,7 @@ class Scenario:
 		if self.player_airsup_failed: return False
 		
 		# try to set crew action
-		if not self.player_unit.SetCrewAction(['Commander', 'Commander/Gunner'], 'Request Support'):
+		if not self.player_unit.SetPersonnelAction(['Commander', 'Commander/Gunner'], 'Request Support'):
 			return False
 		
 		# do support roll
@@ -3650,7 +3650,7 @@ class Scenario:
 		if self.player_artsup_failed: return False
 		
 		# try to set crew action
-		if not self.player_unit.SetCrewAction(['Commander', 'Commander/Gunner'], 'Request Support'):
+		if not self.player_unit.SetPersonnelAction(['Commander', 'Commander/Gunner'], 'Request Support'):
 			return False
 		
 		# do support roll
@@ -4105,7 +4105,7 @@ class Scenario:
 						modifier_list.append((text, mod))
 				
 		# Commander directing fire
-		position = attacker.CheckCrewAction(['Commander'], 'Direct Fire')
+		position = attacker.CheckPersonnelAction(['Commander'], 'Direct Fire')
 		if position is not False:
 			mod = 10.0 + (float(position.crewman.traits['Knowledge']) * DIRECT_FIRE_MOD)
 			print('DEBUG: Modified to-hit based on commander Knowledge of ' + str(position.crewman.traits['Knowledge']))
@@ -4454,7 +4454,7 @@ class Scenario:
 			
 			# guns must have a Loader active
 			if profile['weapon'].GetStat('type') == 'Gun':
-				if not profile['attacker'].CheckCrewAction(['Loader'], 'Reload'):
+				if not profile['attacker'].CheckPersonnelAction(['Loader'], 'Reload'):
 					return False
 				
 				# guns must also have at least one shell of the current type available
@@ -4638,7 +4638,7 @@ class Scenario:
 			elif weapon_type == 'Turret MG':
 				action = 'Operate Turret MG'
 			
-			position = attacker.CrewActionPossible(position_list, action)
+			position = attacker.PersonnelActionPossible(position_list, action)
 			if not position:
 				text = 'No crewman available to: ' + action
 				return text
@@ -4696,7 +4696,7 @@ class Scenario:
 		if reverse:
 			if unit.GetStat('reverse_driver') is None:
 				return 0.0
-			crewman = unit.GetCrewmanByPosition('Co-Driver')
+			crewman = unit.GetPersonnelByPosition('Co-Driver')
 			if crewman is None:
 				return 0.0
 			if not crewman.AbleToAct():
@@ -4747,7 +4747,7 @@ class Scenario:
 						chance -= 30.0
 		
 		# direct driver modifier
-		position = unit.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
+		position = unit.CheckPersonnelAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
 		if position is not False:
 			mod = 15.0 + (float(position.crewman.traits['Knowledge']) * DIRECT_DRIVER_MOD)
 			print('DEBUG: Modified to-hit based on commander Knowledge of ' + str(position.crewman.traits['Knowledge']))
@@ -4869,12 +4869,10 @@ class Scenario:
 		del temp_con
 		
 
-
-# Crew Class: represents a crewman in a vehicle or a single member of a unit's personnel
-# TODO: change to personnel
-class Crew:
+# Personnel Class: represents an individual member of a unit 
+class Personnel:
 	def __init__(self, unit, nation, position):
-		self.unit = unit				# which unit this personnel is part of
+		self.unit = unit				# to which unit they belong
 		self.first_name = u''				# name, set by GenerateName()
 		self.last_name = u''
 		self.nation = nation
@@ -4885,13 +4883,22 @@ class Crew:
 		self.age = 0					# age of crewman in years
 		self.GenerateAge()
 		
-		self.traits = {					# placeholder for traits, will be set below
-			'Perception' : 0,
-			'Morale' : 0,
-			'Grit' : 0,
-			'Knowledge' : 0
+		self.traits = {					# default values for modification
+			'Perception' : 5,
+			'Morale' : 5,
+			'Grit' : 5,
+			'Knowledge' : 5
 		}
 		self.GenerateTraits()
+		
+		self.injuries = {				# injury levels for different body parts
+			'Head' : 0,
+			'Torso' : 0,
+			'Left Arm' : 0,
+			'Right Arm' : 0,
+			'Left Leg' : 0,
+			'Right Leg' : 0
+		}
 		
 		self.rank = 0					# rank level
 		self.rank_desc = ''				# text name for rank
@@ -4959,16 +4966,19 @@ class Crew:
 			else:
 				self.age += 4
 	
-	# generate a random set of trait values
-	def GenerateTraits(self):
-		for tries in range(300):
-			total = 0
-			for key in self.traits:
-				roll = libtcod.random_get_int(0, 1, 5)
-				total += roll
-				self.traits[key] = roll
-			if 8 < total < 16:
-				return
+	# randomly modify trait values
+	def GenerateTraits(self):		
+		for i in range(6):
+			key = choice(list(self.traits))
+			self.traits[key] += 1 
+			key = choice(list(self.traits))
+			self.traits[key] -= 1
+		
+		for key in self.traits:
+			if self.traits[key] < 3:
+				self.traits[key] = 3
+			elif self.traits[key] > 7:
+				self.traits[key] = 7
 	
 	# set rank based on current position
 	def SetRank(self):
@@ -5453,7 +5463,7 @@ class Unit:
 					chance += 12.0
 		
 		# bonus if commander is on Direct Driver action
-		if self.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver'):
+		if self.CheckPersonnelAction(['Commander', 'Commander/Gunner'], 'Direct Driver'):
 			chance += 15.0
 		
 		# bonus if railroad in hex
@@ -5469,7 +5479,7 @@ class Unit:
 		chance = self.GetHullDownChance()
 		if chance == 0.0: return False
 		
-		position = self.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
+		position = self.CheckPersonnelAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
 		if position:
 			position.crewman.action_bonus_used = True
 		
@@ -5733,7 +5743,7 @@ class Unit:
 		UpdateScenarioDisplay()
 	
 	# return the crewman currently in the given position
-	def GetCrewmanByPosition(self, position_name):
+	def GetPersonnelByPosition(self, position_name):
 		for position in self.crew_positions:
 			if position.crewman is None: continue
 			if position.name == position_name:
@@ -5844,9 +5854,9 @@ class Unit:
 		#print('FoV calculation for ' + self.unit_id + ' took ' + str(time_taken) + ' ms.')
 	
 	# generate a new crew sufficent to man all crew positions
-	def GenerateNewCrew(self):
+	def GenerateNewPersonnel(self):
 		for position in self.crew_positions:
-			self.crew_list.append(Crew(self, self.nation, position))
+			self.crew_list.append(Personnel(self, self.nation, position))
 			position.crewman = self.crew_list[-1]
 	
 	# draw this unit to the given viewport hex on the unit console
@@ -5957,10 +5967,10 @@ class Unit:
 		# try to set crewman action
 		action_set = False
 		if reverse and self.GetStat('reverse_driver') is not None:
-			if self.SetCrewAction(['Co-Driver', 'Driver'], 'Drive'):
+			if self.SetPersonnelAction(['Co-Driver', 'Driver'], 'Drive'):
 				action_set = True
 		else:
-			if self.SetCrewAction(['Driver'], 'Drive'):
+			if self.SetPersonnelAction(['Driver'], 'Drive'):
 				action_set = True
 		
 		# unable to set required crew action
@@ -6001,7 +6011,7 @@ class Unit:
 		
 		# set bonus used flag if applicable
 		if chance != 0.0:
-			position = self.CheckCrewAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
+			position = self.CheckPersonnelAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
 			if position:
 				position.crewman.action_bonus_used = True
 		
@@ -6099,7 +6109,7 @@ class Unit:
 			return False
 		
 		# make sure a crewman can drive
-		if not self.SetCrewAction(['Driver', 'Co-Driver'], 'Drive'):
+		if not self.SetPersonnelAction(['Driver', 'Co-Driver'], 'Drive'):
 			return False
 		
 		if clockwise:
@@ -6200,7 +6210,7 @@ class Unit:
 				action = 'Operate Hull MG'
 			elif weapon_type == 'Turret MG':
 				action = 'Operate Turret MG'
-			self.SetCrewAction(position_list, action)
+			self.SetPersonnelAction(position_list, action)
 		
 		# set weapon and unit fired flags
 		weapon.fired = True
@@ -6294,7 +6304,7 @@ class Unit:
 			
 			# set bonus used flag if applicable
 			if profile['type'] in ['Point Fire', 'Area Fire']:
-				position = self.CheckCrewAction(['Commander'], 'Direct Fire')
+				position = self.CheckPersonnelAction(['Commander'], 'Direct Fire')
 				if position:
 					position.crewman.action_bonus_used = True
 			
@@ -6665,27 +6675,26 @@ class Unit:
 		
 		if roll <= chance:
 			target.SpotMe()
-			# display pop-up message window
 			
+			# display pop-up message window
 			if self.owning_player == 0:
 				
 				# need different message if it's an allied unit doing the spotting
 				if self == scenario.player_unit:
-					text = ''
+					text = position.crewman.GetFullName() + ' says: '
 				else:
-					text = 'Report incoming: '
+					text = 'Radio message: '
 				
 				if target.dummy:
-					text += (position.crewman.GetFullName() + ' says: ' + 
-						"Thought there was something there, but I don't see anything.")
+					text += 'False report: No enemy unit actually in area.'
 					portrait = None
 				else:
-					text += position.crewman.GetFullName() + ' says: '
 					text += target.GetName() + ' ' + target.GetStat('class')
 					text += ' spotted!'
 					portrait = target.GetStat('portrait')
 				
 				scenario.ShowMessage(text, hx=target.hx, hy=target.hy, portrait=portrait)
+			
 			elif target == scenario.player_unit:
 				text = 'You have been spotted!'
 				scenario.ShowMessage(text, hx=target.hx, hy=target.hy)
@@ -6704,7 +6713,7 @@ class Unit:
 		UpdateScenarioDisplay()
 	
 	# returns true if a crewman in any of the given positions can have an action set
-	def CrewActionPossible(self, position_list, action):
+	def PersonnelActionPossible(self, position_list, action):
 		for position in self.crew_positions:
 			if position.name in position_list:
 				if position.crewman is None: continue
@@ -6720,7 +6729,7 @@ class Unit:
 		return False
 	
 	# returns true if a crewman in any of the given positions is on the given action
-	def CheckCrewAction(self, position_list, action):
+	def CheckPersonnelAction(self, position_list, action):
 		for position in self.crew_positions:
 			if position.name in position_list:
 				if position.crewman is None: continue
@@ -6730,7 +6739,7 @@ class Unit:
 	
 	# check for a crewman in the given position, and try to set their action
 	# assumes that the given action is available to every position in the list
-	def SetCrewAction(self, position_list, action):
+	def SetPersonnelAction(self, position_list, action):
 		
 		for position in self.crew_positions:
 			if position.name in position_list:
@@ -6774,7 +6783,7 @@ def HighlightMenuOption(x, y, w, h):
 			for x1 in range(x, x+w):
 				libtcod.console_set_char_background(0, x1, y1, col, libtcod.BKGND_SET)
 		libtcod.console_flush()
-		Wait(3)
+		Wait(2)
 	
 
 # get keyboard and/or mouse event
@@ -7713,7 +7722,7 @@ def ShowGameMenu():
 			# display info on selected crewman
 			crewman = campaign.player_unit.crew_positions[campaign.selected_position].crewman
 			if crewman is not None:
-				DisplayCrewInfo(crewman, game_menu_con, 37, 8)
+				DisplayPersonnelInfo(crewman, game_menu_con, 37, 8)
 			
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
 			ConsolePrint(game_menu_con, 6, 40, EncodeKey('w').upper() + '/' + EncodeKey('s').upper())
@@ -8082,7 +8091,7 @@ def DisplayCrew(unit, console, x, y, highlight_selected, skip_action=False):
 
 
 # display info about a crewman to a console
-def DisplayCrewInfo(crewman, console, x, y):
+def DisplayPersonnelInfo(crewman, console, x, y):
 	
 	# outline and section dividers
 	libtcod.console_set_default_foreground(console, libtcod.grey)
@@ -8092,8 +8101,8 @@ def DisplayCrewInfo(crewman, console, x, y):
 	libtcod.console_hline(console, x+1, y+8, 29)
 	libtcod.console_hline(console, x+1, y+10, 29)
 	libtcod.console_hline(console, x+1, y+13, 29)
-	libtcod.console_hline(console, x+1, y+16, 29)
-	libtcod.console_hline(console, x+1, y+24, 29)
+	libtcod.console_hline(console, x+1, y+19, 29)
+	libtcod.console_hline(console, x+1, y+27, 29)
 	
 	# section titles
 	libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
@@ -8103,7 +8112,8 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+1, y+9, 'Rank')
 	ConsolePrint(console, x+1, y+11, 'Current')
 	ConsolePrint(console, x+1, y+12, 'Position')
-	ConsolePrint(console, x+1, y+15, 'Assessment')
+	ConsolePrint(console, x+1, y+14, 'Assessment')
+	ConsolePrint(console, x+1, y+20, 'Injuries')
 	
 	# info
 	libtcod.console_set_default_foreground(console, libtcod.white)
@@ -8114,7 +8124,7 @@ def DisplayCrewInfo(crewman, console, x, y):
 	ConsolePrint(console, x+10, y+12, crewman.current_position.name)
 	
 	# list traits
-	y1 = y+17
+	y1 = y+15
 	libtcod.console_put_char_ex(console, x+7, y1, chr(4), libtcod.yellow, libtcod.black)
 	libtcod.console_put_char_ex(console, x+7, y1+1, chr(3), libtcod.red, libtcod.black)
 	libtcod.console_put_char_ex(console, x+7, y1+2, chr(5), libtcod.light_blue, libtcod.black)
@@ -8126,7 +8136,24 @@ def DisplayCrewInfo(crewman, console, x, y):
 		ConsolePrintEx(console, x+21, y1, libtcod.BKGND_NONE, libtcod.RIGHT,
 			str(crewman.traits[t]))
 		y1 += 1
-			
+	
+	# list injuries
+	libtcod.console_set_default_foreground(console, libtcod.white)
+	y1 = y+21
+	no_injuries = True
+	for key in ['Head','Torso','Left Arm','Right Arm','Left Leg','Right Leg']:
+		if crewman.injuries[key] == 0:
+			continue
+		no_injuries = False
+		ConsolePrint(console, x+2, y1, key)
+		
+		# TODO: description of injury level here at x+10, y1
+		
+		y1 += 1
+	
+	if no_injuries:
+		ConsolePrint(console, x+2, y+22, 'None')
+	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)
 		

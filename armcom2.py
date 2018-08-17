@@ -240,10 +240,10 @@ BODY_LOCATIONS = [
 INJURY_CHANCES = {
 	'Head' : 10.0,
 	'Torso' : 40.0,
-	'Left Arm' : 10.0,
-	'Right Arm' : 10.0,
-	'Left Leg' : 15.0,
-	'Right Leg' : 15.0
+	'Left Arm' : 15.0,
+	'Right Arm' : 15.0,
+	'Left Leg' : 10.0,
+	'Right Leg' : 10.0
 }
 
 
@@ -3924,7 +3924,7 @@ class Scenario:
 		weapon_type = weapon.GetStat('type')
 		if weapon_type == 'Gun':
 			profile['type'] = 'Point Fire'
-		elif weapon_type == 'Rifles' or weapon_type in MG_WEAPONS:
+		elif weapon_type == 'Small Arms' or weapon_type in MG_WEAPONS:
 			profile['type'] = 'Area Fire'
 			profile['effective_fp'] = 0		# placeholder for effective fp
 		else:
@@ -8233,13 +8233,13 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 		else:
 			text = 'Severe Injury'
 		libtcod.console_set_default_foreground(console, libtcod.light_red)
-		ConsolePrint(console, x+10, y1, text)
+		ConsolePrint(console, x+12, y1, text)
 		
 		y1 += 1
 	
 	if no_injuries:
 		libtcod.console_set_default_foreground(console, libtcod.white)
-		ConsolePrint(console, x+2, y+22, 'None')
+		ConsolePrint(console, x+2, y+21, 'None')
 	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)

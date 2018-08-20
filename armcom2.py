@@ -4897,7 +4897,6 @@ class Personnel:
 		
 		self.traits = {					# default values for modification
 			'Perception' : 5,
-			'Morale' : 5,
 			'Grit' : 5,
 			'Knowledge' : 5
 		}
@@ -4912,11 +4911,11 @@ class Personnel:
 			'Right Leg' : 0
 		}
 		
+		self.status = 'Alert'				# current mental/physical status
+		
 		self.rank = 0					# rank level
 		self.rank_desc = ''				# text name for rank
 		self.SetRank()
-		
-		self.status = 'Alert'				# current mental/physical status
 		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'None'			# currently active action
@@ -4980,7 +4979,7 @@ class Personnel:
 	
 	# randomly modify trait values
 	def GenerateTraits(self):		
-		for i in range(6):
+		for i in range(5):
 			key = choice(list(self.traits))
 			self.traits[key] += 1 
 			key = choice(list(self.traits))
@@ -5135,12 +5134,61 @@ class Personnel:
 				self.injuries[location] = 2
 				text += ' was severely injured in the ' + location + '.'
 		
-		# return now if no effect
-		if text == '': return text
-		
-		# TODO: roll for and apply status effects
-		
+		# return text description of effect
 		return text
+	
+	# check for a status change based on being subject to fp
+	def CheckStatusChange(self, fp):
+		
+		# if already critical or dead, no further change possible
+		if self.status in ['Critical', 'Dead']: return ''
+		
+		# determine injury modifier
+		injury_mod = 0
+		
+		for key in BODY_LOCATIONS:
+			if crewman.injuries[key] == 0:
+				continue
+			if key == 'Head':
+				mod = 4
+			elif key == 'Torso':
+				mod = 2
+			else:
+				mod = 1
+			if crewman.injuries[key] == 2:
+				mod = mod * 2
+			injury_mod += mod
+		
+		# if stunned but no injuries, no further change possible
+		if self.status == 'Stunned' and injury_mod == 0:
+			return ''
+		
+		# TODO: test against grit and apply injury modifier
+		chance = float(self.traits['Grit'] * 10)
+		chance -= float(injury_mod * 5)
+		chance = RestrictChance(chance)
+		
+		print('DEBUG: Testing status change for ' + self.GetFullName() + ', chance is: ' + str(chance))
+		
+		# roll passed, no change
+		if GetPercentileRoll() <= chance:
+			return ''
+		
+		# roll failed, status gets worse
+		if self.status == 'Critical':
+			self.status = 'Dead'
+			return self.GetFullName() + ' has died.'
+		
+		if self.status == 'Stunned':
+			self.status = 'Critical'
+			return self.GetFullName() + "'s status has worsened and is now critical."
+		
+		if self.status == 'Shaken':
+			self.status = 'Stunned'
+			return self.GetFullName() + ' is now Stunned.'
+		
+		self.status = 'Shaken'
+		return self.GetFullName() + ' is now Shaken.'
 		
 
 # Crew Position class: represents a crew position on a vehicle or gun
@@ -6537,9 +6585,16 @@ class Unit:
 			for position in self.crew_positions:
 				if position.crewman is None: continue
 				text = position.crewman.DoInjuryTest(self.fp_to_resolve)
+				
 				# display message if result and personnel is part of player unit
 				if text != '' and self == campaign.player_unit:
 					scenario.ShowMessage(text, self.hx, self.hy)
+					
+				# check for possible personnel status change
+				text = position.crewman.CheckStatusChange(self.fp_to_resolve)
+				if text != '' and self == campaign.player_unit:
+					scenario.ShowMessage(text, self.hx, self.hy)
+				
 						
 			self.fp_to_resolve = 0
 			return
@@ -6863,7 +6918,6 @@ def HighlightMenuOption(x, y, w, h):
 			for x1 in range(x, x+w):
 				libtcod.console_set_char_background(0, x1, y1, col, libtcod.BKGND_SET)
 		libtcod.console_flush()
-		Wait(2)
 	
 
 # get keyboard and/or mouse event
@@ -8161,8 +8215,12 @@ def DisplayCrew(unit, console, x, y, highlight_selected, skip_action=False):
 			# display current status on same line
 			if position.crewman.status == 'Alert':
 				libtcod.console_set_default_foreground(console, libtcod.grey)
-			else:
+			elif position.crewman.status == 'Dead':
+				libtcod.console_set_default_foreground(console, libtcod.darker_grey)
+			elif position.crewman.status == 'Critical':
 				libtcod.console_set_default_foreground(console, libtcod.light_red)
+			else:
+				libtcod.console_set_default_foreground(console, libtcod.red)
 			ConsolePrintEx(console, x+23, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
 				position.crewman.status)
 			
@@ -8207,9 +8265,8 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 	y1 = y+15
 	libtcod.console_put_char_ex(console, x+7, y1, chr(4), libtcod.yellow, libtcod.black)
 	libtcod.console_put_char_ex(console, x+7, y1+1, chr(3), libtcod.red, libtcod.black)
-	libtcod.console_put_char_ex(console, x+7, y1+2, chr(5), libtcod.light_blue, libtcod.black)
-	libtcod.console_put_char_ex(console, x+7, y1+3, chr(6), libtcod.green, libtcod.black)
-	for t in ['Perception', 'Morale', 'Grit', 'Knowledge']:
+	libtcod.console_put_char_ex(console, x+7, y1+2, chr(6), libtcod.green, libtcod.black)
+	for t in ['Perception', 'Grit', 'Knowledge']:
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		ConsolePrint(console, x+9, y1, t)
 		libtcod.console_set_default_foreground(console, libtcod.grey)
@@ -8228,7 +8285,7 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 		ConsolePrint(console, x+2, y1, key)
 		
 		# description of injury level
-		if crewman.injuries[key] == 0:
+		if crewman.injuries[key] == 1:
 			text = 'Light Injury'
 		else:
 			text = 'Severe Injury'

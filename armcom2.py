@@ -740,9 +740,6 @@ class Campaign:
 		else:
 			num = 2
 		
-		# TEMP - no allies
-		num = 0
-		
 		for i in range(num):
 			new_unit = Unit(selected_unit.unit_id)
 			new_unit.owning_player = 0
@@ -2754,10 +2751,8 @@ class AI:
 					continue
 				
 				# improve chance of AP attacks on armoured targets
-				# TEMP - reversed for testing
 				if target.GetStat('armour') is not None and ammo_type == 'AP':
-					#score += 25.0
-					score -= 25.0
+					score += 25.0
 				
 				# FUTURE: modify score by chance of armour penetration if AP
 				
@@ -3038,9 +3033,6 @@ class Scenario:
 				k, value = choice(list(class_odds.items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
-			
-			# TEMP - class set
-			unit_class = 'Infantry Squad'
 			
 			# TODO: if class unit type has already been set, use that one instead
 			
@@ -5171,7 +5163,7 @@ class Personnel:
 				mod = mod * 2
 			injury_mod += mod
 		
-		# if stunned but no injuries, no further change possible
+		# if at stunned status but no injuries, no further change possible
 		if self.status == 'Stunned' and injury_mod == 0:
 			return ''
 		
@@ -5207,7 +5199,7 @@ class Personnel:
 		if self.status not in ['Shaken', 'Stunned', 'Critical']:
 			return ''
 		
-		chance = float(self.traits['Grit'] * 10)
+		chance = float(self.traits['Grit'] * 3)
 		
 		if self.status == 'Shaken':
 			chance += (chance * 0.5)
@@ -5217,8 +5209,16 @@ class Personnel:
 		
 		print('DEBUG: Testing status recovery for ' + self.GetFullName() + ', chance is: ' + str(chance))
 		
+		roll = GetPercentileRoll()
+		
 		# roll failed, no improvement
-		if GetPercentileRoll() > chance:
+		if roll > chance:
+			
+			# check for critical worsening to Death
+			if self.status == 'Critical':
+				if roll >= 95.0:
+					self.status = 'Dead'
+					return self.GetFullName() + ' has died.'
 			return ''
 		
 		# roll passed, improve one level
@@ -5484,6 +5484,17 @@ class Unit:
 		
 		# field of view
 		self.fov = set()			# set of visible hexes for this unit
+	
+	# apply effects at end of scenario
+	def InitPostScenario(self):
+		
+		# TEMP: clear all negative crew statuses
+		for position in self.crew_positions:
+			if position.crewman is None: continue
+			if position.crewman.status in ['Alert', 'Dead']: continue
+			text = position.crewman.GetFullName() + ' recovers from being ' + position.crewman.status
+			scenario.ShowMessage(text, self.hx, self.hy)
+			position.crewman.status = 'Alert'
 	
 	# return the value of a stat
 	def GetStat(self, stat_name):
@@ -8287,7 +8298,7 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 	libtcod.console_hline(console, x+1, y+8, 29)
 	libtcod.console_hline(console, x+1, y+10, 29)
 	libtcod.console_hline(console, x+1, y+13, 29)
-	libtcod.console_hline(console, x+1, y+19, 29)
+	libtcod.console_hline(console, x+1, y+18, 29)
 	libtcod.console_hline(console, x+1, y+27, 29)
 	
 	# section titles
@@ -8299,7 +8310,8 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 	ConsolePrint(console, x+1, y+11, 'Current')
 	ConsolePrint(console, x+1, y+12, 'Position')
 	ConsolePrint(console, x+1, y+14, 'Assessment')
-	ConsolePrint(console, x+1, y+20, 'Injuries')
+	ConsolePrint(console, x+1, y+19, 'Injuries')
+	ConsolePrint(console, x+1, y+28, 'Status')
 	
 	# info
 	libtcod.console_set_default_foreground(console, libtcod.white)
@@ -8323,7 +8335,7 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 		y1 += 1
 	
 	# list injuries
-	y1 = y+21
+	y1 = y+20
 	no_injuries = True
 	for key in BODY_LOCATIONS:
 		if crewman.injuries[key] == 0:
@@ -8344,7 +8356,33 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 	
 	if no_injuries:
 		libtcod.console_set_default_foreground(console, libtcod.white)
-		ConsolePrint(console, x+2, y+21, 'None')
+		ConsolePrint(console, x+2, y1, 'None')
+	
+	# current status
+	y1 = y+29
+	if crewman.status == 'Alert':
+		libtcod.console_set_default_foreground(console, libtcod.grey)
+	elif crewman.status == 'Dead':
+		libtcod.console_set_default_foreground(console, libtcod.darker_grey)
+	elif crewman.status == 'Critical':
+		libtcod.console_set_default_foreground(console, libtcod.light_red)
+	else:
+		libtcod.console_set_default_foreground(console, libtcod.red)
+	ConsolePrint(console, x+2, y1, crewman.status)
+	
+	libtcod.console_set_default_foreground(console, libtcod.light_grey)
+	if crewman.status == 'Alert':
+		text = 'No effects.'
+	elif crewman.status == 'Shaken':
+		text = 'Skills less effective.'
+	elif crewman.status == 'Stunned':
+		text = 'Cannot act.'
+	elif crewman.status == 'Critical':
+		text = 'Cannot act, risk of death.'
+	else:
+		text = 'Out of action.'
+	
+	ConsolePrint(console, x+2, y1+1, text)
 	
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_set_default_background(console, libtcod.black)
@@ -9284,6 +9322,8 @@ def DoScenario():
 			text = 'The scenario is over: ' + scenario.win_desc
 			ShowNotification(text)
 			exit_scenario = True
+			if scenario.player_unit.alive:
+				scenario.player_unit.InitPostScenario()
 			continue
 		
 		# if player is not active, do AI actions

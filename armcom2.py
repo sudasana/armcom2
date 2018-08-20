@@ -2749,8 +2749,10 @@ class AI:
 					continue
 				
 				# improve chance of AP attacks on armoured targets
+				# TEMP - reversed for testing
 				if target.GetStat('armour') is not None and ammo_type == 'AP':
-					score += 25.0
+					#score += 25.0
+					score -= 25.0
 				
 				# FUTURE: modify score by chance of armour penetration if AP
 				
@@ -5021,7 +5023,7 @@ class Personnel:
 	
 	# returns True if this crewman is currently able to choose an action
 	def AbleToAct(self):
-		if self.status in ['Wounded', 'Stunned', 'Dead']:
+		if self.status in ['Stunned', 'Critical', 'Dead']:
 			return False
 		return True
 	
@@ -5140,6 +5142,8 @@ class Personnel:
 	# check for a status change based on being subject to fp
 	def CheckStatusChange(self, fp):
 		
+		if not self.ce: return ''
+		
 		# if already critical or dead, no further change possible
 		if self.status in ['Critical', 'Dead']: return ''
 		
@@ -5147,7 +5151,7 @@ class Personnel:
 		injury_mod = 0
 		
 		for key in BODY_LOCATIONS:
-			if crewman.injuries[key] == 0:
+			if self.injuries[key] == 0:
 				continue
 			if key == 'Head':
 				mod = 4
@@ -5155,7 +5159,7 @@ class Personnel:
 				mod = 2
 			else:
 				mod = 1
-			if crewman.injuries[key] == 2:
+			if self.injuries[key] == 2:
 				mod = mod * 2
 			injury_mod += mod
 		
@@ -5189,7 +5193,36 @@ class Personnel:
 		
 		self.status = 'Shaken'
 		return self.GetFullName() + ' is now Shaken.'
+	
+	# check for recovery from negative statuses, called at start of unit activation
+	def RecoveryCheck(self):
+		if self.status not in ['Shaken', 'Stunned', 'Critical']:
+			return ''
 		
+		chance = float(self.traits['Grit'] * 10)
+		
+		if self.status == 'Shaken':
+			chance += (chance * 0.5)
+		elif self.status == 'Critical':
+			chance -= (chance * 0.5)
+		chance = RestrictChance(chance)
+		
+		print('DEBUG: Testing status recovery for ' + self.GetFullName() + ', chance is: ' + str(chance))
+		
+		# roll failed, no improvement
+		if GetPercentileRoll() > chance:
+			return ''
+		
+		# roll passed, improve one level
+		if self.status == 'Critical':
+			self.status = 'Stunned'
+		elif self.status == 'Stunned':
+			self.status = 'Shaken'
+		else:
+			self.status = 'Alert'
+		
+		return self.GetFullName() + "'s status improves and is now " + self.status
+
 
 # Crew Position class: represents a crew position on a vehicle or gun
 class CrewPosition:
@@ -5656,6 +5689,9 @@ class Unit:
 				if len(spot_list) > 0:
 					self.DoSpotCheck(choice(spot_list), position)
 		
+		# test for personnel status change and unit recovery
+		self.UnitRecoveryCheck()
+		
 		# generate list of selectable crew actions
 		for position in self.crew_positions:
 			
@@ -5754,9 +5790,6 @@ class Unit:
 				# lose any of this unit's acquired targets
 				self.acquired_target = None
 		
-		# test for recovery
-		self.RecoveryCheck()
-		
 		# have any free crewmen spot
 		for position in self.crew_positions:
 			if position.crewman is None: continue
@@ -5796,18 +5829,15 @@ class Unit:
 		map_hex.unit_stack.remove(self)
 		map_hex.unit_stack.insert(0, self)
 	
-	# check for recovery for the unit and for personnel
-	# normally called at end of own turn
-	def RecoveryCheck(self):
+	# check for personnel status change, unit recovery
+	def UnitRecoveryCheck(self):
 		
 		# check for personnel status recovery first
 		for position in self.crew_positions:
 			if position.crewman is None: continue
-			if position.crewman.status not in ['Stunned', 'Unconscious']: continue
-			
-			# TODO: roll for recovery from Stunned
-			if position.crewman.status == 'Stunned':
-				continue
+			text = position.crewman.RecoveryCheck()
+			if text != '' and self == campaign.player_unit:
+				scenario.ShowMessage(text, self.hx, self.hy)
 		
 		# check for unit recovering from Broken status
 		if self.broken:
@@ -6543,6 +6573,8 @@ class Unit:
 				
 				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
 					WaitForContinue()
+				
+				# do the attack roll; modifies the attack profile
 				profile = scenario.DoAttackRoll(profile)
 				
 				if profile['result'] == 'NO PENETRATION':
@@ -6550,6 +6582,7 @@ class Unit:
 				
 				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
 					WaitForContinue()
+				
 				if profile['result'] == 'PENETRATED':
 					
 					# TODO: roll for penetration result here, use the
@@ -6570,32 +6603,20 @@ class Unit:
 					campaign_day.AddMessage(text)
 					
 					return
+				
+				# if HE shell, apply fp to crew and check for injury
+				if profile['ammo_type'] == 'HE':
+					self.CheckForCrewInjury(int(profile['weapon'].GetEffectiveFP()))
 		
 		# clear unresolved hits
 		self.ap_hits_to_resolve = []
-	
 	
 	# resolve FP on this unit if any
 	def ResolveFP(self):
 		if self.fp_to_resolve == 0: return
 		
 		if self.GetStat('category') == 'Vehicle':
-			
-			# handle possible crew injury
-			for position in self.crew_positions:
-				if position.crewman is None: continue
-				text = position.crewman.DoInjuryTest(self.fp_to_resolve)
-				
-				# display message if result and personnel is part of player unit
-				if text != '' and self == campaign.player_unit:
-					scenario.ShowMessage(text, self.hx, self.hy)
-					
-				# check for possible personnel status change
-				text = position.crewman.CheckStatusChange(self.fp_to_resolve)
-				if text != '' and self == campaign.player_unit:
-					scenario.ShowMessage(text, self.hx, self.hy)
-				
-						
+			self.CheckForCrewInjury(self.fp_to_resolve)		
 			self.fp_to_resolve = 0
 			return
 		
@@ -6634,6 +6655,21 @@ class Unit:
 			self.DestroyMe()
 		
 		self.fp_to_resolve = 0
+	
+	# check for crew injury from receiving fp
+	def CheckForCrewInjury(self, fp):
+		for position in self.crew_positions:
+			if position.crewman is None: continue
+			text = position.crewman.DoInjuryTest(fp)
+			
+			# display message if result and personnel is part of player unit
+			if text != '' and self == campaign.player_unit:
+				scenario.ShowMessage(text, self.hx, self.hy)
+				
+			# check for possible personnel status change
+			text = position.crewman.CheckStatusChange(self.fp_to_resolve)
+			if text != '' and self == campaign.player_unit:
+				scenario.ShowMessage(text, self.hx, self.hy)
 	
 	# do a morale check for this unit to recover from Broken or Pinned status
 	def MoraleCheck(self, modifier):
@@ -9776,7 +9812,7 @@ def UpdateMainMenuCon(options_menu_active):
 		for (char, text) in [('C', 'Continue'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]:
 			# grey-out continue game option if no saved game present
 			disabled = False
-			if char == 'C' and not os.path.exists('savegame'):
+			if char == 'C' and not os.path.exists('savegame.dat'):
 				disabled = True
 			
 			if disabled:
@@ -9861,7 +9897,7 @@ while not exit_game:
 		
 		# TODO: combine new campaign and continue campaign elif sections
 		elif key_char == 'c':
-			if not os.path.exists('savegame'):
+			if not os.path.exists('savegame.dat'):
 				continue
 			
 			HighlightMenuOption(WINDOW_XM-5, 38, 15, 1)
@@ -9902,7 +9938,7 @@ while not exit_game:
 			HighlightMenuOption(WINDOW_XM-5, 39, 15, 1)
 			
 			# check for overwrite of existing saved game
-			if os.path.exists('savegame'):
+			if os.path.exists('savegame.dat'):
 				text = 'Starting a new campaign will PERMANTLY ERASE the existing saved campaign.'
 				result = ShowNotification(text, confirm=True)
 				# cancel and return to main menu

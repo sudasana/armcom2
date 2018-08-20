@@ -739,6 +739,10 @@ class Campaign:
 			num = 1
 		else:
 			num = 2
+		
+		# TEMP - no allies
+		num = 0
+		
 		for i in range(num):
 			new_unit = Unit(selected_unit.unit_id)
 			new_unit.owning_player = 0
@@ -1479,7 +1483,8 @@ class CampaignDay:
 			text = 'Artillery'
 		text += ' support level increased.'
 		self.AddMessage(text)
-		self.ShowMessage(text)
+		# TODO: this doesn't work, ShowMessage is a Scenario function for now
+		#self.ShowMessage(text)
 		
 	# add a message with the current timestamp to the journal
 	def AddMessage(self, text):
@@ -3033,6 +3038,9 @@ class Scenario:
 				k, value = choice(list(class_odds.items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
+			
+			# TEMP - class set
+			unit_class = 'Infantry Squad'
 			
 			# TODO: if class unit type has already been set, use that one instead
 			
@@ -5836,7 +5844,7 @@ class Unit:
 		for position in self.crew_positions:
 			if position.crewman is None: continue
 			text = position.crewman.RecoveryCheck()
-			if text != '' and self == campaign.player_unit:
+			if text != '' and self == scenario.player_unit:
 				scenario.ShowMessage(text, self.hx, self.hy)
 		
 		# check for unit recovering from Broken status
@@ -6663,13 +6671,17 @@ class Unit:
 			text = position.crewman.DoInjuryTest(fp)
 			
 			# display message if result and personnel is part of player unit
-			if text != '' and self == campaign.player_unit:
+			if text != '' and self == scenario.player_unit:
 				scenario.ShowMessage(text, self.hx, self.hy)
+				campaign_day.AddMessage(text)
 				
 			# check for possible personnel status change
 			text = position.crewman.CheckStatusChange(self.fp_to_resolve)
-			if text != '' and self == campaign.player_unit:
+			if text != '' and self == scenario.player_unit:
+				# update crew position console to show new status
+				UpdateCrewPositionCon()
 				scenario.ShowMessage(text, self.hx, self.hy)
+				campaign_day.AddMessage(text)
 	
 	# do a morale check for this unit to recover from Broken or Pinned status
 	def MoraleCheck(self, modifier):

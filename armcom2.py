@@ -2909,7 +2909,7 @@ class Scenario:
 			# spawn enemy sniper
 			self.SpawnSniper(1)
 		else:
-			# TEMP: no event
+			# TEMP: otherwise, no event
 			pass
 		
 		# event triggered, reset event chance
@@ -4494,6 +4494,10 @@ class Scenario:
 				if profile['attacker'] == self.player_unit and PLAYER_ALWAYS_HITS:
 					roll = 2.0
 				
+				# clear any previous text
+				ConsolePrintEx(attack_con, 13, 49, libtcod.BKGND_NONE,
+					libtcod.CENTER, '      ')
+				
 				text = str(roll) + '%%'
 				ConsolePrintEx(attack_con, 13, 49, libtcod.BKGND_NONE,
 					libtcod.CENTER, text)
@@ -4887,9 +4891,11 @@ class Scenario:
 class Personnel:
 	def __init__(self, unit, nation, position):
 		self.unit = unit				# pointer to which unit they belong
+		self.nation = nation
+		self.current_position = position		# pointer to current position in a unit
+		
 		self.first_name = ''				# placeholders for first and last name
 		self.last_name = ''				#   set by GenerateName()
-		self.nation = nation
 		self.GenerateName()				# generate random first and last name
 		
 		self.age = 0					# age of crewman in years
@@ -4913,11 +4919,11 @@ class Personnel:
 		
 		self.status = 'Alert'				# current mental/physical status
 		
+		
+		
 		self.rank = 0					# rank level
 		self.rank_desc = ''				# text name for rank
 		self.SetRank()
-		
-		self.current_position = position		# pointer to current position in a unit
 		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'None'			# currently active action

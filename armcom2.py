@@ -4886,13 +4886,11 @@ class Scenario:
 # Personnel Class: represents an individual member of a unit 
 class Personnel:
 	def __init__(self, unit, nation, position):
-		self.unit = unit				# to which unit they belong
-		self.first_name = u''				# name, set by GenerateName()
-		self.last_name = u''
+		self.unit = unit				# pointer to which unit they belong
+		self.first_name = ''				# placeholders for first and last name
+		self.last_name = ''				#   set by GenerateName()
 		self.nation = nation
 		self.GenerateName()				# generate random first and last name
-		
-		self.current_position = position		# pointer to current position in a unit
 		
 		self.age = 0					# age of crewman in years
 		self.GenerateAge()
@@ -4918,6 +4916,8 @@ class Personnel:
 		self.rank = 0					# rank level
 		self.rank_desc = ''				# text name for rank
 		self.SetRank()
+		
+		self.current_position = position		# pointer to current position in a unit
 		
 		self.action_list = []				# list of possible special actions
 		self.current_action = 'None'			# currently active action

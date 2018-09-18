@@ -2478,7 +2478,8 @@ class Session:
 			'armour_save_00', 'armour_save_01',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'wheeled_moving_00', 'wheeled_moving_01', 'wheeled_moving_02',
-			'zb_53_mg_00'
+			'zb_53_mg_00',
+			'rifle_fire_00', 'rifle_fire_01', 'rifle_fire_02', 'rifle_fire_03'
 		]
 		
 		# because the function returns NULL if the file failed to load, Python does not seem
@@ -6447,7 +6448,7 @@ class Unit:
 						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 						libtcod.console_flush()
 				
-				elif weapon.GetStat('type') in MG_WEAPONS:
+				elif weapon.GetStat('type') == 'Small Arms' or weapon.GetStat('type') in MG_WEAPONS:
 					
 					x1, y1 = self.screen_x, self.screen_y
 					x2, y2 = target.screen_x, target.screen_y
@@ -6972,6 +6973,17 @@ def ConsolePrint(console, x, y, text):
 	libtcod.console_print(console, x, y, text)
 def ConsolePrintEx(console, x, y, flag1, flag2, text):
 	libtcod.console_print_ex(console, x, y, flag1, flag2, text)
+
+
+# display a pop-up message in a window on the screen
+# if a campaign day is currently in progress, will add timestamp and message to day journal
+# option to highlight a scenario or day map hex
+#   if a hex is highlighted, message will be automatically moved so as not to cover it
+# option to display a unit portrait above/below the message window
+# FUTURE: option to highlight a player crewman
+# FUTURE: option to darken screen background
+def Message(text, hx=None, hy=None, portrait=None):
+	pass
 
 
 # highlights a menu option on the root console for a moment and plays a sound
@@ -7732,6 +7744,11 @@ def PlaySoundFor(obj, action):
 			
 		if obj.stats['type'] in MG_WEAPONS:
 			PlaySound('zb_53_mg_00')
+			return
+		
+		if obj.GetStat('name') == 'Rifles':
+			n = libtcod.random_get_int(0, 0, 3)
+			PlaySound('rifles_firing_0' + str(n))
 			return
 	 
 	elif action == 'he_explosion':

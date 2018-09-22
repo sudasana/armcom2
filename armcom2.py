@@ -1479,9 +1479,7 @@ class CampaignDay:
 			self.arty_support_level += arty_support_step
 			text = 'Artillery'
 		text += ' support level increased.'
-		self.AddMessage(text)
-		# TODO: this doesn't work, ShowMessage is a Scenario function for now
-		#self.ShowMessage(text)
+		Message(text)
 		
 	# add a message with the current timestamp to the journal
 	def AddMessage(self, text):
@@ -2110,7 +2108,7 @@ class CampaignDay:
 				# player won
 				elif self.scenario.winner == 0:
 					ShowNotification('You have defeated all enemy resistance and now control this area.')
-					campaign_day.AddMessage('We captured the enemy-controlled area.')
+					Message('We captured the enemy-controlled area.')
 					self.map_hexes[self.player_unit_location].controlled_by = 0
 					self.records['Map Areas Captured'] += 1
 					self.UpdateTimeWeatherDisplay()
@@ -2131,7 +2129,7 @@ class CampaignDay:
 					# FUTURE: must be way to do this once in the loop
 					if campaign.EndOfDay():
 						ShowNotification('Your combat day has ended.') 
-						campaign_day.AddMessage('The combat day ends')
+						Message('The combat day ends')
 						EraseGame()
 						DisplayCampaignDaySummary()
 						session.exiting_to_main_menu = False
@@ -2250,7 +2248,7 @@ class CampaignDay:
 						
 						# trigger battle encounter if enemy-controlled
 						ShowNotification('You enter the enemy-held zone.')
-						campaign_day.AddMessage('We moved into an enemy-held area.')
+						Message('We moved into an enemy-held area.')
 						self.InitScenario(hx, hy, source_direction)
 							
 						self.UpdateTimeWeatherDisplay()
@@ -3383,7 +3381,7 @@ class Scenario:
 		if roll > campaign_day.air_support_level:
 			self.player_airsup_failed = True
 			text = 'Unable to respond to air support request.'
-			self.ShowMessage(text)
+			Message(text, no_log=True)
 			return True
 		
 		# reduce support level by one step
@@ -3394,7 +3392,7 @@ class Scenario:
 		
 		# display and record message
 		text = 'Air support request was successful, air support is now inbound.'
-		scenario.ShowMessage(text)
+		Message(text)
 		
 		return True
 	
@@ -3417,8 +3415,7 @@ class Scenario:
 		text = str(num_planes) + ' ' + plane_id + ' arrive'
 		if num_planes == 1: text += 's'
 		text += ' for an attack run'
-		self.ShowMessage(text)
-		campaign_day.AddMessage(text)
+		Message(text, no_log=True)
 		
 		# find target hex on viewport
 		for (vp_hx, vp_hy) in VP_HEXES:
@@ -3510,7 +3507,7 @@ class Scenario:
 		# no target possible
 		if len(map_hex.unit_stack) == 0:
 			text = 'No possible targets, calling off attack run'
-			self.ShowMessage(text, hx=hx, hy=hy)
+			Message(text, hx=hx, hy=hy, no_log=True)
 			return
 		
 		# create plane units
@@ -3591,8 +3588,7 @@ class Scenario:
 					target.hit_by_fp = 2
 				
 				text = target.GetName() + ' was hit by air attack'
-				scenario.ShowMessage(text, target.hx, target.hy)
-				campaign_day.AddMessage(text)
+				Message(text, hx=target.hx, hy=target.hy)
 			
 			# vehicle hit
 			elif target.GetStat('category') == 'Vehicle':
@@ -3638,20 +3634,16 @@ class Scenario:
 				# no penetration
 				if roll > chance:
 					text = target.GetName() + ' was unaffected by air attack'
-					scenario.ShowMessage(text, target.hx, target.hy)
-					campaign_day.AddMessage(text)
+					Message(text, hx=target.hx, hy=target.hy)
 					continue
 				
 				# penetrated
 				target.DestroyMe()
 				text = target.GetName() + ' was destroyed by air attack'
-				scenario.ShowMessage(text, target.hx, target.hy)
-				campaign_day.AddMessage(text)
+				Message(text, hx=target.hx, hy=target.hy)
 		
 		if not results:
-			text = 'Attack run had no effect'
-			scenario.ShowMessage(text, hx, hy)
-			campaign_day.AddMessage(text)
+			Message('Attack run had no effect')
 		
 		# clear selected target
 		self.player_target_hex = None
@@ -3677,7 +3669,7 @@ class Scenario:
 		if roll > campaign_day.arty_support_level:
 			self.player_artsup_failed = True
 			text = 'Unable to respond to artillery support request.'
-			self.ShowMessage(text)
+			Message(text, no_log=True)
 			return True
 		
 		# reduce support level by one step
@@ -3694,7 +3686,7 @@ class Scenario:
 		
 		# display and record message
 		text = 'Artillery support request was successful, spotting rounds inbound.'
-		scenario.ShowMessage(text)
+		Message(text, no_log=True)
 		
 		return True
 	
@@ -3756,7 +3748,7 @@ class Scenario:
 		# was not able to range in
 		if (target_vp_hx, target_vp_hy) != (vp_hx, vp_hy):
 			text = 'Artillery not able to range in, will attempt again.'
-			self.ShowMessage(text)
+			Message(text, no_log=True)
 			return
 		
 		# set flag so that it doesn't try to range in again next turn
@@ -3776,7 +3768,7 @@ class Scenario:
 				break
 		
 		text = 'Artillery ranged in, ' + unit_id + ' battery firing for effect.'
-		self.ShowMessage(text)
+		Message(text, no_log=True)
 		
 		# do attack animation
 		(x,y) = PlotHex(vp_hx, vp_hy)
@@ -3843,8 +3835,7 @@ class Scenario:
 					target.hit_by_fp = 2
 				
 				text = target.GetName() + ' was hit by artillery attack'
-				scenario.ShowMessage(text, target.hx, target.hy)
-				campaign_day.AddMessage(text)
+				Message(text, hx=target.hx, hy=target.hy)
 			
 			# vehicle hit
 			elif target.GetStat('category') == 'Vehicle':
@@ -3888,8 +3879,7 @@ class Scenario:
 				# no penetration
 				if roll > chance:
 					text = target.GetName() + ' was hit by artillery attack but is unharmed.'
-					scenario.ShowMessage(text, target.hx, target.hy)
-					campaign_day.AddMessage(text)
+					Message(text, hx=target.hx, hy=target.hy)
 					if not target.known:
 						target.hit_by_fp = 2
 					continue
@@ -3897,14 +3887,12 @@ class Scenario:
 				# penetrated
 				target.DestroyMe()
 				text = target.GetName() + ' was destroyed by artillery attack'
-				scenario.ShowMessage(text, target.hx, target.hy)
-				campaign_day.AddMessage(text)
+				Message(text, hx=target.hx, hy=target.hy)
 			
 		if not results:
 			(hx, hy) = self.player_target_hex
 			text = 'Artillery attack had no effect'
-			scenario.ShowMessage(text, hx, hy)
-			campaign_day.AddMessage(text)
+			Message(text, hx=hx, hy=hy)
 		
 		# clear selected target
 		self.player_target_hex = None
@@ -4784,6 +4772,7 @@ class Scenario:
 		# round off and constrain final chance
 		return RestrictChance(chance)
 	
+	# NO LONGER USED
 	# display a pop-up message overtop the map viewport
 	# if hx and hy are not none, highlight this hex on the map viewport
 	# if portrait is not None, display a unit portrait above/below the message window
@@ -5022,11 +5011,7 @@ class Personnel:
 		
 		# show player message if part of player crew
 		if self.unit == campaign.player_unit:
-			text = self.GetFullName() + ' is now ' + self.status
-			if scenario is not None:
-				scenario.ShowMessage(text)
-			if campaign_day is not None:
-				campaign_day.AddMessage(text)
+			Message(self.GetFullName() + ' is now ' + self.status)
 	
 	# returns True if this crewman is currently able to choose an action
 	def AbleToAct(self):
@@ -5500,7 +5485,7 @@ class Unit:
 			if position.crewman is None: continue
 			if position.crewman.status in ['Alert', 'Dead']: continue
 			text = position.crewman.GetFullName() + ' recovers from being ' + position.crewman.status
-			scenario.ShowMessage(text, self.hx, self.hy)
+			Message(text)
 			position.crewman.status = 'Alert'
 	
 	# return the value of a stat
@@ -5863,14 +5848,14 @@ class Unit:
 			if position.crewman is None: continue
 			text = position.crewman.RecoveryCheck()
 			if text != '' and self == scenario.player_unit:
-				scenario.ShowMessage(text, self.hx, self.hy)
+				Message(text, hx=self.hx, hy=self.hy)
 		
 		# check for unit recovering from Broken status
 		if self.broken:
 			if self.MoraleCheck(BROKEN_MORALE_MOD):
 				self.broken = False
 				text = self.GetName() + ' recovers from being Broken.'
-				scenario.ShowMessage(text, self.hx, self.hy)
+				Message(text, hx=self.hx, hy=self.hy)
 			return
 		
 		# check for unit recovering from Pinned status
@@ -5878,7 +5863,7 @@ class Unit:
 			if self.MoraleCheck(0):
 				self.pinned = False
 				text = self.GetName() + ' recovers from being Pinned.'
-				scenario.ShowMessage(text, self.hx, self.hy)
+				Message(text, hx=self.hx, hy=self.hy)
 	
 	# check to see if this unit can regain unknown status
 	def ConcealmentCheck(self):
@@ -5912,7 +5897,7 @@ class Unit:
 			text = 'You are now concealed from the enemy'
 		else:
 			text = 'Lost contact with ' + self.GetName()
-		scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
+		Message(text, hx=self.hx, hy=self.hy, no_log=True)
 		self.known = False
 		UpdateUnitCon()
 		UpdateUnitInfoCon()
@@ -6395,7 +6380,7 @@ class Unit:
 		# display message if player is the target
 		if target == scenario.player_unit:
 			text = self.GetName() + ' fires at you!'
-			scenario.ShowMessage(text, hx=self.hx, hy=self.hy)
+			Message(text, hx=self.hx, hy=self.hy)
 		
 		# hide player LoS
 		if self == scenario.player_unit:
@@ -6624,7 +6609,7 @@ class Unit:
 					
 					# if player was not involved, display the message
 					if profile['attacker'] != scenario.player_unit and self != scenario.player_unit:
-						scenario.ShowMessage(text, self.hx, self.hy)
+						Message(text, hx=self.hx, hy=self.hy)
 					
 					campaign_day.AddMessage(text)
 					
@@ -6660,7 +6645,7 @@ class Unit:
 		# display pop-up message if unit is known and on VP
 		if (self.owning_player == 0 or (self.owning_player == 1 and self.known)) and self.vp_hx is not None:
 			text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName()
-			scenario.ShowMessage(text, self.hx, self.hy)
+			Message(text, hx=self.hx, hy=self.hy)
 		
 		# roll for effect
 		roll = GetPercentileRoll()
@@ -6671,13 +6656,12 @@ class Unit:
 		
 		elif roll <= broken_chance:
 			text = self.GetName() + ' was Broken.'
-			scenario.ShowMessage(text, self.hx, self.hy)
+			Message(text, hx=self.hx, hy=self.hy)
 			self.BreakMe()
 		
 		else:
 			text = self.GetName() + ' was destroyed.'
-			scenario.ShowMessage(text, self.hx, self.hy)
-			campaign_day.AddMessage(text)
+			Message(text, hx=self.hx, hy=self.hy)
 			self.DestroyMe()
 		
 		self.fp_to_resolve = 0
@@ -6690,16 +6674,14 @@ class Unit:
 			
 			# display message if result and personnel is part of player unit
 			if text != '' and self == scenario.player_unit:
-				scenario.ShowMessage(text, self.hx, self.hy)
-				campaign_day.AddMessage(text)
+				Message(text, hx=self.hx, hy=self.hy)
 				
 			# check for possible personnel status change
 			text = position.crewman.CheckStatusChange(self.fp_to_resolve)
 			if text != '' and self == scenario.player_unit:
 				# update crew position console to show new status
 				UpdateCrewPositionCon()
-				scenario.ShowMessage(text, self.hx, self.hy)
-				campaign_day.AddMessage(text)
+				Message(text, hx=self.hx, hy=self.hy)
 	
 	# do a morale check for this unit to recover from Broken or Pinned status
 	def MoraleCheck(self, modifier):
@@ -6733,7 +6715,7 @@ class Unit:
 		UpdateUnitInfoCon()
 		UpdateScenarioDisplay()
 		text = self.GetName() + ' is now Pinned.'
-		scenario.ShowMessage(text, self.hx, self.hy)
+		Message(text, hx=self.hx, hy=self.hy)
 	
 	# break this unit
 	def BreakMe(self):
@@ -6747,8 +6729,7 @@ class Unit:
 		
 		# debug flag active
 		if GODMODE and self == scenario.player_unit:
-			scenario.ShowMessage('GODMODE: You were saved from destruction',
-				self.hx, self.hy)
+			Message('GODMODE: You were saved from destruction', hx=self.hx, hy=self.hy)
 			self.ap_hits_to_resolve = []
 			return
 		
@@ -6894,11 +6875,10 @@ class Unit:
 					text += ' spotted!'
 					portrait = target.GetStat('portrait')
 				
-				scenario.ShowMessage(text, hx=target.hx, hy=target.hy, portrait=portrait)
+				Message(text, hx=target.hx, hy=target.hy, portrait=portrait)
 			
 			elif target == scenario.player_unit:
-				text = 'You have been spotted!'
-				scenario.ShowMessage(text, hx=target.hx, hy=target.hy)
+				Message('You have been spotted!', hx=target.hx, hy=target.hy)
 			
 	# reveal this unit after being spotted
 	def SpotMe(self):
@@ -6982,8 +6962,67 @@ def ConsolePrintEx(console, x, y, flag1, flag2, text):
 # option to display a unit portrait above/below the message window
 # FUTURE: option to highlight a player crewman
 # FUTURE: option to darken screen background
-def Message(text, hx=None, hy=None, portrait=None):
-	pass
+def Message(text, hx=None, hy=None, portrait=None, no_log=False):
+	
+	# check optional settings and reset if required
+	if hx is not None or hy is not None:
+		if scenario is None:
+			hx = None
+			hy = None
+	
+	# make sure main console is being displayed
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
+	# enable hex highlight if any
+	if hx is not None and hy is not None:
+		scenario.highlighted_hex = (hx, hy)
+		UpdateUnitCon()
+		UpdateScenarioDisplay()
+	
+	# generate text window
+	temp =  libtcod.console_new(libtcod.console_get_width(popup_bkg), libtcod.console_get_height(popup_bkg))
+	libtcod.console_blit(popup_bkg, 0, 0, 0, 0, temp, 0, 0)
+	
+	# print message
+	lines = wrap(text, 27)
+	# max 7 lines tall
+	y = 1
+	for line in lines[:7]:
+		ConsolePrint(temp, 1, y, line.encode('IBM850'))
+		y += 1
+	
+	# TODO: determine window display location
+	# FUTURE: Better to have a standard location where the window appears?
+	#window_x = 44
+	#window_y = 16
+	
+	window_x = WINDOW_XM - 13
+	window_y = 16
+	
+	# display window on screen
+	libtcod.console_blit(temp, 0, 0, 0, 0, 0, window_x, window_y)
+	libtcod.console_flush()
+	
+	# pause to allow player to read message
+	wait_time = 40 + (len(lines) * 60)
+	Wait(wait_time)
+	
+	# delete window console
+	del temp
+	
+	# clear hex highlight if any
+	if hx is not None and hy is not None:
+		scenario.highlighted_hex = None
+		UpdateUnitCon()
+		UpdateScenarioDisplay()
+	
+	# redraw main console to screen
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	libtcod.console_flush()
+	
+	# add to campaign day log if active
+	if not no_log and campaign_day is not None:
+		campaign_day.AddMessage(text)
 
 
 # highlights a menu option on the root console for a moment and plays a sound
@@ -9158,7 +9197,7 @@ def DoScenario():
 	
 	global bkg_console, map_vp_con, unit_con, player_info_con, hex_terrain_con
 	global crew_position_con, command_con, context_con, unit_info_con, objective_con
-	global attack_con, fov_con, hex_fov, popup_bkg, hex_objective
+	global attack_con, fov_con, hex_fov, hex_objective
 	global hex_highlight
 	global tile_offmap
 	
@@ -9169,8 +9208,6 @@ def DoScenario():
 	# black mask for map tiles not visible to player
 	hex_fov = LoadXP('hex_fov.xp')
 	libtcod.console_set_key_color(hex_fov, libtcod.black)
-	# background for scenario message window
-	popup_bkg = LoadXP('popup_bkg.xp')
 	
 	# highlight for objective hexes
 	hex_objective = LoadXP('hex_objective.xp')
@@ -9491,7 +9528,7 @@ def DoScenario():
 						UpdateUnitCon()
 						UpdateScenarioDisplay()
 						text = 'Artillery support request cancelled.'
-						scenario.ShowMessage(text)
+						Message(text, no_log=True)
 						continue
 				
 				# if air support inbound, don't allow these options
@@ -9657,7 +9694,7 @@ def DoScenario():
 					text = 'You move into a Hull Down position.'
 				else:
 					text = 'You were unable to move into a Hull Down position.'
-				scenario.ShowMessage(text, hx=scenario.player_unit.hx, hy=scenario.player_unit.hy)
+				Message(text, hx=scenario.player_unit.hx, hy=scenario.player_unit.hy, no_log=True)
 				UpdatePlayerInfoCon()
 				UpdateContextCon()
 				UpdateVPCon()
@@ -9826,10 +9863,17 @@ for direction in range(6):
 #                                        Main Menu                                       #
 ##########################################################################################
 
-global main_title, tank_image
+global main_title, tank_image, popup_bkg
 global campaign, campaign_day
 
+campaign = None
+campaign_day = None
+
+# main title background
 main_title = LoadXP('main_title.xp')
+
+# background for message window
+popup_bkg = LoadXP('popup_bkg.xp')
 
 # list of unit images to display on main menu
 TANK_IMAGES = ['unit_7TP.xp', 'unit_TK3.xp', 'unit_TKS.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp',
@@ -9854,24 +9898,24 @@ gradient_x = WINDOW_WIDTH + 10
 def UpdateMainMenuCon(options_menu_active):
 	
 	# display game title
-	libtcod.console_blit(main_title, 0, 0, 0, 0, main_menu_con, 0, 0)
+	libtcod.console_blit(main_title, 0, 0, 0, 0, con, 0, 0)
 	
 	# randomly display a tank image to use for this session
-	libtcod.console_blit(tank_image, 0, 0, 0, 0, main_menu_con, 7, 6)
+	libtcod.console_blit(tank_image, 0, 0, 0, 0, con, 7, 6)
 	
 	# display version number and program info
-	libtcod.console_set_default_foreground(main_menu_con, libtcod.red)
-	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-8, libtcod.BKGND_NONE,
+	libtcod.console_set_default_foreground(con, libtcod.red)
+	ConsolePrintEx(con, WINDOW_XM, WINDOW_HEIGHT-8, libtcod.BKGND_NONE,
 		libtcod.CENTER, 'Development Build: Has bugs and incomplete features')
 	
-	libtcod.console_set_default_foreground(main_menu_con, libtcod.light_grey)
-	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
+	libtcod.console_set_default_foreground(con, libtcod.light_grey)
+	ConsolePrintEx(con, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
 		libtcod.CENTER, VERSION)
-	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-4,
+	ConsolePrintEx(con, WINDOW_XM, WINDOW_HEIGHT-4,
 		libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2018')
-	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-3,
+	ConsolePrintEx(con, WINDOW_XM, WINDOW_HEIGHT-3,
 		libtcod.BKGND_NONE, libtcod.CENTER, 'Free Software under the GNU GPL')
-	ConsolePrintEx(main_menu_con, WINDOW_XM, WINDOW_HEIGHT-2,
+	ConsolePrintEx(con, WINDOW_XM, WINDOW_HEIGHT-2,
 		libtcod.BKGND_NONE, libtcod.CENTER, 'www.armouredcommander.com')
 	
 	y = 38
@@ -9880,7 +9924,7 @@ def UpdateMainMenuCon(options_menu_active):
 	if options_menu_active:
 		
 		# display game options commands
-		DisplayGameOptions(main_menu_con, WINDOW_XM-10, 38)
+		DisplayGameOptions(con, WINDOW_XM-10, 38)
 		
 	else:
 		
@@ -9891,16 +9935,16 @@ def UpdateMainMenuCon(options_menu_active):
 				disabled = True
 			
 			if disabled:
-				libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
+				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
 			else:
-				libtcod.console_set_default_foreground(main_menu_con, ACTION_KEY_COL)
-			ConsolePrint(main_menu_con, WINDOW_XM-5, y, char)
+				libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			ConsolePrint(con, WINDOW_XM-5, y, char)
 			
 			if disabled:
-				libtcod.console_set_default_foreground(main_menu_con, libtcod.dark_grey)
+				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
 			else:
-				libtcod.console_set_default_foreground(main_menu_con, libtcod.lighter_grey)
-			ConsolePrint(main_menu_con, WINDOW_XM-3, y, text)	
+				libtcod.console_set_default_foreground(con, libtcod.lighter_grey)
+			ConsolePrint(con, WINDOW_XM-3, y, text)	
 			
 			y += 1
 
@@ -9913,28 +9957,21 @@ def AnimateMainMenu():
 	for x in range(0, 10):
 		if x + gradient_x > WINDOW_WIDTH: continue
 		for y in range(19, 34):
-			char = libtcod.console_get_char(main_menu_con, x + gradient_x, y)
-			fg = libtcod.console_get_char_foreground(main_menu_con, x + gradient_x, y)
+			char = libtcod.console_get_char(con, x + gradient_x, y)
+			fg = libtcod.console_get_char_foreground(con, x + gradient_x, y)
 			if char != 0 and fg != GRADIENT[x]:
-				libtcod.console_set_char_foreground(main_menu_con, x + gradient_x,
+				libtcod.console_set_char_foreground(con, x + gradient_x,
 					y, GRADIENT[x])
 	gradient_x -= 2
 	if gradient_x <= 0: gradient_x = WINDOW_WIDTH + 10
 
-
-# generate main menu console
-global main_menu_con
-main_menu_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
-libtcod.console_set_default_background(main_menu_con, libtcod.black)
-libtcod.console_set_default_foreground(main_menu_con, libtcod.white)
-libtcod.console_clear(main_menu_con)
 
 # use root menu to start
 options_menu_active = False
 
 # draw the main menu console for the first time
 UpdateMainMenuCon(options_menu_active)
-libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 
 # Main Menu loop
 exit_game = False
@@ -9947,7 +9984,7 @@ while not exit_game:
 	# trigger animation and update screen
 	if time.time() - time_click >= 0.06:
 		AnimateMainMenu()
-		libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		time_click = time.time()
 	
 	libtcod.console_flush()
@@ -9968,7 +10005,7 @@ while not exit_game:
 			HighlightMenuOption(WINDOW_XM-5, 40, 15, 1) 
 			options_menu_active = True
 			UpdateMainMenuCon(options_menu_active)
-			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
 		# TODO: combine new campaign and continue campaign elif sections
 		elif key_char == 'c':
@@ -9982,7 +10019,7 @@ while not exit_game:
 			if result != '':
 				text = 'Saved game was saved with an older version of the program (' + result + '), cannot continue.'
 				ShowNotification(text)
-				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				continue
 			
 			libtcod.console_clear(0)
@@ -10005,7 +10042,7 @@ while not exit_game:
 				mixer.Mix_ResumeMusic()
 			
 			UpdateMainMenuCon(options_menu_active)
-			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
 		# start new campaign
 		elif key_char == 'n':
@@ -10018,7 +10055,7 @@ while not exit_game:
 				result = ShowNotification(text, confirm=True)
 				# cancel and return to main menu
 				if not result:
-					libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 					continue
 			
 			# create a new campaign object and select a campaign
@@ -10026,7 +10063,7 @@ while not exit_game:
 			result = campaign.CampaignSelectionMenu()
 			if not result:
 				del campaign
-				libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				if main_theme is not None:
 					mixer.Mix_RewindMusic()
 					mixer.Mix_ResumeMusic()
@@ -10055,20 +10092,20 @@ while not exit_game:
 				mixer.Mix_RewindMusic()
 				mixer.Mix_ResumeMusic()
 			UpdateMainMenuCon(options_menu_active)
-			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
 	# options menu
 	else:
 		
 		if ChangeGameSettings(key_char):
 			UpdateMainMenuCon(options_menu_active)
-			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
 		# exit options menu
 		elif key.vk == libtcod.KEY_ESCAPE:
 			options_menu_active = False
 			UpdateMainMenuCon(options_menu_active)
-			libtcod.console_blit(main_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 
 # END #
 

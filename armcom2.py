@@ -2108,7 +2108,7 @@ class CampaignDay:
 				# player won
 				elif self.scenario.winner == 0:
 					ShowNotification('You have defeated all enemy resistance and now control this area.')
-					Message('We captured the enemy-controlled area.')
+					campaign_day.AddMessage('We captured the enemy-controlled area.')
 					self.map_hexes[self.player_unit_location].controlled_by = 0
 					self.records['Map Areas Captured'] += 1
 					self.UpdateTimeWeatherDisplay()
@@ -2129,7 +2129,7 @@ class CampaignDay:
 					# FUTURE: must be way to do this once in the loop
 					if campaign.EndOfDay():
 						ShowNotification('Your combat day has ended.') 
-						Message('The combat day ends')
+						campaign_day.AddMessage('The combat day ends')
 						EraseGame()
 						DisplayCampaignDaySummary()
 						session.exiting_to_main_menu = False
@@ -2248,7 +2248,7 @@ class CampaignDay:
 						
 						# trigger battle encounter if enemy-controlled
 						ShowNotification('You enter the enemy-held zone.')
-						Message('We moved into an enemy-held area.')
+						campaign_day.AddMessage('We moved into an enemy-held area.')
 						self.InitScenario(hx, hy, source_direction)
 							
 						self.UpdateTimeWeatherDisplay()
@@ -4772,67 +4772,6 @@ class Scenario:
 		# round off and constrain final chance
 		return RestrictChance(chance)
 	
-	# NO LONGER USED
-	# display a pop-up message overtop the map viewport
-	# if hx and hy are not none, highlight this hex on the map viewport
-	# if portrait is not None, display a unit portrait above/below the message window
-	def ShowMessage(self, message, hx=None, hy=None, portrait=None):
-		
-		# encode message for display
-		# disabled - was casting the text into a dictionary?
-		#message = message.encode('IBM850')
-		
-		# enable hex highlight if any
-		if hx is not None and hy is not None:
-			self.highlighted_hex = (hx, hy)
-			UpdateUnitCon()
-			UpdateScenarioDisplay()
-		
-		# determine if window needs to be shifted to bottom half of screen
-		# so that highlighted hex is not obscured
-		switch = False
-		if hx is not None and hy is not None:
-			for (vp_hx, vp_hy) in VP_HEXES:
-				if scenario.map_vp[(vp_hx, vp_hy)] == (hx, hy):
-					if vp_hy < int((0 - vp_hx) / 2):
-						switch = True
-					break
-		if switch:
-			y_start = 36
-		else:
-			y_start = 16
-		
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_blit(popup_bkg, 0, 0, 0, 0, 0, 44, y_start)
-		y = y_start+1
-		lines = wrap(message, 27)
-		# max 7 lines tall
-		for line in lines[:7]:
-			ConsolePrint(0, 45, y, line.encode('IBM850'))
-			y += 1
-		
-		if portrait is not None:
-			if switch:
-				y = 45
-			else:
-				y = 8
-			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, 0, 47, y)
-		
-		libtcod.console_flush()
-		
-		# FUTURE: get message pause time from settings
-		wait_time = 40 + (len(lines) * 80)
-		Wait(wait_time)
-		
-		# clear hex highlight if any
-		if hx is not None and hy is not None:
-			self.highlighted_hex = None
-			UpdateUnitCon()
-			UpdateScenarioDisplay()
-		else:
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
-	
 	# display a pop-up window with info on a unit
 	def ShowUnitInfoWindow(self, unit):
 		
@@ -6601,17 +6540,17 @@ class Unit:
 					
 					self.DestroyMe()
 					
+					# display message
 					if self == scenario.player_unit:
 						text = 'You were'
 					else:
 						text = self.GetName() + ' was'
-					text += ' destroyed by ' + profile['attacker'].GetName()
-					
-					# if player was not involved, display the message
-					if profile['attacker'] != scenario.player_unit and self != scenario.player_unit:
-						Message(text, hx=self.hx, hy=self.hy)
-					
-					campaign_day.AddMessage(text)
+					text += ' destroyed by '
+					if profile['attacker'] == scenario.player_unit:
+						text += 'you.'
+					else:
+						text += profile['attacker'].GetName() + '.'
+					Message(text, hx=self.hx, hy=self.hy)
 					
 					return
 				
@@ -6958,8 +6897,8 @@ def ConsolePrintEx(console, x, y, flag1, flag2, text):
 # display a pop-up message in a window on the screen
 # if a campaign day is currently in progress, will add timestamp and message to day journal
 # option to highlight a scenario or day map hex
-#   if a hex is highlighted, message will be automatically moved so as not to cover it
 # option to display a unit portrait above/below the message window
+# TODO: if a hex is highlighted, message will be automatically moved so as not to cover it
 # FUTURE: option to highlight a player crewman
 # FUTURE: option to darken screen background
 def Message(text, hx=None, hy=None, portrait=None, no_log=False):
@@ -6991,20 +6930,40 @@ def Message(text, hx=None, hy=None, portrait=None, no_log=False):
 		ConsolePrint(temp, 1, y, line.encode('IBM850'))
 		y += 1
 	
-	# TODO: determine window display location
-	# FUTURE: Better to have a standard location where the window appears?
-	#window_x = 44
-	#window_y = 16
+	# determine window display location
 	
-	window_x = WINDOW_XM - 13
+	# scenario in progress
+	if campaign_day.scenario is not None:
+		window_x = 58 - 13
+	else:
+		window_x = WINDOW_XM - 13
 	window_y = 16
+	
+	# TODO: determine if window needs to be shifted to bottom half of screen
+	# so that highlighted hex is not obscured
+	#switch = False
+	#if hx is not None and hy is not None:
+	#	for (vp_hx, vp_hy) in VP_HEXES:
+	#		if scenario.map_vp[(vp_hx, vp_hy)] == (hx, hy):
+	#			if vp_hy < int((0 - vp_hx) / 2):
+	#				switch = True
+	#			break
+	#if switch:
+	#	y_start = 36
+	#else:
+	#	y_start = 16
 	
 	# display window on screen
 	libtcod.console_blit(temp, 0, 0, 0, 0, 0, window_x, window_y)
+	
+	# display portrait if any
+	if portrait is not None:
+		libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, 0, window_x, window_y-8)
+	
 	libtcod.console_flush()
 	
 	# pause to allow player to read message
-	wait_time = 40 + (len(lines) * 60)
+	wait_time = 60 + (len(lines) * 60)
 	Wait(wait_time)
 	
 	# delete window console
@@ -7961,7 +7920,7 @@ def ShowGameMenu():
 				ConsolePrint(game_menu_con, 2, y, time_text)
 				libtcod.console_set_default_foreground(game_menu_con, libtcod.light_grey)
 				for line in wrap(msg_text, 74):
-					ConsolePrint(game_menu_con, 8, y, line)
+					ConsolePrint(game_menu_con, 8, y, line.encode('IBM850'))
 					y += 1
 				y += 1
 				

@@ -61,7 +61,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
-GODMODE = True						# player cannot be destroyed
+GODMODE = False						# player cannot be destroyed
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
@@ -2907,7 +2907,7 @@ class Scenario:
 			# increase artillery support if any
 			self.IncreaseSupLevel(False)
 		elif roll <= 30.0:
-			# spawn enemy sniper
+			# spawn enemy sniper if one not already in play
 			self.SpawnSniper(1)
 		else:
 			# TEMP: otherwise, no event
@@ -2917,9 +2917,15 @@ class Scenario:
 		campaign_day.random_event_chance = SCENARIO_RANDOM_EVENT_CHANCE
 		
 	# spawn a sniper unit into the game on player_num's side
+	# will not spawn if another sniper is already active
 	def SpawnSniper(self, player_num):
 		
-		print('DEBUG: Spawning an enemy sniper unit')
+		# check for already existing sniper
+		for unit in self.units:
+			if unit.unit_id != 'Sniper': continue
+			if unit.owning_player != player_num: continue
+			print('DEBUG: Not spawning a sniper unit, one is already present')
+			return
 		
 		# determine spawn location
 		hex_list = []
@@ -2947,7 +2953,7 @@ class Scenario:
 			break
 		
 		if not good_location:
-			print('DEBUG: Could not find a suitable location to spawn')
+			print('DEBUG: Could not find a suitable location to spawn sniper unit')
 			return
 		
 		new_unit = Unit('Sniper')
@@ -2965,7 +2971,6 @@ class Scenario:
 		UpdateScenarioDisplay()
 		
 		print('DEBUG: Spawned enemy sniper in ' + str(hx) + ',' + str(hy))
-		
 	
 	# generate activation order for player units and enemy units
 	def GenerateActivationOrder(self):
@@ -5018,14 +5023,14 @@ class Personnel:
 	
 	# test for and apply injury as a result of being exposed to firepower
 	# TODO: sniper hit modifiers
-	def DoInjuryTest(self, fp, sniper_hit = False):
+	def DoInjuryTest(self, fp, sniper_hit=False):
 		
 		# crew is not exposed, no chance of injury
 		if not self.ce: return ''
 		
 		# roll for injury
 		
-		# TEMP - rough chance only, will be modified by fp
+		# TEMP - rough chance only, in FUTURE will be modified by fp
 		chance = 40.0
 		roll = GetPercentileRoll()
 		if roll > chance:
@@ -6459,6 +6464,38 @@ class Unit:
 			# apply results of this attack if any
 			if profile['type'] == 'Area Fire':
 				
+				# sniper attacks are resolved right away
+				if self.unit_id == 'Sniper':
+					if profile['result'] == 'NO EFFECT': return
+					
+					# resolve sniper attack now
+					
+					# select target
+					position_list = []
+					for position in target.crew_positions:
+						if position.crewman is None: continue
+						if position.crewman.status in ['Critical', 'Dead']: continue
+						# vehicle target: crewman must be exposed
+						if target.GetStat('category') == 'Vehicle':
+							if not position.crewman.ce: continue
+						position_list.append(position)
+					
+					# no valid targets
+					if len(position_list) == 0:
+						return
+					
+					position = choice(position_list)
+					result = position.crewman.DoInjuryTest(2, sniper_hit=True)
+					
+					# target was injured and is in player unit
+					if result != '' and self == campaign.player_unit:
+						Message(result)
+					
+					if target.GetStat('category') != 'Vehicle':
+						target.PinMe()
+						
+					return
+				
 				if profile['result'] in ['CRITICAL EFFECT', 'FULL EFFECT', 'PARTIAL EFFECT']:
 					
 					target.fp_to_resolve += profile['effective_fp']
@@ -6610,7 +6647,6 @@ class Unit:
 			text = self.GetName() + ' was Broken.'
 			Message(text, hx=self.hx, hy=self.hy)
 			self.BreakMe()
-		
 		else:
 			text = self.GetName() + ' was destroyed.'
 			Message(text, hx=self.hx, hy=self.hy)

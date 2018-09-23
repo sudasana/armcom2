@@ -6896,9 +6896,10 @@ def ConsolePrintEx(console, x, y, flag1, flag2, text):
 
 # display a pop-up message in a window on the screen
 # if a campaign day is currently in progress, will add timestamp and message to day journal
-# option to highlight a scenario or day map hex
+# option to highlight a scenario map hex
+#   message will be automatically moved so as not to cover it
 # option to display a unit portrait above/below the message window
-# TODO: if a hex is highlighted, message will be automatically moved so as not to cover it
+# option to not add message to campaign day log
 # FUTURE: option to highlight a player crewman
 # FUTURE: option to darken screen background
 def Message(text, hx=None, hy=None, portrait=None, no_log=False):
@@ -6931,34 +6932,33 @@ def Message(text, hx=None, hy=None, portrait=None, no_log=False):
 		y += 1
 	
 	# determine window display location
-	
-	# scenario in progress
 	if campaign_day.scenario is not None:
 		window_x = 58 - 13
 	else:
 		window_x = WINDOW_XM - 13
 	window_y = 16
 	
-	# TODO: determine if window needs to be shifted to bottom half of screen
+	# determine if window needs to be shifted to bottom half of screen
 	# so that highlighted hex is not obscured
-	#switch = False
-	#if hx is not None and hy is not None:
-	#	for (vp_hx, vp_hy) in VP_HEXES:
-	#		if scenario.map_vp[(vp_hx, vp_hy)] == (hx, hy):
-	#			if vp_hy < int((0 - vp_hx) / 2):
-	#				switch = True
-	#			break
-	#if switch:
-	#	y_start = 36
-	#else:
-	#	y_start = 16
+	switch = False
+	if hx is not None and hy is not None:
+		for (vp_hx, vp_hy) in VP_HEXES:
+			if scenario.map_vp[(vp_hx, vp_hy)] == (hx, hy):
+				if vp_hy < int((0 - vp_hx) / 2):
+					switch = True
+				break
+	if switch: y_start = 36
 	
 	# display window on screen
 	libtcod.console_blit(temp, 0, 0, 0, 0, 0, window_x, window_y)
 	
 	# display portrait if any
 	if portrait is not None:
-		libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, 0, window_x, window_y-8)
+		if switch:
+			portrait_y = window_y - 8
+		else:
+			portrait_y = window_y + 9
+		libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, 0, window_x, portrait_y)
 	
 	libtcod.console_flush()
 	

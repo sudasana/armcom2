@@ -66,7 +66,7 @@ PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-08-18'			# game version
+VERSION = 'Alpha 1.0.0-2018-09-29'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files

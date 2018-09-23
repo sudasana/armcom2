@@ -5418,17 +5418,28 @@ class Unit:
 		# field of view
 		self.fov = set()			# set of visible hexes for this unit
 	
-	# apply effects at end of scenario
+	# apply effects to player unit at end of scenario
 	def InitPostScenario(self):
 		
-		# TEMP: clear all negative crew statuses
+		# clear all negative crew statuses
+		# this is TEMP, in FUTURE crew will have to roll to recover
 		for position in self.crew_positions:
 			if position.crewman is None: continue
 			if position.crewman.status in ['Alert', 'Dead']: continue
 			text = position.crewman.GetFullName() + ' recovers from being ' + position.crewman.status
 			Message(text)
 			position.crewman.status = 'Alert'
-	
+		
+		# replace any dead crew
+		for position in self.crew_positions:
+			if position.crewman.status != 'Dead': continue
+			self.crew_list.remove(position.crewman)
+			self.crew_list.append(Personnel(self, self.nation, position))
+			position.crewman = self.crew_list[-1]
+			
+			text = position.crewman.GetFullName() + ' joins your crew in the ' + position.name + ' position.'
+			Message(text)
+			
 	# return the value of a stat
 	def GetStat(self, stat_name):
 		if stat_name in self.stats:

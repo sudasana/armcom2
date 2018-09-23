@@ -1453,6 +1453,8 @@ class CampaignDay:
 		self.active_menu = 3				# number of currently active command menu
 		self.travel_direction = None			# selected direction of travel
 		
+		self.abandoned_tank = False			# set to true if player abandoned their tank that day
+		
 		self.scenario = None				# currently active scenario in progress
 	
 	# reduce air support level due to a successful request
@@ -6828,6 +6830,7 @@ class Unit:
 			return
 		
 		self.known = True
+		self.MoveToTopOfStack()
 		UpdateUnitCon()
 		UpdateUnitInfoCon()
 		UpdateScenarioDisplay()
@@ -7638,8 +7641,10 @@ def CheckSavedGameVersion():
 
 # remove a saved game
 def EraseGame():
-	os.remove('savegame')
-
+	os.remove('savegame.dat')
+	os.remove('savegame.dir')
+	os.remove('savegame.bak')
+	
 
 # try to load game settings from config file
 def LoadCFG():
@@ -8180,7 +8185,10 @@ def DisplayCampaignDaySummary():
 	ConsolePrintEx(temp_con, 14, 7, libtcod.BKGND_NONE, libtcod.CENTER,
 		'Outcome of Day:')
 	
-	if campaign.player_unit.alive:
+	if campaign_day.abandoned_tank:
+		col = libtcod.light_grey
+		text = 'ABANDONED TANK'
+	elif campaign.player_unit.alive:
 		col = GOLD_COL
 		text = 'SURVIVED'
 	else:
@@ -8766,15 +8774,18 @@ def UpdateCommandCon():
 			libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 			ConsolePrint(command_con, 7, 8, 'Exit sub-menu')
 		
+		# root command menu
 		else:
 		
 			libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
 			ConsolePrint(command_con, 1, 2, 'A')
 			ConsolePrint(command_con, 1, 3, 'R')
+			ConsolePrint(command_con, 1, 7, 'X')
 			
 			libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
 			ConsolePrint(command_con, 5, 2, 'Air Support')
 			ConsolePrint(command_con, 5, 3, 'Artillery Support')
+			ConsolePrint(command_con, 5, 7, 'Abandon Tank')
 			
 	# crew action menu
 	elif scenario.active_menu == 2:
@@ -9542,6 +9553,21 @@ def DoScenario():
 						UpdateCommandCon()
 						UpdateContextCon()
 						UpdateScenarioDisplay()
+				
+				# abandon tank
+				elif chr(key.c).lower() == 'x':
+					result = ShowNotification('Abandon your tank and end the combat day?', confirm=True)
+					
+					# cancel command
+					if not result:
+						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+						continue
+					
+					campaign_day.scenario.winner = 1
+					campaign_day.abandoned_tank = True
+					
+					ShowNotification('You abandon your tank and return to friendly lines.')
+					exit_scenario = True
 			
 		# crew actions
 		elif scenario.active_menu == 2:

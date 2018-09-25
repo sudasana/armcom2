@@ -61,9 +61,12 @@ import sdl2.sdlmixer as mixer				# sound effects
 # Debug Flags
 AI_SPY = False						# write description of AI actions to console
 AI_NO_ACTION = False					# no AI actions at all
-GODMODE = False						# player cannot be destroyed
+GODMODE = False						# player tank cannot be destroyed
 PLAYER_ALWAYS_HITS = False				# player attacks always roll well
 SHOW_HEX_SCORES = False					# display map hex scores in viewport
+NO_ALLIES = False					# no allied units spawned un player unit group
+ALWAYS_SNIPER = False					# random event is always a sniper
+INJURY_IS_DEATH = False					# any personnel injury results in death
 
 NAME = 'Armoured Commander II'				# game name
 VERSION = 'Alpha 1.0.0-2018-09-29'			# game version
@@ -739,6 +742,9 @@ class Campaign:
 			num = 1
 		else:
 			num = 2
+		
+		# debug flag
+		if NO_ALLIES: num = 0
 		
 		for i in range(num):
 			new_unit = Unit(selected_unit.unit_id)
@@ -2900,6 +2906,9 @@ class Scenario:
 		# roll for type of random event; if event is NA, nothing happens
 		roll = GetPercentileRoll()
 		
+		# debug flag
+		if ALWAYS_SNIPER: roll = 30.0
+		
 		if roll <= 10.0:
 			# increase air support level if any
 			self.IncreaseSupLevel(True)
@@ -2924,7 +2933,6 @@ class Scenario:
 		for unit in self.units:
 			if unit.unit_id != 'Sniper': continue
 			if unit.owning_player != player_num: continue
-			print('DEBUG: Not spawning a sniper unit, one is already present')
 			return
 		
 		# determine spawn location
@@ -2953,7 +2961,6 @@ class Scenario:
 			break
 		
 		if not good_location:
-			print('DEBUG: Could not find a suitable location to spawn sniper unit')
 			return
 		
 		new_unit = Unit('Sniper')
@@ -2969,8 +2976,6 @@ class Scenario:
 		UpdateUnitCon()
 		UpdateUnitInfoCon()
 		UpdateScenarioDisplay()
-		
-		print('DEBUG: Spawned enemy sniper in ' + str(hx) + ',' + str(hy))
 	
 	# generate activation order for player units and enemy units
 	def GenerateActivationOrder(self):
@@ -3010,8 +3015,6 @@ class Scenario:
 			if roll <= ENEMY_NUMBER_ODDS[enemy_unit_num]:
 				break
 			roll -= ENEMY_NUMBER_ODDS[enemy_unit_num]
-		
-		print('DEBUG: spawning ' + str(enemy_unit_num) + ' real enemy units')
 		
 		# add dummy units
 		enemy_unit_num += ENEMY_DUMMY_UNITS
@@ -3689,7 +3692,6 @@ class Scenario:
 		(hx2, hy2) = self.player_target_hex
 		self.player_artsup_los = GetLoS(self.player_unit.hx, self.player_unit.hy,
 			hx2, hy2)
-		print('DEBUG: LoS is ' + str(self.player_artsup_los))
 		
 		# display and record message
 		text = 'Artillery support request was successful, spotting rounds inbound.'
@@ -4118,7 +4120,7 @@ class Scenario:
 		position = attacker.CheckPersonnelAction(['Commander'], 'Direct Fire')
 		if position is not False:
 			mod = 10.0 + (float(position.crewman.traits['Knowledge']) * DIRECT_FIRE_MOD)
-			print('DEBUG: Modified to-hit based on commander Knowledge of ' + str(position.crewman.traits['Knowledge']))
+			#print('DEBUG: Modified to-hit based on commander Knowledge of ' + str(position.crewman.traits['Knowledge']))
 			modifier_list.append(('Fire Direction', mod))
 		
 		# save the list of modifiers
@@ -4764,7 +4766,7 @@ class Scenario:
 		position = unit.CheckPersonnelAction(['Commander', 'Commander/Gunner'], 'Direct Driver')
 		if position is not False:
 			mod = 15.0 + (float(position.crewman.traits['Knowledge']) * DIRECT_DRIVER_MOD)
-			print('DEBUG: Modified to-hit based on commander Knowledge of ' + str(position.crewman.traits['Knowledge']))
+			#print('DEBUG: Modified to-hit based on commander Knowledge of ' + str(position.crewman.traits['Knowledge']))
 			chance += mod
 		
 		# previous bonus move modifier
@@ -5010,6 +5012,10 @@ class Personnel:
 	# toggle crew exposed / button up status
 	def ToggleCE(self):
 		
+		# can't act
+		if not self.AbleToAct():
+			return False
+		
 		# can't go CE
 		if not self.ce and not self.current_position.hatch:
 			return False
@@ -5049,7 +5055,12 @@ class Personnel:
 		# roll for severity of injury
 		# TEMP: rough roll only, will be modified by fp
 		
-		if GetPercentileRoll() <= 80.0:
+		roll = GetPercentileRoll()
+		
+		# debug flag
+		if INJURY_IS_DEATH: roll = 100.0
+		
+		if roll <= 80.0:
 			# light injury
 			if self.injuries[location] == 0:
 				self.injuries[location] = 1
@@ -5064,7 +5075,7 @@ class Personnel:
 			else:
 				text = ''
 		
-		else:
+		elif roll <= 97.0:
 		
 			# severe injury, or light -> severe injury
 			# no further effect if already severely injured
@@ -5073,6 +5084,13 @@ class Personnel:
 			else:
 				self.injuries[location] = 2
 				text += ' was severely injured in the ' + location + '.'
+		
+		else:
+			
+			# death
+			self.status = 'Dead'
+			self.ce = False
+			text += ' has died.'
 		
 		# return text description of effect
 		return text
@@ -5110,7 +5128,7 @@ class Personnel:
 		chance -= float(injury_mod * 5)
 		chance = RestrictChance(chance)
 		
-		print('DEBUG: Testing status change for ' + self.GetFullName() + ', chance is: ' + str(chance))
+		#print('DEBUG: Testing status change for ' + self.GetFullName() + ', chance is: ' + str(chance))
 		
 		# roll passed, no change
 		if GetPercentileRoll() <= chance:
@@ -5119,14 +5137,18 @@ class Personnel:
 		# roll failed, status gets worse
 		if self.status == 'Critical':
 			self.status = 'Dead'
+			# automatically goes BU if not already
+			self.ce = False
 			return self.GetFullName() + ' has died.'
 		
 		if self.status == 'Stunned':
 			self.status = 'Critical'
+			self.ce = False
 			return self.GetFullName() + "'s status has worsened and is now critical."
 		
 		if self.status == 'Shaken':
 			self.status = 'Stunned'
+			self.ce = False
 			return self.GetFullName() + ' is now Stunned.'
 		
 		self.status = 'Shaken'
@@ -5145,7 +5167,7 @@ class Personnel:
 			chance -= (chance * 0.5)
 		chance = RestrictChance(chance)
 		
-		print('DEBUG: Testing status recovery for ' + self.GetFullName() + ', chance is: ' + str(chance))
+		#print('DEBUG: Testing status recovery for ' + self.GetFullName() + ', chance is: ' + str(chance))
 		
 		roll = GetPercentileRoll()
 		
@@ -5423,7 +5445,7 @@ class Unit:
 		# field of view
 		self.fov = set()			# set of visible hexes for this unit
 	
-	# apply effects to player unit at end of scenario
+	# have crewmen recover and replaced after end of scenario
 	def InitPostScenario(self):
 		
 		# clear all negative crew statuses
@@ -5431,8 +5453,9 @@ class Unit:
 		for position in self.crew_positions:
 			if position.crewman is None: continue
 			if position.crewman.status in ['Alert', 'Dead']: continue
-			text = position.crewman.GetFullName() + ' recovers from being ' + position.crewman.status
-			Message(text)
+			if self == campaign.player_unit:
+				text = position.crewman.GetFullName() + ' recovers from being ' + position.crewman.status
+				Message(text)
 			position.crewman.status = 'Alert'
 		
 		# replace any dead crew
@@ -5441,9 +5464,9 @@ class Unit:
 			self.crew_list.remove(position.crewman)
 			self.crew_list.append(Personnel(self, self.nation, position))
 			position.crewman = self.crew_list[-1]
-			
-			text = position.crewman.GetFullName() + ' joins your crew in the ' + position.name + ' position.'
-			Message(text)
+			if self == campaign.player_unit:
+				text = position.crewman.GetFullName() + ' joins your crew in the ' + position.name + ' position.'
+				Message(text)
 			
 	# return the value of a stat
 	def GetStat(self, stat_name):
@@ -7798,7 +7821,7 @@ def PlaySoundFor(obj, action):
 		
 		if obj.GetStat('name') == 'Rifles':
 			n = libtcod.random_get_int(0, 0, 3)
-			PlaySound('rifles_firing_0' + str(n))
+			PlaySound('rifle_fire_0' + str(n))
 			return
 	 
 	elif action == 'he_explosion':
@@ -9399,8 +9422,11 @@ def DoScenario():
 			text = 'The scenario is over: ' + scenario.win_desc
 			ShowNotification(text)
 			exit_scenario = True
-			if scenario.player_unit.alive:
-				scenario.player_unit.InitPostScenario()
+			
+			# have each unit in the player unit group recover
+			for unit in campaign.player_unit_group:
+				if unit.alive:
+					unit.InitPostScenario()
 			continue
 		
 		# if player is not active, do AI actions

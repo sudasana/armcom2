@@ -36,10 +36,13 @@
 
 ##### Libraries #####
 import os, sys						# OS-related stuff
+
 if os.name == 'posix':					# if linux - load system libtcodpy
 	import libtcodpy_local as libtcod		
 else:
 	import libtcodpy as libtcod			# The Doryen Library
+	os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)	# set sdl2 dll path
+	
 from configparser import ConfigParser			# saving and loading settings
 from random import choice, shuffle, sample		# for randomness
 from math import floor, cos, sin, sqrt			# math
@@ -49,7 +52,6 @@ import json						# for loading JSON data
 import time
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
-os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)
 import sdl2.sdlmixer as mixer				# sound effects
 
 
@@ -69,7 +71,7 @@ ALWAYS_SNIPER = False					# random event is always a sniper
 INJURY_IS_DEATH = False					# any personnel injury results in death
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 1.0.0-2018-09-29'			# game version
+VERSION = 'Alpha 1.0.0-2018-09-27'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -192,14 +194,6 @@ HEX_TERRAIN_DESC = {
 
 # maximum length for crew first or last names
 CREW_NAME_MAX_LENGTH = 18
-
-# list of scenario menus and their highlight colours
-MENU_LIST = [
-	('Command', 1, libtcod.Color(130, 0, 180)),
-	('Crew Action', 2, libtcod.Color(140, 140, 0)),
-	('Movement', 3, libtcod.Color(70, 140, 0)),
-	('Combat', 4, libtcod.Color(180, 0, 45))
-]
 
 # list of campaign day menus and their highlight colours
 CD_MENU_LIST = [
@@ -2841,7 +2835,7 @@ class Scenario:
 			'goes_first' : 0,		# which player side acts first in each turn
 		}
 		
-		self.active_menu = 2			# currently active player menu; 0:none
+		#self.active_menu = 2			# currently active player menu; 0:none
 		self.airsup_menu_active = False		# Air Support sub-menu active
 		self.artsup_menu_active = False		# Artillery "
 		
@@ -4857,13 +4851,11 @@ class Personnel:
 		
 		self.status = 'Alert'				# current mental/physical status
 		
-		
-		
 		self.rank = 0					# rank level
 		self.rank_desc = ''				# text name for rank
 		self.SetRank()
 		
-		self.action_list = []				# list of possible special actions
+		self.action_list = []				# list of possible actions
 		self.current_action = 'None'			# currently active action
 		self.action_bonus_used = False
 		
@@ -4967,41 +4959,27 @@ class Personnel:
 			return False
 		return True
 	
-	# set a new action; if forward is True, select next in list, otherwise previous
-	def SetAction(self, forward):
+	# build a list of possible actions for this crewman
+	def BuildActionList(self):
 		
-		# crewman cannot act
-		if self.current_action == 'N/A':
-			return False
+		self.action_list = []
+		self.current_action = 'None'
 		
-		# no other actions possible
-		if len(self.action_list) == 1:
-			return False
+		# no actions possible
+		if not self.AbleToAct():
+			return
 		
-		# action was set automatically, cannot change
-		if 'selectable' not in CREW_ACTIONS[self.current_action]:
-			return False
+		if self.current_position.name == 'Driver':
+			
+			self.action_list.append(('W', 'Move Forward'))
+			self.action_list.append(('S', 'Move Backward'))
+			self.action_list.append(('A', 'Pivot Port'))
+			self.action_list.append(('D', 'Pivot Stb'))
+			self.action_list.append(('H', 'Go Hull Down'))
 		
-		# action bonus was already used
-		if self.action_bonus_used:
-			return False
+		# all crew positions
+		self.action_list.append(('E', 'Toggle Hatch'))
 		
-		i = self.action_list.index(self.current_action)
-		
-		if forward:
-			if i == len(self.action_list) - 1:
-				self.current_action = self.action_list[0]
-			else:
-				self.current_action = self.action_list[i+1]
-		
-		else:
-			if i == 0:
-				self.current_action = self.action_list[-1]
-			else:
-				self.current_action = self.action_list[i-1]
-		
-		return True
-	
 	# check current CE/BU status and fix if required
 	def CheckCE(self):
 		if not self.current_position.hatch:
@@ -5689,35 +5667,7 @@ class Unit:
 			# no crewman in this position
 			if position.crewman is None: continue
 			
-			action_list = []
-			
-			# crewman cannot act
-			if not position.crewman.AbleToAct():
-				position.crewman.current_action = 'N/A'
-			else:
-				# reset current action unless previous was selected
-				if 'selectable' not in CREW_ACTIONS[position.crewman.current_action]:
-					position.crewman.current_action = 'None'
-				
-				for action_name in CREW_ACTIONS:
-					
-					# skip if not selectable
-					if 'selectable' not in CREW_ACTIONS[action_name]:
-						continue
-					
-					# action restricted to a list of positions
-					if 'position_list' in CREW_ACTIONS[action_name]:
-						if position.name not in CREW_ACTIONS[action_name]['position_list']:
-							continue
-					action_list.append(action_name)
-			
-			# copy over the list to the crewman
-			position.crewman.action_list = action_list[:]
-			
-			# if previous action was selected and no longer available, reset
-			if 'selectable' in CREW_ACTIONS[position.crewman.current_action]:
-				if position.crewman.current_action not in position.crewman.action_list:
-					position.crewman.current_action = 'None'
+			position.crewman.BuildActionList()
 			
 			# reset bonus flag
 			position.crewman.action_bonus_used = False
@@ -8330,29 +8280,37 @@ def DrawFrame(console, x, y, w, h):
 # draw info about a series of crew positions and their crewmen to a console
 def DisplayCrew(unit, console, x, y, highlight_selected, skip_action=False):
 	
+	n = 0
+	
 	for position in unit.crew_positions:
+		
+		n += 1
 		
 		# highlight selected position and crewman
 		if highlight_selected:
-			if unit.crew_positions.index(position) == campaign.selected_position:
+			if n-1 == campaign.selected_position:
 				libtcod.console_set_default_background(console, libtcod.darker_blue)
 				libtcod.console_rect(console, x, y, 24, 3, True, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(console, libtcod.black)
 		
-		# display position name and location in vehicle (eg. turret/hull)
-		libtcod.console_set_default_foreground(console, libtcod.light_blue)
-		ConsolePrint(console, x, y, position.name)
-		libtcod.console_set_default_foreground(console, libtcod.white)
-		ConsolePrintEx(console, x+23, y, libtcod.BKGND_NONE, 
-			libtcod.RIGHT, position.location)
+		# display ordinal number of position, location in vehicle, and name of position
+		libtcod.console_set_default_foreground(console, ACTION_KEY_COL)
+		ConsolePrint(console, x, y, str(n))
 		
-		# display last name of crewman and buttoned up / exposed status if any
+		libtcod.console_set_default_foreground(console, libtcod.light_blue)
+		ConsolePrint(console, x, y+1, position.name)
+		
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		ConsolePrintEx(console, x+23, y, libtcod.BKGND_NONE, libtcod.RIGHT,
+			position.location)
+		
+		# if crewman is present in position, display his info
 		if position.crewman is None:
-			ConsolePrint(console, x, y+1, 'Empty')
+			ConsolePrint(console, x+2, y, 'Empty')
 		else:
-			
+		
 			# names might have special characters so we encode it before printing it
-			ConsolePrint(console, x, y+1, position.crewman.last_name.encode('IBM850'))
+			ConsolePrint(console, x+2, y, position.crewman.last_name.encode('IBM850'))
 		
 			if position.crewman.ce:
 				text = 'CE'
@@ -8360,7 +8318,7 @@ def DisplayCrew(unit, console, x, y, highlight_selected, skip_action=False):
 				text = 'BU'
 			ConsolePrintEx(console, x+23, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
 		
-			# display current action
+			# display current action if any
 			if not skip_action:
 				# truncate string if required
 				text = position.crewman.current_action
@@ -8743,7 +8701,6 @@ def UpdateUnitCon():
 		
 	# display LoS if applicable
 	if scenario.active_unit != scenario.player_unit: return
-	if scenario.active_menu != 4: return
 	if scenario.player_target is None: return
 	if session.hide_player_los: return
 	line = GetLine(scenario.player_unit.screen_x, scenario.player_unit.screen_y,
@@ -8760,19 +8717,14 @@ def UpdatePlayerInfoCon():
 
 
 # update crew position console 24x26
-# displaying player unit crew positions and current crewmen if any
+# display player unit crew positions and current crewmen if any
 def UpdateCrewPositionCon():
 	libtcod.console_clear(crew_position_con)
 	
 	# no crew positions in this unit
 	if len(scenario.player_unit.crew_positions) == 0: return
 	
-	highlight_selected = False
-	# crew action menu active
-	if scenario.active_menu == 2:
-		highlight_selected = True
-	
-	DisplayCrew(scenario.player_unit, crew_position_con, 0, 1, highlight_selected)
+	DisplayCrew(scenario.player_unit, crew_position_con, 0, 1, True)
 
 
 # list current player commands
@@ -8785,28 +8737,36 @@ def UpdateCommandCon():
 	if scenario.game_turn['active_player'] == 1:
 		return
 	
-	# draw menu title based on active menu
-	x = 0
-	for (text, num, col) in MENU_LIST:
-		libtcod.console_set_default_background(command_con, col)
-		libtcod.console_rect(command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
-		
-		# menu number
-		ConsolePrint(command_con, x, 0, str(num))
-		libtcod.console_set_default_foreground(command_con, libtcod.white)
-		
-		x += 2
-		
-		# display menu text if active
-		if scenario.active_menu == num:
-			libtcod.console_rect(command_con, x, 0, len(text)+2, 1, True, libtcod.BKGND_SET)
-			ConsolePrint(command_con, x, 0, text)
-			x += len(text) + 2
-	
-	# fill in rest of menu line with final colour
-	libtcod.console_rect(command_con, x, 0, 24-x, 1, True, libtcod.BKGND_SET)
-	
+	# menu title
+	libtcod.console_set_default_background(command_con, libtcod.dark_blue)
+	libtcod.console_rect(command_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
 	libtcod.console_set_default_background(command_con, libtcod.black)
+	ConsolePrint(command_con, 0, 0, 'Crewman Actions')
+	
+	crewman = campaign.player_unit.crew_positions[campaign.selected_position].crewman
+	if crewman is not None:
+		
+		y = 2
+		
+		# no actions possible
+		if len(crewman.action_list) == 0:
+			libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
+			ConsolePrint(command_con, 1, y, 'None Available')
+		else:
+			for (command_key, text) in crewman.action_list:
+				libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+				ConsolePrint(command_con, 1, y, command_key)
+				libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
+				ConsolePrint(command_con, 3, y, text)
+				y += 1
+	
+	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
+	ConsolePrint(command_con, 1, 10, 'Enter')
+	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
+	ConsolePrint(command_con, 7, 10, 'End Turn')
+	
+	return
+	
 	
 	# command menu
 	if scenario.active_menu == 1:
@@ -8900,12 +8860,7 @@ def UpdateCommandCon():
 		ConsolePrint(command_con, 6, 5, 'Select Ammo')
 		ConsolePrint(command_con, 6, 6, 'Fire')
 		
-	libtcod.console_set_default_foreground(command_con, ACTION_KEY_COL)
-	ConsolePrint(command_con, 1, 9, '1-4')
-	ConsolePrint(command_con, 1, 10, 'Enter')
-	libtcod.console_set_default_foreground(command_con, libtcod.lighter_grey)
-	ConsolePrint(command_con, 7, 9, 'Switch Menu')
-	ConsolePrint(command_con, 7, 10, 'End Turn')
+	
 	
 	
 # draw information about the hex currently under the mouse cursor to the hex terrain info
@@ -8953,6 +8908,64 @@ def UpdateHexTerrainCon():
 def UpdateContextCon():
 	libtcod.console_clear(context_con)
 	libtcod.console_set_default_foreground(context_con, libtcod.white)
+	
+	# enemy player active
+	if scenario.game_turn['active_player'] == 1:
+		return
+	
+	crewman = campaign.player_unit.crew_positions[campaign.selected_position].crewman
+	
+	# no player crewman in selected position
+	if crewman is None: return
+	
+	libtcod.console_set_default_background(context_con, libtcod.darker_blue)
+	libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
+	ConsolePrint(context_con, 0, 0, crewman.current_position.name)
+	libtcod.console_set_default_background(context_con, libtcod.black)
+	
+	# Driver position active
+	if crewman.current_position.name == 'Driver':
+		
+		# display movement status
+		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
+		if scenario.player_unit.move_finished:
+			ConsolePrint(context_con, 0, 2, 'Move finished')
+			return
+		if scenario.player_unit.fired:
+			ConsolePrint(context_con, 0, 2, 'Already Fired')
+			return
+		
+		# display HD chance if any in current terrain
+		chance = scenario.player_unit.GetHullDownChance()
+		if chance > 0.0:
+			ConsolePrint(context_con, 0, 2, 'HD Chance: ' + str(chance) + '%%')
+		
+		# see if there's a hex in front of us
+		(hx, hy) = GetAdjacentHex(scenario.player_unit.hx, scenario.player_unit.hy,
+			scenario.player_unit.facing)
+		if (hx, hy) not in scenario.cd_hex.map_hexes: return
+		
+		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+		ConsolePrint(context_con, 0, 4, 'Terrain ahead:')
+		
+		# display destination terrain type
+		text = HEX_TERRAIN_DESC[scenario.cd_hex.map_hexes[(hx, hy)].terrain_type]
+		ConsolePrint(context_con, 1, 5, text)
+		
+		# display road status if any
+		if scenario.player_unit.facing in scenario.cd_hex.map_hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].dirt_roads:
+			ConsolePrint(context_con, 1, 6, 'Dirt Road')
+		
+		# display chance of getting a bonus move
+		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
+		ConsolePrint(context_con, 0, 7, '+1 move: ' + str(chance) + '%%')
+		
+		
+		
+		
+	
+	# TEMP
+	return
 	
 	# no menu active
 	if scenario.active_menu == 0:
@@ -9015,44 +9028,7 @@ def UpdateContextCon():
 	# movement
 	elif scenario.active_menu == 3:
 		
-		libtcod.console_set_default_background(context_con, libtcod.darker_green)
-		libtcod.console_rect(context_con, 0, 0, 16, 1, True, libtcod.BKGND_SET)
-		ConsolePrint(context_con, 0, 0, 'Movement')
-		libtcod.console_set_default_background(context_con, libtcod.black)
-		
-		# display movement status
-		libtcod.console_set_default_foreground(context_con, libtcod.light_green)
-		if scenario.player_unit.move_finished:
-			ConsolePrint(context_con, 0, 2, 'Move finished')
-			return
-		if scenario.player_unit.fired:
-			ConsolePrint(context_con, 0, 2, 'Already Fired')
-			return
-		
-		# display HD chance if any in current terrain
-		chance = scenario.player_unit.GetHullDownChance()
-		if chance > 0.0:
-			ConsolePrint(context_con, 0, 2, 'HD Chance: ' + str(chance) + '%%')
-		
-		# see if there's a hex in front of us
-		(hx, hy) = GetAdjacentHex(scenario.player_unit.hx, scenario.player_unit.hy,
-			scenario.player_unit.facing)
-		if (hx, hy) not in scenario.cd_hex.map_hexes: return
-		
-		libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
-		ConsolePrint(context_con, 0, 4, 'Terrain ahead:')
-		
-		# display destination terrain type
-		text = HEX_TERRAIN_DESC[scenario.cd_hex.map_hexes[(hx, hy)].terrain_type]
-		ConsolePrint(context_con, 1, 5, text)
-		
-		# display road status if any
-		if scenario.player_unit.facing in scenario.cd_hex.map_hexes[(scenario.player_unit.hx, scenario.player_unit.hy)].dirt_roads:
-			ConsolePrint(context_con, 1, 6, 'Dirt Road')
-		
-		# display chance of getting a bonus move
-		chance = round(scenario.CalcBonusMove(scenario.player_unit, hx, hy), 2)
-		ConsolePrint(context_con, 0, 7, '+1 move: ' + str(chance) + '%%')
+		pass
 	
 	# combat
 	elif scenario.active_menu == 4:
@@ -9540,19 +9516,100 @@ def DoScenario():
 		# key commands
 		key_char = chr(key.c).lower()
 		
-		# directly switch to a different active menu (same for all keyboard layouts)
-		if key_char in ['1', '2', '3', '4']:
-			if scenario.active_menu != int(key_char):
-				scenario.active_menu = int(key_char)
+		# activate a different crew position
+		if key_char in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']:
+			n = int(key_char)
+			if n == 0: n = 10
+			if scenario.player_unit.crew_positions == n-1: continue
+			if len(scenario.player_unit.crew_positions) >= n:
+				campaign.selected_position = n - 1
 				UpdateCommandCon()
-				UpdateUnitCon()				# to show/hide LoS
 				UpdateContextCon()
 				UpdateCrewPositionCon()
 				UpdateScenarioDisplay()
 			continue
 		
-		# map key to current keyboard layout
-		key_char = DecodeKey(key_char)
+		# map key to current keyboard layout and capitalize
+		key_char = DecodeKey(key_char).upper()
+		
+		# check to see if command is in possible crew actions
+		crewman = campaign.player_unit.crew_positions[campaign.selected_position].crewman
+		if crewman is None: continue
+		
+		# find the selected action in the list of crew actions
+		for (command_key, action) in crewman.action_list:
+			if key_char == command_key:
+				
+				# Driver Actions
+				
+				# move player unit forward / backward
+				if action in ['Move Forward', 'Move Backward']:
+				
+					reverse = False
+					if action == 'Move Backward':
+						reverse = True
+					
+					if scenario.player_unit.MoveForward(reverse):
+						scenario.RebuildPlayerTargetList()
+						UpdatePlayerInfoCon()
+						UpdateContextCon()
+						UpdateCrewPositionCon()
+						scenario.CenterVPOnPlayer()
+						scenario.SetVPHexes()
+						UpdateVPCon()
+						UpdateUnitCon()
+						UpdateObjectiveInfoCon()
+						UpdateHexTerrainCon()
+						UpdateScenarioDisplay()
+						libtcod.console_flush()
+						SaveGame()
+				
+				# pivot hull facing
+				elif action in ['Pivot Port', 'Pivot Stb']:
+				
+					if action == 'Pivot Port':
+						result = scenario.player_unit.Pivot(False)
+					else:
+						result = scenario.player_unit.Pivot(True)
+					if result:
+						scenario.RebuildPlayerTargetList()
+						scenario.CenterVPOnPlayer()
+						scenario.SetVPHexes()
+						UpdatePlayerInfoCon()
+						UpdateContextCon()
+						UpdateVPCon()
+						UpdateUnitCon()
+						UpdateObjectiveInfoCon()
+						UpdateHexTerrainCon()
+						UpdateScenarioDisplay()
+				
+				# attempt Hull Down
+				elif action == 'Go Hull Down':
+					
+					# not possible
+					if scenario.player_unit.GetHullDownChance() == 0.0: continue
+					
+					# attempt HD
+					result = scenario.player_unit.CheckHullDownGain(direction=scenario.player_unit.facing)
+					scenario.player_unit.moved = True
+					scenario.player_unit.move_finished = True
+					
+					# was attempt successful
+					if result:
+						text = 'You move into a Hull Down position.'
+					else:
+						text = 'You were unable to move into a Hull Down position.'
+					Message(text, hx=scenario.player_unit.hx, hy=scenario.player_unit.hy, no_log=True)
+					UpdatePlayerInfoCon()
+					UpdateContextCon()
+					UpdateVPCon()
+					UpdateUnitInfoCon()
+					UpdateScenarioDisplay()	
+		
+		
+		# TEMP
+		continue
+		
 		
 		# command actions
 		if scenario.active_menu == 1:
@@ -9663,24 +9720,6 @@ def DoScenario():
 				UpdateCrewPositionCon()
 				UpdateScenarioDisplay()
 			
-			# set action for selected crewman
-			elif key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
-				
-				position = scenario.player_unit.crew_positions[campaign.selected_position]
-				
-				# check for empty position
-				if position.crewman is not None:
-					if key_char == 'a' or key.vk == libtcod.KEY_LEFT:
-						result = position.crewman.SetAction(False)
-					else:
-						result = position.crewman.SetAction(True)
-					if result:
-						UpdateContextCon()
-						UpdateCrewPositionCon()
-						scenario.player_unit.CalcFoV()
-						UpdateVPCon()
-						UpdateScenarioDisplay()
-			
 			# toggle BU/CE for this crewman
 			elif chr(key.c).lower() == 'e':
 				
@@ -9692,73 +9731,6 @@ def DoScenario():
 						UpdateVPCon()
 						UpdateScenarioDisplay()
 		
-		# movement
-		elif scenario.active_menu == 3:
-		
-			# move player unit forward / backward
-			if key_char in ['w', 's'] or key.vk in [libtcod.KEY_UP, libtcod.KEY_DOWN]:
-				
-				reverse = False
-				if key_char == 's' or key.vk == libtcod.KEY_DOWN:
-					reverse = True
-				
-				if scenario.player_unit.MoveForward(reverse):
-					scenario.RebuildPlayerTargetList()
-					UpdatePlayerInfoCon()
-					UpdateContextCon()
-					UpdateCrewPositionCon()
-					scenario.CenterVPOnPlayer()
-					scenario.SetVPHexes()
-					UpdateVPCon()
-					UpdateUnitCon()
-					UpdateObjectiveInfoCon()
-					UpdateHexTerrainCon()
-					UpdateScenarioDisplay()
-					libtcod.console_flush()
-					SaveGame()
-			
-			# pivot hull facing
-			elif key_char in ['a', 'd'] or key.vk in [libtcod.KEY_LEFT, libtcod.KEY_RIGHT]:
-				
-				if key_char == 'a' or key.vk == libtcod.KEY_LEFT:
-					result = scenario.player_unit.Pivot(False)
-				else:
-					result = scenario.player_unit.Pivot(True)
-				if result:
-					scenario.RebuildPlayerTargetList()
-					scenario.CenterVPOnPlayer()
-					scenario.SetVPHexes()
-					UpdatePlayerInfoCon()
-					UpdateContextCon()
-					UpdateVPCon()
-					UpdateUnitCon()
-					UpdateObjectiveInfoCon()
-					UpdateHexTerrainCon()
-					UpdateScenarioDisplay()
-			
-			# attempt Hull Down
-			elif chr(key.c).lower() == 'h':
-				
-				# not possible
-				if scenario.player_unit.GetHullDownChance() == 0.0: continue
-				
-				# attempt HD
-				result = scenario.player_unit.CheckHullDownGain(direction=scenario.player_unit.facing)
-				scenario.player_unit.moved = True
-				scenario.player_unit.move_finished = True
-				
-				# was attempt successful
-				if result:
-					text = 'You move into a Hull Down position.'
-				else:
-					text = 'You were unable to move into a Hull Down position.'
-				Message(text, hx=scenario.player_unit.hx, hy=scenario.player_unit.hy, no_log=True)
-				UpdatePlayerInfoCon()
-				UpdateContextCon()
-				UpdateVPCon()
-				UpdateUnitInfoCon()
-				UpdateScenarioDisplay()	
-			
 		# combat
 		elif scenario.active_menu == 4:
 			

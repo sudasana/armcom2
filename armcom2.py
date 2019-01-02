@@ -120,7 +120,8 @@ ACTION_KEY_COL = libtcod.Color(51, 153, 255)		# colour for key commands
 HIGHLIGHT_MENU_COL = libtcod.Color(30, 70, 130)		# background highlight colour for selected menu option
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
-ENEMY_UNIT_COL = libtcod.light_red			# known "
+ENEMY_UNIT_COL = libtcod.Color(255, 20, 20)		# known "
+ALLIED_UNIT_COL = libtcod.Color(20, 20, 255)		# allied unit display colour
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
 
 # list of possible keyboard layout settings
@@ -172,6 +173,17 @@ MONTH_NAMES = [
 ##########################################################################################
 #                                         Classes                                        #
 ##########################################################################################
+
+# Campaign: stores data about a campaign and calendar currently in progress
+class Campaign:
+	def __init__(self):
+		
+		# placeholder for player unit
+		self.player_unit = None
+		
+		# holder for active enemy units
+		self.enemy_units = []
+		
 
 # Session: stores data that is generated for each game session and not stored in the saved game
 class Session:
@@ -232,22 +244,248 @@ class Unit:
 		
 		self.unit_id = unit_id			# unique ID for unit type
 		self.alive = True			# unit is alive
+		self.owning_player = 0			# unit is allied to 0:player 1:enemy
+		
+		
+		self.weapon_list = []			# list of unit weapons
 		
 		# load unit stats from JSON file
-		#with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
-		#	unit_types = json.load(data_file)
-		#if unit_id not in unit_types:
-		#	print('ERROR: Could not find unit id: ' + unit_id)
-		#	self.unit_id = None
-		#	return
-		#self.stats = unit_types[unit_id].copy()
-
+		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
+			unit_types = json.load(data_file)
+		if unit_id not in unit_types:
+			print('ERROR: Could not find unit id: ' + unit_id)
+			self.unit_id = None
+			return
+		self.stats = unit_types[unit_id].copy()
 		
-# Map Hex: one zone of terrain on the scenario map
+		# set up initial scenario statuses
+		self.ResetMe()
+	
+	
+	# set/reset all scenario statuses
+	def ResetMe(self):
+		
+		self.hx = 0				# location in scenario hex map
+		self.hy = 0
+		
+		# TEMP
+		self.spotted = True			# unit has been spotted by opposing side
+		self.hull_down = []			# list of directions unit in which Hull Down
+		self.moving = False
+		self.fired = False
+		
+		self.facing = None
+		self.turret_facing = None
+		self.deployed = False
+	
+	
+	# check for the value of a stat, return None if stat not present
+	def GetStat(self, stat_name):
+		if stat_name not in self.stats:
+			return None
+		return self.stats[stat_name]
+	
+	
+	# move this unit into the given scenario map hex
+	def SpawnAt(self, hx, hy):
+		self.hx = hx
+		self.hy = hy
+		for map_hex in scenario.map_hexes:
+			if map_hex.hx == hx and map_hex.hy == hy:
+				map_hex.unit_stack.append(self)
+				return
+		
+	
+	# return the display character to use on the map viewport
+	def GetDisplayChar(self):
+		# player unit
+		if campaign.player_unit == self: return '@'
+		
+		# unknown enemy unit
+		if self.owning_player == 1 and not self.spotted: return '?'
+		
+		unit_category = self.GetStat('category')
+		
+		# sniper
+		if self.unit_id == 'Sniper': return 248
+		
+		# infantry
+		if unit_category == 'Infantry': return 176
+		
+		# gun, set according to deployed status / hull facing
+		if unit_category == 'Gun':
+			if self.facing is None:		# facing not yet set
+				return '!'
+			if not self.deployed:
+				return 124
+			elif self.facing in [5, 0, 1]:
+				return 232
+			elif self.facing in [2, 3, 4]:
+				return 233
+			else:
+				return '!'		# should not happen
+		
+		# vehicle
+		if unit_category == 'Vehicle':
+			
+			# turretless vehicle
+			if self.turret_facing is None:
+				return 249
+			return 9
+
+		# default
+		return '!'
+	
+	
+	# draw this unit to the scenario unit layer console
+	def DrawMe(self):
+		
+		# don't display if not alive any more
+		if not self.alive: return
+		
+		# determine draw location
+		(x,y) = scenario.PlotHex(self.hx, self.hy)
+		
+		# determine foreground color to use
+		if self.owning_player == 1:
+			if not self.spotted:
+				col = UNKNOWN_UNIT_COL
+			else:
+				col = ENEMY_UNIT_COL
+		else:	
+			if self == campaign.player_unit:
+				col = libtcod.white
+			else:
+				col = ALLIED_UNIT_COL
+		
+		# draw main display character
+		libtcod.console_put_char_ex(unit_con, x, y, self.GetDisplayChar(),
+			col, libtcod.black)
+		
+		# determine if we need to display a turret / gun depiction
+		if self.GetStat('category') == 'Infantry': return
+		if self.owning_player == 1 and not self.spotted: return
+		if self.GetStat('category') == 'Gun' and not self.deployed: return
+		
+		# use turret facing if present, otherwise hull facing
+		if self.turret_facing is not None:
+			facing = self.turret_facing
+		else:
+			facing = self.facing
+		
+		# determine location to draw turret/gun character
+		x_mod, y_mod = PLOT_DIR[facing]
+		char = TURRET_CHAR[facing]
+		libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
+		
+	
+	# display info on this unit to a given console starting at x,y
+	# if status is False, don't display current status flags
+	def DisplayMyInfo(self, console, x, y, status=True):
+		
+		libtcod.console_set_default_background(console, libtcod.black)
+		libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
+		
+		libtcod.console_print(console, x, y, self.unit_id)
+		libtcod.console_set_default_foreground(console, libtcod.light_grey)
+		libtcod.console_print(console, x, y+1, self.GetStat('class'))
+		
+		portrait = self.GetStat('portrait')
+		if portrait is not None:
+			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, console, x, y+2)
+		
+		# weapons
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_set_default_background(console, libtcod.darkest_red)
+		libtcod.console_rect(console, x, y+10, 24, 2, True, libtcod.BKGND_SET)
+		
+		text1 = ''
+		text2 = ''
+		for weapon in self.weapon_list:
+			if weapon.GetStat('type') == 'Gun':
+				if text1 != '': text1 += ', '
+				text1 += weapon.stats['name']
+			else:
+				if text2 != '': text2 += ', '
+				text2 += weapon.stats['name']
+		libtcod.console_print(console, x, y+10, text1)
+		libtcod.console_print(console, x, y+11, text2)
+		
+		# armour
+		armour = self.GetStat('armour')
+		if armour is None:
+			libtcod.console_print(console, x, y+12, 'Unarmoured')
+		else:
+			libtcod.console_print(console, x, y+12, 'Armoured')
+			libtcod.console_set_default_foreground(console, libtcod.light_grey)
+			if self.GetStat('turret'):
+				text = 'T'
+			else:
+				text = 'U'
+			text += ' ' + armour['turret_front'] + '/' + armour['turret_side']
+			libtcod.console_print(console, x+1, y+13, text)
+			text = 'H ' + armour['hull_front'] + '/' + armour['hull_side']
+			libtcod.console_print(console, x+1, y+14, text)
+		
+		# movement
+		libtcod.console_set_default_foreground(console, libtcod.light_green)
+		libtcod.console_print_ex(console, x+23, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,
+			self.GetStat('movement_class'))
+		
+		# recce and/or off road
+		libtcod.console_set_default_foreground(console, libtcod.dark_green)
+		text = ''
+		if self.GetStat('recce') is not None:
+			text += 'Recce'
+		if self.GetStat('off_road') is not None:
+			if text != '':
+				text += ' '
+			text += 'ATV'
+		libtcod.console_print_ex(console, x+23, y+13, libtcod.BKGND_NONE, libtcod.RIGHT,
+			text)
+		
+		# size class
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		size_class = self.GetStat('size_class')
+		if size_class is not None:
+			if size_class != 'Normal':
+				libtcod.console_print_ex(console, x+23, y+14, libtcod.BKGND_NONE,
+					libtcod.RIGHT, size_class)
+			
+		# mark place in case we skip unit status display
+		ys = 15
+		if status:
+			
+			# Hull Down status if any
+			if len(self.hull_down) > 0:
+				libtcod.console_set_default_foreground(console, libtcod.sepia)
+				libtcod.console_print(console, x+8, ys-1, text)
+				char = GetDirectionalArrow(self.hull_down[0])
+				libtcod.console_put_char_ex(unit_info_con, x+11, ys-1, char, libtcod.sepia, libtcod.black)
+		
+			# reset of unit status
+			libtcod.console_set_default_foreground(console, libtcod.light_grey)
+			libtcod.console_set_default_background(console, libtcod.darkest_blue)
+			libtcod.console_rect(console, x, y+ys, 24, 2, True, libtcod.BKGND_SET)
+			
+			text = ''
+			if self.moving:
+				text += 'Moving '
+			if self.fired:
+				text += 'Fired '
+			libtcod.console_print(console, x, y+ys+1, text)
+			
+			ys = 17
+
+		libtcod.console_set_default_background(console, libtcod.black)
+
+
+# MapHex: a single hex on the scenario map
 class MapHex:
 	def __init__(self, hx, hy):
-		self.hx = hx						# hex coordinates in the map
-		self.hy = hy						# 0,0 is centre of map
+		self.hx = hx
+		self.hy = hy
+		self.unit_stack = []
 
 
 # Scenario: represents a single battle encounter
@@ -257,10 +495,16 @@ class Scenario:
 		# generate hex map: single hex surrounded by 4 hex rings. Final ring is not normally
 		# part of play and stores units that are coming on or going off of the map proper
 		self.map_hexes = []
-		self.map_hexes.append((0,0))
+		self.map_hexes.append(MapHex(0,0))
 		for r in range(1, 5):
 			for (hx, hy) in GetHexRing(0, 0, r):
-				self.map_hexes.append((hx,hy))
+				self.map_hexes.append(MapHex(hx,hy))
+	
+	# update player unit info console
+	def UpdatePlayerInfoCon(self):
+		libtcod.console_clear(player_info_con)
+		campaign.player_unit.DisplayMyInfo(player_info_con, 0, 0)
+	
 	
 	# plot the center of a given in-game hex on the scenario hex map console
 	# 0,0 appears in centre of console
@@ -268,6 +512,23 @@ class Scenario:
 		x = (hx*7) + 26
 		y = (hy*6) + (hx*3) + 21
 		return (x,y)
+	
+	# update unit layer console
+	def UpdateUnitCon(self):
+		
+		libtcod.console_clear(unit_con)
+		for map_hex in self.map_hexes:
+			# no units in hex
+			if len(map_hex.unit_stack) == 0: continue
+			
+			# draw top unit in stack
+			map_hex.unit_stack[0].DrawMe()
+			
+			# FUTURE: draw unit's terrain as well
+			
+			if len(map_hex.unit_stack) == 1: continue
+			# FUTURE: draw stack number indicator if any
+	
 	
 	# update hexmap console
 	def UpdateHexmapCon(self):
@@ -279,9 +540,9 @@ class Scenario:
 		libtcod.console_set_key_color(scen_hex, KEY_COLOR)
 		
 		# draw hexes to hex map console
-		for (hx, hy) in self.map_hexes:
-			if GetHexDistance(0, 0, hx, hy) > 3: break
-			(x,y) = self.PlotHex(hx, hy)
+		for map_hex in self.map_hexes:
+			if GetHexDistance(0, 0, map_hex.hx, map_hex.hy) > 3: break
+			(x,y) = self.PlotHex(map_hex.hx, map_hex.hy)
 			libtcod.console_blit(scen_hex, 0, 0, 0, 0, hexmap_con, x-5, y-3)
 			
 		del scen_hex
@@ -293,7 +554,9 @@ class Scenario:
 		libtcod.console_clear(con)
 		
 		libtcod.console_blit(bkg_console, 0, 0, 0, 0, con, 0, 0)
+		libtcod.console_blit(player_info_con, 0, 0, 0, 0, con, 1, 1)
 		libtcod.console_blit(hexmap_con, 0, 0, 0, 0, con, 32, 9)
+		libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
@@ -304,10 +567,23 @@ class Scenario:
 		
 		# set up and load scenario consoles
 		global bkg_console
-		global hexmap_con
+		global player_info_con, hexmap_con, unit_con
 		
 		# background outline console for left column
 		bkg_console = LoadXP('bkg.xp')
+		
+		# player unit info console
+		player_info_con = libtcod.console_new(24, 18)
+		libtcod.console_set_default_background(player_info_con, libtcod.black)
+		libtcod.console_set_default_foreground(player_info_con, libtcod.white)
+		libtcod.console_clear(player_info_con)
+		
+		# unit layer console
+		unit_con = libtcod.console_new(53, 43)
+		libtcod.console_set_default_background(unit_con, KEY_COLOR)
+		libtcod.console_set_default_foreground(unit_con, libtcod.white)
+		libtcod.console_set_key_color(unit_con, KEY_COLOR)
+		libtcod.console_clear(unit_con)
 		
 		# hex map console
 		hexmap_con = libtcod.console_new(53, 43)
@@ -316,7 +592,28 @@ class Scenario:
 		libtcod.console_clear(hexmap_con)
 		
 		
+		# set up units
+		campaign.player_unit.ResetMe()
+		campaign.player_unit.facing = 0
+		campaign.player_unit.turret_facing = 0
+		campaign.player_unit.SpawnAt(0,0)
+		
+		# add player unit to hex stack in 0,0
+		
+		
+		
+		# generate an enemy unit
+		unit = Unit('7TP')
+		unit.owning_player = 1
+		unit.facing = 3
+		unit.turret_facing = 3
+		unit.SpawnAt(0,-2)
+		campaign.enemy_units.append(unit)
+		
+		
 		# generate consoles and draw scenario screen for first time
+		self.UpdatePlayerInfoCon()
+		self.UpdateUnitCon()
 		self.UpdateHexmapCon()
 		self.UpdateScenarioDisplay()
 		
@@ -738,7 +1035,7 @@ class CampaignDay:
 			text += ' '
 			text += str(self.map_hexes[(hx,hy)].enemy_organization)
 			(x,y) = self.PlotCDHex(hx, hy)
-			ConsolePrint(cd_unit_con, x-1, y, text)
+			libtcod.console_print(cd_unit_con, x-1, y, text)
 		
 		# draw player unit group
 		(hx, hy) = self.player_unit_location
@@ -814,7 +1111,7 @@ class CampaignDay:
 			if num not in [3, 5]:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
 			# menu number
-			ConsolePrint(cd_command_con, x, 0, str(num))
+			libtcod.console_print(cd_command_con, x, 0, str(num))
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
 			x += 2
@@ -823,7 +1120,7 @@ class CampaignDay:
 			if self.active_menu == num:
 				libtcod.console_rect(cd_command_con, x, 0, len(text)+2, 1,
 					True, libtcod.BKGND_SET)
-				ConsolePrint(cd_command_con, x, 0, text)
+				libtcod.console_print(cd_command_con, x, 0, text)
 				x += len(text) + 2
 		
 		# fill in rest of menu line with final colour
@@ -852,7 +1149,7 @@ class CampaignDay:
 			
 			if self.travel_direction is None:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				ConsolePrintEx(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
+				libtcod.console_printEx(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
 					'Select Direction')
 				return
 							
@@ -866,18 +1163,18 @@ class CampaignDay:
 			if map_hex.controlled_by == 1:
 				
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
-				ConsolePrint(cd_command_con, 1, 9, 'Enemy Controlled')
+				libtcod.console_print(cd_command_con, 1, 9, 'Enemy Controlled')
 				
 				if not map_hex.known_to_player:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-					ConsolePrint(cd_command_con, 0, 13, 'Recon: 15 mins.')
+					libtcod.console_print(cd_command_con, 0, 13, 'Recon: 15 mins.')
 					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-					ConsolePrint(cd_command_con, 5, 21, 'R')
+					libtcod.console_print(cd_command_con, 5, 21, 'R')
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-					ConsolePrint(cd_command_con, 12, 21, 'Recon')
+					libtcod.console_print(cd_command_con, 12, 21, 'Recon')
 				else:
-					ConsolePrint(cd_command_con, 2, 10, 'Strength: ' + str(map_hex.enemy_strength))
-					ConsolePrint(cd_command_con, 2, 11, 'Organization: ' + str(map_hex.enemy_organization))
+					libtcod.console_print(cd_command_con, 2, 10, 'Strength: ' + str(map_hex.enemy_strength))
+					libtcod.console_print(cd_command_con, 2, 11, 'Organization: ' + str(map_hex.enemy_organization))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -887,24 +1184,24 @@ class CampaignDay:
 			else:
 				text += '30'
 			text += ' mins.'
-			ConsolePrint(cd_command_con, 0, 14, text)
+			libtcod.console_print(cd_command_con, 0, 14, text)
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			ConsolePrint(cd_command_con, 5, 22, 'Enter')
+			libtcod.console_print(cd_command_con, 5, 22, 'Enter')
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			ConsolePrint(cd_command_con, 12, 22, 'Proceed')
+			libtcod.console_print(cd_command_con, 12, 22, 'Proceed')
 		
 		# resupply menu
 		elif self.active_menu == 5:
 			
-			ConsolePrintEx(cd_command_con, 12, 10, libtcod.BKGND_NONE, libtcod.CENTER,
+			libtcod.console_printEx(cd_command_con, 12, 10, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Request resupply:')
-			ConsolePrintEx(cd_command_con, 12, 11, libtcod.BKGND_NONE, libtcod.CENTER,
+			libtcod.console_printEx(cd_command_con, 12, 11, libtcod.BKGND_NONE, libtcod.CENTER,
 				'30 mins.')
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			ConsolePrint(cd_command_con, 8, 22, 'R')
+			libtcod.console_print(cd_command_con, 8, 22, 'R')
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			ConsolePrint(cd_command_con, 10, 22, 'Resupply')
+			libtcod.console_print(cd_command_con, 10, 22, 'Resupply')
 	
 	
 	# generate/update the time and weather console 33x4
@@ -928,8 +1225,8 @@ class CampaignDay:
 		
 		libtcod.console_set_default_background(time_weather_con, libtcod.black)
 		text = str(campaign.calendar['hour']).zfill(2) + ':' + str(campaign.calendar['minute']).zfill(2)
-		ConsolePrint(time_weather_con, 14, 1, text)
-		ConsolePrintEx(time_weather_con, 16, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
+		libtcod.console_print(time_weather_con, 14, 1, text)
+		libtcod.console_printEx(time_weather_con, 16, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'Clear')
 	
 	
 	# generate/update the campaign info console
@@ -938,9 +1235,9 @@ class CampaignDay:
 		
 		# current VP total
 		libtcod.console_set_default_foreground(cd_campaign_con, ACTION_KEY_COL)
-		ConsolePrint(cd_campaign_con, 0, 0, 'Campaign Info')
+		libtcod.console_print(cd_campaign_con, 0, 0, 'Campaign Info')
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
-		ConsolePrint(cd_campaign_con, 1, 2, 'VP: ' + str(campaign.player_vp))
+		libtcod.console_print(cd_campaign_con, 1, 2, 'VP: ' + str(campaign.player_vp))
 	
 	
 	# generate/update the zone info console
@@ -948,7 +1245,7 @@ class CampaignDay:
 		libtcod.console_clear(cd_zone_info_con)
 		
 		libtcod.console_set_default_foreground(cd_zone_info_con, ACTION_KEY_COL)
-		ConsolePrint(cd_zone_info_con, 0, 0, 'Zone Info')
+		libtcod.console_print(cd_zone_info_con, 0, 0, 'Zone Info')
 		
 		# mouse cursor outside of map area
 		if mouse.cx < 31 or mouse.cx > 59:
@@ -964,26 +1261,26 @@ class CampaignDay:
 		
 		# display hex zone coordinates
 		libtcod.console_set_default_foreground(cd_zone_info_con, libtcod.light_green)
-		ConsolePrint(cd_zone_info_con, 11, 0, zone_hex.coordinate)
+		libtcod.console_print(cd_zone_info_con, 11, 0, zone_hex.coordinate)
 		
 		# terrain
 		libtcod.console_set_default_foreground(cd_zone_info_con, libtcod.light_grey)
-		ConsolePrint(cd_zone_info_con, 0, 1, zone_hex.terrain_type)
+		libtcod.console_print(cd_zone_info_con, 0, 1, zone_hex.terrain_type)
 		
 		# control
 		if zone_hex.controlled_by == 0:
-			ConsolePrint(cd_zone_info_con, 0, 2, 'Friendly controlled')
+			libtcod.console_print(cd_zone_info_con, 0, 2, 'Friendly controlled')
 		else:
-			ConsolePrint(cd_zone_info_con, 0, 2, 'Enemy controlled')
+			libtcod.console_print(cd_zone_info_con, 0, 2, 'Enemy controlled')
 			if zone_hex.known_to_player:
-				ConsolePrint(cd_zone_info_con, 0, 3, 'Strength: ' + 
+				libtcod.console_print(cd_zone_info_con, 0, 3, 'Strength: ' + 
 					str(zone_hex.enemy_strength))
-				ConsolePrint(cd_zone_info_con, 0, 4, 'Organization: ' + 
+				libtcod.console_print(cd_zone_info_con, 0, 4, 'Organization: ' + 
 					str(zone_hex.enemy_organization))
 		
 		# roads
 		if len(zone_hex.dirt_roads) > 0:
-			ConsolePrint(cd_zone_info_con, 0, 8, 'Dirt roads')
+			libtcod.console_print(cd_zone_info_con, 0, 8, 'Dirt roads')
 	
 	
 	# draw all campaign day consoles to screen
@@ -1004,6 +1301,7 @@ class CampaignDay:
 		libtcod.console_blit(cd_zone_info_con, 0, 0, 0, 0, con, 66, 50)		# zone info
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
 	
 	# main campaign day input loop
 	def CampaignDayLoop(self):
@@ -1296,12 +1594,6 @@ class CampaignDay:
 				exit_loop = True
 				continue
 
-
-# Campaign: stores data about a campaign and calendar currently in progress
-class Campaign:
-	def __init__(self):
-		
-		pass
 
 
 
@@ -1715,10 +2007,10 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 		if char == 'Esc': y += 1
 		
 		libtcod.console_set_default_foreground(console, ACTION_KEY_COL)
-		ConsolePrint(console, x, y, char)
+		libtcod.console_print(console, x, y, char)
 		
 		libtcod.console_set_default_foreground(console, libtcod.lighter_grey)
-		ConsolePrint(console, x+4, y, text)
+		libtcod.console_print(console, x+4, y, text)
 		
 		# current option settings
 		libtcod.console_set_default_foreground(console, libtcod.light_blue)
@@ -1729,7 +2021,7 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 				text = '16x16'
 			else:
 				text = '8x8'
-			ConsolePrint(console, x+18, y, text)
+			libtcod.console_print(console, x+18, y, text)
 		
 		# sound effects
 		elif char == 'S':
@@ -1737,11 +2029,11 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 				text = 'ON'
 			else:
 				text = 'OFF'
-			ConsolePrint(console, x+18, y, text)
+			libtcod.console_print(console, x+18, y, text)
 		
 		# keyboard settings
 		elif char == 'K':
-			ConsolePrint(console, x+18, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
+			libtcod.console_print(console, x+18, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
 		
 		y += 1
 
@@ -1835,7 +2127,7 @@ def ShowNotification(text, confirm=False):
 	# display message
 	ly = y+2
 	for line in lines:
-		ConsolePrint(0, x+2, ly, line)
+		libtcod.console_print(0, x+2, ly, line)
 		ly += 1
 	
 	# if asking for confirmation, display yes/no choices, otherwise display a simple messages
@@ -1844,7 +2136,7 @@ def ShowNotification(text, confirm=False):
 	else:
 		text = 'Enter to Continue'
 	
-	ConsolePrintEx(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_printEx(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
 		text)
 	
 	# show to screen
@@ -1884,7 +2176,7 @@ def ShowNotification(text, confirm=False):
 ##########################################################################################
 
 global keyboard_decode, keyboard_encode
-global session, scenario
+global campaign, scenario, session 
 
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
@@ -1958,6 +2250,11 @@ key = libtcod.Key()
 
 
 # TEMP testing
+
+# create a new campaign and player unit
+campaign = Campaign()
+campaign.player_unit = Unit('Panzer 35(t)')
+
 
 # create a new scenario
 scenario = Scenario()

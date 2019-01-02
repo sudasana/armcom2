@@ -43,8 +43,8 @@ else:
 	import libtcodpy as libtcod			# The Doryen Library
 	os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)	# set sdl2 dll path
 	
-from configparser import ConfigParser			# saving and loading settings
-from random import choice, shuffle, sample		# for randomness
+from configparser import ConfigParser			# saving and loading configuration settings
+from random import choice, shuffle, sample		# for the illusion of randomness
 from math import floor, cos, sin, sqrt			# math
 from math import degrees, atan2, ceil			# heading calculations
 import xp_loader, gzip					# loading xp image files
@@ -147,6 +147,11 @@ class Session:
 		
 		# sound samples
 		self.sample = {}
+		
+		# store nation definition info
+		with open(DATAPATH + 'nation_defs.json', encoding='utf8') as data_file:
+			self.nations = json.load(data_file)
+	
 	
 	# try to initialize SDL2 mixer
 	def InitMixer(self):
@@ -156,6 +161,7 @@ class Session:
 			return False
 		mixer.Mix_AllocateChannels(16)
 		return True
+	
 	
 	def LoadSounds(self):
 		
@@ -189,7 +195,87 @@ class Personnel:
 		
 		self.first_name = ''				# placeholders for first and last name
 		self.last_name = ''				#   set by GenerateName()
+		self.GenerateName()				# generate random first and last name
+		
+		self.ce = False					# crewman is exposed in a vehicle
+		
+		self.current_action = ''			# currently assigned action for scenario
+		self.status = ''				# current status
+	
+	
+	# generate a random first and last name for this person
+	# TEMP: have to normalize extended characters so they can be displayed on screen
+	def GenerateName(self):
+		
+		# normalize extended characters
+		# FUTURE: will have their own glyphs as part of font
+		def FixName(text):
+			CODE = {
+				u'Ś' : 'S', u'Ż' : 'Z', u'Ł' : 'L',
+				u'ą' : 'a', u'ć' : 'c', u'ę' : 'e', u'ł' : 'l', u'ń' : 'n', u'ó' : 'o',
+				u'ś' : 's', u'ź' : 'z', u'ż' : 'z'
+			}
+			
+			fixed_name = ''
+			for i in range(len(text)):
+				if text[i] in CODE:
+					fixed_name += CODE[text[i]]
+				else:
+					fixed_name += text[i]
+			return fixed_name
+		
+		first_name = choice(session.nations[self.nation]['first_names'])
+		self.first_name = FixName(first_name)
+		last_name = choice(session.nations[self.nation]['surnames'])
+		self.last_name = FixName(last_name)
+		
+		print ('DEBUG: generated crew name: ' + self.GetFullName())
+	
+	
+	# return the person's full name
+	def GetFullName(self):
+		return (self.first_name + ' ' + self.last_name)
 
+
+# Position class: represents a personnel position within a unit
+class Position:
+	def __init__(self, position_dict):
+		
+		self.name = position_dict['name']
+		
+		self.location = None
+		if 'location' in position_dict:
+			self.location = position_dict['location']
+		
+		self.hatch = False
+		if 'hatch' in position_dict:
+			self.hatch = True
+		
+		self.hatch_group = None
+		if 'hatch_group' in position_dict:
+			self.hatch_group = int(position_dict['hatch_group'])
+		
+		self.open_top = False
+		if 'open_top' in position_dict:
+			self.open_top = True
+		
+		self.crew_always_ce = False
+		if 'crew_always_exposed' in position_dict:
+			self.crew_always_ce = True
+		
+		self.ce_visible = []
+		if 'ce_visible' in position_dict:
+			for direction in position_dict['ce_visible']:
+				self.ce_visible.append(int(direction))
+		
+		self.bu_visible = []
+		if 'bu_visible' in position_dict:
+			for direction in position_dict['bu_visible']:
+				self.bu_visible.append(int(direction))
+		
+		# person currently in this position
+		self.crewman = None
+		
 
 # Unit Class: represents a single vehicle or gun, or a squad or small team of infantry
 class Unit:
@@ -198,7 +284,10 @@ class Unit:
 		self.unit_id = unit_id			# unique ID for unit type
 		self.alive = True			# unit is alive
 		self.owning_player = 0			# unit is allied to 0:player 1:enemy
+		self.nation = None			# nationality of unit and personnel
 		
+		self.positions_list = []		# list of crew/personnel positions
+		self.personnel_list = []		# list of crew/personnel
 		self.weapon_list = []			# list of unit weapons
 		
 		# load unit stats from JSON file
@@ -209,6 +298,10 @@ class Unit:
 			self.unit_id = None
 			return
 		self.stats = unit_types[unit_id].copy()
+		
+		if 'crew_positions' in self.stats:
+			for position_dict in self.stats['crew_positions']:
+				self.positions_list.append(Position(position_dict))
 		
 		# set up initial scenario statuses
 		self.ResetMe()
@@ -236,6 +329,13 @@ class Unit:
 		if stat_name not in self.stats:
 			return None
 		return self.stats[stat_name]
+	
+	
+	# generate new personnel sufficent to fill all personnel positions
+	def GenerateNewPersonnel(self):
+		for position in self.positions_list:
+			self.personnel_list.append(Personnel(self, self.nation, position))
+			position.crewman = self.personnel_list[-1]
 	
 	
 	# move this unit into the given scenario map hex
@@ -472,6 +572,68 @@ class Scenario:
 		campaign.player_unit.DisplayMyInfo(player_info_con, 0, 0)
 	
 	
+	# update teh player crew info console
+	def UpdateCrewInfoCon(self):
+		libtcod.console_clear(crew_con)
+		
+		y = 0
+		
+		for position in campaign.player_unit.positions_list:
+			
+			# display position name and location in vehicle (eg. turret/hull)
+			libtcod.console_set_default_foreground(crew_con, libtcod.light_blue)
+			libtcod.console_print(crew_con, 0, y, position.name)
+			libtcod.console_set_default_foreground(crew_con, libtcod.white)
+			libtcod.console_print_ex(crew_con, 0+23, y, libtcod.BKGND_NONE, 
+				libtcod.RIGHT, position.location)
+			
+			# display last name of crewman and buttoned up / exposed status if any
+			if position.crewman is None:
+				libtcod.console_print(crew_con, 0, y+1, 'Empty')
+			else:
+				
+				# build string of first initial and last name
+				text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
+				
+				# names might have special characters so we encode it before printing it
+				libtcod.console_print(crew_con, 0, y+1, text.encode('IBM850'))
+			
+				if position.crewman.ce:
+					text = 'CE'
+				else:
+					text = 'BU'
+				libtcod.console_print_ex(crew_con, 23, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
+			
+				# display current command
+				
+				# truncate string if required
+				if position.crewman.current_action == '':
+					text = 'Spot'
+				else:
+					text = position.crewman.current_action
+				if len(text) + len(position.crewman.status) > 23:
+					text = text[:(19 - len(position.crewman.status))] + '...'
+				
+				libtcod.console_set_default_foreground(crew_con, libtcod.dark_yellow)
+				libtcod.console_print(crew_con, 0, y+2, text)
+					
+				# display current status on same line
+				if position.crewman.status == 'Alert':
+					libtcod.console_set_default_foreground(crew_con, libtcod.grey)
+				elif position.crewman.status == 'Dead':
+					libtcod.console_set_default_foreground(crew_con, libtcod.darker_grey)
+				elif position.crewman.status == 'Critical':
+					libtcod.console_set_default_foreground(crew_con, libtcod.light_red)
+				else:
+					libtcod.console_set_default_foreground(crew_con, libtcod.red)
+				libtcod.console_print_ex(crew_con, 23, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
+					position.crewman.status)
+				
+			libtcod.console_set_default_foreground(crew_con, libtcod.white)
+			y += 4
+		
+	
+	
 	# plot the center of a given in-game hex on the scenario hex map console
 	# 0,0 appears in centre of console
 	def PlotHex(self, hx, hy):
@@ -528,6 +690,7 @@ class Scenario:
 		# left column
 		libtcod.console_blit(bkg_console, 0, 0, 0, 0, con, 0, 0)
 		libtcod.console_blit(player_info_con, 0, 0, 0, 0, con, 1, 1)
+		libtcod.console_blit(crew_con, 0, 0, 0, 0, con, 1, 21)
 		
 		# main map display
 		libtcod.console_blit(hexmap_con, 0, 0, 0, 0, con, 32, 9)
@@ -545,7 +708,7 @@ class Scenario:
 	def DoScenarioLoop(self):
 		
 		# set up and load scenario consoles
-		global bkg_console
+		global bkg_console, crew_con
 		global player_info_con, time_con, hexmap_con, unit_con, msg_con
 		
 		# background outline console for left column
@@ -556,6 +719,12 @@ class Scenario:
 		libtcod.console_set_default_background(player_info_con, libtcod.black)
 		libtcod.console_set_default_foreground(player_info_con, libtcod.white)
 		libtcod.console_clear(player_info_con)
+		
+		# player crew info console
+		crew_con = libtcod.console_new(24, 24)
+		libtcod.console_set_default_background(crew_con, libtcod.black)
+		libtcod.console_set_default_foreground(crew_con, libtcod.white)
+		libtcod.console_clear(crew_con)
 		
 		# time, phase console
 		time_con = libtcod.console_new(21, 6)
@@ -605,6 +774,7 @@ class Scenario:
 		# generate consoles and draw scenario screen for first time
 		self.UpdateTimeCon()
 		self.UpdatePlayerInfoCon()
+		self.UpdateCrewInfoCon()
 		self.UpdateUnitCon()
 		self.UpdateHexmapCon()
 		self.UpdateMsgConsole()
@@ -1296,6 +1466,8 @@ key = libtcod.Key()
 # create a new campaign and player unit
 campaign = Campaign()
 campaign.player_unit = Unit('Panzer 35(t)')
+campaign.player_unit.nation = 'Germany'
+campaign.player_unit.GenerateNewPersonnel()
 
 
 # create a new scenario
@@ -1305,6 +1477,6 @@ scenario = Scenario()
 scenario.DoScenarioLoop()
 
 
-print(NAME + ' version ' + VERSION + ' shutting down')			# shutdown message
+print(NAME + ' shutting down')			# shutdown message
 # END #
 

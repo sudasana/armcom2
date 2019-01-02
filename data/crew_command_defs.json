@@ -1,0 +1,66 @@
+{
+	"Spot": {
+		"desc" : "Scan terrain for enemies",
+		"spotting_allowed" : "TRUE"
+	},
+	
+	"Direct Movement" : {
+		"desc" : "Direct the movement of the vehicle",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"spotting_allowed" : "TRUE"
+	},
+	"Direct Fire" : {
+		"desc" : "Direct fire against enemy targets",
+		"position_list" : ["Commander"],
+		"spotting_allowed" : "TRUE"
+	},
+	
+	"Operate Gun" : {
+		"desc" : "Operate the main gun and the turret",
+		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
+		"spotting_allowed" : "FALSE"
+	},
+	"Operate Turret MG" : {
+		"desc" : "Operate a turret-mounted MG",
+		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
+		"spotting_allowed" : "TRUE"
+	},
+	
+	"Reload" : {
+		"desc" : "Reload the main gun as needed, increasing fire rate",
+		"position_list" : ["Loader"],
+		"spotting_allowed" : "FALSE"
+	},
+	
+	"Move Forward" : {
+		"desc" : "Attempt to move forward into adjacent area",
+		"position_list" : ["Driver"],
+		"spotting_allowed" : "TRUE"
+	},
+	"Reverse Move" : {
+		"desc" : "Attempt to reverse into adjacent area",
+		"position_list" : ["Driver"],
+		"spotting_allowed" : "TRUE"
+	},
+	"Pivot" : {
+		"desc" : "Pivot the hull to face a new direction",
+		"position_list" : ["Driver"],
+		"spotting_allowed" : "TRUE"
+	},
+	"Reposition" : {
+		"desc" : "Attempt to gain better cover and LoS on enemy units",
+		"position_list" : ["Driver"],
+		"spotting_allowed" : "TRUE"
+	},
+	"Attempt Hull Down" : {
+		"desc" : "Attempt to gain Hull Down status",
+		"position_list" : ["Driver"],
+		"spotting_allowed" : "TRUE"
+	},
+	
+	"Operate Hull MG" : {
+		"desc" : "Operate the hull-mounted MG",
+		"position_list" : ["Assistant Driver"],
+		"spotting_allowed" : "TRUE"
+	}
+}

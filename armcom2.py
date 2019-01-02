@@ -148,6 +148,10 @@ class Session:
 		# sound samples
 		self.sample = {}
 		
+		# store player crew command defintions
+		with open(DATAPATH + 'crew_command_defs.json', encoding='utf8') as data_file:
+			self.crew_commands = json.load(data_file)
+		
 		# store nation definition info
 		with open(DATAPATH + 'nation_defs.json', encoding='utf8') as data_file:
 			self.nations = json.load(data_file)
@@ -199,15 +203,15 @@ class Personnel:
 		
 		self.ce = False					# crewman is exposed in a vehicle
 		
-		self.current_action = ''			# currently assigned action for scenario
+		self.cmd_list = []				# list of possible commands
+		self.current_cmd = 'Spot'			# currently assigned action for scenario
 		self.status = ''				# current status
 	
 	
 	# generate a random first and last name for this person
-	# TEMP: have to normalize extended characters so they can be displayed on screen
 	def GenerateName(self):
 		
-		# normalize extended characters
+		# TEMP: have to normalize extended characters so they can be displayed on screen
 		# FUTURE: will have their own glyphs as part of font
 		def FixName(text):
 			CODE = {
@@ -228,14 +232,42 @@ class Personnel:
 		self.first_name = FixName(first_name)
 		last_name = choice(session.nations[self.nation]['surnames'])
 		self.last_name = FixName(last_name)
-		
-		print ('DEBUG: generated crew name: ' + self.GetFullName())
 	
 	
 	# return the person's full name
 	def GetFullName(self):
 		return (self.first_name + ' ' + self.last_name)
-
+	
+	
+	# (re)build a list of possible commands for this turn
+	def BuildCommandList(self):
+		self.cmd_list = []
+		for (k, d) in session.crew_commands.items():
+			if 'position_list' in d:
+				if self.current_position.name not in d['position_list']:
+					continue
+			self.cmd_list.append(k)
+	
+	# select a new command from command list
+	def SelectCommand(self, reverse):
+		
+		c = 1
+		if reverse:
+			c = -1
+		
+		# find current command in list
+		i = self.cmd_list.index(self.current_cmd)
+		
+		# find new command
+		if i+c > len(self.cmd_list) - 1:
+			i = 0
+		elif i+c < 0:
+			i = len(self.cmd_list) - 1
+		else:
+			i += c
+		
+		self.current_cmd = self.cmd_list[i]
+	
 
 # Position class: represents a personnel position within a unit
 class Position:
@@ -329,6 +361,13 @@ class Unit:
 		if stat_name not in self.stats:
 			return None
 		return self.stats[stat_name]
+	
+	
+	# build lists of possible commands for each personnel in this unit
+	def BuildCmdLists(self):
+		for position in self.positions_list:
+			if position.crewman is None: continue
+			position.crewman.BuildCommandList()
 	
 	
 	# generate new personnel sufficent to fill all personnel positions
@@ -442,6 +481,11 @@ class Unit:
 		libtcod.console_set_default_foreground(console, libtcod.light_grey)
 		libtcod.console_print(console, x, y+1, self.GetStat('class'))
 		
+		# draw empty portrait background
+		libtcod.console_set_default_background(console, PORTRAIT_BG_COL)
+		libtcod.console_rect(console, x, y+2, 25, 8, True, libtcod.BKGND_SET)
+		
+		# draw portrait if any
 		portrait = self.GetStat('portrait')
 		if portrait is not None:
 			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, console, x, y+2)
@@ -449,7 +493,7 @@ class Unit:
 		# weapons
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		libtcod.console_set_default_background(console, libtcod.darkest_red)
-		libtcod.console_rect(console, x, y+10, 24, 2, True, libtcod.BKGND_SET)
+		libtcod.console_rect(console, x, y+10, 25, 2, True, libtcod.BKGND_SET)
 		
 		text1 = ''
 		text2 = ''
@@ -481,7 +525,7 @@ class Unit:
 		
 		# movement
 		libtcod.console_set_default_foreground(console, libtcod.light_green)
-		libtcod.console_print_ex(console, x+23, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,
+		libtcod.console_print_ex(console, x+24, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,
 			self.GetStat('movement_class'))
 		
 		# recce and/or off road
@@ -493,7 +537,7 @@ class Unit:
 			if text != '':
 				text += ' '
 			text += 'ATV'
-		libtcod.console_print_ex(console, x+23, y+13, libtcod.BKGND_NONE, libtcod.RIGHT,
+		libtcod.console_print_ex(console, x+24, y+13, libtcod.BKGND_NONE, libtcod.RIGHT,
 			text)
 		
 		# size class
@@ -501,7 +545,7 @@ class Unit:
 		size_class = self.GetStat('size_class')
 		if size_class is not None:
 			if size_class != 'Normal':
-				libtcod.console_print_ex(console, x+23, y+14, libtcod.BKGND_NONE,
+				libtcod.console_print_ex(console, x+24, y+14, libtcod.BKGND_NONE,
 					libtcod.RIGHT, size_class)
 			
 		# mark place in case we skip unit status display
@@ -518,7 +562,7 @@ class Unit:
 			# reset of unit status
 			libtcod.console_set_default_foreground(console, libtcod.light_grey)
 			libtcod.console_set_default_background(console, libtcod.darkest_blue)
-			libtcod.console_rect(console, x, y+ys, 24, 2, True, libtcod.BKGND_SET)
+			libtcod.console_rect(console, x, y+ys, 25, 2, True, libtcod.BKGND_SET)
 			
 			text = ''
 			if self.moving:
@@ -555,13 +599,33 @@ class Scenario:
 		# current active player and phase
 		self.active_player = 0
 		self.phase = 0
+		
+		# index of selected position in player unit
+		self.selected_position = 0
+	
+	
+	# update contextual info console
+	def UpdateContextCon(self):
+		libtcod.console_clear(context_con)
+		
+		# Command Phase: display info about current crew command
+		if self.phase == 0:
+			position = campaign.player_unit.positions_list[self.selected_position]
+			libtcod.console_set_default_foreground(context_con, SCEN_PHASE_COL[self.phase])
+			libtcod.console_print(context_con, 0, 0, position.crewman.current_cmd)
+			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+			lines = wrap(session.crew_commands[position.crewman.current_cmd]['desc'], 18)
+			y = 2
+			for line in lines:
+				libtcod.console_print(context_con, 0, y, line)
+				y += 1
 	
 	
 	# update time and phase console
 	def UpdateTimeCon(self):
 		libtcod.console_clear(time_con)
 		libtcod.console_set_default_foreground(time_con, SCEN_PHASE_COL[self.phase])
-		libtcod.console_print_ex(time_con, 10, 1, libtcod.BKGND_NONE, libtcod.CENTER, 
+		libtcod.console_print_ex(time_con, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, 
 			SCEN_PHASE_NAMES[self.phase] + ' Phase')
 		libtcod.console_set_default_foreground(time_con, libtcod.white)
 	
@@ -572,19 +636,26 @@ class Scenario:
 		campaign.player_unit.DisplayMyInfo(player_info_con, 0, 0)
 	
 	
-	# update teh player crew info console
+	# update the player crew info console
 	def UpdateCrewInfoCon(self):
 		libtcod.console_clear(crew_con)
 		
 		y = 0
+		i = 0
 		
 		for position in campaign.player_unit.positions_list:
+			
+			# highlight position if selected and in command phase
+			if i == scenario.selected_position and scenario.phase == 0:
+				libtcod.console_set_default_background(crew_con, libtcod.darker_blue)
+				libtcod.console_rect(crew_con, 0, y, 25, 3, True, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(crew_con, libtcod.black)
 			
 			# display position name and location in vehicle (eg. turret/hull)
 			libtcod.console_set_default_foreground(crew_con, libtcod.light_blue)
 			libtcod.console_print(crew_con, 0, y, position.name)
 			libtcod.console_set_default_foreground(crew_con, libtcod.white)
-			libtcod.console_print_ex(crew_con, 0+23, y, libtcod.BKGND_NONE, 
+			libtcod.console_print_ex(crew_con, 0+24, y, libtcod.BKGND_NONE, 
 				libtcod.RIGHT, position.location)
 			
 			# display last name of crewman and buttoned up / exposed status if any
@@ -602,16 +673,13 @@ class Scenario:
 					text = 'CE'
 				else:
 					text = 'BU'
-				libtcod.console_print_ex(crew_con, 23, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
+				libtcod.console_print_ex(crew_con, 24, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
 			
 				# display current command
 				
 				# truncate string if required
-				if position.crewman.current_action == '':
-					text = 'Spot'
-				else:
-					text = position.crewman.current_action
-				if len(text) + len(position.crewman.status) > 23:
+				text = position.crewman.current_cmd
+				if len(text) + len(position.crewman.status) > 24:
 					text = text[:(19 - len(position.crewman.status))] + '...'
 				
 				libtcod.console_set_default_foreground(crew_con, libtcod.dark_yellow)
@@ -631,7 +699,31 @@ class Scenario:
 				
 			libtcod.console_set_default_foreground(crew_con, libtcod.white)
 			y += 4
+			i += 1
+	
+	# update player command console
+	def UpdateCmdCon(self):
+		libtcod.console_clear(cmd_menu_con)
 		
+		# player not active
+		if scenario.active_player == 1: return
+		
+		# Command Phase
+		if scenario.phase == 0:
+			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
+			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
+			libtcod.console_print(cmd_menu_con, 1, 3, 'H')
+			
+			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Crew')
+			libtcod.console_print(cmd_menu_con, 8, 2, 'Select Command')
+			libtcod.console_print(cmd_menu_con, 8, 3, 'Toggle Hatch')
+		
+		libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+		libtcod.console_print(cmd_menu_con, 1, 10, 'Space')
+		libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+		libtcod.console_print(cmd_menu_con, 8, 10, 'End Phase')
 	
 	
 	# plot the center of a given in-game hex on the scenario hex map console
@@ -691,14 +783,18 @@ class Scenario:
 		libtcod.console_blit(bkg_console, 0, 0, 0, 0, con, 0, 0)
 		libtcod.console_blit(player_info_con, 0, 0, 0, 0, con, 1, 1)
 		libtcod.console_blit(crew_con, 0, 0, 0, 0, con, 1, 21)
+		libtcod.console_blit(cmd_menu_con, 0, 0, 0, 0, con, 1, 47)
 		
 		# main map display
 		libtcod.console_blit(hexmap_con, 0, 0, 0, 0, con, 32, 9)
 		libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
 		
 		# consoles around the edge of map
+		libtcod.console_blit(context_con, 0, 0, 0, 0, con, 28, 1)
 		libtcod.console_blit(time_con, 0, 0, 0, 0, con, 48, 1)
-		libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 26, 55)
+		libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 71, 1)
+		
+		libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 28, 56)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
@@ -708,29 +804,47 @@ class Scenario:
 	def DoScenarioLoop(self):
 		
 		# set up and load scenario consoles
-		global bkg_console, crew_con
-		global player_info_con, time_con, hexmap_con, unit_con, msg_con
+		global bkg_console, crew_con, cmd_menu_con, scen_info_con
+		global player_info_con, context_con, time_con, hexmap_con, unit_con, msg_con
 		
 		# background outline console for left column
 		bkg_console = LoadXP('bkg.xp')
 		
 		# player unit info console
-		player_info_con = libtcod.console_new(24, 18)
+		player_info_con = libtcod.console_new(25, 18)
 		libtcod.console_set_default_background(player_info_con, libtcod.black)
 		libtcod.console_set_default_foreground(player_info_con, libtcod.white)
 		libtcod.console_clear(player_info_con)
 		
 		# player crew info console
-		crew_con = libtcod.console_new(24, 24)
+		crew_con = libtcod.console_new(25, 24)
 		libtcod.console_set_default_background(crew_con, libtcod.black)
 		libtcod.console_set_default_foreground(crew_con, libtcod.white)
 		libtcod.console_clear(crew_con)
+		
+		# player command menu console
+		cmd_menu_con = libtcod.console_new(25, 12)
+		libtcod.console_set_default_background(cmd_menu_con, libtcod.black)
+		libtcod.console_set_default_foreground(cmd_menu_con, libtcod.white)
+		libtcod.console_clear(cmd_menu_con)
+		
+		# contextual info console
+		context_con = libtcod.console_new(18, 12)
+		libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
+		libtcod.console_set_default_foreground(context_con, libtcod.white)
+		libtcod.console_clear(context_con)
 		
 		# time, phase console
 		time_con = libtcod.console_new(21, 6)
 		libtcod.console_set_default_background(time_con, libtcod.darkest_grey)
 		libtcod.console_set_default_foreground(time_con, libtcod.white)
 		libtcod.console_clear(time_con)
+		
+		# scenario conditions info console
+		scen_info_con = libtcod.console_new(18, 12)
+		libtcod.console_set_default_background(scen_info_con, libtcod.darkest_grey)
+		libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
+		libtcod.console_clear(scen_info_con)
 		
 		# unit layer console
 		unit_con = libtcod.console_new(53, 43)
@@ -746,21 +860,17 @@ class Scenario:
 		libtcod.console_clear(hexmap_con)
 		
 		# game message console
-		msg_con = libtcod.console_new(64, 5)
+		msg_con = libtcod.console_new(61, 4)
 		libtcod.console_set_default_background(msg_con, libtcod.darkest_grey)
 		libtcod.console_set_default_foreground(msg_con, libtcod.white)
 		libtcod.console_clear(msg_con)
 		
 		
-		# set up units
+		# set up player unit
 		campaign.player_unit.ResetMe()
 		campaign.player_unit.facing = 0
 		campaign.player_unit.turret_facing = 0
 		campaign.player_unit.SpawnAt(0,0)
-		
-		# add player unit to hex stack in 0,0
-		
-		
 		
 		# generate an enemy unit
 		unit = Unit('7TP')
@@ -770,11 +880,15 @@ class Scenario:
 		unit.SpawnAt(0,-2)
 		campaign.enemy_units.append(unit)
 		
+		# set up player unit for first activation
+		campaign.player_unit.BuildCmdLists()
 		
 		# generate consoles and draw scenario screen for first time
+		self.UpdateContextCon()
 		self.UpdateTimeCon()
 		self.UpdatePlayerInfoCon()
 		self.UpdateCrewInfoCon()
+		self.UpdateCmdCon()
 		self.UpdateUnitCon()
 		self.UpdateHexmapCon()
 		self.UpdateMsgConsole()
@@ -801,11 +915,50 @@ class Scenario:
 			
 			# key commands
 			key_char = chr(key.c).lower()
-			#key_char = DecodeKey(key_char)
 			
 			if key_char == 'q':
 				exit_scenario = True
 				continue
+			
+			# Command Phase
+			if scenario.phase == 0:
+				
+				# change selected crew position
+				if key_char in ['w', 's']:
+					
+					if key_char == 'w':
+						scenario.selected_position -= 1
+						if scenario.selected_position < 0:
+							scenario.selected_position = len(campaign.player_unit.positions_list) - 1
+					
+					else:
+						scenario.selected_position += 1
+						if scenario.selected_position == len(campaign.player_unit.positions_list):
+							scenario.selected_position = 0
+				
+					self.UpdateContextCon()
+					self.UpdateCrewInfoCon()
+					self.UpdateScenarioDisplay()
+					continue
+				
+				# change current command for selected crewman
+				if key_char in ['a', 'd']:
+					
+					# no crewman in selected position
+					crewman = campaign.player_unit.positions_list[scenario.selected_position].crewman
+					if crewman is None:
+						continue
+					
+					if key_char == 'a':
+						crewman.SelectCommand(True)
+					else:
+						crewman.SelectCommand(False)
+					
+					self.UpdateContextCon()
+					self.UpdateCrewInfoCon()
+					self.UpdateScenarioDisplay()
+					continue
+					
 
 
 
@@ -1027,39 +1180,6 @@ def GetFacing(attacker, target, turret_facing=False):
 	if bearing >= 300 or bearing <= 60:
 		return 'Front'
 	return 'Side'
-
-
-# wait for a specified amount of miliseconds, refreshing the screen in the meantime
-def Wait(wait_time):
-	wait_time = wait_time * 0.01
-	start_time = time.time()
-	while time.time() - start_time < wait_time:
-		FlushKeyboardEvents()
-
-
-# save the current game in progress
-#def SaveGame():
-#	save = shelve.open('savegame', 'n')
-#	save['campaign'] = campaign
-#	save['campaign_day'] = campaign_day
-#	save['version'] = VERSION		# for now the saved version must be identical to the current one
-#	save.close()
-
-
-# load a saved game
-#def LoadGame():
-#	global campaign, campaign_day
-#	save = shelve.open('savegame')
-#	campaign = save['campaign']
-#	campaign_day = save['campaign_day']
-#	save.close()
-
-
-# remove a saved game
-def EraseGame():
-	os.remove('savegame.dat')
-	os.remove('savegame.dir')
-	os.remove('savegame.bak')
 	
 
 # try to load game settings from config file
@@ -1086,308 +1206,11 @@ def LoadCFG():
 		config.read(DATAPATH + 'armcom2.cfg')
 
 
-# save current config to file
-def SaveCFG():
-	with open(DATAPATH + 'armcom2.cfg', 'w') as configfile:
-		config.write(configfile)
-
-
-# generate keyboard encoding and decoding dictionaries
-def GenerateKeyboards():
-	
-	global keyboard_decode, keyboard_encode
-
-	keyboard_decode = {}
-	keyboard_encode = {}
-	with open(DATAPATH + 'keyboard_mapping.json', encoding='utf8') as data_file:
-		keyboards = json.load(data_file)
-	dictionary = keyboards[KEYBOARDS[config['ArmCom2'].getint('keyboard')]]
-	for key, value in dictionary.items():
-		keyboard_decode[key] = value
-		keyboard_encode[value] = key
-
-
-# turn an inputted key into a standard key input
-def DecodeKey(key_char):
-	if key_char in keyboard_decode:
-		return keyboard_decode[key_char].encode('IBM850')
-	return key_char
-
-
-# turn a standard key into the one for the current keyboard layout
-def EncodeKey(key_char):
-	if key_char in keyboard_encode:
-		return keyboard_encode[key_char].encode('IBM850')
-	return key_char
-
-
-
-##########################################################################################
-#                                   Sounds and Music                                     #
-##########################################################################################
-
-# play a given sample, returns the channel it is playing on
-def PlaySound(sound_name):
-	
-	if sound_name not in session.sample:
-		print('ERROR: Sound not found: ' + sound_name)
-		return
-	
-	channel = mixer.Mix_PlayChannel(-1, session.sample[sound_name], 0)
-	if channel == -1:
-		print('ERROR: could not play sound: ' + sound_name)
-		print(mixer.Mix_GetError())
-	return channel
-
-
-# select and play a sound effect for a given situation
-def PlaySoundFor(obj, action):
-	
-	# sounds disabled
-	if not config['ArmCom2'].getboolean('sounds_enabled'):
-		return
-	
-	if action == 'menu_select':
-		PlaySound('menu_select')
-		return
-	
-	elif action == 'fire':
-		if obj.GetStat('type') == 'Gun':
-			
-			if obj.GetStat('name') == 'AT Rifle':
-				PlaySound('at_rifle_firing')
-				return
-			
-			n = libtcod.random_get_int(0, 0, 3)
-			PlaySound('37mm_firing_0' + str(n))
-			return
-			
-		if obj.stats['type'] in MG_WEAPONS:
-			PlaySound('zb_53_mg_00')
-			return
-		
-		if obj.GetStat('name') == 'Rifles':
-			n = libtcod.random_get_int(0, 0, 3)
-			PlaySound('rifle_fire_0' + str(n))
-			return
-	 
-	elif action == 'he_explosion':
-		n = libtcod.random_get_int(0, 0, 1)
-		PlaySound('37mm_he_explosion_0' + str(n))
-		return
-	
-	elif action == 'armour_save':
-		n = libtcod.random_get_int(0, 0, 1)
-		PlaySound('armour_save_0' + str(n))
-		return
-	
-	elif action == 'movement':
-		if obj.GetStat('movement_class') in ['Wheeled', 'Fast Wheeled']:
-			n = libtcod.random_get_int(0, 0, 2)
-			PlaySound('wheeled_moving_0' + str(n))
-			return
-		
-		if obj.GetStat('class') in ['Tankette', 'Light Tank', 'Medium Tank']:
-			n = libtcod.random_get_int(0, 0, 2)
-			PlaySound('light_tank_moving_0' + str(n))
-			return
-	
-	elif action == 'vehicle_explosion':
-		PlaySound('vehicle_explosion_00')
-		return
-	
-	elif action == 'plane_incoming':
-		PlaySound('plane_incoming_00')
-		return
-	
-	elif action == 'stuka_divebomb':
-		PlaySound('stuka_divebomb_00')
-		return
-
-
-##########################################################################################
-#                              In-Game Menus and Displays                                #
-##########################################################################################
-
-# display a list of game options and current settings
-def DisplayGameOptions(console, x, y, skip_esc=False):
-	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
-		
-		if char == 'Esc' and skip_esc: continue
-		
-		# extra spacing
-		if char == 'Esc': y += 1
-		
-		libtcod.console_set_default_foreground(console, ACTION_KEY_COL)
-		libtcod.console_print(console, x, y, char)
-		
-		libtcod.console_set_default_foreground(console, libtcod.lighter_grey)
-		libtcod.console_print(console, x+4, y, text)
-		
-		# current option settings
-		libtcod.console_set_default_foreground(console, libtcod.light_blue)
-		
-		# toggle font size
-		if char == 'F':
-			if config['ArmCom2'].getboolean('large_display_font'):
-				text = '16x16'
-			else:
-				text = '8x8'
-			libtcod.console_print(console, x+18, y, text)
-		
-		# sound effects
-		elif char == 'S':
-			if config['ArmCom2'].getboolean('sounds_enabled'):
-				text = 'ON'
-			else:
-				text = 'OFF'
-			libtcod.console_print(console, x+18, y, text)
-		
-		# keyboard settings
-		elif char == 'K':
-			libtcod.console_print(console, x+18, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
-		
-		y += 1
-
-
-# take a keyboard input and change game settings
-def ChangeGameSettings(key_char):
-	
-	if key_char not in ['f', 's', 'k']:
-		return
-	
-	# switch font size
-	if key_char == 'f':
-		libtcod.console_delete(0)
-		if config.getboolean('ArmCom2', 'large_display_font'):
-			config['ArmCom2']['large_display_font'] = 'false'
-			fontname = 'c64_8x8.png'
-		else:
-			config['ArmCom2']['large_display_font'] = 'true'
-			fontname = 'c64_16x16.png'
-		libtcod.console_set_custom_font(DATAPATH+fontname,
-			libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
-		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
-			NAME + ' - ' + VERSION, fullscreen = False,
-			renderer = RENDERER)
-	
-	# toggle sound effects on/off
-	elif key_char == 's':
-		if config['ArmCom2'].getboolean('sounds_enabled'):
-			config['ArmCom2']['sounds_enabled'] = 'false'
-		else:
-			config['ArmCom2']['sounds_enabled'] = 'true'
-			# init mixer and load sound samples if required
-			if len(session.sample) == 0:
-				session.InitMixer()
-				session.LoadSounds()
-		
-	# switch keyboard layout
-	elif key_char == 'k':
-		i = config['ArmCom2'].getint('keyboard')
-		if i == len(KEYBOARDS) - 1:
-			i = 0
-		else:
-			i += 1
-		config['ArmCom2']['keyboard'] = i
-		GenerateKeyboards()
-	
-	SaveCFG()
-	return True
-
-
-##########################################################################################
-#                              Console Drawing Functions                                 #
-##########################################################################################
-
-
-# draw an ArmCom2-style frame to the given console
-def DrawFrame(console, x, y, w, h):
-	libtcod.console_put_char(console, x, y, 249)
-	libtcod.console_put_char(console, x+w-1, y, 249)
-	libtcod.console_put_char(console, x, y+h-1, 249)
-	libtcod.console_put_char(console, x+w-1, y+h-1, 249)
-	for x1 in range(x+1, x+w-1):
-		libtcod.console_put_char(console, x1, y, 196)
-		libtcod.console_put_char(console, x1, y+h-1, 196)
-	for y1 in range(y+1, y+h-1):
-		libtcod.console_put_char(console, x, y1, 179)
-		libtcod.console_put_char(console, x+w-1, y1, 179)
-
-
-# display a pop-up message on the root console
-# can be used for yes/no confirmation
-def ShowNotification(text, confirm=False):
-	
-	# determine window x, height, and y position
-	x = WINDOW_XM - 30
-	lines = wrap(text, 56)
-	h = len(lines) + 6
-	y = WINDOW_YM - int(h/2)
-	
-	# create a local copy of the current screen to re-draw when we're done
-	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
-	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
-	
-	# darken background 
-	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.5)
-	
-	# draw a black rect and an outline
-	libtcod.console_rect(0, x, y, 60, h, True, libtcod.BKGND_SET)
-	DrawFrame(0, x, y, 60, h)
-	
-	# display message
-	ly = y+2
-	for line in lines:
-		libtcod.console_print(0, x+2, ly, line)
-		ly += 1
-	
-	# if asking for confirmation, display yes/no choices, otherwise display a simple messages
-	if confirm:
-		text = 'Proceed? Y/N'
-	else:
-		text = 'Enter to Continue'
-	
-	libtcod.console_printEx(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
-		text)
-	
-	# show to screen
-	libtcod.console_flush()
-	
-	exit_menu = False
-	while not exit_menu:
-		if libtcod.console_is_window_closed(): sys.exit()
-		libtcod.console_flush()
-		
-		if not GetInputEvent(): continue
-		key_char = chr(key.c).lower()
-		
-		if confirm:
-			
-			if key_char == 'y':
-				# restore original screen before returning
-				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
-				del temp_con
-				return True
-			elif key_char == 'n':
-				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
-				del temp_con
-				return False
-		else:
-			if key.vk == libtcod.KEY_ENTER:
-				exit_menu = True
-	
-	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
-	del temp_con
-
-
-
 
 ##########################################################################################
 #                                      Main Script                                       #
 ##########################################################################################
 
-global keyboard_decode, keyboard_encode
 global campaign, scenario, session 
 
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
@@ -1433,9 +1256,6 @@ if config['ArmCom2'].getboolean('sounds_enabled'):
 	else:
 		config['ArmCom2']['sounds_enabled'] = 'false'
 		print('Not able to init mixer, sounds disabled')
-
-# generate keyboard mapping dictionaries
-GenerateKeyboards()
 
 # create double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)

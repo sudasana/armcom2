@@ -326,6 +326,17 @@ class Weapon:
 			else:
 				self.stats['name'] = self.GetStat('type')
 		
+		# save maximum range as an local int
+		self.max_range = 3
+		if 'max_range' in self.stats:
+			self.max_range = int(self.stats['max_range'])
+			del self.stats['max_range']
+		else:
+			if self.stats['type'] in ['Turret MG', 'Co-ax MG']:
+				self.max_range = 1
+			elif self.stats['type'] in ['Hull MG', 'AA MG']:
+				self.max_range = 0
+		
 		self.ResetMe()
 	
 	# set/reset all scenario statuses
@@ -706,7 +717,26 @@ class Scenario:
 	# if ignore_facing is true, we don't check whether weapon is facing correct direction
 	def CheckAttack(self, attacker, weapon, target, ignore_facing=False):
 		
-		pass
+		# check that proper crew command has been set
+		
+		# check that weapon hasn't already fired
+		
+		# check that current ammo is available and this ammo would affect the target
+		
+		# check firing group restrictions
+		
+		# check that target is in range
+		if GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy) > weapon.max_range:
+			return 'Target beyond maximum weapon range'
+		
+		# check that target is in covered arc
+		
+		# check for hull-mounted weapons blocked by HD status
+		
+		
+		
+		# attack can proceed
+		return ''
 	
 	
 	# selecte a different weapon on the player unit

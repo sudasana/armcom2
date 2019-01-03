@@ -1544,7 +1544,7 @@
 			{
 				"type" : "Gun",
 				"name" : "AT Rifle",
-				"max_range" : "3",
+				"max_range" : "1",
 				"ammo_type_list" : ["AP"],
 				"max_ammo" : "40"
 			},
@@ -1583,7 +1583,7 @@
 				"type" : "Small Arms",
 				"name" : "Rifle",
 				"fp" : "2",
-				"max_range" : "3"
+				"max_range" : "2"
 			}
 		],
 		"crew_positions" : [

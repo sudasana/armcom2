@@ -117,12 +117,51 @@ MONTH_NAMES = [
 SCEN_PHASE_NAMES = [
 	'Command', 'Spotting', 'Movement', 'Shooting', 'Assault', 'Recovery', 'Enemy Action'
 ]
+
 # colour associated with phases
 SCEN_PHASE_COL = [
 	libtcod.yellow, libtcod.purple, libtcod.green, libtcod.red, libtcod.white, libtcod.blue, libtcod.light_red 
 ]
 
+# order to display ammo types
+AMMO_TYPES = ['HE', 'AP']
 
+# list of MG-type weapons
+MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG']
+
+
+
+##########################################################################################
+#                                    Engine Constants                                    #
+##########################################################################################
+
+# TODO: move to JSON file
+
+# base success chances for point fire attacks
+# first column is for vehicle targets, second is everything else
+PF_BASE_CHANCE = [
+	[88.0, 78.0],			# same hex
+	[73.0, 48.0],			# 1 hex range
+	[62.0, 18.0],			# 2 "
+	[48.0, 5.0]			# 3 hex range
+]
+
+# modifier for target size if target is known
+PF_SIZE_MOD = {
+	'Very Small' : -28.0,
+	'Small' : -12.0,
+	'Large' : 12.0,
+	'Very Large' : 28.0
+}
+
+# base chances of partial effect for area fire attacks: infantry/gun and vehicle targets
+INF_FP_BASE_CHANCE = 30.0
+VEH_FP_BASE_CHANCE = 20.0
+
+FP_CHANCE_STEP = 5.0		# each additional firepower beyond 1 adds this additional chance
+FP_CHANCE_STEP_MOD = 0.95	# additional firepower modifier reduced by this much beyond 1
+FP_FULL_EFFECT = 0.75		# multiplier for full effect
+FP_CRIT_EFFECT = 0.1		# multipler for critical effect
 
 
 ##########################################################################################
@@ -337,7 +376,41 @@ class Weapon:
 			elif self.stats['type'] in ['Hull MG', 'AA MG']:
 				self.max_range = 0
 		
+		# if weapon is a gun, set up ammo stores
+		self.ammo_stores = None
+		if self.GetStat('type') == 'Gun' and 'ammo_type_list' in self.stats:
+			self.ammo_stores = {}
+			self.ammo_type = None
+			self.LoadGunAmmo()
+		
 		self.ResetMe()
+	
+	
+	# load this gun full of ammo
+	def LoadGunAmmo(self):
+		
+		if not self.GetStat('type') == 'Gun': return
+		
+		# set up empty categories first
+		for ammo_type in self.stats['ammo_type_list']:
+			self.ammo_stores[ammo_type] = 0
+		
+		# now determine loadout
+		max_ammo = int(self.stats['max_ammo'])
+		
+		# only one type, fill it up
+		if len(self.stats['ammo_type_list']) == 1:
+			ammo_type = self.stats['ammo_type_list'][0]
+			self.ammo_stores[ammo_type] = max_ammo
+			self.ammo_type = ammo_type
+		
+		# HE and AP: 70% and 30%
+		else:
+			if self.stats['ammo_type_list'] == ['HE', 'AP']:
+				self.ammo_stores['HE'] = int(max_ammo * 0.7)
+				self.ammo_stores['AP'] = max_ammo - self.ammo_stores['HE']
+				self.ammo_type = 'HE'
+	
 	
 	# set/reset all scenario statuses
 	def ResetMe(self):
@@ -406,12 +479,21 @@ class Unit:
 		self.fired = False
 		
 		self.facing = None
+		self.previous_facing = None
 		self.turret_facing = None
+		self.previous_turret_facing = None
+		
+		self.pinned = False
 		self.deployed = False
 	
 	
 	# reset this unit for new turn
 	def ResetForNewTurn(self):
+		
+		self.moving = False
+		self.previous_facing = self.facing
+		self.previous_turret_facing = self.turret_facing
+		
 		self.fired = False
 		for weapon in self.weapon_list:
 			weapon.ResetMe()
@@ -651,21 +733,24 @@ class Unit:
 
 		libtcod.console_set_default_background(console, libtcod.black)
 	
-	# initiate an attack with the specified weapon against the specified target
+	# initiate an attack from this unit with the specified weapon against the specified target
 	def Attack(self, weapon, target):
 		
 		# make sure correct information has been supplied
 		if weapon is None or target is None:
 			return False
 		
-		# FUTURE: make sure attack is possible
+		# make sure attack is possible
+		if scenario.CheckAttack(self, weapon, target) != '':
+			return False
 		
 		# set weapon and unit fired flags
 		weapon.fired = True
 		self.fired = True
 		
-		# clear GUI console
+		# clear GUI console to hide target recticle/LoS display
 		libtcod.console_clear(gui_con)
+		
 		
 		
 		# TEMP
@@ -738,6 +823,200 @@ class Scenario:
 		# attack can proceed
 		return ''
 	
+	
+	# generate a profile for a given attack
+	# if pivot or turret_rotate are set to True or False, will override actual attacker status
+	def CalcAttack(self, attacker, weapon, target, pivot=None, turret_rotate=None):
+		
+		profile = {}
+		profile['attacker'] = attacker
+		profile['weapon'] = weapon
+		profile['ammo_type'] = weapon.ammo_type
+		profile['target'] = target
+		profile['result'] = ''		# placeholder for text rescription of result
+		
+		
+		# determine attack type
+		weapon_type = weapon.GetStat('type')
+		if weapon_type == 'Gun':
+			profile['type'] = 'Point Fire'
+		elif weapon_type == 'Small Arms' or weapon_type in MG_WEAPONS:
+			profile['type'] = 'Area Fire'
+			profile['effective_fp'] = 0		# placeholder for effective fp
+		else:
+			print('ERROR: Weapon type not recognized: ' + weapon.stats['name'])
+			return None
+		
+		# calculate distance to target
+		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+		
+		# list of modifiers
+		# [maximum displayable modifier description length is 18 characters]
+		
+		modifier_list = []
+		
+		# point fire attacks (eg. large guns)
+		if profile['type'] == 'Point Fire':
+			
+			# calculate base success chance
+			
+			# possible to fire HE at unspotted targets
+			if not target.spotted:
+				# use infantry chance as base chance
+				profile['base_chance'] = PF_BASE_CHANCE[distance][1]
+			else:
+				if target.GetStat('category') == 'Vehicle':
+					profile['base_chance'] = PF_BASE_CHANCE[distance][0]
+				else:
+					profile['base_chance'] = PF_BASE_CHANCE[distance][1]
+		
+			# calculate modifiers and build list of descriptions
+			
+			# description max length is 19 chars
+			
+			# attacker moved
+			if attacker.moved:
+				modifier_list.append(('Attacker Moved', -60.0))
+			
+			# attacker pivoted
+			elif attacker.facing != attacker.previous_facing:
+				modifier_list.append(('Attacker Pivoted', -40.0))
+
+			# weapon is turret rotated
+			elif weapon.GetStat('mount') == 'Turret':
+				if attacker.turret_facing != attacker.previous_turret_facing:
+					modifier_list.append(('Turret Rotated', -20.0))
+			
+			# attacker pinned
+			if attacker.pinned:
+				modifier_list.append(('Attacker Pinned', -60.0))
+			
+			# unspotted target
+			if not target.spotted:
+				modifier_list.append(('Unspotted Target', -25.0))
+			
+			# spotted target
+			else:
+			
+				# FUTURE: acquired target
+				#modifier_list.append(('Acquired Target', mod))
+				
+				# target vehicle moved
+				if target.moved and target.GetStat('category') == 'Vehicle':
+					modifier_list.append(('Target Moved', -30.0))
+				
+				# target size
+				size_class = target.GetStat('size_class')
+				if size_class is not None:
+					if size_class != 'Normal':
+						text = size_class + ' Target'
+						mod = PF_SIZE_MOD[size_class]
+						modifier_list.append((text, mod))
+			
+			# long / short-barreled gun
+			long_range = weapon.GetStat('long_range')
+			if long_range is not None:
+				if long_range == 'S' and distance > 1:
+					modifier_list.append(('Short Gun', -12.0))
+				
+				elif long_range == 'L' and distance > 1:
+					modifier_list.append(('Long Gun', 12.0))
+				
+				elif long_range == 'LL':
+					if distance == 1:
+						modifier_list.append(('Long Gun', 12.0))
+					elif distance > 1:
+						modifier_list.append(('Long Gun', 24.0))
+		
+		# area fire
+		elif profile['type'] == 'Area Fire':
+			
+			# calculate base FP
+			fp = int(weapon.GetStat('fp'))
+			
+			# point blank range multiplier
+			if distance == 0:
+				fp = fp * 2
+			
+			profile['base_fp'] = fp
+			
+			# calculate base effect chance
+			if target.GetStat('category') == 'Vehicle':
+				base_chance = VEH_FP_BASE_CHANCE
+			else:
+				base_chance = INF_FP_BASE_CHANCE
+			for i in range(2, fp + 1):
+				base_chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
+			profile['base_chance'] = round(base_chance, 2)
+			
+			# store the rounded base chance so we can use it later for modifiers
+			base_chance = profile['base_chance']
+			
+			# calculate modifiers
+			
+			# attacker moved
+			if attacker.moved:
+				mod = round(base_chance / 2.0, 2)
+				modifier_list.append(('Attacker Moved', 0.0 - mod))
+			
+			# attacker pivoted
+			elif attacker.facing != attacker.previous_facing:
+				mod = round(base_chance / 3.0, 2)
+				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
+
+			# weapon turret rotated
+			elif weapon.GetStat('mount') == 'Turret':
+				if attacker.turret_facing != attacker.previous_turret_facing:
+					mod = round(base_chance / 4.0, 2)
+					modifier_list.append(('Turret Rotated', 0.0 - mod))
+			
+			# attacker pinned
+			if attacker.pinned:
+				mod = round(base_chance / 2.0, 2)
+				modifier_list.append(('Attacker Pinned', 0.0 - mod))
+			
+			if not target.spotted:
+				modifier_list.append(('Unspotted Target', -25.0))
+			else:
+			
+				# target is infantry and moved
+				if target.moved and target.GetStat('category') == 'Infantry':
+					mod = round(base_chance / 2.0, 2)
+					modifier_list.append(('Infantry Moved', mod))
+				else:
+					if target.GetStat('class') == 'Team':
+						modifier_list.append(('Small Team', -20.0))
+				
+				# target size
+				size_class = target.GetStat('size_class')
+				if size_class is not None:
+					if size_class != 'Normal':
+						text = size_class + ' Target'
+						mod = PF_SIZE_MOD[size_class]
+						modifier_list.append((text, mod))
+				
+		# FUTURE: Commander directing fire
+		
+		# save the list of modifiers
+		profile['modifier_list'] = modifier_list[:]
+		
+		# calculate total modifier
+		total_modifier = 0.0
+		for (desc, mod) in modifier_list:
+			total_modifier += mod
+		
+		# calculate final chance of success
+		profile['final_chance'] = RestrictChance(profile['base_chance'] + total_modifier)
+		
+		# calculate additional outcomes for Area Fire
+		if profile['type'] == 'Area Fire':
+			profile['full_effect'] = RestrictChance((profile['base_chance'] + 
+				total_modifier) * FP_FULL_EFFECT)
+			profile['critical_effect'] = RestrictChance((profile['base_chance'] + 
+				total_modifier) * FP_CRIT_EFFECT)
+		
+		return profile
+		
 	
 	# selecte a different weapon on the player unit
 	def SelectWeapon(self, forward):
@@ -1023,7 +1302,39 @@ class Scenario:
 			
 			if weapon.GetStat('mount') is not None:
 				libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
-				libtcod.console_print(context_con, 0, 1, weapon.stats['mount'])
+				libtcod.console_print_ex(context_con, 17, 0, libtcod.BKGND_NONE,
+					libtcod.RIGHT, weapon.stats['mount'])
+			
+			# if weapon is a gun, display ammo info
+			if weapon.GetStat('type') == 'Gun':
+				
+				# general stores
+				y = 3
+				for ammo_type in AMMO_TYPES:
+					if ammo_type in weapon.ammo_stores:
+						
+						# highlight if this ammo type currently active
+						if weapon.ammo_type is not None:
+							if weapon.ammo_type == ammo_type:
+								libtcod.console_set_default_background(context_con, libtcod.darker_blue)
+								libtcod.console_rect(context_con, 0, y, 18, 1, True, libtcod.BKGND_SET)
+								libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
+						
+						libtcod.console_set_default_foreground(context_con, libtcod.white)
+						libtcod.console_print(context_con, 0, y, ammo_type)
+						libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+						libtcod.console_print_ex(context_con, 7, y, libtcod.BKGND_NONE,
+							libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
+						y += 1
+				y += 1
+				libtcod.console_print(context_con, 0, y, 'Max')
+				libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+				libtcod.console_print_ex(context_con, 7, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, weapon.stats['max_ammo'])
+				
+				# TODO: highlight currenly selected ammo type
+				#if weapon.ammo_type is not None:
+			
 			
 	
 	# update time and phase console
@@ -1728,7 +2039,20 @@ def GetFacing(attacker, target, turret_facing=False):
 	if bearing >= 300 or bearing <= 60:
 		return 'Front'
 	return 'Side'
-	
+
+
+# return a random float between 0.0 and 100.0
+def GetPercentileRoll():
+	return float(libtcod.random_get_int(0, 0, 1000)) / 10.0
+
+
+# round and restrict odds to between 3.0 and 97.0
+def RestrictChance(chance):
+	chance = round(chance, 1)
+	if chance < 3.0: return 3.0
+	if chance > 97.0: return 97.0
+	return chance
+
 
 # try to load game settings from config file
 def LoadCFG():

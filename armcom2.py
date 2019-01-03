@@ -389,6 +389,7 @@ class Unit:
 		
 		# TEMP
 		self.spotted = True			# unit has been spotted by opposing side
+		
 		self.hull_down = []			# list of directions unit in which Hull Down
 		self.moving = False
 		self.fired = False
@@ -638,6 +639,26 @@ class Unit:
 			ys = 17
 
 		libtcod.console_set_default_background(console, libtcod.black)
+	
+	# initiate an attack with the specified weapon against the specified target
+	def Attack(self, weapon, target):
+		
+		# make sure correct information has been supplied
+		if weapon is None or target is None:
+			return False
+		
+		# FUTURE: make sure attack is possible
+		
+		# set weapon and unit fired flags
+		weapon.fired = True
+		self.fired = True
+		
+		# clear GUI console
+		libtcod.console_clear(gui_con)
+		
+		
+		# TEMP
+		return False
 
 
 # MapHex: a single hex on the scenario map
@@ -678,6 +699,15 @@ class Scenario:
 		
 		# index of selected position in player unit
 		self.selected_position = 0
+	
+	
+	# given a combination of an attacker, weapon, and target, see if this would be a
+	# valid attack; if not, return a text description of why not
+	# if ignore_facing is true, we don't check whether weapon is facing correct direction
+	def CheckAttack(self, attacker, weapon, target, ignore_facing=False):
+		
+		pass
+	
 	
 	# selecte a different weapon on the player unit
 	def SelectWeapon(self, forward):
@@ -1433,6 +1463,12 @@ class Scenario:
 					self.UpdateGuiCon()
 					self.UpdateContextCon()
 					self.UpdateScenarioDisplay()
+					continue
+				
+				# player fires active weapon at selected target
+				elif key_char == 'f':
+					result = campaign.player_unit.Attack(scenario.selected_weapon,
+						scenario.selected_target)
 					continue
 
 

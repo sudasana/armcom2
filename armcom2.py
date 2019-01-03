@@ -345,6 +345,8 @@ class Unit:
 		self.hx = 0				# location in scenario hex map
 		self.hy = 0
 		
+		self.dest_hex = None			# destination hex for move
+		
 		# TEMP
 		self.spotted = True			# unit has been spotted by opposing side
 		self.hull_down = []			# list of directions unit in which Hull Down
@@ -381,11 +383,21 @@ class Unit:
 	def SpawnAt(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
+		scenario.units.append(self)
 		for map_hex in scenario.map_hexes:
 			if map_hex.hx == hx and map_hex.hy == hy:
 				map_hex.unit_stack.append(self)
 				return
-		
+	
+	
+	# remove this unit from the scenario
+	def RemoveFromPlay(self):
+		# remove from hex stack
+		scenario.hex_dict[(self.hx, self.hy)].unit_stack.remove(self)
+		# remove from scenario unit list
+		scenario.units.remove(self)
+		print ('DEBUG: removed a ' + self.unit_id + ' from play')
+	
 	
 	# return the display character to use on the map viewport
 	def GetDisplayChar(self):
@@ -590,11 +602,17 @@ class Scenario:
 		
 		# generate hex map: single hex surrounded by 4 hex rings. Final ring is not normally
 		# part of play and stores units that are coming on or going off of the map proper
+		# also store pointers to hexes in a dictionary for quick access
+		self.hex_dict = {}
 		self.map_hexes = []
 		self.map_hexes.append(MapHex(0,0))
+		self.hex_dict[(0,0)] = self.map_hexes[-1]
 		for r in range(1, 5):
 			for (hx, hy) in GetHexRing(0, 0, r):
 				self.map_hexes.append(MapHex(hx,hy))
+				self.hex_dict[(hx,hy)] = self.map_hexes[-1]
+		
+		self.units = []						# list of units in play
 		
 		# turn and phase information
 		self.current_turn = 1					# current scenario turn
@@ -604,6 +622,86 @@ class Scenario:
 		
 		# index of selected position in player unit
 		self.selected_position = 0
+	
+	
+	# execute a player move forward/backward, repositioning units on the hex map as needed
+	def MovePlayer(self, forward):
+				
+		# calculate new hex positions for each unit in play
+		if forward:
+			direction = 3
+		else:
+			direction = 0
+		
+		# run through list in reverse so we can remove units that move off board
+		for unit in reversed(self.units):
+			
+			if unit == campaign.player_unit: continue
+			
+			(new_hx, new_hy) = GetAdjacentHex(unit.hx, unit.hy, direction)
+			
+			# special case: remove any units that would move off map
+			if GetHexDistance(0, 0, new_hx, new_hy) > 4:
+				unit.RemoveFromPlay()
+				continue
+				
+			# special case: jump over player hex 0,0
+			if new_hx == 0 and new_hy == 0:
+				(new_hx, new_hy) = GetAdjacentHex(0, 0, direction)
+			
+			# set destination hex
+			unit.dest_hex = (new_hx, new_hy)
+		
+		# TODO: animate movement
+		
+		# set new hex location for each unit and move into new hex stack
+		for unit in self.units:
+			if unit == campaign.player_unit: continue
+			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
+			(unit.hx, unit.hy) = unit.dest_hex
+			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
+			# clear destination hex
+			unit.dest_hex = None
+		
+		self.UpdateUnitCon()
+	
+	
+	# pivot the hull of the player unit
+	def PivotPlayer(self, clockwise):
+		
+		if clockwise:
+			r = 5
+			f = -1
+		else:
+			r = 1
+			f = 1
+		
+		# calculate new hex positions of units
+		for unit in self.units:
+			if unit == campaign.player_unit: continue
+			
+			(new_hx, new_hy) = RotateHex(unit.hx, unit.hy, r)
+			# set destination hex
+			unit.dest_hex = (new_hx, new_hy)
+		
+		# TODO: animate movement
+		
+		# set new hex location for each unit and move into new hex stack
+		for unit in self.units:
+			if unit == campaign.player_unit: continue
+			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
+			(unit.hx, unit.hy) = unit.dest_hex
+			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
+			# clear destination hex
+			unit.dest_hex = None
+			
+			# pivot facings if any
+			if unit.facing is not None:
+				unit.facing = ConstrainDir(unit.facing + f)
+			if unit.turret_facing is not None:
+				unit.turret_facing = ConstrainDir(unit.turret_facing + f)
+		
+		self.UpdateUnitCon()
 	
 	
 	# advance to next phase/turn and do automatic events
@@ -623,7 +721,11 @@ class Scenario:
 			self.phase = 6
 			self.active_player = 1
 		
-		# TODO: do automatic actions at start of phase
+		# do automatic actions at start of phase
+		
+		# command phase: rebuild lists of commands
+		if self.phase == 0:
+			campaign.player_unit.BuildCmdLists()
 		
 		# automatically advance at end of player spotting phase
 		if self.phase == 1:
@@ -667,7 +769,7 @@ class Scenario:
 			if self.advance_phase: return
 			
 			libtcod.console_set_default_foreground(context_con, libtcod.white)
-			libtcod.console_print(context_con, 6, 0, 'Bonus')
+			libtcod.console_print(context_con, 6, 0, 'Success')
 			libtcod.console_print(context_con, 14, 0, 'Bog')
 			
 			libtcod.console_print(context_con, 0, 2, 'Fwd')
@@ -681,24 +783,34 @@ class Scenario:
 			# TEMP - will have to poll chances from player unit
 			
 			# forward move
-			libtcod.console_print(context_con, 8, 2, '10%%')
-			libtcod.console_print(context_con, 14, 2, '12%%')
+			libtcod.console_print_ex(context_con, 10, 2, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '50%%')
+			libtcod.console_print_ex(context_con, 16, 2, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '10%%')
 			
 			# reverse move
-			libtcod.console_print(context_con, 8, 4, '0%%')
-			libtcod.console_print(context_con, 14, 4, '20%%')
+			libtcod.console_print_ex(context_con, 10, 4, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '30%%')
+			libtcod.console_print_ex(context_con, 16, 4, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '20%%')
 			
 			# pivot
-			libtcod.console_print(context_con, 8, 6, 'N/A')
-			libtcod.console_print(context_con, 14, 6, '2%%')
+			libtcod.console_print_ex(context_con, 10, 6, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '- ')
+			libtcod.console_print_ex(context_con, 16, 6, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '1.5%%')
 			
 			# reposition
-			libtcod.console_print(context_con, 8, 8, '-')
-			libtcod.console_print(context_con, 14, 8, '2%%')
+			libtcod.console_print_ex(context_con, 10, 8, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '75%%')
+			libtcod.console_print_ex(context_con, 16, 8, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '4%%')
 			
 			# hull down
-			libtcod.console_print(context_con, 8, 10, '10%%')
-			libtcod.console_print(context_con, 14, 10, '2%%')
+			libtcod.console_print_ex(context_con, 10, 10, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '70%%')
+			libtcod.console_print_ex(context_con, 16, 10, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '2%%')
 			
 	
 	# update time and phase console
@@ -788,6 +900,8 @@ class Scenario:
 		
 		# player not active
 		if scenario.active_player == 1: return
+		# advancing to next phase automatically
+		if self.advance_phase: return
 		
 		# Any phase in player activation
 		libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
@@ -809,10 +923,6 @@ class Scenario:
 		
 		# Movement phase
 		elif self.phase == 2:
-			
-			# if we're advancing to next phase automatically, don't display anything here
-			if self.advance_phase: return
-			
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
 			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
@@ -824,8 +934,20 @@ class Scenario:
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Pivot Hull')
 			libtcod.console_print(cmd_menu_con, 8, 3, 'Reposition')
 			libtcod.console_print(cmd_menu_con, 8, 4, 'Attempt HD')
+		
+		# Shooting phase
+		elif self.phase == 3:
+			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
+			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
+			libtcod.console_print(cmd_menu_con, 1, 3, 'Q/E')
+			libtcod.console_print(cmd_menu_con, 1, 4, 'F')
 			
-			
+			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Weapon')
+			libtcod.console_print(cmd_menu_con, 8, 2, 'Select Target')
+			libtcod.console_print(cmd_menu_con, 8, 3, 'Rotate Turret')
+			libtcod.console_print(cmd_menu_con, 8, 4, 'Fire')
 
 	
 	# plot the center of a given in-game hex on the scenario hex map console
@@ -1079,6 +1201,25 @@ class Scenario:
 					self.UpdateScenarioDisplay()
 					continue
 			
+			# Movement phase only
+			elif scenario.phase == 2:
+				
+				# move forward/backward
+				if key_char in ['w', 's']:
+					self.MovePlayer(key_char == 'w')
+					self.UpdateContextCon()
+					self.UpdateCrewInfoCon()
+					self.UpdateScenarioDisplay()
+					continue
+				
+				# pivot hull
+				elif key_char in ['a', 'd']:
+					self.PivotPlayer(key_char == 'd')
+					self.UpdateContextCon()
+					self.UpdateCrewInfoCon()
+					self.UpdateScenarioDisplay()
+					continue
+
 
 
 ##########################################################################################

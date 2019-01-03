@@ -123,6 +123,8 @@ SCEN_PHASE_COL = [
 ]
 
 
+
+
 ##########################################################################################
 #                                         Classes                                        #
 ##########################################################################################
@@ -307,6 +309,35 @@ class Position:
 		
 		# person currently in this position
 		self.crewman = None
+
+
+# Weapon Class: represents a weapon mounted on or carried by a unit
+class Weapon:
+	def __init__(self, stats):
+		self.stats = stats
+		
+		# some weapons need a descriptive name generated
+		if 'name' not in self.stats:
+			if self.GetStat('type') == 'Gun':
+				text = self.GetStat('calibre') + 'mm'
+				if self.GetStat('long_range') is not None:
+					text += '(' + self.GetStat('long_range') + ')'
+				self.stats['name'] = text
+			else:
+				self.stats['name'] = self.GetStat('type')
+		
+		self.ResetMe()
+	
+	# set/reset all scenario statuses
+	def ResetMe(self):
+		self.fired = False
+		
+	
+	# check for the value of a stat, return None if stat not present
+	def GetStat(self, stat_name):
+		if stat_name not in self.stats:
+			return None
+		return self.stats[stat_name]
 		
 
 # Unit Class: represents a single vehicle or gun, or a squad or small team of infantry
@@ -320,7 +351,6 @@ class Unit:
 		
 		self.positions_list = []		# list of crew/personnel positions
 		self.personnel_list = []		# list of crew/personnel
-		self.weapon_list = []			# list of unit weapons
 		
 		# load unit stats from JSON file
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
@@ -334,6 +364,16 @@ class Unit:
 		if 'crew_positions' in self.stats:
 			for position_dict in self.stats['crew_positions']:
 				self.positions_list.append(Position(position_dict))
+		
+		# set up weapons
+		self.weapon_list = []			# list of unit weapons
+		weapon_list = self.stats['weapon_list']
+		if weapon_list is not None:
+			for weapon_dict in weapon_list:
+				self.weapon_list.append(Weapon(weapon_dict))
+			
+			# clear this stat since we don't need it any more
+			self.stats['weapon_list'] = None
 		
 		# set up initial scenario statuses
 		self.ResetMe()
@@ -357,6 +397,18 @@ class Unit:
 		self.turret_facing = None
 		self.deployed = False
 	
+	
+	# reset this unit for new turn
+	def ResetForNewTurn(self):
+		self.fired = False
+		for weapon in self.weapon_list:
+			weapon.ResetMe()
+		
+		# select first player weapon if none selected so far
+		if self == campaign.player_unit:
+			if scenario.selected_weapon is None:
+				scenario.selected_weapon = self.weapon_list[0]
+		
 	
 	# check for the value of a stat, return None if stat not present
 	def GetStat(self, stat_name):
@@ -620,8 +672,45 @@ class Scenario:
 		self.phase = 0						# current phase
 		self.advance_phase = False				# flag for input loop to automatically advance to next phase/turn
 		
+		self.selected_weapon = None				# player's currently selected weapon
+		self.selected_target = None				# player's current selected target
+		self.target_list = []					# list of possible player targets
+		
 		# index of selected position in player unit
 		self.selected_position = 0
+	
+	# selecte a different weapon on the player unit
+	def SelectWeapon(self, forward):
+		
+		if self.selected_weapon is None:
+			self.selected_weapon = campaign.player_unit.weapon_list[0]
+			return
+		
+		if forward:
+			m = 1
+		else:
+			m = -1
+		
+		i = campaign.player_unit.weapon_list.index(self.selected_weapon)
+		i += m
+		
+		if i < 0:
+			self.selected_weapon = campaign.player_unit.weapon_list[-1]
+		elif i > len(campaign.player_unit.weapon_list) - 1:
+			self.selected_weapon = campaign.player_unit.weapon_list[0]
+		else:
+			self.selected_weapon = campaign.player_unit.weapon_list[i]
+	
+	# (re)build a sorted list of possible player targets
+	def BuildTargetList(self):
+		self.target_list = []
+		
+		for unit in self.units:
+			# allied unit
+			if unit.owning_player == 0: continue
+			# beyond active part of map
+			if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
+			self.target_list.append(unit)
 	
 	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
@@ -711,6 +800,7 @@ class Scenario:
 		if self.active_player == 1:
 			self.active_player = 0
 			self.phase = 0
+			campaign.player_unit.ResetForNewTurn()
 		
 		# remaining on player turn
 		elif self.phase < 5:
@@ -727,9 +817,13 @@ class Scenario:
 		if self.phase == 0:
 			campaign.player_unit.BuildCmdLists()
 		
-		# automatically advance at end of player spotting phase
-		if self.phase == 1:
+		# spotting phase: automatically advance
+		elif self.phase == 1:
 			self.advance_phase = True
+		
+		# shooting phase
+		elif self.phase == 3:
+			self.BuildTargetList()
 		
 		# TEMP: advance at end of enemy activation
 		elif self.active_player == 1:
@@ -751,6 +845,9 @@ class Scenario:
 	def UpdateContextCon(self):
 		libtcod.console_clear(context_con)
 		
+		# if we're advancing to next phase automatically, don't display anything here
+		if self.advance_phase: return
+		
 		# Command Phase: display info about current crew command
 		if self.phase == 0:
 			position = campaign.player_unit.positions_list[self.selected_position]
@@ -765,8 +862,6 @@ class Scenario:
 		
 		# Movement Phase
 		elif self.phase == 2:
-			# if we're advancing to next phase automatically, don't display anything here
-			if self.advance_phase: return
 			
 			libtcod.console_set_default_foreground(context_con, libtcod.white)
 			libtcod.console_print(context_con, 6, 0, 'Success')
@@ -811,6 +906,23 @@ class Scenario:
 				libtcod.RIGHT, '70%%')
 			libtcod.console_print_ex(context_con, 16, 10, libtcod.BKGND_NONE,
 				libtcod.RIGHT, '2%%')
+		
+		# Shooting Phase
+		elif self.phase == 3:
+			
+			weapon = self.selected_weapon
+			if weapon is None:
+				return
+			
+			libtcod.console_set_default_foreground(context_con, libtcod.white)
+			libtcod.console_set_default_background(context_con, libtcod.darkest_red)
+			libtcod.console_rect(context_con, 0, 0, 18, 1, True, libtcod.BKGND_SET)
+			libtcod.console_print(context_con, 0, 0, weapon.stats['name'])
+			libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
+			
+			if weapon.GetStat('mount') is not None:
+				libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+				libtcod.console_print(context_con, 0, 1, weapon.stats['mount'])
 			
 	
 	# update time and phase console
@@ -1106,6 +1218,7 @@ class Scenario:
 		
 		# set up player unit for first activation
 		campaign.player_unit.BuildCmdLists()
+		campaign.player_unit.ResetForNewTurn()
 		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
@@ -1217,6 +1330,16 @@ class Scenario:
 					self.PivotPlayer(key_char == 'd')
 					self.UpdateContextCon()
 					self.UpdateCrewInfoCon()
+					self.UpdateScenarioDisplay()
+					continue
+			
+			# Shooting phase
+			elif scenario.phase == 3:
+				
+				# select player weapon
+				if key_char in ['w', 's']:
+					self.SelectWeapon(key_char == 's')
+					self.UpdateContextCon()
 					self.UpdateScenarioDisplay()
 					continue
 
@@ -1555,7 +1678,6 @@ campaign = Campaign()
 campaign.player_unit = Unit('Panzer 35(t)')
 campaign.player_unit.nation = 'Germany'
 campaign.player_unit.GenerateNewPersonnel()
-
 
 # create a new scenario
 scenario = Scenario()

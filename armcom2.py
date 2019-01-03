@@ -701,8 +701,10 @@ class Scenario:
 		else:
 			self.selected_weapon = campaign.player_unit.weapon_list[i]
 	
+	
 	# (re)build a sorted list of possible player targets
 	def BuildTargetList(self):
+		
 		self.target_list = []
 		
 		for unit in self.units:
@@ -711,6 +713,37 @@ class Scenario:
 			# beyond active part of map
 			if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
 			self.target_list.append(unit)
+		
+		# old target no longer on list
+		if self.selected_target not in self.target_list:
+			self.selected_target = None
+	
+	
+	# cycle selected player target
+	def CycleTarget(self, forward):
+		
+		# no targets to select from
+		if len(self.target_list) == 0: return
+		
+		# no target selected yet
+		if self.selected_target is None:
+			self.selected_target = self.target_list[0]
+			return
+		
+		if forward:
+			m = 1
+		else:
+			m = -1
+		
+		i = self.target_list.index(self.selected_target)
+		i += m
+		
+		if i < 0:
+			self.selected_target = self.target_list[-1]
+		elif i > len(self.target_list) - 1:
+			self.selected_target = self.target_list[0]
+		else:
+			self.selected_target = self.target_list[i]
 	
 	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
@@ -796,6 +829,13 @@ class Scenario:
 	# advance to next phase/turn and do automatic events
 	def AdvanceToNextPhase(self):
 		
+		# do end of phase actions
+		
+		# end of shooting phase, clear GUI console
+		if self.phase == 3:
+			libtcod.console_clear(gui_con)
+		
+		
 		# enemy activation finished, player's turn
 		if self.active_player == 1:
 			self.active_player = 0
@@ -824,6 +864,7 @@ class Scenario:
 		# shooting phase
 		elif self.phase == 3:
 			self.BuildTargetList()
+			self.UpdateGuiCon()
 		
 		# TEMP: advance at end of enemy activation
 		elif self.active_player == 1:
@@ -1070,23 +1111,6 @@ class Scenario:
 		return (x,y)
 	
 	
-	# update unit layer console
-	def UpdateUnitCon(self):
-		
-		libtcod.console_clear(unit_con)
-		for map_hex in self.map_hexes:
-			# no units in hex
-			if len(map_hex.unit_stack) == 0: continue
-			
-			# draw top unit in stack
-			map_hex.unit_stack[0].DrawMe()
-			
-			# FUTURE: draw unit's terrain as well
-			
-			if len(map_hex.unit_stack) == 1: continue
-			# FUTURE: draw stack number indicator if any
-	
-	
 	# update hexmap console
 	def UpdateHexmapCon(self):
 		
@@ -1104,6 +1128,51 @@ class Scenario:
 			
 		del scen_hex
 	
+	
+	# update unit layer console
+	def UpdateUnitCon(self):
+		
+		libtcod.console_clear(unit_con)
+		for map_hex in self.map_hexes:
+			
+			# too far away
+			if GetHexDistance(0, 0, map_hex.hx, map_hex.hy) > 3: continue
+			
+			# no units in hex
+			if len(map_hex.unit_stack) == 0: continue
+			
+			# draw top unit in stack
+			map_hex.unit_stack[0].DrawMe()
+			
+			# FUTURE: draw unit's terrain as well
+			
+			if len(map_hex.unit_stack) == 1: continue
+			# FUTURE: draw stack number indicator if any
+	
+	
+	# update GUI console
+	def UpdateGuiCon(self):
+		
+		libtcod.console_clear(gui_con)
+		
+		# display LoS if in shooting phase
+		if self.phase == 3 and self.selected_target is not None:
+			(x1,y1) = self.PlotHex(0,0)
+			(x2,y2) = self.PlotHex(self.selected_target.hx, self.selected_target.hy)
+			
+			libtcod.console_put_char_ex(gui_con, x2-1, y2-1, 218, libtcod.red, libtcod.black)
+			libtcod.console_put_char_ex(gui_con, x2+1, y2-1, 191, libtcod.red, libtcod.black)
+			libtcod.console_put_char_ex(gui_con, x2-1, y2+1, 192, libtcod.red, libtcod.black)
+			libtcod.console_put_char_ex(gui_con, x2+1, y2+1, 217, libtcod.red, libtcod.black)
+			
+			# TEMP - no LoS
+			return
+			
+			line = GetLine(x1, y1, x2, y2)
+			for (x, y) in line[2:-1]:
+				libtcod.console_put_char_ex(gui_con, x, y, 250,
+					libtcod.red, libtcod.black)
+		
 	
 	# update game message console, which displays most recent game message
 	def UpdateMsgConsole(self):
@@ -1124,6 +1193,7 @@ class Scenario:
 		# main map display
 		libtcod.console_blit(hexmap_con, 0, 0, 0, 0, con, 32, 9)
 		libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
+		libtcod.console_blit(gui_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
 		
 		# consoles around the edge of map
 		libtcod.console_blit(context_con, 0, 0, 0, 0, con, 28, 1)
@@ -1141,7 +1211,8 @@ class Scenario:
 		
 		# set up and load scenario consoles
 		global bkg_console, crew_con, cmd_menu_con, scen_info_con
-		global player_info_con, context_con, time_con, hexmap_con, unit_con, msg_con
+		global player_info_con, context_con, time_con, hexmap_con, unit_con, gui_con
+		global msg_con
 		
 		# background outline console for left column
 		bkg_console = LoadXP('bkg.xp')
@@ -1182,6 +1253,12 @@ class Scenario:
 		libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
 		libtcod.console_clear(scen_info_con)
 		
+		# hex map console
+		hexmap_con = libtcod.console_new(53, 43)
+		libtcod.console_set_default_background(hexmap_con, libtcod.black)
+		libtcod.console_set_default_foreground(hexmap_con, libtcod.black)
+		libtcod.console_clear(hexmap_con)
+		
 		# unit layer console
 		unit_con = libtcod.console_new(53, 43)
 		libtcod.console_set_default_background(unit_con, KEY_COLOR)
@@ -1189,11 +1266,12 @@ class Scenario:
 		libtcod.console_set_key_color(unit_con, KEY_COLOR)
 		libtcod.console_clear(unit_con)
 		
-		# hex map console
-		hexmap_con = libtcod.console_new(53, 43)
-		libtcod.console_set_default_background(hexmap_con, libtcod.black)
-		libtcod.console_set_default_foreground(hexmap_con, libtcod.black)
-		libtcod.console_clear(hexmap_con)
+		# gui console - used for displaying target recticles, line of sight, etc.
+		gui_con = libtcod.console_new(53, 43)
+		libtcod.console_set_default_background(gui_con, KEY_COLOR)
+		libtcod.console_set_default_foreground(gui_con, libtcod.white)
+		libtcod.console_set_key_color(gui_con, KEY_COLOR)
+		libtcod.console_clear(gui_con)
 		
 		# game message console
 		msg_con = libtcod.console_new(61, 4)
@@ -1208,12 +1286,17 @@ class Scenario:
 		campaign.player_unit.turret_facing = 0
 		campaign.player_unit.SpawnAt(0,0)
 		
-		# generate an enemy unit
+		# generate enemy units
 		unit = Unit('7TP')
 		unit.owning_player = 1
 		unit.facing = 3
 		unit.turret_facing = 3
-		unit.SpawnAt(0,-2)
+		unit.SpawnAt(0, -2)
+		campaign.enemy_units.append(unit)
+		
+		unit = Unit('Riflemen')
+		unit.owning_player = 1
+		unit.SpawnAt(2, 1)
 		campaign.enemy_units.append(unit)
 		
 		# set up player unit for first activation
@@ -1339,6 +1422,15 @@ class Scenario:
 				# select player weapon
 				if key_char in ['w', 's']:
 					self.SelectWeapon(key_char == 's')
+					self.UpdateGuiCon()
+					self.UpdateContextCon()
+					self.UpdateScenarioDisplay()
+					continue
+				
+				# cycle player target
+				elif key_char in ['a', 'd']:
+					self.CycleTarget(key_char == 'd')
+					self.UpdateGuiCon()
 					self.UpdateContextCon()
 					self.UpdateScenarioDisplay()
 					continue

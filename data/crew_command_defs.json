@@ -32,28 +32,8 @@
 		"spotting_allowed" : "FALSE"
 	},
 	
-	"Move Forward" : {
-		"desc" : "Attempt to move forward into adjacent area",
-		"position_list" : ["Driver"],
-		"spotting_allowed" : "TRUE"
-	},
-	"Reverse Move" : {
-		"desc" : "Attempt to reverse into adjacent area",
-		"position_list" : ["Driver"],
-		"spotting_allowed" : "TRUE"
-	},
-	"Pivot" : {
-		"desc" : "Pivot the hull to face a new direction",
-		"position_list" : ["Driver"],
-		"spotting_allowed" : "TRUE"
-	},
-	"Reposition" : {
-		"desc" : "Attempt to gain better cover and LoS on enemy units",
-		"position_list" : ["Driver"],
-		"spotting_allowed" : "TRUE"
-	},
-	"Attempt Hull Down" : {
-		"desc" : "Attempt to gain Hull Down status",
+	"Drive" : {
+		"desc" : "Move forward or backward, pivot hull, reposition, or attempt to gain Hull Down",
 		"position_list" : ["Driver"],
 		"spotting_allowed" : "TRUE"
 	},

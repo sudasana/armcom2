@@ -113,13 +113,13 @@ MONTH_NAMES = [
 	'September', 'October', 'November', 'December'
 ]
 
-# text names for scenario phases
+# text names for scenario phases; final one is for when enemy is active
 SCEN_PHASE_NAMES = [
-	'Command', 'Spotting', 'Movement', 'Shooting', 'Assault', 'Recovery'
+	'Command', 'Spotting', 'Movement', 'Shooting', 'Assault', 'Recovery', 'Enemy Action'
 ]
 # colour associated with phases
 SCEN_PHASE_COL = [
-	libtcod.yellow, libtcod.purple, libtcod.green, libtcod.red, libtcod.blue 
+	libtcod.yellow, libtcod.purple, libtcod.green, libtcod.red, libtcod.white, libtcod.blue, libtcod.light_red 
 ]
 
 
@@ -596,12 +596,53 @@ class Scenario:
 			for (hx, hy) in GetHexRing(0, 0, r):
 				self.map_hexes.append(MapHex(hx,hy))
 		
-		# current active player and phase
-		self.active_player = 0
-		self.phase = 0
+		# turn and phase information
+		self.current_turn = 1					# current scenario turn
+		self.active_player = 0					# currently active player (0 is human player)
+		self.phase = 0						# current phase
+		self.advance_phase = False				# flag for input loop to automatically advance to next phase/turn
 		
 		# index of selected position in player unit
 		self.selected_position = 0
+	
+	
+	# advance to next phase/turn and do automatic events
+	def AdvanceToNextPhase(self):
+		
+		# enemy activation finished, player's turn
+		if self.active_player == 1:
+			self.active_player = 0
+			self.phase = 0
+		
+		# remaining on player turn
+		elif self.phase < 5:
+			self.phase += 1
+		
+		# switching to enemy turn
+		else:
+			self.phase = 6
+			self.active_player = 1
+		
+		# TODO: do automatic actions at start of phase
+		
+		# automatically advance at end of player spotting phase
+		if self.phase == 1:
+			self.advance_phase = True
+		
+		# TEMP: advance at end of enemy activation
+		elif self.active_player == 1:
+			self.advance_phase = True
+		
+		self.UpdateCrewInfoCon()
+		self.UpdateCmdCon()
+		self.UpdateContextCon()
+		self.UpdateTimeCon()
+		self.UpdateScenarioDisplay()
+		libtcod.console_flush()
+		
+		# pause here if we are advancing to next phase automatically
+		#if self.advance_phase:
+		#	Wait(50)
 	
 	
 	# update contextual info console
@@ -619,7 +660,46 @@ class Scenario:
 			for line in lines:
 				libtcod.console_print(context_con, 0, y, line)
 				y += 1
-	
+		
+		# Movement Phase
+		elif self.phase == 2:
+			# if we're advancing to next phase automatically, don't display anything here
+			if self.advance_phase: return
+			
+			libtcod.console_set_default_foreground(context_con, libtcod.white)
+			libtcod.console_print(context_con, 6, 0, 'Bonus')
+			libtcod.console_print(context_con, 14, 0, 'Bog')
+			
+			libtcod.console_print(context_con, 0, 2, 'Fwd')
+			libtcod.console_print(context_con, 0, 4, 'Rev')
+			libtcod.console_print(context_con, 0, 6, 'Pivot')
+			libtcod.console_print(context_con, 0, 8, 'Repo')
+			libtcod.console_print(context_con, 0, 10, 'HD')
+			
+			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+			
+			# TEMP - will have to poll chances from player unit
+			
+			# forward move
+			libtcod.console_print(context_con, 8, 2, '10%%')
+			libtcod.console_print(context_con, 14, 2, '12%%')
+			
+			# reverse move
+			libtcod.console_print(context_con, 8, 4, '0%%')
+			libtcod.console_print(context_con, 14, 4, '20%%')
+			
+			# pivot
+			libtcod.console_print(context_con, 8, 6, 'N/A')
+			libtcod.console_print(context_con, 14, 6, '2%%')
+			
+			# reposition
+			libtcod.console_print(context_con, 8, 8, '-')
+			libtcod.console_print(context_con, 14, 8, '2%%')
+			
+			# hull down
+			libtcod.console_print(context_con, 8, 10, '10%%')
+			libtcod.console_print(context_con, 14, 10, '2%%')
+			
 	
 	# update time and phase console
 	def UpdateTimeCon(self):
@@ -701,6 +781,7 @@ class Scenario:
 			y += 4
 			i += 1
 	
+	
 	# update player command console
 	def UpdateCmdCon(self):
 		libtcod.console_clear(cmd_menu_con)
@@ -708,23 +789,44 @@ class Scenario:
 		# player not active
 		if scenario.active_player == 1: return
 		
-		# Command Phase
-		if scenario.phase == 0:
-			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
-			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
-			libtcod.console_print(cmd_menu_con, 1, 3, 'H')
-			
-			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Crew')
-			libtcod.console_print(cmd_menu_con, 8, 2, 'Select Command')
-			libtcod.console_print(cmd_menu_con, 8, 3, 'Toggle Hatch')
-		
+		# Any phase in player activation
 		libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 		libtcod.console_print(cmd_menu_con, 1, 10, 'Space')
 		libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 		libtcod.console_print(cmd_menu_con, 8, 10, 'End Phase')
-	
+		
+		# Command phase
+		if self.phase == 0:
+			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
+			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
+			#libtcod.console_print(cmd_menu_con, 1, 3, 'H')
+			
+			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Crew')
+			libtcod.console_print(cmd_menu_con, 8, 2, 'Select Command')
+			#libtcod.console_print(cmd_menu_con, 8, 3, 'Toggle Hatch')
+		
+		# Movement phase
+		elif self.phase == 2:
+			
+			# if we're advancing to next phase automatically, don't display anything here
+			if self.advance_phase: return
+			
+			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
+			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
+			libtcod.console_print(cmd_menu_con, 1, 3, 'R')
+			libtcod.console_print(cmd_menu_con, 1, 4, 'H')
+			
+			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+			libtcod.console_print(cmd_menu_con, 8, 1, 'Forward/Reverse')
+			libtcod.console_print(cmd_menu_con, 8, 2, 'Pivot Hull')
+			libtcod.console_print(cmd_menu_con, 8, 3, 'Reposition')
+			libtcod.console_print(cmd_menu_con, 8, 4, 'Attempt HD')
+			
+			
+
 	
 	# plot the center of a given in-game hex on the scenario hex map console
 	# 0,0 appears in centre of console
@@ -903,6 +1005,12 @@ class Scenario:
 			
 			libtcod.console_flush()
 			
+			# trigger advance to next phase
+			if self.advance_phase:
+				self.advance_phase = False
+				self.AdvanceToNextPhase()
+				continue
+			
 			# get keyboard and/or mouse event
 			keypress = GetInputEvent()
 			
@@ -916,11 +1024,23 @@ class Scenario:
 			# key commands
 			key_char = chr(key.c).lower()
 			
+			# TEMP - exit game
 			if key_char == 'q':
 				exit_scenario = True
 				continue
 			
-			# Command Phase
+			# player not active
+			if scenario.active_player == 1: continue
+			
+			# Any Phase
+			
+			# advance to next phase
+			if key.vk == libtcod.KEY_SPACE:
+				self.advance_phase = True
+				continue
+			
+			
+			# Command Phase only
 			if scenario.phase == 0:
 				
 				# change selected crew position
@@ -942,7 +1062,7 @@ class Scenario:
 					continue
 				
 				# change current command for selected crewman
-				if key_char in ['a', 'd']:
+				elif key_char in ['a', 'd']:
 					
 					# no crewman in selected position
 					crewman = campaign.player_unit.positions_list[scenario.selected_position].crewman
@@ -958,8 +1078,7 @@ class Scenario:
 					self.UpdateCrewInfoCon()
 					self.UpdateScenarioDisplay()
 					continue
-					
-
+			
 
 
 ##########################################################################################
@@ -987,10 +1106,17 @@ def FlushKeyboardEvents():
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
 		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS, key, mouse)
-		if event != libtcod.EVENT_KEY_PRESS:
-			exit = True
+		if event != libtcod.EVENT_KEY_PRESS: exit = True
 	session.key_down = False
-	
+
+
+# wait for a specified amount of miliseconds, refreshing the screen in the meantime
+def Wait(wait_time):
+	wait_time = wait_time * 0.01
+	start_time = time.time()
+	while time.time() - start_time < wait_time:
+		FlushKeyboardEvents()
+
 
 # load a console image from an .xp file
 def LoadXP(filename):

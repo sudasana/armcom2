@@ -137,6 +137,13 @@ MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG']
 
 # TODO: move to JSON file
 
+# critical hit and miss thresholds
+CRITICAL_HIT = 3.0
+CRITICAL_MISS = 97.0
+
+# range at which MG attacks have a chance to penetrate armour
+MG_AP_RANGE = 1
+
 # base success chances for point fire attacks
 # first column is for vehicle targets, second is everything else
 PF_BASE_CHANCE = [
@@ -162,6 +169,41 @@ FP_CHANCE_STEP = 5.0		# each additional firepower beyond 1 adds this additional 
 FP_CHANCE_STEP_MOD = 0.95	# additional firepower modifier reduced by this much beyond 1
 FP_FULL_EFFECT = 0.75		# multiplier for full effect
 FP_CRIT_EFFECT = 0.1		# multipler for critical effect
+
+# base success chances for armour penetration
+AP_BASE_CHANCE = {
+	'MG' : 16.7,
+	'AT Rifle' : 28.0,
+	'20L' : 28.0,
+	'37S' : 58.4,
+	'37' : 72.0,
+	'37L' : 83.0,
+	'47S' : 72.0,
+	'75S' : 91.7,
+	'75' : 120.0,		# not sure if this and below are accurate, FUTURE: check balance
+	'75L' : 160.0,
+	'88L' : 200.0
+}
+
+# effective FP of an HE hit from different weapon calibres
+HE_FP_EFFECT = [
+	(200, 36),(183, 34),(170, 32),(160, 31),(150, 30),(140, 28),(128, 26),(120, 24),
+	(107, 22),(105, 22),(100, 20),(95, 19),(88, 18),(85, 17),(80, 16),(75, 14),
+	(70, 12),(65, 10),(60, 8),(57, 7),(50, 6),(45, 5),(37, 4),(30, 2),(25, 2),(20, 1)
+]
+
+# penetration chance on armour of HE hits
+HE_AP_CHANCE = [
+	(150, 110.0),
+	(120, 100.0),
+	(100, 91.7),
+	(80, 72.2),
+	(70, 58.4),
+	(50, 41.7),
+	(40, 27.8),
+	(30, 16.7),
+]
+
 
 
 ##########################################################################################
@@ -412,7 +454,7 @@ class Weapon:
 			if self.stats['ammo_type_list'] == ['HE', 'AP']:
 				self.ammo_stores['HE'] = int(max_ammo * 0.7)
 				self.ammo_stores['AP'] = max_ammo - self.ammo_stores['HE']
-				self.ammo_type = 'HE'
+				self.ammo_type = 'AP'
 	
 	
 	# set/reset all scenario statuses
@@ -425,6 +467,34 @@ class Weapon:
 		if stat_name not in self.stats:
 			return None
 		return self.stats[stat_name]
+	
+	
+	# return the effective FP of an HE hit from this gun
+	def GetEffectiveFP(self):
+		if self.GetStat('type') != 'Gun':
+			print('ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate effective FP')
+			return 1
+		
+		for (calibre, fp) in HE_FP_EFFECT:
+			if calibre <= int(self.GetStat('calibre')):
+				return fp
+		
+		print('ERROR: Could not find effective FP for: ' + self.stats['name'])
+		return 1
+	
+	
+	# return the base penetration chance of an HE hit from this gun
+	def GetBaseHEPenetrationChance(self):
+		if self.GetStat('type') != 'Gun':
+			print('ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate HE AP chance')
+			return 0.0
+		
+		for (calibre, chance) in HE_AP_CHANCE:
+			if calibre <= int(self.GetStat('calibre')):
+				return chance
+		
+		print('ERROR: Could not find HE AP chance for: ' + self.stats['name'])
+		return 0.0
 		
 
 # Unit Class: represents a single vehicle or gun, or a squad or small team of infantry
@@ -471,7 +541,6 @@ class Unit:
 		
 		self.hx = 0				# location in scenario hex map
 		self.hy = 0
-		
 		self.dest_hex = None			# destination hex for move
 		
 		# TEMP
@@ -488,6 +557,9 @@ class Unit:
 		
 		self.pinned = False
 		self.deployed = False
+		
+		self.fp_to_resolve = 0			# fp from attacks to be resolved
+		self.ap_hits_to_resolve = []		# list of unresolved AP hits
 	
 	
 	# reset this unit for new turn
@@ -778,10 +850,77 @@ class Unit:
 		
 		WaitForContinue()
 		
+		# do the roll, display results to the screen, and modify the attack profile
+		profile = scenario.DoAttackRoll(profile)
 		
+		# wait for the player if they are involved
+		if self == campaign.player_unit or target == campaign.player_unit:
+			WaitForContinue()
+		
+		# apply results of this attack if any
+		
+		# area fire attack
+		if profile['type'] == 'Area Fire':
+				
+			if profile['result'] in ['CRITICAL EFFECT', 'FULL EFFECT', 'PARTIAL EFFECT']:
+				
+				target.fp_to_resolve += profile['effective_fp']
+				
+				# target will automatically be spotted next turn if possible
+				if not target.known:
+					target.hit_by_fp = 2
+			
+			# possible it was converted into an AP MG hit
+			elif profile['result'] in ['HIT', 'CRITICAL HIT']:	
+				target.ap_hits_to_resolve.append(profile)
+		
+		# ap attack hit
+		elif profile['result'] in ['CRITICAL HIT', 'HIT']:
+			
+			# armoured target
+			if target.GetStat('armour') is not None:
+				target.ap_hits_to_resolve.append(profile)
 		
 		# TEMP attack is finished
 		return True
+	
+	
+	# resolve all unresolved FP and AP hits on this unit
+	def ResolveHits(self):
+		
+		# no hits to resolve! doing fine!
+		if self.fp_to_resolve == 0 and len(self.ap_hits_to_resolve) == 0: return
+		
+		# FUTURE: handle FP first
+		#self.ResolveFP()
+		self.fp_to_resolve == 0
+		if not self.alive: return
+		
+		# handle AP hits
+		for profile in self.ap_hits_to_resolve:
+			
+			# unit is armoured
+			if self.GetStat('armour') is not None:
+				
+				profile = scenario.CalcAP(profile)
+				scenario.DisplayAttack(profile)
+				
+				# wait if player is involved
+				if profile['attacker'] == campaign.player_unit or self == campaign.player_unit:
+					WaitForContinue()
+				
+				# do the attack roll; modifies the attack profile
+				profile = scenario.DoAttackRoll(profile)
+				
+				# wait if player is involved
+				if profile['attacker'] == campaign.player_unit or self == campaign.player_unit:
+					WaitForContinue()
+				
+				# FUTURE: apply result if any
+		
+		# clear unresolved hits
+		self.ap_hits_to_resolve = []
+		
 
 
 # MapHex: a single hex on the scenario map
@@ -790,6 +929,7 @@ class MapHex:
 		self.hx = hx
 		self.hy = hy
 		self.unit_stack = []
+
 
 
 # Scenario: represents a single battle encounter
@@ -952,8 +1092,24 @@ class Scenario:
 				elif long_range == 'LL':
 					if distance == 1:
 						modifier_list.append(('Long Gun', 12.0))
-					elif distance > 1:
+					elif distance >= 2:
 						modifier_list.append(('Long Gun', 24.0))
+			
+			# smaller-calibre gun at longer range
+			if weapon_type == 'Gun':
+				calibre_mod = 0
+				calibre = int(weapon.stats['calibre'])
+				
+				if calibre <= 40 and distance >= 2:
+					calibre_mod -= 1	
+				
+				if calibre <= 57:
+					if distance == 2:
+						calibre_mod -= 1
+					elif distance == 3:
+						calibre_mod -= 2
+				if calibre_mod < 0:
+					modifier_list.append(('Small Calibre', (8.0 * calibre_mod)))
 		
 		# area fire
 		elif profile['type'] == 'Area Fire':
@@ -1041,6 +1197,117 @@ class Scenario:
 				total_modifier) * FP_FULL_EFFECT)
 			profile['critical_effect'] = RestrictChance((profile['base_chance'] + 
 				total_modifier) * FP_CRIT_EFFECT)
+		
+		return profile
+	
+	
+	# takes an attack profile and generates a profile for an armour penetration attempt
+	def CalcAP(self, profile):
+		
+		profile['type'] = 'ap'
+		modifier_list = []
+		
+		# create local pointers for convenience
+		attacker = profile['attacker']
+		weapon = profile['weapon']
+		target = profile['target']
+		
+		# get location hit on target
+		location = profile['location']
+		# hull hit or target does not have rotatable turret
+		if location == 'Hull' or target.turret_facing is None:
+			turret_facing = False
+		else:
+			turret_facing = True
+		
+		facing = GetFacing(attacker, target, turret_facing=turret_facing)
+		hit_location = (location + '_' + facing).lower()
+		
+		# generate a text description of location hit
+		if location == 'Turret' and target.turret_facing is None:
+			location = 'Upper Hull'
+		profile['location_desc'] = location + ' ' + facing
+		
+		# calculate base chance of penetration
+		if weapon.GetStat('name') == 'AT Rifle':
+			base_chance = AP_BASE_CHANCE['AT Rifle']
+		elif weapon.GetStat('type') in MG_WEAPONS:
+			base_chance = AP_BASE_CHANCE['MG']
+		else:
+			gun_rating = weapon.GetStat('calibre')
+			
+			# HE hits have a much lower base chance
+			if profile['ammo_type'] == 'HE':
+				base_chance = weapon.GetBaseHEPenetrationChance()
+			else:
+				if weapon.GetStat('long_range') is not None:
+					gun_rating += weapon.GetStat('long_range')
+				if gun_rating not in AP_BASE_CHANCE:
+					print('ERROR: No AP base chance found for: ' + gun_rating)
+					return None
+				base_chance = AP_BASE_CHANCE[gun_rating]
+		
+		profile['base_chance'] = base_chance
+		
+		# calculate modifiers
+		
+		# calibre/range modifier - not applicable to HE and MG attacks
+		if profile['ammo_type'] == 'AP' and weapon.GetStat('calibre') is not None:
+			calibre = int(weapon.GetStat('calibre'))
+			distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+			
+			if calibre <= 25:
+				if distance == 0:
+					modifier_list.append(('Close Range', 18.0))
+				elif distance == 2:
+					modifier_list.append(('Medium Range', -7.0))
+				else:
+					modifier_list.append(('Long Range', -18.0))
+			elif calibre <= 57:
+				if distance == 0:
+					modifier_list.append(('Close Range', 7.0))
+				elif distance == 2:
+					modifier_list.append(('Medium Range', -7.0))
+				else:
+					modifier_list.append(('Long Range', -12.0))
+			else:
+				if distance == 0:
+					modifier_list.append(('Close Range', 7.0))
+				elif 2 <= distance <= 3:
+					modifier_list.append(('Long Range', -7.0))
+		
+		# target armour modifier
+		# TODO: move into GetArmourModifier function for target
+		#       use in DoAirAttack as well
+		armour = target.GetStat('armour')
+		if armour is not None:
+			
+			# location is armoured
+			if armour[hit_location] != '-':
+				target_armour = int(armour[hit_location])
+				if target_armour >= 0:
+					modifier = -9.0
+					for i in range(target_armour - 1):
+						modifier = modifier * 1.8
+					
+					modifier_list.append(('Target Armour', modifier))
+					
+					# apply critical hit modifier if any
+					if profile['result'] == 'CRITICAL HIT':
+						modifier = round(abs(modifier) * 0.8, 2)
+						modifier_list.append(('Critical Hit', modifier))
+				
+		
+		# save the list of modifiers
+		profile['modifier_list'] = modifier_list[:]
+		
+		# calculate total modifer
+		total_modifier = 0.0
+		for (desc, mod) in modifier_list:
+			total_modifier += mod
+		
+		# calculate final chance of success
+		profile['final_chance'] = RestrictChance(profile['base_chance'] + total_modifier)
 		
 		return profile
 	
@@ -1253,6 +1520,142 @@ class Scenario:
 		libtcod.console_flush()
 	
 	
+	# do a roll, animate the attack console, and display the results
+	# returns an modified attack profile
+	def DoAttackRoll(self, profile):
+		
+		# FUTURE: check to see if this weapon maintains Rate of Fire
+		#def CheckRoF(profile):
+		
+		# don't animate percentage rolls if player is not involved
+		if profile['attacker'] != campaign.player_unit and profile['target'] != campaign.player_unit:
+			roll = GetPercentileRoll()
+		else:
+			for i in range(6):
+				roll = GetPercentileRoll()
+				
+				# TEMP testing
+				if i == 5:
+					roll = 4.0
+				
+				# clear any previous text
+				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
+					libtcod.CENTER, '      ')
+				
+				text = str(roll) + '%%'
+				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
+					libtcod.CENTER, text)
+				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_flush()
+				Wait(15)
+		
+		# record the final roll in the attack profile
+		profile['roll'] = roll
+			
+		# determine location hit on target (not always used)
+		location_roll = GetPercentileRoll()
+		if location_roll <= 75.0:
+			profile['location'] = 'Hull'
+		else:
+			profile['location'] = 'Turret'
+		
+		# armour penetration roll
+		if profile['type'] == 'ap':
+			
+			if roll >= CRITICAL_MISS:
+				result_text = 'NO PENETRATION'
+			elif roll <= CRITICAL_HIT:
+				result_text = 'PENETRATED'
+			elif roll <= profile['final_chance']:
+				result_text = 'PENETRATED'
+			else:
+				result_text = 'NO PENETRATION'
+		
+		# area fire attack
+		elif profile['type'] == 'Area Fire':
+			
+			if roll <= profile['critical_effect']:
+				result_text = 'CRITICAL EFFECT'
+				profile['effective_fp'] = profile['base_fp'] * 2
+			elif roll <= profile['full_effect']:
+				result_text = 'FULL EFFECT'
+				profile['effective_fp'] = profile['base_fp']
+			elif roll <= profile['final_chance']:
+				result_text = 'PARTIAL EFFECT'
+				profile['effective_fp'] = int(floor(profile['base_fp'] / 2))
+			else:
+				result_text = 'NO EFFECT'
+			
+			# might be converted into an AP MG hit
+			if result_text in ['FULL EFFECT', 'CRITICAL EFFECT']:
+				if profile['weapon'].GetStat('type') in MG_WEAPONS and profile['target'].GetStat('armour') is not None:
+					distance = GetHexDistance(profile['attacker'].hx,
+						profile['attacker'].hy, profile['target'].hx,
+						profile['target'].hy)
+					if distance <= MG_AP_RANGE:
+						if result_text == 'FULL EFFECT':
+							result_text = 'HIT'
+						else:
+							result_text = 'CRITICAL HIT'
+
+		# point fire attack
+		else:
+			
+			if roll >= CRITICAL_MISS:
+				result_text = 'MISS'
+			elif roll <= CRITICAL_HIT:
+				result_text = 'CRITICAL HIT'
+			elif roll <= profile['final_chance']:
+				result_text = 'HIT'
+			else:
+				result_text = 'MISS'
+		
+		# if point fire hit or AP MG hit, may be saved by HD status
+		if result_text in ['HIT', 'CRITICAL HIT'] and len(profile['target'].hull_down) > 0:
+			
+			if profile['location'] == 'Hull':
+				direction = GetDirectionToward(profile['target'].hx,
+					profile['target'].hy, profile['attacker'].hx,
+					profile['attacker'].hy)
+				if direction in profile['target'].hull_down:
+					result_text = 'MISS - HULL DOWN'
+		
+		profile['result'] = result_text
+		
+		# if player is not involved, we can return here
+		if profile['attacker'] != campaign.player_unit and profile['target'] != campaign.player_unit:
+			return profile
+		
+		libtcod.console_print_ex(attack_con, 13, 51, libtcod.BKGND_NONE,
+			libtcod.CENTER, result_text)
+		
+		# display effective FP if it was successful area fire attack
+		if profile['type'] == 'Area Fire' and result_text != 'NO EFFECT':
+			libtcod.console_print_ex(attack_con, 13, 52, libtcod.BKGND_NONE,
+				libtcod.CENTER, str(profile['effective_fp']) + ' FP')
+		
+		# FUTURE: check for RoF for gun / MG attacks
+		#if profile['type'] != 'ap' and profile['weapon'].GetStat('rof') is not None:
+			# TEMP: player only for now
+		#	if profile['attacker'] == scenario.player_unit:
+		#		profile['weapon'].maintained_rof = CheckRoF(profile) 
+		#		if profile['weapon'].maintained_rof:
+		#			libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
+		#				libtcod.CENTER, 'Maintained Rate of Fire')
+		#			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+		#			libtcod.console_print(attack_con, 6, 56, 'F')
+		#			libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		#			libtcod.console_print(attack_con, 12, 56, 'Fire Again')
+			
+		# blit the finished console to the screen
+		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		
+		return profile
+	
+	
 	# selecte a different weapon on the player unit
 	def SelectWeapon(self, forward):
 		
@@ -1405,9 +1808,20 @@ class Scenario:
 		
 		# do end of phase actions
 		
-		# end of shooting phase, clear GUI console
+		# end of shooting phase
 		if self.phase == 3:
+			
+			# clear GUI console and refresh screen
 			libtcod.console_clear(gui_con)
+			self.UpdateScenarioDisplay()
+			libtcod.console_flush()
+			
+			# resolve hits on enemy units
+			for unit in self.units:
+				if not unit.alive: continue
+				if unit.owning_player == self.active_player: continue
+				unit.ResolveHits()
+				
 		
 		
 		# enemy activation finished, player's turn
@@ -1440,7 +1854,7 @@ class Scenario:
 			self.BuildTargetList()
 			self.UpdateGuiCon()
 		
-		# TEMP: advance at end of enemy activation
+		# TEMP: automatically advance at end of enemy activation
 		elif self.active_player == 1:
 			self.advance_phase = True
 		
@@ -2288,8 +2702,8 @@ def RectifyBearing(h):
 
 # get the bearing from unit1 to unit2, rotated for unit1's facing
 def GetRelativeBearing(unit1, unit2):
-	(x1, y1) = PlotHex(unit1.hx, unit1.hy)
-	(x2, y2) = PlotHex(unit2.hx, unit2.hy)
+	(x1, y1) = scenario.PlotHex(unit1.hx, unit1.hy)
+	(x2, y2) = scenario.PlotHex(unit2.hx, unit2.hy)
 	bearing = GetBearing(x1, y1, x2, y2)
 	return RectifyBearing(bearing - (unit1.facing * 60))
 

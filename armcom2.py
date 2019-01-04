@@ -135,7 +135,7 @@ MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG']
 #                                    Engine Constants                                    #
 ##########################################################################################
 
-# TODO: move to JSON file
+# TODO: move these to JSON file
 
 # critical hit and miss thresholds
 CRITICAL_HIT = 3.0
@@ -149,8 +149,8 @@ MG_AP_RANGE = 1
 PF_BASE_CHANCE = [
 	[88.0, 78.0],			# same hex
 	[73.0, 48.0],			# 1 hex range
-	[62.0, 18.0],			# 2 "
-	[48.0, 5.0]			# 3 hex range
+	[62.0, 28.0],			# 2 "
+	[48.0, 18.0]			# 3 hex range
 ]
 
 # modifier for target size if target is known

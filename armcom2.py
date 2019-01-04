@@ -196,6 +196,9 @@ class Session:
 		# store nation definition info
 		with open(DATAPATH + 'nation_defs.json', encoding='utf8') as data_file:
 			self.nations = json.load(data_file)
+		
+		# background for attack console
+		self.attack_bkg = LoadXP('attack_bkg.xp')
 	
 	
 	# try to initialize SDL2 mixer
@@ -511,6 +514,13 @@ class Unit:
 		return self.stats[stat_name]
 	
 	
+	# get a descriptive name of this unit
+	def GetName(self):
+		if self.owning_player == 1 and not self.spotted:
+			return 'Unspotted Unit'
+		return self.unit_id
+	
+	
 	# build lists of possible commands for each personnel in this unit
 	def BuildCmdLists(self):
 		for position in self.positions_list:
@@ -733,6 +743,7 @@ class Unit:
 
 		libtcod.console_set_default_background(console, libtcod.black)
 	
+	
 	# initiate an attack from this unit with the specified weapon against the specified target
 	def Attack(self, weapon, target):
 		
@@ -748,13 +759,29 @@ class Unit:
 		weapon.fired = True
 		self.fired = True
 		
+		# calculate attack profile
+		profile = scenario.CalcAttack(self, weapon, target)
+		
+		# attack not possible
+		if profile is None: return False
+		
+		# TODO: attack animation
+		
 		# clear GUI console to hide target recticle/LoS display
-		libtcod.console_clear(gui_con)
+		#libtcod.console_clear(gui_con)
+		
+		# re-draw GUI layer
+		#scenario.UpdateGuiCon()
+				
+		# display attack profile on screen
+		scenario.DisplayAttack(profile)
+		
+		WaitForContinue()
 		
 		
 		
-		# TEMP
-		return False
+		# TEMP attack is finished
+		return True
 
 
 # MapHex: a single hex on the scenario map
@@ -875,8 +902,8 @@ class Scenario:
 			# description max length is 19 chars
 			
 			# attacker moved
-			if attacker.moved:
-				modifier_list.append(('Attacker Moved', -60.0))
+			if attacker.moving:
+				modifier_list.append(('Attacker Moving', -60.0))
 			
 			# attacker pivoted
 			elif attacker.facing != attacker.previous_facing:
@@ -901,9 +928,9 @@ class Scenario:
 				# FUTURE: acquired target
 				#modifier_list.append(('Acquired Target', mod))
 				
-				# target vehicle moved
-				if target.moved and target.GetStat('category') == 'Vehicle':
-					modifier_list.append(('Target Moved', -30.0))
+				# target vehicle moving
+				if target.moving and target.GetStat('category') == 'Vehicle':
+					modifier_list.append(('Target Moving', -30.0))
 				
 				# target size
 				size_class = target.GetStat('size_class')
@@ -954,10 +981,10 @@ class Scenario:
 			
 			# calculate modifiers
 			
-			# attacker moved
-			if attacker.moved:
+			# attacker moving
+			if attacker.moving:
 				mod = round(base_chance / 2.0, 2)
-				modifier_list.append(('Attacker Moved', 0.0 - mod))
+				modifier_list.append(('Attacker Moving', 0.0 - mod))
 			
 			# attacker pivoted
 			elif attacker.facing != attacker.previous_facing:
@@ -979,10 +1006,10 @@ class Scenario:
 				modifier_list.append(('Unspotted Target', -25.0))
 			else:
 			
-				# target is infantry and moved
-				if target.moved and target.GetStat('category') == 'Infantry':
+				# target is infantry and moving
+				if target.moving and target.GetStat('category') == 'Infantry':
 					mod = round(base_chance / 2.0, 2)
-					modifier_list.append(('Infantry Moved', mod))
+					modifier_list.append(('Infantry Moving', mod))
 				else:
 					if target.GetStat('class') == 'Team':
 						modifier_list.append(('Small Team', -20.0))
@@ -1016,7 +1043,215 @@ class Scenario:
 				total_modifier) * FP_CRIT_EFFECT)
 		
 		return profile
+	
+	
+	# display an attack or AP profile to the screen and prompt to proceed
+	# does not alter the profile
+	def DisplayAttack(self, profile):
 		
+		# don't display if player is not involved
+		#if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
+		#	return
+		
+		libtcod.console_clear(attack_con)
+		
+		# display the background outline
+		libtcod.console_blit(session.attack_bkg, 0, 0, 0, 0, attack_con, 0, 0)
+		
+		# window title
+		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
+		libtcod.console_rect(attack_con, 1, 1, 25, 1, False, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(attack_con, libtcod.black)
+		
+		# set flags on whether attacker/target is spotted
+		
+		attacker_spotted = True
+		if profile['attacker'].owning_player == 1 and not profile['attacker'].spotted:
+			attacker_spotted = False
+		target_spotted = True
+		if profile['target'].owning_player == 1 and not profile['target'].spotted:
+			target_spotted = False
+		
+		if profile['type'] == 'ap':
+			text = 'Armour Penetration'
+		else:
+			text = 'Ranged Attack'
+		libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		# attacker portrait if any
+		if profile['type'] in ['Point Fire', 'Area Fire']:
+			
+			libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
+			libtcod.console_rect(attack_con, 1, 2, 25, 8, False, libtcod.BKGND_SET)
+		
+			# FUTURE: store portraits for every active unit type in session object
+			if attacker_spotted:
+				portrait = profile['attacker'].GetStat('portrait')
+				if portrait is not None:
+					libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 2)
+		
+		# attack description
+		if profile['type'] == 'ap':
+			text1 = profile['target'].GetName()
+			if attacker_spotted:
+				text2 = 'hit by ' + profile['weapon'].GetStat('name')
+			else:
+				text2 = 'hit'
+			if profile['ammo_type'] is not None:
+				text2 += ' (' + profile['ammo_type'] + ')'
+			text3 = 'in ' + profile['location_desc']
+		else:
+			text1 = profile['attacker'].GetName()
+			if attacker_spotted:
+				text2 = 'firing ' + profile['weapon'].GetStat('name') + ' at'
+			else:
+				text2 = 'firing at'
+			text3 = profile['target'].GetName()
+			
+		libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE, libtcod.CENTER, text1)
+		libtcod.console_print_ex(attack_con, 13, 11, libtcod.BKGND_NONE, libtcod.CENTER, text2)
+		libtcod.console_print_ex(attack_con, 13, 12, libtcod.BKGND_NONE, libtcod.CENTER, text3)
+		
+		# display target portrait if any
+		libtcod.console_set_default_background(attack_con, PORTRAIT_BG_COL)
+		libtcod.console_rect(attack_con, 1, 13, 25, 8, False, libtcod.BKGND_SET)
+		
+		# FUTURE: store portraits for every active unit type in session object
+		if target_spotted:
+			portrait = profile['target'].GetStat('portrait')
+			if portrait is not None:
+				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 13)
+		
+		# base chance
+		text = 'Base Chance '
+		if profile['type'] == 'ap':
+			text += 'to Penetrate'
+		elif profile['type'] == 'Area Fire':
+			text += 'of Effect'
+		else:
+			text += 'to Hit'
+		libtcod.console_print_ex(attack_con, 13, 23, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		text = str(profile['base_chance']) + '%%'
+		libtcod.console_print_ex(attack_con, 13, 24, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		# list of modifiers
+		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
+		libtcod.console_rect(attack_con, 1, 27, 25, 1, False, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(attack_con, libtcod.black)
+		libtcod.console_print_ex(attack_con, 13, 27, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Modifiers')
+		
+		y = 29
+		if len(profile['modifier_list']) == 0:
+			libtcod.console_print_ex(attack_con, 13, y, libtcod.BKGND_NONE, libtcod.CENTER,
+				'None')
+		else:
+			for (desc, mod) in profile['modifier_list']:
+				# max displayable length is 17 chars
+				libtcod.console_print(attack_con, 2, y, desc[:17])
+				
+				if mod > 0.0:
+					col = libtcod.green
+					text = '+'
+				else:
+					col = libtcod.red
+					text = ''
+				
+				text += str(mod)
+				
+				libtcod.console_set_default_foreground(attack_con, col)
+				libtcod.console_print_ex(attack_con, 24, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, text)
+				libtcod.console_set_default_foreground(attack_con, libtcod.white)
+				
+				y += 1
+		
+		# display final chance
+		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
+		libtcod.console_rect(attack_con, 1, 43, 25, 1, False, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(attack_con, libtcod.black)
+		libtcod.console_print_ex(attack_con, 14, 43, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Final Chance')
+		
+		# display chance graph
+		if profile['type'] == 'Area Fire':
+			# area fire has partial, full, and critical outcomes possible
+			
+			# no effect
+			libtcod.console_set_default_background(attack_con, libtcod.red)
+			libtcod.console_rect(attack_con, 1, 46, 25, 3, False, libtcod.BKGND_SET)
+			
+			# partial effect
+			libtcod.console_set_default_background(attack_con, libtcod.darker_green)
+			x = int(ceil(25.0 * profile['final_chance'] / 100.0))
+			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
+			
+			if profile['final_chance'] > profile['full_effect']:
+				libtcod.console_print_ex(attack_con, 24, 46, libtcod.BKGND_NONE,
+					libtcod.RIGHT, 'PART')
+				text = str(profile['final_chance']) + '%%'
+				libtcod.console_print_ex(attack_con, 24, 47, libtcod.BKGND_NONE,
+					libtcod.RIGHT, text)
+			
+			# full effect
+			libtcod.console_set_default_background(attack_con, libtcod.green)
+			x = int(ceil(25.0 * profile['full_effect'] / 100.0))
+			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
+			
+			if profile['full_effect'] > profile['critical_effect']:
+				libtcod.console_print_ex(attack_con, 13, 46, libtcod.BKGND_NONE,
+					libtcod.CENTER, 'FULL')
+				text = str(profile['full_effect']) + '%%'
+				libtcod.console_print_ex(attack_con, 13, 47, libtcod.BKGND_NONE,
+					libtcod.CENTER, text)
+			
+			# critical effect
+			libtcod.console_set_default_background(attack_con, libtcod.blue)
+			x = int(ceil(25.0 * profile['critical_effect'] / 100.0))
+			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
+			libtcod.console_print(attack_con, 2, 46, 'CRIT')
+			text = str(profile['critical_effect']) + '%%'
+			libtcod.console_print(attack_con, 2, 47, text)
+			
+		else:
+			
+			# miss
+			libtcod.console_set_default_background(attack_con, libtcod.red)
+			libtcod.console_rect(attack_con, 1, 46, 25, 3, False, libtcod.BKGND_SET)
+			
+			# hit
+			x = int(ceil(25.0 * profile['final_chance'] / 100.0))
+			libtcod.console_set_default_background(attack_con, libtcod.green)
+			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
+			
+			# critical hit band
+			libtcod.console_set_default_foreground(attack_con, libtcod.blue)
+			for y in range(46, 49):
+				libtcod.console_put_char(attack_con, 1, y, 221)
+			
+			# critical miss band
+			libtcod.console_set_default_foreground(attack_con, libtcod.dark_grey)
+			for y in range(46, 49):
+				libtcod.console_put_char(attack_con, 25, y, 222)
+		
+			libtcod.console_set_default_foreground(attack_con, libtcod.white)
+			libtcod.console_set_default_background(attack_con, libtcod.black)
+		
+			text = str(profile['final_chance']) + '%%'
+			libtcod.console_print_ex(attack_con, 13, 47, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
+		
+		# display prompts
+		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+		libtcod.console_print(attack_con, 6, 57, 'Tab')
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		libtcod.console_print(attack_con, 12, 57, 'Continue')
+		
+		# blit the finished console to the screen
+		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+	
 	
 	# selecte a different weapon on the player unit
 	def SelectWeapon(self, forward):
@@ -1583,7 +1818,7 @@ class Scenario:
 		# set up and load scenario consoles
 		global bkg_console, crew_con, cmd_menu_con, scen_info_con
 		global player_info_con, context_con, time_con, hexmap_con, unit_con, gui_con
-		global msg_con
+		global msg_con, attack_con
 		
 		# background outline console for left column
 		bkg_console = LoadXP('bkg.xp')
@@ -1649,6 +1884,12 @@ class Scenario:
 		libtcod.console_set_default_background(msg_con, libtcod.darkest_grey)
 		libtcod.console_set_default_foreground(msg_con, libtcod.white)
 		libtcod.console_clear(msg_con)
+		
+		# attack display console
+		attack_con = libtcod.console_new(27, 60)
+		libtcod.console_set_default_background(attack_con, libtcod.black)
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		libtcod.console_clear(attack_con)
 		
 		
 		# set up player unit
@@ -1810,6 +2051,8 @@ class Scenario:
 				elif key_char == 'f':
 					result = campaign.player_unit.Attack(scenario.selected_weapon,
 						scenario.selected_target)
+					if result:
+						self.UpdateScenarioDisplay()
 					continue
 
 
@@ -1849,6 +2092,28 @@ def Wait(wait_time):
 	start_time = time.time()
 	while time.time() - start_time < wait_time:
 		FlushKeyboardEvents()
+
+
+# wait for player to press continue key
+# option to allow backspace pressed instead, returns True if so 
+def WaitForContinue(allow_cancel=False):
+	end_pause = False
+	cancel = False
+	while not end_pause:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		
+		# get keyboard and/or mouse event
+		if not GetInputEvent(): continue
+		
+		if key.vk == libtcod.KEY_BACKSPACE and allow_cancel:
+			end_pause = True
+			cancel = True
+		elif key.vk == libtcod.KEY_TAB:
+			end_pause = True
+	if allow_cancel and cancel:
+		return True
+	return False
 
 
 # load a console image from an .xp file

@@ -137,6 +137,13 @@ MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG']
 
 # TODO: move these to JSON file
 
+# move chance of moving forward/backward into next hex
+BASE_FORWARD_MOVE_CHANCE = 50.0
+BASE_REVERSE_MOVE_CHANCE = 20.0
+
+# bonus per unsuccessful move attempt
+BASE_MOVE_BONUS = 15.0
+
 # critical hit and miss thresholds
 CRITICAL_HIT = 3.0
 CRITICAL_MISS = 97.0
@@ -558,6 +565,12 @@ class Unit:
 		self.pinned = False
 		self.deployed = False
 		
+		self.forward_move_chance = 0.0		# set by CalculateMoveChances()
+		self.reverse_move_chance = 0.0
+		
+		self.forward_move_bonus = 0.0
+		self.reverse_move_bonus = 0.0
+		
 		self.fp_to_resolve = 0			# fp from attacks to be resolved
 		self.ap_hits_to_resolve = []		# list of unresolved AP hits
 	
@@ -592,6 +605,27 @@ class Unit:
 			return 'Unspotted Unit'
 		return self.unit_id
 	
+	
+	# return the person in the given position
+	def GetPersonnelByPosition(self, position_name):
+		for position in self.positions_list:
+			if position.crewman is None: continue
+			if position.name == position_name:
+				return position.crewman
+		return None
+	
+	
+	# calcualte chances of a successful forward/reverse move action
+	def CalculateMoveChances(self):
+		
+		# set values to base values
+		self.forward_move_chance = BASE_FORWARD_MOVE_CHANCE
+		self.reverse_move_chance = BASE_REVERSE_MOVE_CHANCE
+		
+		# add bonuses from previous moves
+		self.forward_move_chance += self.forward_move_bonus
+		self.reverse_move_chance += self.reverse_move_bonus
+		
 	
 	# build lists of possible commands for each personnel in this unit
 	def BuildCmdLists(self):
@@ -1725,7 +1759,44 @@ class Scenario:
 	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
 	def MovePlayer(self, forward):
-				
+		
+		# FUTURE: do sound effect
+		
+		# do move success roll
+		if forward:
+			chance = campaign.player_unit.forward_move_chance
+		else:
+			chance = campaign.player_unit.reverse_move_chance
+		roll = GetPercentileRoll()
+		
+		# move was not successful
+		if roll > chance:
+			
+			# clear any alternative bonus and apply bonus for future moves
+			if forward:
+				campaign.player_unit.reverse_move_bonus = 0.0
+				campaign.player_unit.forward_move_bonus += BASE_MOVE_BONUS
+			else:
+				campaign.player_unit.forward_move_bonus = 0.0
+				campaign.player_unit.reverse_move_bonus += BASE_MOVE_BONUS
+			
+			campaign.player_unit.moving = True
+			
+			# FUTURE: show message to player
+			print ('DEBUG: move was not successful')
+			
+			# end movement phase
+			self.advance_phase = True
+			
+			return
+			
+		
+		# move was successful, clear all bonuses
+		campaign.player_unit.forward_move_bonus = 0.0
+		campaign.player_unit.reverse_move_bonus = 0.0
+		
+		campaign.player_unit.moving = True
+		
 		# calculate new hex positions for each unit in play
 		if forward:
 			direction = 3
@@ -1763,6 +1834,9 @@ class Scenario:
 			unit.dest_hex = None
 		
 		self.UpdateUnitCon()
+		
+		# end movement phase
+		self.advance_phase = True
 	
 	
 	# pivot the hull of the player unit
@@ -1849,6 +1923,23 @@ class Scenario:
 		elif self.phase == 1:
 			self.advance_phase = True
 		
+		# movement phase: skip if driver not on move command
+		elif self.phase == 2:
+			
+			crewman = campaign.player_unit.GetPersonnelByPosition('Driver')
+			
+			# no driver in position
+			if crewman is None:
+				self.advance_phase = True
+			else:
+				# driver not on Drive command
+				if crewman.current_cmd != 'Drive':
+					self.advance_phase = True
+			
+			# if we're doing the pahse, calculate move chances for player unit
+			if not self.advance_phase:
+				campaign.player_unit.CalculateMoveChances()
+		
 		# shooting phase
 		elif self.phase == 3:
 			self.BuildTargetList()
@@ -1894,47 +1985,49 @@ class Scenario:
 			
 			libtcod.console_set_default_foreground(context_con, libtcod.white)
 			libtcod.console_print(context_con, 6, 0, 'Success')
-			libtcod.console_print(context_con, 14, 0, 'Bog')
+			#libtcod.console_print(context_con, 14, 0, 'Bog')
 			
 			libtcod.console_print(context_con, 0, 2, 'Fwd')
 			libtcod.console_print(context_con, 0, 4, 'Rev')
 			libtcod.console_print(context_con, 0, 6, 'Pivot')
-			libtcod.console_print(context_con, 0, 8, 'Repo')
-			libtcod.console_print(context_con, 0, 10, 'HD')
+			#libtcod.console_print(context_con, 0, 8, 'Repo')
+			#libtcod.console_print(context_con, 0, 10, 'HD')
 			
 			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 			
 			# TEMP - will have to poll chances from player unit
 			
 			# forward move
-			libtcod.console_print_ex(context_con, 10, 2, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '50%%')
-			libtcod.console_print_ex(context_con, 16, 2, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '10%%')
+			text = str(campaign.player_unit.forward_move_chance) + '%%'
+			libtcod.console_print_ex(context_con, 11, 2, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
+			#libtcod.console_print_ex(context_con, 16, 2, libtcod.BKGND_NONE,
+			#	libtcod.RIGHT, '10%%')
 			
 			# reverse move
-			libtcod.console_print_ex(context_con, 10, 4, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '30%%')
-			libtcod.console_print_ex(context_con, 16, 4, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '20%%')
+			text = str(campaign.player_unit.reverse_move_chance) + '%%'
+			libtcod.console_print_ex(context_con, 11, 4, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
+			#libtcod.console_print_ex(context_con, 16, 4, libtcod.BKGND_NONE,
+			#	libtcod.RIGHT, '20%%')
 			
 			# pivot
-			libtcod.console_print_ex(context_con, 10, 6, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '- ')
-			libtcod.console_print_ex(context_con, 16, 6, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '1.5%%')
+			libtcod.console_print_ex(context_con, 11, 6, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '100%%')
+			#libtcod.console_print_ex(context_con, 16, 6, libtcod.BKGND_NONE,
+			#	libtcod.RIGHT, '1.5%%')
 			
 			# reposition
-			libtcod.console_print_ex(context_con, 10, 8, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '75%%')
-			libtcod.console_print_ex(context_con, 16, 8, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '4%%')
+			#libtcod.console_print_ex(context_con, 10, 8, libtcod.BKGND_NONE,
+			#	libtcod.RIGHT, '75%%')
+			#libtcod.console_print_ex(context_con, 16, 8, libtcod.BKGND_NONE,
+			#	libtcod.RIGHT, '4%%')
 			
 			# hull down
-			libtcod.console_print_ex(context_con, 10, 10, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '70%%')
-			libtcod.console_print_ex(context_con, 16, 10, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '2%%')
+			#libtcod.console_print_ex(context_con, 10, 10, libtcod.BKGND_NONE,
+			#	libtcod.RIGHT, '70%%')
+			#libtcod.console_print_ex(context_con, 16, 10, libtcod.BKGND_NONE,
+			#	libtcod.RIGHT, '2%%')
 		
 		# Shooting Phase
 		elif self.phase == 3:
@@ -2099,14 +2192,14 @@ class Scenario:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
 			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
-			libtcod.console_print(cmd_menu_con, 1, 3, 'R')
-			libtcod.console_print(cmd_menu_con, 1, 4, 'H')
+			#libtcod.console_print(cmd_menu_con, 1, 3, 'R')
+			#libtcod.console_print(cmd_menu_con, 1, 4, 'H')
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Forward/Reverse')
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Pivot Hull')
-			libtcod.console_print(cmd_menu_con, 8, 3, 'Reposition')
-			libtcod.console_print(cmd_menu_con, 8, 4, 'Attempt HD')
+			#libtcod.console_print(cmd_menu_con, 8, 3, 'Reposition')
+			#libtcod.console_print(cmd_menu_con, 8, 4, 'Attempt HD')
 		
 		# Shooting phase
 		elif self.phase == 3:

@@ -129,6 +129,11 @@ AMMO_TYPES = ['HE', 'AP']
 # list of MG-type weapons
 MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG']
 
+# text names for months
+MONTH_NAMES = [
+	'', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+	'September', 'October', 'November', 'December'
+]
 
 
 ##########################################################################################
@@ -136,6 +141,9 @@ MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG']
 ##########################################################################################
 
 # TODO: move these to JSON file
+
+# length of scenario turn in minutes
+TURN_LENGTH = 2
 
 # move chance of moving forward/backward into next hex
 BASE_FORWARD_MOVE_CHANCE = 50.0
@@ -226,6 +234,32 @@ class Campaign:
 		
 		# holder for active enemy units
 		self.enemy_units = []
+
+
+
+# Campaign Day: represents one calendar day in a campaign with a 5x7 map of terrain hexes, each of
+# which may spawn a Scenario
+class CampaignDay:
+	def __init__(self):
+		
+		# current year, month, day, hour, and minute
+		self.calendar = {
+			'year' : 1939,
+			'month' : 9,
+			'day' : 1,
+			'hour' : 4,
+			'minute' : 45
+		}
+	
+	# advance the current campaign time
+	# FUTURE: handle rolling over into a new day: might happen eg. in days that start at dusk
+	def AdvanceClock(self, hours, minutes):
+		self.calendar['hour'] += hours
+		self.calendar['minute'] += minutes
+		while self.calendar['minute'] >= 60:
+			self.calendar['hour'] += 1
+			self.calendar['minute'] -= 60
+		
 		
 
 # Session: stores data that is generated for each game session and not stored in the saved game
@@ -994,8 +1028,18 @@ class Scenario:
 		self.selected_target = None				# player's current selected target
 		self.target_list = []					# list of possible player targets
 		
-		# index of selected position in player unit
-		self.selected_position = 0
+		self.selected_position = 0				# index of selected position in player unit
+		
+		self.message_log = []					# log of scenario messages
+	
+	
+	# add a game message to the log and display it in the message console
+	def Message(self, text):
+		# add timestamp
+		text = (str(campaign_day.calendar['hour']).zfill(2) + ':' +
+			str(campaign_day.calendar['minute']).zfill(2) + ' ' + text)
+		self.message_log.append(text)
+		self.UpdateMsgConsole()
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
@@ -1782,14 +1826,18 @@ class Scenario:
 			
 			campaign.player_unit.moving = True
 			
-			# FUTURE: show message to player
-			print ('DEBUG: move was not successful')
+			# show message to player
+			text = 'You did not move far enough to change enemy positions'
+			scenario.Message(text)
 			
 			# end movement phase
 			self.advance_phase = True
 			
 			return
 			
+		# show message to player
+		text = 'You move far enough to change enemy positions'
+		scenario.Message(text)
 		
 		# move was successful, clear all bonuses
 		campaign.player_unit.forward_move_bonus = 0.0
@@ -1896,10 +1944,12 @@ class Scenario:
 				if unit.owning_player == self.active_player: continue
 				unit.ResolveHits()
 				
-		
-		
 		# enemy activation finished, player's turn
 		if self.active_player == 1:
+			
+			# advance clock
+			campaign_day.AdvanceClock(0, TURN_LENGTH)
+			
 			self.active_player = 0
 			self.phase = 0
 			campaign.player_unit.ResetForNewTurn()
@@ -2082,8 +2132,17 @@ class Scenario:
 	# update time and phase console
 	def UpdateTimeCon(self):
 		libtcod.console_clear(time_con)
+		
+		text = (MONTH_NAMES[campaign_day.calendar['month']] + ' ' + str(campaign_day.calendar['day']) +
+			', ' + str(campaign_day.calendar['year']))
+		libtcod.console_print_ex(time_con, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		text = str(campaign_day.calendar['hour']).zfill(2) + ':' + str(campaign_day.calendar['minute']).zfill(2)
+		libtcod.console_print_ex(time_con, 10, 1, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		# current scenario phase
 		libtcod.console_set_default_foreground(time_con, SCEN_PHASE_COL[self.phase])
-		libtcod.console_print_ex(time_con, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, 
+		libtcod.console_print_ex(time_con, 10, 3, libtcod.BKGND_NONE, libtcod.CENTER, 
 			SCEN_PHASE_NAMES[self.phase] + ' Phase')
 		libtcod.console_set_default_foreground(time_con, libtcod.white)
 	
@@ -2288,8 +2347,19 @@ class Scenario:
 		
 	
 	# update game message console, which displays most recent game message
+	# 61x3
 	def UpdateMsgConsole(self):
 		libtcod.console_clear(msg_con)
+		
+		# no message to display
+		if len(self.message_log) == 0: return
+		
+		lines = wrap(self.message_log[-1], 61)
+		y = 0
+		for line in lines:
+			libtcod.console_print(msg_con, 0, y, line)
+			y += 1
+			if y == 2: break
 	
 	
 	# draw all scenario consoles to the screen
@@ -2387,8 +2457,8 @@ class Scenario:
 		libtcod.console_clear(gui_con)
 		
 		# game message console
-		msg_con = libtcod.console_new(61, 4)
-		libtcod.console_set_default_background(msg_con, libtcod.darkest_grey)
+		msg_con = libtcod.console_new(61, 3)
+		libtcod.console_set_default_background(msg_con, libtcod.black)
 		libtcod.console_set_default_foreground(msg_con, libtcod.white)
 		libtcod.console_clear(msg_con)
 		
@@ -2421,6 +2491,8 @@ class Scenario:
 		# set up player unit for first activation
 		campaign.player_unit.BuildCmdLists()
 		campaign.player_unit.ResetForNewTurn()
+		
+		scenario.Message('Welcome to Armoured Commander II!')
 		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
@@ -2855,7 +2927,7 @@ def LoadCFG():
 #                                      Main Script                                       #
 ##########################################################################################
 
-global campaign, scenario, session 
+global campaign, campaign_day, scenario, session 
 
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
@@ -2927,8 +2999,9 @@ key = libtcod.Key()
 
 # TEMP testing
 
-# create a new campaign and player unit
+# create a new campaign, campaign day and player unit
 campaign = Campaign()
+campaign_day = CampaignDay()
 campaign.player_unit = Unit('Panzer 35(t)')
 campaign.player_unit.nation = 'Germany'
 campaign.player_unit.GenerateNewPersonnel()

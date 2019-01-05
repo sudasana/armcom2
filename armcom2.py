@@ -642,6 +642,14 @@ class AI:
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
 			libtcod.console_flush()
+		
+		elif self.disposition == 'Combat':
+			
+			# determine target
+			target_list = []
+			
+			for unit in scenario.units:
+				pass
 
 
 

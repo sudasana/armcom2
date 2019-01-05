@@ -537,7 +537,113 @@ class Weapon:
 		
 		print('ERROR: Could not find HE AP chance for: ' + self.stats['name'])
 		return 0.0
+
+
+
+# AI: controller for enemy and player-allied units
+class AI:
+	def __init__(self, owner):
+		self.owner = owner			# pointer to owning Unit
+		self.disposition = None			# records type of action for this activation
+
+	# do activation for this unit
+	def DoActivation(self):
 		
+		# no action if it's not alive
+		if not self.owner.alive: return
+		
+		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
+		
+		roll = GetPercentileRoll()
+		
+		# Step 1: roll for unit action
+		if self.owner.GetStat('category') == 'Infantry':
+			if roll <= 65.0:
+				self.disposition = 'Combat'
+			elif roll <= 80.0:
+				if self.owner.pinned:
+					self.disposition = 'Combat'
+				else:
+					self.disposition = 'Movement'
+			else:
+				self.disposition = None
+		
+		else:
+		
+			if roll >= 85.0:
+				self.disposition = None
+			elif roll <= 55.0:
+				self.disposition = 'Combat'
+			else:
+				if self.owner.pinned:
+					self.disposition = 'Combat'
+				else:
+					self.disposition = 'Movement'
+		
+		current_range = GetHexDistance(0, 0, self.owner.hx, self.owner.hy)
+		
+		# no combat if unit is off-map
+		if current_range > 3:
+			if self.disposition == 'Combat':
+				self.disposition = None
+		
+		# Step 2: Determine action to take
+		if self.disposition == 'Movement':
+			
+			# build a list of adjacent hexes
+			hex_list = GetHexRing(self.owner.hx, self.owner.hy, 1)
+			
+			for (hx, hy) in reversed(hex_list):
+				
+				# don't move into player's hex
+				if hx == 0 and hy == 0:
+					hex_list.remove((hx, hy))
+					continue
+				
+				# destination is on map, check if 1+ enemy units present
+				if (hx, hy) in scenario.hex_dict:
+					for unit in scenario.hex_dict[(hx,hy)].unit_stack:
+						if unit.owning_player != self.owner.owning_player:
+							hex_list.remove((hx, hy))
+							continue
+				
+				# if range would change, chance that this hex gets thrown out
+				if GetHexDistance(0, 0, hx, hy) != current_range:
+					if GetPercentileRoll() <= 60.0:
+						hex_list.remove((hx, hy))
+						continue
+			
+			# no possible moves
+			if len(hex_list) == 0:
+				return
+			
+			(hx, hy) = choice(hex_list)
+			
+			# if destination is off-map, remove from game
+			if (hx, hy) not in scenario.hex_dict:
+				self.owner.RemoveFromPlay()
+				return
+			
+			scenario.Message(self.owner.GetName() + ' moves')
+			
+			# turn to face destination
+			if self.owner.facing is not None:
+				direction = GetDirectionToAdjacent(self.owner.hx, self.owner.hy, hx, hy)
+				self.owner.facing = direction
+				if self.owner.turret_facing is not None:
+					self.owner.turret_facing = direction
+			
+			# move into new hex
+			scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
+			self.owner.hx = hx
+			self.owner.hy = hy
+			scenario.hex_dict[(hx, hy)].unit_stack.append(self.owner)
+			
+			scenario.UpdateUnitCon()
+			scenario.UpdateScenarioDisplay()
+			libtcod.console_flush()
+
+
 
 # Unit Class: represents a single vehicle or gun, or a squad or small team of infantry
 class Unit:
@@ -547,6 +653,7 @@ class Unit:
 		self.alive = True			# unit is alive
 		self.owning_player = 0			# unit is allied to 0:player 1:enemy
 		self.nation = None			# nationality of unit and personnel
+		self.ai = None				# AI controller if any
 		
 		self.positions_list = []		# list of crew/personnel positions
 		self.personnel_list = []		# list of crew/personnel
@@ -672,6 +779,7 @@ class Unit:
 	
 	# generate new personnel sufficent to fill all personnel positions
 	def GenerateNewPersonnel(self):
+		self.personnel_list = []
 		for position in self.positions_list:
 			self.personnel_list.append(Personnel(self, self.nation, position))
 			position.crewman = self.personnel_list[-1]
@@ -1015,6 +1123,11 @@ class Unit:
 	# destroy this unit and remove it from the game
 	def DestroyMe(self):
 		
+		# TEMP: catch player destruction
+		if self == campaign.player_unit:
+			Wait(50)
+			sys.exit()
+		
 		# set flag
 		self.alive = False
 		
@@ -1098,6 +1211,8 @@ class Scenario:
 		# check that proper crew command has been set
 		
 		# check that weapon hasn't already fired
+		if weapon.fired:
+			return 'Weapon has already fired this turn'
 		
 		# check that current ammo is available and this ammo would affect the target
 		
@@ -2051,8 +2166,14 @@ class Scenario:
 			# TEMP - advance automatically past this phase
 			self.advance_phase = True
 		
-		# TEMP: automatically advance at end of enemy activation
+		# enemy activation
 		elif self.active_player == 1:
+			
+			# run through list in reverse since we might remove units from play
+			for unit in reversed(self.units):
+				if unit.owning_player == 0: continue
+				unit.ai.DoActivation()
+			
 			self.advance_phase = True
 		
 		self.UpdateCrewInfoCon()
@@ -2068,6 +2189,7 @@ class Scenario:
 	
 	
 	# update contextual info console
+	# 18x12
 	def UpdateContextCon(self):
 		libtcod.console_clear(context_con)
 		
@@ -2183,6 +2305,9 @@ class Scenario:
 				# TODO: highlight currenly selected ammo type
 				#if weapon.ammo_type is not None:
 			
+			if weapon.fired:
+				libtcod.console_set_default_foreground(context_con, libtcod.red)
+				libtcod.console_print(context_con, 0, 11, 'Fired')
 			
 	
 	# update time and phase console
@@ -2619,6 +2744,8 @@ class Scenario:
 		unit = Unit('7TP')
 		unit.owning_player = 1
 		unit.nation = 'Poland'
+		unit.ai = AI(unit)
+		unit.GenerateNewPersonnel()
 		unit.facing = 3
 		unit.turret_facing = 3
 		unit.SpawnAt(0, -2)
@@ -2627,6 +2754,8 @@ class Scenario:
 		unit = Unit('Riflemen')
 		unit.owning_player = 1
 		unit.nation = 'Poland'
+		unit.ai = AI(unit)
+		unit.GenerateNewPersonnel()
 		unit.SpawnAt(2, 1)
 		campaign.enemy_units.append(unit)
 		
@@ -2784,6 +2913,7 @@ class Scenario:
 					result = campaign.player_unit.Attack(scenario.selected_weapon,
 						scenario.selected_target)
 					if result:
+						self.UpdateContextCon()
 						self.UpdateScenarioDisplay()
 					continue
 

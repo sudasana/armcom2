@@ -156,7 +156,7 @@ BASE_MOVE_BONUS = 15.0
 CRITICAL_HIT = 3.0
 CRITICAL_MISS = 97.0
 
-# range at which MG attacks have a chance to penetrate armour
+# maximum range at which MG attacks have a chance to penetrate armour
 MG_AP_RANGE = 1
 
 # base success chances for point fire attacks
@@ -458,15 +458,16 @@ class Weapon:
 			del self.stats['max_range']
 		else:
 			if self.stats['type'] in ['Turret MG', 'Co-ax MG']:
-				self.max_range = 1
+				self.max_range = 2
 			elif self.stats['type'] in ['Hull MG', 'AA MG']:
-				self.max_range = 0
+				self.max_range = 1
+		
+		self.ammo_type = None
 		
 		# if weapon is a gun, set up ammo stores
 		self.ammo_stores = None
 		if self.GetStat('type') == 'Gun' and 'ammo_type_list' in self.stats:
 			self.ammo_stores = {}
-			self.ammo_type = None
 			self.LoadGunAmmo()
 		
 		self.ResetMe()
@@ -590,6 +591,7 @@ class Unit:
 		self.hull_down = []			# list of directions unit in which Hull Down
 		self.moving = False
 		self.fired = False
+		self.hit_by_fp = False			# was hit by an effective fp attack
 		
 		self.facing = None
 		self.previous_facing = None
@@ -935,8 +937,8 @@ class Unit:
 				target.fp_to_resolve += profile['effective_fp']
 				
 				# target will automatically be spotted next turn if possible
-				if not target.known:
-					target.hit_by_fp = 2
+				if not target.spotted:
+					target.hit_by_fp = True
 			
 			# possible it was converted into an AP MG hit
 			elif profile['result'] in ['HIT', 'CRITICAL HIT']:	
@@ -984,11 +986,55 @@ class Unit:
 				if profile['attacker'] == campaign.player_unit or self == campaign.player_unit:
 					WaitForContinue()
 				
-				# FUTURE: apply result if any
+				# apply result if any
+				if profile['result'] == 'PENETRATED':
+					
+					# TODO: roll for penetration result here, use the
+					# final 'roll' difference vs. 'final_chance' as modifier
+					
+					self.DestroyMe()
+					
+					# display message
+					if self == campaign.player_unit:
+						text = 'You were'
+					else:
+						text = self.GetName() + ' was'
+					text += ' destroyed by '
+					if profile['attacker'] == campaign.player_unit:
+						text += 'you.'
+					else:
+						text += profile['attacker'].GetName() + '.'
+					scenario.Message(text)
+					
+					return
 		
 		# clear unresolved hits
 		self.ap_hits_to_resolve = []
+	
+	
+	# destroy this unit and remove it from the game
+	def DestroyMe(self):
 		
+		# set flag
+		self.alive = False
+		
+		# remove from hex stack
+		map_hex = scenario.hex_dict[(self.hx, self.hy)]
+		if self in map_hex.unit_stack:
+			map_hex.unit_stack.remove(self)
+			
+		# remove from scenario unit list
+		if self in scenario.units:
+			scenario.units.remove(self)
+		
+		# remove from active target and target list
+		if scenario.selected_target == self:
+			scenario.selected_target = None
+		if self in scenario.target_list:
+			scenario.target_list.remove(self)
+		
+		scenario.UpdateUnitCon()
+		scenario.UpdateScenarioDisplay()
 
 
 # MapHex: a single hex on the scenario map
@@ -1007,14 +1053,16 @@ class Scenario:
 		# generate hex map: single hex surrounded by 4 hex rings. Final ring is not normally
 		# part of play and stores units that are coming on or going off of the map proper
 		# also store pointers to hexes in a dictionary for quick access
-		self.hex_dict = {}
 		self.map_hexes = []
-		self.map_hexes.append(MapHex(0,0))
-		self.hex_dict[(0,0)] = self.map_hexes[-1]
-		for r in range(1, 5):
+		self.hex_dict = {}
+		for r in range(0, 5):
 			for (hx, hy) in GetHexRing(0, 0, r):
 				self.map_hexes.append(MapHex(hx,hy))
 				self.hex_dict[(hx,hy)] = self.map_hexes[-1]
+		
+		# dictionary of console cells covered by map hexes
+		self.hex_map_index = {}
+		
 		
 		self.units = []						# list of units in play
 		
@@ -1036,8 +1084,8 @@ class Scenario:
 	# add a game message to the log and display it in the message console
 	def Message(self, text):
 		# add timestamp
-		text = (str(campaign_day.calendar['hour']).zfill(2) + ':' +
-			str(campaign_day.calendar['minute']).zfill(2) + ' ' + text)
+		#text = (str(campaign_day.calendar['hour']).zfill(2) + ':' +
+		#	str(campaign_day.calendar['minute']).zfill(2) + ' ' + text)
 		self.message_log.append(text)
 		self.UpdateMsgConsole()
 	
@@ -1612,10 +1660,6 @@ class Scenario:
 			for i in range(6):
 				roll = GetPercentileRoll()
 				
-				# TEMP testing
-				if i == 5:
-					roll = 4.0
-				
 				# clear any previous text
 				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
 					libtcod.CENTER, '      ')
@@ -1995,6 +2039,18 @@ class Scenario:
 			self.BuildTargetList()
 			self.UpdateGuiCon()
 		
+		# assault phase
+		elif self.phase == 4:
+			
+			# TEMP - advance automatically past this phase
+			self.advance_phase = True
+		
+		# recovery phase
+		elif self.phase == 5:
+			
+			# TEMP - advance automatically past this phase
+			self.advance_phase = True
+		
 		# TEMP: automatically advance at end of enemy activation
 		elif self.active_player == 1:
 			self.advance_phase = True
@@ -2288,6 +2344,9 @@ class Scenario:
 		
 		libtcod.console_clear(hexmap_con)
 		
+		# clear dictionary of console cells covered by hexes
+		self.hex_map_index = {}
+		
 		# FUTURE: can use different hex console images for different battlefield types / weather
 		scen_hex = LoadXP('scen_hex.xp')
 		libtcod.console_set_key_color(scen_hex, KEY_COLOR)
@@ -2297,6 +2356,16 @@ class Scenario:
 			if GetHexDistance(0, 0, map_hex.hx, map_hex.hy) > 3: break
 			(x,y) = self.PlotHex(map_hex.hx, map_hex.hy)
 			libtcod.console_blit(scen_hex, 0, 0, 0, 0, hexmap_con, x-5, y-3)
+			
+			# record console positions to dictionary
+			for x1 in range(x-2, x+3):
+				self.hex_map_index[(x1, y-2)] = map_hex
+				self.hex_map_index[(x1, y+2)] = map_hex
+			for x1 in range(x-3, x+4):
+				self.hex_map_index[(x1, y-1)] = map_hex
+				self.hex_map_index[(x1, y+1)] = map_hex
+			for x1 in range(x-4, x+5):
+				self.hex_map_index[(x1, y)] = map_hex
 			
 		del scen_hex
 	
@@ -2356,11 +2425,75 @@ class Scenario:
 		
 		lines = wrap(self.message_log[-1], 61)
 		y = 0
-		for line in lines:
+		for line in lines[0:2]:
 			libtcod.console_print(msg_con, 0, y, line)
 			y += 1
-			if y == 2: break
 	
+	
+	# update the unit info console, which displays basic information about a unit under
+	# the mouse cursor
+	# 18x8
+	def UpdateUnitInfoCon(self):
+		libtcod.console_clear(unit_info_con)
+		
+		# mouse cursor outside of map area
+		if mouse.cx < 32: return
+		
+		# check that cursor is on a map hex
+		x = mouse.cx - 32
+		y = mouse.cy - 9
+		if (x,y) not in self.hex_map_index: return
+		
+		map_hex = self.hex_map_index[(x,y)]
+	
+		# no units in hex
+		if len(map_hex.unit_stack) == 0: return
+		
+		# display unit info
+		unit = map_hex.unit_stack[0]
+		
+		if unit.owning_player == 1 and not unit.spotted:
+			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
+			libtcod.console_print(unit_info_con, 0, 0, 'Possible Enemy')
+		else:
+			if unit == campaign.player_unit:
+				col = libtcod.light_blue
+			elif unit.owning_player == 0:
+				col = ALLIED_UNIT_COL
+			else:
+				col = ENEMY_UNIT_COL
+	
+			libtcod.console_set_default_foreground(unit_info_con, col)
+			libtcod.console_print(unit_info_con, 0, 0, unit.unit_id)
+			
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
+			libtcod.console_print(unit_info_con, 0, 1,
+				session.nations[unit.nation]['adjective'])
+			libtcod.console_print(unit_info_con, 0, 2, unit.GetStat('class'))
+			
+			# facing if any
+			if unit.facing is not None and unit.GetStat('category') != 'Infantry':
+				libtcod.console_put_char_ex(unit_info_con, 0, 6, 'H',
+					libtcod.light_grey, libtcod.darkest_grey)
+				libtcod.console_put_char_ex(unit_info_con, 1, 6,
+					GetDirectionalArrow(unit.facing), libtcod.light_grey,
+					libtcod.darkest_grey)
+			
+			# HD status if any
+			if len(unit.hull_down) > 0:
+				libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
+				libtcod.console_print(unit_info_con, 3, 6, 'HD')
+				libtcod.console_put_char_ex(unit_info_con, 5, 6,
+					GetDirectionalArrow(unit.hull_down[0]), libtcod.sepia,
+					libtcod.darkest_grey)
+			
+			# FUTURE: cover if any
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
+			libtcod.console_print(unit_info_con, 0, 7, 'Open Ground')
+		
+		
+		
+		
 	
 	# draw all scenario consoles to the screen
 	def UpdateScenarioDisplay(self):
@@ -2382,8 +2515,9 @@ class Scenario:
 		libtcod.console_blit(context_con, 0, 0, 0, 0, con, 28, 1)
 		libtcod.console_blit(time_con, 0, 0, 0, 0, con, 48, 1)
 		libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 71, 1)
+		libtcod.console_blit(unit_info_con, 0, 0, 0, 0, con, 28, 48)
 		
-		libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 28, 56)
+		libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 28, 57)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
@@ -2395,7 +2529,7 @@ class Scenario:
 		# set up and load scenario consoles
 		global bkg_console, crew_con, cmd_menu_con, scen_info_con
 		global player_info_con, context_con, time_con, hexmap_con, unit_con, gui_con
-		global msg_con, attack_con
+		global msg_con, attack_con, unit_info_con
 		
 		# background outline console for left column
 		bkg_console = LoadXP('bkg.xp')
@@ -2436,6 +2570,12 @@ class Scenario:
 		libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
 		libtcod.console_clear(scen_info_con)
 		
+		# unit info console
+		unit_info_con = libtcod.console_new(18, 8)
+		libtcod.console_set_default_background(unit_info_con, libtcod.darkest_grey)
+		libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
+		libtcod.console_clear(unit_info_con)
+		
 		# hex map console
 		hexmap_con = libtcod.console_new(53, 43)
 		libtcod.console_set_default_background(hexmap_con, libtcod.black)
@@ -2457,7 +2597,7 @@ class Scenario:
 		libtcod.console_clear(gui_con)
 		
 		# game message console
-		msg_con = libtcod.console_new(61, 3)
+		msg_con = libtcod.console_new(61, 2)
 		libtcod.console_set_default_background(msg_con, libtcod.black)
 		libtcod.console_set_default_foreground(msg_con, libtcod.white)
 		libtcod.console_clear(msg_con)
@@ -2478,6 +2618,7 @@ class Scenario:
 		# generate enemy units
 		unit = Unit('7TP')
 		unit.owning_player = 1
+		unit.nation = 'Poland'
 		unit.facing = 3
 		unit.turret_facing = 3
 		unit.SpawnAt(0, -2)
@@ -2485,6 +2626,7 @@ class Scenario:
 		
 		unit = Unit('Riflemen')
 		unit.owning_player = 1
+		unit.nation = 'Poland'
 		unit.SpawnAt(2, 1)
 		campaign.enemy_units.append(unit)
 		
@@ -2505,6 +2647,9 @@ class Scenario:
 		self.UpdateMsgConsole()
 		self.UpdateScenarioDisplay()
 		
+		# record mouse cursor position to check when it has moved
+		mouse_x = -1
+		mouse_y = -1
 		
 		exit_scenario = False
 		while not exit_scenario:
@@ -2524,6 +2669,14 @@ class Scenario:
 			keypress = GetInputEvent()
 			
 			##### Mouse Commands #####
+			
+			# check to see if mouse cursor has moved
+			if mouse.cx != mouse_x or mouse.cy != mouse_y:
+				mouse_x = mouse.cx
+				mouse_y = mouse.cy
+				self.UpdateUnitInfoCon()
+				self.UpdateScenarioDisplay()
+			
 			
 			##### Player Keyboard Commands #####
 			
@@ -2809,8 +2962,8 @@ def GetDirectionalArrow(direction):
 
 # returns a ring of hexes around a center point for a given radius
 def GetHexRing(hx, hy, radius):
+	if radius == 0: return [(hx, hy)]
 	hex_list = []
-	if radius == 0: return hex_list
 	# get starting point
 	hx -= radius
 	hy += radius

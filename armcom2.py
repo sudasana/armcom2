@@ -2604,6 +2604,12 @@ class Scenario:
 				session.nations[unit.nation]['adjective'])
 			libtcod.console_print(unit_info_con, 0, 2, unit.GetStat('class'))
 			
+			# moving/fired status
+			if unit.moving:
+				libtcod.console_print(unit_info_con, 0, 3, 'Moving')
+			if unit.fired:
+				libtcod.console_print(unit_info_con, 7, 3, 'Fired')
+			
 			# facing if any
 			if unit.facing is not None and unit.GetStat('category') != 'Infantry':
 				libtcod.console_put_char_ex(unit_info_con, 0, 6, 'H',
@@ -2623,8 +2629,6 @@ class Scenario:
 			# FUTURE: cover if any
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
 			libtcod.console_print(unit_info_con, 0, 7, 'Open Ground')
-		
-		
 		
 		
 	

@@ -149,7 +149,13 @@ TURN_LENGTH = 2
 # maximum visible distance when buttoned up
 MAX_BU_LOS = 1
 
-# move chance of moving forward/backward into next hex
+# base chance to spot unit at distance 0,1,2,3
+SPOT_BASE_CHANCE = [50.0, 40.0, 25.0, 5.0]
+
+# each point of Perception increases chance to spot enemy unit by this much
+PERCEPTION_SPOTTING_MOD = 3.0
+
+# base chance of moving forward/backward into next hex
 BASE_FORWARD_MOVE_CHANCE = 50.0
 BASE_REVERSE_MOVE_CHANCE = 20.0
 
@@ -845,8 +851,7 @@ class Unit:
 		self.hy = 0
 		self.dest_hex = None			# destination hex for move
 		
-		# TEMP
-		self.spotted = True			# unit has been spotted by opposing side
+		self.spotted = False			# unit has been spotted by opposing side
 		
 		self.hull_down = []			# list of directions unit in which Hull Down
 		self.moving = False
@@ -985,12 +990,94 @@ class Unit:
 			# no crewman in position
 			if position.crewman is None: continue
 			
-			# TODO: run through covered hexes and build a list of units possible to spot
+			# build list of units it's possible to spot
 			
+			spot_list = []
+			for unit in scenario.units:
+				if unit.owning_player == self.owning_player:
+					continue
+				if not unit.alive:
+					continue
+				if unit.spotted:
+					continue
+				if (unit.hx, unit.hy) not in position.visible_hexes:
+					continue
+				
+				spot_list.append(unit)
 			
+			# no units possible to spot from this position
+			if len(spot_list) == 0:
+				continue
 			
+			# roll once for each unit
+			for unit in spot_list:
+			
+				distance = GetHexDistance(self.hx, self.hy, unit.hx, unit.hy)
+				
+				chance = SPOT_BASE_CHANCE[distance]
+				
+				# target size
+				size_class = unit.GetStat('size_class')
+				if size_class is not None:
+					if size_class == 'Small':
+						chance -= 7.0
+					elif size_class == 'Very Small':
+						chance -= 18.0
+					elif size_class == 'Large':
+						chance += 7.0
+					elif size_class == 'Very Large':
+						chance += 18.0
+				
+				# target moving
+				if unit.moving:
+					chance = chance * 1.5
+				
+				# target fired
+				if unit.fired:
+					chance = chance * 2.0
+				
+				# infantry are not as good at spotting from their lower position
+				if self.GetStat('category') == 'Infantry':
+					chance = chance * 0.5
+				
+				# snipers are hard to spot
+				if unit.unit_id == 'Sniper':
+					chance = chance * 0.25
+				
+				# perception modifier
+				chance += float(position.crewman.stats['Perception']) * PERCEPTION_SPOTTING_MOD
+				
+				chance = RestrictChance(chance)
+				
+				# special: target was hit by effective fp last turn
+				if unit.hit_by_fp > 0:
+					chance = 100.0
+				
+				roll = GetPercentileRoll()
+				
+				print('DEBUG: rolling to spot ' + unit.unit_id + ', chance is ' + str(chance) +
+					', roll was ' + str(roll))
+				
+				if roll <= chance:
+					
+					unit.SpotMe()
+					scenario.UpdateUnitCon()
+					scenario.UpdateScenarioDisplay()
+					
+					# display message
+					if self.owning_player == 0:
+						text = unit.GetName() + ' ' + unit.GetStat('class')
+						text += ' spotted!'
+						scenario.Message(text)
+					elif unit == campaign.player_unit:
+						scenario.Message('You have been spotted!')
+	
+	
+	# reveal this unit after being spotted
+	def SpotMe(self):
+		self.spotted = True
 		
-		
+	
 	
 	# generate new personnel sufficent to fill all personnel positions
 	def GenerateNewPersonnel(self):
@@ -1072,10 +1159,7 @@ class Unit:
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
-			if not self.spotted:
-				col = UNKNOWN_UNIT_COL
-			else:
-				col = ENEMY_UNIT_COL
+			col = ENEMY_UNIT_COL
 		else:	
 			if self == campaign.player_unit:
 				col = libtcod.white
@@ -2397,8 +2481,9 @@ class Scenario:
 		if self.phase == 0:
 			campaign.player_unit.BuildCmdLists()
 		
-		# spotting phase: automatically advance
+		# spotting phase: do spotting then automatically advance
 		elif self.phase == 1:
+			campaign.player_unit.DoSpotChecks()
 			self.advance_phase = True
 		
 		# movement phase: 

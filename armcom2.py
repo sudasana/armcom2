@@ -120,7 +120,8 @@ SCEN_PHASE_NAMES = [
 
 # colour associated with phases
 SCEN_PHASE_COL = [
-	libtcod.yellow, libtcod.purple, libtcod.green, libtcod.red, libtcod.white, libtcod.blue, libtcod.light_red 
+	libtcod.yellow, libtcod.purple, libtcod.green, libtcod.red, libtcod.white,
+	libtcod.blue, libtcod.light_red 
 ]
 
 # order to display ammo types
@@ -282,6 +283,9 @@ class Session:
 		
 		# background for attack console
 		self.attack_bkg = LoadXP('attack_bkg.xp')
+		
+		# game menu background console
+		self.game_menu_bkg = LoadXP('game_menu.xp')
 	
 	
 	# try to initialize SDL2 mixer
@@ -639,6 +643,9 @@ class AI:
 			self.owner.hy = hy
 			scenario.hex_dict[(hx, hy)].unit_stack.append(self.owner)
 			
+			self.owner.moving = True
+			self.owner.ClearAcquiredTargets()
+			
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
 			libtcod.console_flush()
@@ -716,6 +723,8 @@ class Unit:
 		self.pinned = False
 		self.deployed = False
 		
+		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
+		
 		self.forward_move_chance = 0.0		# set by CalculateMoveChances()
 		self.reverse_move_chance = 0.0
 		
@@ -764,6 +773,40 @@ class Unit:
 			if position.name == position_name:
 				return position.crewman
 		return None
+	
+	
+	# clear any acquired target from this unit, and clear it from any enemy unit
+	def ClearAcquiredTargets(self):
+		self.acquired_target = None
+		for unit in scenario.units:
+			if unit.owning_player == self.owning_player: continue
+			if unit.acquired_target is None: continue
+			(target, level) = unit.acquired_target
+			if target == self:
+				unit.acquired_target = None
+	
+	
+	# set a newly acquired target, or add a level
+	def AddAcquiredTarget(self, target):
+		
+		# no previous acquired target
+		if self.acquired_target is None:
+			self.acquired_target = (target, False)
+			return
+		
+		(old_target, level) = self.acquired_target
+		
+		# had an old target but now have a new one
+		if old_target != target:
+			self.acquired_target = (target, False)
+			return
+		
+		# possible to add one level
+		if not level:
+			self.acquired_target = (target, True)
+			return
+		
+		# otherwise, already acquired target to 2 levels, no further effect
 	
 	
 	# calcualte chances of a successful forward/reverse move action
@@ -1013,28 +1056,24 @@ class Unit:
 		if scenario.CheckAttack(self, weapon, target) != '':
 			return False
 		
-		# set weapon and unit fired flags
-		weapon.fired = True
-		self.fired = True
-		
 		# calculate attack profile
 		profile = scenario.CalcAttack(self, weapon, target)
 		
 		# attack not possible
 		if profile is None: return False
 		
-		# TODO: attack animation
-		
-		# clear GUI console to hide target recticle/LoS display
-		#libtcod.console_clear(gui_con)
-		
-		# re-draw GUI layer
-		#scenario.UpdateGuiCon()
-				
 		# display attack profile on screen
 		scenario.DisplayAttack(profile)
 		
-		WaitForContinue()
+		# allow player to cancel attack
+		if WaitForContinue(allow_cancel=True):
+			return True
+		
+		# TODO: attack animation
+				
+		# set weapon and unit fired flags
+		weapon.fired = True
+		self.fired = True
 		
 		# do the roll, display results to the screen, and modify the attack profile
 		profile = scenario.DoAttackRoll(profile)
@@ -1042,6 +1081,10 @@ class Unit:
 		# wait for the player if they are involved
 		if self == campaign.player_unit or target == campaign.player_unit:
 			WaitForContinue()
+		
+		# add one level of acquired target if firing gun
+		if weapon.GetStat('type') == 'Gun':
+			self.AddAcquiredTarget(target)
 		
 		# apply results of this attack if any
 		
@@ -1314,8 +1357,15 @@ class Scenario:
 			# spotted target
 			else:
 			
-				# FUTURE: acquired target
-				#modifier_list.append(('Acquired Target', mod))
+				# acquired target
+				if attacker.acquired_target is not None:
+					(ac_target, level) = attacker.acquired_target
+					if ac_target == target:
+						if not level:
+							mod = 10.0
+						else:
+							mod = 20.0
+						modifier_list.append(('Acquired Target', mod))
 				
 				# target vehicle moving
 				if target.moving and target.GetStat('category') == 'Vehicle':
@@ -1759,8 +1809,10 @@ class Scenario:
 		
 		# display prompts
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+		libtcod.console_print(attack_con, 6, 56, 'Bksp')
 		libtcod.console_print(attack_con, 6, 57, 'Tab')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		libtcod.console_print(attack_con, 12, 56, 'Cancel')
 		libtcod.console_print(attack_con, 12, 57, 'Continue')
 		
 		# blit the finished console to the screen
@@ -2011,6 +2063,7 @@ class Scenario:
 		campaign.player_unit.reverse_move_bonus = 0.0
 		
 		campaign.player_unit.moving = True
+		campaign.player_unit.ClearAcquiredTargets()
 		
 		# calculate new hex positions for each unit in play
 		if forward:
@@ -2095,10 +2148,18 @@ class Scenario:
 	# advance to next phase/turn and do automatic events
 	def AdvanceToNextPhase(self):
 		
-		# do end of phase actions
+		# do end of phase actions for player
+		
+		# end of movement phase
+		if self.phase == 2:
+			
+			# player pivoted during movement phase
+			if campaign.player_unit.facing != campaign.player_unit.previous_facing:
+				campaign.player_unit.moving = True
+				campaign.player_unit.acquired_target = None
 		
 		# end of shooting phase
-		if self.phase == 3:
+		elif self.phase == 3:
 			
 			# clear GUI console and refresh screen
 			libtcod.console_clear(gui_con)
@@ -2110,6 +2171,8 @@ class Scenario:
 				if not unit.alive: continue
 				if unit.owning_player == self.active_player: continue
 				unit.ResolveHits()
+		
+		
 				
 		# enemy activation finished, player's turn
 		if self.active_player == 1:
@@ -2610,6 +2673,25 @@ class Scenario:
 			if unit.fired:
 				libtcod.console_print(unit_info_con, 7, 3, 'Fired')
 			
+			# acquired target
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
+			if campaign.player_unit.acquired_target is not None:
+				(target, level) = campaign.player_unit.acquired_target
+				if target == unit:
+					text = 'AC'
+					if level:
+						text += '2'
+					libtcod.console_print(unit_info_con, 0, 4, text)
+			
+			libtcod.console_set_default_foreground(unit_info_con, ENEMY_UNIT_COL)
+			if unit.acquired_target is not None:
+				(target, level) = unit.acquired_target
+				if target == campaign.player_unit:
+					text = 'AC'
+					if level:
+						text += '2'
+					libtcod.console_print(unit_info_con, 4, 4, text)
+			
 			# facing if any
 			if unit.facing is not None and unit.GetStat('category') != 'Infantry':
 				libtcod.console_put_char_ex(unit_info_con, 0, 6, 'H',
@@ -2824,13 +2906,13 @@ class Scenario:
 			# no keyboard input
 			if not keypress: continue
 			
+			# game menu
+			if key.vk == libtcod.KEY_ESCAPE:
+				ShowGameMenu()
+				continue
+			
 			# key commands
 			key_char = chr(key.c).lower()
-			
-			# TEMP - exit game
-			if key_char == 'q':
-				exit_scenario = True
-				continue
 			
 			# player not active
 			if scenario.active_player == 1: continue
@@ -3218,6 +3300,88 @@ def LoadCFG():
 
 
 
+# display the in-game menu
+def ShowGameMenu():
+	
+	# draw the contents of the currently active tab to the menu console
+	def DrawMenuCon(active_tab):
+		# blit menu background to game menu console
+		libtcod.console_blit(session.game_menu_bkg, 0, 0, 0, 0, game_menu_con, 0, 0)
+		
+		# highlight active tab title
+		x1 = 2 + (active_tab * 11)
+		for x in range(x1, x1+9):
+			libtcod.console_set_char_foreground(game_menu_con, x, 1, ACTION_KEY_COL)
+			libtcod.console_set_char_foreground(game_menu_con, x, 2, libtcod.white)
+		
+		# erase part of line so it appears that tab is in foreground
+		x1 = 1 + (active_tab * 11)
+		for x in range(x1, x1+10):
+			libtcod.console_put_char(game_menu_con, x, 3, chr(0))
+		
+		# fill in active tab info
+		
+		# Root Game Menu
+		if active_tab == 0:
+			
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
+			libtcod.console_print_ex(game_menu_con, 42, 8, libtcod.BKGND_NONE,
+				libtcod.CENTER, NAME)
+			libtcod.console_print_ex(game_menu_con, 42, 9, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'Version: ' + VERSION)
+			
+			
+			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(game_menu_con, 36, 22, 'Q')
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+			libtcod.console_print(game_menu_con, 40, 22, 'Quit Game')
+		
+		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
+		libtcod.console_flush()
+		
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+	# darken screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	
+	# always start on root menu
+	active_tab = 0
+	
+	# generate menu console for the first time and blit to screen
+	DrawMenuCon(active_tab)
+	
+	# get input from player
+	exit_menu = False
+	result = ''
+	while not exit_menu:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		
+		# get keyboard and/or mouse event
+		if not GetInputEvent(): continue
+		
+		# close menu
+		if key.vk == libtcod.KEY_ESCAPE:
+			exit_menu = True
+			continue
+		
+		key_char = chr(key.c).lower()
+		
+		# Root Game Menu
+		
+		if active_tab == 0:
+			if key_char == 'q':
+				# TEMP - exit right away
+				sys.exit()
+	
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	del temp_con
+	return result
+
+
 ##########################################################################################
 #                                      Main Script                                       #
 ##########################################################################################
@@ -3249,7 +3413,8 @@ libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
 
 # display loading screen
-libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER, 'Loading...')
+libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+	'Loading...')
 libtcod.console_flush()
 
 # create new session object
@@ -3281,7 +3446,6 @@ libtcod.console_set_default_foreground(darken_con, libtcod.black)
 libtcod.console_clear(darken_con)
 
 # create game menu console: 84x54
-game_menu_bkg = LoadXP('game_menu.xp')
 game_menu_con = libtcod.console_new(84, 54)
 libtcod.console_set_default_background(game_menu_con, libtcod.black)
 libtcod.console_set_default_foreground(game_menu_con, libtcod.white)

@@ -332,6 +332,14 @@ class Personnel:
 		self.last_name = ''				#   set by GenerateName()
 		self.GenerateName()				# generate random first and last name
 		
+		self.stats = {					# default values for modification
+			'Perception' : 3,
+			'Grit' : 3,
+			'Knowledge' : 3,
+			'Morale' : 3
+		}
+		self.SetStats()
+		
 		self.ce = False					# crewman is exposed in a vehicle
 		self.SetCEStatus()				# set CE status
 		
@@ -369,6 +377,21 @@ class Personnel:
 	# return the person's full name
 	def GetFullName(self):
 		return (self.first_name + ' ' + self.last_name)
+	
+	
+	# randomly modify initial stat values
+	def SetStats(self):		
+		for i in range(5):
+			key = choice(list(self.stats))
+			self.stats[key] += 1 
+			key = choice(list(self.stats))
+			self.stats[key] -= 1
+		
+		for key in self.stats:
+			if self.stats[key] < 1:
+				self.stats[key] = 1
+			elif self.stats[key] > 5:
+				self.stats[key] = 5
 	
 	
 	# (re)build a list of possible commands for this turn

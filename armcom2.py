@@ -693,9 +693,9 @@ class AI:
 		
 		# Step 1: roll for unit action
 		if self.owner.GetStat('category') == 'Infantry':
-			if roll <= 65.0:
+			if roll <= 75.0:
 				self.disposition = 'Combat'
-			elif roll <= 80.0:
+			elif roll <= 90.0:
 				if self.owner.pinned:
 					self.disposition = 'Combat'
 				else:
@@ -714,16 +714,13 @@ class AI:
 					self.disposition = 'Combat'
 		
 		else:
-		
-			if roll >= 85.0:
-				self.disposition = None
-			elif roll <= 55.0:
+			if roll <= 65.0:
 				self.disposition = 'Combat'
+			elif roll <= 85.0:
+				self.disposition = 'Movement'
 			else:
-				if self.owner.pinned:
-					self.disposition = 'Combat'
-				else:
-					self.disposition = 'Movement'
+				self.disposition = None
+					
 		
 		current_range = GetHexDistance(0, 0, self.owner.hx, self.owner.hy)
 		

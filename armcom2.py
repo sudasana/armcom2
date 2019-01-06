@@ -506,7 +506,25 @@ class Weapon:
 	# set/reset all scenario statuses
 	def ResetMe(self):
 		self.fired = False
+	
+	
+	# cycle to use next available ammo type
+	def CycleAmmo(self):
 		
+		# no other types possible
+		if len(self.stats['ammo_type_list']) == 1:
+			return False
+		
+		i = self.stats['ammo_type_list'].index(self.ammo_type)
+		if i == len(self.stats['ammo_type_list']) - 1:
+			i = 0
+		else:
+			i += 1
+		
+		self.ammo_type = self.stats['ammo_type_list'][i]
+		
+		return True
+			
 	
 	# check for the value of a stat, return None if stat not present
 	def GetStat(self, stat_name):
@@ -1672,7 +1690,10 @@ class Scenario:
 		else:
 			text1 = profile['attacker'].GetName()
 			if attacker_spotted:
-				text2 = 'firing ' + profile['weapon'].GetStat('name') + ' at'
+				text2 = 'firing ' + profile['weapon'].GetStat('name')
+				if profile['weapon'].ammo_type is not None:
+					text2 += ' ' + profile['weapon'].ammo_type
+				text2 += ' at'
 			else:
 				text2 = 'firing at'
 			text3 = profile['target'].GetName()
@@ -1828,6 +1849,10 @@ class Scenario:
 	# returns an modified attack profile
 	def DoAttackRoll(self, profile):
 		
+		# clear prompts from attack console
+		libtcod.console_print(attack_con, 6, 56, '                  ')
+		libtcod.console_print(attack_con, 6, 57, '                  ')
+		
 		# FUTURE: check to see if this weapon maintains Rate of Fire
 		#def CheckRoF(profile):
 		
@@ -1948,6 +1973,12 @@ class Scenario:
 		#			libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		#			libtcod.console_print(attack_con, 12, 56, 'Fire Again')
 			
+		# display prompt
+		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+		libtcod.console_print(attack_con, 6, 57, 'Tab')
+		libtcod.console_set_default_foreground(attack_con, libtcod.white)
+		libtcod.console_print(attack_con, 12, 57, 'Continue')
+		
 		# blit the finished console to the screen
 		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -2532,13 +2563,15 @@ class Scenario:
 			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
 			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
 			libtcod.console_print(cmd_menu_con, 1, 3, 'Q/E')
-			libtcod.console_print(cmd_menu_con, 1, 4, 'F')
+			libtcod.console_print(cmd_menu_con, 1, 4, 'C')
+			libtcod.console_print(cmd_menu_con, 1, 5, 'F')
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Weapon')
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Select Target')
 			libtcod.console_print(cmd_menu_con, 8, 3, 'Rotate Turret')
-			libtcod.console_print(cmd_menu_con, 8, 4, 'Fire')
+			libtcod.console_print(cmd_menu_con, 8, 4, 'Cycle Ammo Type')
+			libtcod.console_print(cmd_menu_con, 8, 5, 'Fire at Target')
 
 	
 	# plot the center of a given in-game hex on the scenario hex map console
@@ -3019,6 +3052,14 @@ class Scenario:
 					self.RotatePlayerTurret(key_char == 'e')
 					self.UpdateContextCon()
 					self.UpdateScenarioDisplay()
+					continue
+				
+				# cycle ammo type
+				elif key_char == 'c':
+					result = scenario.selected_weapon.CycleAmmo()
+					if result:
+						self.UpdateContextCon()
+						self.UpdateScenarioDisplay()
 					continue
 				
 				# player fires active weapon at selected target

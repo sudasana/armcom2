@@ -9,6 +9,7 @@
 		"position_list" : ["Commander", "Commander/Gunner"],
 		"spotting_allowed" : "TRUE"
 	},
+	
 	"Direct Fire" : {
 		"desc" : "Direct fire against enemy targets",
 		"position_list" : ["Commander"],
@@ -20,10 +21,11 @@
 		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
 		"spotting_allowed" : "FALSE"
 	},
+	
 	"Operate Turret MG" : {
 		"desc" : "Operate a turret-mounted MG",
 		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
-		"spotting_allowed" : "TRUE"
+		"spotting_allowed" : "FALSE"
 	},
 	
 	"Reload" : {
@@ -35,12 +37,12 @@
 	"Drive" : {
 		"desc" : "Move forward or backward, pivot hull, reposition, or attempt to gain Hull Down",
 		"position_list" : ["Driver"],
-		"spotting_allowed" : "TRUE"
+		"spotting_allowed" : "FALSE"
 	},
 	
 	"Operate Hull MG" : {
 		"desc" : "Operate the hull-mounted MG",
 		"position_list" : ["Assistant Driver"],
-		"spotting_allowed" : "TRUE"
+		"spotting_allowed" : "FALSE"
 	}
 }

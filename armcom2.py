@@ -146,6 +146,9 @@ MONTH_NAMES = [
 # length of scenario turn in minutes
 TURN_LENGTH = 2
 
+# maximum visible distance when buttoned up
+MAX_BU_LOS = 1
+
 # move chance of moving forward/backward into next hex
 BASE_FORWARD_MOVE_CHANCE = 50.0
 BASE_REVERSE_MOVE_CHANCE = 20.0
@@ -286,6 +289,10 @@ class Session:
 		
 		# game menu background console
 		self.game_menu_bkg = LoadXP('game_menu.xp')
+		
+		# field of view highlight on scenario hex map
+		self.scen_hex_fov = LoadXP('scen_hex_fov.xp')
+		libtcod.console_set_key_color(self.scen_hex_fov, KEY_COLOR)
 	
 	
 	# try to initialize SDL2 mixer
@@ -461,8 +468,9 @@ class Personnel:
 
 # Position class: represents a personnel position within a unit
 class Position:
-	def __init__(self, position_dict):
+	def __init__(self, unit, position_dict):
 		
+		self.unit = unit
 		self.name = position_dict['name']
 		
 		self.location = None
@@ -500,6 +508,43 @@ class Position:
 		
 		# current hatch open/closed status
 		self.hatch_open = False
+		
+		# list of map hexes visible to this position
+		self.visible_hexes = []
+	
+	
+	# update the list of hexes currently visible from this position
+	def UpdateVisibleHexes(self):
+		
+		self.visible_hexes = []
+		
+		if self.crewman is None: return
+		
+		# can always spot in own hex
+		self.visible_hexes.append((self.unit.hx, self.unit.hy))
+		
+		# current crew command does not allow spotting
+		if session.crew_commands[self.crewman.current_cmd]['spotting_allowed'] == 'FALSE':
+			return
+		
+		if self.hatch_open:
+			direction_list = self.ce_visible
+		else:
+			direction_list = self.bu_visible
+		
+		for direction in direction_list:
+			hextant_hex_list = GetCoveredHexes(self.unit.hx, self.unit.hy, direction)
+			for (hx, hy) in hextant_hex_list:
+				# hex is off map
+				if (hx, hy) not in scenario.hex_dict: continue
+				# already in list
+				if (hx, hy) in self.visible_hexes: continue
+				# too far away for BU crew
+				if not self.hatch_open:
+					if GetHexDistance(self.unit.hx, self.unit.hy, hx, hy) > MAX_BU_LOS:
+						continue
+				self.visible_hexes.append((hx, hy))
+
 
 
 # Weapon Class: represents a weapon mounted on or carried by a unit
@@ -777,7 +822,7 @@ class Unit:
 		
 		if 'crew_positions' in self.stats:
 			for position_dict in self.stats['crew_positions']:
-				self.positions_list.append(Position(position_dict))
+				self.positions_list.append(Position(self, position_dict))
 		
 		# set up weapons
 		self.weapon_list = []			# list of unit weapons
@@ -843,6 +888,10 @@ class Unit:
 		if self == campaign.player_unit:
 			if scenario.selected_weapon is None:
 				scenario.selected_weapon = self.weapon_list[0]
+		
+		# update visible hexes for crew positions
+		for position in self.positions_list:
+			position.UpdateVisibleHexes()
 		
 	
 	# check for the value of a stat, return None if stat not present
@@ -920,6 +969,28 @@ class Unit:
 			if position.crewman is None: continue
 			position.crewman.BuildCommandList()
 	
+	
+	# do a round of spotting from this unit
+	def DoSpotChecks(self):
+		
+		# unit out of play range
+		if GetHexDistance(0, 0, self.hx, self.hy) > 3:
+			return
+		
+		# create a local list of crew positions in a random order
+		position_list = sample(self.positions_list, len(self.positions_list))
+		
+		for position in position_list:
+			
+			# no crewman in position
+			if position.crewman is None: continue
+			
+			# TODO: run through covered hexes and build a list of units possible to spot
+			
+			
+			
+		
+		
 	
 	# generate new personnel sufficent to fill all personnel positions
 	def GenerateNewPersonnel(self):
@@ -2380,6 +2451,7 @@ class Scenario:
 		self.UpdateCrewInfoCon()
 		self.UpdateCmdCon()
 		self.UpdateContextCon()
+		self.UpdateGuiCon()
 		self.UpdateTimeCon()
 		self.UpdateScenarioDisplay()
 		libtcod.console_flush()
@@ -2724,8 +2796,18 @@ class Scenario:
 		
 		libtcod.console_clear(gui_con)
 		
+		# display field of view if in command phase
+		if self.phase == 0:
+			
+			position = campaign.player_unit.positions_list[scenario.selected_position]
+			for (hx, hy) in position.visible_hexes:
+				(x,y) = scenario.PlotHex(hx, hy)
+				libtcod.console_blit(session.scen_hex_fov, 0, 0, 0, 0, gui_con,
+					x-5, y-3)
+		
+		
 		# display LoS if in shooting phase
-		if self.phase == 3 and self.selected_target is not None:
+		elif self.phase == 3 and self.selected_target is not None:
 			(x1,y1) = self.PlotHex(0,0)
 			(x2,y2) = self.PlotHex(self.selected_target.hx, self.selected_target.hy)
 			
@@ -3008,6 +3090,7 @@ class Scenario:
 		self.UpdateCrewInfoCon()
 		self.UpdateCmdCon()
 		self.UpdateUnitCon()
+		self.UpdateGuiCon()
 		self.UpdateHexmapCon()
 		self.UpdateMsgConsole()
 		self.UpdateScenarioDisplay()
@@ -3085,6 +3168,7 @@ class Scenario:
 				
 					self.UpdateContextCon()
 					self.UpdateCrewInfoCon()
+					self.UpdateGuiCon()
 					self.UpdateScenarioDisplay()
 					continue
 				
@@ -3101,8 +3185,11 @@ class Scenario:
 					else:
 						crewman.SelectCommand(False)
 					
+					campaign.player_unit.positions_list[scenario.selected_position].UpdateVisibleHexes()
+					
 					self.UpdateContextCon()
 					self.UpdateCrewInfoCon()
+					self.UpdateGuiCon()
 					self.UpdateScenarioDisplay()
 					continue
 				
@@ -3115,7 +3202,9 @@ class Scenario:
 						continue
 					
 					if crewman.ToggleHatch():
+						campaign.player_unit.positions_list[scenario.selected_position].UpdateVisibleHexes()
 						self.UpdateCrewInfoCon()
+						self.UpdateGuiCon()
 						self.UpdateScenarioDisplay()
 						continue
 			
@@ -3331,6 +3420,7 @@ def RotateHex(hx, hy, r):
 
 # returns the adjacent hex in a given direction
 def GetAdjacentHex(hx, hy, direction):
+	direction = ConstrainDir(direction)
 	(hx_mod, hy_mod) = DESTHEX[direction]
 	return (hx+hx_mod, hy+hy_mod)
 
@@ -3368,6 +3458,7 @@ def GetHexRing(hx, hy, radius):
 	return hex_list
 
 
+
 # returns the direction to an adjacent hex
 def GetDirectionToAdjacent(hx1, hy1, hx2, hy2):
 	hx_mod = hx2 - hx1
@@ -3376,6 +3467,7 @@ def GetDirectionToAdjacent(hx1, hy1, hx2, hy2):
 		return DESTHEX.index((hx_mod, hy_mod))
 	# hex is not adjacent
 	return -1
+
 
 
 # returns the best facing to point in the direction of the target hex
@@ -3396,6 +3488,18 @@ def GetDirectionToward(hx1, hy1, hx2, hy2):
 	elif bearing >= 210:
 		return 4
 	return 3
+
+
+# return a list of hexes covered by the given hextant in direction d from hx, hy
+# max range is 3
+def GetCoveredHexes(hx, hy, d):
+	hex_list = []
+	hex_list.append((hx, hy))
+	for i in range(2):
+		(hx, hy) = GetAdjacentHex(hx, hy, d)
+	hex_list.append((hx, hy))
+	hex_list += GetHexRing(hx, hy, 1)
+	return hex_list
 
 
 # returns the compass bearing from x1, y1 to x2, y2
@@ -3465,7 +3569,6 @@ def LoadCFG():
 	else:
 		# load config file
 		config.read(DATAPATH + 'armcom2.cfg')
-
 
 
 # display the in-game menu

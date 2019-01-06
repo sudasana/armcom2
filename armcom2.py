@@ -164,9 +164,9 @@ MG_AP_RANGE = 1
 # first column is for vehicle targets, second is everything else
 PF_BASE_CHANCE = [
 	[88.0, 78.0],			# same hex
-	[73.0, 48.0],			# 1 hex range
-	[62.0, 28.0],			# 2 "
-	[48.0, 18.0]			# 3 hex range
+	[73.0, 68.0],			# 1 hex range
+	[62.0, 48.0],			# 2 "
+	[48.0, 25.0]			# 3 hex range
 ]
 
 # modifier for target size if target is known
@@ -333,6 +333,7 @@ class Personnel:
 		self.GenerateName()				# generate random first and last name
 		
 		self.ce = False					# crewman is exposed in a vehicle
+		self.SetCEStatus()				# set CE status
 		
 		self.cmd_list = []				# list of possible commands
 		self.current_cmd = 'Spot'			# currently assigned action for scenario
@@ -399,6 +400,41 @@ class Personnel:
 		
 		self.current_cmd = self.cmd_list[i]
 	
+	
+	# attempt to toggle current hatch status
+	def ToggleHatch(self):
+		
+		# no hatch in position
+		if not self.current_position.hatch: return False
+		if self.current_position.open_top: return False
+		if self.current_position.crew_always_ce: return False
+		
+		self.current_position.hatch_open = not self.current_position.hatch_open
+		
+		# FUTURE: change other hatches in this group if any
+		
+		# set CE status based on new hatch status
+		self.SetCEStatus()
+		
+		return True
+	
+	
+	# set crewman BU/CE status based on position status
+	def SetCEStatus(self):
+		
+		if not self.current_position.hatch:
+			self.ce = False
+			return
+		
+		if self.current_position.open_top or self.current_position.crew_always_ce:
+			self.ce = True
+			return
+		
+		if self.current_position.hatch_open:
+			self.ce = True
+		else:
+			self.ce = False
+	
 
 # Position class: represents a personnel position within a unit
 class Position:
@@ -438,6 +474,9 @@ class Position:
 		
 		# person currently in this position
 		self.crewman = None
+		
+		# current hatch open/closed status
+		self.hatch_open = False
 
 
 # Weapon Class: represents a weapon mounted on or carried by a unit
@@ -589,6 +628,16 @@ class AI:
 					self.disposition = 'Movement'
 			else:
 				self.disposition = None
+		
+		elif self.owner.GetStat('category') == 'Gun':
+			
+			if not self.owner.deployed:
+				self.disposition = None
+			else:
+				if roll >= 80.0:
+					self.disposition = None
+				else:
+					self.disposition = 'Combat'
 		
 		else:
 		
@@ -1257,6 +1306,8 @@ class Scenario:
 		self.phase = 0						# current phase
 		self.advance_phase = False				# flag for input loop to automatically advance to next phase/turn
 		
+		self.player_pivot = 0					# keeps track of player unit pivoting
+		
 		self.selected_weapon = None				# player's currently selected weapon
 		self.selected_target = None				# player's current selected target
 		self.target_list = []					# list of possible player targets
@@ -1354,12 +1405,16 @@ class Scenario:
 			
 			# description max length is 19 chars
 			
-			# attacker moved
+			# attacker is moving
 			if attacker.moving:
 				modifier_list.append(('Attacker Moving', -60.0))
 			
 			# attacker pivoted
 			elif attacker.facing != attacker.previous_facing:
+				modifier_list.append(('Attacker Pivoted', -40.0))
+
+			# player attacker pivoted
+			elif attacker == campaign.player_unit and self.player_pivot != 0:
 				modifier_list.append(('Attacker Pivoted', -40.0))
 
 			# weapon has turret rotated
@@ -1464,6 +1519,11 @@ class Scenario:
 			
 			# attacker pivoted
 			elif attacker.facing != attacker.previous_facing:
+				mod = round(base_chance / 3.0, 2)
+				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
+
+			# player attacker pivoted
+			elif attacker == campaign.player_unit and self.player_pivot != 0:
 				mod = round(base_chance / 3.0, 2)
 				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
 
@@ -1853,9 +1913,6 @@ class Scenario:
 		libtcod.console_print(attack_con, 6, 56, '                  ')
 		libtcod.console_print(attack_con, 6, 57, '                  ')
 		
-		# FUTURE: check to see if this weapon maintains Rate of Fire
-		#def CheckRoF(profile):
-		
 		# don't animate percentage rolls if player is not involved
 		if profile['attacker'] != campaign.player_unit and profile['target'] != campaign.player_unit:
 			roll = GetPercentileRoll()
@@ -2177,6 +2234,9 @@ class Scenario:
 				unit.turret_facing = ConstrainDir(unit.turret_facing + f)
 		
 		self.UpdateUnitCon()
+		
+		# record player pivot
+		self.player_pivot = ConstrainDir(self.player_pivot + f)
 	
 	
 	# rotate turret of player unit
@@ -2201,8 +2261,7 @@ class Scenario:
 		if self.phase == 2:
 			
 			# player pivoted during movement phase
-			if campaign.player_unit.facing != campaign.player_unit.previous_facing:
-				campaign.player_unit.moving = True
+			if self.player_pivot != 0:
 				campaign.player_unit.acquired_target = None
 		
 		# end of shooting phase
@@ -2248,9 +2307,12 @@ class Scenario:
 		elif self.phase == 1:
 			self.advance_phase = True
 		
-		# movement phase: skip if driver not on move command
+		# movement phase: 
 		elif self.phase == 2:
 			
+			self.player_pivot = 0
+			
+			# skip phase if driver not on move command
 			crewman = campaign.player_unit.GetPersonnelByPosition('Driver')
 			
 			# no driver in position
@@ -2261,7 +2323,7 @@ class Scenario:
 				if crewman.current_cmd != 'Drive':
 					self.advance_phase = True
 			
-			# if we're doing the pahse, calculate move chances for player unit
+			# if we're doing the phase, calculate move chances for player unit
 			if not self.advance_phase:
 				campaign.player_unit.CalculateMoveChances()
 		
@@ -2536,12 +2598,12 @@ class Scenario:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
 			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
-			#libtcod.console_print(cmd_menu_con, 1, 3, 'H')
+			libtcod.console_print(cmd_menu_con, 1, 3, 'H')
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Crew')
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Select Command')
-			#libtcod.console_print(cmd_menu_con, 8, 3, 'Toggle Hatch')
+			libtcod.console_print(cmd_menu_con, 8, 3, 'Open/Shut Hatch')
 		
 		# Movement phase
 		elif self.phase == 2:
@@ -2889,7 +2951,17 @@ class Scenario:
 		unit.GenerateNewPersonnel()
 		unit.facing = 3
 		unit.turret_facing = 3
-		unit.SpawnAt(0, -2)
+		unit.SpawnAt(0, -3)
+		campaign.enemy_units.append(unit)
+		
+		unit = Unit('37mm wz. 36')
+		unit.owning_player = 1
+		unit.nation = 'Poland'
+		unit.ai = AI(unit)
+		unit.GenerateNewPersonnel()
+		unit.facing = 3
+		unit.deployed = True
+		unit.SpawnAt(1, -2)
 		campaign.enemy_units.append(unit)
 		
 		unit = Unit('Riflemen')
@@ -3010,6 +3082,19 @@ class Scenario:
 					self.UpdateCrewInfoCon()
 					self.UpdateScenarioDisplay()
 					continue
+				
+				# toggle hatch for selected crewman
+				elif key_char == 'h':
+					
+					# no crewman in selected position
+					crewman = campaign.player_unit.positions_list[scenario.selected_position].crewman
+					if crewman is None:
+						continue
+					
+					if crewman.ToggleHatch():
+						self.UpdateCrewInfoCon()
+						self.UpdateScenarioDisplay()
+						continue
 			
 			# Movement phase only
 			elif scenario.phase == 2:

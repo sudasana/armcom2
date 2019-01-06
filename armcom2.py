@@ -652,6 +652,9 @@ class AI:
 		
 		elif self.disposition == 'Combat':
 			
+			# only a small chance that they will attack player, higher if they were
+			# fired upon by player and/or have acquired player as target
+			
 			# determine target
 			target_list = []
 			
@@ -1341,7 +1344,7 @@ class Scenario:
 			elif attacker.facing != attacker.previous_facing:
 				modifier_list.append(('Attacker Pivoted', -40.0))
 
-			# weapon is turret rotated
+			# weapon has turret rotated
 			elif weapon.GetStat('mount') == 'Turret':
 				if attacker.turret_facing != attacker.previous_turret_facing:
 					modifier_list.append(('Turret Rotated', -20.0))
@@ -2046,7 +2049,7 @@ class Scenario:
 			campaign.player_unit.moving = True
 			
 			# show message to player
-			text = 'You did not move far enough to change enemy positions'
+			text = 'You move but not far enough to enter a new map hex'
 			scenario.Message(text)
 			
 			# end movement phase
@@ -2055,7 +2058,7 @@ class Scenario:
 			return
 			
 		# show message to player
-		text = 'You move far enough to change enemy positions'
+		text = 'You move far enough to enter a new map hex'
 		scenario.Message(text)
 		
 		# move was successful, clear all bonuses
@@ -2136,7 +2139,7 @@ class Scenario:
 			# clear destination hex
 			unit.dest_hex = None
 			
-			# pivot facings if any
+			# pivot unit facings if any
 			if unit.facing is not None:
 				unit.facing = ConstrainDir(unit.facing + f)
 			if unit.turret_facing is not None:
@@ -2144,6 +2147,19 @@ class Scenario:
 		
 		self.UpdateUnitCon()
 	
+	
+	# rotate turret of player unit
+	def RotatePlayerTurret(self, clockwise):
+		
+		if campaign.player_unit.turret_facing is None: return
+		
+		if clockwise:
+			f = 1
+		else:
+			f = -1
+		campaign.player_unit.turret_facing = ConstrainDir(campaign.player_unit.turret_facing + f)
+		self.UpdateUnitCon()
+		
 	
 	# advance to next phase/turn and do automatic events
 	def AdvanceToNextPhase(self):
@@ -2171,8 +2187,6 @@ class Scenario:
 				if not unit.alive: continue
 				if unit.owning_player == self.active_player: continue
 				unit.ResolveHits()
-		
-		
 				
 		# enemy activation finished, player's turn
 		if self.active_player == 1:
@@ -2971,7 +2985,6 @@ class Scenario:
 				if key_char in ['w', 's']:
 					self.MovePlayer(key_char == 'w')
 					self.UpdateContextCon()
-					self.UpdateCrewInfoCon()
 					self.UpdateScenarioDisplay()
 					continue
 				
@@ -2979,10 +2992,9 @@ class Scenario:
 				elif key_char in ['a', 'd']:
 					self.PivotPlayer(key_char == 'd')
 					self.UpdateContextCon()
-					self.UpdateCrewInfoCon()
 					self.UpdateScenarioDisplay()
 					continue
-			
+				
 			# Shooting phase
 			elif scenario.phase == 3:
 				
@@ -2998,6 +3010,13 @@ class Scenario:
 				elif key_char in ['a', 'd']:
 					self.CycleTarget(key_char == 'd')
 					self.UpdateGuiCon()
+					self.UpdateContextCon()
+					self.UpdateScenarioDisplay()
+					continue
+				
+				# rotate turret
+				elif key_char in ['q', 'e']:
+					self.RotatePlayerTurret(key_char == 'e')
 					self.UpdateContextCon()
 					self.UpdateScenarioDisplay()
 					continue

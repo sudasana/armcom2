@@ -101,7 +101,7 @@ HIGHLIGHT_MENU_COL = libtcod.Color(30, 70, 130)		# background highlight colour f
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.Color(255, 20, 20)		# known "
-ALLIED_UNIT_COL = libtcod.Color(20, 20, 255)		# allied unit display colour
+ALLIED_UNIT_COL = libtcod.Color(120, 120, 255)		# allied unit display colour
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
 
 # list of possible keyboard layout settings
@@ -797,7 +797,65 @@ class AI:
 			target_list = []
 			
 			for unit in scenario.units:
-				pass
+				if unit.owning_player == 1: continue
+				if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
+				target_list.append(unit)
+			
+			# no possible targets
+			if len(target_list) == 0:
+				print ('AI DEBUG: No possible targets for ' + self.owner.unit_id)
+				return
+			
+			# score possible weapon-target combinations
+			attack_list = []
+			
+			for target in target_list:
+				for weapon in self.owner.weapon_list:
+					
+					# gun weapons need to check multiple ammo type combinations
+					if weapon.GetStat('type') == 'Gun':
+						ammo_list = weapon.stats['ammo_type_list']
+						for ammo_type in ammo_list:
+							
+							weapon.current_ammo = ammo_type
+							result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
+							# attack not possible
+							if result != '':
+								continue
+							attack_list.append((weapon, target, ammo_type))
+						continue
+					
+					result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
+					if result != '':
+						continue
+					attack_list.append((weapon, target, ''))
+			
+			# no possible attacks
+			if len(attack_list) == 0:
+				print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
+				return
+			
+			# TODO: score possible weapon-target combinations
+			
+			# TEMP
+			print ('AI DEBUG: ' + str(len(attack_list)) + ' possible attacks for ' + self.owner.unit_id)
+			
+			# TEMP - choose random attack
+			(weapon, target, ammo_type) = choice(attack_list)
+			
+			# re-roll if player target
+			if target == campaign.player_unit:
+				(weapon, target, ammo_type) = choice(attack_list)
+			
+			if ammo_type != '':
+				weapon.current_ammo = ammo_type
+			
+			scenario.Message(self.owner.GetName() + ' fires at ' + target.GetName())
+			
+			result = self.owner.Attack(weapon, target)
+			
+			
+			
 
 
 
@@ -1097,6 +1155,22 @@ class Unit:
 				return
 	
 	
+	# move this unit to the top of its current hex stack
+	def MoveToTopOfStack(self):
+		map_hex = scenario.hex_dict[(self.hx, self.hy)]
+		
+		# only unit in stack
+		if len(map_hex.unit_stack) == 1:
+			return
+		
+		# not actually in stack
+		if self not in map_hex.unit_stack:
+			return
+		
+		map_hex.unit_stack.remove(self)
+		map_hex.unit_stack.insert(0, self)
+	
+	
 	# remove this unit from the scenario
 	def RemoveFromPlay(self):
 		# remove from hex stack
@@ -1309,12 +1383,13 @@ class Unit:
 		# attack not possible
 		if profile is None: return False
 		
-		# display attack profile on screen
-		scenario.DisplayAttack(profile)
+		# display attack profile on screen if player involved
+		if self == campaign.player_unit or target == campaign.player_unit:
+			scenario.DisplayAttack(profile)
 		
-		# allow player to cancel attack
-		if WaitForContinue(allow_cancel=True):
-			return True
+			# allow player to cancel attack
+			if WaitForContinue(allow_cancel=True):
+				return True
 		
 		# TODO: attack animation
 				
@@ -1366,6 +1441,10 @@ class Unit:
 		
 		# no hits to resolve! doing fine!
 		if self.fp_to_resolve == 0 and len(self.ap_hits_to_resolve) == 0: return
+		
+		# move to top of hex stack
+		self.MoveToTopOfStack()
+		scenario.UpdateUnitCon()
 		
 		# FUTURE: handle FP first
 		#self.ResolveFP()
@@ -2206,7 +2285,7 @@ class Scenario:
 		#			libtcod.console_print(attack_con, 6, 56, 'F')
 		#			libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		#			libtcod.console_print(attack_con, 12, 56, 'Fire Again')
-			
+		
 		# display prompt
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
 		libtcod.console_print(attack_con, 6, 57, 'Tab')
@@ -2464,6 +2543,8 @@ class Scenario:
 			self.active_player = 0
 			self.phase = 0
 			campaign.player_unit.ResetForNewTurn()
+			campaign.player_unit.MoveToTopOfStack()
+			self.UpdateUnitCon()
 		
 		# remaining on player turn
 		elif self.phase < 5:
@@ -3233,6 +3314,23 @@ class Scenario:
 				self.UpdateUnitInfoCon()
 				self.UpdateScenarioDisplay()
 			
+			# check to see if mouse wheel has moved
+			if mouse.wheel_up or mouse.wheel_down:
+				
+				# see if cursor is over a hex with 2+ units in it
+				x = mouse.cx - 32
+				y = mouse.cy - 9
+				if (x,y) in self.hex_map_index:
+					map_hex = self.hex_map_index[(x,y)]
+					if len(map_hex.unit_stack) > 1:
+						if mouse.wheel_up:
+							map_hex.unit_stack[:] = map_hex.unit_stack[1:] + [map_hex.unit_stack[0]]
+						else:
+							map_hex.unit_stack.insert(0, map_hex.unit_stack.pop(-1))
+						self.UpdateUnitCon()
+						self.UpdateUnitInfoCon()
+						self.UpdateScenarioDisplay()
+						continue
 			
 			##### Player Keyboard Commands #####
 			

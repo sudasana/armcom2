@@ -811,6 +811,8 @@ class Unit:
 		self.nation = None			# nationality of unit and personnel
 		self.ai = None				# AI controller if any
 		
+		self.squad = None			# list of units in player squad
+		
 		self.positions_list = []		# list of crew/personnel positions
 		self.personnel_list = []		# list of crew/personnel
 		
@@ -2869,9 +2871,23 @@ class Scenario:
 			
 			# FUTURE: draw unit's terrain as well
 			
+			# draw stack number indicator if any
 			if len(map_hex.unit_stack) == 1: continue
-			# FUTURE: draw stack number indicator if any
-	
+			if map_hex.unit_stack[0].turret_facing is not None:
+				facing = map_hex.unit_stack[0].turret_facing
+			else:
+				facing = 3
+			if facing in [5,0,1]:
+				y_mod = 1
+			else:
+				y_mod = -1
+			(x,y) = scenario.PlotHex(map_hex.unit_stack[0].hx, map_hex.unit_stack[0].hy)
+			text = str(len(map_hex.unit_stack))
+			libtcod.console_set_default_foreground(unit_con, libtcod.grey)
+			libtcod.console_set_default_background(unit_con, libtcod.black)
+			libtcod.console_print_ex(unit_con, x, y+y_mod, libtcod.BKGND_SET, libtcod.CENTER,
+				text)
+		
 	
 	# update GUI console
 	def UpdateGuiCon(self):
@@ -3125,10 +3141,20 @@ class Scenario:
 		
 		
 		# set up player unit
-		campaign.player_unit.ResetMe()
 		campaign.player_unit.facing = 0
 		campaign.player_unit.turret_facing = 0
+		campaign.player_unit.squad = []
 		campaign.player_unit.SpawnAt(0,0)
+		
+		# set up player squad
+		for i in range(4):
+			unit = Unit(campaign.player_unit.unit_id)
+			unit.nation = campaign.player_unit.nation
+			unit.GenerateNewPersonnel()
+			unit.facing = 0
+			unit.turret_facing = 0
+			unit.SpawnAt(0,0)
+			campaign.player_unit.squad.append(unit)
 		
 		# generate enemy units
 		unit = Unit('7TP')
@@ -3346,6 +3372,7 @@ class Scenario:
 					result = campaign.player_unit.Attack(scenario.selected_weapon,
 						scenario.selected_target)
 					if result:
+						self.UpdateUnitInfoCon()
 						self.UpdateContextCon()
 						self.UpdateScenarioDisplay()
 					continue

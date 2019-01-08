@@ -688,6 +688,9 @@ class AI:
 		# no action if it's not alive
 		if not self.owner.alive: return
 		
+		# TEMP - no AI actions
+		return
+		
 		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
 		roll = GetPercentileRoll()
@@ -910,6 +913,7 @@ class Unit:
 		self.hx = 0				# location in scenario hex map
 		self.hy = 0
 		self.dest_hex = None			# destination hex for move
+		self.animation_cells = []		# list of x,y unit console locations for animation
 		
 		self.spotted = False			# unit has been spotted by opposing side
 		
@@ -1239,7 +1243,10 @@ class Unit:
 		if not self.alive: return
 		
 		# determine draw location
-		(x,y) = scenario.PlotHex(self.hx, self.hy)
+		if len(self.animation_cells) > 0:
+			(x,y) = self.animation_cells[0]
+		else:
+			(x,y) = scenario.PlotHex(self.hx, self.hy)
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
@@ -2401,6 +2408,9 @@ class Scenario:
 			chance = campaign.player_unit.reverse_move_chance
 		roll = GetPercentileRoll()
 		
+		# TEMP
+		roll = 1.0
+		
 		# move was not successful
 		if roll > chance:
 			
@@ -2444,6 +2454,7 @@ class Scenario:
 		for unit in reversed(self.units):
 			
 			if unit == campaign.player_unit: continue
+			if unit in campaign.player_unit.squad: continue
 			
 			(new_hx, new_hy) = GetAdjacentHex(unit.hx, unit.hy, direction)
 			
@@ -2453,22 +2464,44 @@ class Scenario:
 				continue
 				
 			# special case: jump over player hex 0,0
+			jump = False
 			if new_hx == 0 and new_hy == 0:
 				(new_hx, new_hy) = GetAdjacentHex(0, 0, direction)
+				jump = True
 			
 			# set destination hex
 			unit.dest_hex = (new_hx, new_hy)
+			
+			# calculate animation locations
+			(x1, y1) = scenario.PlotHex(unit.hx, unit.hy)
+			(x2, y2) = scenario.PlotHex(new_hx, new_hy)
+			unit.animation_cells = GetLine(x1, y1, x2, y2)
+			# special case: unit is jumping over 0,0
+			if jump:
+				for i in range(12, 0, -2):
+					unit.animation_cells.pop(i)
 		
-		# TODO: animate movement
+		# animate movement
+		for i in range(6):
+			for unit in self.units:
+				if unit == campaign.player_unit: continue
+				if unit in campaign.player_unit.squad: continue
+				if len(unit.animation_cells) > 0:
+					unit.animation_cells.pop(0)
+			self.UpdateUnitCon()
+			self.UpdateScenarioDisplay()
+			Wait(15)
 		
 		# set new hex location for each unit and move into new hex stack
 		for unit in self.units:
 			if unit == campaign.player_unit: continue
+			if unit in campaign.player_unit.squad: continue
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
 			(unit.hx, unit.hy) = unit.dest_hex
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
-			# clear destination hex
+			# clear destination hex and animation data
 			unit.dest_hex = None
+			unit.animation_cells = []
 		
 		self.UpdateUnitCon()
 		
@@ -2644,7 +2677,7 @@ class Scenario:
 			
 			self.advance_phase = True
 		
-		# enemy activation
+		# enemy action
 		elif self.active_player == 1:
 			
 			# run through list in reverse since we might remove units from play
@@ -2662,11 +2695,7 @@ class Scenario:
 		self.UpdateTimeCon()
 		self.UpdateScenarioDisplay()
 		libtcod.console_flush()
-		
-		# pause here if we are advancing to next phase automatically
-		#if self.advance_phase:
-		#	Wait(50)
-	
+			
 	
 	# update contextual info console
 	# 18x12

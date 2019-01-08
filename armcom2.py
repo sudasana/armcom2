@@ -113,15 +113,16 @@ MONTH_NAMES = [
 	'September', 'October', 'November', 'December'
 ]
 
-# text names for scenario phases; final one is for when enemy is active
+# text names for scenario phases
 SCEN_PHASE_NAMES = [
-	'Command', 'Spotting', 'Movement', 'Shooting', 'Assault', 'Recovery', 'Enemy Action'
+	'Command', 'Spotting', 'Movement', 'Shooting', 'Assault',
+	'Recovery', 'Allied Action', 'Enemy Action'
 ]
 
 # colour associated with phases
 SCEN_PHASE_COL = [
 	libtcod.yellow, libtcod.purple, libtcod.green, libtcod.red, libtcod.white,
-	libtcod.blue, libtcod.light_red 
+	libtcod.blue, ALLIED_UNIT_COL, ENEMY_UNIT_COL 
 ]
 
 # order to display ammo types
@@ -147,7 +148,7 @@ MONTH_NAMES = [
 TURN_LENGTH = 2
 
 # maximum visible distance when buttoned up
-MAX_BU_LOS = 1
+MAX_BU_LOS = 2
 
 # base chance to spot unit at distance 0,1,2,3
 SPOT_BASE_CHANCE = [50.0, 40.0, 25.0, 5.0]
@@ -729,6 +730,10 @@ class AI:
 			if self.disposition == 'Combat':
 				self.disposition = None
 		
+		# only one option if unit is part of player squad
+		if self.owner in campaign.player_unit.squad:
+			self.disposition = 'Combat'
+		
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
 			
@@ -797,7 +802,7 @@ class AI:
 			target_list = []
 			
 			for unit in scenario.units:
-				if unit.owning_player == 1: continue
+				if unit.owning_player == self.owner.owning_player: continue
 				if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
 				target_list.append(unit)
 			
@@ -849,8 +854,6 @@ class AI:
 			
 			if ammo_type != '':
 				weapon.current_ammo = ammo_type
-			
-			scenario.Message(self.owner.GetName() + ' fires at ' + target.GetName())
 			
 			result = self.owner.Attack(weapon, target)
 			
@@ -1035,6 +1038,8 @@ class Unit:
 	# do a round of spotting from this unit
 	def DoSpotChecks(self):
 		
+		print('DEBUG: Doing spot checks for ' + self.unit_id)
+		
 		# unit out of play range
 		if GetHexDistance(0, 0, self.hx, self.hy) > 3:
 			return
@@ -1045,7 +1050,8 @@ class Unit:
 		for position in position_list:
 			
 			# no crewman in position
-			if position.crewman is None: continue
+			if position.crewman is None:
+				continue
 			
 			# build list of units it's possible to spot
 			
@@ -1064,6 +1070,7 @@ class Unit:
 			
 			# no units possible to spot from this position
 			if len(spot_list) == 0:
+				print('No units to spot from this position')
 				continue
 			
 			# roll once for each unit
@@ -1100,6 +1107,10 @@ class Unit:
 				# snipers are hard to spot
 				if unit.unit_id == 'Sniper':
 					chance = chance * 0.25
+				
+				# crew is buttoned up
+				if not position.crewman.ce:
+					chance = chance * 0.5
 				
 				# perception modifier
 				chance += float(position.crewman.stats['Perception']) * PERCEPTION_SPOTTING_MOD
@@ -1391,6 +1402,11 @@ class Unit:
 			if WaitForContinue(allow_cancel=True):
 				return True
 		
+		# otherwise display a message for the player
+		else:
+			scenario.Message(self.GetName() + ' fires at ' + target.GetName() + ' with ' + weapon.stats['name'])
+			Wait(50)
+		
 		# TODO: attack animation
 				
 		# set weapon and unit fired flags
@@ -1431,6 +1447,13 @@ class Unit:
 			# armoured target
 			if target.GetStat('armour') is not None:
 				target.ap_hits_to_resolve.append(profile)
+		
+		# notify player of any result if not involved
+		if self != campaign.player_unit and target != campaign.player_unit:
+			if profile['result'] not in ['MISS', 'NO EFFECT']:
+				text = 'Result: ' + profile['result']
+				scenario.Message(text)
+				Wait(50)
 		
 		# TEMP attack is finished
 		return True
@@ -1575,11 +1598,10 @@ class Scenario:
 	
 	# add a game message to the log and display it in the message console
 	def Message(self, text):
-		# add timestamp
-		#text = (str(campaign_day.calendar['hour']).zfill(2) + ':' +
-		#	str(campaign_day.calendar['minute']).zfill(2) + ' ' + text)
 		self.message_log.append(text)
 		self.UpdateMsgConsole()
+		self.UpdateScenarioDisplay()
+		libtcod.console_flush()
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
@@ -2542,17 +2564,21 @@ class Scenario:
 			
 			self.active_player = 0
 			self.phase = 0
+			
 			campaign.player_unit.ResetForNewTurn()
+			for unit in campaign.player_unit.squad:
+				unit.ResetForNewTurn()
+			
 			campaign.player_unit.MoveToTopOfStack()
 			self.UpdateUnitCon()
 		
 		# remaining on player turn
-		elif self.phase < 5:
+		elif self.phase < 6:
 			self.phase += 1
 		
 		# switching to enemy turn
 		else:
-			self.phase = 6
+			self.phase = 7
 			self.active_player = 1
 		
 		# do automatic actions at start of phase
@@ -2603,12 +2629,28 @@ class Scenario:
 			# TEMP - advance automatically past this phase
 			self.advance_phase = True
 		
+		# allied action
+		elif self.phase == 6:
+			
+			self.UpdateTimeCon()
+			self.UpdateScenarioDisplay()
+			libtcod.console_flush()
+			
+			# player squad acts first
+			for unit in campaign.player_unit.squad:
+				unit.DoSpotChecks()
+			for unit in campaign.player_unit.squad:
+				unit.ai.DoActivation()
+			
+			self.advance_phase = True
+		
 		# enemy activation
 		elif self.active_player == 1:
 			
 			# run through list in reverse since we might remove units from play
 			for unit in reversed(self.units):
 				if unit.owning_player == 0: continue
+				unit.ResetForNewTurn()
 				unit.ai.DoActivation()
 			
 			self.advance_phase = True
@@ -3231,6 +3273,7 @@ class Scenario:
 		for i in range(4):
 			unit = Unit(campaign.player_unit.unit_id)
 			unit.nation = campaign.player_unit.nation
+			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			unit.facing = 0
 			unit.turret_facing = 0
@@ -3269,6 +3312,9 @@ class Scenario:
 		# set up player unit for first activation
 		campaign.player_unit.BuildCmdLists()
 		campaign.player_unit.ResetForNewTurn()
+		for unit in campaign.player_unit.squad:
+			unit.BuildCmdLists()
+			unit.ResetForNewTurn()
 		
 		scenario.Message('Welcome to Armoured Commander II!')
 		

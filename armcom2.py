@@ -1625,6 +1625,131 @@ class Scenario:
 		self.message_log = []					# log of scenario messages
 	
 	
+	# spawn enemy units on the hex map
+	# FUTURE: will pull data from the campaign day and campaign objects
+	def SpawnEnemyUnits(self):
+		
+		class_odds = {
+			'Tankette' : 20.0,
+			'Light Tank' : 10.0,
+			'Armoured Car' : 90.0,
+			'Anti-Tank Gun' : 40.0,
+			'Field Gun' : 10.0,
+			'Anti-Aircraft Gun' : 20.0,
+			'Infantry Squad' : 100.0
+		}
+		
+		unit_type_list = {
+			"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Vickers 6-Ton Mark E", "7TP",
+			"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
+			"75mm wz. 97/25", "Riflemen"
+		}
+		
+		# load unit stats for reference from JSON file
+		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
+			unit_types = json.load(data_file)
+		
+		roll = GetPercentileRoll()
+		if roll <= 25.0:
+			num_units = 1
+		elif roll >= 85.0:
+			num_units = 3
+		else:
+			num_units = 2
+		
+		enemy_unit_list = []
+		while len(enemy_unit_list) < num_units:
+			
+			# emergency exit
+			if libtcod.console_is_window_closed(): sys.exit()
+		
+			# choose a random unit class, rolling against its ubiquity factor
+			unit_class = None
+			while unit_class is None:
+				k, value = choice(list(class_odds.items()))
+				if GetPercentileRoll() <= value:
+					unit_class = k
+		
+			# FUTURE: if class unit type has already been set, use that one instead
+			
+			# choose a random unit type
+			type_list = []
+			for unit_id in unit_type_list:
+				# unrecognized unit id
+				if unit_id not in unit_types: continue
+				# not the right class
+				if unit_types[unit_id]['class'] != unit_class: continue
+				type_list.append(unit_id)
+			
+			# no units of the correct class found
+			if len(type_list) == 0: continue
+			
+			# select unit type
+			selected_unit_id = None
+			while selected_unit_id is None:
+				
+				# only one choice in class
+				if len(type_list) == 1:
+					selected_unit_id = type_list[0]
+					continue
+				
+				unit_id = choice(type_list)
+				# no ubiquity rating, select automatically
+				if 'ubiquity' not in unit_types[unit_id]:
+					selected_unit_id = unit_id
+					continue
+				
+				# roll for ubiquity rating
+				if GetPercentileRoll() <= float(unit_types[unit_id]['ubiquity']):
+					selected_unit_id = unit_id
+					continue
+			
+			# add the final selected unit id to list to spawn
+			enemy_unit_list.append(selected_unit_id)
+		
+		# spawn one unit per unit id in the list
+		for unit_id in enemy_unit_list:
+	
+			# determine spawn location
+			distance = libtcod.random_get_int(0, 1, 3)
+			
+			if distance == 1:
+				if GetPercentileRoll() <= 65.0:
+					distance += 1
+			if unit_types[unit_id]['category'] == 'Infantry':
+				if GetPercentileRoll() <= 75.0:
+					distance -= 1
+			elif unit_types[unit_id]['category'] == 'Vehicle':
+				if GetPercentileRoll() <= 60.0:
+					distance += 1
+			
+			if distance < 1:
+				distance = 1
+			elif distance > 3:
+				distance = 3
+			
+			hex_list = GetHexRing(0, 0, distance)
+			
+			(hx, hy) = choice(hex_list)
+			
+			# create the unit
+			unit = Unit(unit_id)
+			unit.owning_player = 1
+			unit.nation = 'Poland'
+			unit.ai = AI(unit)
+			unit.GenerateNewPersonnel()
+			unit.SpawnAt(hx, hy)
+			if unit.GetStat('category') == 'Gun':
+				unit.deployed = True
+			campaign.enemy_units.append(unit)
+			
+			# set facing if any toward player
+			direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)
+			if unit.GetStat('category') != 'Infantry':
+				unit.facing = direction		
+			unit.turret_facing = direction
+				
+	
 	# add a game message to the log and display it in the message console
 	def Message(self, text):
 		self.message_log.append(text)
@@ -3275,33 +3400,7 @@ class Scenario:
 			campaign.player_unit.squad.append(unit)
 		
 		# generate enemy units
-		unit = Unit('7TP')
-		unit.owning_player = 1
-		unit.nation = 'Poland'
-		unit.ai = AI(unit)
-		unit.GenerateNewPersonnel()
-		unit.facing = 3
-		unit.turret_facing = 3
-		unit.SpawnAt(0, -3)
-		campaign.enemy_units.append(unit)
-		
-		unit = Unit('37mm wz. 36')
-		unit.owning_player = 1
-		unit.nation = 'Poland'
-		unit.ai = AI(unit)
-		unit.GenerateNewPersonnel()
-		unit.facing = 3
-		unit.deployed = True
-		unit.SpawnAt(1, -2)
-		campaign.enemy_units.append(unit)
-		
-		unit = Unit('Riflemen')
-		unit.owning_player = 1
-		unit.nation = 'Poland'
-		unit.ai = AI(unit)
-		unit.GenerateNewPersonnel()
-		unit.SpawnAt(2, 1)
-		campaign.enemy_units.append(unit)
+		self.SpawnEnemyUnits()
 		
 		# set up player unit for first activation
 		campaign.player_unit.BuildCmdLists()
@@ -3720,8 +3819,8 @@ def GetDirectionToAdjacent(hx1, hy1, hx2, hy2):
 # returns the best facing to point in the direction of the target hex
 def GetDirectionToward(hx1, hy1, hx2, hy2):
 	
-	(x1, y1) = PlotHex(hx1, hy1)
-	(x2, y2) = PlotHex(hx2, hy2)
+	(x1, y1) = scenario.PlotHex(hx1, hy1)
+	(x2, y2) = scenario.PlotHex(hx2, hy2)
 	bearing = GetBearing(x1, y1, x2, y2)
 	
 	if bearing >= 330 or bearing <= 30:

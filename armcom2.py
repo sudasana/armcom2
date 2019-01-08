@@ -63,7 +63,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2019-01-02'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
-#SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
+SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 #CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
 
 if os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
@@ -315,13 +315,13 @@ class Session:
 	def LoadSounds(self):
 		
 		SOUND_LIST = [
-			'menu_select',
+			#'menu_select',
 			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
-			'37mm_he_explosion_00', '37mm_he_explosion_01',
-			'vehicle_explosion_00',
+			#'37mm_he_explosion_00', '37mm_he_explosion_01',
+			#'vehicle_explosion_00',
 			'at_rifle_firing',
-			'plane_incoming_00', 'stuka_divebomb_00',
-			'armour_save_00', 'armour_save_01',
+			#'plane_incoming_00', 'stuka_divebomb_00',
+			#'armour_save_00', 'armour_save_01',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'wheeled_moving_00', 'wheeled_moving_01', 'wheeled_moving_02',
 			'zb_53_mg_00',
@@ -1041,9 +1041,7 @@ class Unit:
 	
 	# do a round of spotting from this unit
 	def DoSpotChecks(self):
-		
-		print('DEBUG: Doing spot checks for ' + self.unit_id)
-		
+				
 		# unit out of play range
 		if GetHexDistance(0, 0, self.hx, self.hy) > 3:
 			return
@@ -1074,7 +1072,6 @@ class Unit:
 			
 			# no units possible to spot from this position
 			if len(spot_list) == 0:
-				print('No units to spot from this position')
 				continue
 			
 			# roll once for each unit
@@ -1126,9 +1123,6 @@ class Unit:
 					chance = 100.0
 				
 				roll = GetPercentileRoll()
-				
-				print('DEBUG: rolling to spot ' + unit.unit_id + ', chance is ' + str(chance) +
-					', roll was ' + str(roll))
 				
 				if roll <= chance:
 					
@@ -1401,12 +1395,17 @@ class Unit:
 		# attack not possible
 		if profile is None: return False
 		
+		
 		# display attack profile on screen if player involved
 		if self == campaign.player_unit or target == campaign.player_unit:
 			scenario.DisplayAttack(profile)
+			# activate the attack console and display to screen
+			scenario.attack_con_active = True
+			scenario.UpdateScenarioDisplay()
 		
-			# allow player to cancel attack
-			if WaitForContinue(allow_cancel=True):
+			# allow player to cancel attack if not the target
+			if WaitForContinue(allow_cancel = (target != campaign.player_unit)):
+				scenario.attack_con_active = False
 				return True
 		
 		# otherwise display a message for the player
@@ -1414,8 +1413,24 @@ class Unit:
 			scenario.Message(self.GetName() + ' fires at ' + target.GetName() + ' with ' + weapon.stats['name'])
 			Wait(50)
 		
-		# TODO: attack animation
-				
+		##### Attack Animation and Sound Effects #####
+		
+		if weapon.GetStat('type') == 'Gun':
+			
+			(x1, y1) = scenario.PlotHex(self.hx, self.hy)
+			(x2, y2) = scenario.PlotHex(target.hx, target.hy)
+			line = GetLine(x1,y1,x2,y2)
+			
+			PlaySoundFor(weapon, 'fire')
+					
+			for (x,y) in line[2:-1]:
+				libtcod.console_clear(animation_con)
+				libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.white,
+					libtcod.black)
+				scenario.UpdateScenarioDisplay()
+				Wait(6)
+			libtcod.console_clear(animation_con)
+		
 		# set weapon and unit fired flags
 		weapon.fired = True
 		self.fired = True
@@ -1423,13 +1438,18 @@ class Unit:
 		# do the roll, display results to the screen, and modify the attack profile
 		profile = scenario.DoAttackRoll(profile)
 		
-		# wait for the player if they are involved
+		# display attack roll and wait for the player if they are involved
 		if self == campaign.player_unit or target == campaign.player_unit:
+			scenario.UpdateScenarioDisplay()
 			WaitForContinue()
 		
 		# add one level of acquired target if firing gun
 		if weapon.GetStat('type') == 'Gun':
 			self.AddAcquiredTarget(target)
+		
+		# turn off attack console display if any
+		scenario.attack_con_active = False
+		scenario.UpdateScenarioDisplay()
 		
 		# apply results of this attack if any
 		
@@ -1583,6 +1603,8 @@ class Scenario:
 		# dictionary of console cells covered by map hexes
 		self.hex_map_index = {}
 		
+		# attack console display is active
+		self.attack_con_active = False
 		
 		self.units = []						# list of units in play
 		
@@ -1977,7 +1999,7 @@ class Scenario:
 		return profile
 	
 	
-	# display an attack or AP profile to the screen and prompt to proceed
+	# generate an attack console to display an attack or AP profile to the screen and prompt to proceed
 	# does not alter the profile
 	def DisplayAttack(self, profile):
 		
@@ -2184,11 +2206,7 @@ class Scenario:
 		libtcod.console_print(attack_con, 12, 56, 'Cancel')
 		libtcod.console_print(attack_con, 12, 57, 'Continue')
 		
-		# blit the finished console to the screen
-		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
-	
+		
 	
 	# do a roll, animate the attack console, and display the results
 	# returns an modified attack profile
@@ -2212,9 +2230,8 @@ class Scenario:
 				text = str(roll) + '%%'
 				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
 					libtcod.CENTER, text)
-				libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-				libtcod.console_flush()
+				
+				scenario.UpdateScenarioDisplay()
 				Wait(15)
 		
 		# record the final roll in the attack profile
@@ -2321,11 +2338,6 @@ class Scenario:
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		libtcod.console_print(attack_con, 12, 57, 'Continue')
 		
-		# blit the finished console to the screen
-		libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
-		
 		return profile
 	
 	
@@ -2399,7 +2411,8 @@ class Scenario:
 	# execute a player move forward/backward, repositioning units on the hex map as needed
 	def MovePlayer(self, forward):
 		
-		# FUTURE: do sound effect
+		# do sound effect
+		PlaySoundFor(campaign.player_unit, 'movement')
 		
 		# do move success roll
 		if forward:
@@ -2407,9 +2420,6 @@ class Scenario:
 		else:
 			chance = campaign.player_unit.reverse_move_chance
 		roll = GetPercentileRoll()
-		
-		# TEMP
-		roll = 1.0
 		
 		# move was not successful
 		if roll > chance:
@@ -3184,15 +3194,19 @@ class Scenario:
 		libtcod.console_clear(con)
 		
 		# left column
-		libtcod.console_blit(bkg_console, 0, 0, 0, 0, con, 0, 0)
-		libtcod.console_blit(player_info_con, 0, 0, 0, 0, con, 1, 1)
-		libtcod.console_blit(crew_con, 0, 0, 0, 0, con, 1, 21)
-		libtcod.console_blit(cmd_menu_con, 0, 0, 0, 0, con, 1, 47)
+		if self.attack_con_active:
+			libtcod.console_blit(attack_con, 0, 0, 0, 0, con, 0, 0)
+		else:
+			libtcod.console_blit(bkg_console, 0, 0, 0, 0, con, 0, 0)
+			libtcod.console_blit(player_info_con, 0, 0, 0, 0, con, 1, 1)
+			libtcod.console_blit(crew_con, 0, 0, 0, 0, con, 1, 21)
+			libtcod.console_blit(cmd_menu_con, 0, 0, 0, 0, con, 1, 47)
 		
 		# main map display
 		libtcod.console_blit(hexmap_con, 0, 0, 0, 0, con, 32, 9)
 		libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
 		libtcod.console_blit(gui_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
+		libtcod.console_blit(animation_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
 		
 		# consoles around the edge of map
 		libtcod.console_blit(context_con, 0, 0, 0, 0, con, 28, 1)
@@ -3209,87 +3223,38 @@ class Scenario:
 	# main input loop for scenarios
 	def DoScenarioLoop(self):
 		
+		# shortcut for generating consoles
+		def NewConsole(x, y, bg, fg, key_colour=False):
+			new_con = libtcod.console_new(x, y)
+			libtcod.console_set_default_background(new_con, bg)
+			libtcod.console_set_default_foreground(new_con, fg)
+			if key_colour:
+				libtcod.console_set_key_color(new_con, KEY_COLOR)
+			libtcod.console_clear(new_con)
+			return new_con
+			
+		
 		# set up and load scenario consoles
 		global bkg_console, crew_con, cmd_menu_con, scen_info_con
 		global player_info_con, context_con, time_con, hexmap_con, unit_con, gui_con
-		global msg_con, attack_con, unit_info_con
+		global animation_con, msg_con, attack_con, unit_info_con
 		
 		# background outline console for left column
 		bkg_console = LoadXP('bkg.xp')
 		
-		# player unit info console
-		player_info_con = libtcod.console_new(25, 18)
-		libtcod.console_set_default_background(player_info_con, libtcod.black)
-		libtcod.console_set_default_foreground(player_info_con, libtcod.white)
-		libtcod.console_clear(player_info_con)
-		
-		# player crew info console
-		crew_con = libtcod.console_new(25, 24)
-		libtcod.console_set_default_background(crew_con, libtcod.black)
-		libtcod.console_set_default_foreground(crew_con, libtcod.white)
-		libtcod.console_clear(crew_con)
-		
-		# player command menu console
-		cmd_menu_con = libtcod.console_new(25, 12)
-		libtcod.console_set_default_background(cmd_menu_con, libtcod.black)
-		libtcod.console_set_default_foreground(cmd_menu_con, libtcod.white)
-		libtcod.console_clear(cmd_menu_con)
-		
-		# contextual info console
-		context_con = libtcod.console_new(18, 12)
-		libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
-		libtcod.console_set_default_foreground(context_con, libtcod.white)
-		libtcod.console_clear(context_con)
-		
-		# time, phase console
-		time_con = libtcod.console_new(21, 6)
-		libtcod.console_set_default_background(time_con, libtcod.darkest_grey)
-		libtcod.console_set_default_foreground(time_con, libtcod.white)
-		libtcod.console_clear(time_con)
-		
-		# scenario conditions info console
-		scen_info_con = libtcod.console_new(18, 12)
-		libtcod.console_set_default_background(scen_info_con, libtcod.darkest_grey)
-		libtcod.console_set_default_foreground(scen_info_con, libtcod.white)
-		libtcod.console_clear(scen_info_con)
-		
-		# unit info console
-		unit_info_con = libtcod.console_new(18, 8)
-		libtcod.console_set_default_background(unit_info_con, libtcod.darkest_grey)
-		libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
-		libtcod.console_clear(unit_info_con)
-		
-		# hex map console
-		hexmap_con = libtcod.console_new(53, 43)
-		libtcod.console_set_default_background(hexmap_con, libtcod.black)
-		libtcod.console_set_default_foreground(hexmap_con, libtcod.black)
-		libtcod.console_clear(hexmap_con)
-		
-		# unit layer console
-		unit_con = libtcod.console_new(53, 43)
-		libtcod.console_set_default_background(unit_con, KEY_COLOR)
-		libtcod.console_set_default_foreground(unit_con, libtcod.white)
-		libtcod.console_set_key_color(unit_con, KEY_COLOR)
-		libtcod.console_clear(unit_con)
-		
-		# gui console - used for displaying target recticles, line of sight, etc.
-		gui_con = libtcod.console_new(53, 43)
-		libtcod.console_set_default_background(gui_con, KEY_COLOR)
-		libtcod.console_set_default_foreground(gui_con, libtcod.white)
-		libtcod.console_set_key_color(gui_con, KEY_COLOR)
-		libtcod.console_clear(gui_con)
-		
-		# game message console
-		msg_con = libtcod.console_new(61, 2)
-		libtcod.console_set_default_background(msg_con, libtcod.black)
-		libtcod.console_set_default_foreground(msg_con, libtcod.white)
-		libtcod.console_clear(msg_con)
-		
-		# attack display console
-		attack_con = libtcod.console_new(27, 60)
-		libtcod.console_set_default_background(attack_con, libtcod.black)
-		libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		libtcod.console_clear(attack_con)
+		player_info_con = NewConsole(25, 18, libtcod.black, libtcod.white)
+		crew_con = NewConsole(25, 24, libtcod.black, libtcod.white)
+		cmd_menu_con = NewConsole(25, 12, libtcod.black, libtcod.white)
+		context_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
+		time_con = NewConsole(21, 6, libtcod.darkest_grey, libtcod.white)
+		scen_info_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
+		unit_info_con = NewConsole(18, 8, libtcod.darkest_grey, libtcod.white)
+		hexmap_con = NewConsole(53, 43, libtcod.black, libtcod.black)
+		unit_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
+		gui_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
+		animation_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
+		msg_con = NewConsole(61, 2, libtcod.black, libtcod.white)
+		attack_con = NewConsole(27, 60, libtcod.black, libtcod.white)
 		
 		
 		# set up player unit
@@ -3936,6 +3901,69 @@ def ShowGameMenu():
 
 
 ##########################################################################################
+#                                     Sound Effects                                      #
+##########################################################################################
+
+# play a given sample, returns the channel it is playing on
+def PlaySound(sound_name):
+	
+	if sound_name not in session.sample:
+		print('ERROR: Sound not found: ' + sound_name)
+		return
+	
+	channel = mixer.Mix_PlayChannel(-1, session.sample[sound_name], 0)
+	if channel == -1:
+		print('ERROR: could not play sound: ' + sound_name)
+		print(mixer.Mix_GetError())
+	return channel
+
+
+# select and play a sound effect for a given situation
+def PlaySoundFor(obj, action):
+	
+	# sounds disabled
+	if not config['ArmCom2'].getboolean('sounds_enabled'):
+		return
+	
+	if action == 'fire':
+		if obj.GetStat('type') == 'Gun':
+			
+			if obj.GetStat('name') == 'AT Rifle':
+				PlaySound('at_rifle_firing')
+				return
+			
+			# temp - used for all large guns for now
+			n = libtcod.random_get_int(0, 0, 3)
+			PlaySound('37mm_firing_0' + str(n))
+			return
+			
+		if obj.stats['type'] in MG_WEAPONS:
+			PlaySound('zb_53_mg_00')
+			return
+		
+		if obj.GetStat('name') == 'Rifles':
+			n = libtcod.random_get_int(0, 0, 3)
+			PlaySound('rifle_fire_0' + str(n))
+			return
+	
+	elif action == 'movement':
+		
+		if obj.GetStat('movement_class') in ['Wheeled', 'Fast Wheeled']:
+			n = libtcod.random_get_int(0, 0, 2)
+			PlaySound('wheeled_moving_0' + str(n))
+			return
+		
+		elif obj.GetStat('class') in ['Tankette', 'Light Tank', 'Medium Tank']:
+			n = libtcod.random_get_int(0, 0, 2)
+			PlaySound('light_tank_moving_0' + str(n))
+			return
+	
+	print ('ERROR: Could not determine which sound to play')
+			
+
+
+
+##########################################################################################
 #                                      Main Script                                       #
 ##########################################################################################
 
@@ -3974,17 +4002,14 @@ libtcod.console_flush()
 session = Session()
 
 # try to init sound mixer and load sounds if successful
-main_theme = None
-
 if config['ArmCom2'].getboolean('sounds_enabled'):
 	if session.InitMixer():
 		session.LoadSounds()
-		# load and play main menu theme
-		main_theme = mixer.Mix_LoadMUS((SOUNDPATH + 'armcom2_theme.ogg').encode('ascii'))
-		mixer.Mix_PlayMusic(main_theme, -1)
 	else:
 		config['ArmCom2']['sounds_enabled'] = 'false'
 		print('Not able to init mixer, sounds disabled')
+else:
+	print('Sounds disabled')
 
 # create double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)

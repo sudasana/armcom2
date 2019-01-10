@@ -199,6 +199,15 @@ FP_CHANCE_STEP_MOD = 0.95	# additional firepower modifier reduced by this much b
 FP_FULL_EFFECT = 0.75		# multiplier for full effect
 FP_CRIT_EFFECT = 0.1		# multipler for critical effect
 
+
+RESOLVE_FP_BASE_CHANCE = 95.0	# base chance of a 1 firepower attack having no effect on a unit
+RESOLVE_FP_CHANCE_STEP = 5.0	# each additional firepower beyond 1 subtracts this additional chance
+RESOLVE_FP_CHANCE_MOD = 1.05	# additional firepower modifier increased by this much beyond 1
+
+MORALE_CHECK_BASE_CHANCE = 70.0	# base chance of passing a morale check
+BROKEN_MORALE_MOD = -40.0	# modifier to morale checks for broken units
+
+
 # base success chances for armour penetration
 AP_BASE_CHANCE = {
 	'MG' : 16.7,
@@ -797,7 +806,6 @@ class AI:
 			
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
-			libtcod.console_flush()
 		
 		elif self.disposition == 'Combat':
 			
@@ -1436,6 +1444,23 @@ class Unit:
 				Wait(6)
 			libtcod.console_clear(animation_con)
 		
+		elif weapon.GetStat('type') == 'Small Arms' or weapon.GetStat('type') in MG_WEAPONS:
+			
+			(x1, y1) = scenario.PlotHex(self.hx, self.hy)
+			(x2, y2) = scenario.PlotHex(target.hx, target.hy)
+			line = GetLine(x1,y1,x2,y2)
+			
+			PlaySoundFor(weapon, 'fire')
+			
+			for i in range(25):
+				libtcod.console_clear(animation_con)
+				(x,y) = choice(line[2:-1])
+				libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.yellow,
+					libtcod.black)
+				scenario.UpdateScenarioDisplay()
+				Wait(3)
+			libtcod.console_clear(animation_con)
+		
 		# set weapon and unit fired flags
 		weapon.fired = True
 		self.fired = True
@@ -1491,20 +1516,20 @@ class Unit:
 		return True
 	
 	
-	# resolve all unresolved FP and AP hits on this unit
-	def ResolveHits(self):
+	# resolve all unresolved AP hits on this unit
+	def ResolveAPHits(self):
 		
 		# no hits to resolve! doing fine!
-		if self.fp_to_resolve == 0 and len(self.ap_hits_to_resolve) == 0: return
+		if len(self.ap_hits_to_resolve) == 0: return
+		
+		# TEMP? no effect if not vehicle
+		if self.GetStat('category') != 'Vehicle':
+			self.ap_hits_to_resolve = []
+			return
 		
 		# move to top of hex stack
 		self.MoveToTopOfStack()
 		scenario.UpdateUnitCon()
-		
-		# FUTURE: handle FP first
-		#self.ResolveFP()
-		self.fp_to_resolve == 0
-		if not self.alive: return
 		
 		# handle AP hits
 		for profile in self.ap_hits_to_resolve:
@@ -1558,6 +1583,93 @@ class Unit:
 		# clear unresolved hits
 		self.ap_hits_to_resolve = []
 	
+	
+	# resolve FP on this unit if any
+	def ResolveFP(self):
+		if self.fp_to_resolve == 0: return
+		
+		print('DEBUG: resolving ' + str(self.fp_to_resolve) + ' fp on ' + self.unit_id)
+		
+		# move to top of hex stack
+		self.MoveToTopOfStack()
+		scenario.UpdateUnitCon()
+		
+		# TEMP - fp has no effect on vehicles
+		if self.GetStat('category') == 'Vehicle':
+			#self.CheckForCrewInjury(self.fp_to_resolve)		
+			self.fp_to_resolve = 0
+			return
+		
+		# calculate base chance of no effect
+		base_chance = RESOLVE_FP_BASE_CHANCE
+		for i in range(2, self.fp_to_resolve + 1):
+			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
+		
+		# TODO: calculate modifiers
+		
+		# round and restrict final chances
+		broken_chance = RestrictChance(base_chance * 1.2)
+		base_chance = RestrictChance(base_chance)
+		
+		print('DEBUG: no effect chance: ' + str(base_chance) + ', break chance: ' + str(broken_chance - base_chance) + '%%')
+		
+		# roll for effect
+		roll = GetPercentileRoll()
+		
+		if roll <= base_chance:
+			# pin test
+			self.PinTest(self.fp_to_resolve)
+	
+		elif roll <= broken_chance:
+			self.BreakMe()
+		else:
+			text = self.GetName() + ' was destroyed.'
+			ShowMessage(text)
+			self.DestroyMe()
+		
+		self.fp_to_resolve = 0
+	
+	
+	# do a morale check for this unit to recover from Broken or Pinned status
+	def MoraleCheck(self, modifier):
+		
+		chance = MORALE_CHECK_BASE_CHANCE + modifier
+		
+		# TODO: apply terrain modifiers
+		
+		# TODO: check for leader skill
+		
+		chance = RestrictChance(chance)
+		
+		roll = GetPercentileRoll()
+		if roll <= chance:
+			return True
+		return False
+	
+	
+	# do a pin test on this unit
+	def PinTest(self, fp):
+		chance = float(fp) * 5.0
+		chance = RestrictChance(chance)
+		roll = GetPercentileRoll()
+		if roll > chance:
+			self.PinMe()
+	
+	# pin this unit
+	def PinMe(self):
+		self.pinned = True
+		self.acquired_target = None
+		scenario.UpdateUnitCon()
+		scenario.UpdateScenarioDisplay()
+		ShowMessage(self.GetName() + ' is now Pinned.')
+	
+	# break this unit
+	def BreakMe(self):
+		self.broken = True
+		self.acquired_target = None
+		scenario.UpdateUnitCon()
+		scenario.UpdateScenarioDisplay()
+		ShowMessage(self.GetName() + ' was Broken.')
 	
 	# destroy this unit and remove it from the game
 	def DestroyMe(self):
@@ -1641,13 +1753,14 @@ class Scenario:
 	# FUTURE: will pull data from the campaign day and campaign objects
 	def SpawnEnemyUnits(self):
 		
+		# TEMP - infantry only
 		class_odds = {
-			'Tankette' : 20.0,
-			'Light Tank' : 10.0,
-			'Armoured Car' : 90.0,
-			'Anti-Tank Gun' : 40.0,
-			'Field Gun' : 10.0,
-			'Anti-Aircraft Gun' : 20.0,
+			#'Tankette' : 20.0,
+			#'Light Tank' : 10.0,
+			#'Armoured Car' : 90.0,
+			#'Anti-Tank Gun' : 40.0,
+			#'Field Gun' : 10.0,
+			#'Anti-Aircraft Gun' : 20.0,
 			'Infantry Squad' : 100.0
 		}
 		
@@ -2725,14 +2838,20 @@ class Scenario:
 			self.UpdateScenarioDisplay()
 			libtcod.console_flush()
 			
-			# resolve hits on enemy units
-			for unit in self.units:
+			# resolve AP hits on enemy units
+			for unit in reversed(self.units):
 				if not unit.alive: continue
 				if unit.owning_player == self.active_player: continue
-				unit.ResolveHits()
+				unit.ResolveAPHits()
 				
 		# enemy activation finished, player's turn
 		if self.active_player == 1:
+			
+			# resolve fp on player units first
+			for unit in reversed(self.units):
+				if not unit.alive: continue
+				if unit.owning_player == self.active_player: continue
+				unit.ResolveFP()
 			
 			# advance clock
 			campaign_day.AdvanceClock(0, TURN_LENGTH)
@@ -2751,8 +2870,15 @@ class Scenario:
 		elif self.phase < 6:
 			self.phase += 1
 		
-		# switching to enemy turn
+		# end of player turn, switching to enemy turn
 		else:
+			
+			# resolve fp on enemy units first
+			for unit in reversed(self.units):
+				if not unit.alive: continue
+				if unit.owning_player == self.active_player: continue
+				unit.ResolveFP()
+			
 			self.phase = 7
 			self.active_player = 1
 		
@@ -2816,6 +2942,12 @@ class Scenario:
 				unit.DoSpotChecks()
 			for unit in campaign.player_unit.squad:
 				unit.ai.DoActivation()
+				
+				# resolve any ap hits
+				for unit in self.units:
+					if not unit.alive: continue
+					if unit.owning_player == self.active_player: continue
+					unit.ResolveAPHits()
 			
 			self.advance_phase = True
 		
@@ -3427,8 +3559,6 @@ class Scenario:
 		self.UpdateHexmapCon()
 		self.UpdateMsgConsole()
 		self.UpdateScenarioDisplay()
-		
-		ShowMessage('Welcome to Armoured Commander II! This is just a test message...')
 		
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1

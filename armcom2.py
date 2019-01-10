@@ -1134,7 +1134,9 @@ class Unit:
 					if self.owning_player == 0:
 						text = unit.GetName() + ' ' + unit.GetStat('class')
 						text += ' spotted!'
-						scenario.Message(text)
+						portrait = unit.GetStat('portrait')
+						ShowMessage(text, portrait=portrait)
+						
 					elif unit == campaign.player_unit:
 						scenario.Message('You have been spotted!')
 	
@@ -3409,8 +3411,6 @@ class Scenario:
 			unit.BuildCmdLists()
 			unit.ResetForNewTurn()
 		
-		scenario.Message('Welcome to Armoured Commander II!')
-		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
 		self.UpdateTimeCon()
@@ -3422,6 +3422,8 @@ class Scenario:
 		self.UpdateHexmapCon()
 		self.UpdateMsgConsole()
 		self.UpdateScenarioDisplay()
+		
+		ShowMessage('Welcome to Armoured Commander II! This is just a test message...')
 		
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
@@ -3620,6 +3622,64 @@ class Scenario:
 #                                  General Functions                                     #
 ##########################################################################################	
 
+
+# draw an ArmCom2-style frame to the given console
+def DrawFrame(console, x, y, w, h):
+	libtcod.console_put_char(console, x, y, 249)
+	libtcod.console_put_char(console, x+w-1, y, 249)
+	libtcod.console_put_char(console, x, y+h-1, 249)
+	libtcod.console_put_char(console, x+w-1, y+h-1, 249)
+	for x1 in range(x+1, x+w-1):
+		libtcod.console_put_char(console, x1, y, 196)
+		libtcod.console_put_char(console, x1, y+h-1, 196)
+	for y1 in range(y+1, y+h-1):
+		libtcod.console_put_char(console, x, y1, 179)
+		libtcod.console_put_char(console, x+w-1, y1, 179)
+
+
+# display a pop-up message window on the screen, pause, and then clear message
+# FUTURE: more options, add text to message log
+# FUTURE: integrate with animation?
+def ShowMessage(text, portrait=None):
+	
+	# create message console: 29x18
+	msg_con = libtcod.console_new(29, 19)
+	libtcod.console_set_default_background(msg_con, libtcod.black)
+	libtcod.console_set_default_foreground(msg_con, libtcod.white)
+	libtcod.console_clear(msg_con)
+	DrawFrame(msg_con, 0, 0, 29, 19)
+	y = 1
+	
+	# display portrait if any
+	if portrait is not None:
+		libtcod.console_set_default_background(msg_con, PORTRAIT_BG_COL)
+		libtcod.console_rect(msg_con, 1, 1, 27, 8, True, libtcod.BKGND_SET)
+		libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, msg_con, 2, 1)
+		libtcod.console_set_default_background(msg_con, libtcod.black)
+		y = 10
+	
+	# display message
+	lines = wrap(text, 27)
+	
+	for line in lines:
+		libtcod.console_print_ex(msg_con, 14, y, libtcod.BKGND_NONE, libtcod.CENTER, line)
+		if y == 17: break
+		y += 1
+	
+	# darken screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.4, 0.4)
+	# display message console overtop map area of screen
+	libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, 44, 21)
+	del msg_con
+	libtcod.console_flush()
+	
+	Wait(200)
+	
+	# re-draw screen
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	libtcod.console_flush()
+
+
 # get keyboard and/or mouse event; returns False if no new key press
 def GetInputEvent():
 	event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
@@ -3650,6 +3710,7 @@ def Wait(wait_time):
 	wait_time = wait_time * 0.01
 	start_time = time.time()
 	while time.time() - start_time < wait_time:
+		if libtcod.console_is_window_closed(): sys.exit()
 		FlushKeyboardEvents()
 
 

@@ -200,12 +200,11 @@ FP_FULL_EFFECT = 0.75		# multiplier for full effect
 FP_CRIT_EFFECT = 0.1		# multipler for critical effect
 
 
-RESOLVE_FP_BASE_CHANCE = 95.0	# base chance of a 1 firepower attack having no effect on a unit
-RESOLVE_FP_CHANCE_STEP = 5.0	# each additional firepower beyond 1 subtracts this additional chance
+RESOLVE_FP_BASE_CHANCE = 5.0	# base chance of a 1 firepower attack destroying a unit
+RESOLVE_FP_CHANCE_STEP = 5.0	# each additional firepower beyond 1 adds this additional chance
 RESOLVE_FP_CHANCE_MOD = 1.05	# additional firepower modifier increased by this much beyond 1
 
 MORALE_CHECK_BASE_CHANCE = 70.0	# base chance of passing a morale check
-BROKEN_MORALE_MOD = -40.0	# modifier to morale checks for broken units
 
 
 # base success chances for armour penetration
@@ -1600,32 +1599,28 @@ class Unit:
 			self.fp_to_resolve = 0
 			return
 		
-		# calculate base chance of no effect
+		# calculate base chance of destruction
 		base_chance = RESOLVE_FP_BASE_CHANCE
 		for i in range(2, self.fp_to_resolve + 1):
-			base_chance -= RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
+			base_chance += RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
 		
 		# TODO: calculate modifiers
 		
-		# round and restrict final chances
-		broken_chance = RestrictChance(base_chance * 1.2)
+		# restrict final chances
 		base_chance = RestrictChance(base_chance)
 		
-		print('DEBUG: no effect chance: ' + str(base_chance) + ', break chance: ' + str(broken_chance - base_chance) + '%%')
+		print('DEBUG: chance to destroy: ' + str(base_chance) + '%%')
 		
 		# roll for effect
 		roll = GetPercentileRoll()
 		
 		if roll <= base_chance:
-			# pin test
-			self.PinTest(self.fp_to_resolve)
-	
-		elif roll <= broken_chance:
-			self.BreakMe()
-		else:
 			text = self.GetName() + ' was destroyed.'
 			ShowMessage(text)
 			self.DestroyMe()
+		else:
+			# pin test
+			self.PinTest(self.fp_to_resolve)
 		
 		self.fp_to_resolve = 0
 	
@@ -1652,8 +1647,9 @@ class Unit:
 		chance = float(fp) * 5.0
 		chance = RestrictChance(chance)
 		roll = GetPercentileRoll()
-		if roll > chance:
+		if roll <= chance:
 			self.PinMe()
+	
 	
 	# pin this unit
 	def PinMe(self):
@@ -1663,13 +1659,6 @@ class Unit:
 		scenario.UpdateScenarioDisplay()
 		ShowMessage(self.GetName() + ' is now Pinned.')
 	
-	# break this unit
-	def BreakMe(self):
-		self.broken = True
-		self.acquired_target = None
-		scenario.UpdateUnitCon()
-		scenario.UpdateScenarioDisplay()
-		ShowMessage(self.GetName() + ' was Broken.')
 	
 	# destroy this unit and remove it from the game
 	def DestroyMe(self):

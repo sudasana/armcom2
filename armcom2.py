@@ -148,7 +148,7 @@ MONTH_NAMES = [
 TURN_LENGTH = 2
 
 # maximum visible distance when buttoned up
-MAX_BU_LOS = 2
+MAX_BU_LOS = 1
 
 # base chance to spot unit at distance 0,1,2,3
 SPOT_BASE_CHANCE = [50.0, 40.0, 25.0, 5.0]
@@ -178,6 +178,9 @@ PF_BASE_CHANCE = [
 	[62.0, 48.0],			# 2 "
 	[48.0, 25.0]			# 3 hex range
 ]
+
+# bonus for level 1 and level 2 acquired target
+AC_BONUS = [10.0, 25.0]
 
 # modifier for target size if target is known
 PF_SIZE_MOD = {
@@ -1510,10 +1513,12 @@ class Unit:
 			if self.GetStat('armour') is not None:
 				
 				profile = scenario.CalcAP(profile)
-				scenario.DisplayAttack(profile)
 				
-				# wait if player is involved
+				# display and wait if player is involved
 				if profile['attacker'] == campaign.player_unit or self == campaign.player_unit:
+					scenario.DisplayAttack(profile)
+					scenario.attack_con_active = True
+					scenario.UpdateScenarioDisplay()
 					WaitForContinue()
 				
 				# do the attack roll; modifies the attack profile
@@ -1521,7 +1526,12 @@ class Unit:
 				
 				# wait if player is involved
 				if profile['attacker'] == campaign.player_unit or self == campaign.player_unit:
+					scenario.UpdateScenarioDisplay()
 					WaitForContinue()
+				
+				# turn off attack console display if any
+				scenario.attack_con_active = False
+				scenario.UpdateScenarioDisplay()
 				
 				# apply result if any
 				if profile['result'] == 'PENETRATED':
@@ -1872,9 +1882,9 @@ class Scenario:
 					(ac_target, level) = attacker.acquired_target
 					if ac_target == target:
 						if not level:
-							mod = 10.0
+							mod = AC_BONUS[0]
 						else:
-							mod = 20.0
+							mod = AC_BONUS[1]
 						modifier_list.append(('Acquired Target', mod))
 				
 				# target vehicle moving
@@ -2561,18 +2571,13 @@ class Scenario:
 			
 			campaign.player_unit.moving = True
 			
-			# show message to player
-			text = 'You move but not far enough to enter a new map hex'
-			scenario.Message(text)
+			# show pop-up message to player
+			ShowMessage('You move but not far enough to enter a new map hex')
 			
 			# end movement phase
 			self.advance_phase = True
 			
 			return
-			
-		# show message to player
-		text = 'You move far enough to enter a new map hex'
-		scenario.Message(text)
 		
 		# move was successful, clear all bonuses
 		campaign.player_unit.forward_move_bonus = 0.0
@@ -3562,6 +3567,7 @@ class Scenario:
 				if key_char in ['w', 's']:
 					self.MovePlayer(key_char == 'w')
 					self.UpdateContextCon()
+					self.UpdateUnitInfoCon()
 					self.UpdateScenarioDisplay()
 					continue
 				
@@ -3569,6 +3575,7 @@ class Scenario:
 				elif key_char in ['a', 'd']:
 					self.PivotPlayer(key_char == 'd')
 					self.UpdateContextCon()
+					self.UpdateUnitInfoCon()
 					self.UpdateScenarioDisplay()
 					continue
 				

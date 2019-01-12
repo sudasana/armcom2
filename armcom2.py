@@ -328,7 +328,7 @@ class Session:
 		SOUND_LIST = [
 			#'menu_select',
 			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
-			#'37mm_he_explosion_00', '37mm_he_explosion_01',
+			'37mm_he_explosion_00', '37mm_he_explosion_01',
 			#'vehicle_explosion_00',
 			'at_rifle_firing',
 			#'plane_incoming_00', 'stuka_divebomb_00',
@@ -616,6 +616,7 @@ class Weapon:
 		# weapon statuses
 		self.covered_hexes = []			# map hexes that could be targeted by this weapon
 		self.fired = False
+		self.maintained_rof = False
 	
 	
 	# check for the value of a stat, return None if stat not present
@@ -695,6 +696,7 @@ class Weapon:
 	# set/reset all scenario statuses for a new turn
 	def ResetMe(self):
 		self.fired = False
+		self.maintained_rof = False
 		self.UpdateCoveredHexes()
 	
 	
@@ -936,7 +938,7 @@ class AI:
 				
 				# special: player squad cannot pivot
 				if pivot_req and self.owner in campaign.player_unit.squad:
-					print ('DEBUG: threw out an attack because player squad member would have to pivot')
+					print ('DEBUG: discarded an attack because player squad member would have to pivot')
 					continue
 				
 				# set ammo type if required
@@ -1555,110 +1557,167 @@ class Unit:
 		if profile is None: return False
 		
 		
-		# display attack profile on screen if player involved
-		if self == campaign.player_unit or target == campaign.player_unit:
-			scenario.DisplayAttack(profile)
-			# activate the attack console and display to screen
-			scenario.attack_con_active = True
-			scenario.UpdateScenarioDisplay()
-		
-			# allow player to cancel attack if not the target
-			if WaitForContinue(allow_cancel = (target != campaign.player_unit)):
-				scenario.attack_con_active = False
-				return True
-		
-		# otherwise display a message for the player
-		else:
-			scenario.Message(self.GetName() + ' fires at ' + target.GetName() + ' with ' + weapon.stats['name'])
-			Wait(50)
-		
-		##### Attack Animation and Sound Effects #####
-		
-		if weapon.GetStat('type') == 'Gun':
+		# attack loop, possible to maintain RoF and do multiple attacks
+		attack_finished = False
+		while not attack_finished:
 			
-			(x1, y1) = scenario.PlotHex(self.hx, self.hy)
-			(x2, y2) = scenario.PlotHex(target.hx, target.hy)
-			line = GetLine(x1,y1,x2,y2)
+			# display attack profile on screen if player involved
+			if self == campaign.player_unit or target == campaign.player_unit:
+				scenario.DisplayAttack(profile)
+				# activate the attack console and display to screen
+				scenario.attack_con_active = True
+				scenario.UpdateScenarioDisplay()
 			
-			PlaySoundFor(weapon, 'fire')
+				# allow player to cancel attack if not the target
+				if not weapon.maintained_rof:
+					if WaitForContinue(allow_cancel = (target != campaign.player_unit)):
+						scenario.attack_con_active = False
+						return True
+			
+			# otherwise display a message for the player
+			else:
+				scenario.Message(self.GetName() + ' fires at ' + target.GetName() + ' with ' + weapon.stats['name'])
+				Wait(50)
+		
+			##### Attack Animation and Sound Effects #####
+			
+			if weapon.GetStat('type') == 'Gun':
+				
+				(x1, y1) = scenario.PlotHex(self.hx, self.hy)
+				(x2, y2) = scenario.PlotHex(target.hx, target.hy)
+				line = GetLine(x1,y1,x2,y2)
+				
+				PlaySoundFor(weapon, 'fire')
+						
+				for (x,y) in line[2:-1]:
+					libtcod.console_clear(animation_con)
+					libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.white,
+						libtcod.black)
+					scenario.UpdateScenarioDisplay()
+					Wait(6)
+				libtcod.console_clear(animation_con)
+				
+				# add explosion effect if HE ammo
+				if weapon.ammo_type == 'HE':
 					
-			for (x,y) in line[2:-1]:
+					PlaySoundFor(weapon, 'he_explosion')
+					
+					for i in range(6):
+						col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+						libtcod.console_set_default_foreground(animation_con, col)
+						libtcod.console_put_char(animation_con, x2, y2, 42)
+						scenario.UpdateScenarioDisplay()
+						Wait(4)
+					libtcod.console_clear(animation_con)
+			
+			elif weapon.GetStat('type') == 'Small Arms' or weapon.GetStat('type') in MG_WEAPONS:
+				
+				(x1, y1) = scenario.PlotHex(self.hx, self.hy)
+				(x2, y2) = scenario.PlotHex(target.hx, target.hy)
+				line = GetLine(x1,y1,x2,y2)
+				
+				PlaySoundFor(weapon, 'fire')
+				
+				for i in range(25):
+					libtcod.console_clear(animation_con)
+					(x,y) = choice(line[2:-1])
+					libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.yellow,
+						libtcod.black)
+					scenario.UpdateScenarioDisplay()
+					Wait(3)
 				libtcod.console_clear(animation_con)
-				libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.white,
-					libtcod.black)
+			
+			# set weapon and unit fired flags
+			weapon.fired = True
+			self.fired = True
+			
+			# do the roll, display results to the screen, and modify the attack profile
+			profile = scenario.DoAttackRoll(profile)
+			
+			# wait for the player if they are involved
+			# if RoF is maintained, may choose to attack again
+			attack_finished = True
+			if self == campaign.player_unit or target == campaign.player_unit:
 				scenario.UpdateScenarioDisplay()
-				Wait(6)
-			libtcod.console_clear(animation_con)
-		
-		elif weapon.GetStat('type') == 'Small Arms' or weapon.GetStat('type') in MG_WEAPONS:
+				
+				end_pause = False
+				while not end_pause:
+					if libtcod.console_is_window_closed(): sys.exit()
+					libtcod.console_flush()
+					if not GetInputEvent(): continue
+					
+					key_char = chr(key.c).lower()
+					
+					if key.vk == libtcod.KEY_TAB:
+						end_pause = True
+					
+					if self == campaign.player_unit:
+						if key_char == 'f' and weapon.maintained_rof:
+							attack_finished = False
+							end_pause = True
 			
-			(x1, y1) = scenario.PlotHex(self.hx, self.hy)
-			(x2, y2) = scenario.PlotHex(target.hx, target.hy)
-			line = GetLine(x1,y1,x2,y2)
+			# add one level of acquired target if firing gun
+			if weapon.GetStat('type') == 'Gun':
+				self.AddAcquiredTarget(target)
 			
-			PlaySoundFor(weapon, 'fire')
+			# apply results of this attack if any
 			
-			for i in range(25):
-				libtcod.console_clear(animation_con)
-				(x,y) = choice(line[2:-1])
-				libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.yellow,
-					libtcod.black)
-				scenario.UpdateScenarioDisplay()
-				Wait(3)
-			libtcod.console_clear(animation_con)
-		
-		# set weapon and unit fired flags
-		weapon.fired = True
-		self.fired = True
-		
-		# do the roll, display results to the screen, and modify the attack profile
-		profile = scenario.DoAttackRoll(profile)
-		
-		# display attack roll and wait for the player if they are involved
-		if self == campaign.player_unit or target == campaign.player_unit:
-			scenario.UpdateScenarioDisplay()
-			WaitForContinue()
-		
-		# add one level of acquired target if firing gun
-		if weapon.GetStat('type') == 'Gun':
-			self.AddAcquiredTarget(target)
+			# area fire attack
+			if profile['type'] == 'Area Fire':
+					
+				if profile['result'] in ['CRITICAL EFFECT', 'FULL EFFECT', 'PARTIAL EFFECT']:
+					
+					target.fp_to_resolve += profile['effective_fp']
+					
+					# target will automatically be spotted next turn if possible
+					if not target.spotted:
+						target.hit_by_fp = True
+				
+				# possible it was converted into an AP MG hit
+				elif profile['result'] in ['HIT', 'CRITICAL HIT']:	
+					target.ap_hits_to_resolve.append(profile)
+			
+			# point fire attack hit
+			elif profile['result'] in ['CRITICAL HIT', 'HIT']:
+				
+				# infantry or gun target
+				if target.GetStat('category') in ['Infantry', 'Gun']:
+					
+					# if HE hit, apply effective FP
+					if profile['ammo_type'] == 'HE':
+						
+						effective_fp = profile['weapon'].GetEffectiveFP()
+						
+						# apply critical hit multiplier
+						if profile['result'] == 'CRITICAL HIT':
+							effective_fp = effective_fp * 2 
+					
+						target.fp_to_resolve += effective_fp
+						
+						if not target.spotted:
+							target.hit_by_fp = True
+					
+					# TEMP: AP hits have no effect on Guns
+				
+				# armoured target
+				if target.GetStat('armour') is not None:
+					target.ap_hits_to_resolve.append(profile)
+			
+			# notify player of any result if not involved
+			if self != campaign.player_unit and target != campaign.player_unit:
+				if profile['result'] not in ['MISS', 'NO EFFECT']:
+					text = 'Result: ' + profile['result']
+					scenario.Message(text)
+					Wait(50)
 		
 		# turn off attack console display if any
 		scenario.attack_con_active = False
 		scenario.UpdateScenarioDisplay()
 		
-		# apply results of this attack if any
+		# reset weapon RoF
+		weapon.maintained_rof = False
 		
-		# area fire attack
-		if profile['type'] == 'Area Fire':
-				
-			if profile['result'] in ['CRITICAL EFFECT', 'FULL EFFECT', 'PARTIAL EFFECT']:
-				
-				target.fp_to_resolve += profile['effective_fp']
-				
-				# target will automatically be spotted next turn if possible
-				if not target.spotted:
-					target.hit_by_fp = True
-			
-			# possible it was converted into an AP MG hit
-			elif profile['result'] in ['HIT', 'CRITICAL HIT']:	
-				target.ap_hits_to_resolve.append(profile)
-		
-		# ap attack hit
-		elif profile['result'] in ['CRITICAL HIT', 'HIT']:
-			
-			# armoured target
-			if target.GetStat('armour') is not None:
-				target.ap_hits_to_resolve.append(profile)
-		
-		# notify player of any result if not involved
-		if self != campaign.player_unit and target != campaign.player_unit:
-			if profile['result'] not in ['MISS', 'NO EFFECT']:
-				text = 'Result: ' + profile['result']
-				scenario.Message(text)
-				Wait(50)
-		
-		# TEMP attack is finished
+		# attack is finished
 		return True
 	
 	
@@ -1924,7 +1983,7 @@ class Scenario:
 	# FUTURE: will pull data from the campaign day and campaign objects
 	def SpawnEnemyUnits(self):
 		
-		# TEMP - infantry only
+		# TEMP - spawn infantry only
 		class_odds = {
 			#'Tankette' : 20.0,
 			#'Light Tank' : 10.0,
@@ -2640,6 +2699,26 @@ class Scenario:
 	# returns an modified attack profile
 	def DoAttackRoll(self, profile):
 		
+		# check to see if this weapon maintains Rate of Fire
+		def CheckRoF(profile):
+			
+			# TODO: guns must have a Loader on proper order
+			#if profile['weapon'].GetStat('type') == 'Gun':
+			#	if not profile['attacker'].CheckPersonnelAction(['Loader'], 'Reload'):
+			#		return False
+				
+				# guns must also have at least one shell of the current type available
+			#	if profile['weapon'].current_ammo is not None:
+			#		if profile['weapon'].ammo_stores[profile['weapon'].current_ammo] == 0:
+			#			return False			
+			
+			base_chance = float(profile['weapon'].GetStat('rof'))
+			roll = GetPercentileRoll()
+			
+			if roll <= base_chance:
+				return True
+			return False
+		
 		# clear prompts from attack console
 		libtcod.console_print(attack_con, 6, 56, '                  ')
 		libtcod.console_print(attack_con, 6, 57, '                  ')
@@ -2747,18 +2826,18 @@ class Scenario:
 			libtcod.console_print_ex(attack_con, 13, 52, libtcod.BKGND_NONE,
 				libtcod.CENTER, str(profile['effective_fp']) + ' FP')
 		
-		# FUTURE: check for RoF for gun / MG attacks
-		#if profile['type'] != 'ap' and profile['weapon'].GetStat('rof') is not None:
+		# check for RoF for gun / MG attacks
+		if profile['type'] != 'ap' and profile['weapon'].GetStat('rof') is not None:
 			# TEMP: player only for now
-		#	if profile['attacker'] == scenario.player_unit:
-		#		profile['weapon'].maintained_rof = CheckRoF(profile) 
-		#		if profile['weapon'].maintained_rof:
-		#			libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
-		#				libtcod.CENTER, 'Maintained Rate of Fire')
-		#			libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		#			libtcod.console_print(attack_con, 6, 56, 'F')
-		#			libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		#			libtcod.console_print(attack_con, 12, 56, 'Fire Again')
+			if profile['attacker'] == campaign.player_unit:
+				profile['weapon'].maintained_rof = CheckRoF(profile) 
+				if profile['weapon'].maintained_rof:
+					libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
+						libtcod.CENTER, 'Maintained Rate of Fire')
+					libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
+					libtcod.console_print(attack_con, 6, 56, 'F')
+					libtcod.console_set_default_foreground(attack_con, libtcod.white)
+					libtcod.console_print(attack_con, 12, 56, 'Fire Again')
 		
 		# display prompt
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
@@ -4447,6 +4526,13 @@ def PlaySoundFor(obj, action):
 			n = libtcod.random_get_int(0, 0, 3)
 			PlaySound('rifle_fire_0' + str(n))
 			return
+	
+	elif action == 'he_explosion':
+		
+		# TEMP - only one type of explosion sound
+		n = libtcod.random_get_int(0, 0, 1)
+		PlaySound('37mm_he_explosion_0' + str(n))
+		return
 	
 	elif action == 'movement':
 		

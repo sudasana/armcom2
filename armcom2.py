@@ -874,7 +874,7 @@ class AI:
 				
 				# set ammo type if required
 				if ammo_type != '':
-					weapon.current_ammo = ammo_type
+					weapon.ammo_type = ammo_type
 				
 				# calculate odds of attack
 				profile = scenario.CalcAttack(self.owner, weapon, target)
@@ -883,6 +883,12 @@ class AI:
 				if profile is None: continue
 				
 				score = profile['final_chance']
+				
+				# apply score modifiers
+				
+				# try to avoid using HE on infantry in case MG is available too
+				if target.GetStat('category') == 'Infantry' and ammo_type == 'HE':
+					score -= 20.0
 				
 				# lower chance of attacking player
 				if target == campaign.player_unit:
@@ -915,7 +921,7 @@ class AI:
 			
 			# roll to see if attack proceeds
 			roll = GetPercentileRoll()
-			if roll > score: return
+			if roll > (score * 2.0): return
 			
 			# set ammo type if any and do the attack
 			if ammo_type != '': weapon.current_ammo = ammo_type

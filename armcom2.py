@@ -371,6 +371,7 @@ class Personnel:
 		self.cmd_list = []				# list of possible commands
 		self.current_cmd = 'Spot'			# currently assigned action for scenario
 		self.status = ''				# current status
+		self.injury = ''				# current injury
 	
 	
 	# generate a random first and last name for this person
@@ -482,6 +483,18 @@ class Personnel:
 			self.ce = True
 		else:
 			self.ce = False
+	
+	
+	# apply an injury to this person resulting from a firepower attack etc.
+	def ApplyInjury(self):
+		
+		# TODO: roll for type of injury
+		
+		roll = GetPercentileRoll()
+		
+		
+		
+		
 	
 
 # Position class: represents a personnel position within a unit
@@ -699,9 +712,6 @@ class AI:
 		# no action if it's not alive
 		if not self.owner.alive: return
 		
-		# TEMP - no AI actions
-		return
-		
 		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
 		roll = GetPercentileRoll()
@@ -835,7 +845,7 @@ class AI:
 						ammo_list = weapon.stats['ammo_type_list']
 						for ammo_type in ammo_list:
 							
-							weapon.current_ammo = ammo_type
+							weapon.ammo_type = ammo_type
 							result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
 							# attack not possible
 							if result != '':
@@ -853,24 +863,63 @@ class AI:
 				print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
 				return
 			
-			# TODO: score possible weapon-target combinations
+			# score each possible weapon-ammo-target combination
+			scored_list = []
+			for (weapon, target, ammo_type) in attack_list:
+				
+				# skip small arms attacks on targets that have no chance of effect
+				if target.GetStat('category') == 'Vehicle':
+					if weapon.GetStat('type') != 'Gun' and weapon.GetStat('type') not in MG_WEAPONS:
+						continue
+				
+				# set ammo type if required
+				if ammo_type != '':
+					weapon.current_ammo = ammo_type
+				
+				# calculate odds of attack
+				profile = scenario.CalcAttack(self.owner, weapon, target)
+				
+				# attack not possible
+				if profile is None: continue
+				
+				score = profile['final_chance']
+				
+				# lower chance of attacking player
+				if target == campaign.player_unit:
+					score -= 10.0
+				
+				# add to list
+				scored_list.append((score, weapon, target, ammo_type))
 			
-			# TEMP
-			print ('AI DEBUG: ' + str(len(attack_list)) + ' possible attacks for ' + self.owner.unit_id)
+			# no possible attacks
+			if len(scored_list) == 0:
+				print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
+				return
 			
-			# TEMP - choose random attack
-			(weapon, target, ammo_type) = choice(attack_list)
+			# sort list by score
+			scored_list.sort(key=lambda x:x[0], reverse=True)
 			
-			# re-roll if player target
-			if target == campaign.player_unit:
-				(weapon, target, ammo_type) = choice(attack_list)
+			# DEBUG: list scored attacks
+			print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+			n = 1
+			for (score, weapon, target, ammo_type) in scored_list:
+				text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+				if ammo_type != '':
+					text += '(' + ammo_type + ')'
+				text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+				print (text)
+				n += 1
 			
-			if ammo_type != '':
-				weapon.current_ammo = ammo_type
+			# select best attack
+			(score, weapon, target, ammo_type) = scored_list[0]
 			
+			# roll to see if attack proceeds
+			roll = GetPercentileRoll()
+			if roll > score: return
+			
+			# set ammo type if any and do the attack
+			if ammo_type != '': weapon.current_ammo = ammo_type
 			result = self.owner.Attack(weapon, target)
-			
-			
 			
 
 
@@ -1593,9 +1642,28 @@ class Unit:
 		self.MoveToTopOfStack()
 		scenario.UpdateUnitCon()
 		
-		# TEMP - fp has no effect on vehicles
+		# fp has a different type of effect on vehicles
 		if self.GetStat('category') == 'Vehicle':
-			#self.CheckForCrewInjury(self.fp_to_resolve)		
+			
+			# FUTURE: if vehicle has any unarmoured area, possible that it will be destroyed
+			
+			# FUTURE: chance of minor damage to vehicle
+			
+			# roll for crew injury
+			for position in self.positions_list:
+				# no crewman in position
+				if position.crewman is None: continue
+				# crewman is not exposed
+				if not position.crewman.ce: continue
+				
+				if position.location == 'Turret':
+					chance = 10.0
+				else:
+					chance = 5.0
+				
+				if GetPercentileRoll() <= chance:
+					position.crewman.ApplyInjury()
+				
 			self.fp_to_resolve = 0
 			return
 		
@@ -1644,6 +1712,10 @@ class Unit:
 	
 	# do a pin test on this unit
 	def PinTest(self, fp):
+		
+		# already pinned, no further effect
+		if self.pinned: return
+		
 		chance = float(fp) * 5.0
 		chance = RestrictChance(chance)
 		roll = GetPercentileRoll()
@@ -1688,6 +1760,18 @@ class Unit:
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
+	
+	
+	# attempt to recover from pinned status at the end of an activation
+	def DoRecoveryRoll(self):
+		if not self.pinned: return
+		if not self.MoraleCheck(0):
+			return
+		self.pinned = False
+		scenario.UpdateUnitCon()
+		scenario.UpdateScenarioDisplay()
+		ShowMessage(self.GetName() + ' is no longer Pinned.')
+
 
 
 # MapHex: a single hex on the scenario map
@@ -1884,6 +1968,11 @@ class Scenario:
 			return 'Weapon has already fired this turn'
 		
 		# check that current ammo is available and this ammo would affect the target
+		if weapon.GetStat('type') == 'Gun':
+			if weapon.ammo_type is None:
+				return 'No ammo loaded'
+			if weapon.ammo_type == 'AP' and target.GetStat('armour') is None:
+				return 'AP has no effect on unarmoured targets'
 		
 		# check firing group restrictions
 		
@@ -2019,7 +2108,11 @@ class Scenario:
 			# smaller-calibre gun at longer range
 			if weapon_type == 'Gun':
 				calibre_mod = 0
-				calibre = int(weapon.stats['calibre'])
+				
+				if weapon.stats['name'] == 'AT Rifle':
+					calibre = 20
+				else:
+					calibre = int(weapon.stats['calibre'])
 				
 				if calibre <= 40 and distance >= 2:
 					calibre_mod -= 1	
@@ -2932,7 +3025,10 @@ class Scenario:
 			for unit in campaign.player_unit.squad:
 				unit.ai.DoActivation()
 				
-				# resolve any ap hits
+				# do recover roll for this unit
+				unit.DoRecoveryRoll()
+				
+				# resolve any ap hits caused by this unit
 				for unit in self.units:
 					if not unit.alive: continue
 					if unit.owning_player == self.active_player: continue
@@ -4114,7 +4210,7 @@ def ShowGameMenu():
 		
 		# highlight active tab title
 		x1 = 2 + (active_tab * 11)
-		for x in range(x1, x1+9):
+		for x in range(x1, x1+8):
 			libtcod.console_set_char_foreground(game_menu_con, x, 1, ACTION_KEY_COL)
 			libtcod.console_set_char_foreground(game_menu_con, x, 2, libtcod.white)
 		

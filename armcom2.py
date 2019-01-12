@@ -757,18 +757,15 @@ class AI:
 		# no action if it's not alive
 		if not self.owner.alive: return
 		
-		# TEMP no AI
-		return
-		
 		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
 		roll = GetPercentileRoll()
 		
 		# Step 1: roll for unit action
 		if self.owner.GetStat('category') == 'Infantry':
-			if roll <= 75.0:
+			if roll <= 25.0:
 				self.disposition = 'Combat'
-			elif roll <= 90.0:
+			elif roll <= 35.0:
 				if self.owner.pinned:
 					self.disposition = 'Combat'
 				else:
@@ -781,19 +778,18 @@ class AI:
 			if not self.owner.deployed:
 				self.disposition = None
 			else:
-				if roll >= 80.0:
+				if roll >= 50.0:
 					self.disposition = None
 				else:
 					self.disposition = 'Combat'
 		
 		else:
-			if roll <= 65.0:
+			if roll <= 35.0:
 				self.disposition = 'Combat'
-			elif roll <= 85.0:
+			elif roll <= 50.0:
 				self.disposition = 'Movement'
 			else:
 				self.disposition = None
-					
 		
 		current_range = GetHexDistance(0, 0, self.owner.hx, self.owner.hy)
 		
@@ -890,6 +886,10 @@ class AI:
 			for target in target_list:
 				for weapon in self.owner.weapon_list:
 					
+					# since we're ignoring our current hull/turret facing, make sure that target is in range
+					if GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > weapon.max_range:
+						continue
+					
 					# gun weapons need to check multiple ammo type combinations
 					if weapon.GetStat('type') == 'Gun':
 						ammo_list = weapon.stats['ammo_type_list']
@@ -922,12 +922,31 @@ class AI:
 					if weapon.GetStat('type') != 'Gun' and weapon.GetStat('type') not in MG_WEAPONS:
 						continue
 				
+				# determine if a pivot or turret rotation would be required
+				pivot_req = False
+				turret_rotate_req = False
+				mount = weapon.GetStat('mount')
+				if mount is not None:
+					if mount == 'Turret' and self.owner.turret_facing is not None:
+						if (target.hx, target.hy) not in weapon.covered_hexes:
+							turret_rotate_req = True
+					else:
+						if (target.hx, target.hy) not in weapon.covered_hexes:
+							pivot_req = True
+				
+				# special: player squad cannot pivot
+				if pivot_req and self.owner in campaign.player_unit.squad:
+					print ('DEBUG: threw out an attack because player squad member would have to pivot')
+					continue
+				
 				# set ammo type if required
 				if ammo_type != '':
 					weapon.ammo_type = ammo_type
 				
-				# calculate odds of attack
-				profile = scenario.CalcAttack(self.owner, weapon, target)
+				# calculate odds of attack, taking into account if the attack
+				# would require a pivot or turret rotation
+				profile = scenario.CalcAttack(self.owner, weapon, target,
+					pivot=pivot_req, turret_rotate=turret_rotate_req)
 				
 				# attack not possible
 				if profile is None: continue
@@ -973,8 +992,30 @@ class AI:
 			roll = GetPercentileRoll()
 			if roll > (score * 2.0): return
 			
-			# set ammo type if any and do the attack
+			# set ammo type if any
 			if ammo_type != '': weapon.current_ammo = ammo_type
+			
+			# pivot or rotate turret if required
+			mount = weapon.GetStat('mount')
+			if mount is not None and (target.hx, target.hy) not in weapon.covered_hexes:
+				
+				direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx, target.hy)
+				
+				if mount == 'Turret' and self.owner.turret_facing is not None:
+					self.owner.turret_facing = direction
+					print('DEBUG: AI unit rotated turret to fire')
+				
+				elif mount == 'Hull' and self.owner.facing is not None:
+					self.owner.facing = direction
+					if self.owner.turret_facing is not None:
+						self.owner.turret_facing = direction
+					print('DEBUG: AI unit pivoted hull to fire')
+				
+				scenario.UpdateUnitCon()
+				scenario.UpdateScenarioDisplay()
+				for weapon in self.owner.weapon_list:
+					weapon.UpdateCoveredHexes()
+				
 			result = self.owner.Attack(weapon, target)
 			
 
@@ -2024,9 +2065,11 @@ class Scenario:
 		if weapon.fired:
 			return 'Weapon has already fired this turn'
 		
+		# if we're not ignoring facing,
 		# check that target is in covered hexes and range
-		if (target.hx, target.hy) not in weapon.covered_hexes:
-			return "Target not in weapon's covered arc"
+		if not ignore_facing:
+			if (target.hx, target.hy) not in weapon.covered_hexes:
+				return "Target not in weapon's covered arc"
 		
 		# check that current ammo is available and this ammo would affect the target
 		if weapon.GetStat('type') == 'Gun':
@@ -2045,7 +2088,7 @@ class Scenario:
 	
 	# generate a profile for a given attack
 	# if pivot or turret_rotate are set to True or False, will override actual attacker status
-	def CalcAttack(self, attacker, weapon, target, pivot=None, turret_rotate=None):
+	def CalcAttack(self, attacker, weapon, target, pivot=False, turret_rotate=False):
 		
 		profile = {}
 		profile['attacker'] = attacker
@@ -2098,16 +2141,16 @@ class Scenario:
 				modifier_list.append(('Attacker Moving', -60.0))
 			
 			# attacker pivoted
-			elif attacker.facing != attacker.previous_facing:
+			elif pivot or attacker.facing != attacker.previous_facing:
 				modifier_list.append(('Attacker Pivoted', -40.0))
 
 			# player attacker pivoted
-			elif attacker == campaign.player_unit and self.player_pivot != 0:
+			elif pivot or (attacker == campaign.player_unit and self.player_pivot != 0):
 				modifier_list.append(('Attacker Pivoted', -40.0))
 
 			# weapon has turret rotated
 			elif weapon.GetStat('mount') == 'Turret':
-				if attacker.turret_facing != attacker.previous_turret_facing:
+				if turret_rotate or attacker.turret_facing != attacker.previous_turret_facing:
 					modifier_list.append(('Turret Rotated', -20.0))
 			
 			# attacker pinned

@@ -580,8 +580,9 @@ class Position:
 
 # Weapon Class: represents a weapon mounted on or carried by a unit
 class Weapon:
-	def __init__(self, stats):
-		self.stats = stats
+	def __init__(self, unit, stats):
+		self.unit = unit			# unit that owns this weapon
+		self.stats = stats			# dictionary of weapon stats
 		
 		# some weapons need a descriptive name generated
 		if 'name' not in self.stats:
@@ -612,7 +613,57 @@ class Weapon:
 			self.ammo_stores = {}
 			self.LoadGunAmmo()
 		
-		self.ResetMe()
+		# weapon statuses
+		self.covered_hexes = []			# map hexes that could be targeted by this weapon
+		self.fired = False
+	
+	
+	# check for the value of a stat, return None if stat not present
+	def GetStat(self, stat_name):
+		if stat_name not in self.stats:
+			return None
+		return self.stats[stat_name]
+	
+	
+	# calculate the map hexes covered by this weapon
+	def UpdateCoveredHexes(self):
+		
+		self.covered_hexes = []
+		
+		# can always fire in own hex
+		self.covered_hexes.append((self.unit.hx, self.unit.hy))
+		
+		# infantry can fire all around
+		if self.unit.GetStat('category') == 'Infantry':
+			for r in range(1, self.max_range + 1):
+				ring_list = GetHexRing(self.unit.hx, self.unit.hy, r)
+				for (hx, hy) in ring_list:
+					# make sure hex is on map
+					if (hx, hy) in scenario.hex_dict:
+						self.covered_hexes.append((hx, hy))
+			return
+		
+		# hull-mounted weapons fire in hull facing direction
+		if self.GetStat('mount') == 'Hull':
+			hextant_hex_list = GetCoveredHexes(self.unit.hx, self.unit.hy, self.unit.facing)
+			
+		# turret-mounted weapons fire in turret direction
+		elif self.GetStat('mount') == 'Turret':
+			hextant_hex_list = GetCoveredHexes(self.unit.hx, self.unit.hy, self.unit.turret_facing)
+		
+		else:
+			print('ERROR: Could not set covered hexes for weapon: ' + self.stats['name'])
+			return
+		
+		for (hx, hy) in hextant_hex_list:
+			if (hx, hy) not in scenario.hex_dict: continue		# hex is off map
+			# out of range
+			if GetHexDistance(self.unit.hx, self.unit.hy, hx, hy) > self.max_range:
+				continue
+			self.covered_hexes.append((hx, hy))
+		
+		
+			
 	
 	
 	# load this gun full of ammo
@@ -641,9 +692,10 @@ class Weapon:
 				self.ammo_type = 'AP'
 	
 	
-	# set/reset all scenario statuses
+	# set/reset all scenario statuses for a new turn
 	def ResetMe(self):
 		self.fired = False
+		self.UpdateCoveredHexes()
 	
 	
 	# cycle to use next available ammo type
@@ -662,13 +714,6 @@ class Weapon:
 		self.ammo_type = self.stats['ammo_type_list'][i]
 		
 		return True
-			
-	
-	# check for the value of a stat, return None if stat not present
-	def GetStat(self, stat_name):
-		if stat_name not in self.stats:
-			return None
-		return self.stats[stat_name]
 	
 	
 	# return the effective FP of an HE hit from this gun
@@ -711,6 +756,9 @@ class AI:
 		
 		# no action if it's not alive
 		if not self.owner.alive: return
+		
+		# TEMP no AI
+		return
 		
 		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
@@ -812,6 +860,8 @@ class AI:
 			
 			self.owner.moving = True
 			self.owner.ClearAcquiredTargets()
+			for weapon in self.owner.weapon_list:
+				weapon.UpdateCoveredHexes()
 			
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
@@ -963,7 +1013,7 @@ class Unit:
 		weapon_list = self.stats['weapon_list']
 		if weapon_list is not None:
 			for weapon_dict in weapon_list:
-				self.weapon_list.append(Weapon(weapon_dict))
+				self.weapon_list.append(Weapon(self, weapon_dict))
 			
 			# clear this stat since we don't need it any more
 			self.stats['weapon_list'] = None
@@ -1224,6 +1274,7 @@ class Unit:
 	def SpawnAt(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
+		
 		scenario.units.append(self)
 		for map_hex in scenario.map_hexes:
 			if map_hex.hx == hx and map_hex.hy == hy:
@@ -1973,24 +2024,20 @@ class Scenario:
 		if weapon.fired:
 			return 'Weapon has already fired this turn'
 		
+		# check that target is in covered hexes and range
+		if (target.hx, target.hy) not in weapon.covered_hexes:
+			return "Target not in weapon's covered arc"
+		
 		# check that current ammo is available and this ammo would affect the target
 		if weapon.GetStat('type') == 'Gun':
 			if weapon.ammo_type is None:
 				return 'No ammo loaded'
 			if weapon.ammo_type == 'AP' and target.GetStat('armour') is None:
-				return 'AP has no effect on unarmoured targets'
+				return 'AP has no effect on target'
 		
 		# check firing group restrictions
 		
-		# check that target is in range
-		if GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy) > weapon.max_range:
-			return 'Target beyond maximum weapon range'
-		
-		# check that target is in covered arc
-		
 		# check for hull-mounted weapons blocked by HD status
-		
-		
 		
 		# attack can proceed
 		return ''
@@ -2903,7 +2950,14 @@ class Scenario:
 		else:
 			f = -1
 		campaign.player_unit.turret_facing = ConstrainDir(campaign.player_unit.turret_facing + f)
+		
+		# update covered hexes for any turret-mounted weapons
+		for weapon in campaign.player_unit.weapon_list:
+			if weapon.GetStat('mount') != 'Turret': continue
+			weapon.UpdateCoveredHexes()
+		
 		self.UpdateUnitCon()
+		self.UpdateGuiCon()
 		
 	
 	# advance to next phase/turn and do automatic events
@@ -3179,9 +3233,23 @@ class Scenario:
 				# TODO: highlight currenly selected ammo type
 				#if weapon.ammo_type is not None:
 			
+			libtcod.console_set_default_foreground(context_con, libtcod.red)
+			
 			if weapon.fired:
-				libtcod.console_set_default_foreground(context_con, libtcod.red)
 				libtcod.console_print(context_con, 0, 11, 'Fired')
+				return
+			
+			# display info about current target if any
+			if self.selected_target is not None:
+				result = self.CheckAttack(campaign.player_unit, weapon, self.selected_target)
+				if result != '':
+					lines = wrap(result, 18)
+					y = 9
+					for line in lines:
+						libtcod.console_print(context_con, 0, y, line)
+						y += 1
+						if y == 12: break
+					
 			
 	
 	# update time and phase console
@@ -3420,24 +3488,27 @@ class Scenario:
 				libtcod.console_blit(session.scen_hex_fov, 0, 0, 0, 0, gui_con,
 					x-5, y-3)
 		
-		
-		# display LoS if in shooting phase
-		elif self.phase == 3 and self.selected_target is not None:
-			(x1,y1) = self.PlotHex(0,0)
-			(x2,y2) = self.PlotHex(self.selected_target.hx, self.selected_target.hy)
+		# shooting phase
+		elif self.phase == 3:
 			
-			libtcod.console_put_char_ex(gui_con, x2-1, y2-1, 218, libtcod.red, libtcod.black)
-			libtcod.console_put_char_ex(gui_con, x2+1, y2-1, 191, libtcod.red, libtcod.black)
-			libtcod.console_put_char_ex(gui_con, x2-1, y2+1, 192, libtcod.red, libtcod.black)
-			libtcod.console_put_char_ex(gui_con, x2+1, y2+1, 217, libtcod.red, libtcod.black)
+			# display covered hexes if a weapon is selected
+			if self.selected_weapon is not None:
+				for (hx, hy) in self.selected_weapon.covered_hexes:
+					(x,y) = scenario.PlotHex(hx, hy)
+					libtcod.console_blit(session.scen_hex_fov, 0, 0, 0, 0, gui_con,
+						x-5, y-3)
 			
-			# TEMP - no LoS
-			return
+			# display target recticle if a target is selected
+			if self.selected_target is not None:
+				(x1,y1) = self.PlotHex(0,0)
+				(x2,y2) = self.PlotHex(self.selected_target.hx, self.selected_target.hy)
+				
+				libtcod.console_put_char_ex(gui_con, x2-1, y2-1, 218, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x2+1, y2-1, 191, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x2-1, y2+1, 192, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x2+1, y2+1, 217, libtcod.red, libtcod.black)
 			
-			line = GetLine(x1, y1, x2, y2)
-			for (x, y) in line[2:-1]:
-				libtcod.console_put_char_ex(gui_con, x, y, 250,
-					libtcod.red, libtcod.black)
+			
 		
 	
 	# update game message console, which displays most recent game message

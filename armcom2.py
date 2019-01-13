@@ -288,6 +288,9 @@ class CampaignDay:
 class Session:
 	def __init__(self):
 		
+		# pointer to player unit
+		self.player_unit = None
+		
 		# flag: the last time the keyboard was polled, a key was pressed
 		self.key_down = False
 		
@@ -696,6 +699,7 @@ class Weapon:
 	# set/reset all scenario statuses for a new turn
 	def ResetMe(self):
 		self.fired = False
+		self.moving = False
 		self.maintained_rof = False
 		self.UpdateCoveredHexes()
 	
@@ -759,6 +763,9 @@ class AI:
 		# no action if it's not alive
 		if not self.owner.alive: return
 		
+		# TEMP - no AI
+		return
+		
 		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
 		roll = GetPercentileRoll()
@@ -801,7 +808,7 @@ class AI:
 				self.disposition = None
 		
 		# only one option if unit is part of player squad
-		if self.owner in campaign.player_unit.squad:
+		if self.owner in scenario.player_unit.squad:
 			self.disposition = 'Combat'
 		
 		# Step 2: Determine action to take
@@ -937,7 +944,7 @@ class AI:
 							pivot_req = True
 				
 				# special: player squad cannot pivot
-				if pivot_req and self.owner in campaign.player_unit.squad:
+				if pivot_req and self.owner in scenario.player_unit.squad:
 					print ('DEBUG: discarded an attack because player squad member would have to pivot')
 					continue
 				
@@ -962,7 +969,7 @@ class AI:
 					score -= 20.0
 				
 				# lower chance of attacking player
-				if target == campaign.player_unit:
+				if target == scenario.player_unit:
 					score -= 10.0
 				
 				# add to list
@@ -1112,7 +1119,7 @@ class Unit:
 			weapon.ResetMe()
 		
 		# select first player weapon if none selected so far
-		if self == campaign.player_unit:
+		if self == scenario.player_unit:
 			if scenario.selected_weapon is None:
 				scenario.selected_weapon = self.weapon_list[0]
 		
@@ -1295,14 +1302,13 @@ class Unit:
 						portrait = unit.GetStat('portrait')
 						ShowMessage(text, portrait=portrait)
 						
-					elif unit == campaign.player_unit:
+					elif unit == scenario.player_unit:
 						scenario.Message('You have been spotted!')
 	
 	
 	# reveal this unit after being spotted
 	def SpotMe(self):
 		self.spotted = True
-		
 	
 	
 	# generate new personnel sufficent to fill all personnel positions
@@ -1353,7 +1359,7 @@ class Unit:
 	# return the display character to use on the map viewport
 	def GetDisplayChar(self):
 		# player unit
-		if campaign.player_unit == self: return '@'
+		if scenario.player_unit == self: return '@'
 		
 		# unknown enemy unit
 		if self.owning_player == 1 and not self.spotted: return '?'
@@ -1407,7 +1413,7 @@ class Unit:
 		if self.owning_player == 1:
 			col = ENEMY_UNIT_COL
 		else:	
-			if self == campaign.player_unit:
+			if self == scenario.player_unit:
 				col = libtcod.white
 			else:
 				col = ALLIED_UNIT_COL
@@ -1562,7 +1568,7 @@ class Unit:
 		while not attack_finished:
 			
 			# display attack profile on screen if player involved
-			if self == campaign.player_unit or target == campaign.player_unit:
+			if self == scenario.player_unit or target == scenario.player_unit:
 				scenario.DisplayAttack(profile)
 				# activate the attack console and display to screen
 				scenario.attack_con_active = True
@@ -1570,7 +1576,7 @@ class Unit:
 			
 				# allow player to cancel attack if not the target
 				if not weapon.maintained_rof:
-					if WaitForContinue(allow_cancel = (target != campaign.player_unit)):
+					if WaitForContinue(allow_cancel = (target != scenario.player_unit)):
 						scenario.attack_con_active = False
 						return True
 			
@@ -1637,7 +1643,7 @@ class Unit:
 			# wait for the player if they are involved
 			# if RoF is maintained, may choose to attack again
 			attack_finished = True
-			if self == campaign.player_unit or target == campaign.player_unit:
+			if self == scenario.player_unit or target == scenario.player_unit:
 				scenario.UpdateScenarioDisplay()
 				
 				end_pause = False
@@ -1651,7 +1657,7 @@ class Unit:
 					if key.vk == libtcod.KEY_TAB:
 						end_pause = True
 					
-					if self == campaign.player_unit:
+					if self == scenario.player_unit:
 						if key_char == 'f' and weapon.maintained_rof:
 							attack_finished = False
 							end_pause = True
@@ -1704,7 +1710,7 @@ class Unit:
 					target.ap_hits_to_resolve.append(profile)
 			
 			# notify player of any result if not involved
-			if self != campaign.player_unit and target != campaign.player_unit:
+			if self != scenario.player_unit and target != scenario.player_unit:
 				if profile['result'] not in ['MISS', 'NO EFFECT']:
 					text = 'Result: ' + profile['result']
 					scenario.Message(text)
@@ -1745,7 +1751,7 @@ class Unit:
 				profile = scenario.CalcAP(profile)
 				
 				# display and wait if player is involved
-				if profile['attacker'] == campaign.player_unit or self == campaign.player_unit:
+				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
 					scenario.DisplayAttack(profile)
 					scenario.attack_con_active = True
 					scenario.UpdateScenarioDisplay()
@@ -1755,7 +1761,7 @@ class Unit:
 				profile = scenario.DoAttackRoll(profile)
 				
 				# wait if player is involved
-				if profile['attacker'] == campaign.player_unit or self == campaign.player_unit:
+				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
 					scenario.UpdateScenarioDisplay()
 					WaitForContinue()
 				
@@ -1772,12 +1778,12 @@ class Unit:
 					self.DestroyMe()
 					
 					# display message
-					if self == campaign.player_unit:
+					if self == scenario.player_unit:
 						text = 'You were'
 					else:
 						text = self.GetName() + ' was'
 					text += ' destroyed by '
-					if profile['attacker'] == campaign.player_unit:
+					if profile['attacker'] == scenario.player_unit:
 						text += 'you.'
 					else:
 						text += profile['attacker'].GetName() + '.'
@@ -1893,7 +1899,7 @@ class Unit:
 	def DestroyMe(self):
 		
 		# TEMP: catch player destruction
-		if self == campaign.player_unit:
+		if self == scenario.player_unit:
 			Wait(50)
 			sys.exit()
 		
@@ -1943,6 +1949,8 @@ class MapHex:
 # Scenario: represents a single battle encounter
 class Scenario:
 	def __init__(self):
+		
+		self.exiting_scenario = False			# flag to exit out of the scenario
 		
 		# generate hex map: single hex surrounded by 4 hex rings. Final ring is not normally
 		# part of play and stores units that are coming on or going off of the map proper
@@ -2204,7 +2212,7 @@ class Scenario:
 				modifier_list.append(('Attacker Pivoted', -40.0))
 
 			# player attacker pivoted
-			elif pivot or (attacker == campaign.player_unit and self.player_pivot != 0):
+			elif pivot or (attacker == scenario.player_unit and self.player_pivot != 0):
 				modifier_list.append(('Attacker Pivoted', -40.0))
 
 			# weapon has turret rotated
@@ -2317,7 +2325,7 @@ class Scenario:
 				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
 
 			# player attacker pivoted
-			elif attacker == campaign.player_unit and self.player_pivot != 0:
+			elif attacker == scenario.player_unit and self.player_pivot != 0:
 				mod = round(base_chance / 3.0, 2)
 				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
 
@@ -2724,7 +2732,7 @@ class Scenario:
 		libtcod.console_print(attack_con, 6, 57, '                  ')
 		
 		# don't animate percentage rolls if player is not involved
-		if profile['attacker'] != campaign.player_unit and profile['target'] != campaign.player_unit:
+		if profile['attacker'] != scenario.player_unit and profile['target'] != scenario.player_unit:
 			roll = GetPercentileRoll()
 		else:
 			for i in range(6):
@@ -2815,7 +2823,7 @@ class Scenario:
 		profile['result'] = result_text
 		
 		# if player is not involved, we can return here
-		if profile['attacker'] != campaign.player_unit and profile['target'] != campaign.player_unit:
+		if profile['attacker'] != scenario.player_unit and profile['target'] != scenario.player_unit:
 			return profile
 		
 		libtcod.console_print_ex(attack_con, 13, 51, libtcod.BKGND_NONE,
@@ -2829,7 +2837,7 @@ class Scenario:
 		# check for RoF for gun / MG attacks
 		if profile['type'] != 'ap' and profile['weapon'].GetStat('rof') is not None:
 			# TEMP: player only for now
-			if profile['attacker'] == campaign.player_unit:
+			if profile['attacker'] == scenario.player_unit:
 				profile['weapon'].maintained_rof = CheckRoF(profile) 
 				if profile['weapon'].maintained_rof:
 					libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
@@ -2852,7 +2860,7 @@ class Scenario:
 	def SelectWeapon(self, forward):
 		
 		if self.selected_weapon is None:
-			self.selected_weapon = campaign.player_unit.weapon_list[0]
+			self.selected_weapon = scenario.player_unit.weapon_list[0]
 			return
 		
 		if forward:
@@ -2860,15 +2868,15 @@ class Scenario:
 		else:
 			m = -1
 		
-		i = campaign.player_unit.weapon_list.index(self.selected_weapon)
+		i = scenario.player_unit.weapon_list.index(self.selected_weapon)
 		i += m
 		
 		if i < 0:
-			self.selected_weapon = campaign.player_unit.weapon_list[-1]
-		elif i > len(campaign.player_unit.weapon_list) - 1:
-			self.selected_weapon = campaign.player_unit.weapon_list[0]
+			self.selected_weapon = scenario.player_unit.weapon_list[-1]
+		elif i > len(scenario.player_unit.weapon_list) - 1:
+			self.selected_weapon = scenario.player_unit.weapon_list[0]
 		else:
-			self.selected_weapon = campaign.player_unit.weapon_list[i]
+			self.selected_weapon = scenario.player_unit.weapon_list[i]
 	
 	
 	# (re)build a sorted list of possible player targets
@@ -2919,13 +2927,20 @@ class Scenario:
 	def MovePlayer(self, forward):
 		
 		# do sound effect
-		PlaySoundFor(campaign.player_unit, 'movement')
+		PlaySoundFor(scenario.player_unit, 'movement')
+		
+		# set statuses
+		scenario.player_unit.moving = True
+		scenario.player_unit.ClearAcquiredTargets()
+		for unit in scenario.player_unit.squad:
+			unit.moving = True
+			unit.ClearAcquiredTargets()
 		
 		# do move success roll
 		if forward:
-			chance = campaign.player_unit.forward_move_chance
+			chance = scenario.player_unit.forward_move_chance
 		else:
-			chance = campaign.player_unit.reverse_move_chance
+			chance = scenario.player_unit.reverse_move_chance
 		roll = GetPercentileRoll()
 		
 		# move was not successful
@@ -2933,13 +2948,13 @@ class Scenario:
 			
 			# clear any alternative bonus and apply bonus for future moves
 			if forward:
-				campaign.player_unit.reverse_move_bonus = 0.0
-				campaign.player_unit.forward_move_bonus += BASE_MOVE_BONUS
+				scenario.player_unit.reverse_move_bonus = 0.0
+				scenario.player_unit.forward_move_bonus += BASE_MOVE_BONUS
 			else:
-				campaign.player_unit.forward_move_bonus = 0.0
-				campaign.player_unit.reverse_move_bonus += BASE_MOVE_BONUS
+				scenario.player_unit.forward_move_bonus = 0.0
+				scenario.player_unit.reverse_move_bonus += BASE_MOVE_BONUS
 			
-			campaign.player_unit.moving = True
+			scenario.player_unit.moving = True
 			
 			# show pop-up message to player
 			ShowMessage('You move but not far enough to enter a new map hex')
@@ -2950,11 +2965,8 @@ class Scenario:
 			return
 		
 		# move was successful, clear all bonuses
-		campaign.player_unit.forward_move_bonus = 0.0
-		campaign.player_unit.reverse_move_bonus = 0.0
-		
-		campaign.player_unit.moving = True
-		campaign.player_unit.ClearAcquiredTargets()
+		scenario.player_unit.forward_move_bonus = 0.0
+		scenario.player_unit.reverse_move_bonus = 0.0
 		
 		# calculate new hex positions for each unit in play
 		if forward:
@@ -2965,8 +2977,8 @@ class Scenario:
 		# run through list in reverse so we can remove units that move off board
 		for unit in reversed(self.units):
 			
-			if unit == campaign.player_unit: continue
-			if unit in campaign.player_unit.squad: continue
+			if unit == scenario.player_unit: continue
+			if unit in scenario.player_unit.squad: continue
 			
 			(new_hx, new_hy) = GetAdjacentHex(unit.hx, unit.hy, direction)
 			
@@ -2996,8 +3008,8 @@ class Scenario:
 		# animate movement
 		for i in range(6):
 			for unit in self.units:
-				if unit == campaign.player_unit: continue
-				if unit in campaign.player_unit.squad: continue
+				if unit == scenario.player_unit: continue
+				if unit in scenario.player_unit.squad: continue
 				if len(unit.animation_cells) > 0:
 					unit.animation_cells.pop(0)
 			self.UpdateUnitCon()
@@ -3006,8 +3018,8 @@ class Scenario:
 		
 		# set new hex location for each unit and move into new hex stack
 		for unit in self.units:
-			if unit == campaign.player_unit: continue
-			if unit in campaign.player_unit.squad: continue
+			if unit == scenario.player_unit: continue
+			if unit in scenario.player_unit.squad: continue
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
 			(unit.hx, unit.hy) = unit.dest_hex
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
@@ -3033,7 +3045,7 @@ class Scenario:
 		
 		# calculate new hex positions of units
 		for unit in self.units:
-			if unit == campaign.player_unit: continue
+			if unit == scenario.player_unit: continue
 			
 			(new_hx, new_hy) = RotateHex(unit.hx, unit.hy, r)
 			# set destination hex
@@ -3043,7 +3055,7 @@ class Scenario:
 		
 		# set new hex location for each unit and move into new hex stack
 		for unit in self.units:
-			if unit == campaign.player_unit: continue
+			if unit == scenario.player_unit: continue
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
 			(unit.hx, unit.hy) = unit.dest_hex
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
@@ -3065,16 +3077,16 @@ class Scenario:
 	# rotate turret of player unit
 	def RotatePlayerTurret(self, clockwise):
 		
-		if campaign.player_unit.turret_facing is None: return
+		if scenario.player_unit.turret_facing is None: return
 		
 		if clockwise:
 			f = 1
 		else:
 			f = -1
-		campaign.player_unit.turret_facing = ConstrainDir(campaign.player_unit.turret_facing + f)
+		scenario.player_unit.turret_facing = ConstrainDir(scenario.player_unit.turret_facing + f)
 		
 		# update covered hexes for any turret-mounted weapons
-		for weapon in campaign.player_unit.weapon_list:
+		for weapon in scenario.player_unit.weapon_list:
 			if weapon.GetStat('mount') != 'Turret': continue
 			weapon.UpdateCoveredHexes()
 		
@@ -3092,7 +3104,7 @@ class Scenario:
 			
 			# player pivoted during movement phase
 			if self.player_pivot != 0:
-				campaign.player_unit.acquired_target = None
+				scenario.player_unit.acquired_target = None
 		
 		# end of shooting phase
 		elif self.phase == 3:
@@ -3123,11 +3135,11 @@ class Scenario:
 			self.active_player = 0
 			self.phase = 0
 			
-			campaign.player_unit.ResetForNewTurn()
-			for unit in campaign.player_unit.squad:
+			scenario.player_unit.ResetForNewTurn()
+			for unit in scenario.player_unit.squad:
 				unit.ResetForNewTurn()
 			
-			campaign.player_unit.MoveToTopOfStack()
+			scenario.player_unit.MoveToTopOfStack()
 			self.UpdateUnitCon()
 		
 		# remaining on player turn
@@ -3150,11 +3162,11 @@ class Scenario:
 		
 		# command phase: rebuild lists of commands
 		if self.phase == 0:
-			campaign.player_unit.BuildCmdLists()
+			scenario.player_unit.BuildCmdLists()
 		
 		# spotting phase: do spotting then automatically advance
 		elif self.phase == 1:
-			campaign.player_unit.DoSpotChecks()
+			scenario.player_unit.DoSpotChecks()
 			self.advance_phase = True
 		
 		# movement phase: 
@@ -3163,7 +3175,7 @@ class Scenario:
 			self.player_pivot = 0
 			
 			# skip phase if driver not on move command
-			crewman = campaign.player_unit.GetPersonnelByPosition('Driver')
+			crewman = scenario.player_unit.GetPersonnelByPosition('Driver')
 			
 			# no driver in position
 			if crewman is None:
@@ -3175,7 +3187,7 @@ class Scenario:
 			
 			# if we're doing the phase, calculate move chances for player unit
 			if not self.advance_phase:
-				campaign.player_unit.CalculateMoveChances()
+				scenario.player_unit.CalculateMoveChances()
 		
 		# shooting phase
 		elif self.phase == 3:
@@ -3202,9 +3214,9 @@ class Scenario:
 			libtcod.console_flush()
 			
 			# player squad acts first
-			for unit in campaign.player_unit.squad:
+			for unit in scenario.player_unit.squad:
 				unit.DoSpotChecks()
-			for unit in campaign.player_unit.squad:
+			for unit in scenario.player_unit.squad:
 				unit.ai.DoActivation()
 				
 				# do recover roll for this unit
@@ -3230,6 +3242,7 @@ class Scenario:
 			self.advance_phase = True
 		
 		self.UpdateCrewInfoCon()
+		self.UpdateUnitInfoCon()
 		self.UpdateCmdCon()
 		self.UpdateContextCon()
 		self.UpdateGuiCon()
@@ -3248,7 +3261,7 @@ class Scenario:
 		
 		# Command Phase: display info about current crew command
 		if self.phase == 0:
-			position = campaign.player_unit.positions_list[self.selected_position]
+			position = scenario.player_unit.positions_list[self.selected_position]
 			libtcod.console_set_default_foreground(context_con, SCEN_PHASE_COL[self.phase])
 			libtcod.console_print(context_con, 0, 0, position.crewman.current_cmd)
 			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
@@ -3276,14 +3289,14 @@ class Scenario:
 			# TEMP - will have to poll chances from player unit
 			
 			# forward move
-			text = str(campaign.player_unit.forward_move_chance) + '%%'
+			text = str(scenario.player_unit.forward_move_chance) + '%%'
 			libtcod.console_print_ex(context_con, 11, 2, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
 			#libtcod.console_print_ex(context_con, 16, 2, libtcod.BKGND_NONE,
 			#	libtcod.RIGHT, '10%%')
 			
 			# reverse move
-			text = str(campaign.player_unit.reverse_move_chance) + '%%'
+			text = str(scenario.player_unit.reverse_move_chance) + '%%'
 			libtcod.console_print_ex(context_con, 11, 4, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
 			#libtcod.console_print_ex(context_con, 16, 4, libtcod.BKGND_NONE,
@@ -3363,7 +3376,7 @@ class Scenario:
 			
 			# display info about current target if any
 			if self.selected_target is not None:
-				result = self.CheckAttack(campaign.player_unit, weapon, self.selected_target)
+				result = self.CheckAttack(scenario.player_unit, weapon, self.selected_target)
 				if result != '':
 					lines = wrap(result, 18)
 					y = 9
@@ -3395,7 +3408,7 @@ class Scenario:
 	# update player unit info console
 	def UpdatePlayerInfoCon(self):
 		libtcod.console_clear(player_info_con)
-		campaign.player_unit.DisplayMyInfo(player_info_con, 0, 0)
+		scenario.player_unit.DisplayMyInfo(player_info_con, 0, 0)
 	
 	
 	# update the player crew info console
@@ -3405,7 +3418,7 @@ class Scenario:
 		y = 0
 		i = 0
 		
-		for position in campaign.player_unit.positions_list:
+		for position in scenario.player_unit.positions_list:
 			
 			# highlight position if selected and in command phase
 			if i == scenario.selected_position and scenario.phase == 0:
@@ -3604,7 +3617,7 @@ class Scenario:
 		# display field of view if in command phase
 		if self.phase == 0:
 			
-			position = campaign.player_unit.positions_list[scenario.selected_position]
+			position = scenario.player_unit.positions_list[scenario.selected_position]
 			for (hx, hy) in position.visible_hexes:
 				(x,y) = scenario.PlotHex(hx, hy)
 				libtcod.console_blit(session.scen_hex_fov, 0, 0, 0, 0, gui_con,
@@ -3674,8 +3687,8 @@ class Scenario:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
 			libtcod.console_print(unit_info_con, 0, 0, 'Possible Enemy')
 		else:
-			if unit == campaign.player_unit:
-				col = libtcod.light_blue
+			if unit == scenario.player_unit:
+				col = libtcod.white
 			elif unit.owning_player == 0:
 				col = ALLIED_UNIT_COL
 			else:
@@ -3697,8 +3710,8 @@ class Scenario:
 			
 			# acquired target
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
-			if campaign.player_unit.acquired_target is not None:
-				(target, level) = campaign.player_unit.acquired_target
+			if scenario.player_unit.acquired_target is not None:
+				(target, level) = scenario.player_unit.acquired_target
 				if target == unit:
 					text = 'AC'
 					if level:
@@ -3708,7 +3721,7 @@ class Scenario:
 			libtcod.console_set_default_foreground(unit_info_con, ENEMY_UNIT_COL)
 			if unit.acquired_target is not None:
 				(target, level) = unit.acquired_target
-				if target == campaign.player_unit:
+				if target == scenario.player_unit:
 					text = 'AC'
 					if level:
 						text += '2'
@@ -3769,7 +3782,7 @@ class Scenario:
 	
 	
 	# main input loop for scenarios
-	def DoScenarioLoop(self):
+	def DoScenarioLoop(self, loading_game=False):
 		
 		# shortcut for generating consoles
 		def NewConsole(x, y, bg, fg, key_colour=False):
@@ -3804,33 +3817,35 @@ class Scenario:
 		msg_con = NewConsole(61, 2, libtcod.black, libtcod.white)
 		attack_con = NewConsole(27, 60, libtcod.black, libtcod.white)
 		
+		# we're starting a new scenario
+		if not loading_game:
 		
-		# set up player unit
-		campaign.player_unit.facing = 0
-		campaign.player_unit.turret_facing = 0
-		campaign.player_unit.squad = []
-		campaign.player_unit.SpawnAt(0,0)
-		
-		# set up player squad
-		for i in range(4):
-			unit = Unit(campaign.player_unit.unit_id)
-			unit.nation = campaign.player_unit.nation
-			unit.ai = AI(unit)
-			unit.GenerateNewPersonnel()
-			unit.facing = 0
-			unit.turret_facing = 0
-			unit.SpawnAt(0,0)
-			campaign.player_unit.squad.append(unit)
-		
-		# generate enemy units
-		self.SpawnEnemyUnits()
-		
-		# set up player unit for first activation
-		campaign.player_unit.BuildCmdLists()
-		campaign.player_unit.ResetForNewTurn()
-		for unit in campaign.player_unit.squad:
-			unit.BuildCmdLists()
-			unit.ResetForNewTurn()
+			# set up player unit
+			scenario.player_unit.facing = 0
+			scenario.player_unit.turret_facing = 0
+			scenario.player_unit.squad = []
+			scenario.player_unit.SpawnAt(0,0)
+			
+			# set up player squad
+			for i in range(4):
+				unit = Unit(scenario.player_unit.unit_id)
+				unit.nation = scenario.player_unit.nation
+				unit.ai = AI(unit)
+				unit.GenerateNewPersonnel()
+				unit.facing = 0
+				unit.turret_facing = 0
+				unit.SpawnAt(0,0)
+				scenario.player_unit.squad.append(unit)
+			
+			# generate enemy units
+			self.SpawnEnemyUnits()
+			
+			# set up player unit for first activation
+			scenario.player_unit.BuildCmdLists()
+			scenario.player_unit.ResetForNewTurn()
+			for unit in scenario.player_unit.squad:
+				unit.BuildCmdLists()
+				unit.ResetForNewTurn()
 		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
@@ -3850,6 +3865,10 @@ class Scenario:
 		
 		exit_scenario = False
 		while not exit_scenario:
+			
+			if scenario.exiting_scenario:
+				exit_scenario = True
+				continue
 			
 			# emergency exit in case of endless loop
 			if libtcod.console_is_window_closed(): sys.exit()
@@ -3925,11 +3944,11 @@ class Scenario:
 					if key_char == 'w':
 						scenario.selected_position -= 1
 						if scenario.selected_position < 0:
-							scenario.selected_position = len(campaign.player_unit.positions_list) - 1
+							scenario.selected_position = len(scenario.player_unit.positions_list) - 1
 					
 					else:
 						scenario.selected_position += 1
-						if scenario.selected_position == len(campaign.player_unit.positions_list):
+						if scenario.selected_position == len(scenario.player_unit.positions_list):
 							scenario.selected_position = 0
 				
 					self.UpdateContextCon()
@@ -3942,7 +3961,7 @@ class Scenario:
 				elif key_char in ['a', 'd']:
 					
 					# no crewman in selected position
-					crewman = campaign.player_unit.positions_list[scenario.selected_position].crewman
+					crewman = scenario.player_unit.positions_list[scenario.selected_position].crewman
 					if crewman is None:
 						continue
 					
@@ -3951,7 +3970,7 @@ class Scenario:
 					else:
 						crewman.SelectCommand(False)
 					
-					campaign.player_unit.positions_list[scenario.selected_position].UpdateVisibleHexes()
+					scenario.player_unit.positions_list[scenario.selected_position].UpdateVisibleHexes()
 					
 					self.UpdateContextCon()
 					self.UpdateCrewInfoCon()
@@ -3963,12 +3982,12 @@ class Scenario:
 				elif key_char == 'h':
 					
 					# no crewman in selected position
-					crewman = campaign.player_unit.positions_list[scenario.selected_position].crewman
+					crewman = scenario.player_unit.positions_list[scenario.selected_position].crewman
 					if crewman is None:
 						continue
 					
 					if crewman.ToggleHatch():
-						campaign.player_unit.positions_list[scenario.selected_position].UpdateVisibleHexes()
+						scenario.player_unit.positions_list[scenario.selected_position].UpdateVisibleHexes()
 						self.UpdateCrewInfoCon()
 						self.UpdateGuiCon()
 						self.UpdateScenarioDisplay()
@@ -4029,7 +4048,7 @@ class Scenario:
 				
 				# player fires active weapon at selected target
 				elif key_char == 'f':
-					result = campaign.player_unit.Attack(scenario.selected_weapon,
+					result = scenario.player_unit.Attack(scenario.selected_weapon,
 						scenario.selected_target)
 					if result:
 						self.UpdateUnitInfoCon()
@@ -4375,6 +4394,53 @@ def RestrictChance(chance):
 	return chance
 
 
+# save the current game in progress
+def SaveGame():
+	save = shelve.open('savegame', 'n')
+	save['campaign'] = campaign
+	save['campaign_day'] = campaign_day
+	save['scenario'] = scenario
+	save['version'] = VERSION		# for now the saved version must be identical to the current one
+	save.close()
+
+
+# load a saved game
+def LoadGame():
+	global campaign, campaign_day, scenario
+	save = shelve.open('savegame')
+	campaign = save['campaign']
+	campaign_day = save['campaign_day']
+	scenario = save['scenario']
+	save.close()
+
+
+# check the saved game to see if it is compatible with the current game version
+def CheckSavedGameVersion():
+	save = shelve.open('savegame')
+	saved_version = save['version']
+	save.close()
+	
+	# for now, version must be the same, but future will allow backward-compatable updates
+	if saved_version == VERSION:
+		return ''
+	return saved_version
+	
+	#version_list = saved_version.split('.')
+	#major_saved_version = version_list[0] + version_list[1]
+	#version_list = VERSION.split('.')
+	#major_current_version = version_list[0] + version_list[1]
+	#if major_saved_version == major_current_version:
+	#	return ''
+	#return saved_version
+
+
+# remove a saved game
+def EraseGame():
+	os.remove('savegame.dat')
+	os.remove('savegame.dir')
+	os.remove('savegame.bak')
+
+
 # try to load game settings from config file
 def LoadCFG():
 	
@@ -4397,6 +4463,78 @@ def LoadCFG():
 	else:
 		# load config file
 		config.read(DATAPATH + 'armcom2.cfg')
+
+
+# save current config to file
+def SaveCFG():
+	with open(DATAPATH + 'armcom2.cfg', 'w') as configfile:
+		config.write(configfile)
+
+
+# display a pop-up message on the root console
+# can be used for yes/no confirmation
+def ShowNotification(text, confirm=False):
+	
+	# determine window x, height, and y position
+	x = WINDOW_XM - 30
+	lines = wrap(text, 56)
+	h = len(lines) + 6
+	y = WINDOW_YM - int(h/2)
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+	# darken background 
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.5)
+	
+	# draw a black rect and an outline
+	libtcod.console_rect(0, x, y, 60, h, True, libtcod.BKGND_SET)
+	DrawFrame(0, x, y, 60, h)
+	
+	# display message
+	ly = y+2
+	for line in lines:
+		libtcod.console_print(0, x+2, ly, line)
+		ly += 1
+	
+	# if asking for confirmation, display yes/no choices, otherwise display a simple messages
+	if confirm:
+		text = 'Proceed? Y/N'
+	else:
+		text = 'Enter to Continue'
+	
+	libtcod.console_print_ex(0, WINDOW_XM, y+h-2, libtcod.BKGND_NONE, libtcod.CENTER,
+		text)
+	
+	# show to screen
+	libtcod.console_flush()
+	
+	exit_menu = False
+	while not exit_menu:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		
+		if not GetInputEvent(): continue
+		key_char = chr(key.c).lower()
+		
+		if confirm:
+			
+			if key_char == 'y':
+				# restore original screen before returning
+				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+				del temp_con
+				return True
+			elif key_char == 'n':
+				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+				del temp_con
+				return False
+		else:
+			if key.vk == libtcod.KEY_ENTER:
+				exit_menu = True
+	
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	del temp_con
 
 
 # display the in-game menu
@@ -4433,7 +4571,7 @@ def ShowGameMenu():
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(game_menu_con, 36, 22, 'Q')
 			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-			libtcod.console_print(game_menu_con, 40, 22, 'Quit Game')
+			libtcod.console_print(game_menu_con, 40, 22, 'Save and Quit')
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		libtcod.console_flush()
@@ -4473,12 +4611,100 @@ def ShowGameMenu():
 		
 		if active_tab == 0:
 			if key_char == 'q':
-				# TEMP - exit right away
-				sys.exit()
+				SaveGame()
+				scenario.exiting_scenario = True
+				exit_menu = True
 	
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
 	return result
+
+
+# display a list of game options and current settings
+def DisplayGameOptions(console, x, y, skip_esc=False):
+	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('Esc', 'Return to Main Menu')]:
+		
+		if char == 'Esc' and skip_esc: continue
+		
+		# extra spacing
+		if char == 'Esc': y += 1
+		
+		libtcod.console_set_default_foreground(console, ACTION_KEY_COL)
+		libtcod.console_print(console, x, y, char)
+		
+		libtcod.console_set_default_foreground(console, libtcod.lighter_grey)
+		libtcod.console_print(console, x+4, y, text)
+		
+		# current option settings
+		libtcod.console_set_default_foreground(console, libtcod.light_blue)
+		
+		# toggle font size
+		if char == 'F':
+			if config['ArmCom2'].getboolean('large_display_font'):
+				text = '16x16'
+			else:
+				text = '8x8'
+			libtcod.console_print(console, x+20, y, text)
+		
+		# sound effects
+		elif char == 'S':
+			if config['ArmCom2'].getboolean('sounds_enabled'):
+				text = 'ON'
+			else:
+				text = 'OFF'
+			libtcod.console_print(console, x+20, y, text)
+		
+		# keyboard settings
+		#elif char == 'K':
+		#	ConsolePrint(console, x+18, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
+		
+		y += 1
+
+
+# take a keyboard input and change game settings
+def ChangeGameSettings(key_char):
+	
+	if key_char not in ['f', 's']:
+		return False
+	
+	# switch font size
+	if key_char == 'f':
+		libtcod.console_delete(0)
+		if config.getboolean('ArmCom2', 'large_display_font'):
+			config['ArmCom2']['large_display_font'] = 'false'
+			fontname = 'c64_8x8.png'
+		else:
+			config['ArmCom2']['large_display_font'] = 'true'
+			fontname = 'c64_16x16.png'
+		libtcod.console_set_custom_font(DATAPATH+fontname,
+			libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
+		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
+			NAME + ' - ' + VERSION, fullscreen = False,
+			renderer = RENDERER)
+	
+	# toggle sound effects on/off
+	elif key_char == 's':
+		if config['ArmCom2'].getboolean('sounds_enabled'):
+			config['ArmCom2']['sounds_enabled'] = 'false'
+		else:
+			config['ArmCom2']['sounds_enabled'] = 'true'
+			# init mixer and load sound samples if required
+			if len(session.sample) == 0:
+				session.InitMixer()
+				session.LoadSounds()
+		
+	# switch keyboard layout
+	#elif key_char == 'k':
+	#	i = config['ArmCom2'].getint('keyboard')
+	#	if i == len(KEYBOARDS) - 1:
+	#		i = 0
+	#	else:
+	#		i += 1
+	#	config['ArmCom2']['keyboard'] = i
+	#	GenerateKeyboards()
+	
+	SaveCFG()
+	return True
 
 
 ##########################################################################################
@@ -4555,7 +4781,8 @@ def PlaySoundFor(obj, action):
 #                                      Main Script                                       #
 ##########################################################################################
 
-global campaign, campaign_day, scenario, session 
+global main_title, main_theme
+global campaign, campaign_day, scenario, session
 
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
@@ -4590,9 +4817,13 @@ libtcod.console_flush()
 session = Session()
 
 # try to init sound mixer and load sounds if successful
+main_theme = None
 if config['ArmCom2'].getboolean('sounds_enabled'):
 	if session.InitMixer():
 		session.LoadSounds()
+		# load and play main menu theme
+		main_theme = mixer.Mix_LoadMUS((SOUNDPATH + 'armcom2_theme.ogg').encode('ascii'))
+		mixer.Mix_PlayMusic(main_theme, -1)
 	else:
 		config['ArmCom2']['sounds_enabled'] = 'false'
 		print('Not able to init mixer, sounds disabled')
@@ -4622,20 +4853,233 @@ mouse = libtcod.Mouse()
 key = libtcod.Key()
 
 
-# TEMP testing
+##########################################################################################
+#                                        Main Menu                                       #
+##########################################################################################
 
-# create a new campaign, campaign day and player unit
-campaign = Campaign()
-campaign_day = CampaignDay()
-campaign.player_unit = Unit('Panzer 35(t)')
-campaign.player_unit.nation = 'Germany'
-campaign.player_unit.GenerateNewPersonnel()
+# load and generate main title background
+main_title = LoadXP('main_title.xp')
+TANK_IMAGES = ['unit_7TP.xp', 'unit_TK3.xp', 'unit_TKS.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp',
+	'unit_pz_I_B.xp', 'unit_pz_II.xp', 'unit_pz_35t.xp', 'unit_pz_38t_a.xp', 'unit_pz_III_D.xp']
+libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
+# display version number and program info
+libtcod.console_set_default_foreground(main_title, libtcod.red)
+libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-8, libtcod.BKGND_NONE,
+	libtcod.CENTER, 'Development Build: Has bugs and incomplete features')
+libtcod.console_set_default_foreground(main_title, libtcod.light_grey)
+libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
+	libtcod.CENTER, VERSION)
+libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-4,
+	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2019')
+libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-3,
+	libtcod.BKGND_NONE, libtcod.CENTER, 'Free Software under the GNU GPL')
+libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-2,
+	libtcod.BKGND_NONE, libtcod.CENTER, 'www.armouredcommander.com')
 
-# create a new scenario
-scenario = Scenario()
+# gradient animated effect for main menu
+GRADIENT = [
+	libtcod.Color(51, 51, 51), libtcod.Color(64, 64, 64), libtcod.Color(128, 128, 128),
+	libtcod.Color(192, 192, 192), libtcod.Color(255, 255, 255), libtcod.Color(192, 192, 192),
+	libtcod.Color(128, 128, 128), libtcod.Color(64, 64, 64), libtcod.Color(51, 51, 51),
+	libtcod.Color(51, 51, 51)
+]
 
-# run the scenario
-scenario.DoScenarioLoop()
+# set up gradient animation timing
+time_click = time.time()
+gradient_x = WINDOW_WIDTH + 10
+
+# draw the main title to the screen and display menu options
+# if options_menu_active, draw the options menu instead
+def UpdateMainTitleCon(options_menu_active):
+	libtcod.console_blit(main_title, 0, 0, 0, 0, con, 0, 0)
+	
+	y = 38
+	if options_menu_active:
+		
+		# display game options commands
+		DisplayGameOptions(con, WINDOW_XM-10, 38)
+		
+	else:
+		
+		for (char, text) in [('C', 'Continue'), ('N', 'New Campaign Day'), ('O', 'Options'), ('Q', 'Quit')]:
+			# grey-out continue game option if no saved game present
+			disabled = False
+			if char == 'C' and not os.path.exists('savegame.dat'):
+				disabled = True
+			
+			if disabled:
+				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
+			else:
+				libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print(con, WINDOW_XM-5, y, char)
+			
+			if disabled:
+				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
+			else:
+				libtcod.console_set_default_foreground(con, libtcod.lighter_grey)
+			libtcod.console_print(con, WINDOW_XM-3, y, text)	
+			
+			y += 1
+	
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+
+
+# update the animation effect
+def AnimateMainMenu():
+	
+	global gradient_x
+	
+	for x in range(0, 10):
+		if x + gradient_x > WINDOW_WIDTH: continue
+		for y in range(19, 34):
+			char = libtcod.console_get_char(con, x + gradient_x, y)
+			fg = libtcod.console_get_char_foreground(con, x + gradient_x, y)
+			if char != 0 and fg != GRADIENT[x]:
+				libtcod.console_set_char_foreground(con, x + gradient_x,
+					y, GRADIENT[x])
+	gradient_x -= 2
+	if gradient_x <= 0: gradient_x = WINDOW_WIDTH + 10
+
+# activate root menu to start
+options_menu_active = False
+
+# draw the main title console to the screen for the first time
+UpdateMainTitleCon(options_menu_active)
+
+
+# Main Menu loop
+exit_game = False
+
+while not exit_game:
+	
+	# emergency exit in case of endless loop
+	if libtcod.console_is_window_closed(): sys.exit()
+	
+	# trigger animation and update screen
+	if time.time() - time_click >= 0.06:
+		AnimateMainMenu()
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		time_click = time.time()
+	
+	libtcod.console_flush()
+	
+	if not GetInputEvent(): continue
+	
+	key_char = chr(key.c).lower()
+	
+	# options sub-menu
+	if options_menu_active:
+		
+		if ChangeGameSettings(key_char):
+			
+			# TODO: stop or re-start main menu theme if sound settings changed
+			
+			UpdateMainTitleCon(options_menu_active)
+			
+		# exit options menu
+		elif key.vk == libtcod.KEY_ESCAPE:
+			options_menu_active = False
+			UpdateMainTitleCon(options_menu_active)
+	
+	# root main menu
+	else:
+		
+		if key_char == 'q':
+			exit_game = True
+			continue
+		
+		elif key_char == 'o':
+			options_menu_active = True
+			UpdateMainTitleCon(options_menu_active)
+			continue
+		
+		# start or continue a campaign
+		elif key_char in ['n', 'c']:
+			
+			# check/confirm menu option
+			if key_char == 'c':
+				if not os.path.exists('savegame.dat'):
+					continue
+				
+				result = CheckSavedGameVersion() 
+				if result != '':
+					text = 'Saved game was saved with an older version of the program (' + result + '), cannot continue.'
+					ShowNotification(text)
+					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+					continue
+				
+				libtcod.console_clear(0)
+				libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+					'Loading...')
+				libtcod.console_flush()
+				
+				# load the saved game
+				LoadGame()
+			
+			else:
+				if os.path.exists('savegame.dat'):
+					text = 'Starting a new campaign will PERMANTLY ERASE the existing saved campaign.'
+					result = ShowNotification(text, confirm=True)
+					# cancel and return to main menu
+					if not result:
+						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+						continue
+			        
+			        # create a new campaign object and select a campaign
+				#campaign = Campaign()
+				#result = campaign.CampaignSelectionMenu()
+				
+				# player canceled new campaign
+				#if not result:
+				#	del campaign
+				#	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				#	if main_theme is not None:
+				#		mixer.Mix_RewindMusic()
+				#		mixer.Mix_ResumeMusic()
+				#	continue
+				
+				# allow player to select their tank and enter their character name
+				#campaign.TankSelectionMenu()
+				#campaign.CommanderNameMenu()
+				
+				# generate a new campaign day object and record event
+				#campaign_day = CampaignDay()
+				#campaign_day.AddMessage('Start of combat day')
+				
+				# show briefing
+				#DisplayCampaignDayBriefing()
+				
+				# TEMP testing
+
+				# create a new campaign, campaign day and player unit
+				campaign = Campaign()
+				campaign_day = CampaignDay()
+				campaign.player_unit = Unit('Panzer 35(t)')
+				campaign.player_unit.nation = 'Germany'
+				campaign.player_unit.GenerateNewPersonnel()
+				
+				# create a new scenario
+				scenario = Scenario()
+				scenario.player_unit = campaign.player_unit
+				
+			# pause main theme if playing
+			if main_theme is not None:
+				mixer.Mix_PauseMusic()
+			
+			# TEMP
+			#campaign_day.CampaignDayLoop()
+			# run the test scenario
+			scenario.DoScenarioLoop(loading_game=(key_char=='c'))
+			
+			# restart main theme if playing
+			if main_theme is not None:
+				mixer.Mix_RewindMusic()
+				mixer.Mix_ResumeMusic()
+			
+			UpdateMainTitleCon(options_menu_active)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+
+
 
 
 print(NAME + ' shutting down')			# shutdown message

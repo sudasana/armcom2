@@ -1862,10 +1862,10 @@ class Unit:
 					
 					PlaySoundFor(weapon, 'he_explosion')
 					
-					for i in range(6):
+					for i in range(12):
 						col = choice([libtcod.red, libtcod.yellow, libtcod.black])
-						libtcod.console_set_default_foreground(animation_con, col)
-						libtcod.console_put_char(animation_con, x2, y2, 42)
+						libtcod.console_put_char_ex(animation_con, x2, y2, 42, col,
+							libtcod.black)
 						scenario.UpdateScenarioDisplay()
 						Wait(4)
 					libtcod.console_clear(animation_con)

@@ -4,3 +4,7 @@
 savegame
 /build/*
 /dist/*
+savegame.bak
+savegame.dat
+savegame.dir
+savegame.dat

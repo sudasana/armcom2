@@ -86,7 +86,9 @@ MAX_TANK_NAME_LENGTH = 20				# maximum length of tank names
 DESTHEX = [(0,-1), (1,-1), (1,0), (0,1), (-1,1), (-1,0)]	# change in hx, hy values for hexes in each direction
 PLOT_DIR = [(0,-1), (1,-1), (1,1), (0,1), (-1,1), (-1,-1)]	# position of direction indicator
 TURRET_CHAR = [254, 47, 92, 254, 47, 92]			# characters to use for turret display
-HEX_EDGE_CELLS = {						# relative locations of edge cells in a given direction for a map hex
+
+# relative locations of edge cells in a given direction for a map hex
+HEX_EDGE_CELLS = {
 	0: [(-1,-2),(0,-2),(1,-2)],
 	1: [(1,-2),(2,-1),(3,0)],
 	2: [(3,0),(2,1),(1,2)],
@@ -94,6 +96,29 @@ HEX_EDGE_CELLS = {						# relative locations of edge cells in a given direction 
 	4: [(-1,2),(-2,1),(-3,0)],
 	5: [(-3,0),(-2,-1),(-1,-2)]
 }
+
+# same for campaign day hexes (pointy-topped)
+CD_HEX_EDGE_CELLS = {
+	0: [(0,-4),(1,-3),(2,-2),(3,-1)],
+	1: [(3,-1),(3,0),(3,1)],
+	2: [(3,1),(2,2),(1,3),(0,4)],
+	3: [(0,4),(-1,3),(-2,2),(-3,1)],
+	4: [(-3,1),(-3,0),(-3,-1)],
+	5: [(-3,-1),(-2,-2),(-1,-3),(0,-4)]
+}
+
+# list of hexes on campaign day map
+CAMPAIGN_DAY_HEXES = [
+	(0,0),(1,0),(2,0),(3,0),(4,0),
+	(0,1),(1,1),(2,1),(3,1),
+	(-1,2),(0,2),(1,2),(2,2),(3,2),
+	(-1,3),(0,3),(1,3),(2,3),
+	(-2,4),(-1,4),(0,4),(1,4),(2,4),
+	(-2,5),(-1,5),(0,5),(1,5),
+	(-3,6),(-2,6),(-1,6),(0,6),(1,6),
+	(-3,7),(-2,7),(-1,7),(0,7),
+	(-4,8),(-3,8),(-2,8),(-1,8),(0,8)
+]
 
 
 ##### Colour Definitions #####
@@ -513,10 +538,38 @@ class CampaignDay:
 	def __init__(self):
 		
 		# current hour, and minute
+		# TODO: set initial time from campaign info
 		self.day_clock = {
 			'hour' : 4,
 			'minute' : 45
 		}
+		
+		# log of important events during the day
+		self.day_log = []
+		
+		# generate campaign day map
+		self.map_hexes = {}
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy)
+		
+			# set zone terrain type too
+			self.map_hexes[(hx,hy)].GenerateTerrainType()
+		
+		# dictionary of screen display locations on the display console
+		self.cd_map_index = {}
+		
+		# generate dirt roads on campaign day map
+		#self.GenerateRoads()
+		
+		self.active_menu = 3				# number of currently active command menu
+		self.travel_direction = None			# selected direction of travel
+		self.abandoned_tank = False			# set to true if player abandoned their tank that day
+		self.scenario = None				# currently active scenario in progress
+		
+		# set up player
+		self.player_unit_location = (-2, 8)		# set initial player unit location
+		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
+		
 	
 	# advance the current campaign day time
 	def AdvanceClock(self, hours, minutes):
@@ -525,8 +578,130 @@ class CampaignDay:
 		while self.day_clock['minute'] >= 60:
 			self.day_clock['hour'] += 1
 			self.day_clock['minute'] -= 60
+	
+	
+	# generate roads linking zones; only dirt roads for now
+	def GenerateRoads(self):
+		
+		# generate one road from the bottom to the top of the map
+		hx = choice([-4,-3,-2,-1,0])
+		for hy in range(8, -1, -1):
+			direction = choice([5,0])
+			(hx2,hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+			if (hx2,hy2) not in self.map_hexes:
+				if direction == 0:
+					direction = 5
+				else:
+					direction = 0
+				(hx2,hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+			self.map_hexes[(hx,hy)].dirt_roads.append(direction)
+			# avoid looking for final hex off-map
+			if (hx2,hy2) in self.map_hexes:
+				self.map_hexes[(hx2,hy2)].dirt_roads.append(ConstrainDir(direction + 3))
+			hx = hx2
+		
+		# 1-2 branch roads
+		target_hy_list = sample(range(0, 9), libtcod.random_get_int(0, 1, 3))
+		for target_hy in target_hy_list:
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				if hy != target_hy: continue
+				if len(self.map_hexes[(hx,hy)].dirt_roads) == 0: continue
+				
+				direction = choice([1,4])
+				# make sure can take at least one step in this direction
+				if self.GetAdjacentCDHex(hx, hy, direction) not in self.map_hexes:
+					if direction == 1:
+						direction = 4
+					else:
+						direction = 1
+				
+				# create road
+				while (hx,hy) in self.map_hexes:
+					self.map_hexes[(hx,hy)].dirt_roads.append(direction)
+					(hx,hy) = self.GetAdjacentCDHex(hx, hy, direction)
+					if (hx,hy) in self.map_hexes:
+						self.map_hexes[(hx,hy)].dirt_roads.append(ConstrainDir(direction + 3))
 		
 		
+	# plot the centre of a day map hex location onto the map console
+	# top left of hex 0,0 will appear at cell 2,2
+	def PlotCDHex(self, hx, hy):
+		x = (hx*6) + (hy*3)
+		y = (hy*5)
+		return (x+5,y+6)
+	
+	
+	# returns the hx, hy location of the adjacent hex in direction
+	def GetAdjacentCDHex(self, hx1, hy1, direction):
+		(hx_m, hy_m) = CD_DESTHEX[direction]
+		return (hx1+hx_m, hy1+hy_m)
+	
+	
+	# main campaign day input loop
+	def CampaignDayLoop(self):
+		pass
+
+
+
+
+# Zone Hex: a hex on the campaign day map, each representing a map of scenario hexes
+class CDMapHex:
+	def __init__(self, hx, hy):
+		self.hx = hx
+		self.hy = hy
+		
+		self.coordinate = (chr(hy+65) + str(5 + int(hx - (hy - hy&1) / 2)))
+		
+		self.terrain_type = ''		# placeholder for terrain type in this zone
+		self.console_seed = libtcod.random_get_int(0, 1, 128)	# seed for console image generation
+		
+		self.dirt_roads = []		# directions linked by a dirt road
+		self.stone_roads = []		# " stone road
+		
+		self.controlled_by = 1		# which player side currently controls this zone
+		self.known_to_player = False	# player knows enemy strength and organization in this zone
+		
+		# enemy strength and organization
+		roll = libtcod.random_get_int(0, 1, 6)
+		if roll <= 3:
+			self.enemy_strength = 1
+		elif roll < 6:
+			self.enemy_strength = 2
+		else:
+			self.enemy_strength = 3
+		
+		roll = libtcod.random_get_int(0, 1, 6)
+		if roll == 1:
+			self.enemy_organization = 1
+		elif roll <= 4:
+			self.enemy_organization = 2
+		else:
+			self.enemy_organization = 3
+	
+	# generate a random terrain type for this hex
+	# FUTURE: can pull data from the campaign day to determine possible terrain types
+	def GenerateTerrainType(self):
+		
+		roll = GetPercentileRoll()
+		
+		# TEMP: settings are for Poland/September campaign
+		if roll <= 40.0:
+			self.terrain_type = 'Flat'
+		elif roll <= 50.0:
+			self.terrain_type = 'Forest'
+		elif roll <= 65.0:
+			self.terrain_type = 'Hills'
+		elif roll <= 75.0:
+			self.terrain_type = 'Fields'
+		elif roll <= 80.0:
+			self.terrain_type = 'Marsh'
+		elif roll <= 90.0:
+			self.terrain_type = 'Villages'
+		else:
+			self.terrain_type = 'Flat'
+
+
+
 
 # Session: stores data that is generated for each game session and not stored in the saved game
 class Session:

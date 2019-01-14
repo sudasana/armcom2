@@ -77,6 +77,8 @@ WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of gam
 
 KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']	# list of possible keyboard layout settings
 
+MAX_TANK_NAME_LENGTH = 20				# maximum length of tank names
+
 
 ##### Hex geometry definitions #####
 
@@ -103,9 +105,6 @@ UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.Color(255, 20, 20)		# known "
 ALLIED_UNIT_COL = libtcod.Color(120, 120, 255)		# allied unit display colour
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
-
-# list of possible keyboard layout settings
-KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']
 
 # text names for months
 MONTH_NAMES = [
@@ -356,23 +355,19 @@ class Campaign:
 		# draw menu screen for first time
 		self.UpdateCampaignSelectionScreen(selected_campaign)
 		
-		exit_loop = False
-		while not exit_loop:
-			
-			# emergency exit in case of endless loop
+		exit_menu = False
+		while not exit_menu:
 			if libtcod.console_is_window_closed(): sys.exit()
-			
 			libtcod.console_flush()
-			
 			if not GetInputEvent(): continue
 			
-			# just exit directly if escape is pressed
+			# exit without starting a new campaign if escape is pressed
 			if key.vk == libtcod.KEY_ESCAPE:
 				return False
 			
 			# proceed with selected campaign
 			elif key.vk == libtcod.KEY_ENTER:
-				exit_loop = True
+				exit_menu = True
 			
 			key_char = chr(key.c).lower()
 			
@@ -401,6 +396,141 @@ class Campaign:
 		self.today = self.stats['calendar'][0]
 		
 		return True
+		
+		
+	# menu to select player tank
+	# TODO: add input/generation of tank name, and return both
+	# FUTURE: can be used when replacing a tank mid-campaign as well
+	def TankSelectionMenu(self):
+		
+		def UpdateTankSelectionScreen(selected_unit, player_tank_name):
+			libtcod.console_clear(con)
+			DrawFrame(con, 26, 1, 37, 58)
+			
+			libtcod.console_set_default_background(con, libtcod.darker_blue)
+			libtcod.console_rect(con, 27, 2, 35, 3, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(con, libtcod.black)
+			
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print_ex(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Player Unit Selection')
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			
+			libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Select a unit to command')
+			libtcod.console_print_ex(con, 45, 7, libtcod.BKGND_NONE, libtcod.CENTER,
+				'to start the campaign')
+			
+			DrawFrame(con, 32, 10, 27, 18)
+			selected_unit.DisplayMyInfo(con, 33, 11, status=False)
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print(con, 33, 26, 'Crew: ' + str(len(selected_unit.GetStat('crew_positions'))))
+			
+			libtcod.console_print_ex(con, 45, 28, libtcod.BKGND_NONE, libtcod.CENTER,
+				player_tank_name)
+			
+			text = ''
+			for t in selected_unit.GetStat('description'):
+				text += t
+			
+			lines = wrap(text, 33)
+			y = 32
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			for line in lines[:20]:
+				libtcod.console_print(con, 28, y, line)
+				y+=1
+			
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print(con, 32, 53, 'A/D')
+			libtcod.console_print(con, 32, 54, 'N')
+			libtcod.console_print(con, 32, 55, 'Enter')
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print(con, 38, 53, 'Select Unit Type')
+			libtcod.console_print(con, 38, 54, 'Set/Generate Tank Name')
+			libtcod.console_print(con, 38, 55, 'Proceed')
+			
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		
+		# generate tempoary list of units, one per possible unit type
+		unit_list = []
+		
+		for unit_id in self.stats['player_unit_list']:
+			new_unit = Unit(unit_id)
+			unit_list.append(new_unit)
+		
+		# select first tank by default
+		selected_unit = unit_list[0]
+		
+		# placeholder for tank name if any
+		player_tank_name = ''
+		
+		# draw menu screen for first time
+		UpdateTankSelectionScreen(selected_unit, player_tank_name)
+		
+		exit_loop = False
+		while not exit_loop:
+			
+			# emergency exit in case of endless loop
+			if libtcod.console_is_window_closed(): sys.exit()
+			
+			libtcod.console_flush()
+			if not GetInputEvent(): continue
+			
+			# proceed with selected tank
+			if key.vk == libtcod.KEY_ENTER:
+				exit_loop = True
+			
+			key_char = chr(key.c).lower()
+			
+			# change selected tank
+			if key_char in ['a', 'd']:
+				
+				i = unit_list.index(selected_unit)
+				
+				if key_char == 'd':
+					if i == len(unit_list) - 1:
+						selected_unit = unit_list[0]
+					else:
+						selected_unit = unit_list[i+1]
+				else:
+					if i == 0:
+						selected_unit = unit_list[-1]
+					else:
+						selected_unit = unit_list[i-1]
+				UpdateTankSelectionScreen(selected_unit, player_tank_name)
+			
+			# change/generate player tank name
+			elif key_char == 'n':
+				
+				player_tank_name = ShowTextInputMenu('Enter a name for your tank', player_tank_name, MAX_TANK_NAME_LENGTH, [])
+				UpdateTankSelectionScreen(selected_unit, player_tank_name)
+		
+		# generate player unit based on selection and store in campaign object
+		#self.player_unit = Unit(selected_unit.unit_id)
+		#self.player_unit.owning_player = 0
+		#self.player_unit.nation = self.stats['player_nation']
+		#self.player_unit.GenerateNewPersonnel()
+		
+		# generate rest of player squadron into 
+		# determine number of other tanks in group
+		#op_value = int(self.player_unit.GetStat('op_value'))
+		
+		#if op_value >= 29:
+		#	num = 1
+		#else:
+		#	num = 2
+		
+		# debug flag
+		#if NO_ALLIES: num = 0
+		
+		#for i in range(num):
+		#	new_unit = Unit(selected_unit.unit_id)
+		#	new_unit.owning_player = 0
+		#	new_unit.nation = self.stats['player_nation']
+		#	new_unit.GenerateNewPersonnel()
+		#	new_unit.ai = AI(new_unit)
+		#	new_unit.ai.group_leader = self.player_unit
+		#	self.player_unit_group.append(new_unit)
 
 
 
@@ -4750,8 +4880,6 @@ def ShowGameMenu():
 	while not exit_menu:
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
-		
-		# get keyboard and/or mouse event
 		if not GetInputEvent(): continue
 		
 		# close menu
@@ -4859,6 +4987,111 @@ def ChangeGameSettings(key_char):
 	
 	SaveCFG()
 	return True
+
+
+# display a pop-up window with a prompt and allow player to enter a text string
+# can also generate randomly selected strings from a given list
+# returns the final string
+def ShowTextInputMenu(prompt, original_text, max_length, string_list):
+	
+	# display the most recent text string to screen
+	def ShowText(text):
+		libtcod.console_rect(0, 28, 30, 32, 1, True, libtcod.BKGND_SET)
+		libtcod.console_print_ex(0, 45, 30, libtcod.BKGND_NONE, libtcod.CENTER, text)
+	
+	# start with the original text string, can cancel input and keep this
+	text = original_text
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+	# darken screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	
+	# draw the text input menu to screen
+	libtcod.console_rect(0, 27, 20, 34, 20, True, libtcod.BKGND_SET)
+	DrawFrame(0, 27, 20, 34, 20)
+	lines = wrap(prompt, 24)
+	y = 23
+	libtcod.console_set_default_foreground(0, libtcod.light_grey)
+	for line in lines:
+		libtcod.console_print_ex(0, 45, y, libtcod.BKGND_NONE, libtcod.CENTER, line)
+		y += 1
+	
+	libtcod.console_set_default_foreground(0, ACTION_KEY_COL)
+	libtcod.console_print(0, 31, 35, 'Del')
+	libtcod.console_print(0, 31, 36, 'Tab')
+	libtcod.console_print(0, 31, 37, 'Enter')
+	libtcod.console_set_default_foreground(0, libtcod.white)
+	libtcod.console_print(0, 37, 35, 'Clear')
+	libtcod.console_print(0, 37, 36, 'Generate Random')
+	libtcod.console_print(0, 37, 37, 'Confirm and Continue')
+	
+	# display current text string
+	ShowText(text)
+	
+	exit_menu = False
+	while not exit_menu:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		if not GetInputEvent(): continue
+		
+		# ignore shift key being pressed
+		if key.vk == libtcod.KEY_SHIFT:
+			session.key_down = False
+		
+		# cancel text input
+		if key.vk == libtcod.KEY_ESCAPE:
+			# re-draw original screen and return original text string
+			libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+			del temp_con
+			return original_text
+		
+		# confirm and return
+		elif key.vk == libtcod.KEY_ENTER:
+			exit_menu = True
+			continue
+		
+		# select random string from list if any
+		elif key.vk == libtcod.KEY_TAB:
+			if len(string_list) == 0: continue
+			text = choice(string_list)
+		
+		# clear string
+		elif key.vk == libtcod.KEY_DELETE:
+			text = ''
+		
+		# delete last character in string
+		elif key.vk == libtcod.KEY_BACKSPACE:
+			if len(text) == 0: continue
+			text = text[:-1]
+		
+		# enter a new character
+		else:
+			# not a valid character
+			if key.c == 0: continue
+			
+			# can't get any longer
+			if len(text) == max_length: continue
+			
+			key_char = chr(key.c)
+			if key.shift: key_char = key_char.upper()
+			
+			# filter key input
+			if not ((32 <= ord(key_char) <= 126)):
+				continue
+			
+			text += key_char
+		
+		FlushKeyboardEvents()
+		ShowText(text)
+		
+	
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	del temp_con
+	return text
+
 
 
 ##########################################################################################
@@ -5189,8 +5422,9 @@ while not exit_game:
 					UpdateMainTitleCon(options_menu_active)
 					continue
 				
-				# allow player to select their tank and enter their character name
-				#campaign.TankSelectionMenu()
+				# allow player to select their tank (FUTURE: and tank name)
+				campaign.TankSelectionMenu()
+				# allow player to enter their character name
 				#campaign.CommanderNameMenu()
 				
 				# generate a new campaign day object and record event

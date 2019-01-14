@@ -64,7 +64,7 @@ NAME = 'Armoured Commander II'				# game name
 VERSION = '2019-01-02'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
-#CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
+CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
 
 if os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
 	RENDERER = libtcod.RENDERER_SDL
@@ -254,8 +254,153 @@ class Campaign:
 		# placeholder for player unit
 		self.player_unit = None
 		
+		self.stats = {}			# campaign stats
+		self.today = None		# pointer to current day in calendar
+		
 		# holder for active enemy units
 		self.enemy_units = []
+	
+	
+	# update screen with info about the currently selected campaign
+	def UpdateCampaignSelectionScreen(self, selected_campaign):
+		libtcod.console_clear(con)
+		DrawFrame(con, 26, 1, 37, 58)
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print_ex(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Campaign Selection')
+		libtcod.console_set_default_background(con, libtcod.dark_blue)
+		libtcod.console_rect(con, 27, 5, 35, 3, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(con, libtcod.black)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
+			selected_campaign['name'])
+		
+		# player nation flag
+		if selected_campaign['player_nation'] in session.flags:
+			libtcod.console_blit(session.flags[selected_campaign['player_nation']],
+				0, 0, 0, 0, con, 30, 10)
+		
+		# player and enemy forces
+		libtcod.console_print_ex(con, 45, 26, libtcod.BKGND_NONE, libtcod.CENTER,
+			'PLAYER FORCE')
+		libtcod.console_print_ex(con, 45, 30, libtcod.BKGND_NONE, libtcod.CENTER,
+			'ENEMY FORCES')
+		
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		libtcod.console_print_ex(con, 45, 27, libtcod.BKGND_NONE, libtcod.CENTER,
+			selected_campaign['player_nation'])
+		text = ''
+		for nation_name in selected_campaign['enemy_nations']:
+			if selected_campaign['enemy_nations'].index(nation_name) != 0:
+				text += ', '
+			text += nation_name
+		libtcod.console_print_ex(con, 45, 31, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		# calendar range and total combat days
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		text = GetDateText(selected_campaign['start_date']) + ' to'
+		libtcod.console_print_ex(con, 45, 33, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		text = GetDateText(selected_campaign['end_date'])
+		libtcod.console_print_ex(con, 45, 34, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		text = 'Combat Days: ' + selected_campaign['action_days']
+		libtcod.console_print_ex(con, 45, 36, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		# wrapped description text
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		y = 39
+		lines = wrap(selected_campaign['desc'], 33)
+		for line in lines[:10]:
+			libtcod.console_print(con, 28, y, line)
+			y+=1
+			
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print(con, 32, 53, 'A/D')
+		libtcod.console_print(con, 32, 55, 'Enter')
+		libtcod.console_print(con, 32, 56, 'Esc')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print(con, 38, 53, 'Change Campaign')
+		libtcod.console_print(con, 38, 55, 'Proceed')
+		libtcod.console_print(con, 38, 56, 'Return to Main Menu')
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
+	
+	# menu to select a campaign
+	def CampaignSelectionMenu(self):
+		
+		# load basic information of campaigns into a list of dictionaries
+		BASIC_INFO = [
+			'name', 'start_date', 'end_date', 'action_days', 'player_nation',
+			'enemy_nations', 'desc'
+		]
+		
+		campaign_list = []
+		
+		for filename in os.listdir(CAMPAIGNPATH):
+			if not filename.endswith('.json'): continue
+			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
+				campaign_data = json.load(data_file)
+			new_campaign = {}
+			new_campaign['filename'] = filename
+			for k in BASIC_INFO:
+				new_campaign[k] = campaign_data[k]
+			campaign_list.append(new_campaign)
+			del campaign_data
+		
+		# FUTURE: sort campaigns by start date
+		
+		# select first campaign by default
+		selected_campaign = campaign_list[0]
+		
+		# draw menu screen for first time
+		self.UpdateCampaignSelectionScreen(selected_campaign)
+		
+		exit_loop = False
+		while not exit_loop:
+			
+			# emergency exit in case of endless loop
+			if libtcod.console_is_window_closed(): sys.exit()
+			
+			libtcod.console_flush()
+			
+			if not GetInputEvent(): continue
+			
+			# just exit directly if escape is pressed
+			if key.vk == libtcod.KEY_ESCAPE:
+				return False
+			
+			# proceed with selected campaign
+			elif key.vk == libtcod.KEY_ENTER:
+				exit_loop = True
+			
+			key_char = chr(key.c).lower()
+			
+			# change selected campaign
+			if key_char in ['a', 'd']:
+				
+				i = campaign_list.index(selected_campaign)
+				
+				if key_char == 'd':
+					if i == len(campaign_list) - 1:
+						selected_campaign = campaign_list[0]
+					else:
+						selected_campaign = campaign_list[i+1]
+				else:
+					if i == 0:
+						selected_campaign = campaign_list[-1]
+					else:
+						selected_campaign = campaign_list[i-1]
+				self.UpdateCampaignSelectionScreen(selected_campaign)
+		
+		# create a local copy of selected scenario stats
+		with open(CAMPAIGNPATH + selected_campaign['filename'], encoding='utf8') as data_file:
+			self.stats = json.load(data_file)
+		
+		# set current day to first day in calendar
+		self.today = self.stats['calendar'][0]
+		
+		return True
 
 
 
@@ -304,6 +449,11 @@ class Session:
 		# store nation definition info
 		with open(DATAPATH + 'nation_defs.json', encoding='utf8') as data_file:
 			self.nations = json.load(data_file)
+		
+		# load national flag images
+		self.flags = {}
+		for name, data in self.nations.items():
+			self.flags[name] = LoadXP(data['flag_image'])
 		
 		# background for attack console
 		self.attack_bkg = LoadXP('attack_bkg.xp')
@@ -3391,8 +3541,7 @@ class Scenario:
 	def UpdateTimeCon(self):
 		libtcod.console_clear(time_con)
 		
-		text = (MONTH_NAMES[campaign_day.calendar['month']] + ' ' + str(campaign_day.calendar['day']) +
-			', ' + str(campaign_day.calendar['year']))
+		text = GetDateText(campaign_day.calendar)
 		libtcod.console_print_ex(time_con, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
 		text = str(campaign_day.calendar['hour']).zfill(2) + ':' + str(campaign_day.calendar['minute']).zfill(2)
@@ -4062,6 +4211,11 @@ class Scenario:
 #                                  General Functions                                     #
 ##########################################################################################	
 
+# return a text description of a given calendar date
+def GetDateText(dictionary):
+	return (MONTH_NAMES[int(dictionary['month'])] + ' ' + str(dictionary['day']) + 
+		', ' + str(dictionary['year']))
+
 
 # draw an ArmCom2-style frame to the given console
 def DrawFrame(console, x, y, w, h):
@@ -4656,7 +4810,7 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 		
 		# keyboard settings
 		#elif char == 'K':
-		#	ConsolePrint(console, x+18, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
+		#	libtcod.console_print(console, x+18, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
 		
 		y += 1
 
@@ -5026,17 +5180,14 @@ while not exit_game:
 						continue
 			        
 			        # create a new campaign object and select a campaign
-				#campaign = Campaign()
-				#result = campaign.CampaignSelectionMenu()
+				campaign = Campaign()
+				result = campaign.CampaignSelectionMenu()
 				
-				# player canceled new campaign
-				#if not result:
-				#	del campaign
-				#	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-				#	if main_theme is not None:
-				#		mixer.Mix_RewindMusic()
-				#		mixer.Mix_ResumeMusic()
-				#	continue
+				# player canceled new campaign start
+				if not result:
+					campaign = None
+					UpdateMainTitleCon(options_menu_active)
+					continue
 				
 				# allow player to select their tank and enter their character name
 				#campaign.TankSelectionMenu()
@@ -5051,8 +5202,7 @@ while not exit_game:
 				
 				# TEMP testing
 
-				# create a new campaign, campaign day and player unit
-				campaign = Campaign()
+				# create a campaign day and player unit
 				campaign_day = CampaignDay()
 				campaign.player_unit = Unit('Panzer 35(t)')
 				campaign.player_unit.nation = 'Germany'

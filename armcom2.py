@@ -260,73 +260,72 @@ class Campaign:
 		self.enemy_units = []
 	
 	
-	# update screen with info about the currently selected campaign
-	def UpdateCampaignSelectionScreen(self, selected_campaign):
-		libtcod.console_clear(con)
-		DrawFrame(con, 26, 1, 37, 58)
-		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		libtcod.console_print_ex(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Campaign Selection')
-		libtcod.console_set_default_background(con, libtcod.dark_blue)
-		libtcod.console_rect(con, 27, 5, 35, 3, True, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(con, libtcod.black)
-		libtcod.console_set_default_foreground(con, libtcod.white)
-		libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
-			selected_campaign['name'])
-		
-		# player nation flag
-		if selected_campaign['player_nation'] in session.flags:
-			libtcod.console_blit(session.flags[selected_campaign['player_nation']],
-				0, 0, 0, 0, con, 30, 10)
-		
-		# player and enemy forces
-		libtcod.console_print_ex(con, 45, 26, libtcod.BKGND_NONE, libtcod.CENTER,
-			'PLAYER FORCE')
-		libtcod.console_print_ex(con, 45, 30, libtcod.BKGND_NONE, libtcod.CENTER,
-			'ENEMY FORCES')
-		
-		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		libtcod.console_print_ex(con, 45, 27, libtcod.BKGND_NONE, libtcod.CENTER,
-			selected_campaign['player_nation'])
-		text = ''
-		for nation_name in selected_campaign['enemy_nations']:
-			if selected_campaign['enemy_nations'].index(nation_name) != 0:
-				text += ', '
-			text += nation_name
-		libtcod.console_print_ex(con, 45, 31, libtcod.BKGND_NONE, libtcod.CENTER, text)
-		
-		# calendar range and total combat days
-		libtcod.console_set_default_foreground(con, libtcod.white)
-		text = GetDateText(selected_campaign['start_date']) + ' to'
-		libtcod.console_print_ex(con, 45, 33, libtcod.BKGND_NONE, libtcod.CENTER, text)
-		text = GetDateText(selected_campaign['end_date'])
-		libtcod.console_print_ex(con, 45, 34, libtcod.BKGND_NONE, libtcod.CENTER, text)
-		
-		text = 'Combat Days: ' + selected_campaign['action_days']
-		libtcod.console_print_ex(con, 45, 36, libtcod.BKGND_NONE, libtcod.CENTER, text)
-		
-		# wrapped description text
-		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		y = 39
-		lines = wrap(selected_campaign['desc'], 33)
-		for line in lines[:10]:
-			libtcod.console_print(con, 28, y, line)
-			y+=1
-			
-		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		libtcod.console_print(con, 32, 53, 'A/D')
-		libtcod.console_print(con, 32, 55, 'Enter')
-		libtcod.console_print(con, 32, 56, 'Esc')
-		libtcod.console_set_default_foreground(con, libtcod.white)
-		libtcod.console_print(con, 38, 53, 'Change Campaign')
-		libtcod.console_print(con, 38, 55, 'Proceed')
-		libtcod.console_print(con, 38, 56, 'Return to Main Menu')
-		
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-	
-	
 	# menu to select a campaign
 	def CampaignSelectionMenu(self):
+		
+		# update screen with info about the currently selected campaign
+		def UpdateCampaignSelectionScreen(selected_campaign):
+			libtcod.console_clear(con)
+			DrawFrame(con, 26, 1, 37, 58)
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print_ex(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Campaign Selection')
+			libtcod.console_set_default_background(con, libtcod.dark_blue)
+			libtcod.console_rect(con, 27, 5, 35, 3, True, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(con, libtcod.black)
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
+				selected_campaign['name'])
+			
+			# player nation flag
+			if selected_campaign['player_nation'] in session.flags:
+				libtcod.console_blit(session.flags[selected_campaign['player_nation']],
+					0, 0, 0, 0, con, 30, 10)
+			
+			# player and enemy forces
+			libtcod.console_print_ex(con, 45, 26, libtcod.BKGND_NONE, libtcod.CENTER,
+				'PLAYER FORCE')
+			libtcod.console_print_ex(con, 45, 30, libtcod.BKGND_NONE, libtcod.CENTER,
+				'ENEMY FORCES')
+			
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_print_ex(con, 45, 27, libtcod.BKGND_NONE, libtcod.CENTER,
+				selected_campaign['player_nation'])
+			text = ''
+			for nation_name in selected_campaign['enemy_nations']:
+				if selected_campaign['enemy_nations'].index(nation_name) != 0:
+					text += ', '
+				text += nation_name
+			libtcod.console_print_ex(con, 45, 31, libtcod.BKGND_NONE, libtcod.CENTER, text)
+			
+			# calendar range and total combat days
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			text = GetDateText(selected_campaign['start_date']) + ' to'
+			libtcod.console_print_ex(con, 45, 33, libtcod.BKGND_NONE, libtcod.CENTER, text)
+			text = GetDateText(selected_campaign['end_date'])
+			libtcod.console_print_ex(con, 45, 34, libtcod.BKGND_NONE, libtcod.CENTER, text)
+			
+			text = 'Combat Days: ' + selected_campaign['action_days']
+			libtcod.console_print_ex(con, 45, 36, libtcod.BKGND_NONE, libtcod.CENTER, text)
+			
+			# wrapped description text
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			y = 39
+			lines = wrap(selected_campaign['desc'], 33)
+			for line in lines[:10]:
+				libtcod.console_print(con, 28, y, line)
+				y+=1
+				
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print(con, 32, 53, 'A/D')
+			libtcod.console_print(con, 32, 55, 'Enter')
+			libtcod.console_print(con, 32, 56, 'Esc')
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print(con, 38, 53, 'Change Campaign')
+			libtcod.console_print(con, 38, 55, 'Proceed')
+			libtcod.console_print(con, 38, 56, 'Return to Main Menu')
+			
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
 		# load basic information of campaigns into a list of dictionaries
 		BASIC_INFO = [
@@ -353,7 +352,7 @@ class Campaign:
 		selected_campaign = campaign_list[0]
 		
 		# draw menu screen for first time
-		self.UpdateCampaignSelectionScreen(selected_campaign)
+		UpdateCampaignSelectionScreen(selected_campaign)
 		
 		exit_menu = False
 		while not exit_menu:
@@ -386,7 +385,7 @@ class Campaign:
 						selected_campaign = campaign_list[-1]
 					else:
 						selected_campaign = campaign_list[i-1]
-				self.UpdateCampaignSelectionScreen(selected_campaign)
+				UpdateCampaignSelectionScreen(selected_campaign)
 		
 		# create a local copy of selected scenario stats
 		with open(CAMPAIGNPATH + selected_campaign['filename'], encoding='utf8') as data_file:
@@ -399,7 +398,7 @@ class Campaign:
 		
 		
 	# menu to select player tank
-	# TODO: add input/generation of tank name, and return both
+	# also allows input/generation of tank name, and return both
 	# FUTURE: can be used when replacing a tank mid-campaign as well
 	def TankSelectionMenu(self):
 		
@@ -426,8 +425,7 @@ class Campaign:
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print(con, 33, 26, 'Crew: ' + str(len(selected_unit.GetStat('crew_positions'))))
 			
-			libtcod.console_print_ex(con, 45, 28, libtcod.BKGND_NONE, libtcod.CENTER,
-				player_tank_name)
+			libtcod.console_print(con, 33, 13, player_tank_name)
 			
 			text = ''
 			for t in selected_unit.GetStat('description'):
@@ -505,32 +503,7 @@ class Campaign:
 				player_tank_name = ShowTextInputMenu('Enter a name for your tank', player_tank_name, MAX_TANK_NAME_LENGTH, [])
 				UpdateTankSelectionScreen(selected_unit, player_tank_name)
 		
-		# generate player unit based on selection and store in campaign object
-		#self.player_unit = Unit(selected_unit.unit_id)
-		#self.player_unit.owning_player = 0
-		#self.player_unit.nation = self.stats['player_nation']
-		#self.player_unit.GenerateNewPersonnel()
-		
-		# generate rest of player squadron into 
-		# determine number of other tanks in group
-		#op_value = int(self.player_unit.GetStat('op_value'))
-		
-		#if op_value >= 29:
-		#	num = 1
-		#else:
-		#	num = 2
-		
-		# debug flag
-		#if NO_ALLIES: num = 0
-		
-		#for i in range(num):
-		#	new_unit = Unit(selected_unit.unit_id)
-		#	new_unit.owning_player = 0
-		#	new_unit.nation = self.stats['player_nation']
-		#	new_unit.GenerateNewPersonnel()
-		#	new_unit.ai = AI(new_unit)
-		#	new_unit.ai.group_leader = self.player_unit
-		#	self.player_unit_group.append(new_unit)
+		return (selected_unit.unit_id, player_tank_name)
 
 
 
@@ -539,23 +512,19 @@ class Campaign:
 class CampaignDay:
 	def __init__(self):
 		
-		# current year, month, day, hour, and minute
-		self.calendar = {
-			'year' : 1939,
-			'month' : 9,
-			'day' : 1,
+		# current hour, and minute
+		self.day_clock = {
 			'hour' : 4,
 			'minute' : 45
 		}
 	
-	# advance the current campaign time
-	# FUTURE: handle rolling over into a new day: might happen eg. in days that start at dusk
+	# advance the current campaign day time
 	def AdvanceClock(self, hours, minutes):
-		self.calendar['hour'] += hours
-		self.calendar['minute'] += minutes
-		while self.calendar['minute'] >= 60:
-			self.calendar['hour'] += 1
-			self.calendar['minute'] -= 60
+		self.day_clock['hour'] += hours
+		self.day_clock['minute'] += minutes
+		while self.day_clock['minute'] >= 60:
+			self.day_clock['hour'] += 1
+			self.day_clock['minute'] -= 60
 		
 		
 
@@ -1315,6 +1284,7 @@ class Unit:
 	def __init__(self, unit_id):
 		
 		self.unit_id = unit_id			# unique ID for unit type
+		self.unit_name = ''			# name of tank, etc.
 		self.alive = True			# unit is alive
 		self.owning_player = 0			# unit is allied to 0:player 1:enemy
 		self.nation = None			# nationality of unit and personnel
@@ -1739,8 +1709,12 @@ class Unit:
 		if portrait is not None:
 			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, console, x, y+2)
 		
-		# weapons
+		# display name if any overtop portrait
 		libtcod.console_set_default_foreground(console, libtcod.white)
+		if self.unit_name != '':
+			libtcod.console_print(console, x, y+2, self.unit_name)
+		
+		# weapons
 		libtcod.console_set_default_background(console, libtcod.darkest_red)
 		libtcod.console_rect(console, x, y+10, 25, 2, True, libtcod.BKGND_SET)
 		
@@ -2271,22 +2245,10 @@ class Scenario:
 	# FUTURE: will pull data from the campaign day and campaign objects
 	def SpawnEnemyUnits(self):
 		
-		# TEMP - spawn infantry only
-		class_odds = {
-			#'Tankette' : 20.0,
-			#'Light Tank' : 10.0,
-			#'Armoured Car' : 90.0,
-			#'Anti-Tank Gun' : 40.0,
-			#'Field Gun' : 10.0,
-			#'Anti-Aircraft Gun' : 20.0,
-			'Infantry Squad' : 100.0
-		}
+		# pointers to data for class odds and unit type list from campaign object
 		
-		unit_type_list = {
-			"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Vickers 6-Ton Mark E", "7TP",
-			"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
-			"75mm wz. 97/25", "Riflemen"
-		}
+		class_odds = campaign.today['enemy_unit_class_odds']
+		unit_type_list = campaign.stats['enemy_unit_list']
 		
 		# load unit stats for reference from JSON file
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
@@ -2310,7 +2272,7 @@ class Scenario:
 			unit_class = None
 			while unit_class is None:
 				k, value = choice(list(class_odds.items()))
-				if GetPercentileRoll() <= value:
+				if GetPercentileRoll() <= float(value):
 					unit_class = k
 		
 			# FUTURE: if class unit type has already been set, use that one instead
@@ -2378,7 +2340,7 @@ class Scenario:
 			# create the unit
 			unit = Unit(unit_id)
 			unit.owning_player = 1
-			unit.nation = 'Poland'
+			unit.nation = campaign.stats['enemy_nations'][0]
 			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			unit.SpawnAt(hx, hy)
@@ -3671,10 +3633,10 @@ class Scenario:
 	def UpdateTimeCon(self):
 		libtcod.console_clear(time_con)
 		
-		text = GetDateText(campaign_day.calendar)
+		text = GetDateText(campaign.today)
 		libtcod.console_print_ex(time_con, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
-		text = str(campaign_day.calendar['hour']).zfill(2) + ':' + str(campaign_day.calendar['minute']).zfill(2)
+		text = str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
 		libtcod.console_print_ex(time_con, 10, 1, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
 		# current scenario phase
@@ -5422,25 +5384,25 @@ while not exit_game:
 					UpdateMainTitleCon(options_menu_active)
 					continue
 				
-				# allow player to select their tank (FUTURE: and tank name)
-				campaign.TankSelectionMenu()
-				# allow player to enter their character name
-				#campaign.CommanderNameMenu()
+				# allow player to select their tank and tank name
+				(unit_id, tank_name) = campaign.TankSelectionMenu()
 				
-				# generate a new campaign day object and record event
-				#campaign_day = CampaignDay()
-				#campaign_day.AddMessage('Start of combat day')
+				# create the player unit
+				campaign.player_unit = Unit(unit_id)
+				campaign.player_unit.unit_name = tank_name
+				campaign.player_unit.nation = campaign.stats['player_nation']
+				campaign.player_unit.GenerateNewPersonnel()
 				
-				# show briefing
+				
+				# TODO: allow player to review crew and set nicknames if any
+				
+				# generate a new campaign day object
+				campaign_day = CampaignDay()
+				
+				# TODO show start-of-day briefing
 				#DisplayCampaignDayBriefing()
 				
-				# TEMP testing
-
-				# create a campaign day and player unit
-				campaign_day = CampaignDay()
-				campaign.player_unit = Unit('Panzer 35(t)')
-				campaign.player_unit.nation = 'Germany'
-				campaign.player_unit.GenerateNewPersonnel()
+				# TEMP testing: jump right into a scenario
 				
 				# create a new scenario
 				scenario = Scenario()

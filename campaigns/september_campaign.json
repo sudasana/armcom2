@@ -32,6 +32,7 @@
 			"month" : "9",
 			"day" : "1",
 			"desc" : "The Polish Border",
+			"enemy_nation" : "Germany",
 			"arty_support_level" : "90.0",
 			"arty_support_step" : "10.0",
 			"enemy_unit_class_odds" : {

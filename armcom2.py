@@ -3099,7 +3099,7 @@ class Scenario:
 			# create the unit
 			unit = Unit(unit_id)
 			unit.owning_player = 1
-			unit.nation = campaign.stats['enemy_nations'][0]
+			unit.nation = campaign.today['enemy_nation']
 			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			unit.SpawnAt(hx, hy)

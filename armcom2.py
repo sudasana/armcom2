@@ -805,8 +805,7 @@ class CampaignDay:
 		libtcod.console_clear(cd_unit_con)
 		libtcod.console_set_default_foreground(cd_unit_con, libtcod.white)
 		
-		# draw enemy strength and organization levels
-		# only display if adjacent to player
+		# enemy strength level, only display if adjacent to player
 		libtcod.console_set_default_foreground(cd_unit_con, libtcod.red)
 		(player_hx, player_hy) = self.player_unit_location
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
@@ -814,10 +813,8 @@ class CampaignDay:
 			if not self.map_hexes[(hx,hy)].known_to_player: continue
 			if GetHexDistance(player_hx, player_hy, hx, hy) > 1: continue
 			text = str(self.map_hexes[(hx,hy)].enemy_strength)
-			text += ' '
-			text += str(self.map_hexes[(hx,hy)].enemy_organization)
 			(x,y) = self.PlotCDHex(hx, hy)
-			libtcod.console_print(cd_unit_con, x-1, y, text)
+			libtcod.console_print(cd_unit_con, x, y-1, text)
 		
 		# draw player unit group
 		(hx, hy) = self.player_unit_location
@@ -956,7 +953,6 @@ class CampaignDay:
 					libtcod.console_print(cd_command_con, 12, 21, 'Recon')
 				else:
 					libtcod.console_print(cd_command_con, 2, 10, 'Strength: ' + str(map_hex.enemy_strength))
-					libtcod.console_print(cd_command_con, 2, 11, 'Organization: ' + str(map_hex.enemy_organization))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -1023,11 +1019,12 @@ class CampaignDay:
 			libtcod.console_print(cd_hex_info_con, 0, 2, 'Friendly controlled')
 		else:
 			libtcod.console_print(cd_hex_info_con, 0, 2, 'Enemy controlled')
+			libtcod.console_print(cd_hex_info_con, 0, 3, 'Strength: ')
 			if cd_hex.known_to_player:
-				libtcod.console_print(cd_hex_info_con, 0, 3, 'Strength: ' + 
-					str(cd_hex.enemy_strength))
-				libtcod.console_print(cd_hex_info_con, 0, 4, 'Organization: ' + 
-					str(cd_hex.enemy_organization))
+				text = str(cd_hex.enemy_strength)
+			else:
+				text = 'Unknown'
+			libtcod.console_print(cd_hex_info_con, 10, 3, text)
 		
 		# roads
 		if len(cd_hex.dirt_roads) > 0:
@@ -1060,6 +1057,7 @@ class CampaignDay:
 		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
 		global cd_player_unit_con, cd_campaign_con, cd_gui_con, cd_hex_info_con
 		global time_weather_con
+		global scenario
 		
 		# create consoles
 		daymap_bkg = LoadXP('daymap_bkg.xp')
@@ -1083,7 +1081,8 @@ class CampaignDay:
 		self.UpdateCDCampaignCon()
 		self.UpdateCDHexInfoCon()
 		DisplayTimeInfo(time_weather_con)
-		self.UpdateCDDisplay()
+		if self.scenario is not None:
+			self.UpdateCDDisplay()
 		
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
@@ -1094,14 +1093,20 @@ class CampaignDay:
 		exit_loop = False
 		while not exit_loop:
 			
-			# FUTURE: if we've initiated a scenario or are resuming a saved game with a scenario
-			# running, go to the scenario loop now
-			
-			# check for exiting game
-			if session.exiting:
-				exit_loop = True
-				continue
-			
+			# if we've initiated a scenario or are resuming a saved game with a scenario
+			# running, go into the scenario loop now
+			if self.scenario is not None:
+				
+				scenario.DoScenarioLoop()
+				
+				if session.exiting:
+					exit_loop = True
+					continue
+				
+				self.UpdateCDDisplay()
+				
+				# FUTURE: handle result of a completed scenario
+				
 			# FUTURE: Check for end of day
 			
 			if libtcod.console_is_window_closed(): sys.exit()
@@ -1120,7 +1125,9 @@ class CampaignDay:
 			# game menu
 			if key.vk == libtcod.KEY_ESCAPE:
 				ShowGameMenu()
-				continue
+				if session.exiting:
+					exit_loop = True
+					continue
 			
 			# key commands
 			key_char = chr(key.c).lower()
@@ -1174,7 +1181,6 @@ class CampaignDay:
 						map_hex2.known_to_player = True
 						campaign_day.AdvanceClock(0, 15)
 						text = 'Estimated enemy strength in zone: ' + str(map_hex2.enemy_strength)
-						text += '; estimated organization: ' + str(map_hex2.enemy_organization) + '.'
 						ShowMessage(text)
 						DisplayTimeInfo(time_weather_con)
 						self.UpdateCDUnitCon()
@@ -1199,18 +1205,25 @@ class CampaignDay:
 						self.travel_direction = None
 						self.UpdateCDGUICon()
 						
-						# trigger battle encounter if enemy-controlled
-						ShowMessage('You enter the enemy-held zone.')
-						#self.InitScenario(hx, hy, source_direction)
+						# roll to trigger battle encounter if enemy-controlled
+						if map_hex2.controlled_by == 1:
+							ShowMessage('You enter the enemy-held zone.')
 							
+							# TEMP - always trigger a scenario
+							
+							scenario = Scenario(map_hex2)
+							self.scenario = scenario
+							continue
+						
+						# no battle triggered, update consoles
 						DisplayTimeInfo(time_weather_con)
 						self.UpdateCDControlCon()
 						self.UpdateCDUnitCon()
 						self.UpdateCDCommandCon()
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()
-						
-					SaveGame()
+					
+						SaveGame()
 				
 			# supply menu active
 			elif self.active_menu == 5:
@@ -1242,22 +1255,9 @@ class CDMapHex:
 		self.controlled_by = 1		# which player side currently controls this zone
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
 		
-		# enemy strength and organization
-		roll = libtcod.random_get_int(0, 1, 6)
-		if roll <= 3:
-			self.enemy_strength = 1
-		elif roll < 6:
-			self.enemy_strength = 2
-		else:
-			self.enemy_strength = 3
+		# set enemy strength level
+		self.enemy_strength = libtcod.random_get_int(0, 1, 5) + libtcod.random_get_int(0, 0, 5)
 		
-		roll = libtcod.random_get_int(0, 1, 6)
-		if roll == 1:
-			self.enemy_organization = 1
-		elif roll <= 4:
-			self.enemy_organization = 2
-		else:
-			self.enemy_organization = 3
 	
 	# generate a random terrain type for this hex
 	# FUTURE: can pull data from the campaign day to determine possible terrain types
@@ -2961,9 +2961,10 @@ class MapHex:
 
 # Scenario: represents a single battle encounter
 class Scenario:
-	def __init__(self):
+	def __init__(self, cd_map_hex):
 		
-		self.exiting_scenario = False			# flag to exit out of the scenario
+		self.init_complete = False			# flag to say that scenario has already been set up
+		self.cd_map_hex = cd_map_hex			# Campaign Day map hex where this scenario is taking place
 		
 		# generate hex map: single hex surrounded by 4 hex rings. Final ring is not normally
 		# part of play and stores units that are coming on or going off of the map proper
@@ -4764,7 +4765,7 @@ class Scenario:
 	
 	
 	# main input loop for scenarios
-	def DoScenarioLoop(self, loading_game=False):
+	def DoScenarioLoop(self):
 		
 		# set up and load scenario consoles
 		global bkg_console, crew_con, cmd_menu_con, scen_info_con
@@ -4789,34 +4790,37 @@ class Scenario:
 		attack_con = NewConsole(27, 60, libtcod.black, libtcod.white)
 		
 		# we're starting a new scenario
-		if not loading_game:
+		if not self.init_complete:
 		
 			# set up player unit
-			scenario.player_unit.facing = 0
-			scenario.player_unit.turret_facing = 0
-			scenario.player_unit.squad = []
-			scenario.player_unit.SpawnAt(0,0)
+			self.player_unit = campaign.player_unit
+			self.player_unit.facing = 0
+			self.player_unit.turret_facing = 0
+			self.player_unit.squad = []
+			self.player_unit.SpawnAt(0,0)
 			
 			# set up player squad
 			for i in range(4):
-				unit = Unit(scenario.player_unit.unit_id)
-				unit.nation = scenario.player_unit.nation
+				unit = Unit(self.player_unit.unit_id)
+				unit.nation = self.player_unit.nation
 				unit.ai = AI(unit)
 				unit.GenerateNewPersonnel()
 				unit.facing = 0
 				unit.turret_facing = 0
 				unit.SpawnAt(0,0)
-				scenario.player_unit.squad.append(unit)
+				self.player_unit.squad.append(unit)
 			
 			# generate enemy units
 			self.SpawnEnemyUnits()
 			
 			# set up player unit for first activation
-			scenario.player_unit.BuildCmdLists()
-			scenario.player_unit.ResetForNewTurn()
-			for unit in scenario.player_unit.squad:
+			self.player_unit.BuildCmdLists()
+			self.player_unit.ResetForNewTurn()
+			for unit in self.player_unit.squad:
 				unit.BuildCmdLists()
 				unit.ResetForNewTurn()
+			
+			self.init_complete = True
 		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
@@ -6127,7 +6131,7 @@ while not exit_game:
 				LoadGame()
 			
 			else:
-				# confirm savegame overwrite - TEMP disabled
+				# confirm savegame overwrite - TEMP disabled for testing
 				#if os.path.exists('savegame.dat'):
 				#	text = 'Starting a new campaign will PERMANTLY ERASE the existing saved campaign.'
 				#	result = ShowNotification(text, confirm=True)
@@ -6155,28 +6159,22 @@ while not exit_game:
 				campaign.player_unit.nation = campaign.stats['player_nation']
 				campaign.player_unit.GenerateNewPersonnel()
 				
-				
 				# TODO: allow player to review crew and set nicknames if any
 				
 				# generate a new campaign day object
 				campaign_day = CampaignDay()
 				
+				# placeholder for the currently active scenario
+				scenario = None
+				
 				# TODO show start-of-day briefing
 				#DisplayCampaignDayBriefing()
-				
-				# TEMP testing: jump right into a scenario
-				
-				# create a new scenario
-				scenario = Scenario()
-				scenario.player_unit = campaign.player_unit
 				
 			# pause main theme if playing
 			if main_theme is not None:
 				mixer.Mix_PauseMusic()
 			
 			campaign_day.DoCampaignDayLoop()
-			# TEMP: run the test scenario
-			#scenario.DoScenarioLoop(loading_game=(key_char=='c'))
 			
 			# reset exiting flag
 			session.exiting = False
@@ -6188,9 +6186,6 @@ while not exit_game:
 			
 			UpdateMainTitleCon(options_menu_active)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-
-
-
 
 print(NAME + ' shutting down')			# shutdown message
 # END #

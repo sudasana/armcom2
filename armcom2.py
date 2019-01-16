@@ -574,9 +574,21 @@ class Campaign:
 		
 		# TODO: day description
 		
-		# TODO: objectives
+		# TODO: day objectives
 		
-		# TODO: player forces
+		# player support
+		text = 'Air Support: '
+		if 'air_support_level' not in campaign.today:
+			text += 'None'
+		else:
+			text += str(campaign.today['air_support_level'])
+		libtcod.console_print(con, 33, 33, text)
+		text = 'Artillery Support: '
+		if 'arty_support_level' not in campaign.today:
+			text += 'None'
+		else:
+			text += str(campaign.today['arty_support_level'])
+		libtcod.console_print(con, 33, 34, text)
 		
 		# TODO: expected enemy forces
 		
@@ -610,12 +622,15 @@ class Campaign:
 class CampaignDay:
 	def __init__(self):
 		
-		# current hour, and minute
-		# TODO: set initial time from campaign info
-		self.day_clock = {
-			'hour' : 4,
-			'minute' : 45
-		}
+		# current hour, and minute: set initial time from campaign info
+		self.day_clock = {}
+		self.day_clock['hour'] = int(campaign.today['start_hour'])
+		self.day_clock['minute'] = int(campaign.today['start_minute'])
+		
+		# end of day
+		self.end_of_day = {}
+		self.end_of_day['hour'] = int(campaign.today['end_hour'])
+		self.end_of_day['minute'] = int(campaign.today['end_minute'])
 		
 		# log of important events during the day
 		self.day_log = []

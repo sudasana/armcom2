@@ -1839,9 +1839,6 @@ class AI:
 		# no action if it's not alive
 		if not self.owner.alive: return
 		
-		# TEMP - no AI
-		return
-		
 		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
 		roll = GetPercentileRoll()
@@ -2630,25 +2627,33 @@ class Unit:
 	def Attack(self, weapon, target):
 		
 		# make sure correct information has been supplied
-		if weapon is None or target is None:
-			return False
+		if weapon is None or target is None: return False
 		
 		# make sure attack is possible
-		if scenario.CheckAttack(self, weapon, target) != '':
-			return False
+		if scenario.CheckAttack(self, weapon, target) != '': return False
 		
-		# calculate attack profile
-		profile = scenario.CalcAttack(self, weapon, target)
+		# set weapon and unit fired flags
+		weapon.fired = True
+		self.fired = True
 		
-		# attack not possible
-		if profile is None: return False
+		# display message if player is the target
+		if target == scenario.player_unit:
+			text = self.GetName() + ' fires at you with ' + weapon.stats['name']
+			ShowMessage(text)
 		
-		
-		# attack loop, possible to maintain RoF and do multiple attacks
+		# attack loop, possible to maintain RoF and do multiple attacks within this loop
 		attack_finished = False
 		while not attack_finished:
 			
-			# display attack profile on screen if player involved
+			# calculate attack profile
+			profile = scenario.CalcAttack(self, weapon, target)
+			
+			# attack not possible for some reason
+			if profile is None:
+				attack_finished = True
+				continue
+			
+			# display attack profile on screen if is player involved
 			if self == scenario.player_unit or target == scenario.player_unit:
 				scenario.DisplayAttack(profile)
 				# activate the attack console and display to screen
@@ -2661,11 +2666,12 @@ class Unit:
 						scenario.attack_con_active = False
 						return True
 			
-			# otherwise display a message for the player
-			else:
-				scenario.Message(self.GetName() + ' fires at ' + target.GetName() + ' with ' + weapon.stats['name'])
-				Wait(50)
-		
+			# expend a shell if gun weapon is firing
+			if weapon.GetStat('type') == 'Gun' and weapon.ammo_type is not None:
+				weapon.ammo_stores[weapon.ammo_type] -= 1
+				scenario.UpdateContextCon()
+			
+			
 			##### Attack Animation and Sound Effects #####
 			
 			if weapon.GetStat('type') == 'Gun':
@@ -2714,12 +2720,13 @@ class Unit:
 					Wait(3)
 				libtcod.console_clear(animation_con)
 			
-			# set weapon and unit fired flags
-			weapon.fired = True
-			self.fired = True
 			
 			# do the roll, display results to the screen, and modify the attack profile
 			profile = scenario.DoAttackRoll(profile)
+			
+			# add one level of acquired target if firing gun
+			if weapon.GetStat('type') == 'Gun':
+				self.AddAcquiredTarget(target)
 			
 			# wait for the player if they are involved
 			# if RoF is maintained, may choose to attack again
@@ -2742,10 +2749,6 @@ class Unit:
 						if key_char == 'f' and weapon.maintained_rof:
 							attack_finished = False
 							end_pause = True
-			
-			# add one level of acquired target if firing gun
-			if weapon.GetStat('type') == 'Gun':
-				self.AddAcquiredTarget(target)
 			
 			# apply results of this attack if any
 			
@@ -3210,8 +3213,11 @@ class Scenario:
 		
 		# check that current ammo is available and this ammo would affect the target
 		if weapon.GetStat('type') == 'Gun':
+			
 			if weapon.ammo_type is None:
 				return 'No ammo loaded'
+			if weapon.ammo_stores[weapon.ammo_type] == 0:
+				return 'No more ammo of the selected type'
 			if weapon.ammo_type == 'AP' and target.GetStat('armour') is None:
 				return 'AP has no effect on target'
 		
@@ -3780,15 +3786,13 @@ class Scenario:
 		# check to see if this weapon maintains Rate of Fire
 		def CheckRoF(profile):
 			
-			# TODO: guns must have a Loader on proper order
-			#if profile['weapon'].GetStat('type') == 'Gun':
-			#	if not profile['attacker'].CheckPersonnelAction(['Loader'], 'Reload'):
-			#		return False
-				
-				# guns must also have at least one shell of the current type available
-			#	if profile['weapon'].current_ammo is not None:
-			#		if profile['weapon'].ammo_stores[profile['weapon'].current_ammo] == 0:
-			#			return False			
+			# FUTURE: guns must have a Loader on proper order to get RoF
+			
+			# guns must have at least one shell of the current type available
+			if profile['weapon'].GetStat('type') == 'Gun':
+				if profile['weapon'].ammo_type is not None:
+					if profile['weapon'].ammo_stores[profile['weapon'].ammo_type] == 0:
+						return False
 			
 			base_chance = float(profile['weapon'].GetStat('rof'))
 			roll = GetPercentileRoll()
@@ -4736,7 +4740,7 @@ class Scenario:
 		
 		if unit.owning_player == 1 and not unit.spotted:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
-			libtcod.console_print(unit_info_con, 0, 0, 'Possible Enemy')
+			libtcod.console_print(unit_info_con, 0, 0, 'Unspotted Enemy')
 		else:
 			if unit == scenario.player_unit:
 				col = libtcod.white
@@ -4868,7 +4872,8 @@ class Scenario:
 			self.player_unit.SpawnAt(0,0)
 			
 			# set up player squad
-			for i in range(4):
+			# TEMP - only 1 in squad
+			for i in range(1):
 				unit = Unit(self.player_unit.unit_id)
 				unit.nation = self.player_unit.nation
 				unit.ai = AI(unit)
@@ -4922,6 +4927,7 @@ class Scenario:
 			if self.advance_phase:
 				self.advance_phase = False
 				self.AdvanceToNextPhase()
+				SaveGame()
 				continue
 			
 			# get keyboard and/or mouse event

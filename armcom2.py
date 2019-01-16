@@ -134,8 +134,8 @@ GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
 
 # text names for months
 MONTH_NAMES = [
-	'', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
-	'September', 'October', 'November', 'December'
+	'', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+	'October', 'November', 'December'
 ]
 
 # text names for scenario phases
@@ -549,6 +549,59 @@ class Campaign:
 				UpdateTankSelectionScreen(selected_unit, player_tank_name)
 		
 		return (selected_unit.unit_id, player_tank_name)
+	
+	# display a briefing for the start of a new campaign day
+	def ShowCDBriefing(self):
+		
+		# generate the briefing screen
+		libtcod.console_clear(con)
+		
+		for y in range(WINDOW_HEIGHT):
+			col = libtcod.Color(int(255 * (y / WINDOW_HEIGHT)), int(170 * (y / WINDOW_HEIGHT)), 0)
+			libtcod.console_set_default_background(con, col)
+			libtcod.console_rect(con, 0, y, WINDOW_WIDTH, 1, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(con, libtcod.black)
+		
+		libtcod.console_blit(LoadXP('CD_briefing.xp'), 0, 0, 0, 0, con, 31, 3)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		
+		# current date, time, and location
+		libtcod.console_print_ex(con, 45, 4, libtcod.BKGND_NONE, libtcod.CENTER, GetDateText(campaign.today))
+		text = campaign.today['start_hour'].zfill(2) + ':' + campaign.today['start_minute'].zfill(2)
+		libtcod.console_print_ex(con, 45, 5, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		text = campaign.today['location']
+		libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		# TODO: day description
+		
+		# TODO: objectives
+		
+		# TODO: player forces
+		
+		# TODO: expected enemy forces
+		
+		# FUTURE: weather forecast
+		
+		# end of day
+		text = 'End of Day: ' + campaign.today['end_hour'].zfill(2) + ':' + campaign.today['end_minute'].zfill(2)
+		libtcod.console_print_ex(con, 45, 50, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		
+		# wait for player input
+		exit_loop = False
+		cont = False
+		while not exit_loop:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			if not GetInputEvent(): continue
+			
+			if key.vk in [libtcod.KEY_ENTER, libtcod.KEY_ESCAPE]:
+				if key.vk == libtcod.KEY_ENTER:
+					cont = True
+				exit_loop = True
+		return cont
 
 
 
@@ -5175,8 +5228,6 @@ def WaitForContinue(allow_cancel=False):
 	while not end_pause:
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
-		
-		# get keyboard and/or mouse event
 		if not GetInputEvent(): continue
 		
 		if key.vk == libtcod.KEY_BACKSPACE and allow_cancel:
@@ -6161,14 +6212,20 @@ while not exit_game:
 				
 				# TODO: allow player to review crew and set nicknames if any
 				
+				# show start-of-day briefing
+				# FUTURE: can return to calendar view from here instead of starting day
+				# for now, another chance to cancel campaign day
+				result = campaign.ShowCDBriefing()
+				if not result:
+					campaign = None
+					UpdateMainTitleCon(options_menu_active)
+					continue
+				
 				# generate a new campaign day object
 				campaign_day = CampaignDay()
 				
 				# placeholder for the currently active scenario
 				scenario = None
-				
-				# TODO show start-of-day briefing
-				#DisplayCampaignDayBriefing()
 				
 			# pause main theme if playing
 			if main_theme is not None:

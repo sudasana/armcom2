@@ -1261,7 +1261,10 @@ class CampaignDay:
 					
 					# recon
 					if key_char == 'r':
+						# already reconned
 						if map_hex2.known_to_player: continue
+						# not enemy-controlled
+						if map_hex2.controlled_by = 0: continue
 						map_hex2.known_to_player = True
 						campaign_day.AdvanceClock(0, 15)
 						text = 'Estimated enemy strength in zone: ' + str(map_hex2.enemy_strength)
@@ -1854,6 +1857,9 @@ class AI:
 		
 		# no action if it's not alive
 		if not self.owner.alive: return
+		
+		# TEMP no AI action
+		return
 		
 		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
@@ -3829,6 +3835,10 @@ class Scenario:
 			for i in range(6):
 				roll = GetPercentileRoll()
 				
+				# TEMP - player always hits
+				if i == 5:
+					roll = 3.0
+				
 				# clear any previous text
 				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
 					libtcod.CENTER, '      ')
@@ -4328,7 +4338,7 @@ class Scenario:
 			all_enemies_dead = True
 			for unit in self.units:
 				if unit.owning_player == 1 and unit.alive:
-					if GetHexDistance(0, 0, unit.hx, unit.hy) <= 3: continue
+					if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
 					all_enemies_dead = False
 					break
 			if all_enemies_dead:

@@ -1171,9 +1171,25 @@ class CampaignDay:
 					exit_loop = True
 					continue
 				
-				self.UpdateCDDisplay()
+				# scenario is finished
+				if scenario.finished:
+					
+					self.scenario = None
+					scenario = None
+					
+					# capture area if player is still alive
+					if campaign.player_unit.alive:
+						(hx, hy) = self.player_unit_location
+						map_hex = self.map_hexes[(hx,hy)]
+						map_hex.controlled_by = 0
+						SaveGame()
 				
-				# FUTURE: handle result of a completed scenario
+				DisplayTimeInfo(time_weather_con)
+				self.UpdateCDControlCon()
+				self.UpdateCDUnitCon()
+				self.UpdateCDCommandCon()
+				self.UpdateCDHexInfoCon()
+				self.UpdateCDDisplay()
 				
 			# FUTURE: Check for end of day
 			
@@ -3036,6 +3052,7 @@ class Scenario:
 		
 		self.init_complete = False			# flag to say that scenario has already been set up
 		self.cd_map_hex = cd_map_hex			# Campaign Day map hex where this scenario is taking place
+		self.finished = False				# Scenario has ended, returning to Campaign Day map
 		
 		# generate hex map: single hex surrounded by 4 hex rings. Final ring is not normally
 		# part of play and stores units that are coming on or going off of the map proper
@@ -4307,6 +4324,18 @@ class Scenario:
 		# enemy action
 		elif self.active_player == 1:
 			
+			# check for end of scenario due to no more alive enemy units on map
+			all_enemies_dead = True
+			for unit in self.units:
+				if unit.owning_player == 1 and unit.alive:
+					if GetHexDistance(0, 0, unit.hx, unit.hy) <= 3: continue
+					all_enemies_dead = False
+					break
+			if all_enemies_dead:
+				ShowMessage('Victory! No enemy units remain in this area.')
+				self.finished = True
+				return
+			
 			# run through list in reverse since we might remove units from play
 			for unit in reversed(self.units):
 				if unit.owning_player == 0: continue
@@ -4918,9 +4947,11 @@ class Scenario:
 			if session.exiting:
 				return
 			
-			# emergency exit in case of endless loop
-			if libtcod.console_is_window_closed(): sys.exit()
+			# check for scenario finished, return to campaign day map
+			if scenario.finished:
+				return
 			
+			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_flush()
 			
 			# trigger advance to next phase
@@ -4930,7 +4961,6 @@ class Scenario:
 				SaveGame()
 				continue
 			
-			# get keyboard and/or mouse event
 			keypress = GetInputEvent()
 			
 			##### Mouse Commands #####

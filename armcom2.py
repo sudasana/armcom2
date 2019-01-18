@@ -657,6 +657,9 @@ class CampaignDay:
 		self.end_of_day['hour'] = int(campaign.today['end_hour'])
 		self.end_of_day['minute'] = int(campaign.today['end_minute'])
 		
+		# TODO: flag set when end of day has been reached
+		self.ended = False
+		
 		# log of important events during the day
 		self.day_log = []
 		
@@ -691,6 +694,16 @@ class CampaignDay:
 		while self.day_clock['minute'] >= 60:
 			self.day_clock['hour'] += 1
 			self.day_clock['minute'] -= 60
+		self.CheckForEndOfDay()
+	
+	
+	# sets flag if we've met or exceeded the set length of the combat day
+	def CheckForEndOfDay(self):
+		if self.day_clock['hour'] > self.end_of_day['hour']:
+			self.ended = True
+		if self.day_clock['hour'] == self.end_of_day['hour']:
+			if self.day_clock['minute'] >= self.end_of_day['minute']:
+				self.ended = True
 	
 	
 	# generate roads linking zones; only dirt roads for now
@@ -749,6 +762,94 @@ class CampaignDay:
 		(hx_m, hy_m) = CD_DESTHEX[direction]
 		return (hx1+hx_m, hy1+hy_m)
 	
+	
+	# display a summary of a completed campaign day
+	def DisplayCampaignDaySummary(self):
+	
+		RECORD_ORDER = [
+			'Map Areas Captured',
+			'Gun Hits',
+			'Vehicles Destroyed',
+			'Guns Destroyed',
+			'Infantry Destroyed'
+		]
+		
+		# create a local copy of the current screen to re-draw when we're done
+		temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+		libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+		
+		# darken screen background
+		libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+		
+		# build info window
+		temp_con = libtcod.console_new(29, 54)
+		libtcod.console_set_default_background(temp_con, libtcod.black)
+		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+		libtcod.console_clear(temp_con)
+		DrawFrame(temp_con, 0, 0, 29, 54)
+		libtcod.console_set_default_foreground(temp_con, libtcod.white)
+		
+		# campaign and calendar day info
+		libtcod.console_print_ex(temp_con, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+			campaign.stats['name'])
+		libtcod.console_print_ex(temp_con, 14, 4, libtcod.BKGND_NONE, libtcod.CENTER,
+			GetDateText(campaign.today))
+		
+		# day result: survived or destroyed
+		libtcod.console_print_ex(temp_con, 14, 7, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Outcome of Day:')
+		
+		#if campaign_day.abandoned_tank:
+		#	col = libtcod.light_grey
+		#	text = 'ABANDONED TANK'
+		if campaign.player_unit.alive:
+			col = GOLD_COL
+			text = 'SURVIVED'
+		else:
+			col = ENEMY_UNIT_COL
+			text = 'DESTROYED'
+		libtcod.console_set_default_foreground(temp_con, col)
+		libtcod.console_print_ex(temp_con, 14, 8, libtcod.BKGND_NONE, libtcod.CENTER,
+			text)
+		
+		# total VP
+		libtcod.console_set_default_foreground(temp_con, libtcod.white)
+		libtcod.console_print_ex(temp_con, 14, 11, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Total VP Earned:')
+		libtcod.console_print_ex(temp_con, 14, 13, libtcod.BKGND_NONE, libtcod.CENTER,
+			str(campaign.player_vp))
+		
+		# day stats
+		y = 17
+		for text in RECORD_ORDER:
+			libtcod.console_print(temp_con, 2, y, text + ':')
+			libtcod.console_print_ex(temp_con, 26, y, libtcod.BKGND_NONE, libtcod.RIGHT,
+				str(campaign_day.records[text]))
+			y += 1
+			if y == 49:
+				break
+		
+		libtcod.console_set_default_foreground(temp_con, ACTION_KEY_COL)
+		libtcod.console_print(temp_con, 7, 51, 'Enter')
+		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+		libtcod.console_print(temp_con, 14, 51, 'Continue')
+		
+		# display console to screen
+		libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 31, 3)
+		
+		# get input from player
+		exit_menu = False
+		while not exit_menu:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			if not GetInputEvent(): continue
+			
+			# end menu
+			if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_ENTER]:
+				exit_menu = True
+				
+	
+	##### Campaign Day Console Functions #####
 	
 	# generate/update the campaign day map console
 	def UpdateCDMapCon(self):
@@ -1214,6 +1315,7 @@ class CampaignDay:
 						map_hex = self.map_hexes[(hx,hy)]
 						map_hex.controlled_by = 0
 						campaign.AwardVP(self.capture_zone_vp)
+						self.CheckForEndOfDay()
 						SaveGame()
 				
 				DisplayTimeInfo(time_weather_con)
@@ -1222,8 +1324,14 @@ class CampaignDay:
 				self.UpdateCDCommandCon()
 				self.UpdateCDHexInfoCon()
 				self.UpdateCDDisplay()
-				
-			# FUTURE: Check for end of day
+			
+			# check for end of campaign day
+			if self.ended:
+				ShowMessage('Your combat day has ended.') 
+				EraseGame()
+				self.DisplayCampaignDaySummary()
+				exit_loop = True
+				continue
 			
 			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_flush()
@@ -1391,7 +1499,7 @@ class CDMapHex:
 		
 		roll = GetPercentileRoll()
 		
-		# TEMP: settings are for Poland/September campaign
+		# TEMP: these settings are for Poland/September campaign
 		if roll <= 40.0:
 			self.terrain_type = 'Flat'
 		elif roll <= 50.0:

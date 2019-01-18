@@ -60,6 +60,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2019-01-02'			# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -1213,6 +1214,12 @@ class CampaignDay:
 					exit_loop = True
 					continue
 			
+			# debug menu
+			elif key.vk == libtcod.KEY_F2:
+				if not DEBUG: continue
+				ShowDebugMenu()
+				continue
+			
 			# key commands
 			key_char = chr(key.c).lower()
 			
@@ -1386,6 +1393,12 @@ class Session:
 		
 		# sound samples
 		self.sample = {}
+		
+		# load debug flags if in debug mode
+		self.debug = {}
+		if DEBUG:
+			with open(DATAPATH + 'debug.json', encoding='utf8') as data_file:
+				self.debug = json.load(data_file)
 		
 		# store player crew command defintions
 		with open(DATAPATH + 'crew_command_defs.json', encoding='utf8') as data_file:
@@ -3004,6 +3017,12 @@ class Unit:
 	# destroy this unit and remove it from the game
 	def DestroyMe(self):
 		
+		# check for debug flag
+		if self == scenario.player_unit and DEBUG:
+			if session.debug['Player Immortality']:
+				print('DEBUG: Player saved from death')
+				return
+		
 		# TEMP: catch player destruction
 		if self == scenario.player_unit:
 			Wait(50)
@@ -3835,9 +3854,11 @@ class Scenario:
 			for i in range(6):
 				roll = GetPercentileRoll()
 				
-				# TEMP - player always hits
-				if i == 5:
-					roll = 3.0
+				# check for debug flag
+				if i == 5 and profile['attacker'] == scenario.player_unit:
+					if session.debug['Player Always Hits']:
+						roll = 3.0
+						print('DEBUG: Player hit automatically')
 				
 				# clear any previous text
 				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
@@ -4911,7 +4932,7 @@ class Scenario:
 			self.player_unit.SpawnAt(0,0)
 			
 			# set up player squad
-			# TEMP - only 1 in squad
+			# TEMP for testing - only 1 in squad
 			for i in range(1):
 				unit = Unit(self.player_unit.unit_id)
 				unit.nation = self.player_unit.nation
@@ -5008,6 +5029,12 @@ class Scenario:
 			# game menu
 			if key.vk == libtcod.KEY_ESCAPE:
 				ShowGameMenu()
+				continue
+			
+			# debug menu
+			elif key.vk == libtcod.KEY_F2:
+				if not DEBUG: continue
+				ShowDebugMenu()
 				continue
 			
 			# player not active
@@ -5931,6 +5958,84 @@ def ShowTextInputMenu(prompt, original_text, max_length, string_list):
 	del temp_con
 	return text
 
+
+# display the debug flags menu, not enabled in distribution versions
+def ShowDebugMenu():
+	
+	# draw the debug menu to screen
+	def DrawDebugMenu():
+		libtcod.console_clear(con)
+		libtcod.console_set_default_foreground(con, libtcod.light_red)
+		libtcod.console_print_ex(con, WINDOW_XM, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'DEBUG MENU')
+		
+		y = 6
+		n = 1
+		for k, value in session.debug.items():
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print(con, 33, y, chr(n+64))
+			if value:
+				libtcod.console_set_default_foreground(con, libtcod.white)
+			else:
+				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
+			libtcod.console_print(con, 35, y, k)
+			y += 2
+			n += 1
+		
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print(con, 33, 56, 'Esc')
+		libtcod.console_print(con, 33, 57, 'Enter')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print(con, 39, 56, 'Return to Game')
+		libtcod.console_print(con, 39, 57, 'Save and Return')
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		
+	# build a dictionary of ordered letter to key values
+	letter_dict = {}
+	n = 1
+	for k, value in session.debug.items():
+		letter_dict[chr(n+64)] = k
+		n += 1
+	
+	# save the current root console
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+	# draw the menu for the first time
+	DrawDebugMenu()
+	
+	exit_menu = False
+	while not exit_menu:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		if not GetInputEvent(): continue
+		
+		if key.vk == libtcod.KEY_ESCAPE:
+			exit_menu = True
+			continue
+		
+		elif key.vk == libtcod.KEY_ENTER:
+			# save current debug settings
+			with open(DATAPATH + 'debug.json', 'w', encoding='utf8') as data_file:
+				json.dump(session.debug, data_file, indent=1)
+			
+			exit_menu = True
+			continue
+		
+		key_char = chr(key.c).upper()
+		
+		if key_char in letter_dict:
+			k = letter_dict[key_char]
+			# flip the flag setting
+			session.debug[k] = not session.debug[k]
+			DrawDebugMenu()
+			continue
+	
+	# re-draw original root console
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	del temp_con
+	
+	
 
 
 ##########################################################################################

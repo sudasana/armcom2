@@ -1264,7 +1264,7 @@ class CampaignDay:
 						# already reconned
 						if map_hex2.known_to_player: continue
 						# not enemy-controlled
-						if map_hex2.controlled_by = 0: continue
+						if map_hex2.controlled_by == 0: continue
 						map_hex2.known_to_player = True
 						campaign_day.AdvanceClock(0, 15)
 						text = 'Estimated enemy strength in zone: ' + str(map_hex2.enemy_strength)

@@ -296,6 +296,8 @@ HE_AP_CHANCE = [
 class Campaign:
 	def __init__(self):
 		
+		self.player_vp = 0		# total player victory points
+		
 		# placeholder for player unit
 		self.player_unit = None
 		
@@ -304,6 +306,11 @@ class Campaign:
 		
 		# holder for active enemy units
 		self.enemy_units = []
+	
+	
+	# award VP to the player
+	def AwardVP(self, vp_to_add):
+		self.player_vp += vp_to_add
 	
 	
 	# menu to select a campaign
@@ -622,6 +629,23 @@ class Campaign:
 # which may spawn a Scenario
 class CampaignDay:
 	def __init__(self):
+		
+		# victory point rewards for this campaign day
+		self.capture_zone_vp = 2
+		self.unit_destruction_vp = {
+			'Infantry': 1,
+			'Gun' : 2,
+			'Vehicle': 4 
+		}
+		
+		# records for end-of-day summary
+		self.records = {
+			'Map Areas Captured' : 0,
+			'Gun Hits' : 0,
+			'Vehicles Destroyed' : 0,
+			'Guns Destroyed' : 0,
+			'Infantry Destroyed' : 0
+		}
 		
 		# current hour, and minute: set initial time from campaign info
 		self.day_clock = {}
@@ -1054,6 +1078,12 @@ class CampaignDay:
 	# generate/update the campaign info console
 	def UpdateCDCampaignCon(self):
 		libtcod.console_clear(cd_campaign_con)
+		
+		# current VP total
+		libtcod.console_set_default_foreground(cd_campaign_con, ACTION_KEY_COL)
+		libtcod.console_print(cd_campaign_con, 0, 0, 'Campaign Info')
+		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
+		libtcod.console_print(cd_campaign_con, 1, 2, 'VP: ' + str(campaign.player_vp))
 	
 	
 	# generate/update the zone info console
@@ -1183,6 +1213,7 @@ class CampaignDay:
 						(hx, hy) = self.player_unit_location
 						map_hex = self.map_hexes[(hx,hy)]
 						map_hex.controlled_by = 0
+						campaign.AwardVP(self.capture_zone_vp)
 						SaveGame()
 				
 				DisplayTimeInfo(time_weather_con)
@@ -1304,6 +1335,7 @@ class CampaignDay:
 							ShowMessage('You enter the enemy-held zone.')
 							
 							# TEMP - always trigger a scenario
+							campaign_day.AdvanceClock(0, 15)
 							
 							scenario = Scenario(map_hex2)
 							self.scenario = scenario
@@ -1440,10 +1472,10 @@ class Session:
 			#'menu_select',
 			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
 			'37mm_he_explosion_00', '37mm_he_explosion_01',
-			#'vehicle_explosion_00',
+			'vehicle_explosion_00',
 			'at_rifle_firing',
 			#'plane_incoming_00', 'stuka_divebomb_00',
-			#'armour_save_00', 'armour_save_01',
+			'armour_save_00', 'armour_save_01',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'wheeled_moving_00', 'wheeled_moving_01', 'wheeled_moving_02',
 			'zb_53_mg_00',
@@ -1870,9 +1902,6 @@ class AI:
 		
 		# no action if it's not alive
 		if not self.owner.alive: return
-		
-		# TEMP no AI action
-		return
 		
 		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
@@ -2428,7 +2457,7 @@ class Unit:
 			position.crewman = self.personnel_list[-1]
 	
 	
-	# move this unit into the given scenario map hex
+	# spawn this unit into the given scenario map hex
 	def SpawnAt(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
@@ -2852,7 +2881,7 @@ class Unit:
 		# no hits to resolve! doing fine!
 		if len(self.ap_hits_to_resolve) == 0: return
 		
-		# TEMP? no effect if not vehicle
+		# no effect if not vehicle
 		if self.GetStat('category') != 'Vehicle':
 			self.ap_hits_to_resolve = []
 			return
@@ -2878,6 +2907,9 @@ class Unit:
 				
 				# do the attack roll; modifies the attack profile
 				profile = scenario.DoAttackRoll(profile)
+				
+				if profile['result'] == 'NO PENETRATION':
+					PlaySoundFor(self, 'armour_save')
 				
 				# wait if player is involved
 				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
@@ -3023,7 +3055,10 @@ class Unit:
 				print('DEBUG: Player saved from death')
 				return
 		
-		# TEMP: catch player destruction
+		if self.GetStat('category') == 'Vehicle':
+			PlaySoundFor(self, 'vehicle_explosion')
+		
+		# TEMP: catch player destruction and exit game
 		if self == scenario.player_unit:
 			Wait(50)
 			sys.exit()
@@ -3045,6 +3080,19 @@ class Unit:
 			scenario.selected_target = None
 		if self in scenario.target_list:
 			scenario.target_list.remove(self)
+		
+		# award VP to player for unit destruction
+		if self.owning_player == 1:
+			campaign.AwardVP(campaign_day.unit_destruction_vp[self.GetStat('category')])
+			
+			# add to day records
+			category = self.GetStat('category')
+			if category == 'Vehicle':
+				campaign_day.records['Vehicles Destroyed'] += 1
+			elif category == 'Gun':
+				campaign_day.records['Guns Destroyed'] += 1
+			elif category == 'Infantry':
+				campaign_day.records['Infantry Destroyed'] += 1
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
@@ -3958,7 +4006,7 @@ class Scenario:
 		
 		# check for RoF for gun / MG attacks
 		if profile['type'] != 'ap' and profile['weapon'].GetStat('rof') is not None:
-			# TEMP: player only for now
+			# TEMP: only player can maintain RoF
 			if profile['attacker'] == scenario.player_unit:
 				profile['weapon'].maintained_rof = CheckRoF(profile) 
 				if profile['weapon'].maintained_rof:
@@ -4338,7 +4386,6 @@ class Scenario:
 			# player squad acts first
 			for unit in scenario.player_unit.squad:
 				unit.DoSpotChecks()
-			for unit in scenario.player_unit.squad:
 				unit.ai.DoActivation()
 				
 				# do recover roll for this unit
@@ -4419,8 +4466,6 @@ class Scenario:
 			#libtcod.console_print(context_con, 0, 10, 'HD')
 			
 			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
-			
-			# TEMP - will have to poll chances from player unit
 			
 			# forward move
 			text = str(scenario.player_unit.forward_move_chance) + '%%'
@@ -4932,8 +4977,7 @@ class Scenario:
 			self.player_unit.SpawnAt(0,0)
 			
 			# set up player squad
-			# TEMP for testing - only 1 in squad
-			for i in range(1):
+			for i in range(4):
 				unit = Unit(self.player_unit.unit_id)
 				unit.nation = self.player_unit.nation
 				unit.ai = AI(unit)
@@ -6085,10 +6129,17 @@ def PlaySoundFor(obj, action):
 			return
 	
 	elif action == 'he_explosion':
-		
-		# TEMP - only one type of explosion sound
 		n = libtcod.random_get_int(0, 0, 1)
 		PlaySound('37mm_he_explosion_0' + str(n))
+		return
+	
+	elif action == 'armour_save':
+		n = libtcod.random_get_int(0, 0, 1)
+		PlaySound('armour_save_0' + str(n))
+		return
+	
+	elif action == 'vehicle_explosion':
+		PlaySound('vehicle_explosion_00')
 		return
 	
 	elif action == 'movement':

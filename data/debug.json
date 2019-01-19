@@ -1,4 +1,5 @@
 {
- "Player Immortality": true,
- "Player Always Hits": true
+ "Player Immortality": false,
+ "Player Always Hits": false,
+ "No AI Actions": false
 }

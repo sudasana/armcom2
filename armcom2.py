@@ -657,6 +657,14 @@ class CampaignDay:
 		self.end_of_day['hour'] = int(campaign.today['end_hour'])
 		self.end_of_day['minute'] = int(campaign.today['end_minute'])
 		
+		# combat day length in minutes
+		hours = self.end_of_day['hour'] - self.day_clock['hour']
+		minutes = self.end_of_day['minute'] - self.day_clock['minute']
+		if minutes < 0:
+			hours -= 1
+			minutes += 60
+		self.day_length = minutes + (hours * 60)
+		
 		# TODO: flag set when end of day has been reached
 		self.ended = False
 		
@@ -1319,6 +1327,7 @@ class CampaignDay:
 						SaveGame()
 				
 				DisplayTimeInfo(time_weather_con)
+				self.UpdateCDCampaignCon()
 				self.UpdateCDControlCon()
 				self.UpdateCDUnitCon()
 				self.UpdateCDCommandCon()
@@ -2007,6 +2016,11 @@ class AI:
 
 	# do activation for this unit
 	def DoActivation(self):
+		
+		# check for debug flag
+		if DEBUG:
+			if session.debug['No AI Actions']:
+				return
 		
 		# no action if it's not alive
 		if not self.owner.alive: return
@@ -5355,9 +5369,26 @@ def DisplayTimeInfo(console):
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	
 	if campaign is None: return
+	
 	libtcod.console_print_ex(console, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, GetDateText(campaign.today))
 	
 	if campaign_day is None: return
+	
+	# depiction of time remaining in day
+	libtcod.console_set_default_background(console, libtcod.darker_yellow)
+	libtcod.console_rect(console, 0, 1, 21, 1, True, libtcod.BKGND_SET)
+	
+	hours = campaign_day.day_clock['hour'] - int(campaign.today['start_hour'])
+	minutes = campaign_day.day_clock['minute'] - int(campaign.today['start_minute'])
+	if minutes < 0:
+		hours -= 1
+		minutes += 60
+	minutes += (hours * 60)
+	x = int(21.0 * float(minutes) / float(campaign_day.day_length))
+	libtcod.console_set_default_background(console, libtcod.dark_yellow)
+	libtcod.console_rect(console, 0, 1, x, 1, True, libtcod.BKGND_SET)
+	libtcod.console_set_default_background(console, libtcod.black)
+	
 	text = str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
 	libtcod.console_print_ex(console, 10, 1, libtcod.BKGND_NONE, libtcod.CENTER, text)
 	

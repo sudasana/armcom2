@@ -196,7 +196,7 @@ TURN_LENGTH = 2
 MAX_BU_LOS = 1
 
 # base chance to spot unit at distance 0,1,2,3
-SPOT_BASE_CHANCE = [50.0, 40.0, 25.0, 5.0]
+SPOT_BASE_CHANCE = [65.0, 50.0, 35.0, 20.0]
 
 # each point of Perception increases chance to spot enemy unit by this much
 PERCEPTION_SPOTTING_MOD = 3.0
@@ -3180,11 +3180,6 @@ class Unit:
 		if self.GetStat('category') == 'Vehicle':
 			PlaySoundFor(self, 'vehicle_explosion')
 		
-		# TEMP: catch player destruction and exit game
-		if self == scenario.player_unit:
-			Wait(50)
-			sys.exit()
-		
 		# set flag
 		self.alive = False
 		
@@ -3215,6 +3210,10 @@ class Unit:
 				campaign_day.records['Guns Destroyed'] += 1
 			elif category == 'Infantry':
 				campaign_day.records['Infantry Destroyed'] += 1
+		
+		# end scenario if player unit has been destroyed
+		if self == scenario.player_unit:
+			scenario.finished = True
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
@@ -3283,6 +3282,19 @@ class Scenario:
 		
 		self.message_log = []					# log of scenario messages
 	
+	
+	# check for end of scenario and set flag if it has ended
+	def CheckForEnd(self):
+		all_enemies_dead = True
+		for unit in self.units:
+			if unit.owning_player == 1 and unit.alive:
+				if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
+				all_enemies_dead = False
+				break
+		if all_enemies_dead:
+			ShowMessage('Victory! No enemy units remain in this area.')
+			self.finished = True
+		
 	
 	# spawn enemy units on the hex map
 	# FUTURE: will pull data from the campaign day and campaign objects
@@ -4424,6 +4436,10 @@ class Scenario:
 			# advance clock
 			campaign_day.AdvanceClock(0, TURN_LENGTH)
 			
+			# check for end of scenario
+			self.CheckForEnd()
+			if self.finished: return
+			
 			self.active_player = 0
 			self.phase = 0
 			
@@ -4524,21 +4540,10 @@ class Scenario:
 		# enemy action
 		elif self.active_player == 1:
 			
-			# check for end of scenario due to no more alive enemy units on map
-			all_enemies_dead = True
-			for unit in self.units:
-				if unit.owning_player == 1 and unit.alive:
-					if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
-					all_enemies_dead = False
-					break
-			if all_enemies_dead:
-				ShowMessage('Victory! No enemy units remain in this area.')
-				self.finished = True
-				return
-			
 			# run through list in reverse since we might remove units from play
 			for unit in reversed(self.units):
 				if unit.owning_player == 0: continue
+				if not unit.alive: continue
 				unit.ResetForNewTurn()
 				unit.ai.DoActivation()
 			
@@ -4943,6 +4948,16 @@ class Scenario:
 			y += 1
 	
 	
+	# update the scenario info console, on the top right of the screen
+	# 18x12
+	def UpdateScenarioInfoCon(self):
+		libtcod.console_clear(scen_info_con)
+		
+		# campaign day hex terrain
+		libtcod.console_print(scen_info_con, 0, 0, 'Terrain:')
+		libtcod.console_print(scen_info_con, 1, 1, self.cd_map_hex.terrain_type)
+		
+	
 	# update the unit info console, which displays basic information about a unit under
 	# the mouse cursor
 	# 18x8
@@ -5124,6 +5139,7 @@ class Scenario:
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
 		DisplayTimeInfo(time_con)
+		self.UpdateScenarioInfoCon()
 		self.UpdatePlayerInfoCon()
 		self.UpdateCrewInfoCon()
 		self.UpdateCmdCon()

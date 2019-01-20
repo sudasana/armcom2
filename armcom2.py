@@ -1466,7 +1466,7 @@ class CampaignDay:
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()
 					
-						SaveGame()
+					SaveGame()
 				
 			# supply menu active
 			elif self.active_menu == 5:
@@ -3309,18 +3309,15 @@ class Scenario:
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
 			unit_types = json.load(data_file)
 		
-		roll = GetPercentileRoll()
-		if roll <= 25.0:
-			num_units = 1
-		elif roll >= 85.0:
-			num_units = 3
-		else:
-			num_units = 2
+		# determine initial number of enemy units to spawn: 1-4
+		num_units = 4
+		for i in range(3):
+			if libtcod.random_get_int(0, 0, 10) >= self.cd_map_hex.enemy_strength:
+				num_units -= 1
 		
 		enemy_unit_list = []
 		while len(enemy_unit_list) < num_units:
 			
-			# emergency exit
 			if libtcod.console_is_window_closed(): sys.exit()
 		
 			# choose a random unit class, rolling against its ubiquity factor

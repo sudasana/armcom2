@@ -1445,6 +1445,9 @@ class CampaignDay:
 						
 					# proceed with travel
 					else:
+						
+						# do sound effect
+						PlaySoundFor(campaign.player_unit, 'movement')
 					
 						# advance clock
 						if self.travel_direction in map_hex1.dirt_roads:
@@ -1828,7 +1831,7 @@ class Position:
 		self.visible_hexes.append((self.unit.hx, self.unit.hy))
 		
 		# current crew command does not allow spotting
-		if session.crew_commands[self.crewman.current_cmd]['spotting_allowed'] == 'FALSE':
+		if not session.crew_commands[self.crewman.current_cmd]['spotting_allowed']:
 			return
 		
 		if self.hatch_open:
@@ -3422,7 +3425,7 @@ class Scenario:
 	# if ignore_facing is true, we don't check whether weapon is facing correct direction
 	def CheckAttack(self, attacker, weapon, target, ignore_facing=False):
 		
-		# check that proper crew command has been set
+		# TODO: check that proper crew command has been set
 		
 		# check that weapon hasn't already fired
 		if weapon.fired:
@@ -3445,8 +3448,13 @@ class Scenario:
 				return 'AP has no effect on target'
 		
 		# check firing group restrictions
+		for weapon2 in attacker.weapon_list:
+			if weapon2 == weapon: continue
+			if not weapon2.fired: continue
+			if weapon2.GetStat('firing_group') == weapon.GetStat('firing_group'):
+				return 'A weapon on this mount has already fired'
 		
-		# check for hull-mounted weapons blocked by HD status
+		# FUTURE: check for hull-mounted weapons blocked by HD status
 		
 		# attack can proceed
 		return ''
@@ -4009,7 +4017,21 @@ class Scenario:
 		# check to see if this weapon maintains Rate of Fire
 		def CheckRoF(profile):
 			
-			# FUTURE: guns must have a Loader on proper order to get RoF
+			# guns must have a Loader on proper order to get RoF
+			position_list = profile['weapon'].GetStat('reloaded_by')
+			if position_list is None:
+				return False
+			
+			crewman_found = False
+			for position in position_list:
+				crewman = profile['attacker'].GetPersonnelByPosition(position)
+				if crewman is None: continue
+				if crewman.current_cmd != 'Reload': continue
+				crewman_found = True
+				break
+			
+			if not crewman_found:
+				return False
 			
 			# guns must have at least one shell of the current type available
 			if profile['weapon'].GetStat('type') == 'Gun':
@@ -4022,6 +4044,7 @@ class Scenario:
 			
 			if roll <= base_chance:
 				return True
+			print ('DEBUG: RoF roll failed')
 			return False
 		
 		# clear prompts from attack console

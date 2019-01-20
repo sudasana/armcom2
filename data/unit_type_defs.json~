@@ -1576,7 +1576,7 @@
 	
 	"Sniper": {
 		"category" : "Infantry",
-		"class" : "Team",
+		"class" : "Sniper",
 		"movement_class" : "Infantry",
 		"weapon_list" : [
 			{

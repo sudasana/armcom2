@@ -5,7 +5,7 @@
 		"portrait" : "unit_TK3.xp",
 		"size_class" : "Very Small",
 		"movement_class" : "Fast Tank",
-		"unreliable" : "TRUE",
+		"unreliable" : true,
 		"armour" : {
 			"turret_front" : "0",
 			"turret_side" : "0",
@@ -19,7 +19,8 @@
 				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0"
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -57,7 +58,7 @@
 		"portrait" : "unit_TKS.xp",
 		"size_class" : "Very Small",
 		"movement_class" : "Fast Tank",
-		"unreliable" : "TRUE",
+		"unreliable" : true,
 		"armour" : {
 			"turret_front" : "1",
 			"turret_side" : "0",
@@ -71,7 +72,7 @@
 				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -107,7 +108,7 @@
 		"portrait" : "unit_TKS_20mm.xp",
 		"size_class" : "Very Small",
 		"movement_class" : "Fast Tank",
-		"unreliable" : "TRUE",
+		"unreliable" : true,
 		"armour" : {
 			"turret_front" : "0",
 			"turret_side" : "0",
@@ -123,7 +124,8 @@
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			}
@@ -162,7 +164,7 @@
 		"size_class" : "Small",
 		"movement_class" : "Slow Tank",
 		"turret" : "TRUE",
-		"unreliable" : "TRUE",
+		"unreliable" : true,
 		"armour" : {
 			"turret_front" : "2",
 			"turret_side" : "1",
@@ -177,7 +179,8 @@
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "233"
 			}
@@ -215,7 +218,7 @@
 		"size_class" : "Small",
 		"movement_class" : "Fast Tank",
 		"turret" : "TRUE",
-		"unreliable" : "TRUE",
+		"unreliable" : true,
 		"armour" : {
 			"turret_front" : "1",
 			"turret_side" : "1",
@@ -231,7 +234,8 @@
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			},
@@ -241,7 +245,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -298,7 +302,8 @@
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			},
@@ -308,7 +313,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -364,7 +369,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -411,7 +416,8 @@
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			}
@@ -452,7 +458,8 @@
 				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			}
@@ -484,7 +491,8 @@
 				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			}
@@ -520,7 +528,8 @@
 				"rof" : "42.0",
 				"mount" : "Hull",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["AP"],
 				"max_ammo" : "180"
 			}
@@ -565,7 +574,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -611,7 +620,8 @@
 				"rof" : "28.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			},
@@ -621,7 +631,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -676,7 +686,8 @@
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "66"
 			},
@@ -686,7 +697,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner", "Loader"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			},
 			{
 				"type" : "Hull MG",
@@ -694,7 +705,7 @@
 				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Driver", "Assistant Driver"],
-				"firing_group" : "1"
+				"firing_group" : 1
 			}
 		],
 		"crew_positions" : [
@@ -754,7 +765,8 @@
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "66"
 			},
@@ -764,7 +776,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner", "Loader"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			},
 			{
 				"type" : "Hull MG",
@@ -772,7 +784,7 @@
 				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Assistant Driver", "Driver"],
-				"firing_group" : "1"
+				"firing_group" : 1
 			}
 		],
 		"crew_positions" : [
@@ -832,7 +844,8 @@
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "66"
 			},
@@ -842,7 +855,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			},
 			{
 				"type" : "Hull MG",
@@ -850,7 +863,7 @@
 				"rof" : "8.4",
 				"mount" : "Hull",
 				"fired_by" : ["Assistant Driver"],
-				"firing_group" : "1"
+				"firing_group" : 1
 			}
 		],
 		"crew_positions" : [
@@ -917,7 +930,8 @@
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "66"
 			},
@@ -927,7 +941,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			},
 			{
 				"type" : "Hull MG",
@@ -935,7 +949,7 @@
 				"rof" : "8.4",
 				"mount" : "Hull",
 				"fired_by" : ["Assistant Driver"],
-				"firing_group" : "1"
+				"firing_group" : 1
 			}
 		],
 		"crew_positions" : [
@@ -1002,7 +1016,8 @@
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "87"
 			},
@@ -1012,7 +1027,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			},
 			{
 				"type" : "Hull MG",
@@ -1020,7 +1035,7 @@
 				"rof" : "8.4",
 				"mount" : "Hull",
 				"fired_by" : ["Assistant Driver"],
-				"firing_group" : "1"
+				"firing_group" : 1
 			}
 		],
 		"crew_positions" : [
@@ -1085,7 +1100,8 @@
 				"rr_size" : "6",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "87"
 			},
@@ -1095,7 +1111,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -1157,7 +1173,7 @@
 				"fp" : "4",
 				"rof" : "17.0",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -1213,7 +1229,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : "0",
+				"firing_group" : 0,
 				"ce_to_fire" : "TRUE"
 			}
 		],
@@ -1267,7 +1283,8 @@
 				"rr_size" : "4",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "66"
 			},
@@ -1277,7 +1294,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner/Loader"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -1335,8 +1352,9 @@
 				"rof" : "42.0",
 				"rr_size" : "4",
 				"mount" : "Turret",
-				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "66"
 			},
@@ -1346,7 +1364,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -1358,7 +1376,7 @@
 				"bu_visible" : ["0"]
 			},
 			{
-				"name" : "Gunner",
+				"name" : "Gunner/Loader",
 				"location" : "Turret",
 				"bu_visible" : ["0"]
 			},
@@ -1412,8 +1430,9 @@
 				"rof" : "42.0",
 				"rr_size" : "4",
 				"mount" : "Turret",
-				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "66"
 			},
@@ -1423,7 +1442,7 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0"
+				"firing_group" : 0
 			}
 		],
 		"crew_positions" : [
@@ -1435,7 +1454,7 @@
 				"bu_visible" : ["0"]
 			},
 			{
-				"name" : "Gunner",
+				"name" : "Gunner/Loader",
 				"location" : "Turret",
 				"bu_visible" : ["0"]
 			},
@@ -1480,7 +1499,8 @@
 				"rof" : "42.0",
 				"mount" : "Hull",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			}
@@ -1515,7 +1535,8 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],
-				"firing_group" : "0",
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
 				"max_ammo" : "180"
 			}

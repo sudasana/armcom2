@@ -17,14 +17,14 @@
 	},
 	
 	"Operate Gun" : {
-		"desc" : "Operate the main gun and the turret",
+		"desc" : "Operate a main gun and the turret",
 		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
 		"spotting_allowed" : false
 	},
 	
-	"Operate Turret MG" : {
-		"desc" : "Operate a turret-mounted MG",
-		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
+	"Operate MG" : {
+		"desc" : "Operate the MG from this position",
+		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader", "Assistant Driver"],
 		"spotting_allowed" : false
 	},
 	
@@ -37,12 +37,6 @@
 	"Drive" : {
 		"desc" : "Move forward or backward, pivot hull, reposition, or attempt to gain Hull Down",
 		"position_list" : ["Driver"],
-		"spotting_allowed" : false
-	},
-	
-	"Operate Hull MG" : {
-		"desc" : "Operate the hull-mounted MG",
-		"position_list" : ["Assistant Driver"],
 		"spotting_allowed" : false
 	}
 }

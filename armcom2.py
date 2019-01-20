@@ -60,9 +60,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2019-01-02'			# game version
+VERSION = 'Alpha 2'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -196,10 +196,10 @@ TURN_LENGTH = 2
 MAX_BU_LOS = 1
 
 # base chance to spot unit at distance 0,1,2,3
-SPOT_BASE_CHANCE = [65.0, 50.0, 35.0, 20.0]
+SPOT_BASE_CHANCE = [95.0, 85.0, 70.0, 50.0]
 
 # each point of Perception increases chance to spot enemy unit by this much
-PERCEPTION_SPOTTING_MOD = 3.0
+PERCEPTION_SPOTTING_MOD = 5.0
 
 # base chance of moving forward/backward into next hex
 BASE_FORWARD_MOVE_CHANCE = 50.0
@@ -1338,6 +1338,13 @@ class CampaignDay:
 						campaign.AwardVP(self.capture_zone_vp)
 						self.CheckForEndOfDay()
 						SaveGame()
+					
+					# player was destroyed
+					else:
+						EraseGame()
+						self.DisplayCampaignDaySummary()
+						exit_loop = True
+						continue
 				
 				DisplayTimeInfo(time_weather_con)
 				self.UpdateCDCampaignCon()
@@ -2512,6 +2519,7 @@ class Unit:
 	
 	
 	# do a round of spotting from this unit
+	# for now, only the player unit does these
 	def DoSpotChecks(self):
 				
 		# unit out of play range
@@ -3335,7 +3343,7 @@ class Scenario:
 		
 	
 	# spawn enemy units on the hex map
-	# FUTURE: will pull data from the campaign day and campaign objects
+	# FUTURE: will pull more data from the campaign day and campaign objects
 	def SpawnEnemyUnits(self):
 		
 		# pointers to data for class odds and unit type list from campaign object
@@ -3450,7 +3458,32 @@ class Scenario:
 	# if ignore_facing is true, we don't check whether weapon is facing correct direction
 	def CheckAttack(self, attacker, weapon, target, ignore_facing=False):
 		
-		# TODO: check that proper crew command has been set
+		# check that proper crew command has been set if player is attacking
+		if attacker == self.player_unit:
+			
+			# FUTURE: move this check to weapon object and use in
+			# advance phase to skip shooting phase automatically
+			position_list = weapon.GetStat('fired_by')
+			if position_list is None:
+				return 'No positions to fire this weapon'
+			
+			if weapon.GetStat('type') == 'Gun':
+				command_req = 'Operate Gun'
+			elif weapon.GetStat('type') in MG_WEAPONS:
+				command_req = 'Operate MG'
+			else:
+				return 'Unknown weapon type!'
+				
+			crewman_found = False
+			for position in position_list:
+				crewman = attacker.GetPersonnelByPosition(position)
+				if crewman is None: continue
+				if crewman.current_cmd != command_req: continue
+				crewman_found = True
+				break
+			
+			if not crewman_found:
+				return 'No crewman operating this weapon'
 		
 		# check that weapon hasn't already fired
 		if weapon.fired:
@@ -4042,24 +4075,25 @@ class Scenario:
 		# check to see if this weapon maintains Rate of Fire
 		def CheckRoF(profile):
 			
-			# guns must have a Loader on proper order to get RoF
-			position_list = profile['weapon'].GetStat('reloaded_by')
-			if position_list is None:
-				return False
-			
-			crewman_found = False
-			for position in position_list:
-				crewman = profile['attacker'].GetPersonnelByPosition(position)
-				if crewman is None: continue
-				if crewman.current_cmd != 'Reload': continue
-				crewman_found = True
-				break
-			
-			if not crewman_found:
-				return False
-			
-			# guns must have at least one shell of the current type available
 			if profile['weapon'].GetStat('type') == 'Gun':
+			
+				# guns must have a Loader on proper order to get RoF
+				position_list = profile['weapon'].GetStat('reloaded_by')
+				if position_list is None:
+					return False
+				
+				crewman_found = False
+				for position in position_list:
+					crewman = profile['attacker'].GetPersonnelByPosition(position)
+					if crewman is None: continue
+					if crewman.current_cmd != 'Reload': continue
+					crewman_found = True
+					break
+				
+				if not crewman_found:
+					return False
+			
+				# guns must have at least one shell of the current type available
 				if profile['weapon'].ammo_type is not None:
 					if profile['weapon'].ammo_stores[profile['weapon'].ammo_type] == 0:
 						return False
@@ -4578,7 +4612,7 @@ class Scenario:
 			
 			# player squad acts first
 			for unit in scenario.player_unit.squad:
-				unit.DoSpotChecks()
+				#unit.DoSpotChecks()
 				unit.ai.DoActivation()
 				
 				# do recover roll for this unit
@@ -5147,6 +5181,7 @@ class Scenario:
 			self.player_unit.turret_facing = 0
 			self.player_unit.squad = []
 			self.player_unit.SpawnAt(0,0)
+			self.player_unit.spotted = True
 			
 			# set up player squad
 			for i in range(4):
@@ -5156,6 +5191,7 @@ class Scenario:
 				unit.GenerateNewPersonnel()
 				unit.facing = 0
 				unit.turret_facing = 0
+				unit.spotted = True
 				unit.SpawnAt(0,0)
 				self.player_unit.squad.append(unit)
 			
@@ -6588,14 +6624,14 @@ while not exit_game:
 				LoadGame()
 			
 			else:
-				# confirm savegame overwrite - TEMP disabled for testing
-				#if os.path.exists('savegame.dat'):
-				#	text = 'Starting a new campaign will PERMANTLY ERASE the existing saved campaign.'
-				#	result = ShowNotification(text, confirm=True)
+				# confirm savegame overwrite
+				if os.path.exists('savegame.dat'):
+					text = 'Starting a new campaign will PERMANTLY ERASE the existing saved campaign.'
+					result = ShowNotification(text, confirm=True)
 					# cancel and return to main menu
-				#	if not result:
-				#		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-				#		continue
+					if not result:
+						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+						continue
 			        
 			        # create a new campaign object and select a campaign
 				campaign = Campaign()

@@ -60,9 +60,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = 'Alpha 2'					# game version
+VERSION = '0.3.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -3284,7 +3284,7 @@ class MapHex:
 	def __init__(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
-		self.unit_stack = []
+		self.unit_stack = []					# list of units present in this map hex
 
 
 
@@ -3308,6 +3308,7 @@ class Scenario:
 		
 		# dictionary of console cells covered by map hexes
 		self.hex_map_index = {}
+		self.BuildHexmapDict()
 		
 		# attack console display is active
 		self.attack_con_active = False
@@ -4919,23 +4920,13 @@ class Scenario:
 		return (x,y)
 	
 	
-	# update hexmap console
-	def UpdateHexmapCon(self):
-		
-		libtcod.console_clear(hexmap_con)
-		
-		# clear dictionary of console cells covered by hexes
-		self.hex_map_index = {}
-		
-		# FUTURE: can use different hex console images for different battlefield types / weather
-		scen_hex = LoadXP('scen_hex.xp')
-		libtcod.console_set_key_color(scen_hex, KEY_COLOR)
-		
-		# draw hexes to hex map console
+	# build a dictionary of console locations and their corresponding map hexes
+	# only called once when Scenario is created
+	def BuildHexmapDict(self):
 		for map_hex in self.map_hexes:
-			if GetHexDistance(0, 0, map_hex.hx, map_hex.hy) > 3: break
+			# stop when outer hex ring is reached
+			if GetHexDistance(0, 0, map_hex.hx, map_hex.hy) > 3: return
 			(x,y) = self.PlotHex(map_hex.hx, map_hex.hy)
-			libtcod.console_blit(scen_hex, 0, 0, 0, 0, hexmap_con, x-5, y-3)
 			
 			# record console positions to dictionary
 			for x1 in range(x-2, x+3):
@@ -4946,6 +4937,22 @@ class Scenario:
 				self.hex_map_index[(x1, y+1)] = map_hex
 			for x1 in range(x-4, x+5):
 				self.hex_map_index[(x1, y)] = map_hex
+	
+	
+	# update hexmap console
+	def UpdateHexmapCon(self):
+		
+		libtcod.console_clear(hexmap_con)
+		
+		# FUTURE: can use different hex console images for different battlefield types / weather
+		scen_hex = LoadXP('scen_hex.xp')
+		libtcod.console_set_key_color(scen_hex, KEY_COLOR)
+		
+		# draw hexes to hex map console
+		for map_hex in self.map_hexes:
+			if GetHexDistance(0, 0, map_hex.hx, map_hex.hy) > 3: break
+			(x,y) = self.PlotHex(map_hex.hx, map_hex.hy)
+			libtcod.console_blit(scen_hex, 0, 0, 0, 0, hexmap_con, x-5, y-3)
 			
 		del scen_hex
 	

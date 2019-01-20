@@ -855,7 +855,18 @@ class CampaignDay:
 			# end menu
 			if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_ENTER]:
 				exit_menu = True
-				
+	
+	
+	# resupply the player unit and other units in the player's unit group
+	def ResupplyPlayer(self):
+		self.AdvanceClock(0, 30)
+		ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
+		for weapon in campaign.player_unit.weapon_list:
+			if weapon.ammo_stores is not None:
+				weapon.LoadGunAmmo()
+				text = weapon.stats['name'] + ' has been fully restocked with ammo.'
+				ShowMessage(text)
+	
 	
 	##### Campaign Day Console Functions #####
 	
@@ -1473,7 +1484,7 @@ class CampaignDay:
 				
 				# TODO: request resupply
 				if key_char == 'r':
-					#self.ResupplyPlayer()
+					self.ResupplyPlayer()
 					DisplayTimeInfo(time_weather_con)
 					self.UpdateCDDisplay()
 					SaveGame()
@@ -1924,9 +1935,6 @@ class Weapon:
 			self.covered_hexes.append((hx, hy))
 		
 		
-			
-	
-	
 	# load this gun full of ammo
 	def LoadGunAmmo(self):
 		
@@ -2106,8 +2114,6 @@ class AI:
 			if (hx, hy) not in scenario.hex_dict:
 				self.owner.RemoveFromPlay()
 				return
-			
-			scenario.Message(self.owner.GetName() + ' moves')
 			
 			# turn to face destination
 			if self.owner.facing is not None:
@@ -2563,7 +2569,8 @@ class Unit:
 						ShowMessage(text, portrait=portrait)
 						
 					elif unit == scenario.player_unit:
-						scenario.Message('You have been spotted!')
+						ShowMessage('You have been spotted!')
+						
 	
 	
 	# reveal this unit after being spotted
@@ -2790,7 +2797,7 @@ class Unit:
 				libtcod.console_set_default_foreground(console, libtcod.sepia)
 				libtcod.console_print(console, x+8, ys-1, text)
 				char = GetDirectionalArrow(self.hull_down[0])
-				libtcod.console_put_char_ex(unit_info_con, x+11, ys-1, char, libtcod.sepia, libtcod.black)
+				libtcod.console_put_char_ex(console, x+11, ys-1, char, libtcod.sepia, libtcod.black)
 		
 			# reset of unit status
 			libtcod.console_set_default_foreground(console, libtcod.light_grey)
@@ -2978,13 +2985,6 @@ class Unit:
 				# armoured target
 				if target.GetStat('armour') is not None:
 					target.ap_hits_to_resolve.append(profile)
-			
-			# notify player of any result if not involved
-			if self != scenario.player_unit and target != scenario.player_unit:
-				if profile['result'] not in ['MISS', 'NO EFFECT']:
-					text = 'Result: ' + profile['result']
-					scenario.Message(text)
-					Wait(50)
 		
 		# turn off attack console display if any
 		scenario.attack_con_active = False
@@ -3060,8 +3060,7 @@ class Unit:
 						text += 'you.'
 					else:
 						text += profile['attacker'].GetName() + '.'
-					scenario.Message(text)
-					
+					ShowMessage(text)
 					return
 		
 		# clear unresolved hits
@@ -3279,8 +3278,6 @@ class Scenario:
 		self.target_list = []					# list of possible player targets
 		
 		self.selected_position = 0				# index of selected position in player unit
-		
-		self.message_log = []					# log of scenario messages
 	
 	
 	# check for end of scenario and set flag if it has ended
@@ -3405,14 +3402,6 @@ class Scenario:
 			if unit.GetStat('category') != 'Infantry':
 				unit.facing = direction		
 			unit.turret_facing = direction
-				
-	
-	# add a game message to the log and display it in the message console
-	def Message(self, text):
-		self.message_log.append(text)
-		self.UpdateMsgConsole()
-		self.UpdateScenarioDisplay()
-		libtcod.console_flush()
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
@@ -3506,11 +3495,12 @@ class Scenario:
 			
 			# attacker pivoted
 			elif pivot or attacker.facing != attacker.previous_facing:
-				modifier_list.append(('Attacker Pivoted', -40.0))
-
-			# player attacker pivoted
-			elif pivot or (attacker == scenario.player_unit and self.player_pivot != 0):
-				modifier_list.append(('Attacker Pivoted', -40.0))
+				modifier_list.append(('Attacker Pivoted', -35.0))
+			
+			# player or player squad member attacker pivoted
+			elif attacker == scenario.player_unit or attacker in scenario.player_unit.squad:
+				if self.player_pivot != 0:
+					modifier_list.append(('Attacker Pivoted', -35.0))
 
 			# weapon has turret rotated
 			elif weapon.GetStat('mount') == 'Turret':
@@ -3523,7 +3513,7 @@ class Scenario:
 			
 			# unspotted target
 			if not target.spotted:
-				modifier_list.append(('Unspotted Target', -25.0))
+				modifier_list.append(('Unspotted Target', -20.0))
 			
 			# spotted target
 			else:
@@ -4926,23 +4916,6 @@ class Scenario:
 				libtcod.console_put_char_ex(gui_con, x2+1, y2-1, 191, libtcod.red, libtcod.black)
 				libtcod.console_put_char_ex(gui_con, x2-1, y2+1, 192, libtcod.red, libtcod.black)
 				libtcod.console_put_char_ex(gui_con, x2+1, y2+1, 217, libtcod.red, libtcod.black)
-			
-			
-		
-	
-	# update game message console, which displays most recent game message
-	# 61x3
-	def UpdateMsgConsole(self):
-		libtcod.console_clear(msg_con)
-		
-		# no message to display
-		if len(self.message_log) == 0: return
-		
-		lines = wrap(self.message_log[-1], 61)
-		y = 0
-		for line in lines[0:2]:
-			libtcod.console_print(msg_con, 0, y, line)
-			y += 1
 	
 	
 	# update the scenario info console, on the top right of the screen
@@ -4957,7 +4930,7 @@ class Scenario:
 	
 	# update the unit info console, which displays basic information about a unit under
 	# the mouse cursor
-	# 18x8
+	# 18x11
 	def UpdateUnitInfoCon(self):
 		libtcod.console_clear(unit_info_con)
 		
@@ -5069,8 +5042,6 @@ class Scenario:
 		libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 71, 1)
 		libtcod.console_blit(unit_info_con, 0, 0, 0, 0, con, 28, 48)
 		
-		libtcod.console_blit(msg_con, 0, 0, 0, 0, con, 28, 57)
-		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 	
@@ -5081,7 +5052,7 @@ class Scenario:
 		# set up and load scenario consoles
 		global bkg_console, crew_con, cmd_menu_con, scen_info_con
 		global player_info_con, context_con, time_con, hexmap_con, unit_con, gui_con
-		global animation_con, msg_con, attack_con, unit_info_con
+		global animation_con, attack_con, unit_info_con
 		
 		# background outline console for left column
 		bkg_console = LoadXP('bkg.xp')
@@ -5092,12 +5063,11 @@ class Scenario:
 		context_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
 		time_con = NewConsole(21, 6, libtcod.darkest_grey, libtcod.white)
 		scen_info_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
-		unit_info_con = NewConsole(18, 8, libtcod.darkest_grey, libtcod.white)
+		unit_info_con = NewConsole(18, 11, libtcod.darkest_grey, libtcod.white)
 		hexmap_con = NewConsole(53, 43, libtcod.black, libtcod.black)
 		unit_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
 		gui_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
 		animation_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
-		msg_con = NewConsole(61, 2, libtcod.black, libtcod.white)
 		attack_con = NewConsole(27, 60, libtcod.black, libtcod.white)
 		
 		# we're starting a new scenario
@@ -5143,7 +5113,6 @@ class Scenario:
 		self.UpdateUnitCon()
 		self.UpdateGuiCon()
 		self.UpdateHexmapCon()
-		self.UpdateMsgConsole()
 		self.UpdateScenarioDisplay()
 		
 		# record mouse cursor position to check when it has moved

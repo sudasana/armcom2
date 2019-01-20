@@ -2478,6 +2478,31 @@ class Unit:
 		self.forward_move_chance += self.forward_move_bonus
 		self.reverse_move_chance += self.reverse_move_bonus
 		
+		# add modifiers from unit movement type
+		movement_class = scenario.player_unit.GetStat('movement_class')
+		if movement_class == 'Slow Tank':
+			self.forward_move_chance -= 15.0
+		elif movement_class == 'Fast Tank':
+			self.forward_move_chance += 10.0
+		elif movement_class == 'Wheeled':
+			# FUTURE: modifier here if using road movement
+			self.forward_move_chance += 5.0
+		
+		# add bonuses from commander direction
+		for position in ['Commander', 'Commander/Gunner']:
+			crewman = scenario.player_unit.GetPersonnelByPosition(position)
+			if crewman is not None:
+				break
+		
+		if crewman is not None:
+			if crewman.current_cmd == 'Direct Movement':
+				self.forward_move_chance += 15.0
+				self.reverse_move_chance += 10.0
+		
+		# limit chances
+		self.forward_move_chance = RestrictChance(self.forward_move_chance)
+		self.reverse_move_chance = RestrictChance(self.reverse_move_chance)
+		
 	
 	# build lists of possible commands for each personnel in this unit
 	def BuildCmdLists(self):

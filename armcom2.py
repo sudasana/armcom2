@@ -584,18 +584,20 @@ class Campaign:
 		
 		# TODO: day objectives
 		
-		# player support
+		# player support - TEMP not yet implemented
 		text = 'Air Support: '
-		if 'air_support_level' not in campaign.today:
-			text += 'None'
-		else:
-			text += str(campaign.today['air_support_level'])
+		text += 'None'
+		#if 'air_support_level' not in campaign.today:
+		#	text += 'None'
+		#else:
+		#	text += str(campaign.today['air_support_level'])
 		libtcod.console_print(con, 33, 33, text)
 		text = 'Artillery Support: '
-		if 'arty_support_level' not in campaign.today:
-			text += 'None'
-		else:
-			text += str(campaign.today['arty_support_level'])
+		text += 'None'
+		#if 'arty_support_level' not in campaign.today:
+		#	text += 'None'
+		#else:
+		#	text += str(campaign.today['arty_support_level'])
 		libtcod.console_print(con, 33, 34, text)
 		
 		# TODO: expected enemy forces

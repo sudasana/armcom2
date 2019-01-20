@@ -2074,9 +2074,10 @@ class AI:
 			if self.disposition == 'Combat':
 				self.disposition = None
 		
-		# only one option if unit is part of player squad
+		# player squad doesn't move on its own
 		if self.owner in scenario.player_unit.squad:
-			self.disposition = 'Combat'
+			if self.disposition == 'Movement':
+				self.disposition = 'Combat'
 		
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
@@ -2233,6 +2234,13 @@ class AI:
 				if target.GetStat('category') == 'Infantry' and ammo_type == 'HE':
 					score -= 20.0
 				
+				# avoid small arms on armoured targets and MG attacks unless within AP range
+				if weapon.GetStat('type') != 'Gun' and target.GetStat('armour') is not None:
+					if weapon.GetStat('type') not in MG_WEAPONS:
+						score -= 40.0
+					elif GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > MG_AP_RANGE:
+						score -= 40.0
+				
 				# lower chance of attacking player
 				if target == scenario.player_unit:
 					score -= 10.0
@@ -2262,9 +2270,12 @@ class AI:
 			# select best attack
 			(score, weapon, target, ammo_type) = scored_list[0]
 			
-			# roll to see if attack proceeds
-			roll = GetPercentileRoll()
-			if roll > (score * 2.0): return
+			# no good attacks
+			if score <= 3.0:
+				print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on targets')
+				return
+			
+			# proceed with best attack
 			
 			# set ammo type if any
 			if ammo_type != '': weapon.current_ammo = ammo_type
@@ -2825,10 +2836,6 @@ class Unit:
 		# make sure attack is possible
 		if scenario.CheckAttack(self, weapon, target) != '': return False
 		
-		# set weapon and unit fired flags
-		weapon.fired = True
-		self.fired = True
-		
 		# display message if player is the target
 		if target == scenario.player_unit:
 			text = self.GetName() + ' fires at you with ' + weapon.stats['name']
@@ -2858,6 +2865,10 @@ class Unit:
 					if WaitForContinue(allow_cancel = (target != scenario.player_unit)):
 						scenario.attack_con_active = False
 						return True
+			
+			# set weapon and unit fired flags
+			weapon.fired = True
+			self.fired = True
 			
 			# expend a shell if gun weapon is firing
 			if weapon.GetStat('type') == 'Gun' and weapon.ammo_type is not None:
@@ -3498,9 +3509,8 @@ class Scenario:
 				modifier_list.append(('Attacker Pivoted', -35.0))
 			
 			# player or player squad member attacker pivoted
-			elif attacker == scenario.player_unit or attacker in scenario.player_unit.squad:
-				if self.player_pivot != 0:
-					modifier_list.append(('Attacker Pivoted', -35.0))
+			elif self.player_pivot != 0 and (attacker == scenario.player_unit or attacker in scenario.player_unit.squad):
+				modifier_list.append(('Attacker Pivoted', -35.0))
 
 			# weapon has turret rotated
 			elif weapon.GetStat('mount') == 'Turret':
@@ -3628,7 +3638,7 @@ class Scenario:
 				modifier_list.append(('Attacker Pinned', 0.0 - mod))
 			
 			if not target.spotted:
-				modifier_list.append(('Unspotted Target', -25.0))
+				modifier_list.append(('Unspotted Target', -10.0))
 			else:
 			
 				# target is infantry and moving
@@ -4212,6 +4222,10 @@ class Scenario:
 			self.selected_target = self.target_list[0]
 		else:
 			self.selected_target = self.target_list[i]
+		
+		self.selected_target.MoveToTopOfStack()
+		self.UpdateUnitCon()
+		self.UpdateUnitInfoCon()
 	
 	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
@@ -4383,6 +4397,10 @@ class Scenario:
 		
 		self.UpdateUnitCon()
 		self.UpdateGuiCon()
+		
+		text = 'DEBUG: player turret now facing ' + str(scenario.player_unit.turret_facing)
+		text += ', previous facing is ' + str(scenario.player_unit.previous_turret_facing)
+		print(text)
 		
 	
 	# advance to next phase/turn and do automatic events

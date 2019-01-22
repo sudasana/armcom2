@@ -286,6 +286,59 @@ HE_AP_CHANCE = [
 	(30, 16.7),
 ]
 
+# terrain type odds for campaign day hexes
+# FUTURE: can have different sets for different biomes
+TERRAIN_TYPE_ODDS = {
+	'Flat' : 50.0,
+	'Forest' : 10.0,
+	'Hills' : 15.0,
+	'Fields' : 10.0,
+	'Marsh' : 5.0,
+	'Villages' : 10.0
+}
+
+# TODO: modifiers and effects for different types of terrain on the scenario layer
+SCENARIO_TERRAIN_EFFECTS = {
+	
+}
+
+# Open Ground
+# Broken Ground
+# Road
+# Entrenchments
+# Hills
+# Brush
+# Woods
+# Orchard
+# Grain Fields,
+# Marsh
+# Bog
+# Riverbank
+# Wooden Building
+# Stone Building
+# Church
+# Factory
+# Fortified Building, 
+# Graveyard
+# Railroad
+
+# for each campaign day hex terrain type, odds that a unit on the scenario map will be in
+# a given type of terrain in its scenario hex
+SCENARIO_TERRAIN_ODDS = {
+	'Flat' : {
+		'Open Ground' : 50.0
+	},
+	'Forest' : {
+	},
+	'Hills' : {
+	},
+	'Fields' : {
+	},
+	'Marsh' : {
+	},
+	'Villages' : {
+	},
+}
 
 
 ##########################################################################################
@@ -570,6 +623,7 @@ class Campaign:
 			libtcod.console_rect(con, 0, y, WINDOW_WIDTH, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(con, libtcod.black)
 		
+		# display briefing outline, 29x54
 		libtcod.console_blit(LoadXP('CD_briefing.xp'), 0, 0, 0, 0, con, 31, 3)
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		
@@ -580,9 +634,15 @@ class Campaign:
 		text = campaign.today['location']
 		libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
-		# TODO: day description
+		# day description
+		lines = wrap(campaign.today['desc'], 25)
+		y = 8
+		for line in lines:
+			libtcod.console_print(con, 33, y, line)
+			y+=1
+			if y == 19: break
 		
-		# TODO: day objectives
+		# TODO: display day objectives
 		
 		# player support
 		text = 'Air Support: '
@@ -1721,27 +1781,16 @@ class CDMapHex:
 		
 	
 	# generate a random terrain type for this hex
-	# FUTURE: can pull data from the campaign day to determine possible terrain types
+	# FUTURE: can pull data from the campaign day to determine set of possible terrain types
 	def GenerateTerrainType(self):
 		
 		roll = GetPercentileRoll()
 		
-		# TEMP: these settings are for Poland/September campaign
-		if roll <= 40.0:
-			self.terrain_type = 'Flat'
-		elif roll <= 50.0:
-			self.terrain_type = 'Forest'
-		elif roll <= 65.0:
-			self.terrain_type = 'Hills'
-		elif roll <= 75.0:
-			self.terrain_type = 'Fields'
-		elif roll <= 80.0:
-			self.terrain_type = 'Marsh'
-		elif roll <= 90.0:
-			self.terrain_type = 'Villages'
-		else:
-			self.terrain_type = 'Flat'
-
+		for terrain_type, odds in TERRAIN_TYPE_ODDS.items():
+			if roll <= odds:
+				self.terrain_type = terrain_type
+				return
+			roll -= odds
 
 
 
@@ -5750,7 +5799,14 @@ def ShowMessage(text, portrait=None):
 	# darken screen background
 	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.4, 0.4)
 	# display message console overtop map area of screen
-	libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, 44, 21)
+	
+	# display closer to centre if we appear to be in the campaign day view
+	if scenario is None:
+		x = 31
+	else:
+		x = 44
+	
+	libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, x, 21)
 	del msg_con
 	libtcod.console_flush()
 	

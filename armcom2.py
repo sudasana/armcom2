@@ -584,20 +584,19 @@ class Campaign:
 		
 		# TODO: day objectives
 		
-		# player support - TEMP not yet implemented
+		# player support
 		text = 'Air Support: '
-		text += 'None'
-		#if 'air_support_level' not in campaign.today:
-		#	text += 'None'
-		#else:
-		#	text += str(campaign.today['air_support_level'])
+		if 'air_support_level' not in campaign.today:
+			text += 'None'
+		else:
+			text += str(campaign.today['air_support_level'])
 		libtcod.console_print(con, 33, 33, text)
+		
 		text = 'Artillery Support: '
-		text += 'None'
-		#if 'arty_support_level' not in campaign.today:
-		#	text += 'None'
-		#else:
-		#	text += str(campaign.today['arty_support_level'])
+		if 'arty_support_level' not in campaign.today:
+			text += 'None'
+		else:
+			text += str(campaign.today['arty_support_level'])
 		libtcod.console_print(con, 33, 34, text)
 		
 		# TODO: expected enemy forces
@@ -689,8 +688,19 @@ class CampaignDay:
 		
 		self.active_menu = 3				# number of currently active command menu
 		self.travel_direction = None			# selected direction of travel
+		self.support_direction = None			# selected direction of support target hex
 		self.abandoned_tank = False			# set to true if player abandoned their tank that day
 		self.scenario = None				# currently active scenario in progress
+		
+		self.air_support_level = 0.0
+		if 'air_support_level' in campaign.today:
+			self.air_support_level = campaign.today['air_support_level']
+			self.air_support_step = campaign.today['air_support_step']
+		
+		self.arty_support_level = 0.0
+		if 'arty_support_level' in campaign.today:
+			self.arty_support_level = campaign.today['arty_support_level']
+			self.arty_support_step = campaign.today['arty_support_step']
 		
 		# set up player
 		self.player_unit_location = (-2, 8)		# set initial player unit location
@@ -1020,16 +1030,24 @@ class CampaignDay:
 		libtcod.console_clear(cd_unit_con)
 		libtcod.console_set_default_foreground(cd_unit_con, libtcod.white)
 		
-		# enemy strength level, only display if adjacent to player
+		# enemy strength level, support level; only display if adjacent to player
 		libtcod.console_set_default_foreground(cd_unit_con, libtcod.red)
 		(player_hx, player_hy) = self.player_unit_location
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			if self.map_hexes[(hx,hy)].controlled_by == 0: continue
-			if not self.map_hexes[(hx,hy)].known_to_player: continue
+			map_hex = self.map_hexes[(hx,hy)]
 			if GetHexDistance(player_hx, player_hy, hx, hy) > 1: continue
-			text = str(self.map_hexes[(hx,hy)].enemy_strength)
+			
 			(x,y) = self.PlotCDHex(hx, hy)
-			libtcod.console_print(cd_unit_con, x, y-1, text)
+			
+			if map_hex.air_support:
+				libtcod.console_put_char_ex(cd_unit_con, x-1, y, 'A', ALLIED_UNIT_COL, libtcod.black)
+			if map_hex.arty_support:
+				libtcod.console_put_char_ex(cd_unit_con, x+1, y, 'R', ALLIED_UNIT_COL, libtcod.black)
+			
+			if map_hex.controlled_by == 0: continue
+			if not map_hex.known_to_player: continue
+			libtcod.console_print(cd_unit_con, x, y-1, str(map_hex.enemy_strength))
+			
 		
 		# draw player unit group
 		(hx, hy) = self.player_unit_location
@@ -1067,8 +1085,20 @@ class CampaignDay:
 	def UpdateCDGUICon(self):
 		libtcod.console_clear(cd_gui_con)
 		
+		# support menu, direction currently selected
+		if self.active_menu == 1 and self.support_direction is not None:
+			# draw target on hex if any
+			(hx, hy) = self.player_unit_location
+			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.support_direction)
+			if (hx, hy) in self.map_hexes:
+				(x,y) = self.PlotCDHex(hx, hy)
+				libtcod.console_put_char_ex(cd_gui_con, x-1, y-1, 92, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(cd_gui_con, x+1, y+1, 92, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(cd_gui_con, x+1, y-1, 47, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(cd_gui_con, x-1, y+1, 47, libtcod.red, libtcod.black)
+		
 		# movement menu, direction currently selected
-		if self.active_menu == 3 and self.travel_direction is not None:
+		elif self.active_menu == 3 and self.travel_direction is not None:
 			
 			# draw directional line
 			(hx, hy) = self.player_unit_location
@@ -1101,8 +1131,8 @@ class CampaignDay:
 			libtcod.console_set_default_background(cd_command_con, col)
 			libtcod.console_rect(cd_command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
 			
-			# only travel and supply menus active for now
-			if num not in [3, 5]:
+			# only support, travel, and supply menus active for now
+			if num not in [1, 3, 5]:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
 			# menu number
 			libtcod.console_print(cd_command_con, x, 0, str(num))
@@ -1121,11 +1151,89 @@ class CampaignDay:
 		libtcod.console_rect(cd_command_con, x, 0, 25-x, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(cd_command_con, libtcod.black)
 		
-		# travel menu
-		if self.active_menu == 3:
+		# support
+		if self.active_menu == 1:
 			
-			libtcod.console_put_char(cd_command_con, 11, 4, '@')
+			# display current support levels
+			text = 'Air Support: '
+			if 'air_support_level' not in campaign.today:
+				text += 'None'
+			else:
+				text += str(campaign.today['air_support_level'])
+			libtcod.console_print(cd_command_con, 1, 3, text)
 			
+			text = 'Artillery Support: '
+			if 'arty_support_level' not in campaign.today:
+				text += 'None'
+			else:
+				text += str(campaign.today['arty_support_level'])
+			libtcod.console_print(cd_command_con, 1, 4, text)
+			
+			# display possible targets for support request
+			libtcod.console_put_char(cd_command_con, 11, 9, '@')
+			for direction in range(6):
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
+				
+				if self.support_direction is not None:
+					if self.support_direction == direction:
+						libtcod.console_set_default_foreground(cd_command_con, libtcod.blue)
+				
+				(k, x, y, char) = CD_TRAVEL_CMDS[direction]
+				libtcod.console_put_char(cd_command_con, 11+x, 9+y, k.upper())
+				if direction <= 2:
+					x+=1
+				else:
+					x-=1
+				libtcod.console_put_char(cd_command_con, 11+x, 9+y, chr(char))
+			
+			# no direction selected yet
+			if self.support_direction is None:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+				libtcod.console_print_ex(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
+					'Select Direction')
+				libtcod.console_print_ex(cd_command_con, 12, 23, libtcod.BKGND_NONE, libtcod.CENTER,
+					'of Support Target')
+				return
+			
+			# get the target hex
+			(hx, hy) = self.player_unit_location
+			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.support_direction)
+			
+			# hex is off map
+			if (hx, hy) not in self.map_hexes: return
+			
+			map_hex = self.map_hexes[(hx,hy)]
+			
+			# display call support options
+			if map_hex.air_support:
+				libtcod.console_set_default_foreground(cd_command_con, ALLIED_UNIT_COL)
+				libtcod.console_print(cd_command_con, 1, 13, 'Air Support inbound')
+			elif map_hex.controlled_by == 1 and self.air_support_level > 0.0:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+				libtcod.console_print_ex(cd_command_con, 12, 16, libtcod.BKGND_NONE, libtcod.CENTER,
+					'15 mins to attempt call')
+				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+				libtcod.console_print(cd_command_con, 3, 21, 'R')
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+				libtcod.console_print(cd_command_con, 5, 21, 'Call Air Support')
+			
+			if map_hex.arty_support:
+				libtcod.console_set_default_foreground(cd_command_con, ALLIED_UNIT_COL)
+				libtcod.console_print(cd_command_con, 1, 14, 'Arty Support inbound')
+			elif map_hex.controlled_by == 1 and self.arty_support_level > 0.0:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+				libtcod.console_print_ex(cd_command_con, 12, 16, libtcod.BKGND_NONE, libtcod.CENTER,
+					'15 mins to attempt call')
+				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+				libtcod.console_print(cd_command_con, 3, 22, 'F')
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+				libtcod.console_print(cd_command_con, 5, 22, 'Call Arty Support')
+		
+		# travel
+		elif self.active_menu == 3:
+			
+			# display possible move directions
+			libtcod.console_put_char(cd_command_con, 11, 9, '@')
 			for direction in range(6):
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
 				
@@ -1134,12 +1242,12 @@ class CampaignDay:
 						libtcod.console_set_default_foreground(cd_command_con, libtcod.blue)
 				
 				(k, x, y, char) = CD_TRAVEL_CMDS[direction]
-				libtcod.console_put_char(cd_command_con, 11+x, 4+y, k.upper())
+				libtcod.console_put_char(cd_command_con, 11+x, 9+y, k.upper())
 				if direction <= 2:
 					x+=1
 				else:
 					x-=1
-				libtcod.console_put_char(cd_command_con, 11+x, 4+y, chr(char))
+				libtcod.console_put_char(cd_command_con, 11+x, 9+y, chr(char))
 			
 			if self.travel_direction is None:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -1157,17 +1265,17 @@ class CampaignDay:
 			if map_hex.controlled_by == 1:
 				
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
-				libtcod.console_print(cd_command_con, 1, 9, 'Enemy Controlled')
+				libtcod.console_print(cd_command_con, 1, 13, 'Enemy Controlled')
 				
 				if not map_hex.known_to_player:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-					libtcod.console_print(cd_command_con, 0, 13, 'Recon: 15 mins.')
+					libtcod.console_print(cd_command_con, 1, 3, 'Recon: 15 mins.')
 					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 					libtcod.console_print(cd_command_con, 5, 21, 'R')
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 					libtcod.console_print(cd_command_con, 12, 21, 'Recon')
 				else:
-					libtcod.console_print(cd_command_con, 2, 10, 'Strength: ' + str(map_hex.enemy_strength))
+					libtcod.console_print(cd_command_con, 1, 14, 'Strength: ' + str(map_hex.enemy_strength))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -1177,7 +1285,7 @@ class CampaignDay:
 			else:
 				text += '30'
 			text += ' mins.'
-			libtcod.console_print(cd_command_con, 0, 14, text)
+			libtcod.console_print(cd_command_con, 1, 4, text)
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			libtcod.console_print(cd_command_con, 5, 22, 'Enter')
@@ -1213,7 +1321,7 @@ class CampaignDay:
 		libtcod.console_clear(cd_hex_info_con)
 		
 		libtcod.console_set_default_foreground(cd_hex_info_con, ACTION_KEY_COL)
-		libtcod.console_print(cd_hex_info_con, 0, 0, 'Zone Info')
+		libtcod.console_print(cd_hex_info_con, 0, 0, 'Area Info')
 		
 		# mouse cursor outside of map area
 		if mouse.cx < 31 or mouse.cx > 59:
@@ -1237,8 +1345,10 @@ class CampaignDay:
 		
 		# control
 		if cd_hex.controlled_by == 0:
+			libtcod.console_set_default_foreground(cd_hex_info_con, ALLIED_UNIT_COL)
 			libtcod.console_print(cd_hex_info_con, 0, 2, 'Friendly controlled')
 		else:
+			libtcod.console_set_default_foreground(cd_hex_info_con, ENEMY_UNIT_COL)
 			libtcod.console_print(cd_hex_info_con, 0, 2, 'Enemy controlled')
 			libtcod.console_print(cd_hex_info_con, 0, 3, 'Strength: ')
 			if cd_hex.known_to_player:
@@ -1246,6 +1356,14 @@ class CampaignDay:
 			else:
 				text = 'Unknown'
 			libtcod.console_print(cd_hex_info_con, 10, 3, text)
+		
+		# support
+		libtcod.console_set_default_foreground(cd_hex_info_con, ALLIED_UNIT_COL)
+		if cd_hex.air_support:
+			libtcod.console_print(cd_hex_info_con, 0, 5, 'Air Support inbound')
+		if cd_hex.arty_support:
+			libtcod.console_print(cd_hex_info_con, 0, 5, 'Arty Support inbound')
+		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)
 		
 		# roads
 		if len(cd_hex.dirt_roads) > 0:
@@ -1392,7 +1510,7 @@ class CampaignDay:
 			key_char = chr(key.c).lower()
 			
 			# switch active menu
-			if key_char in ['3', '5']:
+			if key_char in ['1', '3', '5']:
 				if self.active_menu != int(key_char):
 					self.active_menu = int(key_char)
 					self.UpdateCDGUICon()
@@ -1400,10 +1518,84 @@ class CampaignDay:
 					self.UpdateCDDisplay()
 				continue
 			
-			# travel menu active
-			if self.active_menu == 3:
+			# support menu active
+			if self.active_menu == 1:
 				
-				# set travel direction
+				# set support direction
+				DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
+				if key_char in DIRECTION_KEYS:
+					direction = DIRECTION_KEYS.index(key_char)
+					if self.support_direction is None:
+						self.support_direction = direction
+					else:
+						# cancel direction
+						if self.support_direction == direction:
+							self.support_direction = None
+						else:
+							self.support_direction = direction
+					self.UpdateCDGUICon()
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					continue
+				
+				# call support
+				if key_char in ['r', 'f']:
+					if self.support_direction is None:
+						continue
+					(hx, hy) = self.player_unit_location
+					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.support_direction)
+					if (hx, hy) not in self.map_hexes:
+						continue
+					map_hex = self.map_hexes[(hx,hy)]
+					
+					# support not possible or already called
+					if map_hex.controlled_by == 0: continue
+					if key_char == 'r':
+						if self.air_support_level == 0.0: continue
+						if map_hex.air_support: continue
+					if key_char == 'f':
+						if self.arty_support_level == 0.0: continue
+						if map_hex.arty_support: continue
+					
+					# spend time
+					campaign_day.AdvanceClock(0, 15)
+					
+					# do roll
+					roll = GetPercentileRoll()
+					
+					if DEBUG:
+						if session.debug['Support Requests Always Granted']:
+							roll = 1.0
+					
+					if key_char == 'r':
+						if roll > self.air_support_level:
+							ShowMessage('Request for air support was not successful.')
+							continue
+						ShowMessage('Request successful! Air support inbound.')
+						map_hex.air_support = True
+						self.air_support_level -= self.air_support_step
+						if self.air_support_level < 0.0: self.air_support_level = 0.0 
+						
+					elif key_char == 'f':
+						if roll > self.arty_support_level:
+							ShowMessage('Request for artillery support was not successful.')
+							continue
+						ShowMessage('Request successful! Artillery support inbound.')
+						map_hex.arty_support = True
+						self.arty_support_level -= self.arty_support_step
+						if self.arty_support_level < 0.0: self.arty_support_level = 0.0
+					
+					self.support_direction = None
+					DisplayTimeInfo(time_weather_con)
+					self.UpdateCDGUICon()
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					continue
+			
+			# travel menu active
+			elif self.active_menu == 3:
+				
+				# set travel or recon direction
 				DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
 				if key_char in DIRECTION_KEYS:
 					direction = DIRECTION_KEYS.index(key_char)
@@ -1520,6 +1712,8 @@ class CDMapHex:
 		
 		self.controlled_by = 1		# which player side currently controls this zone
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
+		self.air_support = False	# player has air support called in
+		self.arty_support = False	# " arty "
 		
 		# set enemy strength level
 		self.enemy_strength = libtcod.random_get_int(0, 1, 5) + libtcod.random_get_int(0, 0, 5)
@@ -2157,7 +2351,7 @@ class AI:
 			scenario.UpdateScenarioDisplay()
 			
 			# if new location is in ring 4, remove from game
-			GetHexDistance(0, 0, hx, hy) == 4:
+			if GetHexDistance(0, 0, hx, hy) == 4:
 				self.owner.RemoveFromPlay()
 				
 		

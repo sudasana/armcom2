@@ -38,8 +38,8 @@
 			"location" : "The Polish Border",
 			"desc" : "",
 			"enemy_nation" : "Germany",
-			"arty_support_level" : "90.0",
-			"arty_support_step" : "10.0",
+			"arty_support_level" : 90.0,
+			"arty_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Medium Tank" : "15",

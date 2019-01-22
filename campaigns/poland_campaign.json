@@ -38,8 +38,8 @@
 			"location" : "The Polish Border",
 			"desc" : "",
 			"enemy_nation" : "Poland",
-			"air_support_level" : "80.0",
-			"air_support_step" : "10.0",
+			"air_support_level" : 80.0,
+			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "80",
 				"Light Tank" : "30",

@@ -1539,7 +1539,7 @@ class CampaignDay:
 					continue
 				
 				# call support
-				if key_char in ['r', 'f']:
+				elif key_char in ['r', 'f']:
 					if self.support_direction is None:
 						continue
 					(hx, hy) = self.player_unit_location
@@ -1607,6 +1607,7 @@ class CampaignDay:
 							self.travel_direction = None
 						else:
 							self.travel_direction = direction
+					self.UpdateCDUnitCon()
 					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()

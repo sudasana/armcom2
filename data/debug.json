@@ -1,5 +1,6 @@
 {
  "Player Immortality": false,
  "Player Always Hits": false,
- "No AI Actions": false
+ "Player Always Moves": true,
+ "No AI Actions": true
 }

@@ -2104,16 +2104,23 @@ class AI:
 					hex_list.remove((hx, hy))
 					continue
 				
-				# destination is on map, check if 1+ enemy units present
+				# if destination is on map, check if 1+ enemy units present
 				if (hx, hy) in scenario.hex_dict:
 					for unit in scenario.hex_dict[(hx,hy)].unit_stack:
 						if unit.owning_player != self.owner.owning_player:
 							hex_list.remove((hx, hy))
 							continue
 				
-				# if range would change, chance that this hex gets thrown out
-				if GetHexDistance(0, 0, hx, hy) != current_range:
-					if GetPercentileRoll() <= 60.0:
+				# if move would take them off map, large chance that this hex gets thrown out
+				dist = GetHexDistance(0, 0, hx, hy)
+				if dist == 4:
+					if GetPercentileRoll() <= 75.0:
+						hex_list.remove((hx, hy))
+						continue
+				
+				# otherwise, if range would change, smaller chance that this hex gets thrown out
+				elif dist != current_range:
+					if GetPercentileRoll() <= 40.0:
 						hex_list.remove((hx, hy))
 						continue
 			
@@ -2148,6 +2155,11 @@ class AI:
 			
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
+			
+			# if new location is in ring 4, remove from game
+			GetHexDistance(0, 0, hx, hy) == 4:
+				self.owner.RemoveFromPlay()
+				
 		
 		elif self.disposition == 'Combat':
 			
@@ -4333,6 +4345,11 @@ class Scenario:
 			chance = scenario.player_unit.reverse_move_chance
 		roll = GetPercentileRoll()
 		
+		# check for debug flag
+		if DEBUG:
+			if session.debug['Player Always Moves']:
+				roll = 1.0
+		
 		# move was not successful
 		if roll > chance:
 			
@@ -4364,17 +4381,17 @@ class Scenario:
 		else:
 			direction = 0
 		
-		# run through list in reverse so we can remove units that move off board
-		for unit in reversed(self.units):
+		# run through list of units and move them
+		# player movement will never move an enemy unit into ring 4 nor off board
+		for unit in self.units:
 			
 			if unit == scenario.player_unit: continue
 			if unit in scenario.player_unit.squad: continue
 			
 			(new_hx, new_hy) = GetAdjacentHex(unit.hx, unit.hy, direction)
 			
-			# special case: remove any units that would move off map
-			if GetHexDistance(0, 0, new_hx, new_hy) > 4:
-				unit.RemoveFromPlay()
+			# skip if unit would end up in ring 4 or off board
+			if GetHexDistance(0, 0, new_hx, new_hy) > 3:
 				continue
 				
 			# special case: jump over player hex 0,0
@@ -4406,10 +4423,9 @@ class Scenario:
 			self.UpdateScenarioDisplay()
 			Wait(15)
 		
-		# set new hex location for each unit and move into new hex stack
+		# set new hex location for each moving unit and move into new hex stack
 		for unit in self.units:
-			if unit == scenario.player_unit: continue
-			if unit in scenario.player_unit.squad: continue
+			if unit.dest_hex is None: continue
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
 			(unit.hx, unit.hy) = unit.dest_hex
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)

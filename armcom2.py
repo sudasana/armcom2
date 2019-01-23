@@ -249,6 +249,8 @@ RESOLVE_FP_BASE_CHANCE = 5.0	# base chance of a 1 firepower attack destroying a 
 RESOLVE_FP_CHANCE_STEP = 5.0	# each additional firepower beyond 1 adds this additional chance
 RESOLVE_FP_CHANCE_MOD = 1.05	# additional firepower modifier increased by this much beyond 1
 
+ARTY_BASE_SPOT_CHANCE = 50.0	# base chance of ranging in with an artillery support attack
+
 MORALE_CHECK_BASE_CHANCE = 70.0	# base chance of passing a morale check
 
 
@@ -3690,6 +3692,8 @@ class Scenario:
 			
 			hex_list = GetHexRing(0, 0, distance)
 			
+			# FUTURE: lower chance of spawning in bottom half of map
+			
 			(hx, hy) = choice(hex_list)
 			
 			# create the unit
@@ -3708,6 +3712,76 @@ class Scenario:
 			if unit.GetStat('category') != 'Infantry':
 				unit.facing = direction		
 			unit.turret_facing = direction
+	
+	
+	# attempt an artillery attack against a target hex
+	def ArtilleryAttack(self, hx, hy):
+		
+		# make sure target is valid
+		if (hx, hy) not in self.hex_dict: return
+		
+		(x, y) = self.PlotHex(hx, hy)
+		
+		# fire spotting rounds
+		for i in range(3):
+			
+			chance = ARTY_BASE_SPOT_CHANCE
+			roll = GetPercentileRoll()
+			
+			# spotting round did not hit target hex
+			if roll > chance:
+				
+				# get a random adjacent hex
+				for direction in sample(range(6), 6):
+					(hx2, hy2) = GetAdjacentHex(hx, hy, direction)
+					if (hx2, hy2) in self.hex_dict:
+						break
+			
+			else:
+				(hx2, hy2) = (hx, hy)
+			
+			(x2, y2) = self.PlotHex(hx, hy)
+			
+			# play sound
+			PlaySoundFor(None, 'he_explosion')
+				
+			# show spotting round animation
+			# FUTURE: use animation console
+			for i in range(24):
+				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+				libtcod.console_set_default_foreground(0, col)
+				libtcod.console_put_char(0, x2+32, y2+9, 42)
+				libtcod.console_flush()
+				Wait(4)
+			libtcod.console_set_default_foreground(0, libtcod.white)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			
+			# break if ranged in
+			if (hx2, hy2) == (hx, hy):
+				break
+		
+		# unable to range in
+		if (hx2, hy2) != (hx, hy):
+			ShowMessage('Unable to range in.')
+			return
+					
+		# spawn gun unit and determine effective FP
+		unit_id = choice(campaign.stats['player_arty_support'])
+		gun_unit = Unit(unit_id)
+		gun_calibre = int(gun_unit.weapon_list[0].GetStat('calibre'))
+		
+		# determine effective fp and base AP chance for gun
+		for (calibre, effective_fp) in HE_FP_EFFECT:
+			if calibre <= gun_calibre:
+				break
+		for (calibre, ap_chance) in HE_AP_CHANCE:
+			if calibre <= gun_calibre:
+				break
+		
+		ShowMessage('Artillery ranged in, ' + unit_id + ' battery firing for effect.')
+		
+		
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a

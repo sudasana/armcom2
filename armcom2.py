@@ -139,16 +139,24 @@ MONTH_NAMES = [
 	'October', 'November', 'December'
 ]
 
+# order of turn phases
+PHASE_COMMAND = 0
+PHASE_SPOTTING = 1
+PHASE_MOVEMENT = 2
+PHASE_SHOOTING = 3
+PHASE_ASSAULT = 4
+PHASE_RECOVERY = 5
+PHASE_ALLIED_ACTION = 6
+PHASE_ENEMY_ACTION = 7
+
 # text names for scenario phases
 SCEN_PHASE_NAMES = [
-	'Command', 'Spotting', 'Movement', 'Shooting', 'Assault',
-	'Recovery', 'Allied Action', 'Enemy Action'
+	'Command', 'Spotting', 'Movement', 'Shooting', 'Assault', 'Recovery', 'Allied Action', 'Enemy Action'
 ]
 
 # colour associated with phases
 SCEN_PHASE_COL = [
-	libtcod.yellow, libtcod.purple, libtcod.green, libtcod.red, libtcod.white,
-	libtcod.blue, ALLIED_UNIT_COL, ENEMY_UNIT_COL 
+	libtcod.yellow, libtcod.purple, libtcod.green, libtcod.red, libtcod.white, libtcod.blue, ALLIED_UNIT_COL, ENEMY_UNIT_COL 
 ]
 
 # list of campaign day menus and their highlight colours
@@ -3576,7 +3584,7 @@ class Scenario:
 		# turn and phase information
 		self.current_turn = 1					# current scenario turn
 		self.active_player = 0					# currently active player (0 is human player)
-		self.phase = 0						# current phase
+		self.phase = PHASE_COMMAND				# current phase
 		self.advance_phase = False				# flag for input loop to automatically advance to next phase/turn
 		
 		self.player_pivot = 0					# keeps track of player unit pivoting
@@ -3720,8 +3728,6 @@ class Scenario:
 		# make sure target is valid
 		if (hx, hy) not in self.hex_dict: return
 		
-		(x, y) = self.PlotHex(hx, hy)
-		
 		# fire spotting rounds
 		for i in range(3):
 			
@@ -3740,7 +3746,7 @@ class Scenario:
 			else:
 				(hx2, hy2) = (hx, hy)
 			
-			(x2, y2) = self.PlotHex(hx, hy)
+			(x, y) = self.PlotHex(hx2, hy2)
 			
 			# play sound
 			PlaySoundFor(None, 'he_explosion')
@@ -3750,7 +3756,7 @@ class Scenario:
 			for i in range(24):
 				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
 				libtcod.console_set_default_foreground(0, col)
-				libtcod.console_put_char(0, x2+32, y2+9, 42)
+				libtcod.console_put_char(0, x+32, y+9, 42)
 				libtcod.console_flush()
 				Wait(4)
 			libtcod.console_set_default_foreground(0, libtcod.white)
@@ -3781,7 +3787,114 @@ class Scenario:
 		
 		ShowMessage('Artillery ranged in, ' + unit_id + ' battery firing for effect.')
 		
+		# do attack animation
+		# FUTURE: use animation console
+		#(x, y) = self.PlotHex(hx, hy)
+		for i in range(6):
+			PlaySoundFor(None, 'he_explosion')
+			x2 = x - 2 + libtcod.random_get_int(0, 0, 4)
+			y2 = y - 2 + libtcod.random_get_int(0, 0, 4)
+			for i in range(12):
+				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+				libtcod.console_set_default_foreground(0, col)
+				libtcod.console_put_char(0, x2+32, y2+9, 42)
+				libtcod.console_flush()
+				Wait(2)
+			libtcod.console_set_default_foreground(0, libtcod.white)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
 		
+		# get units in target map hex and shuffle a local copy of the list
+		map_hex = self.hex_dict[(hx, hy)]
+		unit_list = map_hex.unit_stack[:]
+		shuffle(unit_list)
+		
+		results = False
+		for target in unit_list:
+			
+			# calculate base effect chance
+			if target.GetStat('category') == 'Vehicle':
+				chance = VEH_FP_BASE_CHANCE
+			else:
+				chance = INF_FP_BASE_CHANCE
+			for i in range(2, effective_fp + 1):
+				chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
+			
+			# FUTURE: apply modifiers here
+			
+			chance = round(chance, 2)
+			roll = GetPercentileRoll()
+			
+			# no effect
+			if roll > chance:
+				continue
+			
+			results = True
+			
+			# infantry or gun target hit
+			if target.GetStat('category') in ['Infantry', 'Gun']:
+				
+				# critical hit modifier
+				if roll <= 3.0:
+					target.fp_to_resolve += (effective_fp * 2)
+				else:
+					target.fp_to_resolve += effective_fp
+				
+				if not target.spotted:
+					target.hit_by_fp = True
+				
+				ShowMessage(target.GetName() + ' was hit by artillery attack')
+			
+			# vehicle hit
+			elif target.GetStat('category') == 'Vehicle':
+				
+				# determine location hit - use side locations and modify later
+				# for aerial attack
+				if GetPercentileRoll() <= 50.0:
+					hit_location = 'hull_side'
+				else:
+					hit_location = 'turret_side'
+				
+				# TODO: direct hit vs. near miss
+				
+				# start with base AP chance
+				chance = ap_chance
+				
+				# apply target armour modifier
+				armour = target.GetStat('armour')
+				if armour is not None:
+					if armour[hit_location] != '-':
+						target_armour = int(armour[hit_location])
+						if target_armour >= 0:
+						
+							modifier = -9.0
+							for i in range(target_armour - 1):
+								modifier = modifier * 1.8
+							
+							chance += modifier
+							
+							# apply critical hit modifier if any
+							if roll <= 3.0:
+								modifier = round(abs(modifier) * 0.8, 2)
+								chance += modifier
+				
+				# calculate final chance of AP and do roll
+				chance = RestrictChance(chance)
+				roll = GetPercentileRoll()
+				
+				# no penetration
+				if roll > chance:
+					ShowMessage(target.GetName() + ' was hit by artillery attack but is unharmed.')
+					if not target.known:
+						target.hit_by_fp = True
+					continue
+				
+				# penetrated
+				target.DestroyMe()
+				ShowMessage(target.GetName() + ' was destroyed by artillery attack')
+		
+		if not results:
+			ShowMessage('Artillery attack had no effect.')
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
@@ -4828,14 +4941,14 @@ class Scenario:
 		# do end of phase actions for player
 		
 		# end of movement phase
-		if self.phase == 2:
+		if self.phase == PHASE_MOVEMENT:
 			
 			# player pivoted during movement phase
 			if self.player_pivot != 0:
 				scenario.player_unit.acquired_target = None
 		
 		# end of shooting phase
-		elif self.phase == 3:
+		elif self.phase == PHASE_SHOOTING:
 			
 			# clear GUI console and refresh screen
 			libtcod.console_clear(gui_con)
@@ -4865,7 +4978,7 @@ class Scenario:
 			if self.finished: return
 			
 			self.active_player = 0
-			self.phase = 0
+			self.phase = PHASE_COMMAND
 			
 			scenario.player_unit.ResetForNewTurn()
 			for unit in scenario.player_unit.squad:
@@ -4875,7 +4988,7 @@ class Scenario:
 			self.UpdateUnitCon()
 		
 		# remaining on player turn
-		elif self.phase < 6:
+		elif self.phase < PHASE_ALLIED_ACTION:
 			self.phase += 1
 		
 		# end of player turn, switching to enemy turn
@@ -4887,22 +5000,22 @@ class Scenario:
 				if unit.owning_player == self.active_player: continue
 				unit.ResolveFP()
 			
-			self.phase = 7
+			self.phase = PHASE_ENEMY_ACTION
 			self.active_player = 1
 		
 		# do automatic actions at start of phase
 		
 		# command phase: rebuild lists of commands
-		if self.phase == 0:
+		if self.phase == PHASE_COMMAND:
 			scenario.player_unit.BuildCmdLists()
 		
 		# spotting phase: do spotting then automatically advance
-		elif self.phase == 1:
+		elif self.phase == PHASE_SPOTTING:
 			scenario.player_unit.DoSpotChecks()
 			self.advance_phase = True
 		
 		# movement phase: 
-		elif self.phase == 2:
+		elif self.phase == PHASE_MOVEMENT:
 			
 			self.player_pivot = 0
 			
@@ -4922,24 +5035,24 @@ class Scenario:
 				scenario.player_unit.CalculateMoveChances()
 		
 		# shooting phase
-		elif self.phase == 3:
+		elif self.phase == PHASE_SHOOTING:
 			self.BuildTargetList()
 			self.UpdateGuiCon()
 		
 		# assault phase
-		elif self.phase == 4:
+		elif self.phase == PHASE_ASSAULT:
 			
 			# TEMP - advance automatically past this phase
 			self.advance_phase = True
 		
 		# recovery phase
-		elif self.phase == 5:
+		elif self.phase == PHASE_RECOVERY:
 			
 			# TEMP - advance automatically past this phase
 			self.advance_phase = True
 		
 		# allied action
-		elif self.phase == 6:
+		elif self.phase == PHASE_ALLIED_ACTION:
 			
 			DisplayTimeInfo(time_con)
 			self.UpdateScenarioDisplay()
@@ -4992,7 +5105,7 @@ class Scenario:
 		if self.advance_phase: return
 		
 		# Command Phase: display info about current crew command
-		if self.phase == 0:
+		if self.phase == PHASE_COMMAND:
 			position = scenario.player_unit.positions_list[self.selected_position]
 			libtcod.console_set_default_foreground(context_con, SCEN_PHASE_COL[self.phase])
 			libtcod.console_print(context_con, 0, 0, position.crewman.current_cmd)
@@ -5004,7 +5117,7 @@ class Scenario:
 				y += 1
 		
 		# Movement Phase
-		elif self.phase == 2:
+		elif self.phase == PHASE_MOVEMENT:
 			
 			libtcod.console_set_default_foreground(context_con, libtcod.white)
 			libtcod.console_print(context_con, 6, 0, 'Success')
@@ -5051,7 +5164,7 @@ class Scenario:
 			#	libtcod.RIGHT, '2%%')
 		
 		# Shooting Phase
-		elif self.phase == 3:
+		elif self.phase == PHASE_SHOOTING:
 			
 			weapon = self.selected_weapon
 			if weapon is None:
@@ -5132,7 +5245,7 @@ class Scenario:
 		for position in scenario.player_unit.positions_list:
 			
 			# highlight position if selected and in command phase
-			if i == scenario.selected_position and scenario.phase == 0:
+			if i == scenario.selected_position and scenario.phase == PHASE_COMMAND:
 				libtcod.console_set_default_background(crew_con, libtcod.darker_blue)
 				libtcod.console_rect(crew_con, 0, y, 25, 3, True, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(crew_con, libtcod.black)
@@ -5204,7 +5317,7 @@ class Scenario:
 		libtcod.console_print(cmd_menu_con, 8, 10, 'End Phase')
 		
 		# Command phase
-		if self.phase == 0:
+		if self.phase == PHASE_COMMAND:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
 			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
@@ -5216,7 +5329,7 @@ class Scenario:
 			libtcod.console_print(cmd_menu_con, 8, 3, 'Open/Shut Hatch')
 		
 		# Movement phase
-		elif self.phase == 2:
+		elif self.phase == PHASE_MOVEMENT:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
 			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
@@ -5230,7 +5343,7 @@ class Scenario:
 			#libtcod.console_print(cmd_menu_con, 8, 4, 'Attempt HD')
 		
 		# Shooting phase
-		elif self.phase == 3:
+		elif self.phase == PHASE_SHOOTING:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
 			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
@@ -5332,7 +5445,7 @@ class Scenario:
 		libtcod.console_clear(gui_con)
 		
 		# display field of view if in command phase
-		if self.phase == 0:
+		if self.phase == PHASE_COMMAND:
 			
 			position = scenario.player_unit.positions_list[scenario.selected_position]
 			for (hx, hy) in position.visible_hexes:
@@ -5341,7 +5454,7 @@ class Scenario:
 					x-5, y-3)
 		
 		# shooting phase
-		elif self.phase == 3:
+		elif self.phase == PHASE_SHOOTING:
 			
 			# display covered hexes if a weapon is selected
 			if self.selected_weapon is not None:
@@ -5644,8 +5757,8 @@ class Scenario:
 				continue
 			
 			
-			# Command Phase only
-			if scenario.phase == 0:
+			# Command Phase
+			if scenario.phase == PHASE_COMMAND:
 				
 				# change selected crew position
 				if key_char in ['w', 's']:
@@ -5703,7 +5816,7 @@ class Scenario:
 						continue
 			
 			# Movement phase only
-			elif scenario.phase == 2:
+			elif scenario.phase == PHASE_MOVEMENT:
 				
 				# move forward/backward
 				if key_char in ['w', 's']:
@@ -5722,7 +5835,7 @@ class Scenario:
 					continue
 				
 			# Shooting phase
-			elif scenario.phase == 3:
+			elif scenario.phase == PHASE_SHOOTING:
 				
 				# select player weapon
 				if key_char in ['w', 's']:

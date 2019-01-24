@@ -142,21 +142,21 @@ MONTH_NAMES = [
 # order of turn phases
 PHASE_COMMAND = 0
 PHASE_SPOTTING = 1
-PHASE_MOVEMENT = 2
-PHASE_SHOOTING = 3
-PHASE_ASSAULT = 4
-PHASE_RECOVERY = 5
+PHASE_CREW_ACTION = 2
+PHASE_MOVEMENT = 3
+PHASE_SHOOTING = 4
+PHASE_CC = 5
 PHASE_ALLIED_ACTION = 6
 PHASE_ENEMY_ACTION = 7
 
-# text names for scenario phases
+# text names for scenario turn phases
 SCEN_PHASE_NAMES = [
-	'Command', 'Spotting', 'Movement', 'Shooting', 'Assault', 'Recovery', 'Allied Action', 'Enemy Action'
+	'Command', 'Spotting', 'Crew Action', 'Movement', 'Shooting', 'Close Combat', 'Allied Action', 'Enemy Action'
 ]
 
 # colour associated with phases
 SCEN_PHASE_COL = [
-	libtcod.yellow, libtcod.purple, libtcod.green, libtcod.red, libtcod.white, libtcod.blue, ALLIED_UNIT_COL, ENEMY_UNIT_COL 
+	libtcod.yellow, libtcod.purple, libtcod.light_blue, libtcod.green, libtcod.red, libtcod.white, ALLIED_UNIT_COL, ENEMY_UNIT_COL 
 ]
 
 # list of campaign day menus and their highlight colours
@@ -5014,6 +5014,11 @@ class Scenario:
 			scenario.player_unit.DoSpotChecks()
 			self.advance_phase = True
 		
+		# crew action phase: FUTURE: check to see if any crew are on action commands
+		elif self.phase == PHASE_CREW_ACTION:
+			# TEMP
+			self.advance_phase = True
+		
 		# movement phase: 
 		elif self.phase == PHASE_MOVEMENT:
 			
@@ -5039,14 +5044,8 @@ class Scenario:
 			self.BuildTargetList()
 			self.UpdateGuiCon()
 		
-		# assault phase
-		elif self.phase == PHASE_ASSAULT:
-			
-			# TEMP - advance automatically past this phase
-			self.advance_phase = True
-		
-		# recovery phase
-		elif self.phase == PHASE_RECOVERY:
+		# close combat phase
+		elif self.phase == PHASE_CC:
 			
 			# TEMP - advance automatically past this phase
 			self.advance_phase = True

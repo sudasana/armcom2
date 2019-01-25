@@ -16,6 +16,12 @@
 		"spotting_allowed" : true
 	},
 	
+	"Request Support" : {
+		"desc" : "Request an air or artillery support attack",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"spotting_allowed" : false
+	},
+	
 	"Operate Gun" : {
 		"desc" : "Operate a main gun and the turret",
 		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],

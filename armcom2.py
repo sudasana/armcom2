@@ -1964,6 +1964,12 @@ class Personnel:
 			if 'position_list' in d:
 				if self.current_position.name not in d['position_list']:
 					continue
+			
+			# check if command would be allowed this turn
+			if k == 'Request Support':
+				if not scenario.cd_map_hex.air_support and not scenario.cd_map_hex.arty_support:
+					continue
+			
 			self.cmd_list.append(k)
 	
 	# select a new command from command list

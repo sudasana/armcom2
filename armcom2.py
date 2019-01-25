@@ -1453,6 +1453,9 @@ class CampaignDay:
 		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 36, 1)		# time and weather
 		
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
+		
+		# TODO: directional menu and display 25x16
+		
 		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
 		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 1)		# campaign info
 		libtcod.console_blit(cd_hex_info_con, 0, 0, 0, 0, con, 66, 50)		# zone info
@@ -1576,8 +1579,9 @@ class CampaignDay:
 				ShowDebugMenu()
 				continue
 			
-			# key commands
+			# key commands - translate key from current keyboard layout into standard
 			key_char = chr(key.c).lower()
+			key_char = DeKey(key_char)
 			
 			# switch active menu
 			if key_char in ['1', '3', '5']:
@@ -6505,7 +6509,7 @@ def ShowGameMenu():
 
 # display a list of game options and current settings
 def DisplayGameOptions(console, x, y, skip_esc=False):
-	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('Esc', 'Return to Main Menu')]:
+	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
 		
 		if char == 'Esc' and skip_esc: continue
 		
@@ -6538,8 +6542,8 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 			libtcod.console_print(console, x+20, y, text)
 		
 		# keyboard settings
-		#elif char == 'K':
-		#	libtcod.console_print(console, x+18, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
+		elif char == 'K':
+			libtcod.console_print(console, x+20, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
 		
 		y += 1
 
@@ -6547,7 +6551,7 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 # take a keyboard input and change game settings
 def ChangeGameSettings(key_char):
 	
-	if key_char not in ['f', 's']:
+	if key_char not in ['f', 's', 'k']:
 		return False
 	
 	# switch font size
@@ -6577,15 +6581,15 @@ def ChangeGameSettings(key_char):
 				session.LoadSounds()
 		
 	# switch keyboard layout
-	#elif key_char == 'k':
-	#	i = config['ArmCom2'].getint('keyboard')
-	#	if i == len(KEYBOARDS) - 1:
-	#		i = 0
-	#	else:
-	#		i += 1
-	#	config['ArmCom2']['keyboard'] = i
-	#	GenerateKeyboards()
-	
+	elif key_char == 'k':
+		i = config['ArmCom2'].getint('keyboard')
+		if i == len(KEYBOARDS) - 1:
+			i = 0
+		else:
+			i += 1
+		config['ArmCom2']['keyboard'] = str(i)
+		GenerateKeyboards()
+		
 	SaveCFG()
 	return True
 
@@ -6769,7 +6773,38 @@ def ShowDebugMenu():
 	# re-draw original root console
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
+
+
+
+# generate keyboard encoding and decoding dictionaries
+def GenerateKeyboards():
 	
+	global keyboard_decode, keyboard_encode
+
+	keyboard_decode = {}
+	keyboard_encode = {}
+	with open(DATAPATH + 'keyboard_mapping.json', encoding='utf8') as data_file:
+		keyboards = json.load(data_file)
+	dictionary = keyboards[KEYBOARDS[config['ArmCom2'].getint('keyboard')]]
+	for key, value in dictionary.items():
+		keyboard_decode[key] = value
+		keyboard_encode[value] = key
+
+
+
+# turn an inputted key into a standard key input
+def DeKey(key_char):
+	if key_char in keyboard_decode:
+		return keyboard_decode[key_char].encode('IBM850')
+	return key_char
+
+
+
+# turn a standard key into the one for the current keyboard layout
+def EnKey(key_char):
+	if key_char in keyboard_encode:
+		return keyboard_encode[key_char].encode('IBM850')
+	return key_char
 	
 
 
@@ -6856,6 +6891,7 @@ def PlaySoundFor(obj, action):
 
 global main_title, main_theme
 global campaign, campaign_day, scenario, session
+global keyboard_decode, keyboard_encode
 
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
@@ -6902,6 +6938,10 @@ if config['ArmCom2'].getboolean('sounds_enabled'):
 		print('Not able to init mixer, sounds disabled')
 else:
 	print('Sounds disabled')
+
+# generate keyboard mapping dictionaries
+GenerateKeyboards()
+print('Current keyboard layout: ' + KEYBOARDS[config['ArmCom2'].getint('keyboard')])
 
 # create double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -7046,7 +7086,6 @@ while not exit_game:
 		if ChangeGameSettings(key_char):
 			
 			# TODO: stop or re-start main menu theme if sound settings changed
-			
 			UpdateMainTitleCon(options_menu_active)
 			
 		# exit options menu

@@ -2874,8 +2874,8 @@ class Unit:
 				
 				chance = RestrictChance(chance)
 				
-				# special: target was hit by effective fp last turn
-				if unit.hit_by_fp > 0:
+				# special: target has been hit by effective fp
+				if unit.hit_by_fp:
 					chance = 100.0
 				
 				roll = GetPercentileRoll()
@@ -2895,7 +2895,6 @@ class Unit:
 						
 					elif unit == scenario.player_unit:
 						ShowMessage('You have been spotted!')
-						
 	
 	
 	# reveal this unit after being spotted
@@ -3735,8 +3734,10 @@ class Scenario:
 			unit.turret_facing = direction
 	
 	
-	# attempt an artillery attack against a target hex
-	def ArtilleryAttack(self, hx, hy):
+	# attempt an artillery attack against the support attack target hex
+	def ArtilleryAttack(self):
+		
+		(hx, hy) = self.support_target
 		
 		# make sure target is valid
 		if (hx, hy) not in self.hex_dict: return
@@ -3753,6 +3754,7 @@ class Scenario:
 				# get a random adjacent hex
 				for direction in sample(range(6), 6):
 					(hx2, hy2) = GetAdjacentHex(hx, hy, direction)
+					if GetHexDistance(0, 0, hx2, hy2) > 3: continue
 					if (hx2, hy2) in self.hex_dict:
 						break
 			
@@ -3782,7 +3784,7 @@ class Scenario:
 		
 		# unable to range in
 		if (hx2, hy2) != (hx, hy):
-			ShowMessage('Unable to range in.')
+			ShowMessage('Unable to range in, will attempt again in two minutes.')
 			return
 					
 		# spawn gun unit and determine effective FP
@@ -3800,6 +3802,9 @@ class Scenario:
 		
 		ShowMessage('Artillery ranged in, ' + unit_id + ' battery firing for effect.')
 		
+		# clear selected target
+		self.support_target = None
+
 		# do attack animation
 		# FUTURE: use animation console
 		#(x, y) = self.PlotHex(hx, hy)
@@ -3898,7 +3903,7 @@ class Scenario:
 				# no penetration
 				if roll > chance:
 					ShowMessage(target.GetName() + ' was hit by artillery attack but is unharmed.')
-					if not target.known:
+					if not target.spotted:
 						target.hit_by_fp = True
 					continue
 				
@@ -3908,6 +3913,10 @@ class Scenario:
 		
 		if not results:
 			ShowMessage('Artillery attack had no effect.')
+	
+	# attempt an air attack against the support attack target hex
+	def AirAttack(self):
+		pass
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
@@ -5105,8 +5114,12 @@ class Scenario:
 			self.UpdateScenarioDisplay()
 			libtcod.console_flush()
 			
-			# TODO check for support attacks and resolve them here
-			
+			# check for support attacks and resolve them here
+			if self.support_target is not None:
+				if self.cd_map_hex.air_support:
+					self.AirAttack()
+				else:
+					self.ArtilleryAttack()
 			
 			# player squad acts first
 			for unit in scenario.player_unit.squad:

@@ -1872,7 +1872,7 @@ class Session:
 			'37mm_he_explosion_00', '37mm_he_explosion_01',
 			'vehicle_explosion_00',
 			'at_rifle_firing',
-			#'plane_incoming_00', 'stuka_divebomb_00',
+			'plane_incoming_00', 'stuka_divebomb_00',
 			'armour_save_00', 'armour_save_01',
 			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
 			'wheeled_moving_00', 'wheeled_moving_01', 'wheeled_moving_02',
@@ -3738,8 +3738,6 @@ class Scenario:
 	def ArtilleryAttack(self):
 		
 		(hx, hy) = self.support_target
-		
-		# make sure target is valid
 		if (hx, hy) not in self.hex_dict: return
 		
 		# fire spotting rounds
@@ -3807,7 +3805,6 @@ class Scenario:
 
 		# do attack animation
 		# FUTURE: use animation console
-		#(x, y) = self.PlotHex(hx, hy)
 		for i in range(6):
 			PlaySoundFor(None, 'he_explosion')
 			x2 = x - 2 + libtcod.random_get_int(0, 0, 4)
@@ -3916,7 +3913,213 @@ class Scenario:
 	
 	# attempt an air attack against the support attack target hex
 	def AirAttack(self):
-		pass
+		
+		(hx, hy) = self.support_target
+		if (hx, hy) not in self.hex_dict: return
+		map_hex = self.hex_dict[(hx, hy)]
+		
+		# clear selected target
+		self.support_target = None
+		
+		# roll for number of planes
+		roll = libtcod.random_get_int(0, 1, 10)
+		if roll <= 5:
+			num_planes = 1
+		elif roll <= 8:
+			num_planes = 2
+		else:
+			num_planes = 3
+		
+		# determine type of plane
+		plane_id = choice(campaign.stats['player_air_support'])
+		
+		# display message
+		text = str(num_planes) + ' ' + plane_id + ' arrive'
+		if num_planes == 1: text += 's'
+		text += ' for an attack run'
+		ShowMessage(text)
+		
+		(x, y) = self.PlotHex(hx, hy)
+		(x2, y2) = (x, y)
+		
+		# determine attack direction and starting position
+		x = x2
+		if y2 <= 30:
+			y1 = y2 + 20
+			if y1 > 51: y1 = 51
+			y2 += 1
+			direction = -1
+		else:
+			y1 = y2 - 20
+			if y1 < 9: y1 = 9
+			y2 -= 3
+			direction = 1
+		
+		# create and draw plane console
+		temp_con = libtcod.console_new(3, 3)
+		libtcod.console_set_default_background(temp_con, libtcod.black)
+		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+		libtcod.console_clear(temp_con)
+		
+		libtcod.console_put_char(temp_con, 0, 1, chr(196))
+		libtcod.console_put_char(temp_con, 1, 1, chr(197))
+		libtcod.console_put_char(temp_con, 2, 1, chr(196))
+		if direction == -1:
+			libtcod.console_put_char(temp_con, 1, 2, chr(193))
+		else:
+			libtcod.console_put_char(temp_con, 1, 0, chr(194))
+		
+		PlaySoundFor(None, 'plane_incoming')
+		
+		# animate plane movement toward target hex
+		for yi in range(y1, y2, direction):
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, x+31, yi+8, 1.0, 0.0)
+			libtcod.console_flush()
+			Wait(8)
+		
+		PlaySoundFor(None, 'stuka_divebomb')
+		
+		# wait for sound effect to finish
+		if config['ArmCom2'].getboolean('sounds_enabled'):
+			Wait(100)
+		
+		# bomb animation
+		for i in range(24):
+			col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+			libtcod.console_set_default_foreground(0, col)
+			libtcod.console_put_char(0, x+32, y+9, 42)
+			libtcod.console_flush()
+			Wait(4)
+		libtcod.console_set_default_foreground(0, libtcod.white)
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		
+		# create plane units
+		unit_list = []
+		for i in range(num_planes):
+			unit_list.append(Unit(plane_id))
+		
+		# determine calibre for bomb attack
+		for weapon in unit_list[0].weapon_list:
+			if weapon.stats['name'] == 'Bombs':
+				bomb_calibre = int(weapon.stats['calibre'])
+				break
+		
+		# determine effective fp
+		for (calibre, effective_fp) in HE_FP_EFFECT:
+			if calibre <= bomb_calibre:
+				break
+		
+		# do one attack per plane
+		results = False
+		for unit in unit_list:
+			
+			# no more targets possible
+			if len(map_hex.unit_stack) == 0:
+				break
+			
+			# select a random target within the hex
+			target = choice(map_hex.unit_stack)
+			
+			# calculate basic to-effect score required
+			if not target.spotted:
+				chance = PF_BASE_CHANCE[0][1]
+			else:
+				if target.GetStat('category') == 'Vehicle':
+					chance = PF_BASE_CHANCE[0][0]
+				else:
+					chance = PF_BASE_CHANCE[0][1]
+		
+			# target size modifier
+			size_class = target.GetStat('size_class')
+			if size_class is not None:
+				if size_class != 'Normal':
+					chance += PF_SIZE_MOD[size_class]
+			
+			chance = RestrictChance(chance)
+			roll = GetPercentileRoll()
+			
+			if roll > chance: continue
+			
+			# hit
+			results = True
+			
+			# infantry or gun target
+			if target.GetStat('category') in ['Infantry', 'Gun']:
+				
+				# critical hit modifier
+				if roll <= 3.0:
+					target.fp_to_resolve += (effective_fp * 2)
+				else:
+					target.fp_to_resolve += effective_fp
+				
+				if not target.spotted:
+					target.hit_by_fp = True
+				
+				ShowMessage(target.GetName() + ' was hit by air attack')
+			
+			# vehicle hit
+			elif target.GetStat('category') == 'Vehicle':
+				
+				# determine location hit - use side locations and modify later
+				# for aerial attack
+				if GetPercentileRoll() <= 50.0:
+					hit_location = 'hull_side'
+				else:
+					hit_location = 'turret_side'
+				
+				# determine base penetration chance
+				for (calibre, chance) in HE_AP_CHANCE:
+					if calibre <= bomb_calibre:
+						break
+				
+				# TODO: direct hit vs. near miss
+				
+				# target armour modifier
+				armour = target.GetStat('armour')
+				if armour is not None:
+					if armour[hit_location] != '-':
+						target_armour = int(armour[hit_location])
+						if target_armour >= 0:
+						
+							modifier = -9.0
+							for i in range(target_armour - 1):
+								modifier = modifier * 1.8
+							
+							chance += modifier
+							
+							# apply critical hit modifier if any
+							if roll <= 3.0:
+								modifier = round(abs(modifier) * 0.8, 2)
+								chance += modifier
+				
+				# calculate final chance
+				chance = RestrictChance(chance)
+				
+				# do AP roll
+				roll = GetPercentileRoll()
+				
+				# no penetration
+				if roll > chance:
+					ShowMessage(target.GetName() + ' was unaffected by air attack')
+					continue
+				
+				# penetrated
+				target.DestroyMe()
+				ShowMessage(target.GetName() + ' was destroyed by air attack')
+		
+		if not results:
+			ShowMessage('Air attack had no effect.')
+		
+		
+		# clean up
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		del temp_con
+		
+		
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
@@ -4291,7 +4494,7 @@ class Scenario:
 		
 		# target armour modifier
 		# TODO: move into GetArmourModifier function for target
-		#       use in DoAirAttack as well
+		#       use in Air Attack as well
 		armour = target.GetStat('armour')
 		if armour is not None:
 			
@@ -4748,6 +4951,7 @@ class Scenario:
 	
 	
 	# cycle selected player target
+	# FUTURE: combine into general "next in list, previous in list, wrap around" function
 	def CycleTarget(self, forward):
 		
 		# no targets to select from
@@ -6987,6 +7191,14 @@ def PlaySoundFor(obj, action):
 			n = libtcod.random_get_int(0, 0, 2)
 			PlaySound('light_tank_moving_0' + str(n))
 			return
+	
+	elif action == 'plane_incoming':
+		PlaySound('plane_incoming_00')
+		return
+	
+	elif action == 'stuka_divebomb':
+		PlaySound('stuka_divebomb_00')
+		return
 	
 	print ('ERROR: Could not determine which sound to play')
 			

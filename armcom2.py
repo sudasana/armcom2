@@ -297,8 +297,8 @@ HE_AP_CHANCE = [
 ]
 
 # terrain type odds for campaign day hexes
-# FUTURE: can have different sets for different biomes
-TERRAIN_TYPE_ODDS = {
+# FUTURE: can have different sets for different areas of the world
+CD_TERRAIN_ODDS = {
 	'Flat' : 50.0,
 	'Forest' : 10.0,
 	'Hills' : 15.0,
@@ -307,48 +307,91 @@ TERRAIN_TYPE_ODDS = {
 	'Villages' : 10.0
 }
 
-# TODO: modifiers and effects for different types of terrain on the scenario layer
-SCENARIO_TERRAIN_EFFECTS = {
-	
-}
-
-# Open Ground
-# Broken Ground
-# Road
-# Entrenchments
-# Hills
-# Brush
-# Woods
-# Orchard
-# Grain Fields,
-# Marsh
-# Bog
-# Riverbank
-# Wooden Building
-# Stone Building
-# Church
-# Factory
-# Fortified Building, 
-# Graveyard
-# Railroad
-
 # for each campaign day hex terrain type, odds that a unit on the scenario map will be in
 # a given type of terrain in its scenario hex
 SCENARIO_TERRAIN_ODDS = {
 	'Flat' : {
-		'Open Ground' : 50.0
+		'Open Ground' : 60.0,
+		'Broken Ground' : 20.0,
+		'Brush' : 10.0,
+		'Woods' : 5.0,
+		'Wooden Buildings' : 5.0
 	},
 	'Forest' : {
+		'Open Ground' : 10.0,
+		'Broken Ground' : 15.0,
+		'Brush' : 25.0,
+		'Woods' : 45.0,
+		'Wooden Buildings' : 5.0
 	},
 	'Hills' : {
+		'Open Ground' : 15.0,
+		'Broken Ground' : 10.0,
+		'Brush' : 5.0,
+		'Woods' : 5.0,
+		'Hills' : 50.0,
+		'Wooden Buildings' : 5.0
 	},
 	'Fields' : {
+		'Open Ground' : 20.0,
+		'Broken Ground' : 5.0,
+		'Brush' : 5.0,
+		'Woods' : 5.0,
+		'Fields' : 50.0,
+		'Wooden Buildings' : 5.0
 	},
 	'Marsh' : {
+		'Open Ground' : 10.0,
+		'Broken Ground' : 5.0,
+		'Brush' : 5.0,
+		'Woods' : 5.0,
+		'Marsh' : 60.0,
+		'Wooden Buildings' : 5.0
 	},
 	'Villages' : {
-	},
+		'Open Ground' : 10.0,
+		'Broken Ground' : 10.0,
+		'Brush' : 10.0,
+		'Woods' : 5.0,
+		'Fields' : 15.0,
+		'Wooden Buildings' : 50.0
+	}
 }
+
+# TODO: modifiers and effects for different types of terrain on the scenario layer
+SCENARIO_TERRAIN_EFFECTS = {
+	'Open Ground' : {
+	},
+	'Broken Ground' : {
+		'TEM' : {
+			'Infantry' : 15.0,
+			'Deployed Gun' : 15.0
+		},
+		'Movement Mod' : -5.0,
+		'Bog Mod' : 5.0
+	}
+}
+
+# Road: no effects but allows road movement; -TEM for units using road movement
+# Entrenchments: ++TEM for infantry if not moving and deployed guns
+# Hills: ++Hidden Chance -move chance, +bog chance
+# Brush: +TEM; air burst effect for HE hits; -move chance, +bog chance; can Burn
+# Woods: same as Brush but twice the effect; can Burn
+# Orchard: +TEM; -move chance; can Burn
+# Grain Fields: +TEM; can Burn
+# Marsh: -TEM; --move chance, ++bog chance
+# Riverbank: -TEM
+# Wooden Buildings: ++Hidden chance; ++TEM for infantry and guns; can Burn
+# Stone Building: ++Hidden chance; +++TEM for infantry and guns
+# Fortifications: ++Hidden chance; ++++TEM for infantry and guns
+# Railroad: -TEM; +bog chance for non Train/Tracked vehicles
+
+# relative locations to draw greebles for terrain on scenario map
+GREEBLE_LOCATIONS = [
+	(-1,-1), (0,-1), (1,-1), (-1,0), (1,0), (-1,1), (0,1), (1,1)
+]
+
+
 
 
 ##########################################################################################
@@ -1800,7 +1843,7 @@ class CDMapHex:
 		
 		roll = GetPercentileRoll()
 		
-		for terrain_type, odds in TERRAIN_TYPE_ODDS.items():
+		for terrain_type, odds in CD_TERRAIN_ODDS.items():
 			if roll <= odds:
 				self.terrain_type = terrain_type
 				return
@@ -2642,6 +2685,8 @@ class Unit:
 		
 		self.hx = 0				# location in scenario hex map
 		self.hy = 0
+		self.terrain = None			# surrounding terrain
+		self.terrain_seed = 0			# seed for terrain depiction greebles
 		self.dest_hex = None			# destination hex for move
 		self.animation_cells = []		# list of x,y unit console locations for animation
 		
@@ -2919,7 +2964,33 @@ class Unit:
 		for map_hex in scenario.map_hexes:
 			if map_hex.hx == hx and map_hex.hy == hy:
 				map_hex.unit_stack.append(self)
+				break
+		
+		# generate terrain for this unit
+		self.GenerateTerrain()
+	
+	
+	# randomly determine what kind of terrain this unit is in
+	def GenerateTerrain(self):
+		
+		self.terrain = None
+		self.terrain_seed = 0
+		
+		if scenario is None: return
+		
+		self.terrain_seed = libtcod.random_get_int(0, 1, 128)
+		odds_dict = SCENARIO_TERRAIN_ODDS[scenario.cd_map_hex.terrain_type]
+		roll = GetPercentileRoll()
+		for terrain, odds in odds_dict.items():
+			if roll <= odds:
+				self.terrain = terrain
 				return
+			roll -= odds
+		
+		# if we get here, something has gone wrong, so hopefully the first terrain type is always ok
+		for terrain, odds in odds_dict.items():
+			self.terrain = terrain
+			return
 	
 	
 	# move this unit to the top of its current hex stack
@@ -3000,6 +3071,73 @@ class Unit:
 		else:
 			(x,y) = scenario.PlotHex(self.hx, self.hy)
 		
+		# draw terrain greebles
+		if self.terrain is not None and not (self.owning_player == 1 and not self.spotted):
+			generator = libtcod.random_new_from_seed(self.terrain_seed)
+			
+			if self.terrain == 'Open Ground':
+				for (xmod, ymod) in GREEBLE_LOCATIONS:
+					if libtcod.random_get_int(generator, 1, 9) <= 2: continue
+					c_mod = libtcod.random_get_int(generator, 0, 20)
+					col = libtcod.Color(30+c_mod, 90+c_mod, 20+c_mod)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 46, col, libtcod.black)
+				
+			elif self.terrain == 'Broken Ground':
+				for (xmod, ymod) in GREEBLE_LOCATIONS:
+					if libtcod.random_get_int(generator, 1, 9) <= 2: continue
+					c_mod = libtcod.random_get_int(generator, 10, 40)
+					col = libtcod.Color(70+c_mod, 60+c_mod, 40+c_mod)
+					if libtcod.random_get_int(generator, 1, 10) <= 4:
+						char = 247
+					else:
+						char = 240
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, char, col, libtcod.black)
+
+			elif self.terrain == 'Brush':
+				for (xmod, ymod) in GREEBLE_LOCATIONS:
+					if libtcod.random_get_int(generator, 1, 9) <= 3: continue
+					col = libtcod.Color(0,libtcod.random_get_int(generator, 80, 120),0)
+					if libtcod.random_get_int(generator, 1, 10) <= 6:
+						char = 15
+					else:
+						char = 42
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, char, col, libtcod.black)
+				
+			elif self.terrain == 'Woods':
+				for (xmod, ymod) in GREEBLE_LOCATIONS:
+					if libtcod.random_get_int(generator, 1, 9) == 1: continue
+					col = libtcod.Color(0,libtcod.random_get_int(generator, 100, 170),0)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 6, col, libtcod.black)
+					
+			elif self.terrain == 'Wooden Buildings':
+				for (xmod, ymod) in GREEBLE_LOCATIONS:
+					c_mod = libtcod.random_get_int(generator, 10, 40)
+					col = libtcod.Color(70+c_mod, 60+c_mod, 40+c_mod)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 249, col, libtcod.black)
+			
+			elif self.terrain == 'Hills':
+				for (xmod, ymod) in GREEBLE_LOCATIONS:
+					if libtcod.random_get_int(generator, 1, 9) <= 3: continue
+					c_mod = libtcod.random_get_int(generator, 10, 40)
+					col = libtcod.Color(20+c_mod, 110+c_mod, 20+c_mod)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 220, col, libtcod.black)
+				
+			elif self.terrain == 'Fields':
+				for (xmod, ymod) in GREEBLE_LOCATIONS:
+					if libtcod.random_get_int(generator, 1, 9) == 1: continue
+					c = libtcod.random_get_int(generator, 120, 190)
+					col = libtcod.Color(c, c, 0)
+					libtcod.console_put_char_ex(temp_con, x+xmod, y+ymod,
+						176, col, libtcod.black)
+			
+			elif self.terrain == 'Marsh':
+				for (xmod, ymod) in GREEBLE_LOCATIONS:
+					if libtcod.random_get_int(generator, 1, 9) == 1: continue
+					libtcod.console_put_char_ex(temp_con, x+xmod, y+ymod, 176,
+						libtcod.Color(45,0,180), libtcod.black)
+					
+			
+		
 		# determine foreground color to use
 		if self.owning_player == 1:
 			col = ENEMY_UNIT_COL
@@ -3014,20 +3152,24 @@ class Unit:
 			col, libtcod.black)
 		
 		# determine if we need to display a turret / gun depiction
-		if self.GetStat('category') == 'Infantry': return
-		if self.owning_player == 1 and not self.spotted: return
-		if self.GetStat('category') == 'Gun' and not self.deployed: return
+		draw_turret = True
 		
-		# use turret facing if present, otherwise hull facing
-		if self.turret_facing is not None:
-			facing = self.turret_facing
-		else:
-			facing = self.facing
+		if self.GetStat('category') == 'Infantry': draw_turret = False
+		if self.owning_player == 1 and not self.spotted: draw_turret = False
+		if self.GetStat('category') == 'Gun' and not self.deployed: draw_turret = False
 		
-		# determine location to draw turret/gun character
-		x_mod, y_mod = PLOT_DIR[facing]
-		char = TURRET_CHAR[facing]
-		libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
+		if draw_turret:
+			# use turret facing if present, otherwise hull facing
+			if self.turret_facing is not None:
+				facing = self.turret_facing
+			else:
+				facing = self.facing
+			
+			# determine location to draw turret/gun character
+			x_mod, y_mod = PLOT_DIR[facing]
+			char = TURRET_CHAR[facing]
+			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
+
 		
 	
 	# display info on this unit to a given console starting at x,y
@@ -5717,9 +5859,9 @@ class Scenario:
 			else:
 				facing = 3
 			if facing in [5,0,1]:
-				y_mod = 1
+				y_mod = 2
 			else:
-				y_mod = -1
+				y_mod = -2
 			(x,y) = scenario.PlotHex(map_hex.unit_stack[0].hx, map_hex.unit_stack[0].hy)
 			text = str(len(map_hex.unit_stack))
 			libtcod.console_set_default_foreground(unit_con, libtcod.grey)
@@ -5867,9 +6009,10 @@ class Scenario:
 					GetDirectionalArrow(unit.hull_down[0]), libtcod.sepia,
 					libtcod.darkest_grey)
 			
-			# FUTURE: cover if any
-			libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
-			libtcod.console_print(unit_info_con, 0, 7, 'Open Ground')
+			# current terrain
+			if unit.terrain is not None:
+				libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
+				libtcod.console_print(unit_info_con, 0, 7, unit.terrain)
 		
 		
 	

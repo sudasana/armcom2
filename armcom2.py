@@ -3599,9 +3599,12 @@ class Scenario:
 		
 		self.player_pivot = 0					# keeps track of player unit pivoting
 		
+		# player targeting
+		self.target_list = []					# list of possible player targets
 		self.selected_weapon = None				# player's currently selected weapon
 		self.selected_target = None				# player's current selected target
-		self.target_list = []					# list of possible player targets
+		self.support_target_list = []				# list of possible hex targets for support attack
+		self.support_target = None				# selected support target hex
 		
 		self.selected_position = 0				# index of selected position in player unit
 	
@@ -4766,6 +4769,42 @@ class Scenario:
 		self.UpdateUnitInfoCon()
 	
 	
+	# (re)build a sorted list of possible support target hexes
+	def BuildSupportTargetList(self):
+		self.support_target_list = []
+		for map_hex in self.map_hexes:
+			# no units present
+			if len(map_hex.unit_stack) == 0: continue
+			# no enemies present
+			if map_hex.unit_stack[0].owning_player == 0: continue
+			self.support_target_list.append((map_hex.hx, map_hex.hy))
+	
+	
+	# select a different support attack target hex
+	def CycleSupportTarget(self, forward):
+		if len(self.support_target_list) == 0: return
+		
+		# no target selected yet
+		if self.support_target is None:
+			self.support_target = self.support_target_list[0]
+			return
+		
+		if forward:
+			m = 1
+		else:
+			m = -1
+		
+		i = self.support_target_list.index(self.support_target)
+		i += m
+		
+		if i < 0:
+			self.support_target = self.support_target_list[-1]
+		elif i > len(self.support_target_list) - 1:
+			self.support_target = self.support_target_list[0]
+		else:
+			self.support_target = self.support_target_list[i]
+		
+	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
 	def MovePlayer(self, forward):
 		
@@ -4955,7 +4994,7 @@ class Scenario:
 			
 			# player pivoted during movement phase
 			if self.player_pivot != 0:
-				scenario.player_unit.acquired_target = None
+				self.player_unit.acquired_target = None
 		
 		# end of shooting phase
 		elif self.phase == PHASE_SHOOTING:
@@ -4990,11 +5029,11 @@ class Scenario:
 			self.active_player = 0
 			self.phase = PHASE_COMMAND
 			
-			scenario.player_unit.ResetForNewTurn()
+			self.player_unit.ResetForNewTurn()
 			for unit in scenario.player_unit.squad:
 				unit.ResetForNewTurn()
 			
-			scenario.player_unit.MoveToTopOfStack()
+			self.player_unit.MoveToTopOfStack()
 			self.UpdateUnitCon()
 		
 		# remaining on player turn
@@ -5017,17 +5056,16 @@ class Scenario:
 		
 		# command phase: rebuild lists of commands
 		if self.phase == PHASE_COMMAND:
-			scenario.player_unit.BuildCmdLists()
+			self.player_unit.BuildCmdLists()
 		
 		# spotting phase: do spotting then automatically advance
 		elif self.phase == PHASE_SPOTTING:
-			scenario.player_unit.DoSpotChecks()
+			self.player_unit.DoSpotChecks()
 			self.advance_phase = True
 		
 		# crew action phase: FUTURE: check to see if any crew are on action commands
 		elif self.phase == PHASE_CREW_ACTION:
-			# TEMP
-			self.advance_phase = True
+			self.BuildSupportTargetList()
 		
 		# movement phase: 
 		elif self.phase == PHASE_MOVEMENT:
@@ -5066,6 +5104,9 @@ class Scenario:
 			DisplayTimeInfo(time_con)
 			self.UpdateScenarioDisplay()
 			libtcod.console_flush()
+			
+			# TODO check for support attacks and resolve them here
+			
 			
 			# player squad acts first
 			for unit in scenario.player_unit.squad:
@@ -5254,7 +5295,7 @@ class Scenario:
 		for position in scenario.player_unit.positions_list:
 			
 			# highlight position if selected and in command phase
-			if i == scenario.selected_position and scenario.phase == PHASE_COMMAND:
+			if i == scenario.selected_position and scenario.phase in [PHASE_COMMAND, PHASE_CREW_ACTION]:
 				libtcod.console_set_default_background(crew_con, libtcod.darker_blue)
 				libtcod.console_rect(crew_con, 0, y, 25, 3, True, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(crew_con, libtcod.black)
@@ -5333,9 +5374,31 @@ class Scenario:
 			libtcod.console_print(cmd_menu_con, 1, 3, 'H')
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Crew')
+			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Position')
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Select Command')
 			libtcod.console_print(cmd_menu_con, 8, 3, 'Open/Shut Hatch')
+		
+		# Crew action phase
+		elif self.phase == PHASE_CREW_ACTION:
+			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
+			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Position')
+			
+			# crew command specific actions
+			if self.selected_position is None: return
+			position = self.player_unit.positions_list[self.selected_position]
+			if position.crewman is None: return
+			
+			if position.crewman.current_cmd == 'Request Support':
+				libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+				libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
+				libtcod.console_print(cmd_menu_con, 1, 3, 'Bksp')
+				
+				libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+				libtcod.console_print(cmd_menu_con, 8, 2, 'Select Target')
+				libtcod.console_print(cmd_menu_con, 8, 3, 'Cancel Target')
+			
 		
 		# Movement phase
 		elif self.phase == PHASE_MOVEMENT:
@@ -5461,6 +5524,18 @@ class Scenario:
 				(x,y) = scenario.PlotHex(hx, hy)
 				libtcod.console_blit(session.scen_hex_fov, 0, 0, 0, 0, gui_con,
 					x-5, y-3)
+		
+		# crew action phase
+		elif self.phase == PHASE_CREW_ACTION:
+			
+			if self.support_target is not None:
+				(hx, hy) = self.support_target
+				(x,y) = scenario.PlotHex(hx, hy)
+				# TEMP - use better target display in FUTURE
+				libtcod.console_put_char_ex(gui_con, x-1, y-1, 92, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x+1, y+1, 92, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x+1, y-1, 47, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x-1, y+1, 47, libtcod.red, libtcod.black)
 		
 		# shooting phase
 		elif self.phase == PHASE_SHOOTING:
@@ -5765,43 +5840,46 @@ class Scenario:
 				self.advance_phase = True
 				continue
 			
+			# Command or Crew Action phase
+			
 			
 			# Command Phase
-			if scenario.phase == PHASE_COMMAND:
-				
+			if self.phase in [PHASE_COMMAND, PHASE_CREW_ACTION]:
+			
 				# change selected crew position
 				if key_char in ['w', 's']:
 					
 					if key_char == 'w':
-						scenario.selected_position -= 1
-						if scenario.selected_position < 0:
-							scenario.selected_position = len(scenario.player_unit.positions_list) - 1
+						self.selected_position -= 1
+						if self.selected_position < 0:
+							self.selected_position = len(self.player_unit.positions_list) - 1
 					
 					else:
-						scenario.selected_position += 1
-						if scenario.selected_position == len(scenario.player_unit.positions_list):
-							scenario.selected_position = 0
+						self.selected_position += 1
+						if self.selected_position == len(self.player_unit.positions_list):
+							self.selected_position = 0
 				
 					self.UpdateContextCon()
 					self.UpdateCrewInfoCon()
+					self.UpdateCmdCon()
 					self.UpdateGuiCon()
 					self.UpdateScenarioDisplay()
 					continue
-				
+			
+			# command phase only
+			if self.phase == PHASE_COMMAND:
+			
 				# change current command for selected crewman
-				elif key_char in ['a', 'd']:
+				if key_char in ['a', 'd']:
 					
 					# no crewman in selected position
-					crewman = scenario.player_unit.positions_list[scenario.selected_position].crewman
+					crewman = self.player_unit.positions_list[self.selected_position].crewman
 					if crewman is None:
 						continue
 					
-					if key_char == 'a':
-						crewman.SelectCommand(True)
-					else:
-						crewman.SelectCommand(False)
+					crewman.SelectCommand(key_char == 'a')
 					
-					scenario.player_unit.positions_list[scenario.selected_position].UpdateVisibleHexes()
+					self.player_unit.positions_list[self.selected_position].UpdateVisibleHexes()
 					
 					self.UpdateContextCon()
 					self.UpdateCrewInfoCon()
@@ -5813,16 +5891,33 @@ class Scenario:
 				elif key_char == 'h':
 					
 					# no crewman in selected position
-					crewman = scenario.player_unit.positions_list[scenario.selected_position].crewman
+					crewman = self.player_unit.positions_list[self.selected_position].crewman
 					if crewman is None:
 						continue
 					
 					if crewman.ToggleHatch():
-						scenario.player_unit.positions_list[scenario.selected_position].UpdateVisibleHexes()
+						self.player_unit.positions_list[self.selected_position].UpdateVisibleHexes()
 						self.UpdateCrewInfoCon()
 						self.UpdateGuiCon()
 						self.UpdateScenarioDisplay()
 						continue
+			
+			# crew action phase only
+			elif self.phase == PHASE_CREW_ACTION:
+				
+				# select support attack target hex
+				if key_char in ['a', 'd']:
+					self.CycleSupportTarget(key_char == 'd')
+					self.UpdateGuiCon()
+					self.UpdateScenarioDisplay()
+					continue
+				
+				# cancel target
+				elif key.vk == libtcod.KEY_BACKSPACE:
+					self.support_target = None
+					self.UpdateGuiCon()
+					self.UpdateScenarioDisplay()
+					continue
 			
 			# Movement phase only
 			elif scenario.phase == PHASE_MOVEMENT:

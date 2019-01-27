@@ -369,19 +369,47 @@ SCENARIO_TERRAIN_EFFECTS = {
 		},
 		'Movement Mod' : -5.0,
 		'Bog Mod' : 5.0
+	},
+	'Brush': {
+		'TEM' : {
+			'All' : 15.0
+		},
+		'Movement Mod' : -15.0,
+		'Bog Mod' : 15.0,
+		'Air Burst' : 10.0,
+		'Burnable' : True
+	},
+	'Woods': {
+		'TEM' : {
+			'All' : 25.0
+		},
+		'Movement Mod' : -30.0,
+		'Bog Mod' : 30.0,
+		'Air Burst' : 20.0,
+		'Burnable' : True
+	},
+	'Fields': {
+		'TEM' : {
+			'All' : 10.0
+		},
+		'Burnable' : True
+	},
+	'Wooden Buildings': {
+		'TEM' : {
+			'Infantry' : 30.0,
+			'Deployed Gun' : 30.0
+		},
+		'Hidden Mod' : 20.0,
+		'Burnable' : True
 	}
 }
 
 # Road: no effects but allows road movement; -TEM for units using road movement
 # Entrenchments: ++TEM for infantry if not moving and deployed guns
 # Hills: ++Hidden Chance -move chance, +bog chance
-# Brush: +TEM; air burst effect for HE hits; -move chance, +bog chance; can Burn
-# Woods: same as Brush but twice the effect; can Burn
 # Orchard: +TEM; -move chance; can Burn
-# Grain Fields: +TEM; can Burn
 # Marsh: -TEM; --move chance, ++bog chance
 # Riverbank: -TEM
-# Wooden Buildings: ++Hidden chance; ++TEM for infantry and guns; can Burn
 # Stone Building: ++Hidden chance; +++TEM for infantry and guns
 # Fortifications: ++Hidden chance; ++++TEM for infantry and guns
 # Railroad: -TEM; +bog chance for non Train/Tracked vehicles

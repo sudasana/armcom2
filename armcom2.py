@@ -1589,6 +1589,8 @@ class CampaignDay:
 						(hx, hy) = self.player_unit_location
 						map_hex = self.map_hexes[(hx,hy)]
 						map_hex.controlled_by = 0
+						map_hex.air_support = False
+						map_hex.arty_support = False
 						campaign.AwardVP(self.capture_zone_vp)
 						self.CheckForEndOfDay()
 						SaveGame()
@@ -2460,6 +2462,7 @@ class AI:
 			self.owner.ClearAcquiredTargets()
 			for weapon in self.owner.weapon_list:
 				weapon.UpdateCoveredHexes()
+			self.owner.GenerateTerrain()
 			
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
@@ -4942,7 +4945,6 @@ class Scenario:
 			
 			if roll <= base_chance:
 				return True
-			print ('DEBUG: RoF roll failed')
 			return False
 		
 		# clear prompts from attack console
@@ -5295,6 +5297,11 @@ class Scenario:
 			# clear destination hex and animation data
 			unit.dest_hex = None
 			unit.animation_cells = []
+		
+		# set new terrain for player and squad
+		for unit in self.units:
+			if unit != scenario.player_unit and unit not in scenario.player_unit.squad: continue
+			unit.GenerateTerrain()
 		
 		self.UpdateUnitCon()
 		

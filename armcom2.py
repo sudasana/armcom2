@@ -800,8 +800,7 @@ class CampaignDay:
 		#self.GenerateRoads()
 		
 		self.active_menu = 3				# number of currently active command menu
-		self.travel_direction = None			# selected direction of travel
-		self.support_direction = None			# selected direction of support target hex
+		self.selected_direction = None			# select direction for support, travel, etc.
 		self.abandoned_tank = False			# set to true if player abandoned their tank that day
 		self.scenario = None				# currently active scenario in progress
 		
@@ -1199,10 +1198,10 @@ class CampaignDay:
 		libtcod.console_clear(cd_gui_con)
 		
 		# support menu, direction currently selected
-		if self.active_menu == 1 and self.support_direction is not None:
+		if self.active_menu == 1 and self.selected_direction is not None:
 			# draw target on hex if any
 			(hx, hy) = self.player_unit_location
-			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.support_direction)
+			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
 			if (hx, hy) in self.map_hexes:
 				(x,y) = self.PlotCDHex(hx, hy)
 				libtcod.console_put_char_ex(cd_gui_con, x-1, y-1, 92, libtcod.red, libtcod.black)
@@ -1211,12 +1210,12 @@ class CampaignDay:
 				libtcod.console_put_char_ex(cd_gui_con, x-1, y+1, 47, libtcod.red, libtcod.black)
 		
 		# movement menu, direction currently selected
-		elif self.active_menu == 3 and self.travel_direction is not None:
+		elif self.active_menu == 3 and self.selected_direction is not None:
 			
 			# draw directional line
 			(hx, hy) = self.player_unit_location
 			(x1,y1) = self.PlotCDHex(hx, hy)
-			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
+			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
 			if (hx, hy) in self.map_hexes:
 				(x2,y2) = self.PlotCDHex(hx, hy)
 				line = GetLine(x1,y1,x2,y2)
@@ -1224,7 +1223,7 @@ class CampaignDay:
 					libtcod.console_put_char_ex(cd_gui_con, x, y, 250, libtcod.green,
 						libtcod.black)
 				(x,y) = line[-1]
-				libtcod.console_put_char_ex(cd_gui_con, x, y, CD_DIR_ARROW[self.travel_direction],
+				libtcod.console_put_char_ex(cd_gui_con, x, y, CD_DIR_ARROW[self.selected_direction],
 					libtcod.green, libtcod.black)
 	
 	
@@ -1232,6 +1231,41 @@ class CampaignDay:
 	def UpdateCDPlayerUnitCon(self):
 		libtcod.console_clear(cd_player_unit_con)
 		campaign.player_unit.DisplayMyInfo(cd_player_unit_con, 0, 0, status=False)
+	
+	
+	# generate/update the directional console
+	def UpdateCDDirectionCon(self):
+		libtcod.console_clear(cd_direction_con)
+		
+		x1 = 12
+		y1 = 6
+		
+		# display possible support/move/recon directions
+		libtcod.console_set_default_foreground(cd_direction_con, libtcod.white)
+		libtcod.console_print_ex(cd_direction_con, 12, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Directional Control')
+		libtcod.console_put_char(cd_direction_con, x1, y1, '@')
+		for direction in range(6):
+			libtcod.console_set_default_foreground(cd_direction_con, ACTION_KEY_COL)
+			
+			if self.selected_direction is not None:
+				if self.selected_direction == direction:
+					libtcod.console_set_default_foreground(cd_direction_con, libtcod.light_green)
+					
+			
+			(k, x, y, char) = CD_TRAVEL_CMDS[direction]
+			libtcod.console_put_char(cd_direction_con, x1+x, y1+y, k.upper())
+			if direction <= 2:
+				x+=1
+			else:
+				x-=1
+			libtcod.console_set_default_foreground(cd_direction_con, libtcod.dark_green)
+			libtcod.console_put_char(cd_direction_con, x1+x, y1+y, chr(char))
+		
+		if self.selected_direction is None:
+			libtcod.console_set_default_foreground(cd_direction_con, libtcod.light_grey)
+			libtcod.console_print_ex(cd_direction_con, 12, y1+5, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Select Direction')
 	
 	
 	# generate/update the command menu console
@@ -1245,9 +1279,10 @@ class CampaignDay:
 			libtcod.console_rect(cd_command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
 			
 			# only support, travel, and supply menus active for now
+			# display menu number
+			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			if num not in [1, 3, 5]:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
-			# menu number
 			libtcod.console_print(cd_command_con, x, 0, str(num))
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
@@ -1282,35 +1317,12 @@ class CampaignDay:
 				text += str(campaign.today['arty_support_level'])
 			libtcod.console_print(cd_command_con, 1, 4, text)
 			
-			# display possible targets for support request
-			libtcod.console_put_char(cd_command_con, 11, 9, '@')
-			for direction in range(6):
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
-				
-				if self.support_direction is not None:
-					if self.support_direction == direction:
-						libtcod.console_set_default_foreground(cd_command_con, libtcod.blue)
-				
-				(k, x, y, char) = CD_TRAVEL_CMDS[direction]
-				libtcod.console_put_char(cd_command_con, 11+x, 9+y, k.upper())
-				if direction <= 2:
-					x+=1
-				else:
-					x-=1
-				libtcod.console_put_char(cd_command_con, 11+x, 9+y, chr(char))
-			
 			# no direction selected yet
-			if self.support_direction is None:
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				libtcod.console_print_ex(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
-					'Select Direction')
-				libtcod.console_print_ex(cd_command_con, 12, 23, libtcod.BKGND_NONE, libtcod.CENTER,
-					'of Support Target')
-				return
+			if self.selected_direction is None: return
 			
 			# get the target hex
 			(hx, hy) = self.player_unit_location
-			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.support_direction)
+			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
 			
 			# hex is off map
 			if (hx, hy) not in self.map_hexes: return
@@ -1345,32 +1357,10 @@ class CampaignDay:
 		# travel
 		elif self.active_menu == 3:
 			
-			# display possible move directions
-			libtcod.console_put_char(cd_command_con, 11, 9, '@')
-			for direction in range(6):
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
-				
-				if self.travel_direction is not None:
-					if self.travel_direction == direction:
-						libtcod.console_set_default_foreground(cd_command_con, libtcod.blue)
-				
-				(k, x, y, char) = CD_TRAVEL_CMDS[direction]
-				libtcod.console_put_char(cd_command_con, 11+x, 9+y, k.upper())
-				if direction <= 2:
-					x+=1
-				else:
-					x-=1
-				libtcod.console_put_char(cd_command_con, 11+x, 9+y, chr(char))
-			
-			if self.travel_direction is None:
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				libtcod.console_print_ex(cd_command_con, 12, 22, libtcod.BKGND_NONE, libtcod.CENTER,
-					'Select Direction')
-				return
-							
-			# check to see whether travel in this direction is not possible
+			# check to see whether travel in selected direction is not possible
+			if self.selected_direction is None: return
 			(hx, hy) = self.player_unit_location
-			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
+			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
 			if (hx, hy) not in self.map_hexes: return
 				
 			# display enemy strength/organization if any and chance of encounter
@@ -1378,7 +1368,7 @@ class CampaignDay:
 			if map_hex.controlled_by == 1:
 				
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
-				libtcod.console_print(cd_command_con, 1, 13, 'Enemy Controlled')
+				libtcod.console_print(cd_command_con, 1, 2, 'Enemy Controlled')
 				
 				if not map_hex.known_to_player:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -1388,17 +1378,19 @@ class CampaignDay:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 					libtcod.console_print(cd_command_con, 12, 21, 'Recon')
 				else:
-					libtcod.console_print(cd_command_con, 1, 14, 'Strength: ' + str(map_hex.enemy_strength))
+					libtcod.console_print(cd_command_con, 1, 3, 'Strength: ' + str(map_hex.enemy_strength))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+				
+				
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			text = 'Travel Time: '
-			if self.travel_direction in map_hex.dirt_roads:
+			if self.selected_direction in map_hex.dirt_roads:
 				text += '15'
 			else:
 				text += '30'
 			text += ' mins.'
-			libtcod.console_print(cd_command_con, 1, 4, text)
+			libtcod.console_print(cd_command_con, 1, 5, text)
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			libtcod.console_print(cd_command_con, 5, 22, 'Enter')
@@ -1423,7 +1415,7 @@ class CampaignDay:
 		libtcod.console_clear(cd_campaign_con)
 		
 		# current VP total
-		libtcod.console_set_default_foreground(cd_campaign_con, ACTION_KEY_COL)
+		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.blue)
 		libtcod.console_print(cd_campaign_con, 0, 0, 'Campaign Info')
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
 		libtcod.console_print(cd_campaign_con, 1, 2, 'VP: ' + str(campaign.player_vp))
@@ -1433,7 +1425,7 @@ class CampaignDay:
 	def UpdateCDHexInfoCon(self):
 		libtcod.console_clear(cd_hex_info_con)
 		
-		libtcod.console_set_default_foreground(cd_hex_info_con, ACTION_KEY_COL)
+		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.blue)
 		libtcod.console_print(cd_hex_info_con, 0, 0, 'Area Info')
 		
 		# mouse cursor outside of map area
@@ -1496,8 +1488,7 @@ class CampaignDay:
 		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 36, 1)		# time and weather
 		
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
-		
-		# TODO: directional menu and display 25x16
+		libtcod.console_blit(cd_direction_con, 0, 0, 0, 0, con, 1, 18)		# directional info
 		
 		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
 		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 1)		# campaign info
@@ -1510,8 +1501,8 @@ class CampaignDay:
 	def DoCampaignDayLoop(self):
 		
 		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
-		global cd_player_unit_con, cd_campaign_con, cd_gui_con, cd_hex_info_con
-		global time_weather_con
+		global cd_player_unit_con, cd_direction_con, cd_campaign_con, cd_gui_con
+		global cd_hex_info_con, time_weather_con
 		global scenario
 		
 		# create consoles
@@ -1522,6 +1513,7 @@ class CampaignDay:
 		cd_gui_con = NewConsole(35, 53, KEY_COLOR, libtcod.red)
 		time_weather_con = NewConsole(21, 6, libtcod.darkest_grey, libtcod.white)
 		cd_player_unit_con = NewConsole(25, 16, libtcod.black, libtcod.white)
+		cd_direction_con = NewConsole(25, 16, libtcod.black, libtcod.white)
 		cd_command_con = NewConsole(25, 24, libtcod.black, libtcod.white)
 		cd_campaign_con = NewConsole(23, 16, libtcod.black, libtcod.white)
 		cd_hex_info_con = NewConsole(23, 9, libtcod.black, libtcod.white)
@@ -1532,6 +1524,7 @@ class CampaignDay:
 		self.UpdateCDControlCon()
 		self.UpdateCDGUICon()
 		self.UpdateCDPlayerUnitCon()
+		self.UpdateCDDirectionCon()
 		self.UpdateCDCommandCon()
 		self.UpdateCDCampaignCon()
 		self.UpdateCDHexInfoCon()
@@ -1635,34 +1628,33 @@ class CampaignDay:
 					self.UpdateCDDisplay()
 				continue
 			
+			# select direction
+			DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
+			if key_char in DIRECTION_KEYS:
+				direction = DIRECTION_KEYS.index(key_char)
+				if self.selected_direction is None:
+					self.selected_direction = direction
+				else:
+					# cancel direction
+					if self.selected_direction == direction:
+						self.selected_direction = None
+					else:
+						self.selected_direction = direction
+				self.UpdateCDDirectionCon()
+				self.UpdateCDGUICon()
+				self.UpdateCDCommandCon()
+				self.UpdateCDDisplay()
+				continue
+			
 			# support menu active
 			if self.active_menu == 1:
-				
-				# set support direction
-				DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
-				if key_char in DIRECTION_KEYS:
-					direction = DIRECTION_KEYS.index(key_char)
-					if self.support_direction is None:
-						self.support_direction = direction
-					else:
-						# cancel direction
-						if self.support_direction == direction:
-							self.support_direction = None
-						else:
-							self.support_direction = direction
-					self.UpdateCDGUICon()
-					self.UpdateCDCommandCon()
-					self.UpdateCDDisplay()
-					continue
-				
+			
 				# call support
-				elif key_char in ['r', 'f']:
-					if self.support_direction is None:
-						continue
+				if key_char in ['r', 'f']:
+					if self.selected_direction is None: continue
 					(hx, hy) = self.player_unit_location
-					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.support_direction)
-					if (hx, hy) not in self.map_hexes:
-						continue
+					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
+					if (hx, hy) not in self.map_hexes: continue
 					map_hex = self.map_hexes[(hx,hy)]
 					
 					# support not possible or already called
@@ -1702,7 +1694,6 @@ class CampaignDay:
 						self.arty_support_level -= self.arty_support_step
 						if self.arty_support_level < 0.0: self.arty_support_level = 0.0
 					
-					self.support_direction = None
 					DisplayTimeInfo(time_weather_con)
 					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
@@ -1712,34 +1703,16 @@ class CampaignDay:
 			# travel menu active
 			elif self.active_menu == 3:
 				
-				# set travel or recon direction
-				DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
-				if key_char in DIRECTION_KEYS:
-					direction = DIRECTION_KEYS.index(key_char)
-					if self.travel_direction is None:
-						self.travel_direction = direction
-					else:
-						# cancel direction
-						if self.travel_direction == direction:
-							self.travel_direction = None
-						else:
-							self.travel_direction = direction
-					self.UpdateCDUnitCon()
-					self.UpdateCDGUICon()
-					self.UpdateCDCommandCon()
-					self.UpdateCDDisplay()
-					continue
-				
 				# recon or proceed with travel
-				elif key_char == 'r' or key.vk == libtcod.KEY_ENTER:
+				if key_char == 'r' or key.vk == libtcod.KEY_ENTER:
 					
 					# no direction set
-					if self.travel_direction is None: continue
+					if self.selected_direction is None: continue
 					
 					# ensure that travel/recon is possible
 					(hx, hy) = self.player_unit_location
 					map_hex1 = self.map_hexes[(hx,hy)]
-					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.travel_direction)
+					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
 					if (hx, hy) not in self.map_hexes:
 						continue
 					map_hex2 = self.map_hexes[(hx,hy)]
@@ -1767,7 +1740,7 @@ class CampaignDay:
 						PlaySoundFor(campaign.player_unit, 'movement')
 					
 						# advance clock
-						if self.travel_direction in map_hex1.dirt_roads:
+						if self.selected_direction in map_hex1.dirt_roads:
 							mins = 15
 						else:
 							mins = 30
@@ -1776,8 +1749,8 @@ class CampaignDay:
 						# set new player location and clear travel direction
 						# save direction from which player entered zone
 						self.player_unit_location = (hx, hy)
-						source_direction = ConstrainDir(self.travel_direction + 3)
-						self.travel_direction = None
+						#source_direction = ConstrainDir(self.selected_direction + 3)
+						self.selected_direction = None
 						self.UpdateCDGUICon()
 						
 						# roll to trigger battle encounter if enemy-controlled
@@ -1795,6 +1768,7 @@ class CampaignDay:
 						DisplayTimeInfo(time_weather_con)
 						self.UpdateCDControlCon()
 						self.UpdateCDUnitCon()
+						self.UpdateCDDirectionCon()
 						self.UpdateCDCommandCon()
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()
@@ -1804,7 +1778,7 @@ class CampaignDay:
 			# supply menu active
 			elif self.active_menu == 5:
 				
-				# TODO: request resupply
+				# request resupply
 				if key_char == 'r':
 					self.ResupplyPlayer()
 					DisplayTimeInfo(time_weather_con)

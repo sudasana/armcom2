@@ -226,10 +226,10 @@ MG_AP_RANGE = 1
 # base success chances for point fire attacks
 # first column is for vehicle targets, second is everything else
 PF_BASE_CHANCE = [
-	[88.0, 78.0],			# same hex
-	[73.0, 68.0],			# 1 hex range
-	[62.0, 48.0],			# 2 "
-	[48.0, 25.0]			# 3 hex range
+	[98.0, 88.0],			# same hex
+	[83.0, 78.0],			# 1 hex range
+	[72.0, 58.0],			# 2 "
+	[58.0, 35.0]			# 3 hex range
 ]
 
 # bonus for level 1 and level 2 acquired target
@@ -364,15 +364,15 @@ SCENARIO_TERRAIN_EFFECTS = {
 	},
 	'Broken Ground' : {
 		'TEM' : {
-			'Infantry' : 15.0,
-			'Deployed Gun' : 15.0
+			'Infantry' : -15.0,
+			'Deployed Gun' : -15.0
 		},
 		'Movement Mod' : -5.0,
 		'Bog Mod' : 5.0
 	},
 	'Brush': {
 		'TEM' : {
-			'All' : 15.0
+			'All' : -15.0
 		},
 		'Movement Mod' : -15.0,
 		'Bog Mod' : 15.0,
@@ -381,7 +381,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 	},
 	'Woods': {
 		'TEM' : {
-			'All' : 25.0
+			'All' : -25.0
 		},
 		'Movement Mod' : -30.0,
 		'Bog Mod' : 30.0,
@@ -390,14 +390,14 @@ SCENARIO_TERRAIN_EFFECTS = {
 	},
 	'Fields': {
 		'TEM' : {
-			'All' : 10.0
+			'All' : -10.0
 		},
 		'Burnable' : True
 	},
 	'Wooden Buildings': {
 		'TEM' : {
-			'Infantry' : 30.0,
-			'Deployed Gun' : 30.0
+			'Infantry' : -30.0,
+			'Deployed Gun' : -30.0
 		},
 		'Hidden Mod' : 20.0,
 		'Burnable' : True
@@ -2746,6 +2746,28 @@ class Unit:
 		return self.stats[stat_name]
 	
 	
+	# return a to-hit modifier given current terrain
+	def GetTEM(self):
+		
+		if self.terrain not in SCENARIO_TERRAIN_EFFECTS: return 0.0
+		terrain_dict = SCENARIO_TERRAIN_EFFECTS[self.terrain]
+		if 'TEM' not in terrain_dict: return 0.0
+		tem_dict = terrain_dict['TEM']
+		
+		if 'All' in tem_dict: return tem_dict['All']
+		
+		if self.GetStat('category') == 'Infantry':
+			if 'Infantry' in tem_dict:
+				return tem_dict['Infantry']
+		
+		if self.GetStat('category') == 'Gun':
+			if self.deployed:
+				if 'Deployed Gun' in tem_dict:
+					return tem_dict['Deployed Gun']
+		
+		return 0.0
+	
+	
 	# get a descriptive name of this unit
 	def GetName(self):
 		if self.owning_player == 1 and not self.spotted:
@@ -3128,13 +3150,13 @@ class Unit:
 					if libtcod.random_get_int(generator, 1, 9) == 1: continue
 					c = libtcod.random_get_int(generator, 120, 190)
 					col = libtcod.Color(c, c, 0)
-					libtcod.console_put_char_ex(temp_con, x+xmod, y+ymod,
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod,
 						176, col, libtcod.black)
 			
 			elif self.terrain == 'Marsh':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
 					if libtcod.random_get_int(generator, 1, 9) == 1: continue
-					libtcod.console_put_char_ex(temp_con, x+xmod, y+ymod, 176,
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 176,
 						libtcod.Color(45,0,180), libtcod.black)
 					
 			
@@ -4429,6 +4451,11 @@ class Scenario:
 						text = size_class + ' Target'
 						mod = PF_SIZE_MOD[size_class]
 						modifier_list.append((text, mod))
+				
+				# target terrain
+				tem = target.GetTEM()
+				if tem != 0.0:
+					modifier_list.append((target.terrain, tem))
 			
 			# long / short-barreled gun
 			long_range = weapon.GetStat('long_range')
@@ -5335,10 +5362,6 @@ class Scenario:
 		self.UpdateUnitCon()
 		self.UpdateGuiCon()
 		
-		text = 'DEBUG: player turret now facing ' + str(scenario.player_unit.turret_facing)
-		text += ', previous facing is ' + str(scenario.player_unit.previous_turret_facing)
-		print(text)
-		
 	
 	# advance to next phase/turn and do automatic events
 	def AdvanceToNextPhase(self):
@@ -5421,7 +5444,17 @@ class Scenario:
 		
 		# crew action phase: FUTURE: check to see if any crew are on action commands
 		elif self.phase == PHASE_CREW_ACTION:
-			self.BuildSupportTargetList()
+			
+			skip_phase = True
+			for position in self.player_unit.positions_list:
+				if position.crewman is None: continue
+				if position.crewman.current_cmd == 'Request Support':
+					skip_phase = False
+					self.BuildSupportTargetList()
+					break
+			
+			if skip_phase:
+				self.advance_phase = True
 		
 		# movement phase: 
 		elif self.phase == PHASE_MOVEMENT:
@@ -6266,19 +6299,25 @@ class Scenario:
 			# crew action phase only
 			elif self.phase == PHASE_CREW_ACTION:
 				
-				# select support attack target hex
-				if key_char in ['a', 'd']:
-					self.CycleSupportTarget(key_char == 'd')
-					self.UpdateGuiCon()
-					self.UpdateScenarioDisplay()
-					continue
+				if self.selected_position is None: continue
+				position = self.player_unit.positions_list[self.selected_position]
+				if position.crewman is None: continue
+			
+				if position.crewman.current_cmd == 'Request Support':
 				
-				# cancel target
-				elif key.vk == libtcod.KEY_BACKSPACE:
-					self.support_target = None
-					self.UpdateGuiCon()
-					self.UpdateScenarioDisplay()
-					continue
+					# select support attack target hex
+					if key_char in ['a', 'd']:
+						self.CycleSupportTarget(key_char == 'd')
+						self.UpdateGuiCon()
+						self.UpdateScenarioDisplay()
+						continue
+					
+					# cancel target
+					elif key.vk == libtcod.KEY_BACKSPACE:
+						self.support_target = None
+						self.UpdateGuiCon()
+						self.UpdateScenarioDisplay()
+						continue
 			
 			# Movement phase only
 			elif scenario.phase == PHASE_MOVEMENT:

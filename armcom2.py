@@ -1252,7 +1252,6 @@ class CampaignDay:
 				if self.selected_direction == direction:
 					libtcod.console_set_default_foreground(cd_direction_con, libtcod.light_green)
 					
-			
 			(k, x, y, char) = CD_TRAVEL_CMDS[direction]
 			libtcod.console_put_char(cd_direction_con, x1+x, y1+y, k.upper())
 			if direction <= 2:

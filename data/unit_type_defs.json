@@ -550,6 +550,82 @@
 		"op_value" : "27"
 	},
 	
+	"Locomotive": {
+		"category" : "Train Car",
+		"class" : "Armoured Train Car",
+		"portrait" : "unit_locomotive.xp",
+		"size_class" : "Very Large",
+		"movement_class" : "Train",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "3",
+			"hull_front" : "3",
+			"hull_side" : "3"
+		},
+		"crew_positions" : [
+			{"name" : "Engineer"},
+			{"name" : "Fireman"}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "27"
+	},
+	
+	"Light Artillery Car": {
+		"category" : "Train Car",
+		"class" : "Armoured Train Car",
+		"portrait" : "unit_light_arty_car.xp",
+		"size_class" : "Very Large",
+		"movement_class" : "Train",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "3",
+			"hull_front" : "3",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "",
+				"rof" : "42.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "500"
+			},
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "",
+				"rof" : "42.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 1,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "500"
+			}
+		],
+		
+		"crew_positions" : [
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"}
+		],
+		"description" : [
+			""
+		],
+		"op_value" : "27"
+	},
+	
+	
+	
+	
 	
 	
 	

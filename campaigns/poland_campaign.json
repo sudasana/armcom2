@@ -41,12 +41,12 @@
 			"air_support_level" : 80.0,
 			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
-				"Tankette" : "80",
-				"Light Tank" : "30",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "40",
-				"Field Gun" : "10",
-				"Anti-Aircraft Gun" : "20",
+				"Tankette" : "40",
+				"Light Tank" : "25",
+				"Armoured Car" : "80",
+				"Anti-Tank Gun" : "60",
+				"Field Gun" : "20",
+				"Anti-Aircraft Gun" : "25",
 				"Infantry Squad" : "100"
 			}
 		}

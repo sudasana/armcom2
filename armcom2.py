@@ -1587,11 +1587,7 @@ class CampaignDay:
 					# capture area if player is still alive
 					if campaign.player_unit.alive:
 						(hx, hy) = self.player_unit_location
-						map_hex = self.map_hexes[(hx,hy)]
-						map_hex.controlled_by = 0
-						map_hex.air_support = False
-						map_hex.arty_support = False
-						campaign.AwardVP(self.capture_zone_vp)
+						self.map_hexes[(hx,hy)].CaptureMe(0)
 						self.CheckForEndOfDay()
 						SaveGame()
 					
@@ -1785,13 +1781,19 @@ class CampaignDay:
 						# roll to trigger battle encounter if enemy-controlled
 						if map_hex2.controlled_by == 1:
 							ShowMessage('You enter the enemy-held zone.')
-							
-							# TEMP - always trigger a scenario
 							campaign_day.AdvanceClock(0, 15)
 							
-							scenario = Scenario(map_hex2)
-							self.scenario = scenario
-							continue
+							# roll for scenario trigger
+							roll = GetPercentileRoll()
+							if roll <= (float(map_hex2.enemy_strength) * 8.5):
+								ShowMessage('You encounter enemy resistance!')
+								scenario = Scenario(map_hex2)
+								self.scenario = scenario
+								continue
+							
+							ShowMessage('You find no resistance and gain control of the area.')
+							campaign_day.AdvanceClock(0, 15)
+							self.map_hexes[(hx,hy)].CaptureMe(0)
 						
 						# no battle triggered, update consoles
 						DisplayTimeInfo(time_weather_con)
@@ -1851,6 +1853,18 @@ class CDMapHex:
 				self.terrain_type = terrain_type
 				return
 			roll -= odds
+	
+	
+	# set control of this hex by the given player
+	def CaptureMe(self, player_num):
+		self.controlled_by = player_num
+		self.air_support = False
+		self.arty_support = False
+		
+		# captured by player
+		if player_num == 0:
+			campaign.AwardVP(campaign_day.capture_zone_vp)
+		
 
 
 
@@ -2393,12 +2407,13 @@ class AI:
 			else:
 				if roll <= 15.0:
 					self.disposition = 'Attack Player'
-				elif roll <= 65.0
+				elif roll <= 65.0:
 					self.disposition = 'Combat'
 				else:
 					self.disposition = None
 		
 		else:
+			
 			if roll <= 15.0:
 				self.disposition = 'Attack Player'
 			elif roll <= 40.0:
@@ -3494,7 +3509,11 @@ class Unit:
 						if not target.spotted:
 							target.hit_by_fp = True
 					
-					# TEMP: AP hits have no effect on Guns
+					# AP hits are very ineffective against infantry/guns, and
+					# have no spotting effect
+					elif profile['ammo_type'] == 'AP':
+						
+						target.fp_to_resolve += 1
 				
 				# armoured target
 				if target.GetStat('armour') is not None:
@@ -5084,7 +5103,8 @@ class Scenario:
 		
 		# check for RoF for gun / MG attacks
 		if profile['type'] != 'ap' and profile['weapon'].GetStat('rof') is not None:
-			# TEMP: only player can maintain RoF
+			
+			# FUTURE: possibly allow AI units to maintain RoF?
 			if profile['attacker'] == scenario.player_unit:
 				profile['weapon'].maintained_rof = CheckRoF(profile) 
 				if profile['weapon'].maintained_rof:
@@ -5953,7 +5973,7 @@ class Scenario:
 			if self.support_target is not None:
 				(hx, hy) = self.support_target
 				(x,y) = scenario.PlotHex(hx, hy)
-				# TEMP - use better target display in FUTURE
+				# FUTURE use better target display here 
 				libtcod.console_put_char_ex(gui_con, x-1, y-1, 92, libtcod.red, libtcod.black)
 				libtcod.console_put_char_ex(gui_con, x+1, y+1, 92, libtcod.red, libtcod.black)
 				libtcod.console_put_char_ex(gui_con, x+1, y-1, 47, libtcod.red, libtcod.black)

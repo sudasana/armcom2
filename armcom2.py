@@ -1331,17 +1331,17 @@ class CampaignDay:
 			
 			# display current support levels
 			text = 'Air Support: '
-			if 'air_support_level' not in campaign.today:
+			if self.air_support_level == 0.0:
 				text += 'None'
 			else:
-				text += str(campaign.today['air_support_level'])
+				text += str(self.air_support_level)
 			libtcod.console_print(cd_command_con, 1, 3, text)
 			
 			text = 'Artillery Support: '
-			if 'arty_support_level' not in campaign.today:
+			if self.arty_support_level == 0.0:
 				text += 'None'
 			else:
-				text += str(campaign.today['arty_support_level'])
+				text += str(self.arty_support_level)
 			libtcod.console_print(cd_command_con, 1, 4, text)
 			
 			# no direction selected yet
@@ -1385,7 +1385,10 @@ class CampaignDay:
 		elif self.active_menu == 3:
 			
 			# check to see whether travel in selected direction is not possible
-			if self.selected_direction is None: return
+			if self.selected_direction is None:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+				libtcod.console_print(cd_command_con, 1, 2, 'Select a direction')
+				return
 			(hx, hy) = self.player_unit_location
 			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
 			if (hx, hy) not in self.map_hexes: return
@@ -1694,6 +1697,7 @@ class CampaignDay:
 					# spend time
 					campaign_day.AdvanceClock(0, 15)
 					
+					
 					# do roll
 					roll = GetPercentileRoll()
 					
@@ -1704,20 +1708,20 @@ class CampaignDay:
 					if key_char == 'r':
 						if roll > self.air_support_level:
 							ShowMessage('Request for air support was not successful.')
-							continue
-						ShowMessage('Request successful! Air support inbound.')
-						map_hex.air_support = True
-						self.air_support_level -= self.air_support_step
-						if self.air_support_level < 0.0: self.air_support_level = 0.0 
+						else:
+							ShowMessage('Request successful! Air support inbound.')
+							map_hex.air_support = True
+							self.air_support_level -= self.air_support_step
+							if self.air_support_level < 0.0: self.air_support_level = 0.0 
 						
 					elif key_char == 'f':
 						if roll > self.arty_support_level:
 							ShowMessage('Request for artillery support was not successful.')
-							continue
-						ShowMessage('Request successful! Artillery support inbound.')
-						map_hex.arty_support = True
-						self.arty_support_level -= self.arty_support_step
-						if self.arty_support_level < 0.0: self.arty_support_level = 0.0
+						else:
+							ShowMessage('Request successful! Artillery support inbound.')
+							map_hex.arty_support = True
+							self.arty_support_level -= self.arty_support_step
+							if self.arty_support_level < 0.0: self.arty_support_level = 0.0
 					
 					DisplayTimeInfo(time_weather_con)
 					self.UpdateCDGUICon()
@@ -1766,9 +1770,9 @@ class CampaignDay:
 					
 						# advance clock
 						if self.selected_direction in map_hex1.dirt_roads:
-							mins = 15
+							mins = 10
 						else:
-							mins = 30
+							mins = 15
 						campaign_day.AdvanceClock(0, mins)
 						
 						# set new player location and clear travel direction
@@ -1792,7 +1796,6 @@ class CampaignDay:
 								continue
 							
 							ShowMessage('You find no resistance and gain control of the area.')
-							campaign_day.AdvanceClock(0, 15)
 							self.map_hexes[(hx,hy)].CaptureMe(0)
 						
 						# no battle triggered, update consoles
@@ -2440,7 +2443,8 @@ class AI:
 			if GetPercentileRoll() <= 80.0:
 				self.disposition = 'Combat'
 		
-		print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
+		if self.disposition is not None:
+			print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 		
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
@@ -4943,10 +4947,12 @@ class Scenario:
 		
 		# display prompts
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		libtcod.console_print(attack_con, 6, 56, 'Bksp')
+		if profile['attacker'] == self.player_unit:
+			libtcod.console_print(attack_con, 6, 56, 'Bksp')
 		libtcod.console_print(attack_con, 6, 57, 'Tab')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		libtcod.console_print(attack_con, 12, 56, 'Cancel')
+		if profile['attacker'] == self.player_unit:
+			libtcod.console_print(attack_con, 12, 56, 'Cancel')
 		libtcod.console_print(attack_con, 12, 57, 'Continue')
 		
 		
@@ -5369,6 +5375,7 @@ class Scenario:
 		# calculate new hex positions of units
 		for unit in self.units:
 			if unit == scenario.player_unit: continue
+			if unit in scenario.player_unit.squad: continue
 			
 			(new_hx, new_hy) = RotateHex(unit.hx, unit.hy, r)
 			# set destination hex
@@ -5379,6 +5386,7 @@ class Scenario:
 		# set new hex location for each unit and move into new hex stack
 		for unit in self.units:
 			if unit == scenario.player_unit: continue
+			if unit in scenario.player_unit.squad: continue
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
 			(unit.hx, unit.hy) = unit.dest_hex
 			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
@@ -6170,7 +6178,7 @@ class Scenario:
 			self.player_unit.spotted = True
 			
 			# set up player squad
-			for i in range(4):
+			for i in range(2):
 				unit = Unit(self.player_unit.unit_id)
 				unit.nation = self.player_unit.nation
 				unit.ai = AI(unit)

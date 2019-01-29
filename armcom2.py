@@ -62,7 +62,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.3.0'					# game version
+VERSION = '0.3.0-2019-02-01'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2357,13 +2357,28 @@ class AI:
 		
 		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
+		# FUTURE: check for automatic action here
+					
 		roll = GetPercentileRoll()
+		
+		# modify roll if player has this unit as an acquired target and vice-versa
+		if scenario.player_unit.acquired_target is not None:
+			(ac_target, level) = scenario.player_unit.acquired_target
+			if ac_target == self.owner:
+				roll -= 15.0
+		if self.owner.acquired_target is not None:
+			(ac_target, level) = self.owner.acquired_target
+			if ac_target == scenario.player_unit:
+				roll -= 15.0
 		
 		# Step 1: roll for unit action
 		if self.owner.GetStat('category') == 'Infantry':
-			if roll <= 25.0:
+			
+			if roll <= 15.0:
+				self.disposition = 'Attack Player'
+			elif roll <= 40.0:
 				self.disposition = 'Combat'
-			elif roll <= 35.0:
+			elif roll <= 60.0:
 				if self.owner.pinned:
 					self.disposition = 'Combat'
 				else:
@@ -2376,15 +2391,19 @@ class AI:
 			if not self.owner.deployed:
 				self.disposition = None
 			else:
-				if roll >= 50.0:
-					self.disposition = None
-				else:
+				if roll <= 15.0:
+					self.disposition = 'Attack Player'
+				elif roll <= 65.0
 					self.disposition = 'Combat'
+				else:
+					self.disposition = None
 		
 		else:
-			if roll <= 35.0:
+			if roll <= 15.0:
+				self.disposition = 'Attack Player'
+			elif roll <= 40.0:
 				self.disposition = 'Combat'
-			elif roll <= 50.0:
+			elif roll <= 65.0:
 				self.disposition = 'Movement'
 			else:
 				self.disposition = None
@@ -2396,10 +2415,17 @@ class AI:
 			if self.disposition == 'Combat':
 				self.disposition = None
 		
-		# player squad doesn't move on its own
+		# player squad doesn't move on its own and doesn't attack the player
 		if self.owner in scenario.player_unit.squad:
-			if self.disposition == 'Movement':
+			if self.disposition in ['Attack Player', 'Movement']:
 				self.disposition = 'Combat'
+		
+		# chance that movement action will be cancelled if we have an acquired target
+		if self.owner.acquired_target is not None and self.disposition == 'Movement':
+			if GetPercentileRoll() <= 80.0:
+				self.disposition = 'Combat'
+		
+		print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 		
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
@@ -2472,18 +2498,19 @@ class AI:
 				self.owner.RemoveFromPlay()
 				
 		
-		elif self.disposition == 'Combat':
-			
-			# only a small chance that they will attack player, higher if they were
-			# fired upon by player and/or have acquired player as target
+		elif self.disposition in ['Combat', 'Attack Player']:
 			
 			# determine target
 			target_list = []
 			
-			for unit in scenario.units:
-				if unit.owning_player == self.owner.owning_player: continue
-				if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
-				target_list.append(unit)
+			if self.disposition == 'Attack Player':
+				target_list.append(scenario.player_unit)
+			else:
+				for unit in scenario.units:
+					if unit == scenario.player_unit: continue
+					if unit.owning_player == self.owner.owning_player: continue
+					if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
+					target_list.append(unit)
 			
 			# no possible targets
 			if len(target_list) == 0:
@@ -2576,10 +2603,6 @@ class AI:
 					elif GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > MG_AP_RANGE:
 						score -= 40.0
 				
-				# lower chance of attacking player
-				if target == scenario.player_unit:
-					score -= 10.0
-				
 				# add to list
 				scored_list.append((score, weapon, target, ammo_type))
 			
@@ -2607,7 +2630,7 @@ class AI:
 			
 			# no good attacks
 			if score <= 3.0:
-				print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on targets')
+				print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
 				return
 			
 			# proceed with best attack
@@ -2623,13 +2646,13 @@ class AI:
 				
 				if mount == 'Turret' and self.owner.turret_facing is not None:
 					self.owner.turret_facing = direction
-					print('DEBUG: AI unit rotated turret to fire')
+					print('AI DEBUG: AI unit rotated turret to fire')
 				
 				elif mount == 'Hull' and self.owner.facing is not None:
 					self.owner.facing = direction
 					if self.owner.turret_facing is not None:
 						self.owner.turret_facing = direction
-					print('DEBUG: AI unit pivoted hull to fire')
+					print('AI DEBUG: AI unit pivoted hull to fire')
 				
 				scenario.UpdateUnitCon()
 				scenario.UpdateScenarioDisplay()
@@ -2637,7 +2660,6 @@ class AI:
 					weapon.UpdateCoveredHexes()
 				
 			result = self.owner.Attack(weapon, target)
-			
 
 
 

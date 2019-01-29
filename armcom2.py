@@ -2415,6 +2415,14 @@ class AI:
 				else:
 					self.disposition = None
 		
+		# non-combat unit
+		elif self.owner.GetStat('class') == 'Truck':
+			if roll <= 60.0:
+				self.disposition = None
+			else:
+				self.disposition = 'Movement'
+		
+		# comabt vehicle
 		else:
 			
 			if roll <= 15.0:

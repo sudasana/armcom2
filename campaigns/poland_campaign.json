@@ -24,7 +24,7 @@
 	"enemy_unit_list" : [
 		"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Vickers 6-Ton Mark E", "7TP",
 		"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
-		"75mm wz. 97/25", "Riflemen"
+		"75mm wz. 97/25", "Polski Fiat 621", "Riflemen"
 	],
 	"calendar": [
 		{
@@ -47,6 +47,7 @@
 				"Anti-Tank Gun" : "60",
 				"Field Gun" : "20",
 				"Anti-Aircraft Gun" : "25",
+				"Truck" : "80",
 				"Infantry Squad" : "100"
 			}
 		}

@@ -5273,6 +5273,11 @@ class Scenario:
 			# show pop-up message to player
 			ShowMessage('You move but not far enough to enter a new map hex')
 			
+			# set new terrain for player and squad
+			for unit in self.units:
+				if unit != scenario.player_unit and unit not in scenario.player_unit.squad: continue
+				unit.GenerateTerrain()
+			
 			# end movement phase
 			self.advance_phase = True
 			

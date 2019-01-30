@@ -1789,6 +1789,11 @@ class CampaignDay:
 							
 							# roll for scenario trigger
 							roll = GetPercentileRoll()
+							
+							if DEBUG:
+								if session.debug['Always Scenario']:
+									roll = 1.0
+							
 							if roll <= (float(map_hex2.enemy_strength) * 8.5):
 								ShowMessage('You encounter enemy resistance!')
 								scenario = Scenario(map_hex2)
@@ -2388,6 +2393,10 @@ class AI:
 			if ac_target == scenario.player_unit:
 				roll -= 15.0
 		
+		if DEBUG:
+			if session.debug['AI Hates Player']:
+				roll = 0.0
+		
 		# Step 1: roll for unit action
 		if self.owner.GetStat('category') == 'Infantry':
 			
@@ -2422,7 +2431,7 @@ class AI:
 			else:
 				self.disposition = 'Movement'
 		
-		# comabt vehicle
+		# combat vehicle
 		else:
 			
 			if roll <= 15.0:
@@ -2721,8 +2730,8 @@ class Unit:
 		
 		# set up weapons
 		self.weapon_list = []			# list of unit weapons
-		weapon_list = self.stats['weapon_list']
-		if weapon_list is not None:
+		if 'weapon_list' in self.stats:
+			weapon_list = self.stats['weapon_list']
 			for weapon_dict in weapon_list:
 				self.weapon_list.append(Weapon(self, weapon_dict))
 			
@@ -3223,8 +3232,7 @@ class Unit:
 				col = ALLIED_UNIT_COL
 		
 		# draw main display character
-		libtcod.console_put_char_ex(unit_con, x, y, self.GetDisplayChar(),
-			col, libtcod.black)
+		libtcod.console_put_char_ex(unit_con, x, y, self.GetDisplayChar(), col, libtcod.black)
 		
 		# determine if we need to display a turret / gun depiction
 		draw_turret = True
@@ -3232,6 +3240,7 @@ class Unit:
 		if self.GetStat('category') == 'Infantry': draw_turret = False
 		if self.owning_player == 1 and not self.spotted: draw_turret = False
 		if self.GetStat('category') == 'Gun' and not self.deployed: draw_turret = False
+		if len(self.weapon_list) == 0: draw_turret = False
 		
 		if draw_turret:
 			# use turret facing if present, otherwise hull facing
@@ -3951,8 +3960,11 @@ class Scenario:
 			# set facing if any toward player
 			direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)
 			if unit.GetStat('category') != 'Infantry':
-				unit.facing = direction		
-			unit.turret_facing = direction
+				unit.facing = direction
+			
+			# turreted vehicle
+			if 'turret' in unit.stats:
+				unit.turret_facing = direction
 	
 	
 	# attempt an artillery attack against the support attack target hex
@@ -5014,10 +5026,11 @@ class Scenario:
 				roll = GetPercentileRoll()
 				
 				# check for debug flag
-				if i == 5 and profile['attacker'] == scenario.player_unit:
-					if session.debug['Player Always Hits']:
+				if DEBUG and i == 5:
+					if profile['attacker'] == scenario.player_unit and session.debug['Player Always Hits']:
 						roll = 3.0
-						print('DEBUG: Player hit automatically')
+					elif profile['target'] == scenario.player_unit and session.debug['Player Always Dies']:
+						roll = 3.0
 				
 				# clear any previous text
 				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
@@ -5484,6 +5497,8 @@ class Scenario:
 			
 			self.player_unit.MoveToTopOfStack()
 			self.UpdateUnitCon()
+			self.UpdateScenarioDisplay()
+			libtcod.console_flush()
 		
 		# remaining on player turn
 		elif self.phase < PHASE_ALLIED_ACTION:
@@ -5573,17 +5588,20 @@ class Scenario:
 			
 			# player squad acts first
 			for unit in scenario.player_unit.squad:
-				#unit.DoSpotChecks()
+				unit.MoveToTopOfStack()
+				self.UpdateUnitCon()
+				self.UpdateScenarioDisplay()
+				libtcod.console_flush()
 				unit.ai.DoActivation()
 				
 				# do recover roll for this unit
 				unit.DoRecoveryRoll()
 				
 				# resolve any ap hits caused by this unit
-				for unit in self.units:
-					if not unit.alive: continue
-					if unit.owning_player == self.active_player: continue
-					unit.ResolveAPHits()
+				for unit2 in self.units:
+					if not unit2.alive: continue
+					if unit2.owning_player == self.active_player: continue
+					unit2.ResolveAPHits()
 			
 			self.advance_phase = True
 		
@@ -5592,10 +5610,21 @@ class Scenario:
 			
 			# run through list in reverse since we might remove units from play
 			for unit in reversed(self.units):
+				
+				# if player has been destroyed, don't keep attacking
+				if not self.player_unit.alive:
+					break
+				
 				if unit.owning_player == 0: continue
 				if not unit.alive: continue
 				unit.ResetForNewTurn()
 				unit.ai.DoActivation()
+				
+				# resolve any ap hits caused by this unit
+				for unit2 in self.units:
+					if not unit2.alive: continue
+					if unit2.owning_player == self.active_player: continue
+					unit2.ResolveAPHits()
 			
 			self.advance_phase = True
 		
@@ -6234,6 +6263,8 @@ class Scenario:
 			
 			# check for scenario finished, return to campaign day map
 			if scenario.finished:
+				# TODO: is this required?
+				campaign.player_unit = scenario.player_unit
 				return
 			
 			if libtcod.console_is_window_closed(): sys.exit()

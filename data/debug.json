@@ -1,7 +1,10 @@
 {
  "Player Immortality": false,
  "Support Requests Always Granted": false,
+ "Always Scenario": true,
  "Player Always Hits": false,
  "Player Always Moves": false,
- "No AI Actions": false
+ "No AI Actions": false,
+ "AI Hates Player": true,
+ "Player Always Dies": true
 }

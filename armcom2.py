@@ -45,8 +45,7 @@ else:
 	
 from configparser import ConfigParser			# saving and loading configuration settings
 from random import choice, shuffle, sample		# for the illusion of randomness
-from math import floor, cos, sin, sqrt			# math
-from math import degrees, atan2, ceil			# heading calculations
+from math import floor, cos, sin, sqrt, degrees, atan2, ceil	# math and heading calculations
 import xp_loader, gzip					# loading xp image files
 import json						# for loading JSON data
 import time
@@ -195,7 +194,7 @@ MONTH_NAMES = [
 #                                    Engine Constants                                    #
 ##########################################################################################
 
-# TODO: move these to JSON file
+# FUTURE: move these to a JSON file
 
 # length of scenario turn in minutes
 TURN_LENGTH = 2
@@ -361,12 +360,14 @@ SCENARIO_TERRAIN_ODDS = {
 # TODO: modifiers and effects for different types of terrain on the scenario layer
 SCENARIO_TERRAIN_EFFECTS = {
 	'Open Ground' : {
+		'HD Chance' : 5.0
 	},
 	'Broken Ground' : {
 		'TEM' : {
 			'Infantry' : -15.0,
 			'Deployed Gun' : -15.0
 		},
+		'HD Chance' : 10.0,
 		'Movement Mod' : -5.0,
 		'Bog Mod' : 5.0
 	},
@@ -374,6 +375,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'TEM' : {
 			'All' : -15.0
 		},
+		'HD Chance' : 10.0,
 		'Movement Mod' : -15.0,
 		'Bog Mod' : 15.0,
 		'Air Burst' : 10.0,
@@ -383,6 +385,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'TEM' : {
 			'All' : -25.0
 		},
+		'HD Chance' : 20.0,
 		'Movement Mod' : -30.0,
 		'Bog Mod' : 30.0,
 		'Air Burst' : 20.0,
@@ -392,6 +395,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'TEM' : {
 			'All' : -10.0
 		},
+		'HD Chance' : 5.0,
 		'Burnable' : True
 	},
 	'Wooden Buildings': {
@@ -399,6 +403,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 			'Infantry' : -30.0,
 			'Deployed Gun' : -30.0
 		},
+		'HD Chance' : 30.0,
 		'Hidden Mod' : 20.0,
 		'Burnable' : True
 	}
@@ -2879,7 +2884,7 @@ class Unit:
 		# otherwise, already acquired target to 2 levels, no further effect
 	
 	
-	# calcualte chances of a successful forward/reverse move action
+	# calcualte chances of a successful forward/reverse move action for this unit
 	def CalculateMoveChances(self):
 		
 		# set values to base values
@@ -2890,26 +2895,31 @@ class Unit:
 		self.forward_move_chance += self.forward_move_bonus
 		self.reverse_move_chance += self.reverse_move_bonus
 		
-		# add modifiers from unit movement type
+		# apply modifier from unit movement type
 		movement_class = scenario.player_unit.GetStat('movement_class')
 		if movement_class == 'Slow Tank':
 			self.forward_move_chance -= 15.0
 		elif movement_class == 'Fast Tank':
 			self.forward_move_chance += 10.0
 		elif movement_class == 'Wheeled':
-			# FUTURE: modifier here if using road movement
+			# FUTURE: additional modifier here if using road movement
 			self.forward_move_chance += 5.0
+		
+		# apply modifier from current terrain type
+		if self.terrain is not None:
+			if 'Movement Mod' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
+				mod = SCENARIO_TERRAIN_EFFECTS[self.terrain]['Movement Mod']
+				self.forward_move_chance += mod
+				self.reverse_move_chance += mod
 		
 		# add bonuses from commander direction
 		for position in ['Commander', 'Commander/Gunner']:
-			crewman = scenario.player_unit.GetPersonnelByPosition(position)
+			crewman = self.GetPersonnelByPosition(position)
 			if crewman is not None:
+				if crewman.current_cmd == 'Direct Movement':
+					self.forward_move_chance += 15.0
+					self.reverse_move_chance += 10.0
 				break
-		
-		if crewman is not None:
-			if crewman.current_cmd == 'Direct Movement':
-				self.forward_move_chance += 15.0
-				self.reverse_move_chance += 10.0
 		
 		# limit chances
 		self.forward_move_chance = RestrictChance(self.forward_move_chance)

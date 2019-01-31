@@ -17,8 +17,8 @@
 	"player_unit_list" : [
 		"T-26 M39"
 	],
-	"player_air_support": [
-		""
+	"player_arty_support": [
+		"75mm wz. 02/26"
 	],
 	"enemy_unit_list" : [
 		"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Vickers 6-Ton Mark E", "7TP",

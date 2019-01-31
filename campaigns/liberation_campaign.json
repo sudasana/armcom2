@@ -1,0 +1,54 @@
+{
+	"name" : "The Liberation Campaign of the Red Army",
+	"start_date" : {
+		"year" : "1939",
+		"month" : "9",
+		"day" : "17"
+	},
+	"end_date" : {
+		"year" : "1939",
+		"month" : "10",
+		"day" : "6"
+	},
+	"action_days" : "1",
+	"player_nation" : "Soviet Union",
+	"enemy_nations" : ["Poland"],
+	"desc" : "Soviet invasion of Poland, 1939.",
+	"player_unit_list" : [
+		"T-26 M39"
+	],
+	"player_air_support": [
+		""
+	],
+	"enemy_unit_list" : [
+		"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Vickers 6-Ton Mark E", "7TP",
+		"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
+		"75mm wz. 97/25", "Polski Fiat 621", "Riflemen"
+	],
+	"calendar": [
+		{
+			"year" : "1939",
+			"month" : "9",
+			"day" : "17",
+			"start_hour" : "4",
+			"start_minute" : "30",
+			"end_hour" : "12",
+			"end_minute" : "30",
+			"location" : "The Polish Border",
+			"desc" : "This morning we begin our invasion of Polish territory. Your battlegroup is tasked with destroying enemy forces and capturing territory wherever possible.",
+			"enemy_nation" : "Poland",
+			"air_support_level" : 80.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Tankette" : "40",
+				"Light Tank" : "25",
+				"Armoured Car" : "80",
+				"Anti-Tank Gun" : "60",
+				"Field Gun" : "20",
+				"Anti-Aircraft Gun" : "25",
+				"Truck" : "80",
+				"Infantry Squad" : "100"
+			}
+		}
+	]
+}

@@ -59,9 +59,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.3.0-2019-02-01'				# game version
+VERSION = '0.3.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -270,6 +270,7 @@ AP_BASE_CHANCE = {
 	'37' : 72.0,
 	'37L' : 83.0,
 	'47S' : 72.0,
+	'45L' : 91.7,
 	'75S' : 91.7,
 	'75' : 120.0,		# not sure if this and below are accurate, FUTURE: check balance
 	'75L' : 160.0,
@@ -463,11 +464,14 @@ class Campaign:
 			libtcod.console_print_ex(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Campaign Selection')
 			libtcod.console_set_default_background(con, libtcod.dark_blue)
-			libtcod.console_rect(con, 27, 5, 35, 3, True, libtcod.BKGND_SET)
+			libtcod.console_rect(con, 27, 5, 35, 4, True, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(con, libtcod.black)
 			libtcod.console_set_default_foreground(con, libtcod.white)
-			libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
-				selected_campaign['name'])
+			lines = wrap(selected_campaign['name'], 33)
+			y = 6
+			for line in lines:
+				libtcod.console_print_ex(con, 45, y, libtcod.BKGND_NONE, libtcod.CENTER, line)
+				y += 1
 			
 			# player nation flag
 			if selected_campaign['player_nation'] in session.flags:

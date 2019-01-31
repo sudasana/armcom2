@@ -550,6 +550,26 @@
 		"op_value" : "27"
 	},
 	
+	"Polski Fiat 621" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_621_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"description" : [
+			"Produced under license from the Italian Fiat company, the 621 ",
+			"serves as the workhorse of the Polish military, transporting ",
+			"soldiers, supplies, and even light tanks around the country."
+		],
+		"op_value" : "5"
+	},
+	
 	"Locomotive": {
 		"category" : "Train Car",
 		"class" : "Armoured Train Car",
@@ -1631,6 +1651,27 @@
 		],
 		"ubiquity" : "20",
 		"op_value" : "55"
+	},
+	
+	"Opel Blitz 3-ton" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_opel_3t_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"description" : [
+			"The Blitz truck, produced by the General Motors subsidiary ",
+			"company Opel, provides the motorized transport backbone for ",
+			"the German army. The 3-ton variant is the most common variant ",
+			"in use."
+		],
+		"op_value" : "5"
 	},
 	
 	"Riflemen": {

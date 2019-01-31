@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.3.0-2019-02-01'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -7115,7 +7115,8 @@ def ShowGameMenu():
 
 # display a list of game options and current settings
 def DisplayGameOptions(console, x, y, skip_esc=False):
-	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
+	#for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
+	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('Esc', 'Return to Main Menu')]:
 		
 		if char == 'Esc' and skip_esc: continue
 		
@@ -7188,6 +7189,9 @@ def ChangeGameSettings(key_char):
 		
 	# switch keyboard layout
 	elif key_char == 'k':
+		# TEMP no effect
+		return False
+		
 		i = config['ArmCom2'].getint('keyboard')
 		if i == len(KEYBOARDS) - 1:
 			i = 0

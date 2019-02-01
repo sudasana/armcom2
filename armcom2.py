@@ -75,7 +75,7 @@ LIMIT_FPS = 50						# maximum screen refreshes per second
 WINDOW_WIDTH, WINDOW_HEIGHT = 90, 60			# size of game window in character cells
 WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of game window
 
-KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak']	# list of possible keyboard layout settings
+KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak', 'Custom']	# list of possible keyboard layout settings
 
 MAX_TANK_NAME_LENGTH = 20				# maximum length of tank names
 
@@ -513,7 +513,7 @@ class Campaign:
 				y+=1
 				
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-			libtcod.console_print(con, 32, 53, 'A/D')
+			libtcod.console_print(con, 32, 53, EnKey('a').upper() + '/' + EnKey('d').upper())
 			libtcod.console_print(con, 32, 55, 'Enter')
 			libtcod.console_print(con, 32, 56, 'Esc')
 			libtcod.console_set_default_foreground(con, libtcod.white)
@@ -564,7 +564,7 @@ class Campaign:
 			elif key.vk == libtcod.KEY_ENTER:
 				exit_menu = True
 			
-			key_char = chr(key.c).lower()
+			key_char = DeKey(chr(key.c).lower())
 			
 			# change selected campaign
 			if key_char in ['a', 'd']:
@@ -635,7 +635,7 @@ class Campaign:
 				y+=1
 			
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-			libtcod.console_print(con, 32, 53, 'A/D')
+			libtcod.console_print(con, 32, 53, EnKey('a').upper() + '/' + EnKey('d').upper())
 			libtcod.console_print(con, 32, 54, 'N')
 			libtcod.console_print(con, 32, 55, 'Enter')
 			libtcod.console_set_default_foreground(con, libtcod.white)
@@ -674,7 +674,17 @@ class Campaign:
 			if key.vk == libtcod.KEY_ENTER:
 				exit_loop = True
 			
+			# unmapped keys
 			key_char = chr(key.c).lower()
+			
+			# change/generate player tank name
+			if key_char == 'n':
+				
+				player_tank_name = ShowTextInputMenu('Enter a name for your tank', player_tank_name, MAX_TANK_NAME_LENGTH, [])
+				UpdateTankSelectionScreen(selected_unit, player_tank_name)
+			
+			# mapped keys
+			key_char = DeKey(chr(key.c).lower())
 			
 			# change selected tank
 			if key_char in ['a', 'd']:
@@ -693,12 +703,6 @@ class Campaign:
 						selected_unit = unit_list[i-1]
 				UpdateTankSelectionScreen(selected_unit, player_tank_name)
 			
-			# change/generate player tank name
-			elif key_char == 'n':
-				
-				player_tank_name = ShowTextInputMenu('Enter a name for your tank', player_tank_name, MAX_TANK_NAME_LENGTH, [])
-				UpdateTankSelectionScreen(selected_unit, player_tank_name)
-		
 		return (selected_unit.unit_id, player_tank_name)
 	
 	# display a briefing for the start of a new campaign day
@@ -1290,7 +1294,7 @@ class CampaignDay:
 					libtcod.console_set_default_foreground(cd_direction_con, libtcod.light_green)
 					
 			(k, x, y, char) = CD_TRAVEL_CMDS[direction]
-			libtcod.console_put_char(cd_direction_con, x1+x, y1+y, k.upper())
+			libtcod.console_put_char(cd_direction_con, x1+x, y1+y, EnKey(k).upper())
 			if direction <= 2:
 				x+=1
 			else:
@@ -1374,7 +1378,7 @@ class CampaignDay:
 				libtcod.console_print_ex(cd_command_con, 12, 16, libtcod.BKGND_NONE, libtcod.CENTER,
 					'15 mins to attempt call')
 				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-				libtcod.console_print(cd_command_con, 3, 21, 'R')
+				libtcod.console_print(cd_command_con, 3, 21, EnKey('r').upper())
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 				libtcod.console_print(cd_command_con, 5, 21, 'Call Air Support')
 			
@@ -1386,7 +1390,7 @@ class CampaignDay:
 				libtcod.console_print_ex(cd_command_con, 12, 16, libtcod.BKGND_NONE, libtcod.CENTER,
 					'15 mins to attempt call')
 				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-				libtcod.console_print(cd_command_con, 3, 22, 'F')
+				libtcod.console_print(cd_command_con, 3, 22, EnKey('f').upper())
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 				libtcod.console_print(cd_command_con, 5, 22, 'Call Arty Support')
 		
@@ -1413,14 +1417,12 @@ class CampaignDay:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 					libtcod.console_print(cd_command_con, 1, 3, 'Recon: 15 mins.')
 					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-					libtcod.console_print(cd_command_con, 5, 21, 'R')
+					libtcod.console_print(cd_command_con, 5, 21, EnKey('r').upper())
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 					libtcod.console_print(cd_command_con, 12, 21, 'Recon')
 				else:
 					libtcod.console_print(cd_command_con, 1, 3, 'Strength: ' + str(map_hex.enemy_strength))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				
-				
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			text = 'Travel Time: '
@@ -1444,7 +1446,7 @@ class CampaignDay:
 			libtcod.console_print_ex(cd_command_con, 12, 11, libtcod.BKGND_NONE, libtcod.CENTER,
 				'30 mins.')
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 8, 22, 'R')
+			libtcod.console_print(cd_command_con, 8, 22, EnKey('r').upper())
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 			libtcod.console_print(cd_command_con, 10, 22, 'Resupply')
 	
@@ -1652,9 +1654,8 @@ class CampaignDay:
 				ShowDebugMenu()
 				continue
 			
-			# key commands - translate key from current keyboard layout into standard
-			key_char = chr(key.c).lower()
-			key_char = DeKey(key_char)
+			# mapped key commands
+			key_char = DeKey(chr(key.c).lower())
 			
 			# switch active menu
 			if key_char in ['1', '3', '5']:
@@ -3497,7 +3498,7 @@ class Unit:
 					libtcod.console_flush()
 					if not GetInputEvent(): continue
 					
-					key_char = chr(key.c).lower()
+					key_char = DeKey(chr(key.c).lower())
 					
 					if key.vk == libtcod.KEY_TAB:
 						end_pause = True
@@ -5152,7 +5153,7 @@ class Scenario:
 					libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
 						libtcod.CENTER, 'Maintained Rate of Fire')
 					libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-					libtcod.console_print(attack_con, 6, 56, 'F')
+					libtcod.console_print(attack_con, 6, 56, EnKey('f').upper())
 					libtcod.console_set_default_foreground(attack_con, libtcod.white)
 					libtcod.console_print(attack_con, 12, 56, 'Fire Again')
 		
@@ -5875,8 +5876,8 @@ class Scenario:
 		# Command phase
 		if self.phase == PHASE_COMMAND:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
-			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
+			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
 			libtcod.console_print(cmd_menu_con, 1, 3, 'H')
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
@@ -5887,7 +5888,7 @@ class Scenario:
 		# Crew action phase
 		elif self.phase == PHASE_CREW_ACTION:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
+			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper() + '/' + EnKey('s').upper())
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Position')
 			
@@ -5898,7 +5899,7 @@ class Scenario:
 			
 			if position.crewman.current_cmd == 'Request Support':
 				libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-				libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
+				libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
 				libtcod.console_print(cmd_menu_con, 1, 3, 'Bksp')
 				
 				libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
@@ -5909,9 +5910,9 @@ class Scenario:
 		# Movement phase
 		elif self.phase == PHASE_MOVEMENT:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
-			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
-			#libtcod.console_print(cmd_menu_con, 1, 3, 'R')
+			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
+			#libtcod.console_print(cmd_menu_con, 1, 3, EnKey('r').upper())
 			#libtcod.console_print(cmd_menu_con, 1, 4, 'H')
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
@@ -5923,11 +5924,11 @@ class Scenario:
 		# Shooting phase
 		elif self.phase == PHASE_SHOOTING:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(cmd_menu_con, 1, 1, 'W/S')
-			libtcod.console_print(cmd_menu_con, 1, 2, 'A/D')
-			libtcod.console_print(cmd_menu_con, 1, 3, 'Q/E')
-			libtcod.console_print(cmd_menu_con, 1, 4, 'C')
-			libtcod.console_print(cmd_menu_con, 1, 5, 'F')
+			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
+			libtcod.console_print(cmd_menu_con, 1, 3, EnKey('q').upper() + '/' + EnKey('e').upper())
+			libtcod.console_print(cmd_menu_con, 1, 4, EnKey('c').upper())
+			libtcod.console_print(cmd_menu_con, 1, 5, EnKey('f').upper())
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Weapon')
@@ -6340,7 +6341,7 @@ class Scenario:
 			if scenario.active_player == 1: continue
 			
 			# key commands
-			key_char = chr(key.c).lower()
+			key_char = DeKey(chr(key.c).lower())
 			
 			# Any Phase
 			
@@ -6396,8 +6397,8 @@ class Scenario:
 					self.UpdateScenarioDisplay()
 					continue
 				
-				# toggle hatch for selected crewman
-				elif key_char == 'h':
+				# toggle hatch for selected crewman (not mapped)
+				elif chr(key.c).lower() == 'h':
 					
 					# no crewman in selected position
 					crewman = self.player_unit.positions_list[self.selected_position].crewman
@@ -7132,7 +7133,7 @@ def ShowGameMenu():
 		libtcod.console_flush()
 		if not GetInputEvent(): continue
 		
-		key_char = chr(key.c).lower()
+		key_char = DeKey(chr(key.c).lower())
 		
 		# Switch Active Menu
 		if key.vk == libtcod.KEY_ESCAPE or key_char in ['1', '2', '3']:
@@ -7152,7 +7153,8 @@ def ShowGameMenu():
 		
 		# Root Game Menu
 		if active_tab == 0:
-			if key_char == 'q':
+			# not mapped
+			if chr(key.c).lower() == 'q':
 				SaveGame()
 				session.exiting = True
 				exit_menu = True
@@ -7267,8 +7269,7 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 
 # display a list of game options and current settings
 def DisplayGameOptions(console, x, y, skip_esc=False):
-	#for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
-	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('Esc', 'Return to Main Menu')]:
+	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
 		
 		if char == 'Esc' and skip_esc: continue
 		
@@ -7341,8 +7342,6 @@ def ChangeGameSettings(key_char):
 		
 	# switch keyboard layout
 	elif key_char == 'k':
-		# TEMP no effect
-		return False
 		
 		i = config['ArmCom2'].getint('keyboard')
 		if i == len(KEYBOARDS) - 1:
@@ -7609,7 +7608,7 @@ def GenerateKeyboards():
 # turn an inputted key into a standard key input
 def DeKey(key_char):
 	if key_char in keyboard_decode:
-		return keyboard_decode[key_char].encode('IBM850')
+		return keyboard_decode[key_char]
 	return key_char
 
 
@@ -7617,7 +7616,7 @@ def DeKey(key_char):
 # turn a standard key into the one for the current keyboard layout
 def EnKey(key_char):
 	if key_char in keyboard_encode:
-		return keyboard_encode[key_char].encode('IBM850')
+		return keyboard_encode[key_char]
 	return key_char
 	
 

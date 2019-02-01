@@ -3741,7 +3741,7 @@ class Unit:
 		# check for debug flag
 		if self == scenario.player_unit and DEBUG:
 			if session.debug['Player Immortality']:
-				print('DEBUG: Player saved from death')
+				ShowMessage('Debug powers will save you from death!')
 				return
 		
 		if self.GetStat('category') == 'Vehicle':
@@ -6578,9 +6578,9 @@ def DrawFrame(console, x, y, w, h):
 # FUTURE: integrate with animation?
 def ShowMessage(text, portrait=None):
 	
-	# create message console: 29x18
+	# create message console: 29x19
 	msg_con = libtcod.console_new(29, 19)
-	libtcod.console_set_default_background(msg_con, libtcod.black)
+	libtcod.console_set_default_background(msg_con, libtcod.darkest_grey)
 	libtcod.console_set_default_foreground(msg_con, libtcod.white)
 	libtcod.console_clear(msg_con)
 	DrawFrame(msg_con, 0, 0, 29, 19)
@@ -6597,14 +6597,16 @@ def ShowMessage(text, portrait=None):
 	# display message
 	lines = wrap(text, 27)
 	
+	# try to center message vertically in window
+	ym = 9 - int(len(lines) / 2)
+	
+	if ym >= y:
+		y = ym
+	
 	for line in lines:
 		libtcod.console_print_ex(msg_con, 14, y, libtcod.BKGND_NONE, libtcod.CENTER, line)
 		if y == 17: break
 		y += 1
-	
-	# darken screen background
-	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.4, 0.4)
-	# display message console overtop map area of screen
 	
 	# display closer to centre if we appear to be in the campaign day view
 	if scenario is None:
@@ -6612,8 +6614,8 @@ def ShowMessage(text, portrait=None):
 	else:
 		x = 44
 	
+	# display message console
 	libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, x, 21)
-	del msg_con
 	libtcod.console_flush()
 	
 	Wait(200)
@@ -6621,6 +6623,7 @@ def ShowMessage(text, portrait=None):
 	# re-draw screen
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
+	del msg_con
 
 
 # get keyboard and/or mouse event; returns False if no new key press
@@ -7078,7 +7081,13 @@ def ShowGameMenu():
 		
 		# Commander Menu
 		elif active_tab == 1:
-			pass
+			
+			crewman = campaign.player_unit.positions_list[0].crewman
+			if crewman is not None:
+				DisplayPersonnelInfo(crewman, game_menu_con, 5, 8)
+			
+			# FUTURE: display more detailed character information here
+			
 		
 		# Crew Menu
 		elif active_tab == 2:

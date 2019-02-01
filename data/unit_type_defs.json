@@ -1706,7 +1706,7 @@
 	
 	
 	
-	"T-26 M39" : {
+	"T-26 M33" : {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
 		"portrait" : "unit_t26_m39.xp",
@@ -1714,9 +1714,9 @@
 		"movement_class" : "Slow Tank",
 		"turret" : "TRUE",
 		"armour" : {
-			"turret_front" : "3",
-			"turret_side" : "2",
-			"hull_front" : "3",
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
 			"hull_side" : "1"
 		},
 		"weapon_list" : [
@@ -1766,13 +1766,77 @@
 		],
 		"description" : [
 			"The T-26 tank was developed based on the British Vickers 6-ton ",
-			"design, and are by far the most numerous tank in Soviet forces. ",
-			"The 1939 model has thicker armour and more slope on the turret."
+			"design, and are by far the most numerous tank in Soviet forces."
 		],
 		"ubiquity" : "50",
 		"op_value" : "33"
 	},
 	
+	"BT-5 M34" : {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_bt5_m34.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "45",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The BT-5 tank was designed to move quickly, in order to exploit ",
+			"holes in enemy defensive lines."
+		],
+		"ubiquity" : "50",
+		"op_value" : "33"
+	},
 
 	
 	

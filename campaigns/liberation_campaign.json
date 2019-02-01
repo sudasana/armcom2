@@ -15,7 +15,7 @@
 	"enemy_nations" : ["Poland"],
 	"desc" : "Soviet invasion of Poland, 1939.",
 	"player_unit_list" : [
-		"T-26 M39"
+		"T-26 M33", "BT-5 M34"
 	],
 	"player_arty_support": [
 		"75mm wz. 02/26"

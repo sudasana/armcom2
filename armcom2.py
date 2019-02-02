@@ -874,6 +874,8 @@ class CampaignDay:
 			self.arty_support_level = campaign.today['arty_support_level']
 			self.arty_support_step = campaign.today['arty_support_step']
 		
+		self.encounter_mod = 0.0			# increases every time player caputures an area without resistance
+		
 		# set up player
 		self.player_unit_location = (-2, 8)		# set initial player unit location
 		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
@@ -1490,6 +1492,9 @@ class CampaignDay:
 		
 		# mouse cursor outside of map area
 		if mouse.cx < 31 or mouse.cx > 59:
+			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)
+			libtcod.console_print(cd_hex_info_con, 0, 2, 'Mouseover an area')
+			libtcod.console_print(cd_hex_info_con, 0, 3, 'for info')
 			return
 		x = mouse.cx - 29
 		y = mouse.cy - 6
@@ -1818,19 +1823,22 @@ class CampaignDay:
 							
 							# roll for scenario trigger
 							roll = GetPercentileRoll()
+							roll += campaign_day.encounter_mod
 							
 							if DEBUG:
 								if session.debug['Always Scenario']:
 									roll = 1.0
 							
-							if roll <= (float(map_hex2.enemy_strength) * 8.5):
+							if roll <= (float(map_hex2.enemy_strength) * 9.5):
 								ShowMessage('You encounter enemy resistance!')
 								scenario = Scenario(map_hex2)
 								self.scenario = scenario
+								campaign_day.encounter_mod = 0.0
 								continue
 							
 							ShowMessage('You find no resistance and gain control of the area.')
 							self.map_hexes[(hx,hy)].CaptureMe(0)
+							campaign_day.encounter_mod += 20.0
 						
 						# no battle triggered, update consoles
 						DisplayTimeInfo(time_weather_con)
@@ -1901,6 +1909,7 @@ class CDMapHex:
 		# captured by player
 		if player_num == 0:
 			campaign.AwardVP(campaign_day.capture_zone_vp)
+			campaign_day.records['Map Areas Captured'] += 1
 		
 
 
@@ -2993,8 +3002,6 @@ class Unit:
 			if session.debug['Player Always HD']:
 				roll = 1.0
 		
-		print('DEBUG: HD check for ' + self.unit_id + ': chance is ' + str(chance) + '%%, roll was ' + str(roll))
-		
 		if roll > chance: return False
 		
 		if driver_attempt:
@@ -3634,8 +3641,8 @@ class Unit:
 						
 						target.fp_to_resolve += 1
 				
-				# armoured target
-				if target.GetStat('armour') is not None:
+				# vehicle target
+				elif target.GetStat('category') == 'Vehicle':
 					target.ap_hits_to_resolve.append(profile)
 		
 		# turn off attack console display if any
@@ -3655,7 +3662,9 @@ class Unit:
 		# no hits to resolve! doing fine!
 		if len(self.ap_hits_to_resolve) == 0: return
 		
-		# no effect if not vehicle
+		print('Resolving AP hits on ' + self.unit_id)
+		
+		# no effect if unit is not a vehicle
 		if self.GetStat('category') != 'Vehicle':
 			self.ap_hits_to_resolve = []
 			return
@@ -3667,8 +3676,8 @@ class Unit:
 		# handle AP hits
 		for profile in self.ap_hits_to_resolve:
 			
-			# unit is armoured
-			if self.GetStat('armour') is not None:
+			# unit is vehicle
+			if self.GetStat('category') == 'Vehicle':
 				
 				profile = scenario.CalcAP(profile)
 				
@@ -3714,7 +3723,7 @@ class Unit:
 						text += profile['attacker'].GetName() + '.'
 					ShowMessage(text)
 					return
-		
+
 		# clear unresolved hits
 		self.ap_hits_to_resolve = []
 	
@@ -4502,7 +4511,7 @@ class Scenario:
 				return 'No ammo loaded'
 			if weapon.ammo_stores[weapon.ammo_type] == 0:
 				return 'No more ammo of the selected type'
-			if weapon.ammo_type == 'AP' and target.GetStat('armour') is None:
+			if weapon.ammo_type == 'AP' and target.GetStat('category') != 'Vehicle':
 				return 'AP has no effect on target'
 		
 		# check firing group restrictions
@@ -4809,38 +4818,51 @@ class Scenario:
 		
 		# calculate modifiers
 		
-		# calibre/range modifier - not applicable to HE and MG attacks
-		if profile['ammo_type'] == 'AP' and weapon.GetStat('calibre') is not None:
-			calibre = int(weapon.GetStat('calibre'))
-			distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
-			
-			if calibre <= 25:
-				if distance == 0:
-					modifier_list.append(('Close Range', 18.0))
-				elif distance == 2:
-					modifier_list.append(('Medium Range', -7.0))
-				else:
-					modifier_list.append(('Long Range', -18.0))
-			elif calibre <= 57:
-				if distance == 0:
-					modifier_list.append(('Close Range', 7.0))
-				elif distance == 2:
-					modifier_list.append(('Medium Range', -7.0))
-				else:
-					modifier_list.append(('Long Range', -12.0))
-			else:
-				if distance == 0:
-					modifier_list.append(('Close Range', 7.0))
-				elif 2 <= distance <= 3:
-					modifier_list.append(('Long Range', -7.0))
+		# unarmoured targets use flat modifiers
 		
-		# target armour modifier
-		# TODO: move into GetArmourModifier function for target
-		#       use in Air Attack as well
+		# FUTURE: check for unarmoured locations on otherwise armoured targets
+		
 		armour = target.GetStat('armour')
-		if armour is not None:
+		if armour is None:
 			
-			# location is armoured
+			if profile['result'] == 'CRITICAL HIT':
+				modifier_list.append(('Critical Hit', 75.0))
+			
+			elif profile['ammo_type'] == 'HE':
+				modifier_list.append(('Unarmoured Target', 25.0))
+			
+			# AP hits have a chance to punch right through
+			else:
+				modifier_list.append(('Unarmoured Target', -18.0))
+			
+		else:
+		
+			# calibre/range modifier - not applicable to HE and MG attacks
+			if profile['ammo_type'] == 'AP' and weapon.GetStat('calibre') is not None:
+				calibre = int(weapon.GetStat('calibre'))
+				distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+				
+				if calibre <= 25:
+					if distance == 0:
+						modifier_list.append(('Close Range', 18.0))
+					elif distance == 2:
+						modifier_list.append(('Medium Range', -7.0))
+					else:
+						modifier_list.append(('Long Range', -18.0))
+				elif calibre <= 57:
+					if distance == 0:
+						modifier_list.append(('Close Range', 7.0))
+					elif distance == 2:
+						modifier_list.append(('Medium Range', -7.0))
+					else:
+						modifier_list.append(('Long Range', -12.0))
+				else:
+					if distance == 0:
+						modifier_list.append(('Close Range', 7.0))
+					elif 2 <= distance <= 3:
+						modifier_list.append(('Long Range', -7.0))
+		
+			# hit location is armoured
 			if armour[hit_location] != '-':
 				target_armour = int(armour[hit_location])
 				if target_armour >= 0:
@@ -4854,7 +4876,6 @@ class Scenario:
 					if profile['result'] == 'CRITICAL HIT':
 						modifier = round(abs(modifier) * 0.8, 2)
 						modifier_list.append(('Critical Hit', modifier))
-				
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]

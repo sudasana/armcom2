@@ -2552,19 +2552,30 @@ class AI:
 				if self.owner.turret_facing is not None:
 					self.owner.turret_facing = direction
 			
-			# move into new hex
-			scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
-			self.owner.hx = hx
-			self.owner.hy = hy
-			scenario.hex_dict[(hx, hy)].unit_stack.append(self.owner)
-			
+			# set statuses
 			self.owner.moving = True
 			self.owner.ClearAcquiredTargets()
-			for weapon in self.owner.weapon_list:
-				weapon.UpdateCoveredHexes()
+			
+			# do movement roll
+			chance = self.owner.forward_move_chance
+			roll = GetPercentileRoll()
+			
+			# move was not successful
+			if roll > chance:
+				self.owner.forward_move_chance += BASE_MOVE_BONUS
+			
+			# move was successful, clear any bonus and move into new hex
+			else:
+				self.owner.forward_move_chance = 0.0
+				scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
+				self.owner.hx = hx
+				self.owner.hy = hy
+				scenario.hex_dict[(hx, hy)].unit_stack.append(self.owner)
+				for weapon in self.owner.weapon_list:
+					weapon.UpdateCoveredHexes()
+			
 			self.owner.GenerateTerrain()
 			self.owner.CheckForHD()
-			
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
 			
@@ -2667,6 +2678,8 @@ class AI:
 				
 				# apply score modifiers
 				
+				# FUTURE: can factor armour penetration chance into score
+				
 				# try to avoid using HE on infantry in case MG is available too
 				if target.GetStat('category') == 'Infantry' and ammo_type == 'HE':
 					score -= 20.0
@@ -2677,6 +2690,11 @@ class AI:
 						score -= 40.0
 					elif GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > MG_AP_RANGE:
 						score -= 40.0
+				
+				# avoid HE attacks on armoured targets
+				if weapon.GetStat('type') == 'Gun' and target.GetStat('armour') is not None:
+					if ammo_type == 'HE':
+						score -= 20.0
 				
 				# add to list
 				scored_list.append((score, weapon, target, ammo_type))
@@ -2690,15 +2708,15 @@ class AI:
 			scored_list.sort(key=lambda x:x[0], reverse=True)
 			
 			# DEBUG: list scored attacks
-			print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-			n = 1
-			for (score, weapon, target, ammo_type) in scored_list:
-				text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-				if ammo_type != '':
-					text += '(' + ammo_type + ')'
-				text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-				print (text)
-				n += 1
+			#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+			#n = 1
+			#for (score, weapon, target, ammo_type) in scored_list:
+			#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+			#	if ammo_type != '':
+			#		text += '(' + ammo_type + ')'
+			#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+			#	print (text)
+			#	n += 1
 			
 			# select best attack
 			(score, weapon, target, ammo_type) = scored_list[0]
@@ -2733,7 +2751,13 @@ class AI:
 				scenario.UpdateScenarioDisplay()
 				for weapon in self.owner.weapon_list:
 					weapon.UpdateCoveredHexes()
-				
+			
+			text = 'AI DEBUG: ' + self.owner.unit_id + ' attacking with ' + weapon.stats['name']
+			if ammo_type != '':
+				text += '(' + ammo_type + ')'
+			text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+			print(text)
+			
 			result = self.owner.Attack(weapon, target)
 
 
@@ -5581,31 +5605,23 @@ class Scenario:
 	def AdvanceToNextPhase(self):
 		
 		# do end of phase actions for player
+		#print ('DEBUG: Doing end of phase: ' + SCEN_PHASE_NAMES[self.phase])
 		
-		# end of movement phase
-		if self.phase == PHASE_MOVEMENT:
+		# end of player turn, switching to enemy turn
+		if self.phase == PHASE_ALLIED_ACTION:
 			
-			# player pivoted during movement phase
-			if self.player_pivot != 0:
-				self.player_unit.acquired_target = None
-		
-		# end of shooting phase
-		elif self.phase == PHASE_SHOOTING:
-			
-			# clear GUI console and refresh screen
-			libtcod.console_clear(gui_con)
-			self.UpdateScenarioDisplay()
-			libtcod.console_flush()
-			
-			# resolve AP hits on enemy units
+			# resolve fp on enemy units first
 			for unit in reversed(self.units):
 				if not unit.alive: continue
 				if unit.owning_player == self.active_player: continue
-				unit.ResolveAPHits()
-				
-		# enemy activation finished, player's turn
-		if self.active_player == 1:
+				unit.ResolveFP()
 			
+			self.phase = PHASE_ENEMY_ACTION
+			self.active_player = 1
+		
+		# end of enemy activation, player's turn
+		elif self.phase == PHASE_ENEMY_ACTION:
+		
 			# resolve fp on player units first
 			for unit in reversed(self.units):
 				if not unit.alive: continue
@@ -5631,23 +5647,34 @@ class Scenario:
 			self.UpdateScenarioDisplay()
 			libtcod.console_flush()
 		
-		# remaining on player turn
-		elif self.phase < PHASE_ALLIED_ACTION:
+		# still player turn, advance phase
+		else:
+		
+			# end of movement phase
+			if self.phase == PHASE_MOVEMENT:
+				
+				# player pivoted during movement phase
+				if self.player_pivot != 0:
+					self.player_unit.acquired_target = None
+			
+			# end of shooting phase
+			elif self.phase == PHASE_SHOOTING:
+				
+				# clear GUI console and refresh screen
+				libtcod.console_clear(gui_con)
+				self.UpdateScenarioDisplay()
+				libtcod.console_flush()
+				
+				# resolve AP hits on enemy units
+				for unit in reversed(self.units):
+					if not unit.alive: continue
+					if unit.owning_player == self.active_player: continue
+					unit.ResolveAPHits()
+			
 			self.phase += 1
 		
-		# end of player turn, switching to enemy turn
-		else:
-			
-			# resolve fp on enemy units first
-			for unit in reversed(self.units):
-				if not unit.alive: continue
-				if unit.owning_player == self.active_player: continue
-				unit.ResolveFP()
-			
-			self.phase = PHASE_ENEMY_ACTION
-			self.active_player = 1
-		
 		# do automatic actions at start of phase
+		#print ('DEBUG: Doing start of phase: ' + SCEN_PHASE_NAMES[self.phase])
 		
 		# command phase: rebuild lists of commands
 		if self.phase == PHASE_COMMAND:
@@ -5679,8 +5706,6 @@ class Scenario:
 			
 			# skip phase if driver not on move command
 			crewman = scenario.player_unit.GetPersonnelByPosition('Driver')
-			
-			# no driver in position
 			if crewman is None:
 				self.advance_phase = True
 			else:
@@ -5737,7 +5762,7 @@ class Scenario:
 			self.advance_phase = True
 		
 		# enemy action
-		elif self.active_player == 1:
+		elif self.phase == PHASE_ENEMY_ACTION:
 			
 			# run through list in reverse since we might remove units from play
 			for unit in reversed(self.units):
@@ -5749,6 +5774,7 @@ class Scenario:
 				if unit.owning_player == 0: continue
 				if not unit.alive: continue
 				unit.ResetForNewTurn()
+				unit.CalculateMoveChances()
 				unit.ai.DoActivation()
 				
 				# resolve any ap hits caused by this unit

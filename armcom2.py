@@ -7883,7 +7883,8 @@ key = libtcod.Key()
 main_title = LoadXP('main_title.xp')
 TANK_IMAGES = ['unit_7TP.xp', 'unit_TK3.xp', 'unit_TKS.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp',
 	'unit_pz_I_B.xp', 'unit_pz_II.xp', 'unit_pz_35t.xp', 'unit_pz_38t_a.xp', 'unit_pz_III_D.xp',
-	'unit_pz_III_F.xp', 'unit_pz_IV_A.xp', 'unit_pz_IV_C.xp', 'unit_t26_m39.xp', 'unit_bt5_m34.xp']
+	'unit_pz_III_F.xp', 'unit_pz_IV_A.xp', 'unit_pz_IV_C.xp', 'unit_t26_m39.xp', 'unit_bt5_m34.xp',
+	'unit_bt7_m37.xp', 'unit_t28_m34.xp']
 libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
 # display version number and program info
 libtcod.console_set_default_foreground(main_title, libtcod.red)

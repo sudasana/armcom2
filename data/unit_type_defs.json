@@ -1841,6 +1841,7 @@
 	"BT-7 M37" : {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
+		"portrait" : "unit_bt7_m37.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Fast Tank",
 		"turret" : "TRUE",
@@ -1906,6 +1907,7 @@
 	"T-28 M34" : {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
+		"portrait" : "unit_t28_m34.xp",
 		"size_class" : "Large",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",

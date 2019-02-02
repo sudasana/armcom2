@@ -559,7 +559,9 @@ class Campaign:
 			campaign_list.append(new_campaign)
 			del campaign_data
 		
-		# FUTURE: sort campaigns by start date
+		# sort campaigns by start date
+		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']['year'],
+			x['start_date']['month'], x['start_date']['day']))
 		
 		# select first campaign by default
 		selected_campaign = campaign_list[0]
@@ -6090,8 +6092,6 @@ class Scenario:
 			# draw top unit in stack
 			map_hex.unit_stack[0].DrawMe()
 			
-			# FUTURE: draw unit's terrain as well
-			
 			# draw stack number indicator if any
 			if len(map_hex.unit_stack) == 1: continue
 			if map_hex.unit_stack[0].turret_facing is not None:
@@ -6099,9 +6099,9 @@ class Scenario:
 			else:
 				facing = 3
 			if facing in [5,0,1]:
-				y_mod = 2
+				y_mod = 1
 			else:
-				y_mod = -2
+				y_mod = -1
 			(x,y) = scenario.PlotHex(map_hex.unit_stack[0].hx, map_hex.unit_stack[0].hy)
 			text = str(len(map_hex.unit_stack))
 			libtcod.console_set_default_foreground(unit_con, libtcod.grey)
@@ -6322,7 +6322,17 @@ class Scenario:
 			self.player_unit.spotted = True
 			
 			# set up player squad
-			for i in range(2):
+			player_unit_class = self.player_unit.GetStat('class')
+			if player_unit_class == 'Tankette':
+				squad_num = 4
+			elif player_unit_class == 'Light Tank':
+				squad_num = 3
+			elif player_unit_class == 'Medium Tank':
+				squad_num = 2
+			elif player_unit_class == 'Heavy Tank':		# for FUTURE
+				squad_num = 1
+			
+			for i in range(squad_num):
 				unit = Unit(self.player_unit.unit_id)
 				unit.nation = self.player_unit.nation
 				unit.ai = AI(unit)

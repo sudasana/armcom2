@@ -1,14 +1,14 @@
 {
 	"name" : "The Liberation Campaign of the Red Army",
 	"start_date" : {
-		"year" : "1939",
-		"month" : "9",
-		"day" : "17"
+		"year" : 1939,
+		"month" : 9,
+		"day" : 17
 	},
 	"end_date" : {
-		"year" : "1939",
-		"month" : "10",
-		"day" : "6"
+		"year" : 1939,
+		"month" : 10,
+		"day" : 6
 	},
 	"action_days" : "1",
 	"player_nation" : "Soviet Union",

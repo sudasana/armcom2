@@ -399,6 +399,13 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'HD Chance' : 5.0,
 		'Burnable' : True
 	},
+	'Hills': {
+		'TEM' : {
+			'All' : -20.0
+		},
+		'HD Chance' : 40.0,
+		'Hidden Mod' : 30.0
+	},
 	'Wooden Buildings': {
 		'TEM' : {
 			'Infantry' : -30.0,
@@ -5359,11 +5366,11 @@ class Scenario:
 	def MovePlayer(self, forward):
 		
 		# do sound effect
-		PlaySoundFor(scenario.player_unit, 'movement')
+		PlaySoundFor(self.player_unit, 'movement')
 		
 		# set statuses
-		scenario.player_unit.moving = True
-		scenario.player_unit.ClearAcquiredTargets()
+		self.player_unit.moving = True
+		self.player_unit.ClearAcquiredTargets()
 		for unit in scenario.player_unit.squad:
 			unit.moving = True
 			unit.ClearAcquiredTargets()
@@ -5390,8 +5397,6 @@ class Scenario:
 			else:
 				scenario.player_unit.forward_move_bonus = 0.0
 				scenario.player_unit.reverse_move_bonus += BASE_MOVE_BONUS
-			
-			scenario.player_unit.moving = True
 			
 			# show pop-up message to player
 			ShowMessage('You move but not far enough to enter a new map hex')
@@ -5994,20 +5999,19 @@ class Scenario:
 				libtcod.console_print(cmd_menu_con, 8, 2, 'Select Target')
 				libtcod.console_print(cmd_menu_con, 8, 3, 'Cancel Target')
 			
-		
 		# Movement phase
 		elif self.phase == PHASE_MOVEMENT:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper() + '/' + EnKey('s').upper())
 			libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
 			#libtcod.console_print(cmd_menu_con, 1, 3, EnKey('r').upper())
-			#libtcod.console_print(cmd_menu_con, 1, 4, 'H')
+			libtcod.console_print(cmd_menu_con, 1, 4, 'H')
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Forward/Reverse')
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Pivot Hull')
 			#libtcod.console_print(cmd_menu_con, 8, 3, 'Reposition')
-			#libtcod.console_print(cmd_menu_con, 8, 4, 'Attempt HD')
+			libtcod.console_print(cmd_menu_con, 8, 4, 'Attempt HD')
 		
 		# Shooting phase
 		elif self.phase == PHASE_SHOOTING:
@@ -6526,7 +6530,7 @@ class Scenario:
 			# Movement phase only
 			elif scenario.phase == PHASE_MOVEMENT:
 				
-				# move forward/backward
+				# move forward/backward (also ends the phase)
 				if key_char in ['w', 's']:
 					self.MovePlayer(key_char == 'w')
 					self.UpdateContextCon()
@@ -6540,6 +6544,32 @@ class Scenario:
 					self.UpdateContextCon()
 					self.UpdateUnitInfoCon()
 					self.UpdateScenarioDisplay()
+					continue
+				
+				# attempt HD (not keymapped)
+				elif chr(key.c).lower() == 'h':
+					
+					# already in HD position
+					if len(self.player_unit.hull_down) > 0:
+						if self.player_unit.hull_down[0] == self.player_unit.facing:
+							continue
+					
+					# set statuses and play sound
+					self.player_unit.moving = True
+					self.player_unit.ClearAcquiredTargets()
+					PlaySoundFor(self.player_unit, 'movement')
+					
+					result = self.player_unit.CheckForHD(driver_attempt=True)
+					if result:
+						ShowMessage('You move into a Hull Down position')
+					else:
+						ShowMessage('You were unable to move into a Hull Down position')
+					self.UpdatePlayerInfoCon()
+					self.UpdateUnitInfoCon()
+					self.UpdateScenarioDisplay()
+					
+					# end movement phase
+					self.advance_phase = True
 					continue
 				
 			# Shooting phase
@@ -7881,10 +7911,12 @@ key = libtcod.Key()
 
 # load and generate main title background
 main_title = LoadXP('main_title.xp')
-TANK_IMAGES = ['unit_7TP.xp', 'unit_TK3.xp', 'unit_TKS.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp',
-	'unit_pz_I_B.xp', 'unit_pz_II.xp', 'unit_pz_35t.xp', 'unit_pz_38t_a.xp', 'unit_pz_III_D.xp',
-	'unit_pz_III_F.xp', 'unit_pz_IV_A.xp', 'unit_pz_IV_C.xp', 'unit_t26_m39.xp', 'unit_bt5_m34.xp',
-	'unit_bt7_m37.xp', 'unit_t28_m34.xp']
+TANK_IMAGES = [
+	'unit_7TP.xp', 'unit_TK3.xp', 'unit_TKS.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp',
+	'unit_pz_I_B.xp', 'unit_pz_II.xp', 'unit_pz_35t.xp', 'unit_pz_38t_a.xp',
+	'unit_pz_III_D.xp', 'unit_pz_III_F.xp', 'unit_pz_IV_A.xp', 'unit_pz_IV_C.xp',
+	'unit_t26_m39.xp', 'unit_bt5_m34.xp', 'unit_bt7_m37.xp', 'unit_t28_m34.xp'
+]
 libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
 # display version number and program info
 libtcod.console_set_default_foreground(main_title, libtcod.red)
@@ -7899,6 +7931,8 @@ libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-3,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'Free Software under the GNU GPL')
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-2,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'www.armouredcommander.com')
+
+libtcod.console_blit(LoadXP('poppy.xp'), 0, 0, 0, 0, main_title, 0, WINDOW_HEIGHT-10)
 
 # gradient animated effect for main menu
 GRADIENT = [

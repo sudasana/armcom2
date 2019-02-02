@@ -5804,6 +5804,7 @@ class Unit:
 		self.hx = hx
 		self.hy = hy
 		scenario.cd_hex.map_hexes[(hx, hy)].unit_stack.append(self)
+		self.CheckForHD()
 	
 	# move to the top of its current hex stack
 	def MoveToTopOfStack(self):

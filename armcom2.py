@@ -426,6 +426,16 @@ GREEBLE_LOCATIONS = [
 ]
 
 
+# modifier for base HD chance
+HD_SIZE_MOD = {
+	'Very Small' : 12.0,
+	'Small' : 6.0,
+	'Normal' : 0.0,
+	'Large' : -6.0,
+	'Very Large' : -12.0
+}
+
+
 
 
 ##########################################################################################
@@ -2535,6 +2545,7 @@ class AI:
 			for weapon in self.owner.weapon_list:
 				weapon.UpdateCoveredHexes()
 			self.owner.GenerateTerrain()
+			self.owner.CheckForHD()
 			
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
@@ -2929,7 +2940,63 @@ class Unit:
 		# limit chances
 		self.forward_move_chance = RestrictChance(self.forward_move_chance)
 		self.reverse_move_chance = RestrictChance(self.reverse_move_chance)
+	
+	
+	# upon spawning into a scenario map hex, or after moving or repositioning, roll to
+	# see if this unit gains HD status
+	# if driver_attempt is True, then the driver is actively trying to get HD
+	def CheckForHD(self, driver_attempt=False):
 		
+		# unit not eligible for HD
+		if self.GetStat('category') in ['Sniper', 'Infantry', 'Gun']: return False
+		
+		# clear any previous HD status
+		self.hull_down = []
+		
+		# calculate base chance of HD
+		if self.terrain not in SCENARIO_TERRAIN_EFFECTS: return False
+		chance = SCENARIO_TERRAIN_EFFECTS[self.terrain]['HD Chance']
+		
+		# apply size modifier
+		size_class = self.GetStat('size_class')
+		if size_class is not None:
+			chance += HD_SIZE_MOD[size_class]
+		
+		# bonus for driver action and commander direction if any
+		if driver_attempt:
+			crewman = self.GetPersonnelByPosition('Driver')
+			if crewman is not None:
+				chance += crewman.stats['Knowledge'] * 3.0
+		
+			for position in ['Commander', 'Commander/Gunner']:
+				crewman = self.GetPersonnelByPosition(position)
+				if crewman is None: continue
+				if crewman.current_cmd == 'Direct Movement':
+					chance += crewman.stats['Knowledge'] * 2.0
+					break
+		
+		chance = RestrictChance(chance)
+		
+		roll = GetPercentileRoll()
+		
+		# check for debug flag
+		if self == scenario.player_unit and DEBUG:
+			if session.debug['Player Always HD']:
+				roll = 1.0
+		
+		print('DEBUG: HD check for ' + self.unit_id + ': chance is ' + str(chance) + '%%, roll was ' + str(roll))
+		
+		if roll > chance: return False
+		
+		if driver_attempt:
+			direction = self.facing
+		else:
+			direction = choice(range(6))
+		self.hull_down = [direction]
+		self.hull_down.append(ConstrainDir(direction + 1))
+		self.hull_down.append(ConstrainDir(direction - 1))
+		return True
+	
 	
 	# build lists of possible commands for each personnel in this unit
 	def BuildCmdLists(self):
@@ -3016,6 +3083,11 @@ class Unit:
 				# perception modifier
 				chance += float(position.crewman.stats['Perception']) * PERCEPTION_SPOTTING_MOD
 				
+				# target is HD to spotter
+				if len(unit.hull_down) > 0:
+					if GetDirectionToward(unit.hx, unit.hy, self.hx, self.hy) in unit.hull_down:
+						chance = chance * 0.5
+				
 				chance = RestrictChance(chance)
 				
 				# special: target has been hit by effective fp
@@ -3067,6 +3139,8 @@ class Unit:
 		
 		# generate terrain for this unit
 		self.GenerateTerrain()
+		# check for HD status
+		self.CheckForHD()
 	
 	
 	# randomly determine what kind of terrain this unit is in
@@ -3360,9 +3434,9 @@ class Unit:
 			# Hull Down status if any
 			if len(self.hull_down) > 0:
 				libtcod.console_set_default_foreground(console, libtcod.sepia)
-				libtcod.console_print(console, x+8, ys-1, text)
+				libtcod.console_print(console, x+8, ys-1, 'HD')
 				char = GetDirectionalArrow(self.hull_down[0])
-				libtcod.console_put_char_ex(console, x+11, ys-1, char, libtcod.sepia, libtcod.black)
+				libtcod.console_put_char_ex(console, x+10, ys-1, char, libtcod.sepia, libtcod.black)
 		
 			# reset of unit status
 			libtcod.console_set_default_foreground(console, libtcod.light_grey)
@@ -4429,8 +4503,14 @@ class Scenario:
 			if weapon2.GetStat('firing_group') == weapon.GetStat('firing_group'):
 				return 'A weapon on this mount has already fired'
 		
-		# FUTURE: check for hull-mounted weapons blocked by HD status
-		
+		# check for hull-mounted weapons blocked by HD status
+		if len(attacker.hull_down) > 0:
+			mount = weapon.GetStat('mount')
+			if mount is not None:
+				if mount == 'Hull':
+					if GetDirectionToward(attacker.hx, attacker.hy, target.hx, target.hy) in attacker.hull_down:
+						return 'Weapon blocked by HD status'
+			
 		# attack can proceed
 		return ''
 	
@@ -5063,6 +5143,7 @@ class Scenario:
 			
 		# determine location hit on target (not always used)
 		location_roll = GetPercentileRoll()
+		
 		if location_roll <= 75.0:
 			profile['location'] = 'Hull'
 		else:
@@ -5319,6 +5400,7 @@ class Scenario:
 			for unit in self.units:
 				if unit != scenario.player_unit and unit not in scenario.player_unit.squad: continue
 				unit.GenerateTerrain()
+				unit.CheckForHD()
 			
 			# end movement phase
 			self.advance_phase = True
@@ -5391,6 +5473,7 @@ class Scenario:
 		for unit in self.units:
 			if unit != scenario.player_unit and unit not in scenario.player_unit.squad: continue
 			unit.GenerateTerrain()
+			unit.CheckForHD()
 		
 		self.UpdateUnitCon()
 		
@@ -5434,6 +5517,11 @@ class Scenario:
 				unit.facing = ConstrainDir(unit.facing + f)
 			if unit.turret_facing is not None:
 				unit.turret_facing = ConstrainDir(unit.turret_facing + f)
+			
+			# pivot unit HD if any
+			if len(unit.hull_down) > 0:
+				for i in range(3):
+					unit.hull_down[i] = ConstrainDir(unit.hull_down[i] + f)
 		
 		self.UpdateUnitCon()
 		
@@ -7794,7 +7882,8 @@ key = libtcod.Key()
 # load and generate main title background
 main_title = LoadXP('main_title.xp')
 TANK_IMAGES = ['unit_7TP.xp', 'unit_TK3.xp', 'unit_TKS.xp', 'unit_TKS_20mm.xp', 'unit_vickers_ejw.xp',
-	'unit_pz_I_B.xp', 'unit_pz_II.xp', 'unit_pz_35t.xp', 'unit_pz_38t_a.xp', 'unit_pz_III_D.xp']
+	'unit_pz_I_B.xp', 'unit_pz_II.xp', 'unit_pz_35t.xp', 'unit_pz_38t_a.xp', 'unit_pz_III_D.xp',
+	'unit_pz_III_F.xp', 'unit_pz_IV_A.xp', 'unit_pz_IV_C.xp', 'unit_t26_m39.xp', 'unit_bt5_m34.xp']
 libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
 # display version number and program info
 libtcod.console_set_default_foreground(main_title, libtcod.red)

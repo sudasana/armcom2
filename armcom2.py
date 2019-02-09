@@ -2201,6 +2201,30 @@ class Personnel:
 		if self.unit == scenario.player_unit:
 			ShowMessage(self.GetFullName() + ' has been knocked Unconscious.')
 
+
+	# check for recovery from any current status
+	def DoRecoveryCheck(self):
+		if self.status = '': return
+		if self.status == 'Dead': return
+		
+		print('DEBUG: doing recovery roll for ' + self.GetFullName())
+		
+		roll = GetPercentileRoll()
+		if self.status == 'Unconscious': roll += 15.0
+		
+		if roll <= self.stats['Grit'] * 15.0:
+			
+			if self.status == 'Stunned':
+				self.status = ''
+				if self.unit == scenario.player_unit:
+					ShowMessage(self.GetFullName() + ' recovers from being Stunned.')
+			
+			# unconscious
+			else:
+				self.status = 'Stunned'
+				if self.unit == scenario.player_unit:
+					ShowMessage(self.GetFullName() + ' regains consciousness and is now Stunned.')
+
 	
 	# (re)build a list of possible commands for this turn
 	def BuildCommandList(self):
@@ -2993,10 +3017,14 @@ class Unit:
 			if scenario.selected_weapon is None:
 				scenario.selected_weapon = self.weapon_list[0]
 		
-		# update visible hexes for crew positions
+		# update crew positions
 		for position in self.positions_list:
+			# update visible hexes
 			position.UpdateVisibleHexes()
-		
+			if position.crewman is None: continue
+			# check for crew status recovery
+			position.crewman.DoRecoveryCheck()
+
 	
 	# check for the value of a stat, return None if stat not present
 	def GetStat(self, stat_name):

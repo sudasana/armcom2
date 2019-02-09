@@ -1,4 +1,8 @@
 {
+	"None": {
+		"desc" : "Crewman cannot act",
+		"spotting_allowed" : false
+	},
 	"Spot": {
 		"desc" : "Scan terrain for enemies",
 		"spotting_allowed" : true

@@ -2071,6 +2071,8 @@ class Personnel:
 	# given an attack profile, check to see whether this personnel is wounded/KIA
 	def DoWoundCheck(self, fp=0):
 		
+		print('DEBUG: doing wound check for ' + self.GetFullName())
+		
 		# can't get worse
 		if self.status == 'Dead': return
 		
@@ -2081,7 +2083,7 @@ class Personnel:
 		if fp > 0:
 			
 			# currently in an armoured vehicle
-			if self.unit.armour is not None:
+			if self.unit.GetStat('armour') is not None:
 				
 				# not exposed
 				if not self.ce: return False
@@ -2111,6 +2113,8 @@ class Personnel:
 		# roll for wound
 		roll = GetPercentileRoll()
 		
+		print('DEBUG: wound roll for ' + self.GetFullName() + ' was: ' + str(roll))
+		
 		# unmodified 99.0-100.0 always counts as KIA, otherwise modifier is applied
 		if roll < 99.0:
 			roll += modifier
@@ -2131,7 +2135,7 @@ class Personnel:
 			
 			# light wound and possible stun
 			self.wound = 'Light'
-			if self.unit == campaign.player_unit:
+			if self.unit == scenario.player_unit:
 				ShowMessage(self.GetFullName() + ' has received a Light Wound.')
 			self.DoStunCheck(15)
 		
@@ -2141,7 +2145,7 @@ class Personnel:
 			
 			# serious wound, possibly knocked unconscious, otherwise stunned
 			self.wound = 'Serious'
-			if self.unit == campaign.player_unit:
+			if self.unit == scenario.player_unit:
 				ShowMessage(self.GetFullName() + ' has received a Serious Wound.')
 			self.DoKOCheck(0)
 		
@@ -2149,7 +2153,7 @@ class Personnel:
 			
 			# critical wound, possibly knocked unconscious, otherwise stunned, may die next recovery check
 			self.wound = 'Critical'
-			if self.unit == campaign.player_unit:
+			if self.unit == scenario.player_unit:
 				ShowMessage(self.GetFullName() + ' has received a Critical Wound.')
 			self.DoKOCheck(15)
 		
@@ -2158,7 +2162,7 @@ class Personnel:
 			# killed
 			self.status = 'Dead'
 			self.wound = ''
-			if self.unit == campaign.player_unit:
+			if self.unit == scenario.player_unit:
 				ShowMessage(self.GetFullName() + ' has been killed.')
 		
 		return True
@@ -2178,7 +2182,7 @@ class Personnel:
 		self.status = 'Stunned'
 		
 		# show message if part of player unit
-		if self.unit == campaign.player_unit:
+		if self.unit == scenario.player_unit:
 			ShowMessage(self.GetFullName() + ' has been Stunned.')
 
 
@@ -2190,18 +2194,28 @@ class Personnel:
 		if roll <= self.stats['Grit'] * 10.0:
 			# not knocked out, but Stunned
 			self.status = 'Stunned'
-			if self.unit == campaign.player_unit:
+			if self.unit == scenario.player_unit:
 				ShowMessage(self.GetFullName() + ' has been Stunned.')
 			return
 		self.status = 'Unconscious'
-		if self.unit == campaign.player_unit:
+		if self.unit == scenario.player_unit:
 			ShowMessage(self.GetFullName() + ' has been knocked Unconscious.')
 
 	
 	# (re)build a list of possible commands for this turn
 	def BuildCommandList(self):
 		self.cmd_list = []
+		
+		# unconscious and dead crewmen cannot act
+		if self.status in ['Unconscious', 'Dead']:
+			self.cmd_list.append('None')
+			return
+		
 		for (k, d) in session.crew_commands.items():
+			
+			# don't add "None" automatically
+			if k == 'None': continue
+			
 			if 'position_list' in d:
 				if self.current_position.name not in d['position_list']:
 					continue
@@ -3164,6 +3178,10 @@ class Unit:
 		for position in self.positions_list:
 			if position.crewman is None: continue
 			position.crewman.BuildCommandList()
+			
+			# cancel current command if no longer possible
+			if position.crewman.current_cmd not in position.crewman.cmd_list:
+				position.crewman.current_cmd = position.crewman.cmd_list[0]
 	
 	
 	# do a round of spotting from this unit
@@ -3759,6 +3777,11 @@ class Unit:
 				# possible it was converted into an AP MG hit
 				elif profile['result'] in ['HIT', 'CRITICAL HIT']:	
 					target.ap_hits_to_resolve.append(profile)
+					
+					# also applies fp
+					target.fp_to_resolve += profile['effective_fp']
+					# TEMP testing
+					print('DEBUG: added ' + str(profile['effective_fp']) + ' fp as a result of an MG attack')
 			
 			# point fire attack hit
 			elif profile['result'] in ['CRITICAL HIT', 'HIT']:
@@ -3783,12 +3806,14 @@ class Unit:
 					# AP hits are very ineffective against infantry/guns, and
 					# have no spotting effect
 					elif profile['ammo_type'] == 'AP':
-						
 						target.fp_to_resolve += 1
 				
 				# vehicle target
 				elif target.GetStat('category') == 'Vehicle':
 					target.ap_hits_to_resolve.append(profile)
+					
+					
+		
 		
 		# turn off attack console display if any
 		scenario.attack_con_active = False
@@ -3892,11 +3917,11 @@ class Unit:
 			
 			# check for crew wound
 			# TEMP? Player unit only
-			if self != campaign.player_unit: return
-			
-			for position in self.positions_list:
-				if position.crewman is None: continue
-				position.crewman.DoWoundCheck(fp=self.fp_to_resolve)
+			if self == scenario.player_unit:
+				
+				for position in self.positions_list:
+					if position.crewman is None: continue
+					position.crewman.DoWoundCheck(fp=self.fp_to_resolve)
 				
 			self.fp_to_resolve = 0
 			return
@@ -3973,6 +3998,7 @@ class Unit:
 		if self == scenario.player_unit and DEBUG:
 			if session.debug['Player Immortality']:
 				ShowMessage('Debug powers will save you from death!')
+				self.ap_hits_to_resolve = []
 				return
 		
 		if self.GetStat('category') == 'Vehicle':
@@ -4126,7 +4152,10 @@ class Scenario:
 				k, value = choice(list(class_odds.items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
-		
+			
+			# TEMP testing
+			unit_class = 'Armoured Car'
+			
 			# FUTURE: if class unit type has already been set, use that one instead
 			
 			# choose a random unit type
@@ -4143,6 +4172,10 @@ class Scenario:
 			
 			# select unit type
 			selected_unit_id = None
+			
+			# TEMP testing
+			selected_unit_id = 'wz. 34 (MG)'
+			
 			while selected_unit_id is None:
 				
 				# only one choice in class
@@ -6080,7 +6113,11 @@ class Scenario:
 				
 				# names might have special characters so we encode it before printing it
 				libtcod.console_print(crew_con, 0, y+1, text.encode('IBM850'))
-			
+				
+				# display wound status if any
+				if position.crewman.wound != '':
+					libtcod.console_put_char_ex(crew_con, 21, y+1, position.crewman.wound[0], libtcod.black, libtcod.red)
+				
 				if position.crewman.ce:
 					text = 'CE'
 				else:
@@ -6099,9 +6136,19 @@ class Scenario:
 					
 				# display current status on same line
 				if position.crewman.status != '':
-					libtcod.console_print_ex(crew_con, 23, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
+					if position.crewman.status == 'Dead':
+						libtcod.console_set_default_foreground(crew_con, libtcod.dark_grey)
+					elif position.crewman.status == 'Unconscious':
+						libtcod.console_set_default_foreground(crew_con, libtcod.grey)
+					elif position.crewman.status == 'Stunned':
+						libtcod.console_set_default_foreground(crew_con, libtcod.light_grey)
+					libtcod.console_print_ex(crew_con, 24, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
 						position.crewman.status)
-				
+			
+			libtcod.console_set_default_foreground(crew_con, libtcod.darker_grey)
+			for x in range(25):
+				libtcod.console_print(crew_con, x, y+3, '-')
+			
 			libtcod.console_set_default_foreground(crew_con, libtcod.white)
 			y += 4
 			i += 1
@@ -6493,6 +6540,9 @@ class Scenario:
 				squad_num = 2
 			elif player_unit_class == 'Heavy Tank':		# for FUTURE
 				squad_num = 1
+			
+			# TEMP
+			squad_num = 0
 			
 			for i in range(squad_num):
 				unit = Unit(self.player_unit.unit_id)
@@ -6896,7 +6946,7 @@ def ShowMessage(text, portrait=None):
 		y = ym
 	
 	for line in lines:
-		libtcod.console_print_ex(msg_con, 14, y, libtcod.BKGND_NONE, libtcod.CENTER, line)
+		libtcod.console_print_ex(msg_con, 14, y, libtcod.BKGND_NONE, libtcod.CENTER, line.encode('IBM850'))
 		if y == 17: break
 		y += 1
 	

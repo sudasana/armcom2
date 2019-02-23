@@ -2650,6 +2650,18 @@ class AI:
 			if session.debug['AI Hates Player']:
 				roll = 0.0
 		
+		# check for player crew vulnerability
+		player_crew_vulnerable = False
+		for position in scenario.player_unit.position_list:
+			if position.crewman is None: continue
+			if not position.crewman.ce: continue
+			if position.crewman.status in ['Dead', 'Unconscious']: continue
+			player_crew_vulnerable = True
+			break
+		
+		# TODO: add 'Harass Player' disposition to Infantry, Combat Vehicle
+		# only if player_crew_vulnerable
+		
 		# Step 1: roll for unit action
 		if self.owner.GetStat('category') == 'Infantry':
 			

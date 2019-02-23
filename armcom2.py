@@ -2161,6 +2161,10 @@ class Personnel:
 		# roll for wound
 		roll = GetPercentileRoll()
 		
+		if DEBUG:
+			if session.debug['Player Crew Hapless']:
+				roll = 100.0
+		
 		print('DEBUG: wound roll for ' + self.GetFullName() + ' was: ' + str(roll))
 		
 		# unmodified 99.0-100.0 always counts as KIA, otherwise modifier is applied
@@ -2665,8 +2669,11 @@ class AI:
 		# Step 1: roll for unit action
 		if self.owner.GetStat('category') == 'Infantry':
 			
-			if roll <= 15.0:
-				self.disposition = 'Attack Player'
+			if roll <= 25.0:
+				if player_crew_vulnerable and roll <= 15.0:
+					self.disposition = 'Harass Player'
+				else:
+					self.disposition = 'Attack Player'
 			elif roll <= 40.0:
 				self.disposition = 'Combat'
 			elif roll <= 60.0:
@@ -2700,7 +2707,11 @@ class AI:
 		else:
 			
 			if roll <= 15.0:
-				self.disposition = 'Attack Player'
+				
+				if player_crew_vulnerable and roll <= 7.0:
+					self.disposition = 'Harass Player'
+				else:
+					self.disposition = 'Attack Player'
 			elif roll <= 40.0:
 				self.disposition = 'Combat'
 			elif roll <= 65.0:
@@ -2811,12 +2822,12 @@ class AI:
 				self.owner.RemoveFromPlay()
 				
 		
-		elif self.disposition in ['Combat', 'Attack Player']:
+		elif self.disposition in ['Combat', 'Attack Player', 'Harass Player']:
 			
 			# determine target
 			target_list = []
 			
-			if self.disposition == 'Attack Player':
+			if self.disposition in ['Attack Player', 'Harass Player']:
 				target_list.append(scenario.player_unit)
 			else:
 				for unit in scenario.units:
@@ -2839,6 +2850,9 @@ class AI:
 					# since we're ignoring our current hull/turret facing, make sure that target is in range
 					if GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > weapon.max_range:
 						continue
+					
+					# if Harassing player, only use MGs and small arms
+					if self.disposition == 'Harass Player' and weapon.GetStat('type') == 'Gun': continue
 					
 					# gun weapons need to check multiple ammo type combinations
 					if weapon.GetStat('type') == 'Gun':
@@ -2868,7 +2882,7 @@ class AI:
 			for (weapon, target, ammo_type) in attack_list:
 				
 				# skip small arms attacks on targets that have no chance of effect
-				if target.GetStat('category') == 'Vehicle':
+				if self.disposition != 'Harass Player' and target.GetStat('category') == 'Vehicle':
 					if weapon.GetStat('type') != 'Gun' and weapon.GetStat('type') not in MG_WEAPONS:
 						continue
 				
@@ -2912,11 +2926,12 @@ class AI:
 					score -= 20.0
 				
 				# avoid small arms on armoured targets and MG attacks unless within AP range
-				if weapon.GetStat('type') != 'Gun' and target.GetStat('armour') is not None:
-					if weapon.GetStat('type') not in MG_WEAPONS:
-						score -= 40.0
-					elif GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > MG_AP_RANGE:
-						score -= 40.0
+				if self.disposition != 'Harass Player':
+					if weapon.GetStat('type') != 'Gun' and target.GetStat('armour') is not None:
+						if weapon.GetStat('type') not in MG_WEAPONS:
+							score -= 40.0
+						elif GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > MG_AP_RANGE:
+							score -= 40.0
 				
 				# avoid HE attacks on armoured targets
 				if weapon.GetStat('type') == 'Gun' and target.GetStat('armour') is not None:
@@ -4227,6 +4242,27 @@ class Scenario:
 		if all_enemies_dead:
 			ShowMessage('Victory! No enemy units remain in this area.')
 			self.finished = True
+			return
+		
+		# check for loss of player crew
+		all_crew_dead = True
+		for position in self.player_unit:
+			if position.crewman is None: continue
+			if position.crewman.status != 'Dead':
+				all_crew_dead = False
+				break
+		
+		if all_crew_dead:
+			ShowMessage('Your crew is all dead.')
+			scenario.player_unit.DestroyMe()
+			return
+		
+		# check for end of campaign day
+		campaign_day.CheckForEndOfDay()
+		if campaign_day.ended:
+			ShowMessage('The campaign day is over.')
+			self.finished = True
+			return
 		
 	
 	# spawn enemy units on the hex map
@@ -6700,7 +6736,7 @@ class Scenario:
 			
 			# check for scenario finished, return to campaign day map
 			if scenario.finished:
-				# TODO: is this required?
+				# TODO: is this required? seems to be...
 				campaign.player_unit = scenario.player_unit
 				return
 			

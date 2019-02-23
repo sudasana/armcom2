@@ -7,5 +7,6 @@
  "Player Always HD": false,
  "No AI Actions": false,
  "AI Hates Player": true,
- "Player Always Dies": false
+ "Player Always Dies": false,
+ "Player Crew Hapless": false
 }

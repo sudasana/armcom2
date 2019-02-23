@@ -296,6 +296,21 @@ HE_AP_CHANCE = [
 	(30, 16.7),
 ]
 
+# odds of unarmoured vehicle destruction when resolving FP
+VEH_FP_TK = [
+	(36, 110.0),
+	(30, 100,0),
+	(24, 97.0),
+	(20, 92.0),
+	(16, 83.0),
+	(12, 72.0),
+	(8, 58.0),
+	(6, 42.0),
+	(4, 28.0),
+	(2, 17.0),
+	(1, 8.0)
+]
+
 # terrain type odds for campaign day hexes
 # FUTURE: can have different sets for different areas of the world
 CD_TERRAIN_ODDS = {
@@ -899,6 +914,38 @@ class CampaignDay:
 			if self.day_clock['minute'] >= self.end_of_day['minute']:
 				self.ended = True
 	
+	
+	# check to see whether we need to replace crew after a scenario
+	def DoCrewCheck(self, unit):
+		
+		# Stunned, Unconscious, and Critical crew automatically recover
+		# FUTURE: Do a final recovery roll for Critical crew
+		replacement_needed = False
+		for position in unit.positions_list:
+			if position.crewman is None: continue
+			if position.crewman != '':
+				if position.crewman.status == 'Dead':
+					replacement_needed = True
+					continue
+				position.crewman.status = ''
+		
+		# replace dead crewmen if needed
+		if not replacement_needed: return
+		
+		if unit == campaign.player_unit:
+			self.AdvanceClock(0, 30)
+			ShowMessage('You await a transport to recover bodies and provide new crew, which takes 30 mins.')
+			
+		for position in unit.positions_list:
+			if position.crewman is None: continue
+			if position.crewman.status == 'Dead':
+				unit.personnel_list.remove(position.crewman)
+				unit.personnel_list.append(Personnel(unit, unit.nation, position))
+				position.crewman = unit.personnel_list[-1]
+				if unit == campaign.player_unit:
+					text = position.crewman.GetFullName() + ' joins your crew in the ' + position.name + ' position.'
+					ShowMessage(text)
+				
 	
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
@@ -1626,6 +1673,7 @@ class CampaignDay:
 					if campaign.player_unit.alive:
 						(hx, hy) = self.player_unit_location
 						self.map_hexes[(hx,hy)].CaptureMe(0)
+						self.DoCrewCheck(campaign.player_unit)
 						self.CheckForEndOfDay()
 						SaveGame()
 					
@@ -2204,13 +2252,21 @@ class Personnel:
 
 	# check for recovery from any current status
 	def DoRecoveryCheck(self):
-		if self.status = '': return
+		if self.status == '': return
 		if self.status == 'Dead': return
 		
 		print('DEBUG: doing recovery roll for ' + self.GetFullName())
 		
 		roll = GetPercentileRoll()
 		if self.status == 'Unconscious': roll += 15.0
+		
+		if self.status == 'Critical':
+			if roll > 97.0:
+				self.status = 'Dead'
+				self.wound = ''
+				if self.unit == scenario.player_unit:
+					ShowMessage(self.GetFullName() + ' has died from his wounds.')
+			return
 		
 		if roll <= self.stats['Grit'] * 15.0:
 			
@@ -3940,6 +3996,17 @@ class Unit:
 		if self.GetStat('category') == 'Vehicle':
 			
 			# FUTURE: if vehicle has any unarmoured area, possible that it will be destroyed
+			if self.GetStat('armour') is None:
+				for (fp, score) in VEH_FP_TK:
+					if fp <= self.fp_to_resolve:
+						break
+				
+				if GetPercentileRoll() <= score:
+					text = self.GetName() + ' was destroyed.'
+					ShowMessage(text)
+					self.DestroyMe()
+				
+				return
 			
 			# FUTURE: chance of minor damage to vehicle
 			

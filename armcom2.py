@@ -59,9 +59,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.3.0'					# game version
+VERSION = '0.3.0rc1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2119,8 +2119,6 @@ class Personnel:
 	# given an attack profile, check to see whether this personnel is wounded/KIA
 	def DoWoundCheck(self, fp=0):
 		
-		print('DEBUG: doing wound check for ' + self.GetFullName())
-		
 		# can't get worse
 		if self.status == 'Dead': return
 		
@@ -2164,8 +2162,6 @@ class Personnel:
 		if DEBUG:
 			if session.debug['Player Crew Hapless']:
 				roll = 100.0
-		
-		print('DEBUG: wound roll for ' + self.GetFullName() + ' was: ' + str(roll))
 		
 		# unmodified 99.0-100.0 always counts as KIA, otherwise modifier is applied
 		if roll < 99.0:
@@ -2656,15 +2652,12 @@ class AI:
 		
 		# check for player crew vulnerability
 		player_crew_vulnerable = False
-		for position in scenario.player_unit.position_list:
+		for position in scenario.player_unit.positions_list:
 			if position.crewman is None: continue
 			if not position.crewman.ce: continue
 			if position.crewman.status in ['Dead', 'Unconscious']: continue
 			player_crew_vulnerable = True
 			break
-		
-		# TODO: add 'Harass Player' disposition to Infantry, Combat Vehicle
-		# only if player_crew_vulnerable
 		
 		# Step 1: roll for unit action
 		if self.owner.GetStat('category') == 'Infantry':
@@ -2705,9 +2698,7 @@ class AI:
 		
 		# combat vehicle
 		else:
-			
 			if roll <= 15.0:
-				
 				if player_crew_vulnerable and roll <= 7.0:
 					self.disposition = 'Harass Player'
 				else:
@@ -3891,8 +3882,6 @@ class Unit:
 					
 					# also applies fp
 					target.fp_to_resolve += profile['effective_fp']
-					# TEMP testing
-					print('DEBUG: added ' + str(profile['effective_fp']) + ' fp as a result of an MG attack')
 			
 			# point fire attack hit
 			elif profile['result'] in ['CRITICAL HIT', 'HIT']:
@@ -4246,7 +4235,7 @@ class Scenario:
 		
 		# check for loss of player crew
 		all_crew_dead = True
-		for position in self.player_unit:
+		for position in self.player_unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status != 'Dead':
 				all_crew_dead = False
@@ -4296,9 +4285,6 @@ class Scenario:
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			
-			# TEMP testing
-			unit_class = 'Armoured Car'
-			
 			# FUTURE: if class unit type has already been set, use that one instead
 			
 			# choose a random unit type
@@ -4315,9 +4301,6 @@ class Scenario:
 			
 			# select unit type
 			selected_unit_id = None
-			
-			# TEMP testing
-			selected_unit_id = 'wz. 34 (MG)'
 			
 			while selected_unit_id is None:
 				
@@ -5468,7 +5451,7 @@ class Scenario:
 				if DEBUG and i == 5:
 					if profile['attacker'] == scenario.player_unit and session.debug['Player Always Hits']:
 						roll = 3.0
-					elif profile['target'] == scenario.player_unit and session.debug['Player Always Dies']:
+					elif profile['target'] == scenario.player_unit and session.debug['Player Always Penetrated']:
 						roll = 3.0
 				
 				# clear any previous text
@@ -6053,6 +6036,10 @@ class Scenario:
 		
 		# enemy action
 		elif self.phase == PHASE_ENEMY_ACTION:
+			
+			DisplayTimeInfo(time_con)
+			self.UpdateScenarioDisplay()
+			libtcod.console_flush()
 			
 			# run through list in reverse since we might remove units from play
 			for unit in reversed(self.units):
@@ -6683,9 +6670,6 @@ class Scenario:
 				squad_num = 2
 			elif player_unit_class == 'Heavy Tank':		# for FUTURE
 				squad_num = 1
-			
-			# TEMP
-			squad_num = 0
 			
 			for i in range(squad_num):
 				unit = Unit(self.player_unit.unit_id)

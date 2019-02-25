@@ -299,7 +299,7 @@ HE_AP_CHANCE = [
 # odds of unarmoured vehicle destruction when resolving FP
 VEH_FP_TK = [
 	(36, 110.0),
-	(30, 100,0),
+	(30, 100.0),
 	(24, 97.0),
 	(20, 92.0),
 	(16, 83.0),

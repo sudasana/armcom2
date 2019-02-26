@@ -1,12 +1,12 @@
 {
- "Player Immortality": true,
+ "Player Immortality": false,
  "Support Requests Always Granted": false,
- "Always Scenario": true,
- "Player Always Hits": true,
- "Player Always Moves": true,
+ "Always Scenario": false,
+ "Player Always Hits": false,
+ "Player Always Moves": false,
  "Player Always HD": false,
- "No AI Actions": true,
- "AI Hates Player": true,
+ "No AI Actions": false,
+ "AI Hates Player": false,
  "Player Always Penetrated": false,
  "Player Crew Hapless": false
 }

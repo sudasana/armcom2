@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.3.0rc1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -1871,7 +1871,7 @@ class CampaignDay:
 							
 							# roll for scenario trigger
 							roll = GetPercentileRoll()
-							roll += campaign_day.encounter_mod
+							roll -= campaign_day.encounter_mod
 							
 							if DEBUG:
 								if session.debug['Always Scenario']:
@@ -1886,7 +1886,7 @@ class CampaignDay:
 							
 							ShowMessage('You find no resistance and gain control of the area.')
 							self.map_hexes[(hx,hy)].CaptureMe(0)
-							campaign_day.encounter_mod += 20.0
+							campaign_day.encounter_mod += 30.0
 						
 						# no battle triggered, update consoles
 						DisplayTimeInfo(time_weather_con)
@@ -2990,6 +2990,12 @@ class AI:
 				text += '(' + ammo_type + ')'
 			text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
 			print(text)
+			
+			# move target to top of hex stack
+			target.MoveToTopOfStack()
+			scenario.UpdateUnitCon()
+			scenario.UpdateScenarioDisplay()
+			libtcod.console_flush()
 			
 			result = self.owner.Attack(weapon, target)
 

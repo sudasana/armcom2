@@ -59,9 +59,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.3.0rc1'					# game version
+VERSION = '0.3.0rc2'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2116,6 +2116,37 @@ class Personnel:
 				self.stats[key] = 5
 	
 	
+	# return the effective modifier for a given action, based on relavent stat and current status
+	def GetActionMod(action_type):
+		
+		modifier = 0.0
+		
+		if self.status in ['Dead', 'Unconscious']: return modifier
+		
+		if action_type == 'Spotting':
+			modifier = float(self.stats['Perception']) * PERCEPTION_SPOTTING_MOD
+			if not self.ce:
+				modifier = modifier * 0.25
+		elif action_type == 'Attempt HD':
+			modifier = float(self.stats['Knowledge']) * 3.0
+			if not self.ce:
+				modifier = modifier * 0.5
+		elif action_type == 'Direct Movement':
+			modifier = float(self.stats['Knowledge']) * 2.0
+			if not self.ce:
+				modifier = modifier * 0.5
+		
+		# modify by current status
+		if self.status == 'Stunned':
+			modifier = modifer * 0.5
+		
+		modifier = round(modifier, 1)
+		
+		print('DEBUG: action modifier for ' + self.GetFullName() + ' doing ' + action_type +
+			' is: ' + str(modifier))
+		
+		return modifier 
+	
 	# given an attack profile, check to see whether this personnel is wounded/KIA
 	def DoWoundCheck(self, fp=0):
 		
@@ -3251,13 +3282,12 @@ class Unit:
 		if driver_attempt:
 			crewman = self.GetPersonnelByPosition('Driver')
 			if crewman is not None:
-				chance += crewman.stats['Knowledge'] * 3.0
-		
+				crewman.GetActionMod('Attempt HD')
 			for position in ['Commander', 'Commander/Gunner']:
 				crewman = self.GetPersonnelByPosition(position)
 				if crewman is None: continue
 				if crewman.current_cmd == 'Direct Movement':
-					chance += crewman.stats['Knowledge'] * 2.0
+					chance += crewman.GetActionMod('Direct Movement')
 					break
 		
 		chance = RestrictChance(chance)
@@ -3363,12 +3393,8 @@ class Unit:
 				if unit.unit_id == 'Sniper':
 					chance = chance * 0.25
 				
-				# crew is buttoned up
-				if not position.crewman.ce:
-					chance = chance * 0.5
-				
-				# perception modifier
-				chance += float(position.crewman.stats['Perception']) * PERCEPTION_SPOTTING_MOD
+				# spotting crew modifier
+				chance += position.crewman.GetActionMod('Spotting')
 				
 				# target is HD to spotter
 				if len(unit.hull_down) > 0:
@@ -7578,7 +7604,9 @@ def ShowGameMenu():
 		
 		# Options Menu
 		elif active_tab == 3:
-			pass
+			
+			# display game options commands
+			DisplayGameOptions(game_menu_con, WINDOW_XM-15, 18, skip_esc=True)
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		libtcod.console_flush()
@@ -7649,7 +7677,13 @@ def ShowGameMenu():
 				
 				DrawMenuCon(active_tab, selected_position)
 				continue
-				
+		
+		# Options Menu
+		elif active_tab == 3:
+			if ChangeGameSettings(key_char):
+				# redraw menu to reflect new settings
+				DrawMenuCon(active_tab, selected_position)
+				continue
 	
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
@@ -8370,8 +8404,6 @@ while not exit_game:
 	if options_menu_active:
 		
 		if ChangeGameSettings(key_char):
-			
-			# TODO: stop or re-start main menu theme if sound settings changed
 			UpdateMainTitleCon(options_menu_active)
 			
 		# exit options menu

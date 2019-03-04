@@ -2117,7 +2117,7 @@ class Personnel:
 	
 	
 	# return the effective modifier for a given action, based on relavent stat and current status
-	def GetActionMod(action_type):
+	def GetActionMod(self, action_type):
 		
 		modifier = 0.0
 		

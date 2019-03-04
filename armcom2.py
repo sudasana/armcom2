@@ -61,7 +61,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.3.0rc2'					# game version
+VERSION = '0.3.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -274,6 +274,7 @@ AP_BASE_CHANCE = {
 	'75S' : 91.7,
 	'75' : 120.0,		# not sure if this and below are accurate, FUTURE: check balance
 	'75L' : 160.0,
+	'76S' : 83.0,
 	'88L' : 200.0
 }
 
@@ -2671,11 +2672,11 @@ class AI:
 		if scenario.player_unit.acquired_target is not None:
 			(ac_target, level) = scenario.player_unit.acquired_target
 			if ac_target == self.owner:
-				roll -= 15.0
+				roll -= 10.0
 		if self.owner.acquired_target is not None:
 			(ac_target, level) = self.owner.acquired_target
 			if ac_target == scenario.player_unit:
-				roll -= 15.0
+				roll -= 10.0
 		
 		if DEBUG:
 			if session.debug['AI Hates Player']:
@@ -2694,7 +2695,7 @@ class AI:
 		if self.owner.GetStat('category') == 'Infantry':
 			
 			if roll <= 25.0:
-				if player_crew_vulnerable and roll <= 15.0:
+				if player_crew_vulnerable and roll <= 20.0:
 					self.disposition = 'Harass Player'
 				else:
 					self.disposition = 'Attack Player'
@@ -2713,7 +2714,7 @@ class AI:
 			if not self.owner.deployed:
 				self.disposition = None
 			else:
-				if roll <= 15.0:
+				if roll <= 10.0:
 					self.disposition = 'Attack Player'
 				elif roll <= 65.0:
 					self.disposition = 'Combat'
@@ -2730,7 +2731,7 @@ class AI:
 		# combat vehicle
 		else:
 			if roll <= 15.0:
-				if player_crew_vulnerable and roll <= 7.0:
+				if player_crew_vulnerable and roll <= 10.0:
 					self.disposition = 'Harass Player'
 				else:
 					self.disposition = 'Attack Player'

@@ -1891,6 +1891,7 @@ class CampaignDay:
 						
 						# no battle triggered, update consoles
 						DisplayTimeInfo(time_weather_con)
+						self.UpdateCDCampaignCon()
 						self.UpdateCDControlCon()
 						self.UpdateCDUnitCon()
 						self.UpdateCDDirectionCon()
@@ -2749,9 +2750,9 @@ class AI:
 			if self.disposition == 'Combat':
 				self.disposition = None
 		
-		# player squad doesn't move on its own and doesn't attack the player
+		# player squad doesn't move on its own and doesn't harass or attack the player
 		if self.owner in scenario.player_unit.squad:
-			if self.disposition in ['Attack Player', 'Movement']:
+			if self.disposition in ['Harass Player', 'Attack Player', 'Movement']:
 				self.disposition = 'Combat'
 		
 		# chance that movement action will be cancelled if we have an acquired target
@@ -5851,8 +5852,8 @@ class Scenario:
 		
 		# calculate new hex positions of units
 		for unit in self.units:
-			if unit == scenario.player_unit: continue
-			if unit in scenario.player_unit.squad: continue
+			if unit == self.player_unit: continue
+			if unit in self.player_unit.squad: continue
 			
 			(new_hx, new_hy) = RotateHex(unit.hx, unit.hy, r)
 			# set destination hex
@@ -5862,11 +5863,11 @@ class Scenario:
 		
 		# set new hex location for each unit and move into new hex stack
 		for unit in self.units:
-			if unit == scenario.player_unit: continue
-			if unit in scenario.player_unit.squad: continue
-			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
+			if unit == self.player_unit: continue
+			if unit in self.player_unit.squad: continue
+			self.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
 			(unit.hx, unit.hy) = unit.dest_hex
-			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
+			self.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
 			# clear destination hex
 			unit.dest_hex = None
 			
@@ -5882,6 +5883,11 @@ class Scenario:
 					unit.hull_down[i] = ConstrainDir(unit.hull_down[i] + f)
 		
 		self.UpdateUnitCon()
+		
+		# NEW pivot player HD if any
+		if len(self.player_unit.hull_down) > 0:
+			for i in range(3):
+				self.player_unit.hull_down[i] = ConstrainDir(self.player_unit.hull_down[i] + f)
 		
 		# record player pivot
 		self.player_pivot = ConstrainDir(self.player_pivot + f)
@@ -6924,6 +6930,7 @@ class Scenario:
 				# pivot hull
 				elif key_char in ['a', 'd']:
 					self.PivotPlayer(key_char == 'd')
+					self.UpdatePlayerInfoCon()
 					self.UpdateContextCon()
 					self.UpdateUnitInfoCon()
 					self.UpdateScenarioDisplay()

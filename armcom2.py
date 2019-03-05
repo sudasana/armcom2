@@ -2144,8 +2144,8 @@ class Personnel:
 		
 		modifier = round(modifier, 1)
 		
-		print('DEBUG: action modifier for ' + self.GetFullName() + ' doing ' + action_type +
-			' is: ' + str(modifier))
+		#print('DEBUG: action modifier for ' + self.GetFullName() + ' doing ' + action_type +
+		#	' is: ' + str(modifier))
 		
 		return modifier 
 	
@@ -2368,6 +2368,9 @@ class Personnel:
 		if not self.current_position.hatch: return False
 		if self.current_position.open_top: return False
 		if self.current_position.crew_always_ce: return False
+		
+		# crewman unable to act
+		if self.status in ['Dead', 'Unconscious']: return False
 		
 		self.current_position.hatch_open = not self.current_position.hatch_open
 		
@@ -2663,7 +2666,7 @@ class AI:
 		# no action if it's not alive
 		if not self.owner.alive: return
 		
-		print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
+		#print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
 		# FUTURE: check for automatic action here
 					
@@ -2760,8 +2763,8 @@ class AI:
 			if GetPercentileRoll() <= 80.0:
 				self.disposition = 'Combat'
 		
-		if self.disposition is not None:
-			print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
+		#if self.disposition is not None:
+		#	print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 		
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
@@ -2862,7 +2865,7 @@ class AI:
 			
 			# no possible targets
 			if len(target_list) == 0:
-				print ('AI DEBUG: No possible targets for ' + self.owner.unit_id)
+				#print ('AI DEBUG: No possible targets for ' + self.owner.unit_id)
 				return
 			
 			# score possible weapon-target combinations
@@ -2898,7 +2901,7 @@ class AI:
 			
 			# no possible attacks
 			if len(attack_list) == 0:
-				print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
+				#print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
 				return
 			
 			# score each possible weapon-ammo-target combination
@@ -2924,7 +2927,7 @@ class AI:
 				
 				# special: player squad cannot pivot
 				if pivot_req and self.owner in scenario.player_unit.squad:
-					print ('DEBUG: discarded an attack because player squad member would have to pivot')
+					#print ('DEBUG: discarded an attack because player squad member would have to pivot')
 					continue
 				
 				# set ammo type if required
@@ -2967,7 +2970,7 @@ class AI:
 			
 			# no possible attacks
 			if len(scored_list) == 0:
-				print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
+				#print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
 				return
 			
 			# sort list by score
@@ -2989,7 +2992,7 @@ class AI:
 			
 			# no good attacks
 			if score <= 3.0:
-				print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
+				#print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
 				return
 			
 			# proceed with best attack
@@ -3005,24 +3008,24 @@ class AI:
 				
 				if mount == 'Turret' and self.owner.turret_facing is not None:
 					self.owner.turret_facing = direction
-					print('AI DEBUG: AI unit rotated turret to fire')
+					#print('AI DEBUG: AI unit rotated turret to fire')
 				
 				elif mount == 'Hull' and self.owner.facing is not None:
 					self.owner.facing = direction
 					if self.owner.turret_facing is not None:
 						self.owner.turret_facing = direction
-					print('AI DEBUG: AI unit pivoted hull to fire')
+					#print('AI DEBUG: AI unit pivoted hull to fire')
 				
 				scenario.UpdateUnitCon()
 				scenario.UpdateScenarioDisplay()
 				for weapon in self.owner.weapon_list:
 					weapon.UpdateCoveredHexes()
 			
-			text = 'AI DEBUG: ' + self.owner.unit_id + ' attacking with ' + weapon.stats['name']
-			if ammo_type != '':
-				text += '(' + ammo_type + ')'
-			text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-			print(text)
+			#text = 'AI DEBUG: ' + self.owner.unit_id + ' attacking with ' + weapon.stats['name']
+			#if ammo_type != '':
+			#	text += '(' + ammo_type + ')'
+			#text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+			#print(text)
 			
 			# move target to top of hex stack
 			target.MoveToTopOfStack()
@@ -3503,7 +3506,7 @@ class Unit:
 		scenario.hex_dict[(self.hx, self.hy)].unit_stack.remove(self)
 		# remove from scenario unit list
 		scenario.units.remove(self)
-		print ('DEBUG: removed a ' + self.unit_id + ' from play')
+		#print ('DEBUG: removed a ' + self.unit_id + ' from play')
 	
 	
 	# return the display character to use on the map viewport
@@ -3966,7 +3969,7 @@ class Unit:
 		# no hits to resolve! doing fine!
 		if len(self.ap_hits_to_resolve) == 0: return
 		
-		print('Resolving AP hits on ' + self.unit_id)
+		#print('Resolving AP hits on ' + self.unit_id)
 		
 		# no effect if unit is not a vehicle
 		if self.GetStat('category') != 'Vehicle':
@@ -4036,7 +4039,7 @@ class Unit:
 	def ResolveFP(self):
 		if self.fp_to_resolve == 0: return
 		
-		print('DEBUG: resolving ' + str(self.fp_to_resolve) + ' fp on ' + self.unit_id)
+		#print('DEBUG: resolving ' + str(self.fp_to_resolve) + ' fp on ' + self.unit_id)
 		
 		# move to top of hex stack
 		self.MoveToTopOfStack()
@@ -4081,7 +4084,7 @@ class Unit:
 		# restrict final chances
 		base_chance = RestrictChance(base_chance)
 		
-		print('DEBUG: chance to destroy: ' + str(base_chance) + '%%')
+		#print('DEBUG: chance to destroy: ' + str(base_chance) + '%')
 		
 		# roll for effect
 		roll = GetPercentileRoll()

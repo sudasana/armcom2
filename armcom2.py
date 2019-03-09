@@ -59,9 +59,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.3.0'					# game version
+VERSION = '0.4.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1977,9 +1977,6 @@ class Session:
 		# flag: the last time the keyboard was polled, a key was pressed
 		self.key_down = False
 		
-		# sound samples
-		self.sample = {}
-		
 		# load debug flags if in debug mode
 		self.debug = {}
 		if DEBUG:
@@ -2018,29 +2015,6 @@ class Session:
 			return False
 		mixer.Mix_AllocateChannels(16)
 		return True
-	
-	
-	def LoadSounds(self):
-		
-		SOUND_LIST = [
-			#'menu_select',
-			'37mm_firing_00', '37mm_firing_01', '37mm_firing_02', '37mm_firing_03',
-			'37mm_he_explosion_00', '37mm_he_explosion_01',
-			'vehicle_explosion_00',
-			'at_rifle_firing',
-			'plane_incoming_00', 'stuka_divebomb_00',
-			'armour_save_00', 'armour_save_01',
-			'light_tank_moving_00', 'light_tank_moving_01', 'light_tank_moving_02',
-			'wheeled_moving_00', 'wheeled_moving_01', 'wheeled_moving_02',
-			'zb_53_mg_00',
-			'rifle_fire_00', 'rifle_fire_01', 'rifle_fire_02', 'rifle_fire_03'
-		]
-		
-		# because the function returns NULL if the file failed to load, Python does not seem
-		# to have any way of detecting this and there's no error checking
-		for sound_name in SOUND_LIST:
-			filename = SOUNDPATH + sound_name + '.ogg'
-			self.sample[sound_name] = mixer.Mix_LoadWAV(filename.encode('ascii'))
 
 
 # Personnel Class: represents an individual person within a unit 
@@ -7847,10 +7821,8 @@ def ChangeGameSettings(key_char):
 			config['ArmCom2']['sounds_enabled'] = 'false'
 		else:
 			config['ArmCom2']['sounds_enabled'] = 'true'
-			# init mixer and load sound samples if required
-			if len(session.sample) == 0:
-				session.InitMixer()
-				session.LoadSounds()
+			# try to init mixer
+			session.InitMixer()
 		
 	# switch keyboard layout
 	elif key_char == 'k':
@@ -8129,17 +8101,23 @@ def EnKey(key_char):
 #                                     Sound Effects                                      #
 ##########################################################################################
 
-# play a given sample, returns the channel it is playing on
+# play a given sample, and return the channel it is playing on
 def PlaySound(sound_name):
 	
-	if sound_name not in session.sample:
+	sample = mixer.Mix_LoadWAV((SOUNDPATH + sound_name + '.ogg').encode('ascii'))
+	if sample is None:
 		print('ERROR: Sound not found: ' + sound_name)
 		return
 	
-	channel = mixer.Mix_PlayChannel(-1, session.sample[sound_name], 0)
+	channel = mixer.Mix_PlayChannel(-1, sample, 0)
+	
+	del sample
+	
 	if channel == -1:
 		print('ERROR: could not play sound: ' + sound_name)
 		print(mixer.Mix_GetError())
+		return
+	
 	return channel
 
 
@@ -8254,7 +8232,6 @@ session = Session()
 main_theme = None
 if config['ArmCom2'].getboolean('sounds_enabled'):
 	if session.InitMixer():
-		session.LoadSounds()
 		# load and play main menu theme
 		main_theme = mixer.Mix_LoadMUS((SOUNDPATH + 'armcom2_theme.ogg').encode('ascii'))
 		mixer.Mix_PlayMusic(main_theme, -1)

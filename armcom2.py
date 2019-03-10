@@ -2307,11 +2307,6 @@ class Personnel:
 				if self.current_position.name not in d['position_list']:
 					continue
 			
-			# check if command would be allowed this turn
-			if k == 'Request Support':
-				if not scenario.cd_map_hex.air_support and not scenario.cd_map_hex.arty_support:
-					continue
-			
 			self.cmd_list.append(k)
 	
 	# select a new command from command list
@@ -4225,8 +4220,6 @@ class Scenario:
 		self.target_list = []					# list of possible player targets
 		self.selected_weapon = None				# player's currently selected weapon
 		self.selected_target = None				# player's current selected target
-		self.support_target_list = []				# list of possible hex targets for support attack
-		self.support_target = None				# selected support target hex
 		
 		self.selected_position = 0				# index of selected position in player unit
 	
@@ -4382,57 +4375,28 @@ class Scenario:
 				unit.turret_facing = direction
 	
 	
-	# attempt an artillery attack against the support attack target hex
+	# do an artillery bombardment against enemy units
 	def ArtilleryAttack(self):
 		
-		(hx, hy) = self.support_target
-		if (hx, hy) not in self.hex_dict: return
-		
-		# fire spotting rounds
-		for i in range(3):
+		# display bombardment animation (TEMP)
+		for i in range(7):
+			map_hex = choice(self.map_hexes)
+			if GetHexDistance(0, 0, map_hex.hx, map_hex.hy) > 3: continue
+			if map_hex.hx == 0 and map_hex.hy == 0: continue
+			(x, y) = self.PlotHex(map_hex.hx, map_hex.hy)
 			
-			chance = ARTY_BASE_SPOT_CHANCE
-			roll = GetPercentileRoll()
-			
-			# spotting round did not hit target hex
-			if roll > chance:
-				
-				# get a random adjacent hex
-				for direction in sample(range(6), 6):
-					(hx2, hy2) = GetAdjacentHex(hx, hy, direction)
-					if GetHexDistance(0, 0, hx2, hy2) > 3: continue
-					if (hx2, hy2) in self.hex_dict:
-						break
-			
-			else:
-				(hx2, hy2) = (hx, hy)
-			
-			(x, y) = self.PlotHex(hx2, hy2)
-			
-			# play sound
 			PlaySoundFor(None, 'he_explosion')
-				
-			# show spotting round animation
+			# show animation
 			# FUTURE: use animation console
-			for i in range(24):
+			for i in range(18):
 				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
 				libtcod.console_set_default_foreground(0, col)
 				libtcod.console_put_char(0, x+32, y+9, 42)
 				libtcod.console_flush()
 				Wait(4)
-			libtcod.console_set_default_foreground(0, libtcod.white)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
-			
-			# break if ranged in
-			if (hx2, hy2) == (hx, hy):
-				break
 		
-		# unable to range in
-		if (hx2, hy2) != (hx, hy):
-			ShowMessage('Unable to range in, will attempt again in two minutes.')
-			return
-					
 		# spawn gun unit and determine effective FP
 		unit_id = choice(campaign.stats['player_arty_support'])
 		gun_unit = Unit(unit_id)
@@ -4446,34 +4410,12 @@ class Scenario:
 			if calibre <= gun_calibre:
 				break
 		
-		ShowMessage('Artillery ranged in, ' + unit_id + ' battery firing for effect.')
-		
-		# clear selected target
-		self.support_target = None
-
-		# do attack animation
-		# FUTURE: use animation console
-		for i in range(6):
-			PlaySoundFor(None, 'he_explosion')
-			x2 = x - 2 + libtcod.random_get_int(0, 0, 4)
-			y2 = y - 2 + libtcod.random_get_int(0, 0, 4)
-			for i in range(12):
-				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
-				libtcod.console_set_default_foreground(0, col)
-				libtcod.console_put_char(0, x2+32, y2+9, 42)
-				libtcod.console_flush()
-				Wait(2)
-			libtcod.console_set_default_foreground(0, libtcod.white)
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-		
-		# get units in target map hex and shuffle a local copy of the list
-		map_hex = self.hex_dict[(hx, hy)]
-		unit_list = map_hex.unit_stack[:]
-		shuffle(unit_list)
-		
+		# roll for possible hit against each enemy unit
 		results = False
-		for target in unit_list:
+		for target in self.units:
+			
+			if target.owning_player == 0: continue
+			if not target.alive: continue
 			
 			# calculate base effect chance
 			if target.GetStat('category') == 'Vehicle':
@@ -4559,15 +4501,9 @@ class Scenario:
 		if not results:
 			ShowMessage('Artillery attack had no effect.')
 	
+	
 	# attempt an air attack against the support attack target hex
 	def AirAttack(self):
-		
-		(hx, hy) = self.support_target
-		if (hx, hy) not in self.hex_dict: return
-		map_hex = self.hex_dict[(hx, hy)]
-		
-		# clear selected target
-		self.support_target = None
 		
 		# roll for number of planes
 		roll = libtcod.random_get_int(0, 1, 10)
@@ -4584,73 +4520,16 @@ class Scenario:
 		# display message
 		text = str(num_planes) + ' ' + plane_id + ' arrive'
 		if num_planes == 1: text += 's'
-		text += ' for an attack run'
+		text += ' for an attack.'
 		ShowMessage(text)
 		
-		(x, y) = self.PlotHex(hx, hy)
-		(x2, y2) = (x, y)
-		
-		# determine attack direction and starting position
-		x = x2
-		if y2 <= 30:
-			y1 = y2 + 20
-			if y1 > 51: y1 = 51
-			y2 += 1
-			direction = -1
-		else:
-			y1 = y2 - 20
-			if y1 < 9: y1 = 9
-			y2 -= 3
-			direction = 1
-		
-		# create and draw plane console
-		temp_con = libtcod.console_new(3, 3)
-		libtcod.console_set_default_background(temp_con, libtcod.black)
-		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
-		libtcod.console_clear(temp_con)
-		
-		libtcod.console_put_char(temp_con, 0, 1, chr(196))
-		libtcod.console_put_char(temp_con, 1, 1, chr(197))
-		libtcod.console_put_char(temp_con, 2, 1, chr(196))
-		if direction == -1:
-			libtcod.console_put_char(temp_con, 1, 2, chr(193))
-		else:
-			libtcod.console_put_char(temp_con, 1, 0, chr(194))
-		
-		PlaySoundFor(None, 'plane_incoming')
-		
-		# animate plane movement toward target hex
-		for yi in range(y1, y2, direction):
-			if libtcod.console_is_window_closed(): sys.exit()
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, x+31, yi+8, 1.0, 0.0)
-			libtcod.console_flush()
-			Wait(8)
-		
-		PlaySoundFor(None, 'stuka_divebomb')
-		
-		# wait for sound effect to finish
-		if config['ArmCom2'].getboolean('sounds_enabled'):
-			Wait(100)
-		
-		# bomb animation
-		for i in range(24):
-			col = choice([libtcod.red, libtcod.yellow, libtcod.black])
-			libtcod.console_set_default_foreground(0, col)
-			libtcod.console_put_char(0, x+32, y+9, 42)
-			libtcod.console_flush()
-			Wait(4)
-		libtcod.console_set_default_foreground(0, libtcod.white)
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
-		
 		# create plane units
-		unit_list = []
+		plane_unit_list = []
 		for i in range(num_planes):
-			unit_list.append(Unit(plane_id))
+			plane_unit_list.append(Unit(plane_id))
 		
 		# determine calibre for bomb attack
-		for weapon in unit_list[0].weapon_list:
+		for weapon in plane_unit_list[0].weapon_list:
 			if weapon.stats['name'] == 'Bombs':
 				bomb_calibre = int(weapon.stats['calibre'])
 				break
@@ -4660,17 +4539,81 @@ class Scenario:
 			if calibre <= bomb_calibre:
 				break
 		
+		# build target list
+		target_list = []
+		for unit in self.units:
+			if not unit.alive: continue
+			if unit.owning_player == 0: continue
+			target_list.append(unit)
+		
 		# do one attack per plane
 		results = False
-		for unit in unit_list:
+		for unit in plane_unit_list:
 			
-			# no more targets possible
-			if len(map_hex.unit_stack) == 0:
-				break
+			if len(target_list) == 0:
+				ShowMessage('No possible targets, calling off atttack.')
+				return
 			
-			# select a random target within the hex
-			target = choice(map_hex.unit_stack)
+			# select target
+			target = choice(target_list)
+		
+			# determine attack direction and starting position
+			(x, y) = self.PlotHex(target.hx, target.hy)
+			(x2, y2) = (x, y)
+		
+			#x = x2
+			if y2 <= 30:
+				y1 = y2 + 20
+				if y1 > 51: y1 = 51
+				y2 += 1
+				direction = -1
+			else:
+				y1 = y2 - 20
+				if y1 < 9: y1 = 9
+				y2 -= 3
+				direction = 1
 			
+			# create and draw plane console
+			temp_con = libtcod.console_new(3, 3)
+			libtcod.console_set_default_background(temp_con, libtcod.black)
+			libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+			libtcod.console_clear(temp_con)
+			
+			libtcod.console_put_char(temp_con, 0, 1, chr(196))
+			libtcod.console_put_char(temp_con, 1, 1, chr(197))
+			libtcod.console_put_char(temp_con, 2, 1, chr(196))
+			if direction == -1:
+				libtcod.console_put_char(temp_con, 1, 2, chr(193))
+			else:
+				libtcod.console_put_char(temp_con, 1, 0, chr(194))
+			
+			PlaySoundFor(None, 'plane_incoming')
+			
+			# animate plane movement toward target hex
+			for yi in range(y1, y2, direction):
+				if libtcod.console_is_window_closed(): sys.exit()
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, x+31, yi+8, 1.0, 0.0)
+				libtcod.console_flush()
+				Wait(8)
+			
+			PlaySoundFor(None, 'stuka_divebomb')
+			
+			# wait for sound effect to finish
+			if config['ArmCom2'].getboolean('sounds_enabled'):
+				Wait(100)
+			
+			# bomb animation
+			for i in range(24):
+				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+				libtcod.console_set_default_foreground(0, col)
+				libtcod.console_put_char(0, x+32, y+9, 42)
+				libtcod.console_flush()
+				Wait(4)
+			libtcod.console_set_default_foreground(0, libtcod.white)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+		
 			# calculate basic to-effect score required
 			if not target.spotted:
 				chance = PF_BASE_CHANCE[0][1]
@@ -4757,10 +4700,11 @@ class Scenario:
 				# penetrated
 				target.DestroyMe()
 				ShowMessage(target.GetName() + ' was destroyed by air attack')
-		
+				
+				target_list.remove(target)
+				
 		if not results:
 			ShowMessage('Air attack had no effect.')
-		
 		
 		# clean up
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -5657,42 +5601,6 @@ class Scenario:
 		self.UpdateUnitInfoCon()
 	
 	
-	# (re)build a sorted list of possible support target hexes
-	def BuildSupportTargetList(self):
-		self.support_target_list = []
-		for map_hex in self.map_hexes:
-			# no units present
-			if len(map_hex.unit_stack) == 0: continue
-			# no enemies present
-			if map_hex.unit_stack[0].owning_player == 0: continue
-			self.support_target_list.append((map_hex.hx, map_hex.hy))
-	
-	
-	# select a different support attack target hex
-	def CycleSupportTarget(self, forward):
-		if len(self.support_target_list) == 0: return
-		
-		# no target selected yet
-		if self.support_target is None:
-			self.support_target = self.support_target_list[0]
-			return
-		
-		if forward:
-			m = 1
-		else:
-			m = -1
-		
-		i = self.support_target_list.index(self.support_target)
-		i += m
-		
-		if i < 0:
-			self.support_target = self.support_target_list[-1]
-		elif i > len(self.support_target_list) - 1:
-			self.support_target = self.support_target_list[0]
-		else:
-			self.support_target = self.support_target_list[i]
-		
-	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
 	def MovePlayer(self, forward):
 		
@@ -5888,7 +5796,51 @@ class Scenario:
 		
 		self.UpdateUnitCon()
 		self.UpdateGuiCon()
+	
+	
+	# display a pop-up window with info on a particular unit
+	def ShowUnitInfoWindow(self, unit):
 		
+		# create a local copy of the current screen to re-draw when we're done
+		temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+		libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+		# darken screen background
+		libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+		
+		# create window and draw frame
+		window_con = libtcod.console_new(27, 26)
+		libtcod.console_set_default_background(window_con, libtcod.black)
+		libtcod.console_set_default_foreground(window_con, libtcod.white)
+		DrawFrame(window_con, 0, 0, 27, 26)
+		
+		# draw unit info and command instructions
+		unit.DisplayMyInfo(window_con, 1, 1)
+		libtcod.console_set_default_foreground(window_con, ACTION_KEY_COL)
+		libtcod.console_print(window_con, 7, 24, 'ESC')
+		libtcod.console_set_default_foreground(window_con, libtcod.lighter_grey)
+		libtcod.console_print(window_con, 12, 24, 'Return')
+		
+		# blit window to screen and then delete
+		libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM-13, WINDOW_YM-13)
+		del window_con
+		
+		# wait for player to exit view
+		exit = False
+		while not exit:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			
+			# get keyboard and/or mouse event
+			if not GetInputEvent(): continue
+			
+			if key.vk == libtcod.KEY_ESCAPE:
+				exit = True
+		
+		# re-draw original view
+		libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+		del temp_con
+	
 	
 	# advance to next phase/turn and do automatic events
 	def AdvanceToNextPhase(self):
@@ -5980,10 +5932,9 @@ class Scenario:
 			skip_phase = True
 			for position in self.player_unit.positions_list:
 				if position.crewman is None: continue
-				if position.crewman.current_cmd == 'Request Support':
-					skip_phase = False
-					self.BuildSupportTargetList()
-					break
+				#if position.crewman.current_cmd == 'Request Support':
+				#	skip_phase = False
+				#	break
 			
 			if skip_phase:
 				self.advance_phase = True
@@ -6008,8 +5959,20 @@ class Scenario:
 		
 		# shooting phase
 		elif self.phase == PHASE_SHOOTING:
-			self.BuildTargetList()
-			self.UpdateGuiCon()
+			
+			# check that 1+ crew are on correct order
+			skip_phase = True
+			for position in self.player_unit.positions_list:
+				if position.crewman is None: continue
+				if position.crewman.current_cmd in ['Operate Gun', 'Operate MG']:
+					skip_phase = False
+					break
+			
+			if skip_phase:
+				self.advance_phase = True
+			else:
+				self.BuildTargetList()
+				self.UpdateGuiCon()
 		
 		# close combat phase
 		elif self.phase == PHASE_CC:
@@ -6025,11 +5988,11 @@ class Scenario:
 			libtcod.console_flush()
 			
 			# check for support attacks and resolve them here
-			if self.support_target is not None:
-				if self.cd_map_hex.air_support:
-					self.AirAttack()
-				else:
-					self.ArtilleryAttack()
+			#if self.support_target is not None:
+			#	if self.cd_map_hex.air_support:
+			#		self.AirAttack()
+			#	else:
+			#		self.ArtilleryAttack()
 			
 			# player squad acts first
 			for unit in scenario.player_unit.squad:
@@ -6339,15 +6302,6 @@ class Scenario:
 			position = self.player_unit.positions_list[self.selected_position]
 			if position.crewman is None: return
 			
-			if position.crewman.current_cmd == 'Request Support':
-				libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-				libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
-				libtcod.console_print(cmd_menu_con, 1, 3, 'Bksp')
-				
-				libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-				libtcod.console_print(cmd_menu_con, 8, 2, 'Select Target')
-				libtcod.console_print(cmd_menu_con, 8, 3, 'Cancel Target')
-			
 		# Movement phase
 		elif self.phase == PHASE_MOVEMENT:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
@@ -6505,13 +6459,37 @@ class Scenario:
 	
 	
 	# update the scenario info console, on the top right of the screen
+	# will display current weather and terrain type
 	# 18x12
 	def UpdateScenarioInfoCon(self):
 		libtcod.console_clear(scen_info_con)
 		
-		# campaign day hex terrain
-		libtcod.console_print(scen_info_con, 0, 0, 'Terrain:')
-		libtcod.console_print(scen_info_con, 1, 1, self.cd_map_hex.terrain_type)
+		libtcod.console_set_default_foreground(scen_info_con, libtcod.light_grey)
+		
+		# current temperature (TEMP static)
+		libtcod.console_print(scen_info_con, 0, 0, 'Mild')
+		
+		# cloud cover (TEMP static)
+		libtcod.console_print(scen_info_con, 0, 2, 'Clear')
+		
+		# precipitation (TEMP static)
+		libtcod.console_print(scen_info_con, 0, 4, 'Dry')
+		
+		# ground conditions (TEMP static)
+		libtcod.console_print(scen_info_con, 0, 6, 'Dry Ground')
+		
+		# terrain
+		libtcod.console_print(scen_info_con, 0, 10, 'Terrain:')
+		libtcod.console_print(scen_info_con, 1, 11, self.cd_map_hex.terrain_type)
+		
+		# wind strength and direction (TEMP static)
+		libtcod.console_print_ex(scen_info_con, 17, 0, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'No wind')
+		
+		# fog level if any (TEMP static)
+		libtcod.console_print_ex(scen_info_con, 17, 4, libtcod.BKGND_NONE,
+			libtcod.RIGHT, '')
+		
 	
 	
 	# update the tank/crew status console, which displays urgent information for the player
@@ -6606,6 +6584,9 @@ class Scenario:
 			if unit.terrain is not None:
 				libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
 				libtcod.console_print(unit_info_con, 0, 7, unit.terrain)
+			
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
+			libtcod.console_print(unit_info_con, 0, 10, 'R-Click for info')
 		
 		
 	
@@ -6723,6 +6704,23 @@ class Scenario:
 		self.UpdateHexmapCon()
 		self.UpdateScenarioDisplay()
 		
+		# check for support attack
+		if self.cd_map_hex.arty_support or self.cd_map_hex.air_support:
+			if self.cd_map_hex.arty_support:
+				ShowMessage('Friendly artillery bombardment inbound!')
+				self.ArtilleryAttack()
+				self.cd_map_hex.arty_support = False
+			else:
+				ShowMessage('Friendly air attack inbound!')
+				self.AirAttack()
+				self.cd_map_hex.air_support = False
+			
+			# resolve any fp from support attacks on enemy units
+			for unit in reversed(self.units):
+				if not unit.alive: continue
+				if unit.owning_player == 0: continue
+				unit.ResolveFP()
+		
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
 		mouse_y = -1
@@ -6761,23 +6759,31 @@ class Scenario:
 				self.UpdateUnitInfoCon()
 				self.UpdateScenarioDisplay()
 			
-			# check to see if mouse wheel has moved
-			if mouse.wheel_up or mouse.wheel_down:
+			# mouse wheel has moved or right mouse button clicked
+			if mouse.wheel_up or mouse.wheel_down or mouse.rbutton_pressed:
 				
-				# see if cursor is over a hex with 2+ units in it
+				# see if cursor is over a hex with 1+ units in it
 				x = mouse.cx - 32
 				y = mouse.cy - 9
 				if (x,y) in self.hex_map_index:
 					map_hex = self.hex_map_index[(x,y)]
-					if len(map_hex.unit_stack) > 1:
-						if mouse.wheel_up:
-							map_hex.unit_stack[:] = map_hex.unit_stack[1:] + [map_hex.unit_stack[0]]
-						else:
-							map_hex.unit_stack.insert(0, map_hex.unit_stack.pop(-1))
+					if len(map_hex.unit_stack) > 0:
+						if mouse.rbutton_pressed:
+							unit = map_hex.unit_stack[0]
+							if not (unit.owning_player == 1 and not unit.spotted):
+								self.ShowUnitInfoWindow(unit)
+							continue
+						elif len(map_hex.unit_stack) > 1:
+						
+							if mouse.wheel_up:
+								map_hex.unit_stack[:] = map_hex.unit_stack[1:] + [map_hex.unit_stack[0]]
+							elif mouse.wheel_down:
+								map_hex.unit_stack.insert(0, map_hex.unit_stack.pop(-1))
 						self.UpdateUnitCon()
 						self.UpdateUnitInfoCon()
 						self.UpdateScenarioDisplay()
 						continue
+			
 			
 			##### Player Keyboard Commands #####
 			
@@ -6876,22 +6882,6 @@ class Scenario:
 				if self.selected_position is None: continue
 				position = self.player_unit.positions_list[self.selected_position]
 				if position.crewman is None: continue
-			
-				if position.crewman.current_cmd == 'Request Support':
-				
-					# select support attack target hex
-					if key_char in ['a', 'd']:
-						self.CycleSupportTarget(key_char == 'd')
-						self.UpdateGuiCon()
-						self.UpdateScenarioDisplay()
-						continue
-					
-					# cancel target
-					elif key.vk == libtcod.KEY_BACKSPACE:
-						self.support_target = None
-						self.UpdateGuiCon()
-						self.UpdateScenarioDisplay()
-						continue
 			
 			# Movement phase only
 			elif scenario.phase == PHASE_MOVEMENT:
@@ -8136,8 +8126,7 @@ def PlaySoundFor(obj, action):
 				return
 			
 			# temp - used for all large guns for now
-			n = libtcod.random_get_int(0, 0, 3)
-			PlaySound('37mm_firing_0' + str(n))
+			PlaySound('37mm_firing_0' + str(libtcod.random_get_int(0, 0, 3)))
 			return
 			
 		if obj.stats['type'] in MG_WEAPONS:
@@ -8145,18 +8134,15 @@ def PlaySoundFor(obj, action):
 			return
 		
 		if obj.GetStat('name') == 'Rifles':
-			n = libtcod.random_get_int(0, 0, 3)
-			PlaySound('rifle_fire_0' + str(n))
+			PlaySound('rifle_fire_0' + str(libtcod.random_get_int(0, 0, 3)))
 			return
 	
 	elif action == 'he_explosion':
-		n = libtcod.random_get_int(0, 0, 1)
-		PlaySound('37mm_he_explosion_0' + str(n))
+		PlaySound('37mm_he_explosion_0' + str(libtcod.random_get_int(0, 0, 1)))
 		return
 	
 	elif action == 'armour_save':
-		n = libtcod.random_get_int(0, 0, 1)
-		PlaySound('armour_save_0' + str(n))
+		PlaySound('armour_save_0' + str(libtcod.random_get_int(0, 0, 1)))
 		return
 	
 	elif action == 'vehicle_explosion':
@@ -8166,13 +8152,11 @@ def PlaySoundFor(obj, action):
 	elif action == 'movement':
 		
 		if obj.GetStat('movement_class') in ['Wheeled', 'Fast Wheeled']:
-			n = libtcod.random_get_int(0, 0, 2)
-			PlaySound('wheeled_moving_0' + str(n))
+			PlaySound('wheeled_moving_0' + str(libtcod.random_get_int(0, 0, 2)))
 			return
 		
 		elif obj.GetStat('class') in ['Tankette', 'Light Tank', 'Medium Tank']:
-			n = libtcod.random_get_int(0, 0, 2)
-			PlaySound('light_tank_moving_0' + str(n))
+			PlaySound('light_tank_moving_0' + str(libtcod.random_get_int(0, 0, 2)))
 			return
 	
 	elif action == 'plane_incoming':
@@ -8295,7 +8279,7 @@ libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-3,
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-2,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'www.armouredcommander.com')
 
-libtcod.console_blit(LoadXP('poppy.xp'), 0, 0, 0, 0, main_title, 0, WINDOW_HEIGHT-10)
+libtcod.console_blit(LoadXP('poppy.xp'), 0, 0, 0, 0, main_title, 1, WINDOW_HEIGHT-8)
 
 # gradient animated effect for main menu
 GRADIENT = [

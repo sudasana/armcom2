@@ -1,7 +1,7 @@
 {
- "Player Immortality": false,
- "Support Requests Always Granted": false,
- "Always Scenario": false,
+ "Player Immortality": true,
+ "Support Requests Always Granted": true,
+ "Always Scenario": true,
  "Player Always Hits": false,
  "Player Always Moves": false,
  "Player Always HD": false,

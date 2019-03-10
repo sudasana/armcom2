@@ -3,6 +3,7 @@
 		"desc" : "Crewman cannot act",
 		"spotting_allowed" : false
 	},
+	
 	"Spot": {
 		"desc" : "Scan terrain for enemies",
 		"spotting_allowed" : true
@@ -18,12 +19,6 @@
 		"desc" : "Direct fire against enemy targets",
 		"position_list" : ["Commander"],
 		"spotting_allowed" : true
-	},
-	
-	"Request Support" : {
-		"desc" : "Request an air or artillery support attack",
-		"position_list" : ["Commander", "Commander/Gunner"],
-		"spotting_allowed" : false
 	},
 	
 	"Operate Gun" : {

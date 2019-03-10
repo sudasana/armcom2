@@ -312,6 +312,9 @@ VEH_FP_TK = [
 	(1, 8.0)
 ]
 
+# amount within an AFV armour save will result in Stun tests for crew/unit
+AP_STUN_MARGIN = 10.0
+
 # terrain type odds for campaign day hexes
 # FUTURE: can have different sets for different areas of the world
 CD_TERRAIN_ODDS = {
@@ -3980,7 +3983,28 @@ class Unit:
 				scenario.UpdateScenarioDisplay()
 				
 				# apply result if any
-				if profile['result'] == 'PENETRATED':
+				if profile['result'] == 'NO PENETRATION':
+					
+					# check for stun test
+					difference = profile['final_chance'] - profile['roll']
+					
+					if 0.0 < difference <= AP_STUN_MARGIN:
+						
+						# player was target
+						if self == scenario.player_unit:
+							
+							print('DEBUG: doing stun tests')
+							
+							for position in self.positions_list:
+								if position.crewman is None: continue
+								position.crewman.DoStunCheck(AP_STUN_MARGIN - difference)
+						
+						# FUTURE: target was AI unit
+						else:
+							
+							pass
+							
+				elif profile['result'] == 'PENETRATED':
 					
 					# TODO: roll for penetration result here, use the
 					# final 'roll' difference vs. 'final_chance' as modifier

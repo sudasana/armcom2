@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# -*- coding: UTF-8 -*-                                                         
 # Python 3.6.6 x64
 # Libtcod 1.6.4 x64
 ##########################################################################################
@@ -1020,7 +1020,6 @@ class CampaignDay:
 		# friendly zone lost
 		elif roll <= 60.0:
 			
-			# find a possible zone to capture
 			hex_list = []
 			for (hx, hy) in self.map_hexes:
 				map_hex = self.map_hexes[(hx,hy)]
@@ -1043,6 +1042,38 @@ class CampaignDay:
 			ShowMessage('Enemy forces have captured an allied-held zone!') 
 			(hx, hy) = choice(hex_list)
 			self.map_hexes[(hx,hy)].CaptureMe(1)
+		
+		# free resupply
+		elif roll <= 65.0:
+			ShowMessage('You happen to encounter a supply truck, which restocks you with ammo.')
+			self.ResupplyPlayer()
+		
+		# loss of recon knowledge and possible change in strength
+		elif roll <= 80.0:
+			
+			hex_list = []
+			for (hx, hy) in self.map_hexes:
+				if self.map_hexes[(hx,hy)].controlled_by == 0: continue
+				if not self.map_hexes[(hx,hy)].known_to_player: continue
+				hex_list.append((hx, hy))
+			
+			if len(hex_list) == 0:
+				return
+			
+			ShowMessage('Enemy movement reported in a map zone, estimated strength no longer certain.')
+			
+			(hx, hy) = choice(hex_list)
+			map_hex = self.map_hexes[(hx,hy)]
+			
+			map_hex.known_to_player = False
+			map_hex.enemy_strength -= 3
+			map_hex.enemy_strength += libtcod.random_get_int(0, 0, 6)
+			
+			if map_hex.enemy_strength < 1:
+				map_hex.enemy_strength = 1
+			if map_hex.enemy_strength > 10:
+				map_hex.enemy_strength = 10
+			
 		
 		# random event finished, update consoles and screen
 		self.UpdateCDControlCon()
@@ -1226,16 +1257,14 @@ class CampaignDay:
 				exit_menu = True
 	
 	
-	# resupply the player unit and other units in the player's unit group
+	# resupply the player unit
 	def ResupplyPlayer(self):
-		self.AdvanceClock(0, 30)
-		ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
 		for weapon in campaign.player_unit.weapon_list:
 			if weapon.ammo_stores is not None:
 				weapon.LoadGunAmmo()
 				text = weapon.stats['name'] + ' has been fully restocked with ammo.'
 				ShowMessage(text)
-	
+
 	
 	##### Campaign Day Console Functions #####
 	
@@ -2053,6 +2082,8 @@ class CampaignDay:
 				
 				# request resupply
 				if key_char == 'r':
+					self.AdvanceClock(0, 30)
+					ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
 					self.ResupplyPlayer()
 					DisplayTimeInfo(time_weather_con)
 					self.UpdateCDDisplay()

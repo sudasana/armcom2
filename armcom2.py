@@ -927,7 +927,7 @@ class CampaignDay:
 	# roll for random event and do if rolled
 	def CheckForRandomEvent(self):
 		
-		# don't trigger an event if day has ended
+		# don't trigger an event if day has already ended
 		if self.ended: return
 		
 		roll = GetPercentileRoll()
@@ -946,8 +946,8 @@ class CampaignDay:
 		# roll for event
 		roll = GetPercentileRoll()
 		
-		# TEMP
-		roll = 35.0
+		# TEMP testing
+		roll = 45.0
 		
 		# friendly forces capture an enemy zone
 		if roll <= 35.0:
@@ -977,6 +977,57 @@ class CampaignDay:
 			self.UpdateCDCommandCon()
 			self.UpdateCDHexInfoCon()
 			self.UpdateCDDisplay()
+		
+		# enemy strength increases
+		elif roll <= 45.0:
+			
+			hex_list = []
+			for (hx, hy) in self.map_hexes:
+				if self.map_hexes[(hx,hy)].controlled_by == 0: continue
+				hex_list.append((hx, hy))
+			
+			if len(hex_list) == 0:
+				return
+			
+			(hx, hy) = choice(hex_list)
+			map_hex = self.map_hexes[(hx,hy)]
+			
+			map_hex.enemy_strength += libtcod.random_get_int(0, 1, 3)
+			if map_hex.enemy_strength > 10:
+				map_hex.enemy_strength = 10
+			
+			if map_hex.known_to_player:
+				ShowMessage('We have reports of an increase of enemy strength in a zone!')
+				# FUTURE: highlight hex momentarily
+				self.UpdateCDControlCon()
+				self.UpdateCDCommandCon()
+				self.UpdateCDHexInfoCon()
+				self.UpdateCDDisplay()
+		
+		# reveal enemy strength
+		elif roll <= 55.0:
+			
+			hex_list = []
+			for (hx, hy) in self.map_hexes:
+				if self.map_hexes[(hx,hy)].controlled_by == 0: continue
+				if self.map_hexes[(hx,hy)].known_to_player: continue
+				hex_list.append((hx, hy))
+			
+			if len(hex_list) == 0:
+				return
+			
+			(hx, hy) = choice(hex_list)
+			self.map_hexes[(hx,hy)].known_to_player = True
+			
+			ShowMessage('We have received information about expected enemy strength in an area.')
+			# FUTURE: highlight hex momentarily
+			self.UpdateCDControlCon()
+			self.UpdateCDCommandCon()
+			self.UpdateCDHexInfoCon()
+			self.UpdateCDDisplay()
+			
+			
+			
 	
 	
 	# check to see whether we need to replace crew after a scenario

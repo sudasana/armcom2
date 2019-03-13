@@ -973,10 +973,6 @@ class CampaignDay:
 			ShowMessage('Allied forces have captured an enemy-held zone!') 
 			(hx, hy) = choice(hex_list)
 			self.map_hexes[(hx,hy)].CaptureMe(0, no_vp=True)
-			self.UpdateCDControlCon()
-			self.UpdateCDCommandCon()
-			self.UpdateCDHexInfoCon()
-			self.UpdateCDDisplay()
 		
 		# enemy strength increases
 		elif roll <= 45.0:
@@ -996,13 +992,12 @@ class CampaignDay:
 			if map_hex.enemy_strength > 10:
 				map_hex.enemy_strength = 10
 			
-			if map_hex.known_to_player:
-				ShowMessage('We have reports of an increase of enemy strength in a zone!')
-				# FUTURE: highlight hex momentarily
-				self.UpdateCDControlCon()
-				self.UpdateCDCommandCon()
-				self.UpdateCDHexInfoCon()
-				self.UpdateCDDisplay()
+			# don't show anything if zone not known to player
+			if not map_hex.known_to_player:
+				return
+			
+			ShowMessage('We have reports of an increase of enemy strength in a zone!')
+			# FUTURE: highlight hex momentarily
 		
 		# reveal enemy strength
 		elif roll <= 55.0:
@@ -1021,13 +1016,39 @@ class CampaignDay:
 			
 			ShowMessage('We have received information about expected enemy strength in an area.')
 			# FUTURE: highlight hex momentarily
-			self.UpdateCDControlCon()
-			self.UpdateCDCommandCon()
-			self.UpdateCDHexInfoCon()
-			self.UpdateCDDisplay()
+		
+		# friendly zone lost
+		elif roll <= 60.0:
 			
+			# find a possible zone to capture
+			hex_list = []
+			for (hx, hy) in self.map_hexes:
+				map_hex = self.map_hexes[(hx,hy)]
+				if map_hex.controlled_by == 1: continue
+				# don't capture player location!
+				if (hx, hy) == self.player_unit_location: continue
+				
+				# make sure there is at least one adjacent enemy hex
+				for direction in range(5):
+					(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+					if (hx2, hy2) not in self.map_hexes: continue
+					if self.map_hexes[(hx2,hy2)].controlled_by == 1:
+						hex_list.append((hx,hy))
+						break
 			
+			# no possible hexes to capture
+			if len(hex_list) == 0:
+				return
 			
+			ShowMessage('Enemy forces have captured an allied-held zone!') 
+			(hx, hy) = choice(hex_list)
+			self.map_hexes[(hx,hy)].CaptureMe(1)
+		
+		# random event finished, update consoles and screen
+		self.UpdateCDControlCon()
+		self.UpdateCDCommandCon()
+		self.UpdateCDHexInfoCon()
+		self.UpdateCDDisplay()
 	
 	
 	# check to see whether we need to replace crew after a scenario

@@ -461,6 +461,8 @@ HD_SIZE_MOD = {
 	'Very Large' : -12.0
 }
 
+# base chance of a random event in the campaign day interface
+BASE_CD_RANDOM_EVENT_CHANCE = 20.0
 
 
 
@@ -858,7 +860,10 @@ class CampaignDay:
 			minutes += 60
 		self.day_length = minutes + (hours * 60)
 		
-		# TODO: flag set when end of day has been reached
+		# current odds of a random event being triggered
+		self.random_event_chance = BASE_CD_RANDOM_EVENT_CHANCE
+		
+		# flag set when end of day has been reached
 		self.ended = False
 		
 		# log of important events during the day
@@ -875,7 +880,7 @@ class CampaignDay:
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}
 		
-		# generate dirt roads on campaign day map
+		# FUTURE: generate dirt roads on campaign day map
 		#self.GenerateRoads()
 		
 		self.active_menu = 3				# number of currently active command menu
@@ -917,6 +922,61 @@ class CampaignDay:
 		if self.day_clock['hour'] == self.end_of_day['hour']:
 			if self.day_clock['minute'] >= self.end_of_day['minute']:
 				self.ended = True
+	
+	
+	# roll for random event and do if rolled
+	def CheckForRandomEvent(self):
+		
+		# don't trigger an event if day has ended
+		if self.ended: return
+		
+		roll = GetPercentileRoll()
+		
+		if DEBUG:
+			if session.debug['Always CD Random Event']:
+				roll = 1.0
+		
+		if roll > self.random_event_chance:
+			self.random_event_chance += 5.0
+			return
+		
+		# reset random event chance
+		self.random_event_chance = BASE_CD_RANDOM_EVENT_CHANCE
+		
+		# roll for event
+		roll = GetPercentileRoll()
+		
+		# TEMP
+		roll = 35.0
+		
+		# friendly forces capture an enemy zone
+		if roll <= 35.0:
+			
+			# find a possible zone to capture
+			hex_list = []
+			for (hx, hy) in self.map_hexes:
+				map_hex = self.map_hexes[(hx,hy)]
+				if map_hex.controlled_by == 0: continue
+				
+				# make sure there is at least one adjacent friendly hex
+				for direction in range(5):
+					(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+					if (hx2, hy2) not in self.map_hexes: continue
+					if self.map_hexes[(hx2,hy2)].controlled_by == 0:
+						hex_list.append((hx,hy))
+						break
+			
+			# no possible hexes to capture
+			if len(hex_list) == 0:
+				return
+			
+			ShowMessage('Allied forces have captured an enemy-held zone!') 
+			(hx, hy) = choice(hex_list)
+			self.map_hexes[(hx,hy)].CaptureMe(0, no_vp=True)
+			self.UpdateCDControlCon()
+			self.UpdateCDCommandCon()
+			self.UpdateCDHexInfoCon()
+			self.UpdateCDDisplay()
 	
 	
 	# check to see whether we need to replace crew after a scenario
@@ -1499,9 +1559,9 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			text = 'Travel Time: '
 			if self.selected_direction in map_hex.dirt_roads:
-				text += '15'
+				text += '10'
 			else:
-				text += '30'
+				text += '15'
 			text += ' mins.'
 			libtcod.console_print(cd_command_con, 1, 5, text)
 		
@@ -1679,6 +1739,7 @@ class CampaignDay:
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 						self.DoCrewCheck(campaign.player_unit)
 						self.CheckForEndOfDay()
+						self.CheckForRandomEvent()
 						SaveGame()
 					
 					# player was destroyed
@@ -1813,6 +1874,9 @@ class CampaignDay:
 					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
+					
+					self.CheckForRandomEvent()
+					
 					continue
 			
 			# travel menu active
@@ -1848,6 +1912,8 @@ class CampaignDay:
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()
 						
+						self.CheckForRandomEvent()
+						
 					# proceed with travel
 					else:
 						
@@ -1871,7 +1937,6 @@ class CampaignDay:
 						# roll to trigger battle encounter if enemy-controlled
 						if map_hex2.controlled_by == 1:
 							ShowMessage('You enter the enemy-held zone.')
-							campaign_day.AdvanceClock(0, 15)
 							
 							# roll for scenario trigger
 							roll = GetPercentileRoll()
@@ -1883,6 +1948,7 @@ class CampaignDay:
 							
 							if roll <= (float(map_hex2.enemy_strength) * 9.5):
 								ShowMessage('You encounter enemy resistance!')
+								campaign_day.AdvanceClock(0, 15)
 								scenario = Scenario(map_hex2)
 								self.scenario = scenario
 								campaign_day.encounter_mod = 0.0
@@ -1891,6 +1957,10 @@ class CampaignDay:
 							ShowMessage('You find no resistance and gain control of the area.')
 							self.map_hexes[(hx,hy)].CaptureMe(0)
 							campaign_day.encounter_mod += 30.0
+						
+						# entering a friendly zone
+						else:
+							ShowMessage('You enter the allied-held zone.')
 						
 						# no battle triggered, update consoles
 						DisplayTimeInfo(time_weather_con)
@@ -1901,6 +1971,8 @@ class CampaignDay:
 						self.UpdateCDCommandCon()
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()
+						
+						self.CheckForRandomEvent()
 					
 					SaveGame()
 				
@@ -1912,9 +1984,8 @@ class CampaignDay:
 					self.ResupplyPlayer()
 					DisplayTimeInfo(time_weather_con)
 					self.UpdateCDDisplay()
+					self.CheckForRandomEvent()
 					SaveGame()
-			
-			
 
 
 # Zone Hex: a hex on the campaign day map, each representing a map of scenario hexes
@@ -1954,13 +2025,14 @@ class CDMapHex:
 	
 	
 	# set control of this hex by the given player
-	def CaptureMe(self, player_num):
+	# if no_vp is True, player doesn't receive VP or credit for this capture
+	def CaptureMe(self, player_num, no_vp=False):
 		self.controlled_by = player_num
 		self.air_support = False
 		self.arty_support = False
 		
 		# captured by player
-		if player_num == 0:
+		if player_num == 0 and not no_vp:
 			campaign.AwardVP(campaign_day.capture_zone_vp)
 			campaign_day.records['Map Areas Captured'] += 1
 		

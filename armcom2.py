@@ -1762,13 +1762,14 @@ class CampaignDay:
 		libtcod.console_blit(cd_unit_con, 0, 0, 0, 0, con, 29, 6, 1.0, 0.0)	# unit group layer
 		libtcod.console_blit(cd_gui_con, 0, 0, 0, 0, con, 29, 6, 1.0, 0.0)	# GUI layer
 		
-		libtcod.console_blit(time_weather_con, 0, 0, 0, 0, con, 36, 1)		# time and weather
+		libtcod.console_blit(time_con, 0, 0, 0, 0, con, 36, 1)			# date and time
 		
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
-		libtcod.console_blit(cd_direction_con, 0, 0, 0, 0, con, 1, 18)		# directional info
-		
+		libtcod.console_blit(cd_direction_con, 0, 0, 0, 0, con, 1, 18)		# directional info		
 		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
-		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 1)		# campaign info
+		
+		libtcod.console_blit(cd_weather_con, 0, 0, 0, 0, con, 66, 1)		# weather info
+		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 18)		# campaign info
 		libtcod.console_blit(cd_hex_info_con, 0, 0, 0, 0, con, 66, 50)		# zone info
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -1778,8 +1779,8 @@ class CampaignDay:
 	def DoCampaignDayLoop(self):
 		
 		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
-		global cd_player_unit_con, cd_direction_con, cd_campaign_con, cd_gui_con
-		global cd_hex_info_con, time_weather_con
+		global cd_player_unit_con, cd_direction_con, cd_gui_con, time_con
+		global cd_campaign_con, cd_weather_con, cd_hex_info_con
 		global scenario
 		
 		# create consoles
@@ -1788,10 +1789,11 @@ class CampaignDay:
 		cd_unit_con = NewConsole(35, 53, KEY_COLOR, libtcod.white)
 		cd_control_con = NewConsole(35, 53, KEY_COLOR, libtcod.red)
 		cd_gui_con = NewConsole(35, 53, KEY_COLOR, libtcod.red)
-		time_weather_con = NewConsole(21, 6, libtcod.darkest_grey, libtcod.white)
+		time_con = NewConsole(21, 6, libtcod.darkest_grey, libtcod.white)
 		cd_player_unit_con = NewConsole(25, 16, libtcod.black, libtcod.white)
 		cd_direction_con = NewConsole(25, 16, libtcod.black, libtcod.white)
 		cd_command_con = NewConsole(25, 24, libtcod.black, libtcod.white)
+		cd_weather_con = NewConsole(23, 12, libtcod.black, libtcod.white)
 		cd_campaign_con = NewConsole(23, 16, libtcod.black, libtcod.white)
 		cd_hex_info_con = NewConsole(23, 9, libtcod.black, libtcod.white)
 		
@@ -1805,7 +1807,8 @@ class CampaignDay:
 		self.UpdateCDCommandCon()
 		self.UpdateCDCampaignCon()
 		self.UpdateCDHexInfoCon()
-		DisplayTimeInfo(time_weather_con)
+		DisplayWeatherInfo(cd_weather_con)
+		DisplayTimeInfo(time_con)
 		if self.scenario is not None:
 			self.UpdateCDDisplay()
 		
@@ -1850,7 +1853,7 @@ class CampaignDay:
 						exit_loop = True
 						continue
 				
-				DisplayTimeInfo(time_weather_con)
+				DisplayTimeInfo(time_con)
 				self.UpdateCDCampaignCon()
 				self.UpdateCDControlCon()
 				self.UpdateCDUnitCon()
@@ -1971,7 +1974,7 @@ class CampaignDay:
 							self.arty_support_level -= self.arty_support_step
 							if self.arty_support_level < 0.0: self.arty_support_level = 0.0
 					
-					DisplayTimeInfo(time_weather_con)
+					DisplayTimeInfo(time_con)
 					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
@@ -2007,7 +2010,7 @@ class CampaignDay:
 						campaign_day.AdvanceClock(0, 15)
 						text = 'Estimated enemy strength in zone: ' + str(map_hex2.enemy_strength)
 						ShowMessage(text)
-						DisplayTimeInfo(time_weather_con)
+						DisplayTimeInfo(time_con)
 						self.UpdateCDUnitCon()
 						self.UpdateCDCommandCon()
 						self.UpdateCDHexInfoCon()
@@ -2064,7 +2067,7 @@ class CampaignDay:
 							ShowMessage('You enter the allied-held zone.')
 						
 						# no battle triggered, update consoles
-						DisplayTimeInfo(time_weather_con)
+						DisplayTimeInfo(time_con)
 						self.UpdateCDCampaignCon()
 						self.UpdateCDControlCon()
 						self.UpdateCDUnitCon()
@@ -2085,7 +2088,7 @@ class CampaignDay:
 					self.AdvanceClock(0, 30)
 					ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
 					self.ResupplyPlayer()
-					DisplayTimeInfo(time_weather_con)
+					DisplayTimeInfo(time_con)
 					self.UpdateCDDisplay()
 					self.CheckForRandomEvent()
 					SaveGame()
@@ -6665,30 +6668,11 @@ class Scenario:
 		
 		libtcod.console_set_default_foreground(scen_info_con, libtcod.light_grey)
 		
-		# current temperature (TEMP static)
-		libtcod.console_print(scen_info_con, 0, 0, 'Mild')
-		
-		# cloud cover (TEMP static)
-		libtcod.console_print(scen_info_con, 0, 2, 'Clear')
-		
-		# precipitation (TEMP static)
-		libtcod.console_print(scen_info_con, 0, 4, 'Dry')
-		
-		# ground conditions (TEMP static)
-		libtcod.console_print(scen_info_con, 0, 6, 'Dry Ground')
+		DisplayWeatherInfo(scen_info_con)
 		
 		# terrain
 		libtcod.console_print(scen_info_con, 0, 10, 'Terrain:')
 		libtcod.console_print(scen_info_con, 1, 11, self.cd_map_hex.terrain_type)
-		
-		# wind strength and direction (TEMP static)
-		libtcod.console_print_ex(scen_info_con, 17, 0, libtcod.BKGND_NONE,
-			libtcod.RIGHT, 'No wind')
-		
-		# fog level if any (TEMP static)
-		libtcod.console_print_ex(scen_info_con, 17, 4, libtcod.BKGND_NONE,
-			libtcod.RIGHT, '')
-		
 	
 	
 	# update the tank/crew status console, which displays urgent information for the player
@@ -7196,7 +7180,7 @@ def GetDateText(dictionary):
 		', ' + str(dictionary['year']))
 
 
-# display date, time, weather, and phase information to a console
+# display date, time, and phase information to a console
 # console should be 21x6
 def DisplayTimeInfo(console):
 	libtcod.console_clear(console)
@@ -7226,13 +7210,37 @@ def DisplayTimeInfo(console):
 	text = str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
 	libtcod.console_print_ex(console, 10, 1, libtcod.BKGND_NONE, libtcod.CENTER, text)
 	
-	# FUTURE: current weather, wind, light level
-	
 	if campaign_day.scenario is None: return
 	libtcod.console_set_default_foreground(console, SCEN_PHASE_COL[scenario.phase])
 	libtcod.console_print_ex(console, 10, 5, libtcod.BKGND_NONE, libtcod.CENTER, 
 		SCEN_PHASE_NAMES[scenario.phase] + ' Phase')
+
+
+# display weather conditions info to a console, minimum width 12
+def DisplayWeatherInfo(console):
 	
+	w = libtcod.console_get_width(console)
+	
+	# current temperature (TEMP static)
+	libtcod.console_print(console, 0, 0, 'Mild')
+	
+	# cloud cover (TEMP static)
+	libtcod.console_print(console, 0, 2, 'Clear')
+	
+	# precipitation (TEMP static)
+	libtcod.console_print(console, 0, 4, 'Dry')
+	
+	# ground conditions (TEMP static)
+	libtcod.console_print(console, 0, 6, 'Dry Ground')
+	
+	# wind strength and direction (TEMP static)
+	libtcod.console_print_ex(console, w-1, 0, libtcod.BKGND_NONE,
+		libtcod.RIGHT, 'No wind')
+	
+	# fog level if any (TEMP static)
+	libtcod.console_print_ex(console, w-1, 4, libtcod.BKGND_NONE,
+		libtcod.RIGHT, '')
+
 
 # draw an ArmCom2-style frame to the given console
 def DrawFrame(console, x, y, w, h):

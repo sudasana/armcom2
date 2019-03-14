@@ -924,7 +924,7 @@ class CampaignDay:
 				self.ended = True
 	
 	
-	# roll for random event and do if rolled
+	# roll for trigger of random Campaign Day event
 	def CheckForRandomEvent(self):
 		
 		# don't trigger an event if day has already ended
@@ -945,9 +945,6 @@ class CampaignDay:
 		
 		# roll for event
 		roll = GetPercentileRoll()
-		
-		# TEMP testing
-		roll = 45.0
 		
 		# friendly forces capture an enemy zone
 		if roll <= 35.0:
@@ -993,8 +990,7 @@ class CampaignDay:
 				map_hex.enemy_strength = 10
 			
 			# don't show anything if zone not known to player
-			if not map_hex.known_to_player:
-				return
+			if not map_hex.known_to_player: return
 			
 			ShowMessage('We have reports of an increase of enemy strength in a zone!')
 			# FUTURE: highlight hex momentarily
@@ -1073,10 +1069,15 @@ class CampaignDay:
 				map_hex.enemy_strength = 1
 			if map_hex.enemy_strength > 10:
 				map_hex.enemy_strength = 10
-			
+		
+		# no other ranomd events for now
+		else:
+			pass
 		
 		# random event finished, update consoles and screen
+		self.UpdateCDUnitCon()
 		self.UpdateCDControlCon()
+		self.UpdateCDGUICon()
 		self.UpdateCDCommandCon()
 		self.UpdateCDHexInfoCon()
 		self.UpdateCDDisplay()
@@ -1416,12 +1417,10 @@ class CampaignDay:
 		libtcod.console_clear(cd_unit_con)
 		libtcod.console_set_default_foreground(cd_unit_con, libtcod.white)
 		
-		# enemy strength level, support level; only display if adjacent to player
+		# enemy strength level, player arty/air support
 		libtcod.console_set_default_foreground(cd_unit_con, libtcod.red)
-		(player_hx, player_hy) = self.player_unit_location
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			map_hex = self.map_hexes[(hx,hy)]
-			if GetHexDistance(player_hx, player_hy, hx, hy) > 1: continue
 			
 			(x,y) = self.PlotCDHex(hx, hy)
 			
@@ -1591,7 +1590,9 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 1, 4, text)
 			
 			# no direction selected yet
-			if self.selected_direction is None: return
+			if self.selected_direction is None:
+				libtcod.console_print(cd_command_con, 3, 12, 'Select a direction')
+				return
 			
 			# get the target hex
 			(hx, hy) = self.player_unit_location
@@ -1633,7 +1634,7 @@ class CampaignDay:
 			# check to see whether travel in selected direction is not possible
 			if self.selected_direction is None:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				libtcod.console_print(cd_command_con, 1, 2, 'Select a direction')
+				libtcod.console_print(cd_command_con, 3, 12, 'Select a direction')
 				return
 			(hx, hy) = self.player_unit_location
 			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
@@ -1843,6 +1844,8 @@ class CampaignDay:
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 						self.DoCrewCheck(campaign.player_unit)
 						self.CheckForEndOfDay()
+						self.UpdateCDDisplay()
+						libtcod.console_flush()
 						self.CheckForRandomEvent()
 						SaveGame()
 					
@@ -2112,6 +2115,8 @@ class CDMapHex:
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
 		self.air_support = False	# player has air support called in
 		self.arty_support = False	# " arty "
+		
+		self.objective_type = None	# player objective for this zone
 		
 		# set enemy strength level
 		self.enemy_strength = libtcod.random_get_int(0, 1, 5) + libtcod.random_get_int(0, 0, 5)
@@ -6630,14 +6635,8 @@ class Scenario:
 		# crew action phase
 		elif self.phase == PHASE_CREW_ACTION:
 			
-			if self.support_target is not None:
-				(hx, hy) = self.support_target
-				(x,y) = scenario.PlotHex(hx, hy)
-				# FUTURE use better target display here 
-				libtcod.console_put_char_ex(gui_con, x-1, y-1, 92, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x+1, y+1, 92, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x+1, y-1, 47, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x-1, y+1, 47, libtcod.red, libtcod.black)
+			pass
+			
 		
 		# shooting phase
 		elif self.phase == PHASE_SHOOTING:

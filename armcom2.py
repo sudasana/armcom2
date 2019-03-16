@@ -2363,7 +2363,7 @@ class Personnel:
 		if roll < 99.0:
 			roll += modifier
 
-		print('DEBUG: final modified wound roll was: ' + str(roll))
+		#print('DEBUG: final modified wound roll was: ' + str(roll))
 
 		if roll <= 45.0:
 			
@@ -4533,8 +4533,7 @@ class Scenario:
 			# roll column headers
 			libtcod.console_print(con, 34, 21, 'KO Wound')
 			libtcod.console_print(con, 49, 21, 'Bail Out')
-			libtcod.console_print(con, 60, 21, 'Burns Up')
-			libtcod.console_print(con, 72, 21, 'Rescue')
+			libtcod.console_print(con, 74, 21, 'Rescue')
 			
 			# list of crew
 			x = 2
@@ -4678,15 +4677,26 @@ class Scenario:
 		
 		if roll <= chance:
 			libtcod.console_set_default_foreground(con, libtcod.light_red)
-			libtcod.console_print(con, 60, 24, 'Burns')
-			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_print(con, 60, 21, 'Tank Burns')
 			burns = True
 		else:
-			libtcod.console_print(con, 60, 24, 'No Burn')
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_print(con, 60, 21, 'No Burn-up')
+		
+		if burns:
+			y = 20
+			for position in self.player_unit.positions_list:
+				y += 4
+				if position.crewman is None: continue
+				if position.crewman.bailed_out: continue
+				
+				libtcod.console_print(con, 60, y, 'Vulnerable')
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 		Wait(100)
+		
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		
 		# rescue rolls and final injuries
 		y = 20
@@ -4708,7 +4718,12 @@ class Scenario:
 				if result:
 					text = result
 			
-			libtcod.console_print(con, 72, y, text)
+			lines = wrap(text, 14)
+			y1 = y
+			for line in lines:
+				libtcod.console_print(con, 74, y1, line)
+				y1 += 1
+			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
 			Wait(100)

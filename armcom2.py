@@ -2230,6 +2230,8 @@ class Personnel:
 		
 		self.status = ''				# current status: Stunned, Unconscious, or Dead
 		self.wound = ''					# current wound: Light, Serious, or Critical
+		
+		self.bailed_out = False				# has bailed out of an AFV
 	
 	
 	# generate a random first and last name for this person
@@ -2310,10 +2312,14 @@ class Personnel:
 		return modifier 
 	
 	# given an attack profile, check to see whether this personnel is wounded/KIA
-	def DoWoundCheck(self, fp=0):
+	# return result if any
+	def DoWoundCheck(self, fp=0, roll_modifier=0.0, show_messages=True):
 		
 		# can't get worse
-		if self.status == 'Dead': return
+		if self.status == 'Dead': return None
+		
+		# only show messages if this is the player unit
+		if self.unit != scenario.player_unit: show_messages = False
 		
 		# final wound roll modifier
 		modifier = 0
@@ -2325,10 +2331,10 @@ class Personnel:
 			if self.unit.GetStat('armour') is not None:
 				
 				# not exposed
-				if not self.ce: return False
+				if not self.ce: return None
 				
 				# Unconcious crew are assumed to be slumped down and are protected
-				if self.status == 'Unconscious': return False
+				if self.status == 'Unconscious': return None
 				
 				if fp <= 4:
 					modifier -= 10.0
@@ -2342,12 +2348,9 @@ class Personnel:
 					modifier += 15.0
 				else:
 					modifier += 20.0
-			
-		# hit by penetrating AP round
-		elif ap_calibre > 0:
-			
-			# TEMP - nothing yet
-			return False
+		
+		# apply additional modifier if any
+		modifier += roll_modifier
 				
 		# roll for wound
 		roll = GetPercentileRoll()
@@ -2363,51 +2366,86 @@ class Personnel:
 		if roll <= 45.0:
 			
 			# near miss - no wound or other effect
-			return False
+			return None
 		
 		elif roll <= 55.0:
 			
-			# possible stun
+			if self.status in ['Stunned', 'Unconscious']:
+				return None
+				
 			self.DoStunCheck(0)
+			if self.status == 'Stunned':
+				if show_messages:
+					ShowMessage(self.GetFullName() + ' has been Stunned.')
+				return 'Stunned'
+			return None
 		
 		elif roll <= 70.0:
 			
-			if self.wound in ['Serious', 'Critical']: return False
+			if self.wound in ['Serious', 'Critical']: return None
 			
 			# light wound and possible stun
 			self.wound = 'Light'
-			if self.unit == scenario.player_unit:
+			if self.status not in ['Stunned', 'Unconscious']:
+				self.DoStunCheck(15)
+				if self.status == 'Stunned':
+					if show_messages:
+						ShowMessage(self.GetFullName() + ' has received a Light Wound and has been Stunned')
+					return 'Light Wound, Stunned'
+			
+			if show_messages:
 				ShowMessage(self.GetFullName() + ' has received a Light Wound.')
-			self.DoStunCheck(15)
-		
+			return 'Light Wound'
+				
+			
 		elif roll <= 85.0:
 			
-			if self.wound == 'Critical': return False
+			if self.wound == 'Critical': return None
 			
 			# serious wound, possibly knocked unconscious, otherwise stunned
 			self.wound = 'Serious'
-			if self.unit == scenario.player_unit:
-				ShowMessage(self.GetFullName() + ' has received a Serious Wound.')
-			self.DoKOCheck(0)
-		
+			
+			if self.status != 'Unconscious':
+				self.DoKOCheck(0)
+				if self.status == 'Unconscious':
+					if show_messages:
+						Message(self.GetFullName() + ' has received a Serious Wound ' +
+							'and has been knocked Unconscious')
+					return 'Serious Wound, Unconscious'
+			
+			if show_messages:
+				ShowMessage(self.GetFullName() + ' has received a Serious Wound and is Stunned')
+			return 'Serious Wound, Stunned'
+			
+			
 		elif roll <= 97.0:
 			
 			# critical wound, possibly knocked unconscious, otherwise stunned, may die next recovery check
 			self.wound = 'Critical'
-			if self.unit == scenario.player_unit:
-				ShowMessage(self.GetFullName() + ' has received a Critical Wound.')
-			self.DoKOCheck(15)
+			
+			if self.status != 'Unconscious':
+				self.DoKOCheck(15)
+				if self.status == 'Unconscious':
+					if show_messages:
+						Message(self.GetFullName() + ' has received a Critical Wound ' +
+							'and has been knocked Unconscious')
+					return 'Crtical Wound, Unconscious'
+				
+				if show_messages:
+					ShowMessage(self.GetFullName() + ' has received a Critical Wound and is Stunned')
+				return 'Critical Wound, Stunned'
 		
 		else:
 			
 			# killed
 			self.status = 'Dead'
 			self.wound = ''
-			if self.unit == scenario.player_unit:
+			
+			if show_messages:
 				ShowMessage(self.GetFullName() + ' has been killed.')
-		
-		return True
-	
+			
+			return 'Dead'
+				
 	
 	# check to see if this personnel is Stunned
 	def DoStunCheck(self, modifier):
@@ -2421,10 +2459,6 @@ class Personnel:
 		if roll <= self.stats['Grit'] * 15.0: return
 		
 		self.status = 'Stunned'
-		
-		# show message if part of player unit
-		if self.unit == scenario.player_unit:
-			ShowMessage(self.GetFullName() + ' has been Stunned.')
 
 
 	# check to see if this personnel is knocked unconscious
@@ -2435,12 +2469,8 @@ class Personnel:
 		if roll <= self.stats['Grit'] * 10.0:
 			# not knocked out, but Stunned
 			self.status = 'Stunned'
-			if self.unit == scenario.player_unit:
-				ShowMessage(self.GetFullName() + ' has been Stunned.')
 			return
 		self.status = 'Unconscious'
-		if self.unit == scenario.player_unit:
-			ShowMessage(self.GetFullName() + ' has been knocked Unconscious.')
 
 
 	# check for recovery from any current status
@@ -4500,9 +4530,9 @@ class Scenario:
 			
 			# roll column headers
 			libtcod.console_print(con, 34, 21, 'KO Wound')
-			libtcod.console_print(con, 46, 21, 'Bail Out')
-			libtcod.console_print(con, 58, 21, 'Brew Up')
-			libtcod.console_print(con, 70, 21, 'Rescue')
+			libtcod.console_print(con, 49, 21, 'Bail Out')
+			libtcod.console_print(con, 60, 21, 'Brew Up')
+			libtcod.console_print(con, 72, 21, 'Rescue')
 			
 			# list of crew
 			x = 2
@@ -4551,15 +4581,92 @@ class Scenario:
 			for y in range(23, 54):
 				libtcod.console_put_char(con, 29, y, 250)
 			
-			
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_set_default_background(con, libtcod.black)
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			
 		
-		# draw screen for first time
+		# draw screen for first time and pause
 		UpdateBailOutConsole()
+		
+		Wait(120)
+		
+		# do roll procedures
+		
+		# initial tank KO wound
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		y = 20
+		for position in self.player_unit.positions_list:
+			
+			y += 4
+			
+			if position.crewman is None: continue
+			if position.crewman.status == 'Dead': continue
+			
+			# FUTURE: modify by location on tank penetrated
+			result = position.crewman.DoWoundCheck(show_messages=False)
+			
+			if result is None:
+				text = 'OK'
+			else:
+				text = result
+			
+			lines = wrap(text, 14)
+			y1 = y
+			for line in lines:
+				libtcod.console_print(con, 33, y1, line)
+				y1 += 1
+			
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(100)
+		
+		Wait(100)
+		
+		# bail out roll
+		y = 20
+		for position in self.player_unit.positions_list:
+			
+			y += 4
+			
+			if position.crewman is None: continue
+			
+			if position.crewman.status in ['Unconscious', 'Dead']:
+				text = 'N/A'
+			else:
+			
+				modifier = 0.0
+				if position.crewman.status == 'Stunned':
+					modifier += 5.0
+				
+				if position.crewman.wound == 'Critical':
+					modifier += 15.0
+				elif position.crewman.wound == 'Serious':
+					modifier += 10.0
+				
+				if not position.hatch:
+					modifier += 15.0
+				elif position.crewman.ce:
+					modifier -= 20.0
+				
+				roll = GetPercentileRoll()
+				
+				# unmodified 97.0-100.0 always fail, otherwise modifier is applied
+				if roll < 97.0:
+					roll += modifier
+				
+				if roll <= 97.0:
+					position.crewman.bailed_out = True
+					text = 'Bailed'
+				else:
+					text = 'Failed'
+			
+			libtcod.console_print(con, 49, y, text)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(100)
+		
 		
 		exit_menu = False
 		while not exit_menu:

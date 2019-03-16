@@ -4463,6 +4463,116 @@ class Scenario:
 			ShowMessage('The campaign day is over.')
 			self.finished = True
 			return
+	
+	
+	# go through procedure for player crew bailing out of tank
+	def PlayerBailOut(self):
+		
+		# (re)draw the bail-out console and display on screen
+		def UpdateBailOutConsole():
+			
+			libtcod.console_clear(con)
+			
+			# window title
+			libtcod.console_set_default_background(con, libtcod.light_red)
+			libtcod.console_rect(con, 0, 2, WINDOW_WIDTH, 5, True, libtcod.BKGND_SET)
+			libtcod.console_set_default_foreground(con, libtcod.black)
+			libtcod.console_print_ex(con, WINDOW_XM, 4, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'BAILING OUT')
+			
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_set_default_background(con, libtcod.black)
+			
+			
+			# display player unit
+			libtcod.console_set_default_foreground(con, libtcod.lighter_blue)
+			libtcod.console_print(con, 33, 9, self.player_unit.unit_id)
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_print(con, 33, 10, self.player_unit.GetStat('class'))
+			libtcod.console_set_default_background(con, PORTRAIT_BG_COL)
+			libtcod.console_rect(con, 33, 11, 25, 8, True, libtcod.BKGND_SET)
+			portrait = self.player_unit.GetStat('portrait')
+			if portrait is not None:
+				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, con, 33, 11)
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			if self.player_unit.unit_name != '':
+				libtcod.console_print(con, 33, 11, self.player_unit.unit_name)
+			
+			# roll column headers
+			libtcod.console_print(con, 34, 21, 'KO Wound')
+			libtcod.console_print(con, 46, 21, 'Bail Out')
+			libtcod.console_print(con, 58, 21, 'Brew Up')
+			libtcod.console_print(con, 70, 21, 'Rescue')
+			
+			# list of crew
+			x = 2
+			y = 24
+			
+			for position in self.player_unit.positions_list:
+				
+				libtcod.console_set_default_foreground(con, libtcod.light_blue)
+				libtcod.console_print(con, x, y, position.name)
+				libtcod.console_set_default_foreground(con, libtcod.white)
+				libtcod.console_print_ex(con, x+24, y, libtcod.BKGND_NONE, 
+					libtcod.RIGHT, position.location)
+				
+				if position.crewman is None:
+					libtcod.console_print(con, x, y+1, 'Empty')
+				else:
+					text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
+					libtcod.console_print(con, x, y+1, text.encode('IBM850'))
+					
+					if position.crewman.wound != '':
+						libtcod.console_put_char_ex(con, x+21, y+1,
+							position.crewman.wound[0], libtcod.black,
+							libtcod.red)
+					
+					if position.crewman.ce:
+						text = 'CE'
+					else:
+						text = 'BU'
+					libtcod.console_print_ex(con, x+24, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
+				
+					# display current status
+					if position.crewman.status != '':
+						if position.crewman.status == 'Dead':
+							libtcod.console_set_default_foreground(crew_con, libtcod.dark_grey)
+						elif position.crewman.status == 'Unconscious':
+							libtcod.console_set_default_foreground(crew_con, libtcod.grey)
+						elif position.crewman.status == 'Stunned':
+							libtcod.console_set_default_foreground(crew_con, libtcod.light_grey)
+						libtcod.console_print_ex(con, x+24, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
+							position.crewman.status)
+				
+				y += 4
+			
+			# vertical dividing line
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			for y in range(23, 54):
+				libtcod.console_put_char(con, 29, y, 250)
+			
+			
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_set_default_background(con, libtcod.black)
+			
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			
+		
+		# draw screen for first time
+		UpdateBailOutConsole()
+		
+		exit_menu = False
+		while not exit_menu:
+			
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			keypress = GetInputEvent()
+			if not keypress: continue
+			
+			if key.vk == libtcod.KEY_ENTER:
+				exit_menu = True
+				continue
+			
 		
 	
 	# spawn enemy units on the hex map
@@ -6419,7 +6529,7 @@ class Scenario:
 			libtcod.console_print_ex(crew_con, 0+24, y, libtcod.BKGND_NONE, 
 				libtcod.RIGHT, position.location)
 			
-			# display last name of crewman and buttoned up / exposed status if any
+			# display name of crewman and buttoned up / exposed status if any
 			if position.crewman is None:
 				libtcod.console_print(crew_con, 0, y+1, 'Empty')
 			else:
@@ -6872,6 +6982,9 @@ class Scenario:
 				unit.ResetForNewTurn()
 			
 			self.init_complete = True
+			
+			# TEMP - testing
+			#self.PlayerBailOut()
 		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
@@ -7300,7 +7413,7 @@ def ShowMessage(text, portrait=None):
 	libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, x, 21)
 	libtcod.console_flush()
 	
-	Wait(200)
+	Wait(140)
 	
 	# re-draw screen
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)

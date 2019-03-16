@@ -1216,7 +1216,7 @@ class CampaignDay:
 			text = 'SURVIVED'
 		else:
 			col = ENEMY_UNIT_COL
-			text = 'DESTROYED'
+			text = 'TANK LOST'
 		libtcod.console_set_default_foreground(temp_con, col)
 		libtcod.console_print_ex(temp_con, 14, 8, libtcod.BKGND_NONE, libtcod.CENTER,
 			text)
@@ -4391,9 +4391,13 @@ class Unit:
 			elif category == 'Infantry':
 				campaign_day.records['Infantry Destroyed'] += 1
 		
-		# end scenario if player unit has been destroyed
+		# if player unit has been destroyed
 		if self == scenario.player_unit:
+			# set end-scenario flag
 			scenario.finished = True
+		
+			# do bail-out procedure
+			scenario.PlayerBailOut()
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
@@ -4747,7 +4751,6 @@ class Scenario:
 			if key.vk == libtcod.KEY_ENTER:
 				exit_menu = True
 				continue
-			
 		
 	
 	# spawn enemy units on the hex map
@@ -5202,8 +5205,6 @@ class Scenario:
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
 		del temp_con
-		
-		
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
@@ -7157,9 +7158,6 @@ class Scenario:
 				unit.ResetForNewTurn()
 			
 			self.init_complete = True
-			
-			# TEMP - testing
-			#self.PlayerBailOut()
 		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()

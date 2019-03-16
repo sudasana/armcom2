@@ -1,5 +1,5 @@
 {
- "Player Immortality": true,
+ "Player Immortality": false,
  "Support Requests Always Granted": false,
  "Always Scenario": true,
  "Always CD Random Event": false,
@@ -7,7 +7,7 @@
  "Player Always Moves": false,
  "Player Always HD": false,
  "No AI Actions": false,
- "AI Hates Player": false,
- "Player Always Penetrated": false,
+ "AI Hates Player": true,
+ "Player Always Penetrated": true,
  "Player Crew Hapless": false
 }

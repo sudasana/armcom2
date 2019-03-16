@@ -2363,6 +2363,8 @@ class Personnel:
 		if roll < 99.0:
 			roll += modifier
 
+		print('DEBUG: final modified wound roll was: ' + str(roll))
+
 		if roll <= 45.0:
 			
 			# near miss - no wound or other effect
@@ -2429,7 +2431,7 @@ class Personnel:
 					if show_messages:
 						Message(self.GetFullName() + ' has received a Critical Wound ' +
 							'and has been knocked Unconscious')
-					return 'Crtical Wound, Unconscious'
+					return 'Critical Wound, Unconscious'
 				
 				if show_messages:
 					ShowMessage(self.GetFullName() + ' has received a Critical Wound and is Stunned')
@@ -4531,7 +4533,7 @@ class Scenario:
 			# roll column headers
 			libtcod.console_print(con, 34, 21, 'KO Wound')
 			libtcod.console_print(con, 49, 21, 'Bail Out')
-			libtcod.console_print(con, 60, 21, 'Brew Up')
+			libtcod.console_print(con, 60, 21, 'Burns Up')
 			libtcod.console_print(con, 72, 21, 'Rescue')
 			
 			# list of crew
@@ -4615,7 +4617,7 @@ class Scenario:
 			lines = wrap(text, 14)
 			y1 = y
 			for line in lines:
-				libtcod.console_print(con, 33, y1, line)
+				libtcod.console_print(con, 32, y1, line)
 				y1 += 1
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -4667,6 +4669,57 @@ class Scenario:
 			libtcod.console_flush()
 			Wait(100)
 		
+		# tank burn up roll
+		# FUTURE: apply modifiers
+		chance = 80.0
+		burns = False
+		
+		roll = GetPercentileRoll()
+		
+		if roll <= chance:
+			libtcod.console_set_default_foreground(con, libtcod.light_red)
+			libtcod.console_print(con, 60, 24, 'Burns')
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			burns = True
+		else:
+			libtcod.console_print(con, 60, 24, 'No Burn')
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
+		Wait(100)
+		
+		# rescue rolls and final injuries
+		y = 20
+		for position in self.player_unit.positions_list:
+			
+			y += 4
+			
+			if position.crewman is None: continue
+			
+			if position.crewman.bailed_out: continue
+			
+			text = 'Rescued'
+			
+			if burns:
+			
+				# check for wound from burn-up before rescue
+				result = position.crewman.DoWoundCheck(roll_modifier=20.0, show_messages=False)
+				
+				if result:
+					text = result
+			
+			libtcod.console_print(con, 72, y, text)
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_flush()
+			Wait(100)
+		
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print(con, 41, 56, 'Enter')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print(con, 47, 56, 'Continue')
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		libtcod.console_flush()
 		
 		exit_menu = False
 		while not exit_menu:

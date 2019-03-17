@@ -1041,8 +1041,8 @@ class CampaignDay:
 		
 		# free resupply
 		elif roll <= 65.0:
-			ShowMessage('You happen to encounter a supply truck, which restocks you with ammo.')
-			self.ResupplyPlayer()
+			ShowMessage('You happen to encounter a supply truck, and can restock your gun ammo.')
+			self.AmmoReloadMenu()
 		
 		# loss of recon knowledge and possible change in strength
 		elif roll <= 80.0:
@@ -1088,6 +1088,7 @@ class CampaignDay:
 		
 		weapon = None
 		ammo_num = 0
+		add_num = 1
 		
 		# update the menu console and draw to screen
 		def UpdateMenuCon():
@@ -1122,6 +1123,7 @@ class CampaignDay:
 			libtcod.console_print(con, x, y+1, EnKey('e').upper())
 			libtcod.console_print(con, x, y+3, EnKey('d').upper())
 			libtcod.console_print(con, x, y+4, EnKey('a').upper())
+			libtcod.console_print(con, x, y+6, EnKey('z').upper())
 			
 			libtcod.console_print(con, x, y+9, 'Enter')
 			
@@ -1129,8 +1131,9 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print(con, x+2, y, 'Cycle Selected Gun')
 			libtcod.console_print(con, x+2, y+1, 'Cycle Selected Ammo Type')
-			libtcod.console_print(con, x+2, y+3, 'Load 1')
-			libtcod.console_print(con, x+2, y+4, 'Unload 1')
+			libtcod.console_print(con, x+2, y+3, 'Load ' + str(add_num))
+			libtcod.console_print(con, x+2, y+4, 'Unload ' + str(add_num))
+			libtcod.console_print(con, x+2, y+6, 'Toggle 1/10')
 			
 			libtcod.console_print(con, x+6, y+9, 'Accept and Continue')
 			
@@ -1170,8 +1173,8 @@ class CampaignDay:
 			# TODO: visual depicition of ready rack
 			
 			# visual depicition of main stores
-			x = 42
-			y = 28
+			x = 41
+			y = 26
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print(con, x-8, y+1, 'Stores')
 			
@@ -1193,7 +1196,7 @@ class CampaignDay:
 						
 						libtcod.console_put_char_ex(con, x+xm, y+ym, 7, col, libtcod.black)
 						
-						if xm == 4:
+						if xm == 8:
 							xm = 0
 							ym += 1
 						else:
@@ -1205,7 +1208,7 @@ class CampaignDay:
 			if total < int(weapon.stats['max_ammo']):
 				for i in range(int(weapon.stats['max_ammo']) - total):
 					libtcod.console_put_char(con, x+xm, y+ym, 9)
-					if xm == 4:
+					if xm == 8:
 						xm = 0
 						ym += 1
 					else:
@@ -1213,8 +1216,8 @@ class CampaignDay:
 			
 			# show current numerical values for each ammo type
 			# also which type is currently selected
-			x = 49
-			y = 29
+			x = 52
+			y = 26
 			for ammo_type in AMMO_TYPES:
 				if ammo_type in weapon.ammo_stores:
 					
@@ -1296,31 +1299,36 @@ class CampaignDay:
 			elif key_char == 'd':
 				
 				# make sure room remains
-				if ammo_num >= int(weapon.stats['max_ammo']):
+				if ammo_num + add_num > int(weapon.stats['max_ammo']):
 					continue
 				
-				weapon.ammo_stores[selected_ammo_type] += 1
-				ammo_num += 1
+				weapon.ammo_stores[selected_ammo_type] += add_num
+				ammo_num += add_num
 				UpdateMenuCon()
 				continue
 			
 			# unload one shell of selected type
 			elif key_char == 'a':
 				
-				# make sure 1 shell is available
-				if weapon.ammo_stores[selected_ammo_type] == 0:
+				# make sure shell(s) are available
+				if weapon.ammo_stores[selected_ammo_type] - add_num < 0:
 					continue
 				
-				weapon.ammo_stores[selected_ammo_type] -= 1
-				ammo_num -= 1
+				weapon.ammo_stores[selected_ammo_type] -= add_num
+				ammo_num -= add_num
+				UpdateMenuCon()
+				continue
+			
+			# toggle adding/removing 1/10
+			elif key_char == 'z':
+				
+				if add_num == 1:
+					add_num = 10
+				else:
+					add_num = 1
 				UpdateMenuCon()
 				continue
 				
-				
-		
-		
-		
-		
 		
 	
 	# check to see whether we need to replace crew after a scenario
@@ -1499,10 +1507,8 @@ class CampaignDay:
 	
 	
 	# resupply the player unit
+	# (not used at the moment)
 	def ResupplyPlayer(self):
-		
-		
-		
 		for weapon in campaign.player_unit.weapon_list:
 			if weapon.ammo_stores is not None:
 				weapon.LoadGunAmmo()
@@ -2331,11 +2337,9 @@ class CampaignDay:
 				
 				# request resupply
 				if key_char == 'r':
-					# TEMP disabled
-					#self.AdvanceClock(0, 30)
+					self.AdvanceClock(0, 30)
 					ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
 					self.AmmoReloadMenu()
-					#self.ResupplyPlayer()
 					DisplayTimeInfo(time_con)
 					self.UpdateCDDisplay()
 					self.CheckForRandomEvent()
@@ -9184,6 +9188,13 @@ while not exit_game:
 				campaign.player_unit.nation = campaign.stats['player_nation']
 				campaign.player_unit.GenerateNewPersonnel()
 				
+				# clear ammo load in player unit guns
+				for weapon in campaign.player_unit.weapon_list:
+					if weapon.GetStat('type') != 'Gun': continue
+					for ammo_type in AMMO_TYPES:
+						if ammo_type in weapon.ammo_stores:
+							weapon.ammo_stores[ammo_type] = 0
+				
 				# TODO: allow player to review crew and set nicknames if any
 				
 				# show start-of-day briefing
@@ -9201,6 +9212,9 @@ while not exit_game:
 				# placeholder for the currently active scenario
 				scenario = None
 				
+				# allow player to load ammo
+				campaign_day.AmmoReloadMenu()
+			
 			# pause main theme if playing
 			if main_theme is not None:
 				mixer.Mix_PauseMusic()

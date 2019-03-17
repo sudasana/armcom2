@@ -1087,6 +1087,7 @@ class CampaignDay:
 	def AmmoReloadMenu(self):
 		
 		weapon = None
+		ammo_num = 0
 		
 		# update the menu console and draw to screen
 		def UpdateMenuCon():
@@ -1211,16 +1212,23 @@ class CampaignDay:
 						xm += 1
 			
 			# show current numerical values for each ammo type
+			# also which type is currently selected
 			x = 49
 			y = 29
 			for ammo_type in AMMO_TYPES:
 				if ammo_type in weapon.ammo_stores:
+					
+					if selected_ammo_type == ammo_type:
+						libtcod.console_set_default_background(con, libtcod.dark_blue)
+						libtcod.console_rect(con, x, y, 10, 1, True, libtcod.BKGND_SET)
+						libtcod.console_set_default_background(con, libtcod.black)
 					
 					if ammo_type == 'HE':
 						col = libtcod.grey
 					elif ammo_type == 'AP':
 						col = libtcod.yellow
 					libtcod.console_put_char_ex(con, x, y, 7, col, libtcod.black)
+					
 					libtcod.console_set_default_foreground(con, libtcod.white)
 					libtcod.console_print(con, x+2, y, ammo_type)
 					libtcod.console_set_default_foreground(con, libtcod.light_grey)
@@ -1242,8 +1250,15 @@ class CampaignDay:
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			
 			
-		# select first weapon by default
+		# select first weapon by default, and first ammo type
 		weapon = campaign.player_unit.weapon_list[0]
+		selected_ammo_type = weapon.stats['ammo_type_list'][0]
+		
+		# record initial total number of ammo
+		ammo_num = 0
+		for ammo_type in AMMO_TYPES:
+			if ammo_type in weapon.ammo_stores:
+				ammo_num += weapon.ammo_stores[ammo_type]
 		
 		# draw screen for first time
 		UpdateMenuCon()
@@ -1260,7 +1275,48 @@ class CampaignDay:
 			if key.vk == libtcod.KEY_ENTER:
 				exit_menu = True
 				continue
-		
+			
+			# mapped key commands
+			key_char = DeKey(chr(key.c).lower())
+			
+			# cycle selected ammo type
+			if key_char == 'e':
+				i = weapon.stats['ammo_type_list'].index(selected_ammo_type)
+				
+				if i == len(weapon.stats['ammo_type_list']) - 1:
+					i = 0
+				else:
+					i += 1
+					
+				selected_ammo_type = weapon.stats['ammo_type_list'][i]
+				UpdateMenuCon()
+				continue
+			
+			# load one shell of selected type
+			elif key_char == 'd':
+				
+				# make sure room remains
+				if ammo_num >= int(weapon.stats['max_ammo']):
+					continue
+				
+				weapon.ammo_stores[selected_ammo_type] += 1
+				ammo_num += 1
+				UpdateMenuCon()
+				continue
+			
+			# unload one shell of selected type
+			elif key_char == 'a':
+				
+				# make sure 1 shell is available
+				if weapon.ammo_stores[selected_ammo_type] == 0:
+					continue
+				
+				weapon.ammo_stores[selected_ammo_type] -= 1
+				ammo_num -= 1
+				UpdateMenuCon()
+				continue
+				
+				
 		
 		
 		

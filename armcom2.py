@@ -1083,6 +1083,190 @@ class CampaignDay:
 		self.UpdateCDDisplay()
 	
 	
+	# menu for restocking ammo for main guns on the player tank
+	def AmmoReloadMenu(self):
+		
+		weapon = None
+		
+		# update the menu console and draw to screen
+		def UpdateMenuCon():
+			
+			libtcod.console_clear(con)
+			
+			# window title
+			libtcod.console_set_default_background(con, libtcod.dark_blue)
+			libtcod.console_rect(con, 0, 2, WINDOW_WIDTH, 5, True, libtcod.BKGND_SET)
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print_ex(con, WINDOW_XM, 4, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'Ammo Load')
+			
+			# player unit portrait
+			x = 33
+			y = 9
+			libtcod.console_set_default_background(con, PORTRAIT_BG_COL)
+			libtcod.console_rect(con, x, y, 25, 8, True, libtcod.BKGND_SET)
+			portrait = campaign.player_unit.GetStat('portrait')
+			if portrait is not None:
+				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, con, x, y)
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			if campaign.player_unit.unit_name != '':
+				libtcod.console_print(con, x, y, self.player_unit.unit_name)
+			libtcod.console_set_default_background(con, libtcod.black)
+			
+			# command menu
+			x = 58
+			y = 43
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print(con, x, y, EnKey('q').upper())
+			libtcod.console_print(con, x, y+1, EnKey('e').upper())
+			libtcod.console_print(con, x, y+3, EnKey('d').upper())
+			libtcod.console_print(con, x, y+4, EnKey('a').upper())
+			
+			libtcod.console_print(con, x, y+9, 'Enter')
+			
+			
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print(con, x+2, y, 'Cycle Selected Gun')
+			libtcod.console_print(con, x+2, y+1, 'Cycle Selected Ammo Type')
+			libtcod.console_print(con, x+2, y+3, 'Load 1')
+			libtcod.console_print(con, x+2, y+4, 'Unload 1')
+			
+			libtcod.console_print(con, x+6, y+9, 'Accept and Continue')
+			
+			
+			# possible but not likely
+			if weapon is None:
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				return
+			
+			libtcod.console_print_ex(con, WINDOW_XM, 18, libtcod.BKGND_NONE,
+				libtcod.CENTER, weapon.GetStat('name'))
+			
+			# description of ammo types available to current gun
+			x = 62
+			y = 9
+			for ammo_type in weapon.stats['ammo_type_list']:
+				
+				libtcod.console_set_default_foreground(con, libtcod.white)
+				
+				if ammo_type == 'HE':
+					libtcod.console_print(con, x, y, 'High Explosive (HE)')
+					libtcod.console_set_default_foreground(con, libtcod.light_grey)
+					libtcod.console_print(con, x, y+2, 'Used against guns,')
+					libtcod.console_print(con, x, y+3, 'infantry, and unarmoured')
+					libtcod.console_print(con, x, y+4, 'vehicles.')
+					
+					y += 7
+				
+				elif ammo_type == 'AP':
+					libtcod.console_print(con, x, y, 'Armour Penetrating (AP)')
+					libtcod.console_set_default_foreground(con, libtcod.light_grey)
+					libtcod.console_print(con, x, y+2, 'Used against armoured')
+					libtcod.console_print(con, x, y+3, 'targets.')
+					
+					y += 6
+			
+			# TODO: visual depicition of ready rack
+			
+			# visual depicition of main stores
+			x = 42
+			y = 28
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print(con, x-8, y+1, 'Stores')
+			
+			ammo_count = weapon.ammo_stores.copy()
+			
+			libtcod.console_set_default_foreground(con, libtcod.darker_grey)
+			xm = 0
+			ym = 0
+			total = 0
+			for ammo_type in AMMO_TYPES:
+				if ammo_type in ammo_count:
+					for i in range(ammo_count[ammo_type]):
+						
+						# determine colour to use
+						if ammo_type == 'HE':
+							col = libtcod.grey
+						elif ammo_type == 'AP':
+							col = libtcod.yellow
+						
+						libtcod.console_put_char_ex(con, x+xm, y+ym, 7, col, libtcod.black)
+						
+						if xm == 4:
+							xm = 0
+							ym += 1
+						else:
+							xm += 1
+						
+						total += 1
+			
+			# fill out empty slots up to max ammo
+			if total < int(weapon.stats['max_ammo']):
+				for i in range(int(weapon.stats['max_ammo']) - total):
+					libtcod.console_put_char(con, x+xm, y+ym, 9)
+					if xm == 4:
+						xm = 0
+						ym += 1
+					else:
+						xm += 1
+			
+			# show current numerical values for each ammo type
+			x = 49
+			y = 29
+			for ammo_type in AMMO_TYPES:
+				if ammo_type in weapon.ammo_stores:
+					
+					if ammo_type == 'HE':
+						col = libtcod.grey
+					elif ammo_type == 'AP':
+						col = libtcod.yellow
+					libtcod.console_put_char_ex(con, x, y, 7, col, libtcod.black)
+					libtcod.console_set_default_foreground(con, libtcod.white)
+					libtcod.console_print(con, x+2, y, ammo_type)
+					libtcod.console_set_default_foreground(con, libtcod.light_grey)
+					libtcod.console_print_ex(con, x+8, y, libtcod.BKGND_NONE,
+						libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
+					y += 1
+			y += 1
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print(con, x+2, y, 'Max:')
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_print_ex(con, x+8, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, weapon.stats['max_ammo'])
+			
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			
+			
+			# TODO: visual depicition of extra ammo
+			
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			
+			
+		# select first weapon by default
+		weapon = campaign.player_unit.weapon_list[0]
+		
+		# draw screen for first time
+		UpdateMenuCon()
+		
+		# menu input loop
+		exit_menu = False
+		while not exit_menu:
+			
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			keypress = GetInputEvent()
+			if not keypress: continue
+			
+			if key.vk == libtcod.KEY_ENTER:
+				exit_menu = True
+				continue
+		
+		
+		
+		
+		
+		
+	
 	# check to see whether we need to replace crew after a scenario
 	def DoCrewCheck(self, unit):
 		
@@ -1260,6 +1444,9 @@ class CampaignDay:
 	
 	# resupply the player unit
 	def ResupplyPlayer(self):
+		
+		
+		
 		for weapon in campaign.player_unit.weapon_list:
 			if weapon.ammo_stores is not None:
 				weapon.LoadGunAmmo()
@@ -2088,9 +2275,11 @@ class CampaignDay:
 				
 				# request resupply
 				if key_char == 'r':
-					self.AdvanceClock(0, 30)
+					# TEMP disabled
+					#self.AdvanceClock(0, 30)
 					ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
-					self.ResupplyPlayer()
+					self.AmmoReloadMenu()
+					#self.ResupplyPlayer()
 					DisplayTimeInfo(time_con)
 					self.UpdateCDDisplay()
 					self.CheckForRandomEvent()

@@ -59,9 +59,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.4.0'					# game version
+VERSION = '0.4.0-2019-03-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -4520,8 +4520,8 @@ class Unit:
 			
 			# FUTURE: chance of minor damage to vehicle
 			
-			# check for crew wound
-			# TEMP? Player unit only
+			# check for crew wound - Player unit only
+			# FUTURE: also apply to AI units?
 			if self == scenario.player_unit:
 				
 				for position in self.positions_list:

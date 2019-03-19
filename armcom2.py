@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.4.0-2019-03-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -6969,7 +6969,9 @@ class Scenario:
 				if position.crewman.wound != '':
 					libtcod.console_put_char_ex(crew_con, 21, y+1, position.crewman.wound[0], libtcod.black, libtcod.red)
 				
-				if position.crewman.ce:
+				if not position.hatch:
+					text = '--'
+				elif position.crewman.ce:
 					text = 'CE'
 				else:
 					text = 'BU'

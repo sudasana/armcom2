@@ -825,6 +825,8 @@ class Campaign:
 class CampaignDay:
 	def __init__(self):
 		
+		self.fate_points = libtcod.random_get_int(0, 1, 3)	# fate points protecting the player
+		
 		# victory point rewards for this campaign day
 		self.capture_zone_vp = 2
 		self.unit_destruction_vp = {
@@ -6144,12 +6146,43 @@ class Scenario:
 			for i in range(6):
 				roll = GetPercentileRoll()
 				
-				# check for debug flag
-				if DEBUG and i == 5:
-					if profile['attacker'] == scenario.player_unit and session.debug['Player Always Hits']:
-						roll = 3.0
-					elif profile['target'] == scenario.player_unit and session.debug['Player Always Penetrated']:
-						roll = 3.0
+				# modifiers applied to the final roll, the one that counts
+				if i == 5:
+				
+					# check for player fate point usage
+					if profile['target'] == scenario.player_unit and campaign_day.fate_points > 0:
+						
+						# hit or penetration
+						if roll <= profile['final_chance'] or roll <= CRITICAL_HIT:
+							
+							# point fire hit
+							if profile['type'] == 'Point Fire':
+								
+								# hit with large calibre weapon
+								if profile['weapon'].GetStat('calibre') is not None:
+									if int(profile['weapon'].GetStat('calibre')) > 25:
+										
+										# apply fate point
+										campaign_day.fate_points -= 1
+										roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
+										if roll > 100.0:
+											roll = 100.0
+							
+							# AP penetration
+							elif profile['type'] == 'ap':
+								
+								# apply fate point
+								campaign_day.fate_points -= 1
+								roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
+								if roll > 100.0:
+									roll = 100.0
+				
+					# check for debug flag
+					if DEBUG:
+						if profile['attacker'] == scenario.player_unit and session.debug['Player Always Hits']:
+							roll = 3.0
+						elif profile['target'] == scenario.player_unit and profile['type'] == 'ap' and session.debug['Player Always Penetrated']:
+							roll = 3.0
 				
 				# clear any previous text
 				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,

@@ -78,7 +78,7 @@ WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of gam
 KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak', 'Custom']	# list of possible keyboard layout settings
 
 MAX_TANK_NAME_LENGTH = 20				# maximum length of tank names
-
+MAX_NICKNAME_LENGTH = 10				# " for crew nicknames
 
 ##### Hex geometry definitions #####
 
@@ -2464,6 +2464,7 @@ class Personnel:
 		self.first_name = ''				# placeholders for first and last name
 		self.last_name = ''				#   set by GenerateName()
 		self.GenerateName()				# generate random first and last name
+		self.nickname = ''				# player-set nickname
 		
 		self.stats = {					# default values for modification
 			'Perception' : 3,
@@ -6992,11 +6993,16 @@ class Scenario:
 				libtcod.console_print(crew_con, 0, y+1, 'Empty')
 			else:
 				
-				# build string of first initial and last name
-				text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
+				# use nickname if any
+				if position.crewman.nickname != '':
+					libtcod.console_print(crew_con, 0, y+1, '"' + position.crewman.nickname + '"')
+				else:
 				
-				# names might have special characters so we encode it before printing it
-				libtcod.console_print(crew_con, 0, y+1, text.encode('IBM850'))
+					# build string of first initial and last name
+					text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
+					
+					# names might have special characters so we encode it before printing it
+					libtcod.console_print(crew_con, 0, y+1, text.encode('IBM850'))
 				
 				# display wound status if any
 				if position.crewman.wound != '':
@@ -8294,7 +8300,7 @@ def ShowNotification(text, confirm=False):
 
 
 
-# display the in-game menu
+# display the in-game menu: 84x54
 def ShowGameMenu():
 	
 	# draw the contents of the currently active tab to the menu console
@@ -8345,12 +8351,20 @@ def ShowGameMenu():
 		elif active_tab == 2:
 			
 			# display list of crew in the player tank
-			DisplayCrew(campaign.player_unit, game_menu_con, 6, 13, selected_position)
+			DisplayCrew(campaign.player_unit, game_menu_con, 6, 8, selected_position)
 			
 			# display details on crewman in highlighted position
 			crewman = campaign.player_unit.positions_list[selected_position].crewman
 			if crewman is not None:
-				DisplayPersonnelInfo(crewman, game_menu_con, 38, 8)
+				DisplayPersonnelInfo(crewman, game_menu_con, 38, 7)
+			
+			# crew menu options if any
+			if crewman is not None:
+				if crewman.nickname == '':
+					libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
+					libtcod.console_print(game_menu_con, 8, 47, 'N')
+					libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+					libtcod.console_print(game_menu_con, 10, 47, 'Set Crewman Nickname')
 			
 		
 		# Options Menu
@@ -8428,6 +8442,26 @@ def ShowGameMenu():
 				
 				DrawMenuCon(active_tab, selected_position)
 				continue
+			
+			# set crewman nickname
+			elif key_char == 'n':
+				crewman = campaign.player_unit.positions_list[selected_position].crewman
+				if crewman is None: continue
+				if crewman.nickname != '': continue
+				nickname = ShowTextInputMenu('Enter a nickname for ' + crewman.GetFullName(), '', MAX_NICKNAME_LENGTH, [])
+				# no text entered
+				if nickname == '':
+					DrawMenuCon(active_tab, selected_position)
+					continue
+				result = ShowNotification("Once set this cannot be changed, are you certain you want this crewman's nickname to be '" + nickname + "'?", confirm=True)
+				# nickname confirmed
+				if result:
+					crewman.nickname = nickname
+					# update crew info console if we are in a scenario
+					if scenario is not None:
+						scenario.UpdateCrewInfoCon()
+				DrawMenuCon(active_tab, selected_position)
+				continue
 		
 		# Options Menu
 		elif active_tab == 3:
@@ -8448,36 +8482,40 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 	libtcod.console_set_default_foreground(console, libtcod.grey)
 	DrawFrame(console, x, y, 31, 41)
 	libtcod.console_hline(console, x+1, y+4, 29)
-	libtcod.console_hline(console, x+1, y+6, 29)
-	libtcod.console_hline(console, x+1, y+8, 29)
-	libtcod.console_hline(console, x+1, y+10, 29)
-	libtcod.console_hline(console, x+1, y+13, 29)
-	libtcod.console_hline(console, x+1, y+19, 29)
-	libtcod.console_hline(console, x+1, y+27, 29)
+	libtcod.console_hline(console, x+1, y+7, 29)
+	libtcod.console_hline(console, x+1, y+9, 29)
+	libtcod.console_hline(console, x+1, y+11, 29)
+	libtcod.console_hline(console, x+1, y+14, 29)
+	libtcod.console_hline(console, x+1, y+20, 29)
+	libtcod.console_hline(console, x+1, y+28, 29)
 	
 	# section titles
 	libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
 	libtcod.console_print(console, x+1, y+2, 'Crewman Report')
 	libtcod.console_print(console, x+1, y+5, 'Name')
-	libtcod.console_print(console, x+1, y+7, 'Age')
-	libtcod.console_print(console, x+1, y+9, 'Rank')
-	libtcod.console_print(console, x+1, y+11, 'Current')
-	libtcod.console_print(console, x+1, y+12, 'Position')
-	libtcod.console_print(console, x+1, y+14, 'Assessment')
-	libtcod.console_print(console, x+1, y+20, 'Injuries')
-	libtcod.console_print(console, x+1, y+28, 'Status')
+	libtcod.console_print(console, x+1, y+8, 'Age')
+	libtcod.console_print(console, x+1, y+10, 'Rank')
+	libtcod.console_print(console, x+1, y+12, 'Current')
+	libtcod.console_print(console, x+1, y+13, 'Position')
+	libtcod.console_print(console, x+1, y+15, 'Assessment')
+	libtcod.console_print(console, x+1, y+21, 'Injuries')
+	libtcod.console_print(console, x+1, y+29, 'Status')
 	
 	# info
 	libtcod.console_set_default_foreground(console, libtcod.white)
 	libtcod.console_print(console, x+10, y+5, crewman.GetFullName().encode('IBM850'))
+	if crewman.nickname != '':
+		libtcod.console_print(console, x+10, y+6, '"' + crewman.nickname + '"')
+	
 	# FUTURE: have not been added yet
 	#libtcod.console_print(console, x+10, y+7, str(crewman.age))
 	#libtcod.console_print(console, x+10, y+9, crewman.rank_desc)
-	libtcod.console_print(console, x+10, y+11, campaign.player_unit.unit_id)
-	libtcod.console_print(console, x+10, y+12, crewman.current_position.name)
+	
+	libtcod.console_print(console, x+10, y+12, campaign.player_unit.unit_id)
+	libtcod.console_print(console, x+10, y+13, crewman.current_position.name)
 	
 	# list traits
-	y1 = y+15
+	y1 = y+16
 	
 	libtcod.console_put_char_ex(console, x+7, y1, chr(4), libtcod.yellow, libtcod.black)
 	libtcod.console_put_char_ex(console, x+7, y1+1, chr(3), libtcod.red, libtcod.black)
@@ -8493,14 +8531,14 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 		y1 += 1
 	
 	libtcod.console_set_default_background(console, libtcod.darkest_grey)
-	libtcod.console_rect(console, x+7, y+16, 15, 1, False, libtcod.BKGND_SET)
-	libtcod.console_rect(console, x+7, y+18, 15, 1, False, libtcod.BKGND_SET)
+	libtcod.console_rect(console, x+7, y+17, 15, 1, False, libtcod.BKGND_SET)
+	libtcod.console_rect(console, x+7, y+19, 15, 1, False, libtcod.BKGND_SET)
 	libtcod.console_set_default_background(console, libtcod.black)
 	
 	# current status if any
 	if crewman.status != '':
 	
-		y1 = y+29
+		y1 = y+30
 		libtcod.console_set_default_foreground(console, libtcod.red)
 		libtcod.console_print(console, x+2, y1, crewman.status)
 		
@@ -8632,17 +8670,22 @@ def ShowTextInputMenu(prompt, original_text, max_length, string_list):
 	y = 23
 	libtcod.console_set_default_foreground(0, libtcod.light_grey)
 	for line in lines:
-		libtcod.console_print_ex(0, 45, y, libtcod.BKGND_NONE, libtcod.CENTER, line)
+		libtcod.console_print_ex(0, 45, y, libtcod.BKGND_NONE, libtcod.CENTER, line.encode('IBM850'))
 		y += 1
 	
 	libtcod.console_set_default_foreground(0, ACTION_KEY_COL)
 	libtcod.console_print(0, 31, 35, 'Del')
-	libtcod.console_print(0, 31, 36, 'Tab')
 	libtcod.console_print(0, 31, 37, 'Enter')
+	
 	libtcod.console_set_default_foreground(0, libtcod.white)
 	libtcod.console_print(0, 37, 35, 'Clear')
-	libtcod.console_print(0, 37, 36, 'Generate Random')
 	libtcod.console_print(0, 37, 37, 'Confirm and Continue')
+	
+	if len(string_list) > 0:
+		libtcod.console_set_default_foreground(0, ACTION_KEY_COL)
+		libtcod.console_print(0, 31, 36, 'Tab')
+		libtcod.console_set_default_foreground(0, libtcod.white)
+		libtcod.console_print(0, 37, 36, 'Generate Random')
 	
 	# display current text string
 	ShowText(text)
@@ -8820,7 +8863,11 @@ def DisplayCrew(unit, console, x, y, highlight):
 			else:
 				text = 'BU'
 			libtcod.console_print_ex(console, x+23, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
-				
+			
+			# display current nickname if any
+			if position.crewman.nickname != '':
+				libtcod.console_print(console, x, y+3, '"' + position.crewman.nickname + '"')
+			
 			# display current status if any
 			if position.crewman.status != '':
 				libtcod.console_set_default_foreground(console, libtcod.red)

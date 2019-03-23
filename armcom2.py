@@ -2815,6 +2815,16 @@ class Personnel:
 				if self.current_position.name not in d['position_list']:
 					continue
 			
+			if k == 'Abandon Tank':
+				crew_injured = False
+				for position in self.unit.positions_list:
+					if position.crewman is None: continue
+					if position.crewman.status == 'Dead' or position.crewman.wound in ['Critical']:
+						crew_injured = True
+						break
+				if not crew_injured:
+					continue
+			
 			self.cmd_list.append(k)
 	
 	# select a new command from command list
@@ -4795,7 +4805,7 @@ class Scenario:
 	def PlayerBailOut(self):
 		
 		# (re)draw the bail-out console and display on screen
-		def UpdateBailOutConsole():
+		def UpdateBailOutConsole(skip_ko=False):
 			
 			libtcod.console_clear(con)
 			
@@ -4889,35 +4899,37 @@ class Scenario:
 		
 		# do roll procedures
 		
-		# initial tank KO wound
-		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		y = 20
-		for position in self.player_unit.positions_list:
-			
-			y += 4
-			
-			if position.crewman is None: continue
-			if position.crewman.status == 'Dead': continue
-			
-			# FUTURE: modify by location on tank penetrated
-			result = position.crewman.DoWoundCheck(show_messages=False)
-			
-			if result is None:
-				text = 'OK'
-			else:
-				text = result
-			
-			lines = wrap(text, 14)
-			y1 = y
-			for line in lines:
-				libtcod.console_print(con, 32, y1, line)
-				y1 += 1
-			
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-			Wait(100)
+		if not skip_ko:
 		
-		Wait(100)
+			# initial tank KO wound
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			y = 20
+			for position in self.player_unit.positions_list:
+				
+				y += 4
+				
+				if position.crewman is None: continue
+				if position.crewman.status == 'Dead': continue
+				
+				# FUTURE: modify by location on tank penetrated
+				result = position.crewman.DoWoundCheck(show_messages=False)
+				
+				if result is None:
+					text = 'OK'
+				else:
+					text = result
+				
+				lines = wrap(text, 14)
+				y1 = y
+				for line in lines:
+					libtcod.console_print(con, 32, y1, line)
+					y1 += 1
+				
+				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+				libtcod.console_flush()
+				Wait(100)
+			
+			Wait(100)
 		
 		# bail out roll
 		y = 20
@@ -6664,7 +6676,6 @@ class Scenario:
 	def AdvanceToNextPhase(self):
 		
 		# do end of phase actions for player
-		#print ('DEBUG: Doing end of phase: ' + SCEN_PHASE_NAMES[self.phase])
 		
 		# end of player turn, switching to enemy turn
 		if self.phase == PHASE_ALLIED_ACTION:
@@ -6733,7 +6744,6 @@ class Scenario:
 			self.phase += 1
 		
 		# do automatic actions at start of phase
-		#print ('DEBUG: Doing start of phase: ' + SCEN_PHASE_NAMES[self.phase])
 		
 		# command phase: rebuild lists of commands
 		if self.phase == PHASE_COMMAND:
@@ -6741,6 +6751,17 @@ class Scenario:
 		
 		# spotting phase: do spotting then automatically advance
 		elif self.phase == PHASE_SPOTTING:
+			
+			# check for abandoning tank
+			for position in self.player_unit.positions_list:
+				if position.crewman is None: continue
+				if position.crewman.current_cmd == 'Abandon Tank':
+					campaign.player_unit.alive = False
+					ShowMessage('You abandon your tank, ending the combat day.')
+					campaign_day.ended = True
+					self.finished = True
+					continue
+			
 			self.player_unit.DoSpotChecks()
 			self.advance_phase = True
 		

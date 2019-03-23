@@ -769,6 +769,7 @@ class Campaign:
 		libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
 		# day description
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		lines = wrap(campaign.today['desc'], 25)
 		y = 8
 		for line in lines:
@@ -776,7 +777,19 @@ class Campaign:
 			y+=1
 			if y == 19: break
 		
-		# TODO: display day objectives
+		# placeholder for mission details
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print_ex(con, 45, 23, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Advance')
+		
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		text = 'Capture enemy-held territory and destroy enemy units.'
+		lines = wrap(text, 25)
+		y = 25
+		for line in lines:
+			libtcod.console_print(con, 32, y, line)
+			y+=1
+			if y == 29: break
 		
 		# player support
 		text = 'Air Support: '
@@ -793,13 +806,21 @@ class Campaign:
 			text += str(campaign.today['arty_support_level'])
 		libtcod.console_print(con, 33, 34, text)
 		
-		# TODO: expected enemy forces
+		# expected enemy forces
+		text = session.nations[campaign.stats['enemy_nations'][0]]['adjective']
+		text += ' infantry, guns, and AFVs'
+		lines = wrap(text, 25)
+		y = 39
+		for line in lines:
+			libtcod.console_print(con, 33, y, line)
+			y+=1
+			if y == 42: break
 		
 		# FUTURE: weather forecast
 		
 		# end of day
 		text = 'End of Day: ' + campaign.today['end_hour'].zfill(2) + ':' + campaign.today['end_minute'].zfill(2)
-		libtcod.console_print_ex(con, 45, 50, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		libtcod.console_print_ex(con, 45, 49, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
@@ -1072,7 +1093,24 @@ class CampaignDay:
 			if map_hex.enemy_strength > 10:
 				map_hex.enemy_strength = 10
 		
-		# no other ranomd events for now
+		# increase current support level
+		elif roll <= 90.0:
+			
+			text = 'Additional '
+			
+			if 'air_support_level' in campaign.today:
+				text += 'air'
+				self.air_support_level += (self.air_support_step * float(libtcod.random_get_int(0, 1, 3)))
+			elif 'arty_support_level' in campaign.today:
+				text += 'artillery'
+				self.arty_support_level += (self.arty_support_step * float(libtcod.random_get_int(0, 1, 3)))
+			else:
+				return
+			
+			text += ' support has made available to you from Command.'
+			ShowMessage(text)
+		
+		# no other random events for now
 		else:
 			pass
 		
@@ -5096,10 +5134,14 @@ class Scenario:
 				distance = 3
 			
 			hex_list = GetHexRing(0, 0, distance)
+			shuffle(hex_list)
 			
-			# FUTURE: lower chance of spawning in bottom half of map
-			
-			(hx, hy) = choice(hex_list)
+			# choose a random hex in which to spawn
+			for (hx, hy) in hex_list:
+				# make it less likely that enemy units will spawni behind the player
+				if GetDirectionToward(hx, hy, 0, 0) in [5, 0, 1]:
+					if GetPercentileRoll() <= 75.0: continue
+				break
 			
 			# create the unit
 			unit = Unit(unit_id)

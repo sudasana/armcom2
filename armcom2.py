@@ -8365,10 +8365,39 @@ def ShowGameMenu():
 					libtcod.console_print(game_menu_con, 8, 47, 'N')
 					libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
 					libtcod.console_print(game_menu_con, 10, 47, 'Set Crewman Nickname')
+		
+		
+		# Tank Menu
+		elif active_tab == 3:
+			
+			# display player tank info
+			campaign.player_unit.DisplayMyInfo(game_menu_con, 27, 7)
+			
+			# unit description
+			text = ''
+			for t in campaign.player_unit.GetStat('description'):
+				text += t
+			lines = wrap(text, 33)
+			y = 25
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.light_grey)
+			for line in lines[:20]:
+				libtcod.console_print(game_menu_con, 23, y, line)
+				y+=1
+			
+			# display ammo stores for main gun
+			weapon = campaign.player_unit.weapon_list[0]
+			if weapon.GetStat('type') == 'Gun':
+				y = 17
+				for ammo_type in AMMO_TYPES:
+					if ammo_type in weapon.ammo_stores:
+						libtcod.console_print(game_menu_con, 54, y, ammo_type)
+						libtcod.console_print_ex(game_menu_con, 59, y, libtcod.BKGND_NONE,
+							libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
+						y += 1
 			
 		
 		# Options Menu
-		elif active_tab == 3:
+		elif active_tab == 4:
 			
 			# display game options commands
 			DisplayGameOptions(game_menu_con, WINDOW_XM-15, 18, skip_esc=True)
@@ -8403,7 +8432,7 @@ def ShowGameMenu():
 		key_char = DeKey(chr(key.c).lower())
 		
 		# Switch Active Menu
-		if key.vk == libtcod.KEY_ESCAPE or key_char in ['1', '2', '3']:
+		if key.vk == libtcod.KEY_ESCAPE or key_char in ['1', '2', '3', '4']:
 			
 			# close menu
 			if key.vk == libtcod.KEY_ESCAPE and active_tab == 0:
@@ -8463,8 +8492,13 @@ def ShowGameMenu():
 				DrawMenuCon(active_tab, selected_position)
 				continue
 		
-		# Options Menu
+		# Tank Menu
 		elif active_tab == 3:
+			pass
+		
+		
+		# Options Menu
+		elif active_tab == 4:
 			if ChangeGameSettings(key_char):
 				# redraw menu to reflect new settings
 				DrawMenuCon(active_tab, selected_position)

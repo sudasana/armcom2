@@ -846,6 +846,15 @@ class Campaign:
 class CampaignDay:
 	def __init__(self):
 		
+		# current weather conditions, will be set by GenerateWeather
+		self.weather = {
+			'Cloud Cover': '',
+			'Precipitation': '',
+			'Fog': 0,
+			'Ground': ''
+		}
+		self.GenerateWeather()
+		
 		self.fate_points = libtcod.random_get_int(0, 1, 3)	# fate points protecting the player
 		
 		# victory point rewards for this campaign day
@@ -926,6 +935,61 @@ class CampaignDay:
 		# set up player
 		self.player_unit_location = (-2, 8)		# set initial player unit location
 		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
+	
+	
+	# generate a new random set of initial weather conditions, should only be called when day is created
+	def GenerateWeather(self):
+		
+		# cloud cover
+		roll = GetPercentileRoll()
+		
+		if roll <= 50.0:
+			self.weather['Cloud Cover'] = 'Clear'
+		elif roll <= 65.0:
+			self.weather['Cloud Cover'] = 'Scattered'
+		elif roll <= 85.0:
+			self.weather['Cloud Cover'] = 'Heavy'
+		else:
+			self.weather['Cloud Cover'] = 'Overcast'
+		
+		# precipitation
+		if self.weather['Cloud Cover'] == 'Clear':
+			self.weather['Precipitation'] = 'None'
+		else:
+			roll = GetPercentileRoll()
+			
+			if roll <= 40.0:
+				self.weather['Precipitation'] = 'None'
+			elif roll <= 50.0:
+				self.weather['Precipitation'] = 'Mist'
+			elif roll <= 80.0:
+				self.weather['Precipitation'] = 'Rain'
+			else:
+				self.weather['Precipitation'] = 'Heavy Rain'
+		
+		# FUTURE fog level: 0-3
+		
+		# Ground conditions
+		roll = GetPercentileRoll()
+		
+		if self.weather['Cloud Cover'] == 'Clear':
+			roll -= 40.0
+		elif self.weather['Cloud Cover'] == 'Overcast':
+			roll += 10.0
+		
+		if self.weather['Precipitation'] == 'None':
+			roll -= 20.0
+		elif self.weather['Precipitation'] == 'Rain':
+			roll += 30.0
+		elif self.weather['Precipitation'] == 'Heavy Rain':
+			roll += 70.0
+		
+		if roll <= 75.0:
+			self.weather['Ground'] = 'Dry'
+		elif roll <= 85.0:
+			self.weather['Ground'] = 'Wet'
+		else:
+			self.weather['Ground'] = 'Muddy'
 		
 	
 	# advance the current campaign day time
@@ -7862,14 +7926,17 @@ def DisplayWeatherInfo(console):
 	# current temperature (TEMP static)
 	libtcod.console_print(console, 0, 0, 'Mild')
 	
-	# cloud cover (TEMP static)
-	libtcod.console_print(console, 0, 2, 'Clear')
+	# cloud cover
+	text = 'Cloud Cover: ' + campaign_day.weather['Cloud Cover']
+	libtcod.console_print(console, 0, 2, text)
 	
-	# precipitation (TEMP static)
-	libtcod.console_print(console, 0, 4, 'Dry')
+	# precipitation
+	text = 'Precip: ' + campaign_day.weather['Precipitation']
+	libtcod.console_print(console, 0, 4, text)
 	
-	# ground conditions (TEMP static)
-	libtcod.console_print(console, 0, 6, 'Dry Ground')
+	# ground conditions
+	text = 'Ground: ' + campaign_day.weather['Ground']
+	libtcod.console_print(console, 0, 6, text)
 	
 	# wind strength and direction (TEMP static)
 	libtcod.console_print_ex(console, w-1, 0, libtcod.BKGND_NONE,

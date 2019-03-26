@@ -1010,19 +1010,19 @@ class CampaignDay:
 		
 		# ground condition update only
 		
-		if roll <= 70.0:
+		if roll <= 50.0:
 			
 			roll = GetPercentileRoll()
 			
 			if self.weather['Ground'] == 'Muddy':
 				if self.weather['Precipitation'] == 'None':
-					if roll <= 10.0:
+					if roll <= 20.0:
 						self.weather['Ground'] = 'Wet'
 						ShowMessage('The ground has become less muddy.')
 			
 			elif self.weather['Ground'] == 'Wet':
 				if self.weather['Precipitation'] == 'None':
-					if roll <= 10.0:
+					if roll <= 20.0:
 						self.weather['Ground'] = 'Dry'
 						ShowMessage('The ground has dried out.')
 				else:
@@ -1030,7 +1030,7 @@ class CampaignDay:
 					if self.weather['Precipitation'] == 'Heavy Rain':
 						roll -= 10.0
 					
-					if roll <= 15.0:
+					if roll <= 30.0:
 						self.weather['Ground'] = 'Muddy'
 						ShowMessage('The ground has become muddy.')
 			# dry ground
@@ -1040,14 +1040,14 @@ class CampaignDay:
 					if self.weather['Precipitation'] == 'Heavy Rain':
 						roll -= 10.0
 					
-					if roll <= 15.0:
+					if roll <= 25.0:
 						self.weather['Ground'] = 'Wet'
 						ShowMessage('The ground has become wet.')
 			
 			return
 			
 		# change in precipitation level
-		elif roll <= 85.0:
+		elif roll <= 70.0:
 			
 			if self.weather['Cloud Cover'] == 'Clear':
 				return
@@ -1094,44 +1094,48 @@ class CampaignDay:
 			
 			return
 		
+		# FUTURE: change in fog level
+		elif roll <= 85.0:
+			pass
+		
 		# change in cloud level
 		else:
 			
 			roll = GetPercentileRoll()
 			
 			if self.weather['Cloud Cover'] == 'Clear':
-				if roll <= 15.0:
+				if roll <= 25.0:
 					self.weather['Cloud Cover'] = 'Scattered'
 					ShowMessage('Scattered clouds begin to form.')
-				elif roll <= 20.0:
+				elif roll <= 30.0:
 					self.weather['Cloud Cover'] = 'Heavy'
 					ShowMessage('A heavy cloud front rolls in.')
 			
 			elif self.weather['Cloud Cover'] == 'Scattered':
-				if roll <= 15.0:
+				if roll <= 35.0:
 					# clouds won't disappear if precip is falling
 					if self.weather['Precipitation'] == 'None':
 						return
 					self.weather['Cloud Cover'] = 'Clear'
 					ShowMessage('The clouds part and the sky is clear.')
-				elif roll <= 30.0:
+				elif roll <= 50.0:
 					self.weather['Cloud Cover'] = 'Heavy'
 					ShowMessage('The cloud cover gets thicker.')
-				elif roll <= 35.0:
+				elif roll <= 55.0:
 					self.weather['Cloud Cover'] = 'Overcast'
 					ShowMessage('A storm front has rolled in.')
 			
 			elif self.weather['Cloud Cover'] == 'Heavy':
-				if roll <= 15.0:
+				if roll <= 25.0:
 					self.weather['Cloud Cover'] = 'Scattered'
 					ShowMessage('The clouds begin to thin out.')
-				elif roll <= 30.0:
+				elif roll <= 40.0:
 					self.weather['Cloud Cover'] = 'Overcast'
 					ShowMessage('The cloud cover thickens.')
 			
 			# overcast
 			else:
-				if roll <= 15.0:
+				if roll <= 25.0:
 					self.weather['Cloud Cover'] = 'Heavy'
 					ShowMessage('The cloud cover begins to part.')
 
@@ -1149,8 +1153,6 @@ class CampaignDay:
 		self.weather_update_clock -= minutes
 		if self.weather_update_clock <= 0:
 			self.UpdateWeather()
-		else:
-			print(str(self.weather_update_clock))
 	
 	
 	# sets flag if we've met or exceeded the set length of the combat day

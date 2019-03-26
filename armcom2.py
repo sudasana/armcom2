@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.4.0-2019-03-23'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -1927,12 +1927,19 @@ class CampaignDay:
 		# support
 		if self.active_menu == 1:
 			
+			# overcast sky, no support possible
+			no_air_support = False
+			if self.weather['Cloud Cover'] == 'Overcast':
+				no_air_support = True
+			
 			# display current support levels
-			text = 'Air Support: '
-			if self.air_support_level == 0.0:
-				text += 'None'
+			if no_air_support:
+				text = 'Overcast: Air Supp. N/A'
 			else:
-				text += str(self.air_support_level)
+				if self.air_support_level == 0.0:
+					text += 'None'
+				else:
+					text += str(self.air_support_level)
 			libtcod.console_print(cd_command_con, 1, 3, text)
 			
 			text = 'Artillery Support: '
@@ -1940,7 +1947,7 @@ class CampaignDay:
 				text += 'None'
 			else:
 				text += str(self.arty_support_level)
-			libtcod.console_print(cd_command_con, 1, 4, text)
+			libtcod.console_print(cd_command_con, 1, 5, text)
 			
 			# no direction selected yet
 			if self.selected_direction is None:
@@ -1960,7 +1967,7 @@ class CampaignDay:
 			if map_hex.air_support:
 				libtcod.console_set_default_foreground(cd_command_con, ALLIED_UNIT_COL)
 				libtcod.console_print(cd_command_con, 1, 13, 'Air Support inbound')
-			elif map_hex.controlled_by == 1 and self.air_support_level > 0.0:
+			elif not no_air_support and map_hex.controlled_by == 1 and self.air_support_level > 0.0:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 				libtcod.console_print_ex(cd_command_con, 12, 16, libtcod.BKGND_NONE, libtcod.CENTER,
 					'15 mins to attempt call')
@@ -2014,10 +2021,12 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			text = 'Travel Time: '
 			if self.selected_direction in map_hex.dirt_roads:
-				text += '10'
+				mins = 10
 			else:
-				text += '15'
-			text += ' mins.'
+				mins = 15
+			if self.weather['Ground'] == 'Muddy':
+				mins = mins * 2
+			text += str(mins) + ' mins.'
 			libtcod.console_print(cd_command_con, 1, 5, text)
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
@@ -2313,6 +2322,11 @@ class CampaignDay:
 							roll = 1.0
 					
 					if key_char == 'r':
+						
+						# Overcast, air support not allowed
+						if self.weather['Cloud Cover'] == 'Overcast':
+							continue
+						
 						if roll > self.air_support_level:
 							ShowMessage('Request for air support was not successful.')
 						else:
@@ -2385,6 +2399,8 @@ class CampaignDay:
 							mins = 10
 						else:
 							mins = 15
+						if campaign_day.weather['Ground'] == 'Muddy':
+							mins = mins * 2
 						campaign_day.AdvanceClock(0, mins)
 						
 						# set new player location and clear travel direction
@@ -3779,10 +3795,6 @@ class Unit:
 		self.forward_move_chance = BASE_FORWARD_MOVE_CHANCE
 		self.reverse_move_chance = BASE_REVERSE_MOVE_CHANCE
 		
-		# add bonuses from previous moves
-		self.forward_move_chance += self.forward_move_bonus
-		self.reverse_move_chance += self.reverse_move_bonus
-		
 		# apply modifier from unit movement type
 		movement_class = scenario.player_unit.GetStat('movement_class')
 		if movement_class == 'Slow Tank':
@@ -3799,6 +3811,19 @@ class Unit:
 				mod = SCENARIO_TERRAIN_EFFECTS[self.terrain]['Movement Mod']
 				self.forward_move_chance += mod
 				self.reverse_move_chance += mod
+		
+		# apply modifier for ground conditions
+		if campaign_day.weather['Ground'] == 'Muddy':
+			if movement_class == 'Wheeled':
+				mod = -45.0
+			else:
+				mod = -30.0
+			self.forward_move_chance += mod
+			self.reverse_move_chance += mod
+		
+		# add bonuses from previous moves
+		self.forward_move_chance += self.forward_move_bonus
+		self.reverse_move_chance += self.reverse_move_bonus
 		
 		# add bonuses from commander direction
 		for position in ['Commander', 'Commander/Gunner']:
@@ -3932,6 +3957,12 @@ class Unit:
 						chance += 7.0
 					elif size_class == 'Very Large':
 						chance += 18.0
+				
+				# precipitation
+				if campaign_day.weather['Precipitation'] == 'Rain':
+					chance -= 5.0 * float(distance)
+				elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+					chance -= 10.0 * float(distance)
 				
 				# target moving
 				if unit.moving:
@@ -4484,8 +4515,12 @@ class Unit:
 						
 						# apply critical hit multiplier
 						if profile['result'] == 'CRITICAL HIT':
-							effective_fp = effective_fp * 2 
-					
+							effective_fp = effective_fp * 2
+						
+						# apply ground conditions modifier
+						if campaign_day.weather['Ground'] == 'Muddy':
+							effective_fp = int(float(effective_fp) * 0.5)
+						
 						target.fp_to_resolve += effective_fp
 						
 						if not target.spotted:
@@ -5719,6 +5754,13 @@ class Scenario:
 			if attacker.pinned:
 				modifier_list.append(('Attacker Pinned', -60.0))
 			
+			# precipitation
+			if campaign_day.weather['Precipitation'] == 'Rain':
+				modifier_list.append(('Rain', -10.0 * float(distance)))
+			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+				modifier_list.append(('Heavy Rain', -20.0 * float(distance)))
+			
+			
 			# unspotted target
 			if not target.spotted:
 				modifier_list.append(('Unspotted Target', -20.0))
@@ -6890,13 +6932,6 @@ class Scenario:
 			self.UpdateScenarioDisplay()
 			libtcod.console_flush()
 			
-			# check for support attacks and resolve them here
-			#if self.support_target is not None:
-			#	if self.cd_map_hex.air_support:
-			#		self.AirAttack()
-			#	else:
-			#		self.ArtilleryAttack()
-			
 			# player squad acts first
 			for unit in scenario.player_unit.squad:
 				unit.MoveToTopOfStack()
@@ -7927,7 +7962,7 @@ def DisplayWeatherInfo(console):
 	libtcod.console_print(console, 0, 0, 'Mild')
 	
 	# cloud cover
-	text = 'Cloud Cover: ' + campaign_day.weather['Cloud Cover']
+	text = 'Clouds: ' + campaign_day.weather['Cloud Cover']
 	libtcod.console_print(console, 0, 2, text)
 	
 	# precipitation

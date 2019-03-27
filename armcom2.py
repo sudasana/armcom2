@@ -4659,6 +4659,10 @@ class Unit:
 			# point fire attack hit
 			elif profile['result'] in ['CRITICAL HIT', 'HIT']:
 				
+				# record if player hit
+				if self == scenario.player_unit:
+					campaign_day.records['Gun Hit'] += 1
+				
 				# infantry or gun target
 				if target.GetStat('category') in ['Infantry', 'Gun']:
 					

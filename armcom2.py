@@ -1004,53 +1004,50 @@ class CampaignDay:
 		# reset update clock
 		self.weather_update_clock = 14 + (libtcod.random_get_int(0, 1, 16))
 		
-		# roll for type of change
+		# always apply ground condition update
 		
 		roll = GetPercentileRoll()
+			
+		if self.weather['Ground'] == 'Muddy':
+			if self.weather['Precipitation'] == 'None':
+				if roll <= 20.0:
+					self.weather['Ground'] = 'Wet'
+					ShowMessage('The ground has become less muddy.')
 		
-		# ground condition update only
-		
-		if roll <= 50.0:
-			
-			roll = GetPercentileRoll()
-			
-			if self.weather['Ground'] == 'Muddy':
-				if self.weather['Precipitation'] == 'None':
-					if roll <= 20.0:
-						self.weather['Ground'] = 'Wet'
-						ShowMessage('The ground has become less muddy.')
-			
-			elif self.weather['Ground'] == 'Wet':
-				if self.weather['Precipitation'] == 'None':
-					if roll <= 20.0:
-						self.weather['Ground'] = 'Dry'
-						ShowMessage('The ground has dried out.')
-				else:
-					
-					if self.weather['Precipitation'] == 'Heavy Rain':
-						roll -= 10.0
-					
-					if roll <= 30.0:
-						self.weather['Ground'] = 'Muddy'
-						ShowMessage('The ground has become muddy.')
-			# dry ground
+		elif self.weather['Ground'] == 'Wet':
+			if self.weather['Precipitation'] == 'None':
+				if roll <= 20.0:
+					self.weather['Ground'] = 'Dry'
+					ShowMessage('The ground has dried out.')
 			else:
-				if self.weather['Precipitation'] != 'None':
-					
-					if self.weather['Precipitation'] == 'Heavy Rain':
-						roll -= 10.0
-					
-					if roll <= 25.0:
-						self.weather['Ground'] = 'Wet'
-						ShowMessage('The ground has become wet.')
-			
-			return
+				
+				if self.weather['Precipitation'] == 'Heavy Rain':
+					roll -= 10.0
+				
+				if roll <= 30.0:
+					self.weather['Ground'] = 'Muddy'
+					ShowMessage('The ground has become muddy.')
+		# dry ground
+		else:
+			if self.weather['Precipitation'] != 'None':
+				
+				if self.weather['Precipitation'] == 'Heavy Rain':
+					roll -= 10.0
+				
+				if roll <= 25.0:
+					self.weather['Ground'] = 'Wet'
+					ShowMessage('The ground has become wet.')
+		
+		
+		# roll for possible type of change
+		
+		roll = GetPercentileRoll()
 			
 		# change in precipitation level
-		elif roll <= 70.0:
+		if roll <= 50.0:
 			
 			if self.weather['Cloud Cover'] == 'Clear':
-				return
+				return False
 			
 			roll = GetPercentileRoll()
 			
@@ -1064,6 +1061,8 @@ class CampaignDay:
 				elif roll <= 25.0:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('A heavy downpour suddenly begins to fall.')
+				else:
+					return False
 			
 			elif self.weather['Precipitation'] == 'Mist':
 				if roll <= 10.0:
@@ -1075,6 +1074,8 @@ class CampaignDay:
 				elif roll <= 25.0:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('The light mist suddenly turns into a heavy downpour.')
+				else:
+					return False
 			
 			elif self.weather['Precipitation'] == 'Rain':
 				if roll <= 5.0:
@@ -1086,17 +1087,21 @@ class CampaignDay:
 				elif roll <= 25.0:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('The rain gets heavier.')
+				else:
+					return False
 			
 			elif self.weather['Precipitation'] == 'Heavy Rain':
 				if roll <= 15.0:
 					self.weather['Precipitation'] = 'Rain'
 					ShowMessage('The rain lightens a little.')
+				else:
+					return False
 			
-			return
+			return True
 		
 		# FUTURE: change in fog level
-		elif roll <= 85.0:
-			pass
+		elif roll <= 75.0:
+			return False
 		
 		# change in cloud level
 		else:
@@ -1110,6 +1115,8 @@ class CampaignDay:
 				elif roll <= 30.0:
 					self.weather['Cloud Cover'] = 'Heavy'
 					ShowMessage('A heavy cloud front rolls in.')
+				else:
+					return False
 			
 			elif self.weather['Cloud Cover'] == 'Scattered':
 				if roll <= 35.0:
@@ -1124,6 +1131,8 @@ class CampaignDay:
 				elif roll <= 55.0:
 					self.weather['Cloud Cover'] = 'Overcast'
 					ShowMessage('A storm front has rolled in.')
+				else:
+					return False
 			
 			elif self.weather['Cloud Cover'] == 'Heavy':
 				if roll <= 25.0:
@@ -1132,12 +1141,18 @@ class CampaignDay:
 				elif roll <= 40.0:
 					self.weather['Cloud Cover'] = 'Overcast'
 					ShowMessage('The cloud cover thickens.')
+				else:
+					return False
 			
 			# overcast
 			else:
 				if roll <= 25.0:
 					self.weather['Cloud Cover'] = 'Heavy'
 					ShowMessage('The cloud cover begins to part.')
+				else:
+					return False
+			
+			return True
 
 	
 	# advance the current campaign day time, check for end of day, and also weather conditions update
@@ -1152,7 +1167,12 @@ class CampaignDay:
 		self.weather_update_clock -= hours * 60
 		self.weather_update_clock -= minutes
 		if self.weather_update_clock <= 0:
-			self.UpdateWeather()
+			# if weather conditions change, update relevant consoles
+			if self.UpdateWeather():
+				self.UpdateCDCommandCon()
+				DisplayWeatherInfo(cd_weather_con)
+				if scenario is not None:
+					scenario.UpdateScenarioInfoCon()
 	
 	
 	# sets flag if we've met or exceeded the set length of the combat day
@@ -3698,15 +3718,15 @@ class AI:
 			scored_list.sort(key=lambda x:x[0], reverse=True)
 			
 			# DEBUG: list scored attacks
-			#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-			#n = 1
-			#for (score, weapon, target, ammo_type) in scored_list:
-			#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-			#	if ammo_type != '':
-			#		text += '(' + ammo_type + ')'
-			#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-			#	print (text)
-			#	n += 1
+			print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+			n = 1
+			for (score, weapon, target, ammo_type) in scored_list:
+				text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+				if ammo_type != '':
+					text += '(' + ammo_type + ')'
+				text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+				print (text)
+				n += 1
 			
 			# select best attack
 			(score, weapon, target, ammo_type) = scored_list[0]

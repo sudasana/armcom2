@@ -61,7 +61,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.4.0-2019-03-23'				# game version
+VERSION = '0.4.0-rc1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1402,7 +1402,9 @@ class CampaignDay:
 			libtcod.console_print(con, x, y+4, EnKey('a').upper())
 			libtcod.console_print(con, x, y+6, EnKey('z').upper())
 			
-			libtcod.console_print(con, x, y+9, 'Enter')
+			libtcod.console_print(con, x, y+8, EnKey('x').upper())
+			
+			libtcod.console_print(con, x, y+10, 'Enter')
 			
 			
 			libtcod.console_set_default_foreground(con, libtcod.white)
@@ -1412,7 +1414,9 @@ class CampaignDay:
 			libtcod.console_print(con, x+2, y+4, 'Unload ' + str(add_num))
 			libtcod.console_print(con, x+2, y+6, 'Toggle 1/10')
 			
-			libtcod.console_print(con, x+6, y+9, 'Accept and Continue')
+			libtcod.console_print(con, x+2, y+8, 'Default Load')
+			
+			libtcod.console_print(con, x+6, y+10, 'Accept and Continue')
 			
 			
 			# possible but not likely
@@ -1603,6 +1607,32 @@ class CampaignDay:
 					add_num = 10
 				else:
 					add_num = 1
+				UpdateMenuCon()
+				continue
+			
+			# replace current load with default
+			elif key_char == 'x':
+				
+				# clear current load
+				for ammo_type in AMMO_TYPES:
+					if ammo_type in weapon.ammo_stores:
+						weapon.ammo_stores[ammo_type] = 0
+				
+				# replace with default load
+				
+				# HE only
+				if 'HE' in weapon.ammo_stores and 'AP' not in weapon.ammo_stores:
+					weapon.ammo_stores['HE'] = int(weapon.stats['max_ammo'])
+					
+				# AP only
+				elif 'AP' in weapon.ammo_stores and 'HE' not in weapon.ammo_stores:
+					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo'])
+		
+				# HE and AP
+				else:
+					weapon.ammo_stores['HE'] = int(float(weapon.stats['max_ammo']) * 0.75)
+					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo']) - weapon.ammo_stores['HE']
+							
 				UpdateMenuCon()
 				continue
 				

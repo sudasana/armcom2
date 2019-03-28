@@ -462,7 +462,7 @@ HD_SIZE_MOD = {
 }
 
 # base chance of a random event in the campaign day interface
-BASE_CD_RANDOM_EVENT_CHANCE = 20.0
+BASE_CD_RANDOM_EVENT_CHANCE = 10.0
 
 
 
@@ -999,8 +999,6 @@ class CampaignDay:
 	# update weather conditions, possibly changing them
 	def UpdateWeather(self):
 		
-		print('DEBUG: Updating weather conditions')
-		
 		# reset update clock
 		self.weather_update_clock = 14 + (libtcod.random_get_int(0, 1, 16))
 		
@@ -1042,6 +1040,8 @@ class CampaignDay:
 		# roll for possible type of change
 		
 		roll = GetPercentileRoll()
+		
+		print('Weather Debug: Initial roll was: ' + str(roll))
 			
 		# change in precipitation level
 		if roll <= 50.0:
@@ -1100,8 +1100,8 @@ class CampaignDay:
 			return True
 		
 		# FUTURE: change in fog level
-		elif roll <= 75.0:
-			return False
+		#elif roll <= 75.0:
+		#	return False
 		
 		# change in cloud level
 		else:
@@ -1197,7 +1197,7 @@ class CampaignDay:
 				roll = 1.0
 		
 		if roll > self.random_event_chance:
-			self.random_event_chance += 5.0
+			self.random_event_chance += 3.0
 			return
 		
 		# reset random event chance

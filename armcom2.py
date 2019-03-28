@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.4.0-rc1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -462,7 +462,7 @@ HD_SIZE_MOD = {
 }
 
 # base chance of a random event in the campaign day interface
-BASE_CD_RANDOM_EVENT_CHANCE = 10.0
+BASE_CD_RANDOM_EVENT_CHANCE = 5.0
 
 
 
@@ -1038,10 +1038,7 @@ class CampaignDay:
 		
 		
 		# roll for possible type of change
-		
 		roll = GetPercentileRoll()
-		
-		print('Weather Debug: Initial roll was: ' + str(roll))
 			
 		# change in precipitation level
 		if roll <= 50.0:
@@ -1052,46 +1049,46 @@ class CampaignDay:
 			roll = GetPercentileRoll()
 			
 			if self.weather['Precipitation'] == 'None':
-				if roll <= 10.0:
+				if roll <= 20.0:
 					self.weather['Precipitation'] = 'Mist'
 					ShowMessage('A light mist begins to fall.')
-				elif roll <= 20.0:
+				elif roll <= 40.0:
 					self.weather['Precipitation'] = 'Rain'
 					ShowMessage('Rain begins to fall.')
-				elif roll <= 25.0:
+				elif roll <= 50.0:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('A heavy downpour suddenly begins to fall.')
 				else:
 					return False
 			
 			elif self.weather['Precipitation'] == 'Mist':
-				if roll <= 10.0:
+				if roll <= 20.0:
 					self.weather['Precipitation'] = 'None'
 					ShowMessage('The light mist has cleared up.')
-				elif roll <= 20.0:
+				elif roll <= 40.0:
 					self.weather['Precipitation'] = 'Rain'
 					ShowMessage('The light mist thickens into a steady rain.')
-				elif roll <= 25.0:
+				elif roll <= 50.0:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('The light mist suddenly turns into a heavy downpour.')
 				else:
 					return False
 			
 			elif self.weather['Precipitation'] == 'Rain':
-				if roll <= 5.0:
+				if roll <= 15.0:
 					self.weather['Precipitation'] = 'None'
 					ShowMessage('The rain has cleared up.')
-				elif roll <= 10.0:
+				elif roll <= 35.0:
 					self.weather['Precipitation'] = 'Mist'
 					ShowMessage('The rain turns into a light mist.')
-				elif roll <= 25.0:
+				elif roll <= 50.0:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('The rain gets heavier.')
 				else:
 					return False
 			
 			elif self.weather['Precipitation'] == 'Heavy Rain':
-				if roll <= 15.0:
+				if roll <= 35.0:
 					self.weather['Precipitation'] = 'Rain'
 					ShowMessage('The rain lightens a little.')
 				else:
@@ -1167,6 +1164,7 @@ class CampaignDay:
 		self.weather_update_clock -= hours * 60
 		self.weather_update_clock -= minutes
 		if self.weather_update_clock <= 0:
+			print('DEBUG: possible weather update')
 			# if weather conditions change, update relevant consoles
 			if self.UpdateWeather():
 				self.UpdateCDCommandCon()
@@ -1197,7 +1195,7 @@ class CampaignDay:
 				roll = 1.0
 		
 		if roll > self.random_event_chance:
-			self.random_event_chance += 3.0
+			self.random_event_chance += 2.0
 			return
 		
 		# reset random event chance
@@ -2514,10 +2512,6 @@ class CampaignDay:
 						if self.arty_support_level == 0.0: continue
 						if map_hex.arty_support: continue
 					
-					# spend time
-					campaign_day.AdvanceClock(0, 15)
-					
-					
 					# do roll
 					roll = GetPercentileRoll()
 					
@@ -2548,6 +2542,8 @@ class CampaignDay:
 							self.arty_support_level -= self.arty_support_step
 							if self.arty_support_level < 0.0: self.arty_support_level = 0.0
 					
+					# spend time
+					campaign_day.AdvanceClock(0, 15)
 					DisplayTimeInfo(time_con)
 					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
@@ -2581,9 +2577,9 @@ class CampaignDay:
 						# not enemy-controlled
 						if map_hex2.controlled_by == 0: continue
 						map_hex2.known_to_player = True
-						campaign_day.AdvanceClock(0, 15)
 						text = 'Estimated enemy strength in zone: ' + str(map_hex2.enemy_strength)
 						ShowMessage(text)
+						campaign_day.AdvanceClock(0, 15)
 						DisplayTimeInfo(time_con)
 						self.UpdateCDUnitCon()
 						self.UpdateCDCommandCon()
@@ -2661,9 +2657,9 @@ class CampaignDay:
 				
 				# request resupply
 				if key_char == 'r':
-					self.AdvanceClock(0, 30)
 					ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
 					self.AmmoReloadMenu()
+					self.AdvanceClock(0, 30)
 					DisplayTimeInfo(time_con)
 					self.UpdateCDDisplay()
 					self.CheckForRandomEvent()
@@ -3731,10 +3727,20 @@ class AI:
 						elif GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > MG_AP_RANGE:
 							score -= 40.0
 				
-				# avoid HE attacks on armoured targets
-				if weapon.GetStat('type') == 'Gun' and target.GetStat('armour') is not None:
-					if ammo_type == 'HE':
-						score -= 20.0
+				if target.GetStat('category') == 'Vehicle':
+				
+					# avoid HE attacks on armoured targets
+					if weapon.GetStat('type') == 'Gun' and target.GetStat('armour') is not None:
+						if ammo_type == 'HE':
+							score -= 20.0
+					
+					# avoid AP attacks on unarmoured vehicles
+					if weapon.GetStat('type') == 'Gun' and target.GetStat('armour') is None:
+						if ammo_type == 'AP':
+							score -= 20.0
+				
+				# not sure if this is required, but seems to work
+				score = round(score, 2)
 				
 				# add to list
 				scored_list.append((score, weapon, target, ammo_type))

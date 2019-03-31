@@ -4717,7 +4717,7 @@ class Unit:
 				
 				# record if player hit
 				if self == scenario.player_unit:
-					campaign_day.records['Gun Hit'] += 1
+					campaign_day.records['Gun Hits'] += 1
 				
 				# infantry or gun target
 				if target.GetStat('category') in ['Infantry', 'Gun']:

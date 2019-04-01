@@ -61,7 +61,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.4.0-rc1'					# game version
+VERSION = '0.4.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1145,9 +1145,14 @@ class CampaignDay:
 			else:
 				if roll <= 25.0:
 					self.weather['Cloud Cover'] = 'Heavy'
-					ShowMessage('The cloud cover begins to part.')
+					ShowMessage('The cloud cover begins to part but remains heavy.')
 				else:
 					return False
+			
+			# stop rain if clouds have cleared up
+			if self.weather['Cloud Cover'] == 'Clear' and self.weather['Precipitation'] != 'None':
+				self.weather['Precipitation'] = 'None'
+				ShowMessage('The rain has stopped.')
 			
 			return True
 
@@ -1164,7 +1169,6 @@ class CampaignDay:
 		self.weather_update_clock -= hours * 60
 		self.weather_update_clock -= minutes
 		if self.weather_update_clock <= 0:
-			print('DEBUG: possible weather update')
 			# if weather conditions change, update relevant consoles
 			if self.UpdateWeather():
 				self.UpdateCDCommandCon()
@@ -2547,6 +2551,7 @@ class CampaignDay:
 					DisplayTimeInfo(time_con)
 					self.UpdateCDGUICon()
 					self.UpdateCDCommandCon()
+					self.UpdateCDUnitCon()
 					self.UpdateCDDisplay()
 					
 					self.CheckForRandomEvent()
@@ -3754,15 +3759,15 @@ class AI:
 			scored_list.sort(key=lambda x:x[0], reverse=True)
 			
 			# DEBUG: list scored attacks
-			print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-			n = 1
-			for (score, weapon, target, ammo_type) in scored_list:
-				text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-				if ammo_type != '':
-					text += '(' + ammo_type + ')'
-				text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-				print (text)
-				n += 1
+			#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+			#n = 1
+			#for (score, weapon, target, ammo_type) in scored_list:
+			#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+			#	if ammo_type != '':
+			#		text += '(' + ammo_type + ')'
+			#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+			#	print (text)
+			#	n += 1
 			
 			# select best attack
 			(score, weapon, target, ammo_type) = scored_list[0]
@@ -8169,6 +8174,8 @@ def DisplayTimeInfo(console):
 
 # display weather conditions info to a console, minimum width 12
 def DisplayWeatherInfo(console):
+	
+	libtcod.console_clear(console)
 	
 	w = libtcod.console_get_width(console)
 	

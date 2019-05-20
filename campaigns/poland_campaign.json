@@ -1,15 +1,7 @@
 {
 	"name" : "The Poland Campaign",
-	"start_date" : {
-		"year" : 1939,
-		"month" : 9,
-		"day" : 1
-	},
-	"end_date" : {
-		"year" : 1939,
-		"month" : 10,
-		"day" : 6
-	},
+	"start_date" : "1939.09.01"
+	"end_date" : "1939.10.6",
 	"action_days" : "1",
 	"player_nation" : "Germany",
 	"enemy_nations" : ["Poland"],
@@ -28,15 +20,12 @@
 	],
 	"calendar": [
 		{
-			"year" : "1939",
-			"month" : "9",
-			"day" : "1",
-			"start_hour" : "4",
-			"start_minute" : "30",
-			"end_hour" : "12",
-			"end_minute" : "30",
+			"date" : "1939.09.01",
+			"day_start" : "04:45",
+			"day_end" : "12:30",
 			"location" : "The Polish Border",
 			"desc" : "This morning we begin our invasion of Polish territory. Your battlegroup is tasked with destroying enemy forces and capturing territory wherever possible.",
+			"mission" : "Advance",
 			"enemy_nation" : "Poland",
 			"air_support_level" : 80.0,
 			"air_support_step" : 10.0,

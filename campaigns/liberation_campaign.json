@@ -1,15 +1,7 @@
 {
 	"name" : "The Liberation Campaign of the Red Army",
-	"start_date" : {
-		"year" : 1939,
-		"month" : 9,
-		"day" : 17
-	},
-	"end_date" : {
-		"year" : 1939,
-		"month" : 10,
-		"day" : 6
-	},
+	"start_date" : "1939.09.17",
+	"end_date" : "1939.10.06",
 	"action_days" : "1",
 	"player_nation" : "Soviet Union",
 	"enemy_nations" : ["Poland"],
@@ -27,13 +19,9 @@
 	],
 	"calendar": [
 		{
-			"year" : "1939",
-			"month" : "9",
-			"day" : "17",
-			"start_hour" : "4",
-			"start_minute" : "30",
-			"end_hour" : "12",
-			"end_minute" : "30",
+			"date" : "1939.09.17",
+			"day_start" : "4:30",
+			"day_end" : "12:30",
 			"location" : "The Polish Border",
 			"desc" : "This morning we begin our invasion of Polish territory. Your battlegroup is tasked with destroying enemy forces and capturing territory wherever possible.",
 			"enemy_nation" : "Poland",

@@ -581,8 +581,7 @@ class Campaign:
 			del campaign_data
 		
 		# sort campaigns by start date
-		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']['year'],
-			x['start_date']['month'], x['start_date']['day']))
+		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']))
 		
 		# select first campaign by default
 		selected_campaign = campaign_list[0]
@@ -762,9 +761,8 @@ class Campaign:
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		
 		# current date, time, and location
-		libtcod.console_print_ex(con, 45, 4, libtcod.BKGND_NONE, libtcod.CENTER, GetDateText(campaign.today))
-		text = campaign.today['start_hour'].zfill(2) + ':' + campaign.today['start_minute'].zfill(2)
-		libtcod.console_print_ex(con, 45, 5, libtcod.BKGND_NONE, libtcod.CENTER, text)
+		libtcod.console_print_ex(con, 45, 4, libtcod.BKGND_NONE, libtcod.CENTER, GetDateText(campaign.today['date']))
+		libtcod.console_print_ex(con, 45, 5, libtcod.BKGND_NONE, libtcod.CENTER, campaign.today['day_start'])
 		text = campaign.today['location']
 		libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
@@ -819,7 +817,7 @@ class Campaign:
 		# FUTURE: weather forecast
 		
 		# end of day
-		text = 'End of Day: ' + campaign.today['end_hour'].zfill(2) + ':' + campaign.today['end_minute'].zfill(2)
+		text = 'End of Day: ' + campaign.today['day_end']
 		libtcod.console_print_ex(con, 45, 49, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -877,13 +875,15 @@ class CampaignDay:
 		
 		# current hour, and minute: set initial time from campaign info
 		self.day_clock = {}
-		self.day_clock['hour'] = int(campaign.today['start_hour'])
-		self.day_clock['minute'] = int(campaign.today['start_minute'])
+		time_str = campaign.today['day_start'].split(':')
+		self.day_clock['hour'] = int(time_str[0])
+		self.day_clock['minute'] = int(time_str[1])
 		
 		# end of day
 		self.end_of_day = {}
-		self.end_of_day['hour'] = int(campaign.today['end_hour'])
-		self.end_of_day['minute'] = int(campaign.today['end_minute'])
+		time_str = campaign.today['day_end'].split(':')
+		self.end_of_day['hour'] = int(time_str[0])
+		self.end_of_day['minute'] = int(time_str[1])
 		
 		# combat day length in minutes
 		hours = self.end_of_day['hour'] - self.day_clock['hour']
@@ -8131,9 +8131,11 @@ def NewConsole(x, y, bg, fg, key_colour=False):
 
 
 # return a text description of a given calendar date
-def GetDateText(dictionary):
-	return (MONTH_NAMES[int(dictionary['month'])] + ' ' + str(dictionary['day']) + 
-		', ' + str(dictionary['year']))
+def GetDateText(text):
+	date_list = text.split('.')
+	
+	return (MONTH_NAMES[int(date_list[1].lstrip('0'))] + ' ' + str(date_list[2].lstrip('0')) + 
+		', ' + date_list[0])
 
 
 # display date, time, and phase information to a console
@@ -8144,7 +8146,7 @@ def DisplayTimeInfo(console):
 	
 	if campaign is None: return
 	
-	libtcod.console_print_ex(console, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, GetDateText(campaign.today))
+	libtcod.console_print_ex(console, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, GetDateText(campaign.today['date']))
 	
 	if campaign_day is None: return
 	
@@ -8152,8 +8154,9 @@ def DisplayTimeInfo(console):
 	libtcod.console_set_default_background(console, libtcod.darker_yellow)
 	libtcod.console_rect(console, 0, 1, 21, 1, True, libtcod.BKGND_SET)
 	
-	hours = campaign_day.day_clock['hour'] - int(campaign.today['start_hour'])
-	minutes = campaign_day.day_clock['minute'] - int(campaign.today['start_minute'])
+	time_str = campaign.today['day_start'].split(':')
+	hours = campaign_day.day_clock['hour'] - int(time_str[0])
+	minutes = campaign_day.day_clock['minute'] - int(time_str[1])
 	if minutes < 0:
 		hours -= 1
 		minutes += 60

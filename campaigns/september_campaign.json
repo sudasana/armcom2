@@ -1,15 +1,7 @@
 {
 	"name" : "The September Campaign",
-	"start_date" : {
-		"year" : 1939,
-		"month" : 9,
-		"day" : 1
-	},
-	"end_date" : {
-		"year" : 1939,
-		"month" : 10,
-		"day" : 6
-	},
+	"start_date" : "1939.09.01",
+	"end_date" : "1939.10.06",
 	"action_days" : "1",
 	"player_nation" : "Poland",
 	"enemy_nations" : ["Germany"],
@@ -29,13 +21,9 @@
 	],
 	"calendar": [
 		{
-			"year" : "1939",
-			"month" : "9",
-			"day" : "1",
-			"start_hour" : "4",
-			"start_minute" : "30",
-			"end_hour" : "12",
-			"end_minute" : "30",
+			"date" : "1939.09.01",
+			"day_start" : "4:30",
+			"day_end" : "12:30",
 			"location" : "The Polish Border",
 			"desc" : "Reports are coming in of a surprise invasion by German forces. Mobilize your team and launch a counterattack.",
 			"enemy_nation" : "Germany",

@@ -936,6 +936,11 @@ class CampaignDay:
 		# set up player
 		self.player_unit_location = (-2, 8)		# set initial player unit location
 		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
+		
+		# start on calendar menu layer
+		self.calendar_menu = True
+		self.active_calendar_menu = 0
+		
 	
 	
 	# generate a new random set of initial weather conditions, should only be called when day is created

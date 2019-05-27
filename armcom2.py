@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.5.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -936,6 +936,16 @@ class CampaignDay:
 		# set up player
 		self.player_unit_location = (-2, 8)		# set initial player unit location
 		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
+		
+		# set up hex objectives
+		# TEMP - assumes advance day mission
+		objective_dict = {
+			'objective_type' : 'Capture',
+			'vp_reward' : 5,
+			'time_limit' : None
+			}
+		self.map_hexes[(-2, 6)].SetObjective(objective_dict)
+		self.map_hexes[(1, 2)].SetObjective(objective_dict)
 		
 		# start on calendar menu layer
 		self.calendar_menu = True
@@ -2027,6 +2037,16 @@ class CampaignDay:
 				for (xm,ym) in CD_HEX_EDGE_CELLS[direction]:
 					libtcod.console_put_char_ex(cd_control_con, x+xm,
 						y+ym, chr(249), libtcod.red, libtcod.black)
+		
+		# highlight objective hexes
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			if self.map_hexes[(hx,hy)].objective is None: continue
+			
+			for direction in range(6):
+				(x,y) = self.PlotCDHex(hx, hy)
+				for (xm,ym) in CD_HEX_EDGE_CELLS[direction]:
+					libtcod.console_put_char_ex(cd_control_con, x+xm,
+						y+ym, chr(250), ACTION_KEY_COL, libtcod.black)
 	
 	
 	# generate/update the GUI console
@@ -2320,6 +2340,12 @@ class CampaignDay:
 		if cd_hex.arty_support:
 			libtcod.console_print(cd_hex_info_con, 0, 5, 'Arty Support inbound')
 		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)
+		
+		# objective
+		if cd_hex.objective is not None:
+			libtcod.console_set_default_foreground(cd_hex_info_con, ACTION_KEY_COL)
+			libtcod.console_print(cd_hex_info_con, 0, 6, 'Objective: ' + cd_hex.objective['objective_type'])
+			libtcod.console_print(cd_hex_info_con, 0, 7, 'VP: ' + str(cd_hex.objective['vp_reward']))
 		
 		# roads
 		if len(cd_hex.dirt_roads) > 0:
@@ -2695,7 +2721,7 @@ class CDMapHex:
 		self.air_support = False	# player has air support called in
 		self.arty_support = False	# " arty "
 		
-		self.objective_type = None	# player objective for this zone
+		self.objective = None		# player objective for this zone
 		
 		# set enemy strength level
 		self.enemy_strength = libtcod.random_get_int(0, 1, 5) + libtcod.random_get_int(0, 0, 5)
@@ -2712,6 +2738,11 @@ class CDMapHex:
 				self.terrain_type = terrain_type
 				return
 			roll -= odds
+	
+	
+	# set up a new objective in this CD hex
+	def SetObjective(self, objective_dict):
+		self.objective = objective_dict
 	
 	
 	# set control of this hex by the given player

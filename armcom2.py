@@ -158,6 +158,15 @@ SCEN_PHASE_COL = [
 	libtcod.yellow, libtcod.purple, libtcod.light_blue, libtcod.green, libtcod.red, libtcod.white, ALLIED_UNIT_COL, ENEMY_UNIT_COL 
 ]
 
+# list of campaign calendar menus and their highlight colours
+CC_MENU_LIST = [
+	('Summary', 1, libtcod.Color(128, 128, 128)),
+	('Crew', 2, libtcod.Color(140, 140, 0)),
+	('Tank', 3, libtcod.Color(40, 40, 40)),
+	('Group', 4, libtcod.Color(180, 0, 45)),
+	('Start Day', 5, libtcod.Color(70, 140, 0))
+]
+
 # list of campaign day menus and their highlight colours
 CD_MENU_LIST = [
 	('Support', 1, libtcod.Color(128, 128, 128)),
@@ -474,6 +483,8 @@ BASE_CD_RANDOM_EVENT_CHANCE = 5.0
 class Campaign:
 	def __init__(self):
 		
+		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
+		
 		self.player_vp = 0		# total player victory points
 		
 		# placeholder for player unit
@@ -744,6 +755,7 @@ class Campaign:
 			
 		return (selected_unit.unit_id, player_tank_name)
 	
+	
 	# display a briefing for the start of a new campaign day
 	def ShowCDBriefing(self):
 		
@@ -836,6 +848,192 @@ class Campaign:
 					cont = True
 				exit_loop = True
 		return cont
+	
+	
+	# update the day outline console, 24x22
+	def UpdateDayOutlineCon(self):
+		libtcod.console_clear(day_outline)
+		libtcod.console_print_ex(day_outline, 11, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+			GetDateText(campaign.today['date']))
+		libtcod.console_print_ex(day_outline, 11, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+			campaign.today['day_start'])
+		libtcod.console_print_ex(day_outline, 11, 3, libtcod.BKGND_NONE, libtcod.CENTER,
+			campaign.today['location'])
+		
+		libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
+		libtcod.console_print(day_outline, 3, 20, 'End of Day:')
+		libtcod.console_set_default_foreground(day_outline, libtcod.white)
+		libtcod.console_print(day_outline, 15, 20, campaign.today['day_end'])
+	
+	
+	# update the command menu for the campaign calendar interface, 24x21
+	def UpdateCalendarCmdCon(self):
+		libtcod.console_clear(calendar_cmd_con)
+		
+		x = 0
+		for (text, num, col) in CC_MENU_LIST:
+			libtcod.console_set_default_background(calendar_cmd_con, col)
+			libtcod.console_rect(calendar_cmd_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
+			
+			# group menu not active for now
+			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+			if num == 4:
+				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.dark_grey)
+			libtcod.console_print(calendar_cmd_con, x, 0, str(num))
+			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.white)
+			
+			x += 2
+			
+			# display menu text if active
+			if self.active_calendar_menu == num:
+				libtcod.console_rect(calendar_cmd_con, x, 0, len(text)+2, 1,
+					True, libtcod.BKGND_SET)
+				libtcod.console_print(calendar_cmd_con, x, 0, text)
+				x += len(text) + 2
+		
+		# fill in rest of menu line with final colour
+		libtcod.console_rect(calendar_cmd_con, x, 0, 25-x, 1, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(calendar_cmd_con, libtcod.black)
+		
+		# summary of expected day
+		if self.active_calendar_menu == 1:
+			
+			libtcod.console_print_ex(calendar_cmd_con, 11, 8, libtcod.BKGND_NONE,
+				libtcod.CENTER,	'See main panel for')
+			libtcod.console_print_ex(calendar_cmd_con, 11, 9, libtcod.BKGND_NONE,
+				libtcod.CENTER,	'summary of combat day')
+		
+		# crew
+		elif self.active_calendar_menu == 2:
+			pass
+		
+		# tank
+		elif self.active_calendar_menu == 3:
+			pass
+		
+		# group
+		elif self.active_calendar_menu == 4:
+			pass
+		
+		# start day
+		else:
+			pass
+	
+	
+	# update the display of the campaign calendar interface
+	def UpdateCCDisplay(self):
+		
+		libtcod.console_blit(calendar_bkg, 0, 0, 0, 0, con, 0, 0)	# background frame
+		portrait = campaign.player_unit.GetStat('portrait')		# player unit portrait
+		if portrait is not None:
+			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, con, 0, 6)
+		libtcod.console_blit(day_outline, 0, 0, 0, 0, con, 1, 15)	# summary of current day
+		libtcod.console_blit(calendar_cmd_con, 0, 0, 0, 0, con, 1, 38)	# command menu
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		
+		
+	
+	# main campaign calendar loop
+	def DoCampaignCalendarLoop(self):
+		
+		# consoles for campaign calendar interface
+		global calendar_bkg, day_outline, calendar_cmd_con
+	
+		global campaign_day
+		
+		# create consoles
+		calendar_bkg = LoadXP('calendar_bkg.xp')
+		day_outline = NewConsole(24, 22, libtcod.black, libtcod.white)
+		calendar_cmd_con = NewConsole(24, 21, libtcod.black, libtcod.white)
+		
+		# generate consoles for the first time
+		self.UpdateDayOutlineCon()
+		self.UpdateCalendarCmdCon()
+		
+		# not moving directly into the campaign day loop
+		if campaign_day is None:
+			self.UpdateCCDisplay()
+		
+		# record mouse cursor position to check when it has moved
+		mouse_x = -1
+		mouse_y = -1
+		
+		SaveGame()
+		
+		exit_loop = False
+		while not exit_loop:
+			
+			# if we've initiated a campaign day or are resuming a saved game with a
+			# campaign day running, go into the campaign day loop now
+			if campaign_day is not None:
+				
+				campaign_day.DoCampaignDayLoop()
+				
+				if session.exiting:
+					exit_loop = True
+					continue
+				
+				# TODO: handle advancing to new calendar day here
+				
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			keypress = GetInputEvent()
+			
+			# check to see if mouse cursor has moved
+			if mouse.cx != mouse_x or mouse.cy != mouse_y:
+				mouse_x = mouse.cx
+				mouse_y = mouse.cy
+				
+				# TODO: update here any consoles that change based on mouse cursor
+			
+			if not keypress: continue
+			
+			# game menu
+			if key.vk == libtcod.KEY_ESCAPE:
+				ShowGameMenu()
+				if session.exiting:
+					exit_loop = True
+					continue
+			
+			# debug menu
+			elif key.vk == libtcod.KEY_F2:
+				if not DEBUG: continue
+				ShowDebugMenu()
+				continue
+			
+			# mapped key commands
+			key_char = DeKey(chr(key.c).lower())
+			
+			# switch active menu
+			if key_char in ['1', '2', '3', '5']:
+				if self.active_calendar_menu != int(key_char):
+					self.active_calendar_menu = int(key_char)
+					self.UpdateCalendarCmdCon()
+					self.UpdateCCDisplay()
+				continue
+			
+			# summary menu active
+			if self.active_calendar_menu == 1:
+				pass
+			
+			# crew menu active
+			elif self.active_calendar_menu == 2:
+				pass
+			
+			# tank menu active
+			elif self.active_calendar_menu == 3:
+				pass
+			
+			# group menu active
+			elif self.active_calendar_menu == 4:
+				pass
+			
+			# start day menu active
+			else:
+				pass
+			
+	
 
 
 
@@ -946,11 +1144,6 @@ class CampaignDay:
 			}
 		self.map_hexes[(-2, 6)].SetObjective(objective_dict)
 		self.map_hexes[(1, 2)].SetObjective(objective_dict)
-		
-		# start on calendar menu layer
-		self.calendar_menu = True
-		self.active_calendar_menu = 0
-		
 	
 	
 	# generate a new random set of initial weather conditions, should only be called when day is created
@@ -2378,6 +2571,7 @@ class CampaignDay:
 	# main campaign day input loop
 	def DoCampaignDayLoop(self):
 		
+		# consoles for day map interface
 		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
 		global cd_player_unit_con, cd_direction_con, cd_gui_con, time_con
 		global cd_campaign_con, cd_weather_con, cd_hex_info_con
@@ -2423,7 +2617,7 @@ class CampaignDay:
 			
 			# if we've initiated a scenario or are resuming a saved game with a scenario
 			# running, go into the scenario loop now
-			if self.scenario is not None:
+			if scenario is not None:
 				
 				scenario.DoScenarioLoop()
 				
@@ -8758,9 +8952,9 @@ def ShowGameMenu():
 			
 			
 			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(game_menu_con, 36, 22, 'Q')
+			libtcod.console_print(game_menu_con, 29, 22, 'Q')
 			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-			libtcod.console_print(game_menu_con, 40, 22, 'Save and Quit')
+			libtcod.console_print(game_menu_con, 32, 22, 'Save and Quit to Main Menu')
 		
 		# Commander Menu
 		elif active_tab == 1:
@@ -9738,29 +9932,36 @@ while not exit_game:
 				
 				# TODO: allow player to review crew and set nicknames if any
 				
+				# placeholders for the currently active campaign day and scenario
+				campaign_day = None
+				scenario = None
+				
 				# show start-of-day briefing
 				# FUTURE: can return to calendar view from here instead of starting day
 				# for now, another chance to cancel campaign day
-				result = campaign.ShowCDBriefing()
-				if not result:
-					campaign = None
-					UpdateMainTitleCon(options_menu_active)
-					continue
+				#result = campaign.ShowCDBriefing()
+				#if not result:
+				#	campaign = None
+				#	UpdateMainTitleCon(options_menu_active)
+				#	continue
 				
 				# generate a new campaign day object
-				campaign_day = CampaignDay()
+				#campaign_day = CampaignDay()
 				
 				# placeholder for the currently active scenario
-				scenario = None
+				#scenario = None
 				
 				# allow player to load ammo
-				campaign_day.AmmoReloadMenu()
+				#campaign_day.AmmoReloadMenu()
 			
 			# pause main theme if playing
 			if main_theme is not None:
 				mixer.Mix_PauseMusic()
 			
-			campaign_day.DoCampaignDayLoop()
+			# go to campaign calendar loop
+			campaign.DoCampaignCalendarLoop()
+			
+			#campaign_day.DoCampaignDayLoop()
 			
 			# reset exiting flag
 			session.exiting = False

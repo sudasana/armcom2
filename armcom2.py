@@ -483,18 +483,25 @@ BASE_CD_RANDOM_EVENT_CHANCE = 5.0
 class Campaign:
 	def __init__(self):
 		
-		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
-		
+		self.logs = {}			# dictionary of logs, organized by combat day
+		self.player_unit = None		# placeholder for player unit
 		self.player_vp = 0		# total player victory points
-		
-		# placeholder for player unit
-		self.player_unit = None
-		
 		self.stats = {}			# campaign stats
 		self.today = None		# pointer to current day in calendar
+		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
 		
 		# holder for active enemy units
-		self.enemy_units = []
+		#self.enemy_units = []
+	
+	# add a line to the log for the current day
+	def AddLog(self, text):
+
+		# add timestamp if a campaign day is active
+		if campaign_day is not None:
+			text = (str(campaign_day.day_clock['hour']) + ':' + str(campaign_day.day_clock['minute']) +
+				' - ' + text)
+		
+		self.logs[self.today['date']].append(text)
 	
 	
 	# award VP to the player
@@ -1027,6 +1034,8 @@ class Campaign:
 						# show starting animation
 						campaign_day.ShowStartOfDay()
 						
+						campaign.AddLog('Combat day begins')
+						
 						# continue in loop to go into campaign day layer
 						continue
 				
@@ -1096,8 +1105,8 @@ class CampaignDay:
 		# flag set when end of day has been reached
 		self.ended = False
 		
-		# log of important events during the day
-		self.day_log = []
+		# add day to campaign log
+		campaign.logs[campaign.today['date']] = []
 		
 		# generate campaign day map
 		self.map_hexes = {}
@@ -5741,7 +5750,7 @@ class Scenario:
 			unit.SpawnAt(hx, hy)
 			if unit.GetStat('category') == 'Gun':
 				unit.deployed = True
-			campaign.enemy_units.append(unit)
+			#campaign.enemy_units.append(unit)
 			
 			# set facing if any toward player
 			direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)

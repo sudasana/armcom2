@@ -817,13 +817,26 @@ class Campaign:
 		elif self.active_calendar_menu == 3:
 			pass
 		
-		# group
+		# group - not yet implemented
 		elif self.active_calendar_menu == 4:
 			pass
 		
 		# proceed - start day or continue to next day
 		else:
-			pass
+			
+			# day has not yet started
+			if campaign_day is None:
+				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+				libtcod.console_print(calendar_cmd_con, 1, 10, 'Enter')
+				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+				libtcod.console_print(calendar_cmd_con, 8, 10, 'Start Combat Day')
+			
+			# day has finished
+			else:
+				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+				libtcod.console_print(calendar_cmd_con, 1, 10, 'Enter')
+				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+				libtcod.console_print(calendar_cmd_con, 8, 10, 'End Combat Day')
 	
 	
 	# update the main calendar display panel
@@ -943,7 +956,7 @@ class Campaign:
 					exit_loop = True
 					continue
 				
-				# TODO: handle advancing to new calendar day here
+				# TODO: delete the campaign day object if finished
 				
 			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_flush()
@@ -1001,9 +1014,25 @@ class Campaign:
 			
 			# proceed menu active
 			else:
-				pass
-			
-	
+				
+				# start the day
+				if campaign_day is None:
+					if key.vk == libtcod.KEY_ENTER:
+						# generate a new campaign day object
+						campaign_day = CampaignDay()
+								
+						# allow player to load ammo
+						campaign_day.AmmoReloadMenu()
+						
+						# show starting animation
+						campaign_day.ShowStartOfDay()
+						
+						# continue in loop to go into campaign day layer
+						continue
+				
+				# proceed to next day
+				else:
+					pass
 
 
 
@@ -1354,6 +1383,36 @@ class CampaignDay:
 				if scenario is not None:
 					scenario.UpdateScenarioInfoCon()
 	
+	
+	# display an animated screen for the start of a new combat day
+	def ShowStartOfDay(self):
+		
+		libtcod.console_clear(con)
+		
+		for y in range(WINDOW_HEIGHT):
+			col = libtcod.Color(int(255 * (y / WINDOW_HEIGHT)), int(170 * (y / WINDOW_HEIGHT)), 0)
+			libtcod.console_set_default_background(con, col)
+			libtcod.console_rect(con, 0, y, WINDOW_WIDTH, 1, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(con, libtcod.black)
+		libtcod.console_rect(con, 30, 20, 30, 10, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		DrawFrame(con, 30, 20, 30, 10)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print_ex(con, WINDOW_XM, 22, libtcod.BKGND_NONE, libtcod.CENTER,
+			GetDateText(campaign.today['date']))
+		libtcod.console_print_ex(con, WINDOW_XM, 23, libtcod.BKGND_NONE, libtcod.CENTER,
+			campaign.today['day_start'])
+		libtcod.console_print_ex(con, WINDOW_XM, 25, libtcod.BKGND_NONE, libtcod.CENTER,
+			campaign.today['location'])
+		
+		# fade in from black
+		for i in range(100, 0, -5):
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
+			libtcod.console_flush()
+			Wait(5)
+		Wait(95)
+		
 	
 	# sets flag if we've met or exceeded the set length of the combat day
 	def CheckForEndOfDay(self):
@@ -9906,15 +9965,6 @@ while not exit_game:
 				campaign_day = None
 				scenario = None
 				
-				# generate a new campaign day object
-				#campaign_day = CampaignDay()
-				
-				# placeholder for the currently active scenario
-				#scenario = None
-				
-				# allow player to load ammo
-				#campaign_day.AmmoReloadMenu()
-			
 			# pause main theme if playing
 			if main_theme is not None:
 				mixer.Mix_PauseMusic()

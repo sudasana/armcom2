@@ -164,7 +164,7 @@ CC_MENU_LIST = [
 	('Crew', 2, libtcod.Color(140, 140, 0)),
 	('Tank', 3, libtcod.Color(40, 40, 40)),
 	('Group', 4, libtcod.Color(180, 0, 45)),
-	('Start Day', 5, libtcod.Color(70, 140, 0))
+	('Proceed', 5, libtcod.Color(70, 140, 0))
 ]
 
 # list of campaign day menus and their highlight colours
@@ -756,100 +756,6 @@ class Campaign:
 		return (selected_unit.unit_id, player_tank_name)
 	
 	
-	# display a briefing for the start of a new campaign day
-	def ShowCDBriefing(self):
-		
-		# generate the briefing screen
-		libtcod.console_clear(con)
-		
-		for y in range(WINDOW_HEIGHT):
-			col = libtcod.Color(int(255 * (y / WINDOW_HEIGHT)), int(170 * (y / WINDOW_HEIGHT)), 0)
-			libtcod.console_set_default_background(con, col)
-			libtcod.console_rect(con, 0, y, WINDOW_WIDTH, 1, True, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(con, libtcod.black)
-		
-		# display briefing outline, 29x54
-		libtcod.console_blit(LoadXP('CD_briefing.xp'), 0, 0, 0, 0, con, 31, 3)
-		libtcod.console_set_default_foreground(con, libtcod.white)
-		
-		# current date, time, and location
-		libtcod.console_print_ex(con, 45, 4, libtcod.BKGND_NONE, libtcod.CENTER, GetDateText(campaign.today['date']))
-		libtcod.console_print_ex(con, 45, 5, libtcod.BKGND_NONE, libtcod.CENTER, campaign.today['day_start'])
-		text = campaign.today['location']
-		libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER, text)
-		
-		# day description
-		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		lines = wrap(campaign.today['desc'], 25)
-		y = 8
-		for line in lines:
-			libtcod.console_print(con, 33, y, line)
-			y+=1
-			if y == 19: break
-		
-		# placeholder for mission details
-		libtcod.console_set_default_foreground(con, libtcod.white)
-		libtcod.console_print_ex(con, 45, 23, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Advance')
-		
-		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		text = 'Capture enemy-held territory and destroy enemy units.'
-		lines = wrap(text, 25)
-		y = 25
-		for line in lines:
-			libtcod.console_print(con, 32, y, line)
-			y+=1
-			if y == 29: break
-		
-		# player support
-		text = 'Air Support: '
-		if 'air_support_level' not in campaign.today:
-			text += 'None'
-		else:
-			text += str(campaign.today['air_support_level'])
-		libtcod.console_print(con, 33, 33, text)
-		
-		text = 'Artillery Support: '
-		if 'arty_support_level' not in campaign.today:
-			text += 'None'
-		else:
-			text += str(campaign.today['arty_support_level'])
-		libtcod.console_print(con, 33, 34, text)
-		
-		# expected enemy forces
-		text = session.nations[campaign.stats['enemy_nations'][0]]['adjective']
-		text += ' infantry, guns, and AFVs'
-		lines = wrap(text, 25)
-		y = 39
-		for line in lines:
-			libtcod.console_print(con, 33, y, line)
-			y+=1
-			if y == 42: break
-		
-		# FUTURE: weather forecast
-		
-		# end of day
-		text = 'End of Day: ' + campaign.today['day_end']
-		libtcod.console_print_ex(con, 45, 49, libtcod.BKGND_NONE, libtcod.CENTER, text)
-		
-		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
-		
-		# wait for player input
-		exit_loop = False
-		cont = False
-		while not exit_loop:
-			if libtcod.console_is_window_closed(): sys.exit()
-			libtcod.console_flush()
-			if not GetInputEvent(): continue
-			
-			if key.vk in [libtcod.KEY_ENTER, libtcod.KEY_ESCAPE]:
-				if key.vk == libtcod.KEY_ENTER:
-					cont = True
-				exit_loop = True
-		return cont
-	
-	
 	# update the day outline console, 24x22
 	def UpdateDayOutlineCon(self):
 		libtcod.console_clear(day_outline)
@@ -915,20 +821,81 @@ class Campaign:
 		elif self.active_calendar_menu == 4:
 			pass
 		
-		# start day
+		# proceed - start day or continue to next day
 		else:
 			pass
+	
+	
+	# update the main calendar display panel
+	def UpdateCCMainPanel(self):
+		libtcod.console_clear(calendar_main_panel)
+		
+		# summary of expected day
+		if self.active_calendar_menu == 1:
+			
+			x = 20
+			y = 4
+			
+			# display outline
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
+			
+			# mission type and description
+			libtcod.console_print_ex(calendar_main_panel, x+10, y+2, libtcod.BKGND_NONE,
+				libtcod.CENTER,	'Day Mission:')
+			libtcod.console_print_ex(calendar_main_panel, x+10, y+3, libtcod.BKGND_NONE,
+				libtcod.CENTER,	'Advance')
+			
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
+			text = 'Capture enemy-held territory and destroy enemy units.'
+			lines = wrap(text, 25)
+			y1 = y+5
+			for line in lines:
+				libtcod.console_print(calendar_main_panel, x, y1, line)
+				y1+=1
+				if y1 == y + 10: break
+			
+			# player support
+			text = 'Air Support: '
+			if 'air_support_level' not in campaign.today:
+				text += 'None'
+			else:
+				text += str(campaign.today['air_support_level'])
+			libtcod.console_print(calendar_main_panel, x, y+12, text)
+			
+			text = 'Artillery Support: '
+			if 'arty_support_level' not in campaign.today:
+				text += 'None'
+			else:
+				text += str(campaign.today['arty_support_level'])
+			libtcod.console_print(calendar_main_panel, x, y+13, text)
+			
+			# expected enemy forces
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
+			libtcod.console_print_ex(calendar_main_panel, x+10, y+18, libtcod.BKGND_NONE,
+				libtcod.CENTER,	'Expected Enemy Forces')
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
+			text = session.nations[campaign.stats['enemy_nations'][0]]['adjective']
+			text += ' infantry, guns, and AFVs'
+			lines = wrap(text, 25)
+			y1 = y+20
+			for line in lines:
+				libtcod.console_print(calendar_main_panel, x, y1, line)
+				y1+=1
+				if y1 == y+23: break
+			
+			
 	
 	
 	# update the display of the campaign calendar interface
 	def UpdateCCDisplay(self):
 		
-		libtcod.console_blit(calendar_bkg, 0, 0, 0, 0, con, 0, 0)	# background frame
-		portrait = campaign.player_unit.GetStat('portrait')		# player unit portrait
+		libtcod.console_blit(calendar_bkg, 0, 0, 0, 0, con, 0, 0)		# background frame
+		portrait = campaign.player_unit.GetStat('portrait')			# player unit portrait
 		if portrait is not None:
 			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, con, 0, 6)
-		libtcod.console_blit(day_outline, 0, 0, 0, 0, con, 1, 15)	# summary of current day
-		libtcod.console_blit(calendar_cmd_con, 0, 0, 0, 0, con, 1, 38)	# command menu
+		libtcod.console_blit(day_outline, 0, 0, 0, 0, con, 1, 15)		# summary of current day
+		libtcod.console_blit(calendar_cmd_con, 0, 0, 0, 0, con, 1, 38)		# command menu
+		libtcod.console_blit(calendar_main_panel, 0, 0, 0, 0, con, 26, 15)	# main panel
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
@@ -938,7 +905,7 @@ class Campaign:
 	def DoCampaignCalendarLoop(self):
 		
 		# consoles for campaign calendar interface
-		global calendar_bkg, day_outline, calendar_cmd_con
+		global calendar_bkg, day_outline, calendar_cmd_con, calendar_main_panel
 	
 		global campaign_day
 		
@@ -946,10 +913,12 @@ class Campaign:
 		calendar_bkg = LoadXP('calendar_bkg.xp')
 		day_outline = NewConsole(24, 22, libtcod.black, libtcod.white)
 		calendar_cmd_con = NewConsole(24, 21, libtcod.black, libtcod.white)
+		calendar_main_panel = NewConsole(63, 44, libtcod.black, libtcod.white)
 		
 		# generate consoles for the first time
 		self.UpdateDayOutlineCon()
 		self.UpdateCalendarCmdCon()
+		self.UpdateCCMainPanel()
 		
 		# not moving directly into the campaign day loop
 		if campaign_day is None:
@@ -1010,6 +979,7 @@ class Campaign:
 				if self.active_calendar_menu != int(key_char):
 					self.active_calendar_menu = int(key_char)
 					self.UpdateCalendarCmdCon()
+					self.UpdateCCMainPanel()
 					self.UpdateCCDisplay()
 				continue
 			
@@ -1029,7 +999,7 @@ class Campaign:
 			elif self.active_calendar_menu == 4:
 				pass
 			
-			# start day menu active
+			# proceed menu active
 			else:
 				pass
 			
@@ -9935,15 +9905,6 @@ while not exit_game:
 				# placeholders for the currently active campaign day and scenario
 				campaign_day = None
 				scenario = None
-				
-				# show start-of-day briefing
-				# FUTURE: can return to calendar view from here instead of starting day
-				# for now, another chance to cancel campaign day
-				#result = campaign.ShowCDBriefing()
-				#if not result:
-				#	campaign = None
-				#	UpdateMainTitleCon(options_menu_active)
-				#	continue
 				
 				# generate a new campaign day object
 				#campaign_day = CampaignDay()

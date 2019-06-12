@@ -3033,6 +3033,9 @@ class Session:
 		# field of view highlight on scenario hex map
 		self.scen_hex_fov = LoadXP('scen_hex_fov.xp')
 		libtcod.console_set_key_color(self.scen_hex_fov, KEY_COLOR)
+		
+		# scroll location for log
+		self.log_scroll = 0
 	
 	
 	# try to initialize SDL2 mixer
@@ -9051,10 +9054,46 @@ def ShowGameMenu():
 						libtcod.console_print_ex(game_menu_con, 59, y, libtcod.BKGND_NONE,
 							libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
 						y += 1
+		
+		# Log menu
+		elif active_tab == 4:
+			
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
+			text = 'Log for ' + GetDateText(campaign.today['date'])
+			libtcod.console_print_ex(game_menu_con, 42, 6, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
+			
+			# log exists for this day
+			if campaign.today['date'] in campaign.logs:
+				
+				# display current day log so far
+				y = 9
+				i = session.log_scroll
+				libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+				while y < 47:
+					# end of log records for day
+					if i >= len(campaign.logs[campaign.today['date']]):
+						break
+					text = campaign.logs[campaign.today['date']][i]
+					lines = wrap(text, 70)
+					for line in lines:
+						libtcod.console_print(game_menu_con, 24, y, line)
+						y += 1
+						if y >= 47:
+							break
+					y += 1
+					i += 1
+			
+			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(game_menu_con, 30, 49, 'W/S')
+			libtcod.console_print(game_menu_con, 30, 50, 'PgUp/PgDn')
+			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+			libtcod.console_print(game_menu_con, 40, 49, 'Scroll Display')
+			libtcod.console_print(game_menu_con, 40, 50, 'Change Date')
 			
 		
 		# Options Menu
-		elif active_tab == 4:
+		elif active_tab == 5:
 			
 			# display game options commands
 			DisplayGameOptions(game_menu_con, WINDOW_XM-15, 18, skip_esc=True)
@@ -9089,7 +9128,7 @@ def ShowGameMenu():
 		key_char = DeKey(chr(key.c).lower())
 		
 		# Switch Active Menu
-		if key.vk == libtcod.KEY_ESCAPE or key_char in ['1', '2', '3', '4']:
+		if key.vk == libtcod.KEY_ESCAPE or key_char in ['1', '2', '3', '4', '5']:
 			
 			# close menu
 			if key.vk == libtcod.KEY_ESCAPE and active_tab == 0:
@@ -9153,9 +9192,12 @@ def ShowGameMenu():
 		elif active_tab == 3:
 			pass
 		
+		# Log Menu
+		elif active_tab == 4:
+			pass
 		
 		# Options Menu
-		elif active_tab == 4:
+		elif active_tab == 5:
 			if ChangeGameSettings(key_char):
 				# redraw menu to reflect new settings
 				DrawMenuCon(active_tab, selected_position)

@@ -198,6 +198,13 @@ MONTH_NAMES = [
 	'September', 'October', 'November', 'December'
 ]
 
+# types of records to store for each combat day and for entire campaign
+# also order in which they are displayed
+RECORD_LIST = [
+	'Map Areas Captured', 'Gun Hits', 'Vehicles Destroyed', 'Guns Destroyed',
+	'Infantry Destroyed'
+]
+
 
 ##########################################################################################
 #                                    Engine Constants                                    #
@@ -489,6 +496,11 @@ class Campaign:
 		self.stats = {}			# campaign stats
 		self.today = None		# pointer to current day in calendar
 		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
+		
+		# records for end-of-campaign summary
+		self.records = {}
+		for text in RECORD_LIST:
+			self.records[text] = 0
 		
 		# holder for active enemy units
 		#self.enemy_units = []
@@ -1071,13 +1083,9 @@ class CampaignDay:
 		}
 		
 		# records for end-of-day summary
-		self.records = {
-			'Map Areas Captured' : 0,
-			'Gun Hits' : 0,
-			'Vehicles Destroyed' : 0,
-			'Guns Destroyed' : 0,
-			'Infantry Destroyed' : 0
-		}
+		self.records = {}
+		for text in RECORD_LIST:
+			self.records[text] = 0
 		
 		# current hour, and minute: set initial time from campaign info
 		self.day_clock = {}
@@ -1152,6 +1160,12 @@ class CampaignDay:
 			}
 		self.map_hexes[(-2, 6)].SetObjective(objective_dict)
 		self.map_hexes[(1, 2)].SetObjective(objective_dict)
+	
+	
+	# increments one of the combat day records, also increments campaign record
+	def AddRecord(self, name, i):
+		self.records[name] += i
+		campaign.records[name] += i
 	
 	
 	# generate a new random set of initial weather conditions, should only be called when day is created
@@ -1978,14 +1992,6 @@ class CampaignDay:
 	# display a summary of a completed campaign day
 	def DisplayCampaignDaySummary(self):
 	
-		RECORD_ORDER = [
-			'Map Areas Captured',
-			'Gun Hits',
-			'Vehicles Destroyed',
-			'Guns Destroyed',
-			'Infantry Destroyed'
-		]
-		
 		# create a local copy of the current screen to re-draw when we're done
 		temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
 		libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
@@ -2033,7 +2039,7 @@ class CampaignDay:
 		
 		# day stats
 		y = 17
-		for text in RECORD_ORDER:
+		for text in RECORD_LIST:
 			libtcod.console_print(temp_con, 2, y, text + ':')
 			libtcod.console_print_ex(temp_con, 26, y, libtcod.BKGND_NONE, libtcod.RIGHT,
 				str(campaign_day.records[text]))
@@ -2987,8 +2993,7 @@ class CDMapHex:
 		# captured by player
 		if player_num == 0 and not no_vp:
 			campaign.AwardVP(campaign_day.capture_zone_vp)
-			campaign_day.records['Map Areas Captured'] += 1
-		
+			campaign_day.AddRecord('Map Areas Captured', 1)
 
 
 
@@ -4993,7 +4998,7 @@ class Unit:
 				
 				# record if player hit
 				if self == scenario.player_unit:
-					campaign_day.records['Gun Hits'] += 1
+					campaign_day.AddRecord('Gun Hits', 1)
 				
 				# infantry or gun target
 				if target.GetStat('category') in ['Infantry', 'Gun']:
@@ -5274,11 +5279,11 @@ class Unit:
 			# add to day records
 			category = self.GetStat('category')
 			if category == 'Vehicle':
-				campaign_day.records['Vehicles Destroyed'] += 1
+				campaign_day.AddRecord('Vehicles Destroyed', 1)
 			elif category == 'Gun':
-				campaign_day.records['Guns Destroyed'] += 1
+				campaign_day.AddRecord('Guns Destroyed', 1)
 			elif category == 'Infantry':
-				campaign_day.records['Infantry Destroyed'] += 1
+				campaign_day.AddRecord('Infantry Destroyed', 1)
 		
 		# if player unit has been destroyed
 		if self == scenario.player_unit:

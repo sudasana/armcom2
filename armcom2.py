@@ -975,7 +975,9 @@ class Campaign:
 					exit_loop = True
 					continue
 				
-				# TODO: delete the campaign day object if finished
+				# delete the campaign day object if finished
+				if campaign_day.ended:
+					campaign_day = None
 				
 			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_flush()
@@ -1054,6 +1056,7 @@ class Campaign:
 				# proceed to next day
 				else:
 					pass
+					# TODO: check for end of campaign calendar here
 
 
 
@@ -2703,8 +2706,8 @@ class CampaignDay:
 			
 			# check for end of campaign day
 			if self.ended:
-				ShowMessage('Your combat day has ended.') 
-				EraseGame()
+				ShowMessage('Your combat day has ended.')
+				campaign.AddLog('Combat day ends')
 				self.DisplayCampaignDaySummary()
 				exit_loop = True
 				continue

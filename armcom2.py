@@ -2687,7 +2687,7 @@ class CampaignDay:
 				
 				self.animation['rain_drops'][i] = (x, y, lifespan)
 			
-			# drop drops to screen
+			# draw drops to screen
 			for (x, y, lifespan) in self.animation['rain_drops']:
 				
 				# skip if off screen
@@ -2696,7 +2696,7 @@ class CampaignDay:
 				if lifespan == 0:
 					char = 111
 				else:
-					char =124
+					char = 124
 				libtcod.console_put_char_ex(cd_anim_con, x, y, char, libtcod.light_blue,
 					libtcod.black)
 		

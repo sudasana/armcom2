@@ -1212,6 +1212,12 @@ class CampaignDay:
 		self.player_unit_location = (-2, 8)		# set initial player unit location
 		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
 		
+		# animation object; keeps track of active animations on the animation console
+		self.animation = {
+			'rain_active' : False,
+			'rain_drops' : []
+		}
+		
 	
 	# increments one of the combat day records, also increments campaign record
 	def AddRecord(self, name, i):
@@ -2640,6 +2646,64 @@ class CampaignDay:
 			libtcod.console_print(cd_hex_info_con, 0, 8, 'Dirt roads')
 	
 	
+	# starts or re-starts animation display based on weather conditions
+	def InitAnimations(self):
+		
+		print('DEBUG: starting animations')
+		
+		# TEMP assume rain
+		self.animation['rain_active'] = True
+		
+		# set up rain drops
+		self.animation['rain_drops'] = []
+		for i in range(10):
+			x = libtcod.random_get_int(0, 4, 36)
+			y = libtcod.random_get_int(0, 0, 50)
+			lifespan = libtcod.random_get_int(0, 1, 5)
+			self.animation['rain_drops'].append((x, y, 4))		
+		
+	
+	# update animation frame and the campaign day animation console 36x52
+	def UpdateAnimCon(self):
+		
+		libtcod.console_clear(cd_anim_con)
+		
+		# update rain display
+		if self.animation['rain_active']:
+			
+			# update location of each rain drop, spawn new ones if required
+			for i in range(len(self.animation['rain_drops'])):
+				(x, y, lifespan) = self.animation['rain_drops'][i]
+				
+				# respawn if finished
+				if lifespan == 0:
+					x = libtcod.random_get_int(0, 4, 36)
+					y = libtcod.random_get_int(0, 0, 50)
+					lifespan = libtcod.random_get_int(0, 1, 5)
+				else:
+					#x -= 1
+					y += 2
+					lifespan -= 1
+				
+				self.animation['rain_drops'][i] = (x, y, lifespan)
+			
+			# drop drops to screen
+			for (x, y, lifespan) in self.animation['rain_drops']:
+				
+				# skip if off screen
+				if x < 0 or y > 50: continue
+				
+				if lifespan == 0:
+					char = 111
+				else:
+					char =124
+				libtcod.console_put_char_ex(cd_anim_con, x, y, char, libtcod.light_blue,
+					libtcod.black)
+		
+		# reset update timer
+		session.anim_timer  = time.time()
+	
+	
 	# draw all campaign day consoles to screen
 	def UpdateCDDisplay(self):
 		libtcod.console_clear(con)
@@ -2649,6 +2713,8 @@ class CampaignDay:
 		libtcod.console_blit(cd_control_con, 0, 0, 0, 0, con, 29, 6, 1.0, 0.0)	# zone control layer
 		libtcod.console_blit(cd_unit_con, 0, 0, 0, 0, con, 29, 6, 1.0, 0.0)	# unit group layer
 		libtcod.console_blit(cd_gui_con, 0, 0, 0, 0, con, 29, 6, 1.0, 0.0)	# GUI layer
+		
+		libtcod.console_blit(cd_anim_con, 0, 0, 0, 0, con, 28, 7, 1.0, 0.0)	# animation console
 		
 		libtcod.console_blit(time_con, 0, 0, 0, 0, con, 36, 1)			# date and time
 		
@@ -2667,7 +2733,7 @@ class CampaignDay:
 	def DoCampaignDayLoop(self):
 		
 		# consoles for day map interface
-		global daymap_bkg, cd_map_con, cd_unit_con, cd_control_con, cd_command_con
+		global daymap_bkg, cd_map_con, cd_anim_con, cd_unit_con, cd_control_con, cd_command_con
 		global cd_player_unit_con, cd_direction_con, cd_gui_con, time_con
 		global cd_campaign_con, cd_weather_con, cd_hex_info_con
 		global scenario
@@ -2675,10 +2741,11 @@ class CampaignDay:
 		# create consoles
 		daymap_bkg = LoadXP('daymap_bkg.xp')
 		cd_map_con = NewConsole(35, 53, libtcod.black, libtcod.white)
+		cd_anim_con = NewConsole(36, 52, libtcod.black, libtcod.white)
 		cd_unit_con = NewConsole(35, 53, KEY_COLOR, libtcod.white)
 		cd_control_con = NewConsole(35, 53, KEY_COLOR, libtcod.red)
 		cd_gui_con = NewConsole(35, 53, KEY_COLOR, libtcod.red)
-		time_con = NewConsole(21, 6, libtcod.darkest_grey, libtcod.white)
+		time_con = NewConsole(21, 5, libtcod.darkest_grey, libtcod.white)
 		cd_player_unit_con = NewConsole(25, 16, libtcod.black, libtcod.white)
 		cd_direction_con = NewConsole(25, 16, libtcod.black, libtcod.white)
 		cd_command_con = NewConsole(25, 24, libtcod.black, libtcod.white)
@@ -2704,6 +2771,9 @@ class CampaignDay:
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
 		mouse_y = -1
+		
+		# start initial animations
+		self.InitAnimations()
 		
 		SaveGame()
 		
@@ -2761,6 +2831,11 @@ class CampaignDay:
 				self.DisplayCampaignDaySummary()
 				exit_loop = True
 				continue
+			
+			# check for animation update
+			if time.time() - session.anim_timer >= 0.20:
+				self.UpdateAnimCon()
+				self.UpdateCDDisplay()
 			
 			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_flush()
@@ -3109,6 +3184,9 @@ class Session:
 		
 		# scroll location for log
 		self.log_scroll = 0
+		
+		# animation timer, used by both the campaign day and the scenario object
+		self.anim_timer = 0.0
 	
 	
 	# try to initialize SDL2 mixer
@@ -8954,6 +9032,7 @@ def LoadCFG():
 		config['ArmCom2'] = {
 			'large_display_font' : 'true',
 			'sounds_enabled' : 'true',
+			'animation_speed' : 1,
 			'keyboard' : '0'
 		}
 		

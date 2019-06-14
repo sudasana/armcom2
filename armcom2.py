@@ -1077,19 +1077,11 @@ class Campaign:
 				# start the day
 				if campaign_day is None:
 					if key.vk == libtcod.KEY_ENTER:
-						# generate a new campaign day object
-						campaign_day = CampaignDay()
-								
-						# allow player to load ammo
-						campaign_day.AmmoReloadMenu()
-						
-						# show starting animation
-						campaign_day.ShowStartOfDay()
-						
-						campaign.AddLog('Combat day begins')
-						
-						# continue in loop to go into campaign day layer
-						continue
+						campaign_day = CampaignDay()	# generate a new campaign day object
+						campaign_day.AmmoReloadMenu()	# allow player to load ammo
+						campaign_day.ShowStartOfDay()	# show starting animation
+						campaign.AddLog('Day begins')
+						continue			# continue in loop to go into campaign day layer
 				
 				# proceed to next day
 				else:
@@ -1183,6 +1175,16 @@ class CampaignDay:
 			# set zone terrain type too
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
 		
+		# create map objectives
+		# TEMP - assumes advance day mission
+		objective_dict = {
+			'objective_type' : 'Capture',
+			'vp_reward' : 5,
+			'time_limit' : None
+			}
+		self.map_hexes[(-2, 6)].SetObjective(objective_dict)
+		self.map_hexes[(1, 2)].SetObjective(objective_dict)
+		
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}
 		
@@ -1210,16 +1212,6 @@ class CampaignDay:
 		self.player_unit_location = (-2, 8)		# set initial player unit location
 		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
 		
-		# set up hex objectives
-		# TEMP - assumes advance day mission
-		objective_dict = {
-			'objective_type' : 'Capture',
-			'vp_reward' : 5,
-			'time_limit' : None
-			}
-		self.map_hexes[(-2, 6)].SetObjective(objective_dict)
-		self.map_hexes[(1, 2)].SetObjective(objective_dict)
-	
 	
 	# increments one of the combat day records, also increments campaign record
 	def AddRecord(self, name, i):
@@ -2734,6 +2726,8 @@ class CampaignDay:
 					self.scenario = None
 					scenario = None
 					
+					campaign.AddLog('Combat ends')
+					
 					# capture area if player is still alive
 					if campaign.player_unit.alive:
 						(hx, hy) = self.player_unit_location
@@ -2763,7 +2757,7 @@ class CampaignDay:
 			# check for end of campaign day
 			if self.ended:
 				ShowMessage('Your combat day has ended.')
-				campaign.AddLog('Combat day ends')
+				campaign.AddLog('Day ends')
 				self.DisplayCampaignDaySummary()
 				exit_loop = True
 				continue
@@ -2954,6 +2948,8 @@ class CampaignDay:
 							if DEBUG:
 								if session.debug['Always Scenario']:
 									roll = 1.0
+								elif session.debug['Never Scenario']:
+									roll = 100.0
 							
 							if roll <= (float(map_hex2.enemy_strength) * 9.5):
 								ShowMessage('You encounter enemy resistance!')
@@ -3049,10 +3045,23 @@ class CDMapHex:
 		self.air_support = False
 		self.arty_support = False
 		
-		# captured by player
-		if player_num == 0 and not no_vp:
+		# if captured by enemy, we can return here
+		if player_num == 1: return
+		
+		# check for VP reward
+		if not no_vp:
 			campaign.AwardVP(campaign_day.capture_zone_vp)
 			campaign_day.AddRecord('Map Areas Captured', 1)
+		
+			# check for objective reward
+			if self.objective is not None:
+				if self.objective['objective_type'] == 'Capture':
+					campaign.AwardVP(self.objective['vp_reward'])
+					ShowMessage('You have captured an objective!')
+					campaign.AddLog('Captured an objective area')
+				
+		# clear the objective if any
+		self.objective = None
 
 
 
@@ -5346,6 +5355,9 @@ class Unit:
 		
 		# if player unit has been destroyed
 		if self == scenario.player_unit:
+			
+			campaign.AddLog('Our tank was destroyed')
+			
 			# set end-scenario flag
 			scenario.finished = True
 		
@@ -8162,6 +8174,8 @@ class Scenario:
 			for unit in self.player_unit.squad:
 				unit.BuildCmdLists()
 				unit.ResetForNewTurn()
+			
+			campaign.AddLog('Combat begins')
 			
 			self.init_complete = True
 		

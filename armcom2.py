@@ -160,11 +160,11 @@ SCEN_PHASE_COL = [
 
 # list of campaign calendar menus and their highlight colours
 CC_MENU_LIST = [
-	('Summary', 1, libtcod.Color(128, 128, 128)),
+	('Proceed', 1, libtcod.Color(70, 140, 0)),
 	('Crew', 2, libtcod.Color(140, 140, 0)),
 	('Tank', 3, libtcod.Color(40, 40, 40)),
 	('Group', 4, libtcod.Color(180, 0, 45)),
-	('Proceed', 5, libtcod.Color(70, 140, 0))
+	
 ]
 
 # list of campaign day menus and their highlight colours
@@ -505,6 +505,7 @@ class Campaign:
 		# holder for active enemy units
 		#self.enemy_units = []
 	
+	
 	# add a line to the log for the current day
 	def AddLog(self, text):
 
@@ -775,6 +776,69 @@ class Campaign:
 		return (selected_unit.unit_id, player_tank_name)
 	
 	
+	# display a summary of a completed campaign
+	def DisplayCampaignSummary(self):
+		
+		# clear screen
+		libtcod.console_clear(con)
+		
+		# build info window
+		temp_con = libtcod.console_new(29, 54)
+		libtcod.console_set_default_background(temp_con, libtcod.black)
+		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+		libtcod.console_clear(temp_con)
+		DrawFrame(temp_con, 0, 0, 29, 54)
+		libtcod.console_set_default_foreground(temp_con, libtcod.white)
+		
+		# campaign and calendar day info
+		libtcod.console_print_ex(temp_con, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Campaign Finished')
+		libtcod.console_print_ex(temp_con, 14, 3, libtcod.BKGND_NONE, libtcod.CENTER,
+			self.stats['name'])
+		
+		# FUTURE: display outcome for player character
+		
+		# total VP
+		libtcod.console_set_default_foreground(temp_con, libtcod.white)
+		libtcod.console_print_ex(temp_con, 14, 11, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Total VP Earned:')
+		libtcod.console_print_ex(temp_con, 14, 13, libtcod.BKGND_NONE, libtcod.CENTER,
+			str(self.player_vp))
+		
+		# campaign stats
+		y = 17
+		for text in RECORD_LIST:
+			libtcod.console_print(temp_con, 2, y, text + ':')
+			libtcod.console_print_ex(temp_con, 26, y, libtcod.BKGND_NONE, libtcod.RIGHT,
+				str(self.records[text]))
+			y += 1
+			if y == 49:
+				break
+			
+		libtcod.console_set_default_foreground(temp_con, ACTION_KEY_COL)
+		libtcod.console_print(temp_con, 7, 51, 'Enter')
+		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+		libtcod.console_print(temp_con, 14, 51, 'Continue')
+		
+		# display console to screen
+		libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 31, 3)
+		
+		# get input from player
+		exit_menu = False
+		while not exit_menu:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			if not GetInputEvent(): continue
+			
+			# end menu
+			if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_ENTER]:
+				exit_menu = True
+	
+	
+	#######################################
+	#     Campaign Calendar Interface     #
+	#######################################
+	
 	# update the day outline console, 24x22
 	def UpdateDayOutlineCon(self):
 		libtcod.console_clear(day_outline)
@@ -820,13 +884,22 @@ class Campaign:
 		libtcod.console_rect(calendar_cmd_con, x, 0, 25-x, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(calendar_cmd_con, libtcod.black)
 		
-		# summary of expected day
+		# proceed - start day or continue to next day, summary of expected day
 		if self.active_calendar_menu == 1:
 			
-			libtcod.console_print_ex(calendar_cmd_con, 11, 8, libtcod.BKGND_NONE,
-				libtcod.CENTER,	'See main panel for')
-			libtcod.console_print_ex(calendar_cmd_con, 11, 9, libtcod.BKGND_NONE,
-				libtcod.CENTER,	'summary of combat day')
+			# day has not yet started
+			if campaign_day is None:
+				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+				libtcod.console_print(calendar_cmd_con, 4, 18, 'Enter')
+				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+				libtcod.console_print(calendar_cmd_con, 11, 18, 'Start Day')
+			
+			# day has finished
+			else:
+				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+				libtcod.console_print(calendar_cmd_con, 4, 18, 'Enter')
+				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+				libtcod.console_print(calendar_cmd_con, 11, 18, 'End Day')
 		
 		# crew
 		elif self.active_calendar_menu == 2:
@@ -839,30 +912,13 @@ class Campaign:
 		# group - not yet implemented
 		elif self.active_calendar_menu == 4:
 			pass
-		
-		# proceed - start day or continue to next day
-		else:
-			
-			# day has not yet started
-			if campaign_day is None:
-				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
-				libtcod.console_print(calendar_cmd_con, 1, 10, 'Enter')
-				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
-				libtcod.console_print(calendar_cmd_con, 8, 10, 'Start Combat Day')
-			
-			# day has finished
-			else:
-				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
-				libtcod.console_print(calendar_cmd_con, 1, 10, 'Enter')
-				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
-				libtcod.console_print(calendar_cmd_con, 8, 10, 'End Combat Day')
 	
 	
 	# update the main calendar display panel
 	def UpdateCCMainPanel(self):
 		libtcod.console_clear(calendar_main_panel)
 		
-		# summary of expected day
+		# proceed menu - show summary of expected day
 		if self.active_calendar_menu == 1:
 			
 			x = 20
@@ -914,8 +970,6 @@ class Campaign:
 				libtcod.console_print(calendar_main_panel, x, y1, line)
 				y1+=1
 				if y1 == y+23: break
-			
-			
 	
 	
 	# update the display of the campaign calendar interface
@@ -1009,7 +1063,7 @@ class Campaign:
 			key_char = DeKey(chr(key.c).lower())
 			
 			# switch active menu
-			if key_char in ['1', '2', '3', '5']:
+			if key_char in ['1', '2', '3']:
 				if self.active_calendar_menu != int(key_char):
 					self.active_calendar_menu = int(key_char)
 					self.UpdateCalendarCmdCon()
@@ -1017,24 +1071,8 @@ class Campaign:
 					self.UpdateCCDisplay()
 				continue
 			
-			# summary menu active
-			if self.active_calendar_menu == 1:
-				pass
-			
-			# crew menu active
-			elif self.active_calendar_menu == 2:
-				pass
-			
-			# tank menu active
-			elif self.active_calendar_menu == 3:
-				pass
-			
-			# group menu active
-			elif self.active_calendar_menu == 4:
-				pass
-			
 			# proceed menu active
-			else:
+			if self.active_calendar_menu == 1:
 				
 				# start the day
 				if campaign_day is None:
@@ -1055,8 +1093,26 @@ class Campaign:
 				
 				# proceed to next day
 				else:
-					pass
-					# TODO: check for end of campaign calendar here
+					
+					# TEMP - assume that campaign is only a single day
+					campaign.DisplayCampaignSummary()
+					EraseGame()
+					exit_loop = True
+					continue
+			
+			# crew menu active
+			elif self.active_calendar_menu == 2:
+				pass
+			
+			# tank menu active
+			elif self.active_calendar_menu == 3:
+				pass
+			
+			# group menu active
+			elif self.active_calendar_menu == 4:
+				pass
+				
+				
 
 
 
@@ -2691,7 +2747,7 @@ class CampaignDay:
 					
 					# player was destroyed
 					else:
-						EraseGame()
+						
 						self.DisplayCampaignDaySummary()
 						exit_loop = True
 						continue
@@ -9992,7 +10048,9 @@ while not exit_game:
 						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 						continue
 			        
-			        # create a new campaign object and select a campaign
+			        ### Start a New Campaign ###
+			        
+			        # create a new campaign object and allow player to select a campaign
 				campaign = Campaign()
 				result = campaign.CampaignSelectionMenu()
 				
@@ -10030,8 +10088,6 @@ while not exit_game:
 			
 			# go to campaign calendar loop
 			campaign.DoCampaignCalendarLoop()
-			
-			#campaign_day.DoCampaignDayLoop()
 			
 			# reset exiting flag
 			session.exiting = False

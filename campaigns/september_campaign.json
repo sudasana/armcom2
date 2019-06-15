@@ -24,7 +24,7 @@
 			"date" : "1939.09.01",
 			"day_start" : "4:30",
 			"day_end" : "12:30",
-			"location" : "The Polish Border",
+			"location" : "The German Border",
 			"desc" : "Reports are coming in of a surprise invasion by German forces. Mobilize your team and launch a counterattack.",
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 90.0,

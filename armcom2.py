@@ -108,6 +108,12 @@ CD_HEX_EDGE_CELLS = {
 	5: [(-3,-1),(-2,-2),(-1,-3),(0,-4)]
 }
 
+# smaller hex outline for objective hex highlighting
+CD_HEX_OBJECTIVE_CELLS = [
+	(0,-3), (1,-2), (2,-1), (2,0), (2,1), (1,2), (0,3), (-1,2), (-2,1),
+	(-2,0), (-2,-1), (-1,-2)
+]
+
 # list of hexes on campaign day map
 CAMPAIGN_DAY_HEXES = [
 	(0,0),(1,0),(2,0),(3,0),(4,0),
@@ -792,7 +798,7 @@ class Campaign:
 		
 		# campaign and calendar day info
 		libtcod.console_print_ex(temp_con, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Campaign Finished')
+			'Your Campaign is Finished')
 		libtcod.console_print_ex(temp_con, 14, 3, libtcod.BKGND_NONE, libtcod.CENTER,
 			self.stats['name'])
 		
@@ -1023,15 +1029,18 @@ class Campaign:
 			# campaign day running, go into the campaign day loop now
 			if campaign_day is not None:
 				
-				campaign_day.DoCampaignDayLoop()
+				if not campaign_day.ended:
 				
-				if session.exiting:
-					exit_loop = True
-					continue
-				
-				# delete the campaign day object if finished
-				if campaign_day.ended:
-					campaign_day = None
+					campaign_day.DoCampaignDayLoop()
+					
+					if session.exiting:
+						exit_loop = True
+						continue
+					
+					# redraw the screen
+					self.UpdateDayOutlineCon()
+					self.UpdateCalendarCmdCon()
+					self.UpdateCCDisplay()
 				
 			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_flush()
@@ -1085,6 +1094,9 @@ class Campaign:
 				
 				# proceed to next day
 				else:
+					
+					# delete the finished campaign day object
+					campaign_day = None
 					
 					# TEMP - assume that campaign is only a single day
 					campaign.DisplayCampaignSummary()
@@ -1331,7 +1343,7 @@ class CampaignDay:
 		if roll <= 50.0:
 			
 			if self.weather['Cloud Cover'] == 'Clear':
-				return False
+				return
 			
 			roll = GetPercentileRoll()
 			
@@ -1346,7 +1358,7 @@ class CampaignDay:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('A heavy downpour suddenly begins to fall.')
 				else:
-					return False
+					return
 			
 			elif self.weather['Precipitation'] == 'Mist':
 				if roll <= 20.0:
@@ -1359,7 +1371,7 @@ class CampaignDay:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('The light mist suddenly turns into a heavy downpour.')
 				else:
-					return False
+					return
 			
 			elif self.weather['Precipitation'] == 'Rain':
 				if roll <= 15.0:
@@ -1372,16 +1384,14 @@ class CampaignDay:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('The rain gets heavier.')
 				else:
-					return False
+					return
 			
 			elif self.weather['Precipitation'] == 'Heavy Rain':
 				if roll <= 35.0:
 					self.weather['Precipitation'] = 'Rain'
 					ShowMessage('The rain lightens a little.')
 				else:
-					return False
-			
-			return True
+					return
 		
 		# FUTURE: change in fog level
 		#elif roll <= 75.0:
@@ -1400,7 +1410,7 @@ class CampaignDay:
 					self.weather['Cloud Cover'] = 'Heavy'
 					ShowMessage('A heavy cloud front rolls in.')
 				else:
-					return False
+					return
 			
 			elif self.weather['Cloud Cover'] == 'Scattered':
 				if roll <= 35.0:
@@ -1416,7 +1426,7 @@ class CampaignDay:
 					self.weather['Cloud Cover'] = 'Overcast'
 					ShowMessage('A storm front has rolled in.')
 				else:
-					return False
+					return
 			
 			elif self.weather['Cloud Cover'] == 'Heavy':
 				if roll <= 25.0:
@@ -1426,7 +1436,7 @@ class CampaignDay:
 					self.weather['Cloud Cover'] = 'Overcast'
 					ShowMessage('The cloud cover thickens.')
 				else:
-					return False
+					return
 			
 			# overcast
 			else:
@@ -1434,14 +1444,12 @@ class CampaignDay:
 					self.weather['Cloud Cover'] = 'Heavy'
 					ShowMessage('The cloud cover begins to part but remains heavy.')
 				else:
-					return False
+					return
 			
 			# stop rain if clouds have cleared up
 			if self.weather['Cloud Cover'] == 'Clear' and self.weather['Precipitation'] != 'None':
 				self.weather['Precipitation'] = 'None'
 				ShowMessage('The rain has stopped.')
-			
-			return True
 
 	
 	# advance the current campaign day time, check for end of day, and also weather conditions update
@@ -1456,12 +1464,12 @@ class CampaignDay:
 		self.weather_update_clock -= hours * 60
 		self.weather_update_clock -= minutes
 		if self.weather_update_clock <= 0:
-			# if weather conditions change, update relevant consoles
-			if self.UpdateWeather():
-				self.UpdateCDCommandCon()
-				DisplayWeatherInfo(cd_weather_con)
-				if scenario is not None:
-					scenario.UpdateScenarioInfoCon()
+			# check for weather conditions change, update relevant consoles
+			self.UpdateWeather()
+			self.UpdateCDCommandCon()
+			DisplayWeatherInfo(cd_weather_con)
+			if scenario is not None:
+				scenario.UpdateScenarioInfoCon()
 	
 	
 	# display an animated screen for the start of a new combat day
@@ -2068,7 +2076,7 @@ class CampaignDay:
 		libtcod.console_print_ex(temp_con, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
 			campaign.stats['name'])
 		libtcod.console_print_ex(temp_con, 14, 4, libtcod.BKGND_NONE, libtcod.CENTER,
-			GetDateText(campaign.today))
+			GetDateText(campaign.today['date']))
 		
 		# day result: survived or destroyed
 		libtcod.console_print_ex(temp_con, 14, 7, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -2336,11 +2344,10 @@ class CampaignDay:
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			if self.map_hexes[(hx,hy)].objective is None: continue
 			
-			for direction in range(6):
-				(x,y) = self.PlotCDHex(hx, hy)
-				for (xm,ym) in CD_HEX_EDGE_CELLS[direction]:
-					libtcod.console_put_char_ex(cd_control_con, x+xm,
-						y+ym, chr(250), ACTION_KEY_COL, libtcod.black)
+			(x,y) = self.PlotCDHex(hx, hy)
+			for (xm,ym) in CD_HEX_OBJECTIVE_CELLS:
+				libtcod.console_put_char_ex(cd_control_con, x+xm,
+					y+ym, chr(250), ACTION_KEY_COL, libtcod.black)
 	
 	
 	# generate/update the GUI console
@@ -2648,8 +2655,6 @@ class CampaignDay:
 	
 	# starts or re-starts animation display based on weather conditions
 	def InitAnimations(self):
-		
-		print('DEBUG: starting animations')
 		
 		# TEMP assume rain
 		self.animation['rain_active'] = True

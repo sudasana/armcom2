@@ -516,7 +516,7 @@ class Campaign:
 
 		# add timestamp if a campaign day is active
 		if campaign_day is not None:
-			text = (str(campaign_day.day_clock['hour']) + ':' + str(campaign_day.day_clock['minute']) +
+			text = (str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2) +
 				' - ' + text)
 		
 		self.logs[self.today['date']].append(text)
@@ -3713,8 +3713,17 @@ class Position:
 		else:
 			direction_list = self.bu_visible
 		
+		# rotate based on hull or turret facing
+		rotate = 0
+		if self.location == 'Hull':
+			if self.unit.facing is not None:
+				rotate = self.unit.facing
+		elif self.location == 'Turret':
+			if self.unit.turret_facing is not None:
+				rotate = self.unit.turret_facing
+		
 		for direction in direction_list:
-			hextant_hex_list = GetCoveredHexes(self.unit.hx, self.unit.hy, direction)
+			hextant_hex_list = GetCoveredHexes(self.unit.hx, self.unit.hy, ConstrainDir(direction + rotate))
 			for (hx, hy) in hextant_hex_list:
 				# hex is off map
 				if (hx, hy) not in scenario.hex_dict: continue
@@ -9995,7 +10004,6 @@ else:
 
 # generate keyboard mapping dictionaries
 GenerateKeyboards()
-print('Current keyboard layout: ' + KEYBOARDS[config['ArmCom2'].getint('keyboard')])
 
 # create double buffer console
 con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -10248,6 +10256,5 @@ while not exit_game:
 			UpdateMainTitleCon(options_menu_active)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 
-print(NAME + ' shutting down')			# shutdown message
 # END #
 

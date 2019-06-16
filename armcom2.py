@@ -509,9 +509,6 @@ class Campaign:
 		self.records = {}
 		for text in RECORD_LIST:
 			self.records[text] = 0
-		
-		# holder for active enemy units
-		#self.enemy_units = []
 	
 	
 	# add a line to the log for the current day
@@ -1406,6 +1403,9 @@ class CampaignDay:
 					ShowMessage('The rain lightens a little.')
 				else:
 					return
+			
+			# if we get here, the rain level has been changed, so update animations
+			self.InitAnimations()
 		
 		# FUTURE: change in fog level
 		#elif roll <= 75.0:
@@ -2459,17 +2459,14 @@ class CampaignDay:
 			libtcod.console_set_default_background(cd_command_con, col)
 			libtcod.console_rect(cd_command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
 			
-			# only support, travel, and supply menus active for now
 			# display menu number
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			if num not in [1, 3, 5]:
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
 			libtcod.console_print(cd_command_con, x, 0, str(num))
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
 			x += 2
 			
-			# display menu text if active
+			# display menu text if tab is active
 			if self.active_menu == num:
 				libtcod.console_rect(cd_command_con, x, 0, len(text)+2, 1,
 					True, libtcod.BKGND_SET)
@@ -2545,6 +2542,13 @@ class CampaignDay:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 				libtcod.console_print(cd_command_con, 5, 22, 'Call Arty Support')
 		
+		# crew
+		elif self.active_menu == 2:
+			
+			libtcod.console_print(cd_command_con, 1, 2, 'Crew Status')
+			# TODO: list of crew statuses
+		
+		
 		# travel
 		elif self.active_menu == 3:
 			
@@ -2590,6 +2594,15 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 5, 22, 'Enter')
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 			libtcod.console_print(cd_command_con, 12, 22, 'Proceed')
+		
+		# group
+		elif self.active_menu == 4:
+			
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			libtcod.console_print(cd_command_con, 1, 2, 'Squad')
+			text = str(campaign.player_squad_num) + ' x ' + campaign.player_unit.unit_id
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			libtcod.console_print(cd_command_con, 1, 3, text)
 		
 		# resupply menu
 		elif self.active_menu == 5:
@@ -2681,16 +2694,25 @@ class CampaignDay:
 	# starts or re-starts animation display based on weather conditions
 	def InitAnimations(self):
 		
-		# TEMP assume rain
-		self.animation['rain_active'] = True
-		
-		# set up rain drops
+		# reset animations
+		self.animation['rain_active'] = False
 		self.animation['rain_drops'] = []
-		for i in range(10):
-			x = libtcod.random_get_int(0, 4, 36)
-			y = libtcod.random_get_int(0, 0, 50)
-			lifespan = libtcod.random_get_int(0, 1, 5)
-			self.animation['rain_drops'].append((x, y, 4))		
+		
+		# check for rain animation
+		if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
+			self.animation['rain_active'] = True
+		
+		# set up rain if any
+		if self.animation['rain_active']:
+			self.animation['rain_drops'] = []
+			num = 8
+			if campaign_day.weather['Precipitation'] == 'Heavy Rain':
+				num = 16
+			for i in range(num):
+				x = libtcod.random_get_int(0, 4, 36)
+				y = libtcod.random_get_int(0, 0, 50)
+				lifespan = libtcod.random_get_int(0, 1, 5)
+				self.animation['rain_drops'].append((x, y, 4))		
 		
 	
 	# update animation frame and the campaign day animation console 36x52
@@ -2897,7 +2919,7 @@ class CampaignDay:
 			key_char = DeKey(chr(key.c).lower())
 			
 			# switch active menu
-			if key_char in ['1', '3', '5']:
+			if key_char in ['1', '2', '3', '4', '5']:
 				if self.active_menu != int(key_char):
 					self.active_menu = int(key_char)
 					self.UpdateCDGUICon()
@@ -4755,7 +4777,6 @@ class Unit:
 		scenario.hex_dict[(self.hx, self.hy)].unit_stack.remove(self)
 		# remove from scenario unit list
 		scenario.units.remove(self)
-		#print ('DEBUG: removed a ' + self.unit_id + ' from play')
 	
 	
 	# return the display character to use on the map viewport
@@ -5307,6 +5328,11 @@ class Unit:
 					else:
 						text += profile['attacker'].GetName() + '.'
 					ShowMessage(text)
+					
+					# add to log if player kill
+					if profile['attacker'] == scenario.player_unit:
+						campaign.AddLog('Destroyed a ' + self.GetName())
+					
 					return
 
 		# clear unresolved hits

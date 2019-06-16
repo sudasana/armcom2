@@ -498,6 +498,8 @@ class Campaign:
 		
 		self.logs = {}			# dictionary of logs, organized by combat day
 		self.player_unit = None		# placeholder for player unit
+		self.player_squad_max = 0	# maximum units in player squad
+		self.player_squad_num = 0	# current units in player squad
 		self.player_vp = 0		# total player victory points
 		self.stats = {}			# campaign stats
 		self.today = None		# pointer to current day in calendar
@@ -1137,6 +1139,18 @@ class CampaignDay:
 		
 		self.fate_points = libtcod.random_get_int(0, 1, 3)	# fate points protecting the player
 		
+		# set max number of units in player squad
+		player_unit_class = campaign.player_unit.GetStat('class')
+		if player_unit_class == 'Tankette':
+			campaign.player_squad_max = 4
+		elif player_unit_class == 'Light Tank':
+			campaign.player_squad_max = 3
+		elif player_unit_class == 'Medium Tank':
+			campaign.player_squad_max = 2
+		elif player_unit_class == 'Heavy Tank':		# for FUTURE
+			campaign.player_squad_max = 1
+		campaign.player_squad_num = campaign.player_squad_max
+		
 		# victory point rewards for this campaign day
 		self.capture_zone_vp = 2
 		self.unit_destruction_vp = {
@@ -1523,6 +1537,7 @@ class CampaignDay:
 			if session.debug['Always CD Random Event']:
 				roll = 1.0
 		
+		# no event this time, increase chance for next time
 		if roll > self.random_event_chance:
 			self.random_event_chance += 2.0
 			return
@@ -1530,11 +1545,21 @@ class CampaignDay:
 		# reset random event chance
 		self.random_event_chance = BASE_CD_RANDOM_EVENT_CHANCE
 		
-		# roll for event
+		# roll for type of event
 		roll = GetPercentileRoll()
 		
+		# reinforcements for player squad
+		if roll <= 20.0:
+			
+			# can't increase
+			if campaign.player_squad_num == campaign.player_squad_max:
+				return
+			
+			ShowMessage('Reinforcements arrive and bring your squad back up to full strength.')
+			campaign.player_squad_num = campaign.player_squad_max
+		
 		# friendly forces capture an enemy zone
-		if roll <= 35.0:
+		elif roll <= 35.0:
 			
 			# find a possible zone to capture
 			hex_list = []
@@ -5436,16 +5461,25 @@ class Unit:
 			elif category == 'Infantry':
 				campaign_day.AddRecord('Infantry Destroyed', 1)
 		
-		# if player unit has been destroyed
-		if self == scenario.player_unit:
-			
-			campaign.AddLog('Our tank was destroyed')
-			
-			# set end-scenario flag
-			scenario.finished = True
+		# friendly unit destroyed
+		else:
 		
-			# do bail-out procedure
-			scenario.PlayerBailOut()
+			# player unit has been destroyed
+			if self == scenario.player_unit:
+				
+				campaign.AddLog('Our tank was destroyed')
+				
+				# set end-scenario flag
+				scenario.finished = True
+			
+				# do bail-out procedure
+				scenario.PlayerBailOut()
+			
+			# player squad member has been destroyed
+			elif self in scenario.player_unit.squad:
+				
+				campaign.player_squad_num -= 1
+				print('DEBUG: decreased player squad size, now ' + str(campaign.player_squad_num))
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
@@ -8226,18 +8260,8 @@ class Scenario:
 			self.player_unit.SpawnAt(0,0)
 			self.player_unit.spotted = True
 			
-			# set up player squad
-			player_unit_class = self.player_unit.GetStat('class')
-			if player_unit_class == 'Tankette':
-				squad_num = 4
-			elif player_unit_class == 'Light Tank':
-				squad_num = 3
-			elif player_unit_class == 'Medium Tank':
-				squad_num = 2
-			elif player_unit_class == 'Heavy Tank':		# for FUTURE
-				squad_num = 1
-			
-			for i in range(squad_num):
+			# spawn rest of player squad
+			for i in range(campaign.player_squad_num):
 				unit = Unit(self.player_unit.unit_id)
 				unit.nation = self.player_unit.nation
 				unit.ai = AI(unit)

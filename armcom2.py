@@ -10043,8 +10043,10 @@ TANK_IMAGES = [
 libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
 # display version number and program info
 libtcod.console_set_default_foreground(main_title, libtcod.red)
+libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-13, libtcod.BKGND_NONE,
+	libtcod.CENTER, 'Development Build!')
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-12, libtcod.BKGND_NONE,
-	libtcod.CENTER, 'Development Build: Has bugs and incomplete features')
+	libtcod.CENTER, 'Has bugs and incomplete features')
 libtcod.console_set_default_foreground(main_title, libtcod.light_grey)
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-10, libtcod.BKGND_NONE,
 	libtcod.CENTER, VERSION)

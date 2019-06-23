@@ -483,9 +483,16 @@ HD_SIZE_MOD = {
 	'Very Large' : -12.0
 }
 
-# base chance of a random event in the campaign day interface
+# base chance of a sniper attack being effective
+BASE_SNIPER_TK_CHANCE = 45.0
+
+# base chance of a random event in a scenario
+BASE_RANDOM_EVENT_CHANCE = 5.0
+# base chance of a random event in a campaign day
 BASE_CD_RANDOM_EVENT_CHANCE = 5.0
 
+# base number of minutes between weather update checks
+BASE_WEATHER_UPDATE_CLOCK = 30
 
 
 ##########################################################################################
@@ -1303,14 +1310,14 @@ class CampaignDay:
 			self.weather['Ground'] = 'Muddy'
 		
 		# set first weather update countdown
-		self.weather_update_clock = 14 + (libtcod.random_get_int(0, 1, 16))
+		self.weather_update_clock = BASE_WEATHER_UPDATE_CLOCK + (libtcod.random_get_int(0, 1, 16))
 	
 	
 	# update weather conditions, possibly changing them
 	def UpdateWeather(self):
 		
 		# reset update clock
-		self.weather_update_clock = 14 + (libtcod.random_get_int(0, 1, 16))
+		self.weather_update_clock = BASE_WEATHER_UPDATE_CLOCK + (libtcod.random_get_int(0, 1, 16))
 		
 		# always apply ground condition update
 		
@@ -3360,8 +3367,7 @@ class Personnel:
 		
 		return modifier 
 	
-	# given an attack profile, check to see whether this personnel is wounded/KIA
-	# return result if any
+	# check to see whether this personnel is wounded/KIA and return result if any
 	def DoWoundCheck(self, fp=0, roll_modifier=0.0, show_messages=True):
 		
 		# can't get worse
@@ -3414,7 +3420,7 @@ class Personnel:
 
 		#print('DEBUG: final modified wound roll was: ' + str(roll))
 
-		if roll <= 45.0:
+		if roll < 45.0:
 			
 			# near miss - no wound or other effect
 			return None
@@ -3943,12 +3949,8 @@ class AI:
 		
 		# check for player crew vulnerability
 		player_crew_vulnerable = False
-		for position in scenario.player_unit.positions_list:
-			if position.crewman is None: continue
-			if not position.crewman.ce: continue
-			if position.crewman.status in ['Dead', 'Unconscious']: continue
+		if len(scenario.player_unit.VulnerableCrew()) > 0:
 			player_crew_vulnerable = True
-			break
 		
 		# Step 1: roll for unit action
 		if self.owner.GetStat('category') == 'Infantry':
@@ -4414,6 +4416,20 @@ class Unit:
 		return self.stats[stat_name]
 	
 	
+	# returns list of crew in this unit that are vulnerable to small-arms fire
+	def VulnerableCrew(self):
+		
+		crew_list = []
+		
+		for position in self.positions_list:
+			if position.crewman is None: continue
+			if not position.crewman.ce: continue
+			if position.crewman.status in ['Dead', 'Unconscious']: continue
+			crew_list.append(position.crewman)
+
+		return crew_list
+		
+	
 	# return a to-hit modifier given current terrain
 	def GetTEM(self):
 		
@@ -4543,7 +4559,7 @@ class Unit:
 	def CheckForHD(self, driver_attempt=False):
 		
 		# unit not eligible for HD
-		if self.GetStat('category') in ['Sniper', 'Infantry', 'Gun']: return False
+		if self.GetStat('category') in ['Infantry', 'Gun']: return False
 		
 		# clear any previous HD status
 		self.hull_down = []
@@ -4673,10 +4689,6 @@ class Unit:
 				# infantry are not as good at spotting from their lower position
 				if self.GetStat('category') == 'Infantry':
 					chance = chance * 0.5
-				
-				# snipers are hard to spot
-				if unit.unit_id == 'Sniper':
-					chance = chance * 0.25
 				
 				# spotting crew modifier
 				chance += position.crewman.GetActionMod('Spotting')
@@ -5549,6 +5561,9 @@ class Scenario:
 		self.cd_map_hex = cd_map_hex			# Campaign Day map hex where this scenario is taking place
 		self.finished = False				# Scenario has ended, returning to Campaign Day map
 		
+		# current odds of a random event being triggered
+		self.random_event_chance = BASE_RANDOM_EVENT_CHANCE
+		
 		# generate hex map: single hex surrounded by 4 hex rings. Final ring is not normally
 		# part of play and stores units that are coming on or going off of the map proper
 		# also store pointers to hexes in a dictionary for quick access
@@ -5616,6 +5631,89 @@ class Scenario:
 			ShowMessage('The campaign day is over.')
 			self.finished = True
 			return
+	
+	
+	# check for triggering of a random event in a scenario
+	def CheckForRandomEvent(self):
+		
+		print('DEBUG: Doing random event roll')
+		
+		roll = GetPercentileRoll()
+		
+		# TEMP testing
+		roll = 1.0
+		
+		if roll > self.random_event_chance:
+			self.random_event_chance += 3.0
+			return
+		
+		# roll for type of event
+		roll = GetPercentileRoll()
+		
+		# TEMP testing
+		roll = 10.0
+		
+		# possible free air attack
+		if roll <= 10.0:
+			
+			if campaign_day.air_support_level <= 0.0: return
+			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
+			ShowMessage('Friendly air forces launch an attack!')
+			self.AirAttack()
+		
+		# possible free arty attack
+		elif roll <= 20.0:
+			
+			if campaign_day.arty_support_level <= 0.0: return
+			ShowMessage('Friendly artillery forces fire a bombardment!')
+			self.ArtilleryAttack()
+		
+		# TODO: enemy reinforcement
+		elif roll <= 30.0:
+			
+			pass
+		
+		# sniper attack on player
+		elif roll <= 40.0:
+			
+			# check for vulnerable targets and select one if any
+			crew_list = self.player_unit.VulnerableCrew()
+			if len(crew_list) == 0: return
+			crew_target = choice(crew_list)
+			
+			# do attack roll
+			chance = BASE_SNIPER_TK_CHANCE
+			
+			# precipitation modifier
+			if campaign_day.weather['Precipitation'] == 'Rain':
+				chance -= 5.0
+			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+				chance -= 15.0
+			
+			# target moving
+			if self.player_unit.moving: chance -= 10.0
+			
+			# target terrain
+			chance += self.player_unit.GetTEM()
+			
+			# odds too low
+			if chance < 15.0: return
+			
+			# do attack roll
+			roll = GetPercentileRoll()
+			
+			# miss
+			if roll > chance:
+				ShowMessage("The ricochet from a sniper's bullet rings out, narrowly missing " + crew_target.GetFullName())
+			else:
+				ShowMessage(crew_target.GetFullName() + ' has been hit by a sniper.')
+				crew_target.DoWoundCheck(roll_modifier = 45.0)
+		
+		# an event was triggered, so reset random event chance
+		self.random_event_chance = BASE_RANDOM_EVENT_CHANCE
+		
+		
+
 	
 	
 	# go through procedure for player crew bailing out of tank
@@ -7529,6 +7627,9 @@ class Scenario:
 			self.CheckForEnd()
 			if self.finished: return
 			
+			# check for random event
+			self.CheckForRandomEvent()
+			
 			self.active_player = 0
 			self.phase = PHASE_COMMAND
 			
@@ -8341,9 +8442,13 @@ class Scenario:
 				self.ArtilleryAttack()
 				self.cd_map_hex.arty_support = False
 			else:
-				ShowMessage('Friendly air attack inbound!')
-				self.AirAttack()
 				self.cd_map_hex.air_support = False
+				# check for change in weather
+				if campaign_day.weather['Cloud Cover'] == 'Overcast':
+					ShowMessage('Cloud cover too heavy, air attack aborted!')
+				else:
+					ShowMessage('Friendly air attack inbound!')
+					self.AirAttack()
 			
 			# resolve any fp from support attacks on enemy units
 			for unit in reversed(self.units):

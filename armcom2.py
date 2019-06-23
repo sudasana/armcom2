@@ -3914,7 +3914,8 @@ class Weapon:
 class AI:
 	def __init__(self, owner):
 		self.owner = owner			# pointer to owning Unit
-		self.disposition = None			# records type of action for this activation
+		self.disposition = 'None'		# records type of action for this activation
+		self.recall = False			# unit is under orders to be recalled
 
 	# do activation for this unit
 	def DoActivation(self):
@@ -3968,24 +3969,24 @@ class AI:
 				else:
 					self.disposition = 'Movement'
 			else:
-				self.disposition = None
+				self.disposition = 'None'
 		
 		elif self.owner.GetStat('category') == 'Gun':
 			
 			if not self.owner.deployed:
-				self.disposition = None
+				self.disposition = 'None'
 			else:
 				if roll <= 10.0:
 					self.disposition = 'Attack Player'
 				elif roll <= 65.0:
 					self.disposition = 'Combat'
 				else:
-					self.disposition = None
+					self.disposition = 'None'
 		
 		# non-combat unit
 		elif self.owner.GetStat('class') == 'Truck':
 			if roll <= 60.0:
-				self.disposition = None
+				self.disposition = 'None'
 			else:
 				self.disposition = 'Movement'
 		
@@ -4001,14 +4002,14 @@ class AI:
 			elif roll <= 65.0:
 				self.disposition = 'Movement'
 			else:
-				self.disposition = None
+				self.disposition = 'None'
 		
 		current_range = GetHexDistance(0, 0, self.owner.hx, self.owner.hy)
 		
 		# no combat if unit is off-map
 		if current_range > 3:
 			if self.disposition == 'Combat':
-				self.disposition = None
+				self.disposition = 'None'
 		
 		# player squad doesn't move on its own and doesn't harass or attack the player
 		if self.owner in scenario.player_unit.squad:
@@ -4020,8 +4021,13 @@ class AI:
 			if GetPercentileRoll() <= 80.0:
 				self.disposition = 'Combat'
 		
-		#if self.disposition is not None:
-		#	print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
+		# recalled units much more likely to move
+		if self.recall:
+			if self.disposition != 'Movement':
+				if GetPercentileRoll() <= 80.0:
+					self.disposition = 'Movement'
+			
+		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 		
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
@@ -4043,18 +4049,26 @@ class AI:
 							hex_list.remove((hx, hy))
 							continue
 				
-				# if move would take them off map, large chance that this hex gets thrown out
+				# if unit is being recalled, can only move further away
 				dist = GetHexDistance(0, 0, hx, hy)
-				if dist == 4:
-					if GetPercentileRoll() <= 75.0:
+				if self.recall:
+					if dist < current_range:
 						hex_list.remove((hx, hy))
 						continue
-				
-				# otherwise, if range would change, smaller chance that this hex gets thrown out
-				elif dist != current_range:
-					if GetPercentileRoll() <= 40.0:
-						hex_list.remove((hx, hy))
-						continue
+					
+				# otherwise, if move would take them off map, large chance that this hex gets thrown out
+				else:
+					
+					if dist == 4:
+						if GetPercentileRoll() <= 75.0:
+							hex_list.remove((hx, hy))
+							continue
+					
+					# otherwise, if range would change, smaller chance that this hex gets thrown out
+					elif dist != current_range:
+						if GetPercentileRoll() <= 40.0:
+							hex_list.remove((hx, hy))
+							continue
 			
 			# no possible moves
 			if len(hex_list) == 0:
@@ -5651,9 +5665,9 @@ class Scenario:
 		roll = GetPercentileRoll()
 		
 		# TEMP testing
-		roll = 10.0
+		roll = 40.0
 		
-		# possible free air attack
+		# friendly air attack
 		if roll <= 10.0:
 			
 			if campaign_day.air_support_level <= 0.0: return
@@ -5661,20 +5675,34 @@ class Scenario:
 			ShowMessage('Friendly air forces launch an attack!')
 			self.AirAttack()
 		
-		# possible free arty attack
+		# friendly arty attack
 		elif roll <= 20.0:
 			
 			if campaign_day.arty_support_level <= 0.0: return
 			ShowMessage('Friendly artillery forces fire a bombardment!')
 			self.ArtilleryAttack()
 		
-		# TODO: enemy reinforcement
+		# enemy reinforcement
 		elif roll <= 30.0:
-			
-			pass
+			self.SpawnEnemyUnits(num_units=1)
+			ShowMessage('Enemy reinforcements have arrived!')
+		
+		# random enemy unit is recalled
+		elif roll <= 40.0:
+			unit_list = []
+			for unit in self.units:
+				if not unit.alive: continue
+				if unit.owning_player == 0: continue
+				if unit.ai is None: continue		# probably not needed but safer
+				if unit.ai.recall: continue
+				unit_list.append(unit)
+			if len(unit_list) == 0: return
+			unit = choice(unit_list)
+			unit.ai.recall = True
+			ShowMessage(unit.GetName() + ' is being recalled from the battle.')
 		
 		# sniper attack on player
-		elif roll <= 40.0:
+		elif roll <= 50.0:
 			
 			# check for vulnerable targets and select one if any
 			crew_list = self.player_unit.VulnerableCrew()
@@ -5704,8 +5732,10 @@ class Scenario:
 			
 			# miss
 			if roll > chance:
+				PlaySoundFor(None, 'ricochet')
 				ShowMessage("The ricochet from a sniper's bullet rings out, narrowly missing " + crew_target.GetFullName())
 			else:
+				PlaySoundFor(None, 'sniper_hit')
 				ShowMessage(crew_target.GetFullName() + ' has been hit by a sniper.')
 				crew_target.DoWoundCheck(roll_modifier = 45.0)
 		
@@ -5971,8 +6001,9 @@ class Scenario:
 		
 	
 	# spawn enemy units on the hex map
+	# can be overidden to spawn a specific number of units
 	# FUTURE: will pull more data from the campaign day and campaign objects
-	def SpawnEnemyUnits(self):
+	def SpawnEnemyUnits(self, num_units=None):
 		
 		# pointers to data for class odds and unit type list from campaign object
 		
@@ -5984,10 +6015,11 @@ class Scenario:
 			unit_types = json.load(data_file)
 		
 		# determine initial number of enemy units to spawn: 1-4
-		num_units = 4
-		for i in range(3):
-			if libtcod.random_get_int(0, 0, 10) >= self.cd_map_hex.enemy_strength:
-				num_units -= 1
+		if num_units is None:
+			num_units = 4
+			for i in range(3):
+				if libtcod.random_get_int(0, 0, 10) >= self.cd_map_hex.enemy_strength:
+					num_units -= 1
 		
 		enemy_unit_list = []
 		while len(enemy_unit_list) < num_units:
@@ -6079,7 +6111,6 @@ class Scenario:
 			unit.SpawnAt(hx, hy)
 			if unit.GetStat('category') == 'Gun':
 				unit.deployed = True
-			#campaign.enemy_units.append(unit)
 			
 			# set facing if any toward player
 			direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)
@@ -10049,7 +10080,15 @@ def PlaySoundFor(obj, action):
 		PlaySound('stuka_divebomb_00')
 		return
 	
-	print ('ERROR: Could not determine which sound to play')
+	elif action == 'ricochet':
+		PlaySound('ricochet')
+		return
+	
+	elif action == 'sniper_hit':
+		PlaySound('sniper_hit')
+		return
+	
+	print ('ERROR: Could not determine which sound to play for action: ' + action)
 			
 
 

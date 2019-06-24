@@ -1995,7 +1995,6 @@ class CampaignDay:
 				UpdateMenuCon()
 				continue
 				
-		
 	
 	# check to see whether we need to replace crew after a scenario
 	def DoCrewCheck(self, unit):
@@ -2698,7 +2697,7 @@ class CampaignDay:
 			libtcod.console_print(cd_hex_info_con, 0, 8, 'Dirt roads')
 	
 	
-	# starts or re-starts animation display based on weather conditions
+	# starts or re-starts looping animations based on weather conditions
 	def InitAnimations(self):
 		
 		# reset animations
@@ -2831,7 +2830,7 @@ class CampaignDay:
 		mouse_x = -1
 		mouse_y = -1
 		
-		# start initial animations
+		# init looping animations
 		self.InitAnimations()
 		
 		SaveGame()
@@ -8370,14 +8369,39 @@ class Scenario:
 			libtcod.console_print(unit_info_con, 0, 10, 'R-Click for info')
 	
 	
+	# starts or re-starts looping animations based on weather conditions
+	def InitAnimations(self):
+		
+		# reset animations
+		self.animation['rain_active'] = False
+		self.animation['rain_drops'] = []
+		
+		# check for rain animation
+		if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
+			self.animation['rain_active'] = True
+		
+		# TEMP - rain always active for testing
+		self.animation['rain_active'] = True
+		
+		# set up rain if any
+		if self.animation['rain_active']:
+			self.animation['rain_drops'] = []
+			num = 4
+			if campaign_day.weather['Precipitation'] == 'Heavy Rain':
+				num = 8
+			for i in range(num):
+				x = libtcod.random_get_int(0, 4, 50)
+				y = libtcod.random_get_int(0, 0, 38)
+				lifespan = libtcod.random_get_int(0, 1, 5)
+				self.animation['rain_drops'].append((x, y, 4))
+	
+	
 	# update the scenario animation frame and console 53x43
 	def UpdateAnimCon(self):
 		libtcod.console_clear(anim_con)
 		
-		# TODO: update rain display if any
-		# TEMP - assume rain is active
-		# if self.animation['rain_active']:
-		if True:
+		# update rain display
+		if self.animation['rain_active']:
 			
 			# update location of each rain drop, spawn new ones if required
 			for i in range(len(self.animation['rain_drops'])):
@@ -8385,7 +8409,7 @@ class Scenario:
 				
 				# respawn if finished
 				if lifespan == 0:
-					x = libtcod.random_get_int(0, 4, 36)
+					x = libtcod.random_get_int(0, 4, 49)
 					y = libtcod.random_get_int(0, 0, 50)
 					lifespan = libtcod.random_get_int(0, 1, 5)
 				else:
@@ -8407,7 +8431,6 @@ class Scenario:
 					char = 124
 				libtcod.console_put_char_ex(anim_con, x, y, char, libtcod.light_blue,
 					libtcod.black)
-		
 		
 		# update gun fire animation if any
 		if self.animation['gun_fire_active']:
@@ -8521,6 +8544,12 @@ class Scenario:
 			
 			self.init_complete = True
 		
+		# reset animation timer
+		session.anim_timer = time.time()
+		
+		# init looping animations
+		self.InitAnimations()
+		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
 		DisplayTimeInfo(time_con)
@@ -8531,6 +8560,7 @@ class Scenario:
 		self.UpdateCmdCon()
 		self.UpdateUnitCon()
 		self.UpdateGuiCon()
+		self.UpdateAnimCon()
 		self.UpdateHexmapCon()
 		self.UpdateScenarioDisplay()
 		
@@ -8558,9 +8588,6 @@ class Scenario:
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
 		mouse_y = -1
-		
-		# reset animation timer
-		session.anim_timer = time.time()
 		
 		exit_scenario = False
 		while not exit_scenario:

@@ -2722,7 +2722,7 @@ class CampaignDay:
 				self.animation['rain_drops'].append((x, y, 4))		
 		
 	
-	# update animation frame and the campaign day animation console 36x52
+	# update campaign day animation frame and console 36x52
 	def UpdateAnimCon(self):
 		
 		libtcod.console_clear(cd_anim_con)
@@ -5131,49 +5131,56 @@ class Unit:
 			
 			if weapon.GetStat('type') == 'Gun':
 				
+				PlaySoundFor(weapon, 'fire')
+				
+				# start gun fire animation
+				scenario.animation['gun_fire_active'] = True
 				(x1, y1) = scenario.PlotHex(self.hx, self.hy)
 				(x2, y2) = scenario.PlotHex(target.hx, target.hy)
-				line = GetLine(x1,y1,x2,y2)
+				scenario.animation['gun_fire_line'] = GetLine(x1,y1,x2,y2)
 				
-				PlaySoundFor(weapon, 'fire')
-						
-				for (x,y) in line[2:-1]:
-					libtcod.console_clear(animation_con)
-					libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.white,
-						libtcod.black)
-					scenario.UpdateScenarioDisplay()
-					Wait(6)
-				libtcod.console_clear(animation_con)
+				# continue when finished
+				while scenario.animation['gun_fire_active']:
+					if time.time() - session.anim_timer >= 0.20:
+						scenario.UpdateAnimCon()
+						scenario.UpdateScenarioDisplay()
+					Wait(5)
 				
 				# add explosion effect if HE ammo
 				if weapon.ammo_type == 'HE':
 					
 					PlaySoundFor(weapon, 'he_explosion')
 					
-					for i in range(12):
-						col = choice([libtcod.red, libtcod.yellow, libtcod.black])
-						libtcod.console_put_char_ex(animation_con, x2, y2, 42, col,
-							libtcod.black)
-						scenario.UpdateScenarioDisplay()
-						Wait(4)
-					libtcod.console_clear(animation_con)
+					# start explosion animation
+					
+					#for i in range(12):
+					#	col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+					#	libtcod.console_put_char_ex(animation_con, x2, y2, 42, col,
+					#		libtcod.black)
+					#	scenario.UpdateScenarioDisplay()
+					#	Wait(4)
+					#libtcod.console_clear(animation_con)
 			
 			elif weapon.GetStat('type') == 'Small Arms' or weapon.GetStat('type') in MG_WEAPONS:
 				
-				(x1, y1) = scenario.PlotHex(self.hx, self.hy)
-				(x2, y2) = scenario.PlotHex(target.hx, target.hy)
-				line = GetLine(x1,y1,x2,y2)
-				
 				PlaySoundFor(weapon, 'fire')
 				
-				for i in range(25):
-					libtcod.console_clear(animation_con)
-					(x,y) = choice(line[2:-1])
-					libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.yellow,
-						libtcod.black)
-					scenario.UpdateScenarioDisplay()
-					Wait(3)
-				libtcod.console_clear(animation_con)
+				# start small arms / MG animation
+				
+				#(x1, y1) = scenario.PlotHex(self.hx, self.hy)
+				#(x2, y2) = scenario.PlotHex(target.hx, target.hy)
+				#line = GetLine(x1,y1,x2,y2)
+				
+				
+				
+				#for i in range(25):
+				#	libtcod.console_clear(animation_con)
+				#	(x,y) = choice(line[2:-1])
+				#	libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.yellow,
+				#		libtcod.black)
+				#	scenario.UpdateScenarioDisplay()
+				#	Wait(3)
+				#libtcod.console_clear(animation_con)
 			
 			
 			# do the roll, display results to the screen, and modify the attack profile
@@ -5575,6 +5582,14 @@ class Scenario:
 		self.cd_map_hex = cd_map_hex			# Campaign Day map hex where this scenario is taking place
 		self.finished = False				# Scenario has ended, returning to Campaign Day map
 		
+		# animation object; keeps track of active animations on the animation console
+		self.animation = {
+			'rain_active' : False,
+			'rain_drops' : [],
+			'gun_fire_active' : False,
+			'gun_fire_line' : []
+		}
+		
 		# current odds of a random event being triggered
 		self.random_event_chance = BASE_RANDOM_EVENT_CHANCE
 		
@@ -5650,12 +5665,7 @@ class Scenario:
 	# check for triggering of a random event in a scenario
 	def CheckForRandomEvent(self):
 		
-		print('DEBUG: Doing random event roll')
-		
 		roll = GetPercentileRoll()
-		
-		# TEMP testing
-		roll = 1.0
 		
 		if roll > self.random_event_chance:
 			self.random_event_chance += 3.0
@@ -5663,9 +5673,6 @@ class Scenario:
 		
 		# roll for type of event
 		roll = GetPercentileRoll()
-		
-		# TEMP testing
-		roll = 40.0
 		
 		# friendly air attack
 		if roll <= 10.0:
@@ -5738,6 +5745,10 @@ class Scenario:
 				PlaySoundFor(None, 'sniper_hit')
 				ShowMessage(crew_target.GetFullName() + ' has been hit by a sniper.')
 				crew_target.DoWoundCheck(roll_modifier = 45.0)
+		
+		# TEMP - no other event types for now
+		else:
+			return
 		
 		# an event was triggered, so reset random event chance
 		self.random_event_chance = BASE_RANDOM_EVENT_CHANCE
@@ -8357,12 +8368,69 @@ class Scenario:
 			
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
 			libtcod.console_print(unit_info_con, 0, 10, 'R-Click for info')
+	
+	
+	# update the scenario animation frame and console 53x43
+	def UpdateAnimCon(self):
+		libtcod.console_clear(anim_con)
 		
+		# TODO: update rain display if any
+		# TEMP - assume rain is active
+		# if self.animation['rain_active']:
+		if True:
+			
+			# update location of each rain drop, spawn new ones if required
+			for i in range(len(self.animation['rain_drops'])):
+				(x, y, lifespan) = self.animation['rain_drops'][i]
+				
+				# respawn if finished
+				if lifespan == 0:
+					x = libtcod.random_get_int(0, 4, 36)
+					y = libtcod.random_get_int(0, 0, 50)
+					lifespan = libtcod.random_get_int(0, 1, 5)
+				else:
+					#x -= 1
+					y += 2
+					lifespan -= 1
+				
+				self.animation['rain_drops'][i] = (x, y, lifespan)
+			
+			# draw drops to screen
+			for (x, y, lifespan) in self.animation['rain_drops']:
+				
+				# skip if off screen
+				if x < 0 or y > 50: continue
+				
+				if lifespan == 0:
+					char = 111
+				else:
+					char = 124
+				libtcod.console_put_char_ex(anim_con, x, y, char, libtcod.light_blue,
+					libtcod.black)
+		
+		
+		# update gun fire animation if any
+		if self.animation['gun_fire_active']:
+			
+			# update current draw location 
+			self.animation['gun_fire_line'].pop(0)
+			if len(self.animation['gun_fire_line']) > 0:
+				self.animation['gun_fire_line'].pop(0)
+			
+			# clear if finished
+			if len(self.animation['gun_fire_line']) == 0:
+				self.animation['gun_fire_active'] = False
+			else:
+				(x,y) = self.animation['gun_fire_line'][0]
+				libtcod.console_put_char_ex(anim_con, x, y, 250, libtcod.white,
+					libtcod.black)
+		
+		# reset update timer
+		session.anim_timer = time.time()
 		
 	
 	# draw all scenario consoles to the screen
 	def UpdateScenarioDisplay(self):
-		
 		libtcod.console_clear(con)
 		
 		# left column
@@ -8378,7 +8446,7 @@ class Scenario:
 		libtcod.console_blit(hexmap_con, 0, 0, 0, 0, con, 32, 9)
 		libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
 		libtcod.console_blit(gui_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
-		libtcod.console_blit(animation_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
+		libtcod.console_blit(anim_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
 		
 		# consoles around the edge of map
 		libtcod.console_blit(context_con, 0, 0, 0, 0, con, 28, 1)
@@ -8397,7 +8465,7 @@ class Scenario:
 		# set up and load scenario consoles
 		global bkg_console, crew_con, cmd_menu_con, scen_info_con
 		global player_info_con, context_con, time_con, hexmap_con, unit_con, gui_con
-		global status_con, animation_con, attack_con, unit_info_con
+		global anim_con, status_con, attack_con, unit_info_con
 		
 		# background outline console for left column
 		bkg_console = LoadXP('bkg.xp')
@@ -8413,7 +8481,7 @@ class Scenario:
 		hexmap_con = NewConsole(53, 43, libtcod.black, libtcod.black)
 		unit_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
 		gui_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
-		animation_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
+		anim_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
 		attack_con = NewConsole(27, 60, libtcod.black, libtcod.white)
 		
 		# we're starting a new scenario
@@ -8491,6 +8559,9 @@ class Scenario:
 		mouse_x = -1
 		mouse_y = -1
 		
+		# reset animation timer
+		session.anim_timer = time.time()
+		
 		exit_scenario = False
 		while not exit_scenario:
 			
@@ -8513,6 +8584,11 @@ class Scenario:
 				self.AdvanceToNextPhase()
 				SaveGame()
 				continue
+			
+			# check for animation update
+			if time.time() - session.anim_timer >= 0.20:
+				self.UpdateAnimCon()
+				self.UpdateScenarioDisplay()
 			
 			keypress = GetInputEvent()
 			

@@ -2708,9 +2708,6 @@ class CampaignDay:
 		if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
 			self.animation['rain_active'] = True
 		
-		# TEMP testing
-		self.animation['rain_active'] = True
-		
 		# set up rain if any
 		if self.animation['rain_active']:
 			self.animation['rain_drops'] = []
@@ -5201,6 +5198,7 @@ class Unit:
 				end_pause = False
 				while not end_pause:
 					if libtcod.console_is_window_closed(): sys.exit()
+					CheckForAnimationUpdate()
 					libtcod.console_flush()
 					if not GetInputEvent(): continue
 					
@@ -8482,7 +8480,7 @@ class Scenario:
 		libtcod.console_blit(status_con, 0, 0, 0, 0, con, 71, 48)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		libtcod.console_flush()
+		#libtcod.console_flush()
 	
 	
 	# main input loop for scenarios
@@ -8912,27 +8910,34 @@ def DisplayTimeInfo(console):
 def DisplayWeatherInfo(console):
 	
 	libtcod.console_clear(console)
+	libtcod.console_set_default_foreground(console, libtcod.white)
 	
 	w = libtcod.console_get_width(console)
+	x = int(w/2)
 	
 	# current temperature (TEMP static)
+	libtcod.console_set_default_background(console, libtcod.dark_blue)
+	libtcod.console_rect(console, 0, 0, w, 2, False, libtcod.BKGND_SET)
 	libtcod.console_print(console, 0, 0, 'Mild')
-	
-	# cloud cover
-	text = 'Clouds: ' + campaign_day.weather['Cloud Cover']
-	libtcod.console_print(console, 0, 2, text)
-	
-	# precipitation
-	text = 'Precip: ' + campaign_day.weather['Precipitation']
-	libtcod.console_print(console, 0, 4, text)
-	
-	# ground conditions
-	text = 'Ground: ' + campaign_day.weather['Ground']
-	libtcod.console_print(console, 0, 6, text)
-	
 	# wind strength and direction (TEMP static)
 	libtcod.console_print_ex(console, w-1, 0, libtcod.BKGND_NONE,
 		libtcod.RIGHT, 'No wind')
+	
+	# cloud cover
+	libtcod.console_set_default_background(console, libtcod.light_grey)
+	libtcod.console_rect(console, 0, 2, w, 1, False, libtcod.BKGND_SET)
+	libtcod.console_print_ex(console, x, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+		campaign_day.weather['Cloud Cover'])
+	
+	# precipitation
+	libtcod.console_print_ex(console, x, 4, libtcod.BKGND_NONE, libtcod.CENTER,
+		campaign_day.weather['Precipitation'])
+	
+	# ground conditions
+	libtcod.console_set_default_background(console, libtcod.dark_sepia)
+	libtcod.console_rect(console, 0, 6, w, 1, False, libtcod.BKGND_SET)
+	libtcod.console_print_ex(console, x, 6, libtcod.BKGND_NONE, libtcod.CENTER,
+		campaign_day.weather['Ground'])
 	
 	# fog level if any (TEMP static)
 	libtcod.console_print_ex(console, w-1, 4, libtcod.BKGND_NONE,
@@ -9026,7 +9031,6 @@ def GetInputEvent():
 def FlushKeyboardEvents():
 	exit = False
 	while not exit:
-		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
 		event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS, key, mouse)
 		if event != libtcod.EVENT_KEY_PRESS: exit = True
@@ -9039,33 +9043,25 @@ def Wait(wait_time, ignore_animations=False):
 	start_time = time.time()
 	while time.time() - start_time < wait_time:
 		
-		# check for animation update in campaign day or scenario layer
+		# check for animation update in scenario or campaign day or layer
 		if not ignore_animations:
-			if campaign_day is not None:
-				if time.time() - session.anim_timer >= 0.20:
-					campaign_day.UpdateAnimCon()
-					campaign_day.UpdateCDDisplay()
+			CheckForAnimationUpdate()
 			
-			# re-draw message console if any (a bit hacky but it works!)
-			if msg_con is not None:
-				if scenario is None:
-					x = 31
-				else:
-					x = 44
-				
-				# display message console
-				libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, x, 21)
-		
 		if libtcod.console_is_window_closed(): sys.exit()
 		FlushKeyboardEvents()
 
 
 # wait for player to press continue key
 # option to allow backspace pressed instead, returns True if so 
-def WaitForContinue(allow_cancel=False):
+def WaitForContinue(allow_cancel=False, ignore_animations=False):
 	end_pause = False
 	cancel = False
 	while not end_pause:
+		
+		# check for animation update in scenario or campaign day or layer
+		if not ignore_animations:
+			CheckForAnimationUpdate()
+		
 		if libtcod.console_is_window_closed(): sys.exit()
 		libtcod.console_flush()
 		if not GetInputEvent(): continue
@@ -9078,6 +9074,29 @@ def WaitForContinue(allow_cancel=False):
 	if allow_cancel and cancel:
 		return True
 	return False
+
+
+# check for animation frame update and console update
+def CheckForAnimationUpdate():
+	if scenario is not None:
+		if time.time() - session.anim_timer >= 0.20:
+			scenario.UpdateAnimCon()
+			scenario.UpdateScenarioDisplay()
+		
+	elif campaign_day is not None:
+		if time.time() - session.anim_timer >= 0.20:
+			campaign_day.UpdateAnimCon()
+			campaign_day.UpdateCDDisplay()	
+	
+	# re-draw message console if any (a bit hacky but it works!)
+	if msg_con is not None:
+		if scenario is None:
+			x = 31
+		else:
+			x = 44
+		
+		# display message console
+		libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, x, 21)
 
 
 # load a console image from an .xp file

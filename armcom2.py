@@ -1519,8 +1519,8 @@ class CampaignDay:
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
 			libtcod.console_flush()
-			Wait(5)
-		Wait(95)
+			Wait(5, ignore_animations=True)
+		Wait(95, ignore_animations=True)
 		
 	
 	# sets flag if we've met or exceeded the set length of the combat day
@@ -2707,6 +2707,9 @@ class CampaignDay:
 		# check for rain animation
 		if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
 			self.animation['rain_active'] = True
+		
+		# TEMP testing
+		self.animation['rain_active'] = True
 		
 		# set up rain if any
 		if self.animation['rain_active']:
@@ -8955,6 +8958,8 @@ def DrawFrame(console, x, y, w, h):
 # FUTURE: integrate with animation?
 def ShowMessage(text, portrait=None):
 	
+	global msg_con
+	
 	# create message console: 29x19
 	msg_con = libtcod.console_new(29, 19)
 	libtcod.console_set_default_background(msg_con, libtcod.darkest_grey)
@@ -9000,7 +9005,7 @@ def ShowMessage(text, portrait=None):
 	# re-draw screen
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
-	del msg_con
+	msg_con = None
 
 
 # get keyboard and/or mouse event; returns False if no new key press
@@ -9029,10 +9034,28 @@ def FlushKeyboardEvents():
 
 
 # wait for a specified amount of miliseconds, refreshing the screen in the meantime
-def Wait(wait_time):
+def Wait(wait_time, ignore_animations=False):
 	wait_time = wait_time * 0.01
 	start_time = time.time()
 	while time.time() - start_time < wait_time:
+		
+		# check for animation update in campaign day or scenario layer
+		if not ignore_animations:
+			if campaign_day is not None:
+				if time.time() - session.anim_timer >= 0.20:
+					campaign_day.UpdateAnimCon()
+					campaign_day.UpdateCDDisplay()
+			
+			# re-draw message console if any (a bit hacky but it works!)
+			if msg_con is not None:
+				if scenario is None:
+					x = 31
+				else:
+					x = 44
+				
+				# display message console
+				libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, x, 21)
+		
 		if libtcod.console_is_window_closed(): sys.exit()
 		FlushKeyboardEvents()
 
@@ -10200,7 +10223,7 @@ def PlaySoundFor(obj, action):
 #                                      Main Script                                       #
 ##########################################################################################
 
-global main_title, main_theme
+global main_title, main_theme, msg_con
 global campaign, campaign_day, scenario, session
 global keyboard_decode, keyboard_encode
 
@@ -10227,6 +10250,9 @@ libtcod.sys_set_fps(LIMIT_FPS)
 libtcod.console_set_default_background(0, libtcod.black)
 libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
+
+# create placeholder for message console
+msg_con = None
 
 # display loading screen
 libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,

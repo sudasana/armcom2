@@ -6145,8 +6145,8 @@ class Scenario:
 			
 			PlaySoundFor(None, 'he_explosion')
 			# show animation
-			# FUTURE: use animation console
 			for i in range(18):
+				CheckForAnimationUpdate()
 				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
 				libtcod.console_set_default_foreground(0, col)
 				libtcod.console_put_char(0, x+32, y+9, 42)
@@ -6350,6 +6350,7 @@ class Scenario:
 			# animate plane movement toward target hex
 			for yi in range(y1, y2, direction):
 				if libtcod.console_is_window_closed(): sys.exit()
+				CheckForAnimationUpdate()
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, x+31, yi+8, 1.0, 0.0)
 				libtcod.console_flush()
@@ -6363,6 +6364,7 @@ class Scenario:
 			
 			# bomb animation
 			for i in range(24):
+				CheckForAnimationUpdate()
 				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
 				libtcod.console_set_default_foreground(0, col)
 				libtcod.console_put_char(0, x+32, y+9, 42)

@@ -5587,7 +5587,9 @@ class Scenario:
 			'rain_active' : False,
 			'rain_drops' : [],
 			'gun_fire_active' : False,
-			'gun_fire_line' : []
+			'gun_fire_line' : [],
+			'air_attack' : None,
+			'air_attack_line' : []
 		}
 		
 		# current odds of a random event being triggered
@@ -6331,7 +6333,7 @@ class Scenario:
 				y2 -= 3
 				direction = 1
 			
-			# create and draw plane console
+			# create plane console
 			temp_con = libtcod.console_new(3, 3)
 			libtcod.console_set_default_background(temp_con, libtcod.black)
 			libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
@@ -6345,7 +6347,15 @@ class Scenario:
 			else:
 				libtcod.console_put_char(temp_con, 1, 0, chr(194))
 			
+			# TODO: create air attack animation
+			self.animation['air_attack'] = temp_con
+			
+			
 			PlaySoundFor(None, 'plane_incoming')
+			
+			# TODO: let animation run
+			
+			
 			
 			# animate plane movement toward target hex
 			for yi in range(y1, y2, direction):

@@ -5165,7 +5165,7 @@ class Unit:
 					PlaySoundFor(weapon, 'he_explosion')
 					
 					scenario.animation['bomb_effect'] = (x2, y2)
-					scenario.animation['bomb_effect_lifetime'] = 10
+					scenario.animation['bomb_effect_lifetime'] = 7
 					
 					# let animation run
 					while scenario.animation['bomb_effect'] is not None:
@@ -5682,7 +5682,7 @@ class Scenario:
 		roll = GetPercentileRoll()
 		
 		if roll > self.random_event_chance:
-			self.random_event_chance += 3.0
+			self.random_event_chance += 1.5
 			return
 		
 		# roll for type of event
@@ -7523,6 +7523,7 @@ class Scenario:
 			unit.GenerateTerrain()
 			unit.CheckForHD()
 		
+		self.UpdatePlayerInfoCon()
 		self.UpdateUnitCon()
 		
 		# end movement phase
@@ -7571,9 +7572,10 @@ class Scenario:
 				for i in range(3):
 					unit.hull_down[i] = ConstrainDir(unit.hull_down[i] + f)
 		
+		self.UpdatePlayerInfoCon()
 		self.UpdateUnitCon()
 		
-		# NEW pivot player HD if any
+		# pivot player HD if any
 		if len(self.player_unit.hull_down) > 0:
 			for i in range(3):
 				self.player_unit.hull_down[i] = ConstrainDir(self.player_unit.hull_down[i] + f)

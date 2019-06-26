@@ -72,6 +72,7 @@ else:
 	RENDERER = libtcod.RENDERER_GLSL
 
 LIMIT_FPS = 50						# maximum screen refreshes per second
+ANIM_UPDATE_TIMER = 0.15				# number of seconds between animation frame checks
 WINDOW_WIDTH, WINDOW_HEIGHT = 90, 60			# size of game window in character cells
 WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of game window
 
@@ -5140,47 +5141,38 @@ class Unit:
 				
 				# continue when finished
 				while scenario.animation['gun_fire_active']:
-					if time.time() - session.anim_timer >= 0.20:
-						scenario.UpdateAnimCon()
-						scenario.UpdateScenarioDisplay()
-					Wait(5)
+					if libtcod.console_is_window_closed(): sys.exit()
+					CheckForAnimationUpdate()
 				
 				# add explosion effect if HE ammo
 				if weapon.ammo_type == 'HE':
 					
 					PlaySoundFor(weapon, 'he_explosion')
 					
-					# start explosion animation
+					self.animation['bomb_effect'] = (x2, y2)
+					self.animation['bomb_effect_lifetime'] = 16
 					
-					#for i in range(12):
-					#	col = choice([libtcod.red, libtcod.yellow, libtcod.black])
-					#	libtcod.console_put_char_ex(animation_con, x2, y2, 42, col,
-					#		libtcod.black)
-					#	scenario.UpdateScenarioDisplay()
-					#	Wait(4)
-					#libtcod.console_clear(animation_con)
+					# let animation run
+					while self.animation['bomb_effect'] is not None:
+						if libtcod.console_is_window_closed(): sys.exit()
+						libtcod.console_flush()
+						CheckForAnimationUpdate()
 			
 			elif weapon.GetStat('type') == 'Small Arms' or weapon.GetStat('type') in MG_WEAPONS:
 				
 				PlaySoundFor(weapon, 'fire')
-				
 				# start small arms / MG animation
 				
-				#(x1, y1) = scenario.PlotHex(self.hx, self.hy)
-				#(x2, y2) = scenario.PlotHex(target.hx, target.hy)
-				#line = GetLine(x1,y1,x2,y2)
+				scenario.animation['small_arms_fire_action'] = True
+				(x1, y1) = scenario.PlotHex(self.hx, self.hy)
+				(x2, y2) = scenario.PlotHex(target.hx, target.hy)
+				scenario.animation['small_arms_fire_line'] = GetLine(x1,y1,x2,y2)
+				scenario.animation['small_arms_lifetime'] = 12
 				
-				
-				
-				#for i in range(25):
-				#	libtcod.console_clear(animation_con)
-				#	(x,y) = choice(line[2:-1])
-				#	libtcod.console_put_char_ex(animation_con, x, y, 250, libtcod.yellow,
-				#		libtcod.black)
-				#	scenario.UpdateScenarioDisplay()
-				#	Wait(3)
-				#libtcod.console_clear(animation_con)
-			
+				while scenario.animation['small_arms_fire_action']:
+					if libtcod.console_is_window_closed(): sys.exit()
+					libtcod.console_flush()
+					CheckForAnimationUpdate()
 			
 			# do the roll, display results to the screen, and modify the attack profile
 			profile = scenario.DoAttackRoll(profile)
@@ -5588,8 +5580,13 @@ class Scenario:
 			'rain_drops' : [],
 			'gun_fire_active' : False,
 			'gun_fire_line' : [],
+			'small_arms_fire_action' : False,
+			'small_arms_fire_line' : [],
+			'small_arms_lifetime' : 0,
 			'air_attack' : None,
-			'air_attack_line' : []
+			'air_attack_line' : [],
+			'bomb_effect' : None,
+			'bomb_effect_lifetime' : 0
 		}
 		
 		# current odds of a random event being triggered
@@ -6138,7 +6135,7 @@ class Scenario:
 	# do an artillery bombardment against enemy units
 	def ArtilleryAttack(self):
 		
-		# display bombardment animation (TEMP)
+		# display bombardment animation
 		for i in range(7):
 			map_hex = choice(self.map_hexes)
 			if GetHexDistance(0, 0, map_hex.hx, map_hex.hy) > 3: continue
@@ -6146,16 +6143,15 @@ class Scenario:
 			(x, y) = self.PlotHex(map_hex.hx, map_hex.hy)
 			
 			PlaySoundFor(None, 'he_explosion')
-			# show animation
-			for i in range(18):
-				CheckForAnimationUpdate()
-				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
-				libtcod.console_set_default_foreground(0, col)
-				libtcod.console_put_char(0, x+32, y+9, 42)
+			# create bomb animation
+			self.animation['bomb_effect'] = (x, y)
+			self.animation['bomb_effect_lifetime'] = 8
+			
+			# let animation run
+			while self.animation['bomb_effect'] is not None:
+				if libtcod.console_is_window_closed(): sys.exit()
 				libtcod.console_flush()
-				Wait(4)
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
+				CheckForAnimationUpdate()
 		
 		# spawn gun unit and determine effective FP
 		unit_id = choice(campaign.stats['player_arty_support'])
@@ -6323,12 +6319,12 @@ class Scenario:
 		
 			#x = x2
 			if y2 <= 30:
-				y1 = y2 + 20
+				y1 = y2 + 15
 				if y1 > 51: y1 = 51
 				y2 += 1
 				direction = -1
 			else:
-				y1 = y2 - 20
+				y1 = y2 - 15
 				if y1 < 9: y1 = 9
 				y2 -= 3
 				direction = 1
@@ -6349,41 +6345,28 @@ class Scenario:
 			
 			# TODO: create air attack animation
 			self.animation['air_attack'] = temp_con
-			
+			self.animation['air_attack_line'] = GetLine(x, y1, x, y2)
 			
 			PlaySoundFor(None, 'plane_incoming')
 			
-			# TODO: let animation run
-			
-			
-			
-			# animate plane movement toward target hex
-			for yi in range(y1, y2, direction):
+			# let animation run
+			while self.animation['air_attack'] is not None:
 				if libtcod.console_is_window_closed(): sys.exit()
-				CheckForAnimationUpdate()
-				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, x+31, yi+8, 1.0, 0.0)
 				libtcod.console_flush()
-				Wait(8)
+				CheckForAnimationUpdate()
 			
 			PlaySoundFor(None, 'stuka_divebomb')
 			
-			# wait for sound effect to finish
-			if config['ArmCom2'].getboolean('sounds_enabled'):
-				Wait(100)
+			# create bomb animation
+			self.animation['bomb_effect'] = (x, y2+direction)
+			self.animation['bomb_effect_lifetime'] = 16
 			
-			# bomb animation
-			for i in range(24):
-				CheckForAnimationUpdate()
-				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
-				libtcod.console_set_default_foreground(0, col)
-				libtcod.console_put_char(0, x+32, y+9, 42)
+			# let animation run
+			while self.animation['bomb_effect'] is not None:
+				if libtcod.console_is_window_closed(): sys.exit()
 				libtcod.console_flush()
-				Wait(4)
-			libtcod.console_set_default_foreground(0, libtcod.white)
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_flush()
-		
+				CheckForAnimationUpdate()
+			
 			# calculate basic to-effect score required
 			if not target.spotted:
 				chance = PF_BASE_CHANCE[0][1]
@@ -8393,9 +8376,6 @@ class Scenario:
 		if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
 			self.animation['rain_active'] = True
 		
-		# TEMP - rain always active for testing
-		self.animation['rain_active'] = True
-		
 		# set up rain if any
 		if self.animation['rain_active']:
 			self.animation['rain_drops'] = []
@@ -8411,6 +8391,7 @@ class Scenario:
 	
 	# update the scenario animation frame and console 53x43
 	def UpdateAnimCon(self):
+		
 		libtcod.console_clear(anim_con)
 		
 		# update rain display
@@ -8426,7 +8407,6 @@ class Scenario:
 					y = libtcod.random_get_int(0, 0, 50)
 					lifespan = libtcod.random_get_int(0, 1, 5)
 				else:
-					#x -= 1
 					y += 2
 					lifespan -= 1
 				
@@ -8445,6 +8425,19 @@ class Scenario:
 				libtcod.console_put_char_ex(anim_con, x, y, char, libtcod.light_blue,
 					libtcod.black)
 		
+		# update airplane animation if any
+		if self.animation['air_attack'] is not None:
+			
+			# update draw location
+			self.animation['air_attack_line'].pop(0)
+			
+			# clear if finished
+			if len(self.animation['air_attack_line']) == 0:
+				self.animation['air_attack'] = None
+			else:
+				(x,y) = self.animation['air_attack_line'][0]
+				libtcod.console_blit(self.animation['air_attack'], 0, 0, 0, 0, anim_con, x-1, y)
+		
 		# update gun fire animation if any
 		if self.animation['gun_fire_active']:
 			
@@ -8459,6 +8452,35 @@ class Scenario:
 			else:
 				(x,y) = self.animation['gun_fire_line'][0]
 				libtcod.console_put_char_ex(anim_con, x, y, 250, libtcod.white,
+					libtcod.black)
+		
+		# update small arms fire if any
+		if self.animation['small_arms_fire_action']:
+			
+			if self.animation['small_arms_lifetime'] == 0:
+				self.animation['small_arms_fire_action'] = None
+			else:
+				self.animation['small_arms_lifetime'] -= 1
+				(x,y) = choice(self.animation['small_arms_fire_line'])
+				libtcod.console_put_char_ex(anim_con, x, y, 249, libtcod.yellow,
+					libtcod.black)
+		
+		# update bomb/explosion animation if any
+		if self.animation['bomb_effect'] is not None:
+			
+			if self.animation['bomb_effect_lifetime'] == 0:
+				self.animation['bomb_effect'] = None
+			else:
+				self.animation['bomb_effect_lifetime'] -= 1
+				(x,y) = self.animation['bomb_effect']
+				if 3 & self.animation['bomb_effect_lifetime'] == 0:
+					col = libtcod.red
+				elif 2 & self.animation['bomb_effect_lifetime'] == 0:
+					col = libtcod.yellow
+				else:
+					col = libtcod.black
+				
+				libtcod.console_put_char_ex(anim_con, x, y, 42, col,
 					libtcod.black)
 		
 		# reset update timer
@@ -9091,12 +9113,12 @@ def WaitForContinue(allow_cancel=False, ignore_animations=False):
 # check for animation frame update and console update
 def CheckForAnimationUpdate():
 	if scenario is not None:
-		if time.time() - session.anim_timer >= 0.20:
+		if time.time() - session.anim_timer >= ANIM_UPDATE_TIMER:
 			scenario.UpdateAnimCon()
 			scenario.UpdateScenarioDisplay()
 		
 	elif campaign_day is not None:
-		if time.time() - session.anim_timer >= 0.20:
+		if time.time() - session.anim_timer >= ANIM_UPDATE_TIMER:
 			campaign_day.UpdateAnimCon()
 			campaign_day.UpdateCDDisplay()	
 	

@@ -138,6 +138,7 @@ UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.Color(255, 20, 20)		# known "
 ALLIED_UNIT_COL = libtcod.Color(120, 120, 255)		# allied unit display colour
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
+DIRT_ROAD_COL = libtcod.Color(80, 50, 20)		# dirt roads on campaign day map
 
 # text names for months
 MONTH_NAMES = [
@@ -197,7 +198,7 @@ CD_TRAVEL_CMDS = [
 AMMO_TYPES = ['HE', 'AP']
 
 # list of MG-type weapons
-MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG']
+MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG', 'HMG']
 
 # text names for months
 MONTH_NAMES = [
@@ -1219,8 +1220,8 @@ class CampaignDay:
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}
 		
-		# FUTURE: generate dirt roads on campaign day map
-		#self.GenerateRoads()
+		# generate dirt roads on campaign day map
+		self.GenerateRoads()
 		
 		self.active_menu = 3				# number of currently active command menu
 		self.selected_direction = None			# select direction for support, travel, etc.
@@ -2695,6 +2696,7 @@ class CampaignDay:
 		
 		# roads
 		if len(cd_hex.dirt_roads) > 0:
+			libtcod.console_set_default_foreground(cd_hex_info_con, DIRT_ROAD_COL)
 			libtcod.console_print(cd_hex_info_con, 0, 8, 'Dirt roads')
 	
 	
@@ -4021,6 +4023,12 @@ class AI:
 			if GetPercentileRoll() <= 80.0:
 				self.disposition = 'Combat'
 		
+		# MG teams less likely to move
+		if self.owner.GetStat('class') == 'MG Team':
+			if self.disposition == 'Movement':
+				if GetPercentileRoll() <= 80.0:
+					self.disposition = 'Combat'
+		
 		# recalled units much more likely to move
 		if self.recall:
 			if self.disposition != 'Movement':
@@ -4728,8 +4736,7 @@ class Unit:
 					
 					# display message
 					if self.owning_player == 0:
-						text = unit.GetName() + ' ' + unit.GetStat('class')
-						text += ' spotted!'
+						text = unit.GetName() + ' spotted!'
 						portrait = unit.GetStat('portrait')
 						ShowMessage(text, portrait=portrait)
 						
@@ -4823,9 +4830,6 @@ class Unit:
 		if self.owning_player == 1 and not self.spotted: return '?'
 		
 		unit_category = self.GetStat('category')
-		
-		# sniper
-		if self.unit_id == 'Sniper': return 248
 		
 		# infantry
 		if unit_category == 'Infantry': return 176
@@ -5149,11 +5153,11 @@ class Unit:
 					
 					PlaySoundFor(weapon, 'he_explosion')
 					
-					self.animation['bomb_effect'] = (x2, y2)
-					self.animation['bomb_effect_lifetime'] = 16
+					scenario.animation['bomb_effect'] = (x2, y2)
+					scenario.animation['bomb_effect_lifetime'] = 10
 					
 					# let animation run
-					while self.animation['bomb_effect'] is not None:
+					while scenario.animation['bomb_effect'] is not None:
 						if libtcod.console_is_window_closed(): sys.exit()
 						libtcod.console_flush()
 						CheckForAnimationUpdate()
@@ -8462,7 +8466,7 @@ class Scenario:
 			else:
 				self.animation['small_arms_lifetime'] -= 1
 				(x,y) = choice(self.animation['small_arms_fire_line'])
-				libtcod.console_put_char_ex(anim_con, x, y, 249, libtcod.yellow,
+				libtcod.console_put_char_ex(anim_con, x, y, 250, libtcod.yellow,
 					libtcod.black)
 		
 		# update bomb/explosion animation if any
@@ -8976,6 +8980,8 @@ def DisplayWeatherInfo(console):
 	# fog level if any (TEMP static)
 	libtcod.console_print_ex(console, w-1, 4, libtcod.BKGND_NONE,
 		libtcod.RIGHT, '')
+	
+	libtcod.console_set_default_background(console, libtcod.black)
 
 
 # draw an ArmCom2-style frame to the given console

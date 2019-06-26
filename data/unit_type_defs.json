@@ -1674,6 +1674,25 @@
 		"op_value" : "5"
 	},
 	
+	"Buessing-NAG 4500 Truck" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_buessing_nag_4500_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"description" : [
+			"This 4.5-ton truck is the workhorse of the German armed forces. ",
+			"It combines a reliable diesel engine with good rough terrain performance."
+		],
+		"op_value" : "5"
+	},
+	
 	"Ju 87B Stuka": {
 		"category" : "Airplane",
 		"class" : "Dive Bomber",
@@ -2073,20 +2092,21 @@
 		"op_value" : "0"
 	},
 	
-	"Sniper": {
+	
+	"HMG Team": {
 		"category" : "Infantry",
-		"class" : "Sniper",
+		"class" : "MG Team",
 		"movement_class" : "Infantry",
 		"weapon_list" : [
 			{
-				"type" : "Small Arms",
-				"name" : "Rifle",
-				"fp" : "2",
-				"max_range" : "2"
+				"type" : "HMG",
+				"name" : "HMG",
+				"fp" : "6",
+				"max_range" : "3"
 			}
 		],
 		"crew_positions" : [
-			{"name" : "Sniper"},
+			{"name" : "Gunner"},
 			{"name" : "Spotter"}
 		],
 		"description" : [

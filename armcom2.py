@@ -1882,7 +1882,7 @@ class CampaignDay:
 					y += 1
 			y += 1
 			libtcod.console_set_default_foreground(con, libtcod.white)
-			libtcod.console_print(con, x+2, y, 'Max:')
+			libtcod.console_print(con, x+2, y, 'Max')
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			libtcod.console_print_ex(con, x+8, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, weapon.stats['max_ammo'])
@@ -2625,15 +2625,25 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 10, 22, 'Resupply')
 	
 	
-	# generate/update the campaign info console
+	# generate/update the campaign info console 23x16
 	def UpdateCDCampaignCon(self):
 		libtcod.console_clear(cd_campaign_con)
 		
-		# current VP total
-		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.blue)
-		libtcod.console_print(cd_campaign_con, 0, 0, 'Campaign Info')
+		# current day mission - TEMP only advance for now
+		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.light_blue)
+		libtcod.console_print_ex(cd_campaign_con, 11, 0, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Day Mission')
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
-		libtcod.console_print(cd_campaign_con, 1, 2, 'VP: ' + str(campaign.player_vp))
+		libtcod.console_print_ex(cd_campaign_con, 11, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Advance')
+		
+		# current VP total
+		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.light_blue)
+		libtcod.console_print_ex(cd_campaign_con, 11, 13, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Total VP')
+		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
+		libtcod.console_print_ex(cd_campaign_con, 11, 15, libtcod.BKGND_NONE, libtcod.CENTER,
+			str(campaign.player_vp))
 	
 	
 	# generate/update the zone info console
@@ -5146,6 +5156,7 @@ class Unit:
 				# continue when finished
 				while scenario.animation['gun_fire_active']:
 					if libtcod.console_is_window_closed(): sys.exit()
+					libtcod.console_flush()
 					CheckForAnimationUpdate()
 				
 				# add explosion effect if HE ammo
@@ -8445,7 +8456,6 @@ class Scenario:
 		# update gun fire animation if any
 		if self.animation['gun_fire_active']:
 			
-			# update current draw location 
 			self.animation['gun_fire_line'].pop(0)
 			if len(self.animation['gun_fire_line']) > 0:
 				self.animation['gun_fire_line'].pop(0)

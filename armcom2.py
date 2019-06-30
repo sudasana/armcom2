@@ -61,7 +61,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.5.0 29-06-2019'				# game version
+VERSION = '0.5.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2115,9 +2115,9 @@ class CampaignDay:
 		libtcod.console_print_ex(temp_con, 14, 7, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Outcome of Day:')
 		
-		#if campaign_day.abandoned_tank:
-		#	col = libtcod.light_grey
-		#	text = 'ABANDONED TANK'
+		if campaign_day.abandoned_tank:
+			col = libtcod.light_grey
+			text = 'ABANDONED TANK'
 		if campaign.player_unit.alive:
 			col = GOLD_COL
 			text = 'SURVIVED'
@@ -2869,8 +2869,8 @@ class CampaignDay:
 					
 					campaign.AddLog('Combat ends')
 					
-					# capture area if player is still alive
-					if campaign.player_unit.alive:
+					# capture area if player is still alive and in tank
+					if campaign.player_unit.alive and not self.abandoned_tank:
 						(hx, hy) = self.player_unit_location
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 						self.DoCrewCheck(campaign.player_unit)
@@ -5607,6 +5607,9 @@ class Scenario:
 		# current odds of a random event being triggered
 		self.random_event_chance = BASE_RANDOM_EVENT_CHANCE
 		
+		# number of times enemy reinforcement random event has been triggered
+		self.enemy_reinforcements = 0
+		
 		# generate hex map: single hex surrounded by 4 hex rings. Final ring is not normally
 		# part of play and stores units that are coming on or going off of the map proper
 		# also store pointers to hexes in a dictionary for quick access
@@ -5705,6 +5708,13 @@ class Scenario:
 		
 		# enemy reinforcement
 		elif roll <= 30.0:
+			
+			if self.enemy_reinforcements > 0:
+				if GetPercentileRoll() <= (float(self.enemy_reinforcements) * 30.0):
+					return
+			
+			self.enemy_reinforcements += 1
+			
 			self.SpawnEnemyUnits(num_units=1)
 			ShowMessage('Enemy reinforcements have arrived!')
 		
@@ -7738,6 +7748,7 @@ class Scenario:
 					campaign.player_unit.alive = False
 					ShowMessage('You abandon your tank, ending the combat day.')
 					campaign_day.ended = True
+					campaign_day.abandoned_tank = True
 					self.finished = True
 					continue
 			

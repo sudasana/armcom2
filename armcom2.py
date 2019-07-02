@@ -6825,6 +6825,14 @@ class Scenario:
 				mod = round(base_chance / 2.0, 2)
 				modifier_list.append(('Attacker Pinned', 0.0 - mod))
 			
+			# smoke
+			if attacker.smoke > 0 or target.smoke > 0:
+				if attacker.smoke + target.smoke <= 2:
+					mod = round(base_chance / 3.0, 2)
+				else:
+					mod = round(base_chance / 2.0, 2)
+				modifier_list.append(('Smoke', 0.0 - mod))
+			
 			if not target.spotted:
 				modifier_list.append(('Unspotted Target', -10.0))
 			else:

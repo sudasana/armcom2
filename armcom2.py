@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.5.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -4130,6 +4130,7 @@ class AI:
 			
 			self.owner.GenerateTerrain()
 			self.owner.CheckForHD()
+			self.owner.SetSmokeLevel()
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
 			
@@ -4390,6 +4391,7 @@ class Unit:
 		self.animation_cells = []		# list of x,y unit console locations for animation
 		
 		self.spotted = False			# unit has been spotted by opposing side
+		self.smoke = 0				# unit smoke level
 		
 		self.hull_down = []			# list of directions unit in which Hull Down
 		self.moving = False
@@ -4419,6 +4421,28 @@ class Unit:
 	# reset this unit for new turn
 	def ResetForNewTurn(self):
 		
+		# check for smoke dispersal
+		if self.smoke > 0:
+			roll = GetPercentileRoll()
+			
+			if self.moving:
+				roll -= 10.0
+			
+			if campaign_day.weather['Precipitation'] == 'Rain':
+				roll -= 20.0
+			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+				roll -= 40.0
+			
+			if roll <= 10.0:
+				self.smoke -= 1
+				print('DEBUG: smoke disperses around ' + self.unit_id)
+				
+				if self == scenario.player_unit:
+					if self.smoke == 1:
+						ShowMessage('The smoke concealing you thins out.')
+					else:
+						ShowMessage('The smoke concealing you disperses.')
+		
 		self.moving = False
 		self.previous_facing = self.facing
 		self.previous_turret_facing = self.turret_facing
@@ -4447,6 +4471,20 @@ class Unit:
 			return None
 		return self.stats[stat_name]
 	
+	
+	# set a random smoke level for this unit, upon spawn or after move
+	def SetSmokeLevel(self):
+		
+		roll = GetPercentileRoll()
+		
+		# TEMP
+		if roll <= 80.0:
+			self.smoke = 0
+		elif roll <= 95.0:
+			self.smoke = 1
+		else:
+			self.smoke = 2
+
 	
 	# returns list of crew in this unit that are vulnerable to small-arms fire
 	def VulnerableCrew(self):
@@ -4710,6 +4748,18 @@ class Unit:
 				elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
 					chance -= 10.0 * float(distance)
 				
+				# smoke in spotter or target hex
+				if self.smoke > 0:
+					if self.smoke == 1:
+						chance = chance * 0.75
+					else:
+						chance = chance * 0.5
+				if unit.smoke > 0:
+					if unit.smoke == 1:
+						chance = chance * 0.75
+					else:
+						chance = chance * 0.5
+				
 				# target moving
 				if unit.moving:
 					chance = chance * 1.5
@@ -4782,6 +4832,8 @@ class Unit:
 		self.GenerateTerrain()
 		# check for HD status
 		self.CheckForHD()
+		# set random smoke level
+		self.SetSmokeLevel()
 	
 	
 	# randomly determine what kind of terrain this unit is in
@@ -4980,7 +5032,14 @@ class Unit:
 			char = TURRET_CHAR[facing]
 			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
 
-		
+		# draw unit smoke if any
+		if self.smoke > 0:
+			char = 176
+			if self.smoke == 2:
+				char = 177
+			libtcod.console_put_char_ex(unit_con, x-1, y, char, libtcod.grey, libtcod.black)
+			libtcod.console_put_char_ex(unit_con, x+1, y, char, libtcod.grey, libtcod.black)
+	
 	
 	# display info on this unit to a given console starting at x,y
 	# if status is False, don't display current status flags
@@ -6638,6 +6697,12 @@ class Scenario:
 			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
 				modifier_list.append(('Heavy Rain', -20.0 * float(distance)))
 			
+			# smoke
+			if attacker.smoke > 0 or target.smoke > 0:
+				if attacker.smoke + target.smoke <= 2:
+					modifier_list.append(('Smoke', -25.0))
+				else:
+					modifier_list.append(('Smoke', -50.0))
 			
 			# unspotted target
 			if not target.spotted:
@@ -7532,6 +7597,7 @@ class Scenario:
 			if unit != scenario.player_unit and unit not in scenario.player_unit.squad: continue
 			unit.GenerateTerrain()
 			unit.CheckForHD()
+			unit.SetSmokeLevel()
 		
 		self.UpdatePlayerInfoCon()
 		self.UpdateUnitCon()
@@ -7702,13 +7768,10 @@ class Scenario:
 				unit.ResetForNewTurn()
 			
 			self.player_unit.MoveToTopOfStack()
-			self.UpdateUnitCon()
-			self.UpdateScenarioDisplay()
-			libtcod.console_flush()
 		
 		# still player turn, advance phase
 		else:
-		
+			
 			# end of movement phase
 			if self.phase == PHASE_MOVEMENT:
 				
@@ -7732,6 +7795,12 @@ class Scenario:
 			
 			self.phase += 1
 		
+		# update the displays
+		DisplayTimeInfo(time_con)
+		self.UpdateUnitCon()
+		self.UpdateScenarioDisplay()
+		libtcod.console_flush()
+		
 		# do automatic actions at start of phase
 		
 		# command phase: rebuild lists of commands
@@ -7741,32 +7810,33 @@ class Scenario:
 		# spotting phase: do spotting then automatically advance
 		elif self.phase == PHASE_SPOTTING:
 			
-			# check for abandoning tank
+			self.player_unit.DoSpotChecks()
+			self.advance_phase = True
+		
+		# crew action phase:
+		elif self.phase == PHASE_CREW_ACTION:
+			
 			for position in self.player_unit.positions_list:
 				if position.crewman is None: continue
+				
+				# check for abandoning tank
 				if position.crewman.current_cmd == 'Abandon Tank':
 					campaign.player_unit.alive = False
 					ShowMessage('You abandon your tank, ending the combat day.')
 					campaign_day.ended = True
 					campaign_day.abandoned_tank = True
 					self.finished = True
-					continue
+					return
+				
+				# check for smoke grenade
+				if position.crewman.current_cmd == 'Smoke Grenade':
+					self.player_unit.smoke = 2
+					ShowMessage('You throw a smoke grenade.')
+					self.UpdateUnitCon()
+					self.UpdateScenarioDisplay()
+					libtcod.console_flush()
 			
-			self.player_unit.DoSpotChecks()
 			self.advance_phase = True
-		
-		# crew action phase: FUTURE: check to see if any crew are on action commands
-		elif self.phase == PHASE_CREW_ACTION:
-			
-			skip_phase = True
-			for position in self.player_unit.positions_list:
-				if position.crewman is None: continue
-				#if position.crewman.current_cmd == 'Request Support':
-				#	skip_phase = False
-				#	break
-			
-			if skip_phase:
-				self.advance_phase = True
 		
 		# movement phase: 
 		elif self.phase == PHASE_MOVEMENT:
@@ -7811,10 +7881,6 @@ class Scenario:
 		
 		# allied action
 		elif self.phase == PHASE_ALLIED_ACTION:
-			
-			DisplayTimeInfo(time_con)
-			self.UpdateScenarioDisplay()
-			libtcod.console_flush()
 			
 			# player squad acts first
 			for unit in scenario.player_unit.squad:
@@ -7868,7 +7934,6 @@ class Scenario:
 		self.UpdateCmdCon()
 		self.UpdateContextCon()
 		self.UpdateGuiCon()
-		DisplayTimeInfo(time_con)
 		self.UpdateScenarioDisplay()
 		libtcod.console_flush()
 			
@@ -8323,6 +8388,11 @@ class Scenario:
 		
 		# display unit info
 		unit = map_hex.unit_stack[0]
+		
+		# smoke status
+		if unit.smoke > 0:
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.grey)
+			libtcod.console_print(unit_info_con, 0, 8, 'Smoke Lvl: ' + str(unit.smoke))
 		
 		if unit.owning_player == 1 and not unit.spotted:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)

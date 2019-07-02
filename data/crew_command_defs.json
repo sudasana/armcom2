@@ -21,6 +21,12 @@
 		"spotting_allowed" : true
 	},
 	
+	"Smoke Grenade" : {
+		"desc" : "Throw a smoke-emitting grenade out of the tank",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"spotting_allowed" : false
+	},
+	
 	"Operate Gun" : {
 		"desc" : "Operate a main gun and the turret",
 		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],

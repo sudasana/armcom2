@@ -1580,7 +1580,6 @@
 		"op_value" : "32"
 	},
 	
-	
 	"3.7cm PaK 35/36": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
@@ -1721,6 +1720,10 @@
 		"ubiquity" : "100",
 		"op_value" : "0"
 	},
+	
+	
+	
+	
 	
 	
 	
@@ -2054,6 +2057,77 @@
 	},
 	
 	
+	
+	
+	
+	
+	
+	"H35": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_h35.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "4",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "S",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed in 1933 as a light infantry support tank, the Hotchkiss H35 ",
+			"was eventually adopted by the French cavalry as a light reconnaisance tank. ",
+			"This early variant has a short main gun and an underpowered engine."
+		],
+		"ubiquity" : "30",
+		"op_value" : "29"
+	},
+	
+	
+	
+	
+	
+	
+	
 	"Riflemen": {
 		"category" : "Infantry",
 		"class" : "Infantry Squad",
@@ -2091,7 +2165,6 @@
 		"ubiquity" : "100",
 		"op_value" : "0"
 	},
-	
 	
 	"HMG Team": {
 		"category" : "Infantry",

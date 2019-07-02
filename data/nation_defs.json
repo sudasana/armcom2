@@ -49,6 +49,7 @@
 			"Pfeiffer"
 		]
 	},
+	
 	"Poland": {
 		"short_code" : "POL",
 		"adjective" : "Polish",
@@ -138,6 +139,7 @@
 			"Andrzejewski", "Cieślak", "Głowacki", "Zakrzewski"	
 		]
 	},
+	
 	"Soviet Union": {
 		"short_code" : "SOV",
 		"adjective" : "Soviet",
@@ -274,13 +276,14 @@
 			"Zychik"
 		]
 	},
+	
 	"France": {
 		"short_code" : "FRA",
 		"adjective" : "French",
 		"flag_image" : "flag_FRA.xp",
 		"rank_names" : {
 			"0" : "Soldat",
-			"1" : "Soldat de première classe",
+			"1" : "Soldat 1e classe",
 			"2" : "Caporal",
 			"3" : "Sergent",
 			"4" : "Sergent-chef",
@@ -347,5 +350,5 @@
 			"Travere", "Travers", "Traverse", "Travert", "Tremblay",
 			"Tremble", "Victor", "Villeneuve", "Vincent", "Voclain"
 		]
-	},
+	}
 }

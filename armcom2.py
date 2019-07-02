@@ -3322,10 +3322,17 @@ class Personnel:
 					fixed_name += text[i]
 			return fixed_name
 		
-		first_name = choice(session.nations[self.nation]['first_names'])
-		self.first_name = FixName(first_name)
-		last_name = choice(session.nations[self.nation]['surnames'])
-		self.last_name = FixName(last_name)
+		name_okay = False
+		while not name_okay:
+		
+			first_name = choice(session.nations[self.nation]['first_names'])
+			self.first_name = FixName(first_name)
+			last_name = choice(session.nations[self.nation]['surnames'])
+			self.last_name = FixName(last_name)
+			
+			if self.first_name == self.last_name:
+				continue
+			name_okay = True
 	
 	
 	# return the person's full name
@@ -9918,10 +9925,21 @@ def DisplayPersonnelInfo(crewman, console, x, y):
 	libtcod.console_rect(console, x+7, y+19, 15, 1, False, libtcod.BKGND_SET)
 	libtcod.console_set_default_background(console, libtcod.black)
 	
+	# current wound if any
+	if crewman.wound == '':
+		text = 'None'
+		col = libtcod.light_grey
+	else:
+		text = crewman.wound
+		col = libtcod.red
+	libtcod.console_set_default_foreground(console, col)
+	libtcod.console_print(console, x+2, y+23, text)
+	
+	
 	# current status if any
 	if crewman.status != '':
 	
-		y1 = y+30
+		y1 = y+31
 		libtcod.console_set_default_foreground(console, libtcod.red)
 		libtcod.console_print(console, x+2, y1, crewman.status)
 		

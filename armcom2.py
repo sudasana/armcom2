@@ -6466,6 +6466,13 @@ class Scenario:
 				if size_class != 'Normal':
 					chance += PF_SIZE_MOD[size_class]
 			
+			# smoke modifier
+			if target.smoke > 0:
+				if target.smoke == 1:
+					chance -= 15.0
+				else:
+					chance -= 30.0
+			
 			chance = RestrictChance(chance)
 			roll = GetPercentileRoll()
 			

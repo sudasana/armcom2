@@ -3290,6 +3290,8 @@ class Personnel:
 		}
 		self.SetStats()
 		
+		self.adv_points = 0				# current number of advance points
+		
 		self.ce = False					# crewman is exposed in a vehicle
 		self.SetCEStatus()				# set CE status
 		

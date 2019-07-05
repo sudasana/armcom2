@@ -26,6 +26,7 @@
 			"day_end" : "12:30",
 			"location" : "The German Border",
 			"desc" : "Reports are coming in of a surprise invasion by German forces. Mobilize your team and launch a counterattack.",
+			"mission" : "Fighting Withdrawl",
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 90.0,
 			"arty_support_step" : 10.0,

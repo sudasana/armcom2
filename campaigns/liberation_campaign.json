@@ -24,6 +24,7 @@
 			"day_end" : "12:30",
 			"location" : "The Polish Border",
 			"desc" : "This morning we begin our invasion of Polish territory. Your battlegroup is tasked with destroying enemy forces and capturing territory wherever possible.",
+			"mission" : "Advance",
 			"enemy_nation" : "Poland",
 			"air_support_level" : 80.0,
 			"air_support_step" : 10.0,

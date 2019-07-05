@@ -213,6 +213,12 @@ RECORD_LIST = [
 	'Infantry Destroyed'
 ]
 
+# text descriptions for different types of Campaign Day missions
+MISSION_DESC = {
+	'Advance' : 'Enemy resistance is scattered and we are pushing forward. Advance into enemy territory, destroy any resistance, and capture territory.',
+	'Battle' : 'Your group has been posted to the front line where there is heavy resistance. Break through the enemy defenses, destroy enemy units, and capture territory.',
+	'Fighting Withdrawl' : 'The enemy is mounting a strong attack against our lines. Help to defend territory and withdrawl into friendly territory if necessary.'
+}
 
 ##########################################################################################
 #                                    Engine Constants                                    #
@@ -935,55 +941,57 @@ class Campaign:
 		# proceed menu - show summary of expected day
 		if self.active_calendar_menu == 1:
 			
-			x = 20
-			y = 4
+			x = 15
+			y = 1
 			
 			# display outline
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
 			
 			# mission type and description
-			libtcod.console_print_ex(calendar_main_panel, x+10, y+2, libtcod.BKGND_NONE,
-				libtcod.CENTER,	'Day Mission:')
-			libtcod.console_print_ex(calendar_main_panel, x+10, y+3, libtcod.BKGND_NONE,
-				libtcod.CENTER,	'Advance')
+			libtcod.console_print_ex(calendar_main_panel, x+15, y, libtcod.BKGND_NONE,
+				libtcod.CENTER,	"Today's Mission")
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_blue)
+			libtcod.console_print_ex(calendar_main_panel, x+15, y+2, libtcod.BKGND_NONE,
+				libtcod.CENTER,	campaign.today['mission'])
 			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
-			text = 'Capture enemy-held territory and destroy enemy units.'
-			lines = wrap(text, 25)
-			y1 = y+5
+			lines = wrap(MISSION_DESC[campaign.today['mission']], 30)
+			y1 = y+4
 			for line in lines:
 				libtcod.console_print(calendar_main_panel, x, y1, line)
 				y1+=1
-				if y1 == y + 10: break
+				if y1 == y+13: break
 			
 			# player support
-			text = 'Air Support: '
-			if 'air_support_level' not in campaign.today:
-				text += 'None'
-			else:
-				text += str(campaign.today['air_support_level'])
-			libtcod.console_print(calendar_main_panel, x, y+12, text)
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
+			libtcod.console_print(calendar_main_panel, x, y+15, 'Air Support:')
+			libtcod.console_print(calendar_main_panel, x, y+16, 'Artillery Support:')
 			
-			text = 'Artillery Support: '
-			if 'arty_support_level' not in campaign.today:
-				text += 'None'
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
+			if 'air_support_level' not in campaign.today:
+				text = 'None'
 			else:
-				text += str(campaign.today['arty_support_level'])
-			libtcod.console_print(calendar_main_panel, x, y+13, text)
+				text = str(campaign.today['air_support_level'])
+			libtcod.console_print(calendar_main_panel, x+19, y+15, text)
+			if 'arty_support_level' not in campaign.today:
+				text = 'None'
+			else:
+				text = str(campaign.today['arty_support_level'])
+			libtcod.console_print(calendar_main_panel, x+19, y+16, text)
 			
 			# expected enemy forces
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
-			libtcod.console_print_ex(calendar_main_panel, x+10, y+18, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(calendar_main_panel, x+10, y+19, libtcod.BKGND_NONE,
 				libtcod.CENTER,	'Expected Enemy Forces')
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
 			text = session.nations[campaign.stats['enemy_nations'][0]]['adjective']
 			text += ' infantry, guns, and AFVs'
-			lines = wrap(text, 25)
-			y1 = y+20
+			lines = wrap(text, 30)
+			y1 = y+21
 			for line in lines:
 				libtcod.console_print(calendar_main_panel, x, y1, line)
 				y1+=1
-				if y1 == y+23: break
+				if y1 == y+24: break
 	
 	
 	# update the display of the campaign calendar interface
@@ -1207,6 +1215,18 @@ class CampaignDay:
 			# set zone terrain type too
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
 		
+		# set up initial zone control based on day mission
+		if campaign.today['mission'] == 'Fighting Withdrawl':
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				self.map_hexes[(hx, hy)].controlled_by = 0
+		elif campaign.today['mission'] == 'Battle':
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				self.map_hexes[(hx, hy)].controlled_by = 1
+			for hx in range(-2, -5, -1):
+				for hy in range(4, 8):
+					if (hx, hy) not in self.map_hexes: continue
+					self.map_hexes[(hx, hy)].controlled_by = 0
+		
 		# create map objectives
 		# TEMP - assumes advance day mission
 		objective_dict = {
@@ -1240,9 +1260,16 @@ class CampaignDay:
 		
 		self.encounter_mod = 0.0			# increases every time player caputures an area without resistance
 		
-		# set up player
-		self.player_unit_location = (-2, 8)		# set initial player unit location
-		self.map_hexes[(-2, 8)].controlled_by = 0	# set player location to player control
+		# set up player location
+		if campaign.today['mission'] == 'Fighting Withdrawl':
+			self.player_unit_location = (2, 0)	# top center of map
+		elif campaign.today['mission'] == 'Battle':
+			self.player_unit_location = (0, 4)	# center of map
+		else:
+			self.player_unit_location = (-2, 8)	# bottom center of map
+		
+		# set player location to player control
+		self.map_hexes[self.player_unit_location].controlled_by = 0
 		
 		# animation object; keeps track of active animations on the animation console
 		self.animation = {

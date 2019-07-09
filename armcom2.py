@@ -3295,6 +3295,12 @@ class Session:
 			return False
 		mixer.Mix_AllocateChannels(16)
 		return True
+	
+	# load the main theme music
+	def LoadMainTheme(self):
+		global main_theme
+		main_theme = mixer.Mix_LoadMUS((SOUNDPATH + 'armcom2_theme.ogg').encode('ascii'))
+
 
 
 # Personnel Class: represents an individual person within a unit 
@@ -10029,8 +10035,10 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 
 
 # take a keyboard input and change game settings
-def ChangeGameSettings(key_char):
+def ChangeGameSettings(key_char, main_menu=False):
 	
+	global main_theme
+
 	if key_char not in ['f', 's', 'k']:
 		return False
 	
@@ -10053,10 +10061,16 @@ def ChangeGameSettings(key_char):
 	elif key_char == 's':
 		if config['ArmCom2'].getboolean('sounds_enabled'):
 			config['ArmCom2']['sounds_enabled'] = 'false'
+			# stop main theme if in main menu
+			if main_menu:
+				mixer.Mix_FreeMusic(main_theme)
+			main_theme = None
 		else:
 			config['ArmCom2']['sounds_enabled'] = 'true'
-			# try to init mixer
-			session.InitMixer()
+			# load main menu theme and play if in main menu
+			session.LoadMainTheme()
+			if main_menu:
+				mixer.Mix_PlayMusic(main_theme, -1)
 		
 	# switch keyboard layout
 	elif key_char == 'k':
@@ -10481,13 +10495,11 @@ main_theme = None
 if config['ArmCom2'].getboolean('sounds_enabled'):
 	if session.InitMixer():
 		# load and play main menu theme
-		main_theme = mixer.Mix_LoadMUS((SOUNDPATH + 'armcom2_theme.ogg').encode('ascii'))
+		session.LoadMainTheme()
 		mixer.Mix_PlayMusic(main_theme, -1)
 	else:
 		config['ArmCom2']['sounds_enabled'] = 'false'
 		print('Not able to init mixer, sounds disabled')
-else:
-	print('Sounds disabled')
 
 # generate keyboard mapping dictionaries
 GenerateKeyboards()
@@ -10640,7 +10652,7 @@ while not exit_game:
 	# options sub-menu
 	if options_menu_active:
 		
-		if ChangeGameSettings(key_char):
+		if ChangeGameSettings(key_char, main_menu=True):
 			UpdateMainTitleCon(options_menu_active)
 			
 		# exit options menu
@@ -10727,7 +10739,7 @@ while not exit_game:
 				campaign_day = None
 				scenario = None
 				
-			# pause main theme if playing
+			# pause main theme if loaded
 			if main_theme is not None:
 				mixer.Mix_PauseMusic()
 			
@@ -10737,13 +10749,15 @@ while not exit_game:
 			# reset exiting flag
 			session.exiting = False
 			
-			# restart main theme if playing
+			# restart main theme if loaded
 			if main_theme is not None:
 				mixer.Mix_RewindMusic()
 				mixer.Mix_ResumeMusic()
 			
 			UpdateMainTitleCon(options_menu_active)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+
+print('Armoured Commander II shutting down')
 
 # END #
 

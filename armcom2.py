@@ -502,6 +502,9 @@ BASE_CD_RANDOM_EVENT_CHANCE = 5.0
 # base number of minutes between weather update checks
 BASE_WEATHER_UPDATE_CLOCK = 30
 
+# time range of zone capture checks
+ZONE_CAPTURE_CLOCK_MIN = 5
+ZONE_CAPTURE_CLOCK_MAX = 15
 
 ##########################################################################################
 #                                         Classes                                        #
@@ -1151,6 +1154,9 @@ class CampaignDay:
 		self.weather_update_clock = 0		# number of minutes until next weather update
 		self.GenerateWeather()
 		
+		# number of minutes until next zone capture check
+		self.zone_capture_clock = libtcod.random_get_int(0, ZONE_CAPTURE_CLOCK_MIN, ZONE_CAPTURE_CLOCK_MAX)
+		
 		self.fate_points = libtcod.random_get_int(0, 1, 3)	# fate points protecting the player
 		
 		# set max number of units in player squad
@@ -1510,6 +1516,7 @@ class CampaignDay:
 			self.day_clock['hour'] += 1
 			self.day_clock['minute'] -= 60
 		self.CheckForEndOfDay()
+		
 		# check for weather update
 		self.weather_update_clock -= hours * 60
 		self.weather_update_clock -= minutes
@@ -1520,6 +1527,15 @@ class CampaignDay:
 			DisplayWeatherInfo(cd_weather_con)
 			if scenario is not None:
 				scenario.UpdateScenarioInfoCon()
+		
+		# see if we need to trigger a zone capture check
+		# but - don't update if we are within a scenario
+		if scenario is None:
+			self.zone_capture_clock -= hours * 60
+			self.zone_capture_clock -= minutes
+			if self.zone_capture_clock <= 0:
+				self.CheckForZoneCapture()
+			
 	
 	
 	# display an animated screen for the start of a new combat day
@@ -1585,7 +1601,7 @@ class CampaignDay:
 		roll = GetPercentileRoll()
 		
 		# reinforcements for player squad
-		if roll <= 20.0:
+		if roll <= 35.0:
 			
 			# can't increase
 			if campaign.player_squad_num == campaign.player_squad_max:
@@ -1593,31 +1609,6 @@ class CampaignDay:
 			
 			ShowMessage('Reinforcements arrive and bring your squad back up to full strength.')
 			campaign.player_squad_num = campaign.player_squad_max
-		
-		# friendly forces capture an enemy zone
-		elif roll <= 35.0:
-			
-			# find a possible zone to capture
-			hex_list = []
-			for (hx, hy) in self.map_hexes:
-				map_hex = self.map_hexes[(hx,hy)]
-				if map_hex.controlled_by == 0: continue
-				
-				# make sure there is at least one adjacent friendly hex
-				for direction in range(5):
-					(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
-					if (hx2, hy2) not in self.map_hexes: continue
-					if self.map_hexes[(hx2,hy2)].controlled_by == 0:
-						hex_list.append((hx,hy))
-						break
-			
-			# no possible hexes to capture
-			if len(hex_list) == 0:
-				return
-			
-			ShowMessage('Allied forces have captured an enemy-held zone!') 
-			(hx, hy) = choice(hex_list)
-			self.map_hexes[(hx,hy)].CaptureMe(0, no_vp=True)
 		
 		# enemy strength increases
 		elif roll <= 45.0:
@@ -1661,34 +1652,8 @@ class CampaignDay:
 			ShowMessage('We have received information about expected enemy strength in an area.')
 			# FUTURE: highlight hex momentarily
 		
-		# friendly zone lost
-		elif roll <= 60.0:
-			
-			hex_list = []
-			for (hx, hy) in self.map_hexes:
-				map_hex = self.map_hexes[(hx,hy)]
-				if map_hex.controlled_by == 1: continue
-				# don't capture player location!
-				if (hx, hy) == self.player_unit_location: continue
-				
-				# make sure there is at least one adjacent enemy hex
-				for direction in range(5):
-					(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
-					if (hx2, hy2) not in self.map_hexes: continue
-					if self.map_hexes[(hx2,hy2)].controlled_by == 1:
-						hex_list.append((hx,hy))
-						break
-			
-			# no possible hexes to capture
-			if len(hex_list) == 0:
-				return
-			
-			ShowMessage('Enemy forces have captured an allied-held zone!') 
-			(hx, hy) = choice(hex_list)
-			self.map_hexes[(hx,hy)].CaptureMe(1)
-		
 		# free resupply
-		elif roll <= 65.0:
+		elif roll <= 70.0:
 			ShowMessage('You happen to encounter a supply truck, and can restock your gun ammo.')
 			self.AmmoReloadMenu()
 		
@@ -1746,6 +1711,99 @@ class CampaignDay:
 		self.UpdateCDCommandCon()
 		self.UpdateCDHexInfoCon()
 		self.UpdateCDDisplay()
+	
+	
+	# check for zone capture/loss
+	def CheckForZoneCapture(self):
+		
+		print('DEBUG: starting zone capture check')
+		
+		# reset clock
+		self.zone_capture_clock = libtcod.random_get_int(0, ZONE_CAPTURE_CLOCK_MIN, ZONE_CAPTURE_CLOCK_MAX)
+		
+		# set odds of each possible oocurance based on current day mission
+		if campaign.today['mission'] == 'Advance':
+			friendly_capture_odds = 65.0
+			enemy_capture_odds = 10.0
+		elif campaign.today['mission'] == 'Battle':
+			friendly_capture_odds = 50.0
+			enemy_capture_odds = 40.0
+		elif campaign.today['mission'] == 'Fighting Withdrawl':
+			friendly_capture_odds = 10.0
+			enemy_capture_odds = 75.0
+		# no other missions for now
+		else:
+			return
+		
+		roll = GetPercentileRoll()
+		
+		# friendly forces capture an enemy zone
+		if roll <= friendly_capture_odds:
+			
+			# find a possible zone to capture
+			hex_list = []
+			for (hx, hy) in self.map_hexes:
+				map_hex = self.map_hexes[(hx,hy)]
+				if map_hex.controlled_by == 0: continue
+				
+				# make sure there is at least one adjacent friendly hex
+				for direction in range(5):
+					(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+					if (hx2, hy2) not in self.map_hexes: continue
+					if self.map_hexes[(hx2,hy2)].controlled_by == 0:
+						hex_list.append((hx,hy))
+						break
+			
+			# 1+ possible hexes to capture
+			if len(hex_list) > 0:
+				ShowMessage('Allied forces have captured an enemy-held zone!') 
+				(hx, hy) = choice(hex_list)
+				self.map_hexes[(hx,hy)].CaptureMe(0, no_vp=True)
+		
+		
+		roll = GetPercentileRoll()
+		
+		# friendly zone lost
+		if roll <= enemy_capture_odds:
+			
+			hex_list = []
+			for (hx, hy) in self.map_hexes:
+				map_hex = self.map_hexes[(hx,hy)]
+				if map_hex.controlled_by == 1: continue
+				
+				# make sure there is at least one adjacent enemy hex
+				for direction in range(5):
+					(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+					if (hx2, hy2) not in self.map_hexes: continue
+					if self.map_hexes[(hx2,hy2)].controlled_by == 1:
+						hex_list.append((hx,hy))
+						break
+			
+			# 1+ possible hexes to capture
+			if len(hex_list) > 0:
+				(hx, hy) = choice(hex_list)
+				self.map_hexes[(hx,hy)].CaptureMe(1)
+				(hx2, hy2) = self.player_unit_location
+				
+				if hx != hx2 and hy != hy2:
+					# player is not present in zone
+					ShowMessage('Enemy forces have captured an allied-held zone!')
+				else:
+					# player is present, trigger a scenario
+					ShowMessage('Enemy forces attack your area!')
+					map_hex = self.map_hexes[(hx,hy)]
+					scenario = Scenario(map_hex)
+					self.scenario = scenario
+	
+		# update consoles and screen
+		self.UpdateCDUnitCon()
+		self.UpdateCDControlCon()
+		self.UpdateCDGUICon()
+		self.UpdateCDCommandCon()
+		self.UpdateCDHexInfoCon()
+		self.UpdateCDDisplay()
+		
+		print('DEBUG: zone capture check finished')
 	
 	
 	# menu for restocking ammo for main guns on the player tank
@@ -2190,16 +2248,6 @@ class CampaignDay:
 			# end menu
 			if key.vk in [libtcod.KEY_ESCAPE, libtcod.KEY_ENTER]:
 				exit_menu = True
-	
-	
-	# resupply the player unit
-	# (not used at the moment)
-	def ResupplyPlayer(self):
-		for weapon in campaign.player_unit.weapon_list:
-			if weapon.ammo_stores is not None:
-				weapon.LoadGunAmmo()
-				text = weapon.stats['name'] + ' has been fully restocked with ammo.'
-				ShowMessage(text)
 
 	
 	##### Campaign Day Console Functions #####
@@ -2367,7 +2415,6 @@ class CampaignDay:
 			if map_hex.controlled_by == 0: continue
 			if not map_hex.known_to_player: continue
 			libtcod.console_print(cd_unit_con, x, y-1, str(map_hex.enemy_strength))
-			
 		
 		# draw player unit group
 		(hx, hy) = self.player_unit_location
@@ -2587,6 +2634,12 @@ class CampaignDay:
 		# travel
 		elif self.active_menu == 3:
 			
+			# display Wait command (always available)
+			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+			libtcod.console_print(cd_command_con, 5, 20, EnKey('w').upper())
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			libtcod.console_print(cd_command_con, 12, 20, 'Wait/Defend')
+			
 			# check to see whether travel in selected direction is not possible
 			if self.selected_direction is None:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -2603,6 +2656,7 @@ class CampaignDay:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
 				libtcod.console_print(cd_command_con, 1, 2, 'Enemy Controlled')
 				
+				# display recon option
 				if not map_hex.known_to_player:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 					libtcod.console_print(cd_command_con, 1, 3, 'Recon: 15 mins.')
@@ -2899,17 +2953,16 @@ class CampaignDay:
 					# capture area if player is still alive and in tank
 					if campaign.player_unit.alive and not self.abandoned_tank:
 						(hx, hy) = self.player_unit_location
-						self.map_hexes[(hx,hy)].CaptureMe(0)
+						if self.map_hexes[(hx,hy)].controlled_by == 1:
+							self.map_hexes[(hx,hy)].CaptureMe(0)
 						self.DoCrewCheck(campaign.player_unit)
 						self.CheckForEndOfDay()
 						self.UpdateCDDisplay()
 						libtcod.console_flush()
 						self.CheckForRandomEvent()
 						SaveGame()
-					
-					# player was destroyed
 					else:
-						
+						# player was destroyed	
 						self.DisplayCampaignDaySummary()
 						exit_loop = True
 						continue
@@ -3048,13 +3101,21 @@ class CampaignDay:
 					self.UpdateCDCommandCon()
 					self.UpdateCDUnitCon()
 					self.UpdateCDDisplay()
-					
 					self.CheckForRandomEvent()
-					
+					SaveGame()
 					continue
 			
 			# travel menu active
 			elif self.active_menu == 3:
+				
+				# wait/defend
+				if key_char == 'w':
+					ShowMessage('You remain in place, ready for possible attack.')
+					campaign_day.AdvanceClock(0, 15)
+					DisplayTimeInfo(time_con)
+					self.CheckForRandomEvent()
+					SaveGame()
+					continue
 				
 				# recon or proceed with travel
 				if key_char == 'r' or key.vk == libtcod.KEY_ENTER:

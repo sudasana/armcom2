@@ -1,10 +1,10 @@
 {
  "Player Immortality": true,
  "Support Requests Always Granted": true,
- "Always Scenario": true,
- "Never Scenario": false,
+ "Always Scenario": false,
+ "Never Scenario": true,
  "Always CD Random Event": false,
- "Player Always Hits": false,
+ "Player Always Hits": true,
  "Player Always Moves": false,
  "Player Always HD": false,
  "No AI Actions": true,

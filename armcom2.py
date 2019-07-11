@@ -1228,8 +1228,9 @@ class CampaignDay:
 		elif campaign.today['mission'] == 'Battle':
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 1
-			for hx in range(-2, -5, -1):
-				for hy in range(4, 8):
+			for hy in range(4, 9):
+				hx1 = 0 - floor(hy / 2)
+				for hx in range(hx1, hx1 + 5):
 					if (hx, hy) not in self.map_hexes: continue
 					self.map_hexes[(hx, hy)].controlled_by = 0
 		
@@ -1583,6 +1584,9 @@ class CampaignDay:
 		# don't trigger an event if day has already ended
 		if self.ended: return
 		
+		# don't trigger if a scenario just started
+		if scenario is not None: return
+		
 		roll = GetPercentileRoll()
 		
 		if DEBUG:
@@ -1716,6 +1720,8 @@ class CampaignDay:
 	# check for zone capture/loss
 	def CheckForZoneCapture(self):
 		
+		global scenario
+		
 		print('DEBUG: starting zone capture check')
 		
 		# reset clock
@@ -1736,6 +1742,9 @@ class CampaignDay:
 			return
 		
 		roll = GetPercentileRoll()
+		
+		# TEMP
+		roll = 100.0
 		
 		# friendly forces capture an enemy zone
 		if roll <= friendly_capture_odds:
@@ -1763,6 +1772,9 @@ class CampaignDay:
 		
 		roll = GetPercentileRoll()
 		
+		# TEMP
+		roll = 1.0
+		
 		# friendly zone lost
 		if roll <= enemy_capture_odds:
 			
@@ -1781,6 +1793,11 @@ class CampaignDay:
 			
 			# 1+ possible hexes to capture
 			if len(hex_list) > 0:
+				
+				# TEMP testing
+				(hx2, hy2) = self.player_unit_location
+				(hx, hy) = (hx2, hy2)
+				
 				(hx, hy) = choice(hex_list)
 				self.map_hexes[(hx,hy)].CaptureMe(1)
 				(hx2, hy2) = self.player_unit_location
@@ -2752,6 +2769,10 @@ class CampaignDay:
 		# display hex zone coordinates
 		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_green)
 		libtcod.console_print(cd_hex_info_con, 11, 0, cd_hex.coordinate)
+		
+		# TEMP - display hx,hy
+		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.yellow)
+		libtcod.console_print(cd_hex_info_con, 14, 0, str(hx) + ',' + str(hy))
 		
 		# terrain
 		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)
@@ -9149,7 +9170,7 @@ def DisplayTimeInfo(console):
 	text = str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
 	libtcod.console_print_ex(console, 10, 1, libtcod.BKGND_NONE, libtcod.CENTER, text)
 	
-	if campaign_day.scenario is None: return
+	if scenario is None: return
 	libtcod.console_set_default_foreground(console, SCEN_PHASE_COL[scenario.phase])
 	libtcod.console_print_ex(console, 10, 5, libtcod.BKGND_NONE, libtcod.CENTER, 
 		SCEN_PHASE_NAMES[scenario.phase] + ' Phase')

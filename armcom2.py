@@ -59,9 +59,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.5.0'					# game version
+VERSION = '0.5.0 11-07-2019'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1235,14 +1235,16 @@ class CampaignDay:
 					self.map_hexes[(hx, hy)].controlled_by = 0
 		
 		# create map objectives
-		# TEMP - assumes advance day mission
-		objective_dict = {
-			'objective_type' : 'Capture',
-			'vp_reward' : 5,
-			'time_limit' : None
-			}
-		self.map_hexes[(-2, 6)].SetObjective(objective_dict)
-		self.map_hexes[(1, 2)].SetObjective(objective_dict)
+		
+		# TEMP - advance day mission only
+		if campaign.today['mission'] == 'Advance':
+			objective_dict = {
+				'objective_type' : 'Capture',
+				'vp_reward' : 5,
+				'time_limit' : None
+				}
+			self.map_hexes[(-2, 6)].SetObjective(objective_dict)
+			self.map_hexes[(1, 2)].SetObjective(objective_dict)
 		
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}
@@ -1722,8 +1724,6 @@ class CampaignDay:
 		
 		global scenario
 		
-		print('DEBUG: starting zone capture check')
-		
 		# reset clock
 		self.zone_capture_clock = libtcod.random_get_int(0, ZONE_CAPTURE_CLOCK_MIN, ZONE_CAPTURE_CLOCK_MAX)
 		
@@ -1742,9 +1742,6 @@ class CampaignDay:
 			return
 		
 		roll = GetPercentileRoll()
-		
-		# TEMP
-		roll = 100.0
 		
 		# friendly forces capture an enemy zone
 		if roll <= friendly_capture_odds:
@@ -1772,9 +1769,6 @@ class CampaignDay:
 		
 		roll = GetPercentileRoll()
 		
-		# TEMP
-		roll = 1.0
-		
 		# friendly zone lost
 		if roll <= enemy_capture_odds:
 			
@@ -1793,10 +1787,6 @@ class CampaignDay:
 			
 			# 1+ possible hexes to capture
 			if len(hex_list) > 0:
-				
-				# TEMP testing
-				(hx2, hy2) = self.player_unit_location
-				(hx, hy) = (hx2, hy2)
 				
 				(hx, hy) = choice(hex_list)
 				self.map_hexes[(hx,hy)].CaptureMe(1)
@@ -1819,8 +1809,6 @@ class CampaignDay:
 		self.UpdateCDCommandCon()
 		self.UpdateCDHexInfoCon()
 		self.UpdateCDDisplay()
-		
-		print('DEBUG: zone capture check finished')
 	
 	
 	# menu for restocking ammo for main guns on the player tank
@@ -2727,13 +2715,13 @@ class CampaignDay:
 	def UpdateCDCampaignCon(self):
 		libtcod.console_clear(cd_campaign_con)
 		
-		# current day mission - TEMP only advance for now
+		# current day mission
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.light_blue)
 		libtcod.console_print_ex(cd_campaign_con, 11, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Day Mission')
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
 		libtcod.console_print_ex(cd_campaign_con, 11, 2, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Advance')
+			campaign.today['mission'])
 		
 		# current VP total
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.light_blue)
@@ -3671,7 +3659,7 @@ class Personnel:
 		if self.status == '': return
 		if self.status == 'Dead': return
 		
-		print('DEBUG: doing recovery roll for ' + self.GetFullName())
+		#print('DEBUG: doing recovery roll for ' + self.GetFullName())
 		
 		roll = GetPercentileRoll()
 		if self.status == 'Unconscious': roll += 15.0
@@ -4559,7 +4547,7 @@ class Unit:
 			
 			if roll <= 10.0:
 				self.smoke -= 1
-				print('DEBUG: smoke disperses around ' + self.unit_id)
+				#print('DEBUG: smoke disperses around ' + self.unit_id)
 				
 				if self == scenario.player_unit:
 					if self.smoke == 1:
@@ -5531,7 +5519,7 @@ class Unit:
 						# player was target
 						if self == scenario.player_unit:
 							
-							print('DEBUG: doing stun tests')
+							#print('DEBUG: doing stun tests')
 							
 							for position in self.positions_list:
 								if position.crewman is None: continue
@@ -5737,7 +5725,7 @@ class Unit:
 			elif self in scenario.player_unit.squad:
 				
 				campaign.player_squad_num -= 1
-				print('DEBUG: decreased player squad size, now ' + str(campaign.player_squad_num))
+				#print('DEBUG: decreased player squad size, now ' + str(campaign.player_squad_num))
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
@@ -10833,8 +10821,11 @@ while not exit_game:
 			
 			# restart main theme if loaded
 			if main_theme is not None:
-				mixer.Mix_RewindMusic()
-				mixer.Mix_ResumeMusic()
+				if mixer.Mix_PausedMusic() == 1:
+					mixer.Mix_RewindMusic()
+					mixer.Mix_ResumeMusic()
+				else:
+					mixer.Mix_PlayMusic(main_theme, -1)
 			
 			UpdateMainTitleCon(options_menu_active)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)

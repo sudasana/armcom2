@@ -1529,7 +1529,8 @@ class CampaignDay:
 			self.UpdateCDCommandCon()
 			DisplayWeatherInfo(cd_weather_con)
 			if scenario is not None:
-				scenario.UpdateScenarioInfoCon()
+				if scenario.init_complete:
+					scenario.UpdateScenarioInfoCon()
 		
 		# see if we need to trigger a zone capture check
 		# but - don't update if we are within a scenario
@@ -9256,10 +9257,10 @@ def ShowMessage(text, portrait=None):
 		y += 1
 	
 	# display closer to centre if we appear to be in the campaign day view
-	if scenario is None:
-		x = 31
-	else:
-		x = 44
+	x = 31
+	if scenario is not None:
+		if scenario.init_complete:
+			x = 44
 	
 	# display message console
 	libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, x, 21)
@@ -9339,9 +9340,10 @@ def WaitForContinue(allow_cancel=False, ignore_animations=False):
 # check for animation frame update and console update
 def CheckForAnimationUpdate():
 	if scenario is not None:
-		if time.time() - session.anim_timer >= ANIM_UPDATE_TIMER:
-			scenario.UpdateAnimCon()
-			scenario.UpdateScenarioDisplay()
+		if scenario.init_complete:
+			if time.time() - session.anim_timer >= ANIM_UPDATE_TIMER:
+				scenario.UpdateAnimCon()
+				scenario.UpdateScenarioDisplay()
 		
 	elif campaign_day is not None:
 		if time.time() - session.anim_timer >= ANIM_UPDATE_TIMER:

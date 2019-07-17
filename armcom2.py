@@ -59,9 +59,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.5.0 11-07-2019'					# game version
+VERSION = '0.5.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -4108,6 +4108,17 @@ class AI:
 				else:
 					self.disposition = 'None'
 		
+		# armoured train - doesn't move during a scenario
+		elif self.owner.GetStat('class') == 'Armoured Train Car':
+			
+			if self.owner.unit_id == 'Locomotive':
+				self.disposition = 'None'
+			else:
+				if roll <= 40.0:
+					self.disposition = 'Combat'
+				else:
+					self.disposition = 'None'
+			
 		# non-combat unit
 		elif self.owner.GetStat('class') == 'Truck':
 			if roll <= 60.0:
@@ -5009,6 +5020,8 @@ class Unit:
 		# infantry
 		if unit_category == 'Infantry': return 176
 		
+		if unit_category == 'Train Car': return 7
+		
 		# gun, set according to deployed status / hull facing
 		if unit_category == 'Gun':
 			if self.facing is None:		# facing not yet set
@@ -5110,8 +5123,6 @@ class Unit:
 					if libtcod.random_get_int(generator, 1, 9) == 1: continue
 					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 176,
 						libtcod.Color(45,0,180), libtcod.black)
-					
-			
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
@@ -5122,6 +5133,13 @@ class Unit:
 			else:
 				col = ALLIED_UNIT_COL
 		
+		# armoured trains have more display characters
+		if self.GetStat('class') == 'Armoured Train Car' and not (self.owning_player == 1 and not self.spotted):
+			for x1 in range(x-4, x+5):
+				libtcod.console_put_char_ex(unit_con, x1, y, 35, libtcod.dark_grey, libtcod.black)
+			for x1 in range(x-1, x+2):
+				libtcod.console_put_char_ex(unit_con, x1, y, 219, libtcod.grey, libtcod.black)
+			
 		# draw main display character
 		libtcod.console_put_char_ex(unit_con, x, y, self.GetDisplayChar(), col, libtcod.black)
 		
@@ -6241,6 +6259,10 @@ class Scenario:
 					unit_class = k
 			
 			# FUTURE: if class unit type has already been set, use that one instead
+			
+			# TEMP testing
+			if campaign.stats['player_nation'] == 'Germany':
+				unit_class = 'Armoured Train Car'
 			
 			# choose a random unit type
 			type_list = []

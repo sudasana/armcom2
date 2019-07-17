@@ -587,7 +587,7 @@
 			{"name" : "Fireman"}
 		],
 		"description" : [
-			""
+			"An armoured steam locomotive, designed to move an armoured train."
 		],
 		"op_value" : "27"
 	},
@@ -598,6 +598,7 @@
 		"portrait" : "unit_light_arty_car.xp",
 		"size_class" : "Very Large",
 		"movement_class" : "Train",
+		"turret" : "TRUE",
 		"armour" : {
 			"turret_front" : "3",
 			"turret_side" : "3",
@@ -638,7 +639,9 @@
 			{"name" : "Loader"}
 		],
 		"description" : [
-			""
+			"This armoured railroad car mounts two 75mm guns, each in a separate ",
+			"turret. Although it is limited to travel on rails, it is well-protected ",
+			"and armed."
 		],
 		"op_value" : "27"
 	},

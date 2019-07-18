@@ -6322,7 +6322,7 @@ class Scenario:
 			
 			# choose a random hex in which to spawn
 			for (hx, hy) in hex_list:
-				# make it less likely that enemy units will spawni behind the player
+				# make it less likely that enemy units will spawn behind the player
 				if GetDirectionToward(hx, hy, 0, 0) in [5, 0, 1]:
 					if GetPercentileRoll() <= 75.0: continue
 				break

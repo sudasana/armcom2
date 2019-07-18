@@ -5440,7 +5440,7 @@ class Unit:
 		# no hits to resolve! doing fine!
 		if len(self.ap_hits_to_resolve) == 0: return
 		
-		print('Resolving AP hits on ' + self.unit_id)
+		#print('Resolving AP hits on ' + self.unit_id)
 		
 		# no effect if no armour on unit
 		if self.GetStat('armour') is None:
@@ -5539,8 +5539,8 @@ class Unit:
 		self.MoveToTopOfStack()
 		scenario.UpdateUnitCon()
 		
-		# fp has a different type of effect on vehicles
-		if self.GetStat('category') == 'Vehicle':
+		# fp has a different type of effect on vehicles and armoured trains
+		if self.GetStat('category') in ['Vehicle', 'Train Car']:
 			
 			# FUTURE: if vehicle has any unarmoured area, possible that it will be destroyed
 			if self.GetStat('armour') is None:

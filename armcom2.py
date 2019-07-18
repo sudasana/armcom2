@@ -36,13 +36,11 @@
 
 ##### Libraries #####
 import os, sys						# OS-related stuff
-
 if os.name == 'posix':					# if linux - load system libtcodpy
 	import libtcodpy_local as libtcod		
 else:
 	import libtcodpy as libtcod			# The Doryen Library
 	os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)	# set sdl2 dll path
-	
 from configparser import ConfigParser			# saving and loading configuration settings
 from random import choice, shuffle, sample		# for the illusion of randomness
 from math import floor, cos, sin, sqrt, degrees, atan2, ceil	# math and heading calculations
@@ -158,12 +156,14 @@ PHASE_ENEMY_ACTION = 7
 
 # text names for scenario turn phases
 SCEN_PHASE_NAMES = [
-	'Command', 'Spotting', 'Crew Action', 'Movement', 'Shooting', 'Close Combat', 'Allied Action', 'Enemy Action'
+	'Command', 'Spotting', 'Crew Action', 'Movement', 'Shooting', 'Close Combat', 'Allied Action',
+	'Enemy Action'
 ]
 
 # colour associated with phases
 SCEN_PHASE_COL = [
-	libtcod.yellow, libtcod.purple, libtcod.light_blue, libtcod.green, libtcod.red, libtcod.white, ALLIED_UNIT_COL, ENEMY_UNIT_COL 
+	libtcod.yellow, libtcod.purple, libtcod.light_blue, libtcod.green, libtcod.red, libtcod.white,
+	ALLIED_UNIT_COL, ENEMY_UNIT_COL 
 ]
 
 # list of campaign calendar menus and their highlight colours
@@ -185,9 +185,7 @@ CD_MENU_LIST = [
 ]
 
 # directional arrows for directions on the campaign day map
-CD_DIR_ARROW = [
-	228,26,229,230,27,231
-]
+CD_DIR_ARROW = [228,26,229,230,27,231]
 
 # list of commands for travel in campaign day
 CD_TRAVEL_CMDS = [
@@ -199,12 +197,6 @@ AMMO_TYPES = ['HE', 'AP']
 
 # list of MG-type weapons
 MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG', 'HMG']
-
-# text names for months
-MONTH_NAMES = [
-	'', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
-	'September', 'October', 'November', 'December'
-]
 
 # types of records to store for each combat day and for entire campaign
 # also order in which they are displayed
@@ -317,32 +309,16 @@ HE_FP_EFFECT = [
 
 # penetration chance on armour of HE hits
 HE_AP_CHANCE = [
-	(150, 110.0),
-	(120, 100.0),
-	(100, 91.7),
-	(80, 72.2),
-	(70, 58.4),
-	(50, 41.7),
-	(40, 27.8),
-	(30, 16.7),
+	(150, 110.0),(120, 100.0),(100, 91.7),(80, 72.2),(70, 58.4),(50, 41.7),(40, 27.8),(30, 16.7)
 ]
 
 # odds of unarmoured vehicle destruction when resolving FP
 VEH_FP_TK = [
-	(36, 110.0),
-	(30, 100.0),
-	(24, 97.0),
-	(20, 92.0),
-	(16, 83.0),
-	(12, 72.0),
-	(8, 58.0),
-	(6, 42.0),
-	(4, 28.0),
-	(2, 17.0),
-	(1, 8.0)
+	(36, 110.0),(30, 100.0),(24, 97.0),(20, 92.0),(16, 83.0),(12, 72.0),(8, 58.0),(6, 42.0),
+	(4, 28.0),(2, 17.0),(1, 8.0)
 ]
 
-# amount within an AFV armour save will result in Stun tests for crew/unit
+# amount within an AFV armour save that will result in Stun tests for crew/unit
 AP_STUN_MARGIN = 10.0
 
 # terrain type odds for campaign day hexes
@@ -466,29 +442,12 @@ SCENARIO_TERRAIN_EFFECTS = {
 	}
 }
 
-# Road: no effects but allows road movement; -TEM for units using road movement
-# Entrenchments: ++TEM for infantry if not moving and deployed guns
-# Hills: ++Hidden Chance -move chance, +bog chance
-# Orchard: +TEM; -move chance; can Burn
-# Marsh: -TEM; --move chance, ++bog chance
-# Riverbank: -TEM
-# Stone Building: ++Hidden chance; +++TEM for infantry and guns
-# Fortifications: ++Hidden chance; ++++TEM for infantry and guns
-# Railroad: -TEM; +bog chance for non Train/Tracked vehicles
-
 # relative locations to draw greebles for terrain on scenario map
-GREEBLE_LOCATIONS = [
-	(-1,-1), (0,-1), (1,-1), (-1,0), (1,0), (-1,1), (0,1), (1,1)
-]
-
+GREEBLE_LOCATIONS = [(-1,-1), (0,-1), (1,-1), (-1,0), (1,0), (-1,1), (0,1), (1,1)]
 
 # modifier for base HD chance
 HD_SIZE_MOD = {
-	'Very Small' : 12.0,
-	'Small' : 6.0,
-	'Normal' : 0.0,
-	'Large' : -6.0,
-	'Very Large' : -12.0
+	'Very Small' : 12.0, 'Small' : 6.0, 'Normal' : 0.0, 'Large' : -6.0, 'Very Large' : -12.0
 }
 
 # base chance of a sniper attack being effective
@@ -505,6 +464,8 @@ BASE_WEATHER_UPDATE_CLOCK = 30
 # time range of zone capture checks
 ZONE_CAPTURE_CLOCK_MIN = 5
 ZONE_CAPTURE_CLOCK_MAX = 15
+
+
 
 ##########################################################################################
 #                                         Classes                                        #
@@ -1136,7 +1097,6 @@ class Campaign:
 				pass
 				
 				
-
 
 
 # Campaign Day: represents one calendar day in a campaign with a 5x7 map of terrain hexes, each of
@@ -6251,10 +6211,6 @@ class Scenario:
 					unit_class = k
 			
 			# FUTURE: if class unit type has already been set, use that one instead
-			
-			# TEMP testing
-			if campaign.stats['player_nation'] == 'Germany':
-				unit_class = 'Armoured Train Car'
 			
 			# choose a random unit type
 			type_list = []

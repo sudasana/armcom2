@@ -1173,7 +1173,8 @@ class CampaignDay:
 		self.unit_destruction_vp = {
 			'Infantry': 1,
 			'Gun' : 2,
-			'Vehicle': 4 
+			'Vehicle': 4,
+			'Train Car': 6
 		}
 		
 		# records for end-of-day summary
@@ -5458,12 +5459,9 @@ class Unit:
 					elif profile['ammo_type'] == 'AP':
 						target.fp_to_resolve += 1
 				
-				# vehicle target
-				elif target.GetStat('category') == 'Vehicle':
+				# armoured target
+				elif target.GetStat('armour') is not None:
 					target.ap_hits_to_resolve.append(profile)
-					
-					
-		
 		
 		# turn off attack console display if any
 		scenario.attack_con_active = False
@@ -5482,10 +5480,10 @@ class Unit:
 		# no hits to resolve! doing fine!
 		if len(self.ap_hits_to_resolve) == 0: return
 		
-		#print('Resolving AP hits on ' + self.unit_id)
+		print('Resolving AP hits on ' + self.unit_id)
 		
-		# no effect if unit is not a vehicle
-		if self.GetStat('category') != 'Vehicle':
+		# no effect if no armour on unit
+		if self.GetStat('armour') is None:
 			self.ap_hits_to_resolve = []
 			return
 		
@@ -5496,79 +5494,76 @@ class Unit:
 		# handle AP hits
 		for profile in self.ap_hits_to_resolve:
 			
-			# unit is vehicle
-			if self.GetStat('category') == 'Vehicle':
-				
-				profile = scenario.CalcAP(profile)
-				
-				# display and wait if player is involved
-				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
-					scenario.DisplayAttack(profile)
-					scenario.attack_con_active = True
-					scenario.UpdateScenarioDisplay()
-					WaitForContinue()
-				
-				# do the attack roll; modifies the attack profile
-				profile = scenario.DoAttackRoll(profile)
-				
-				if profile['result'] == 'NO PENETRATION':
-					PlaySoundFor(self, 'armour_save')
-				
-				# wait if player is involved
-				if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
-					scenario.UpdateScenarioDisplay()
-					WaitForContinue()
-				
-				# turn off attack console display if any
-				scenario.attack_con_active = False
+			profile = scenario.CalcAP(profile)
+			
+			# display and wait if player is involved
+			if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
+				scenario.DisplayAttack(profile)
+				scenario.attack_con_active = True
 				scenario.UpdateScenarioDisplay()
+				WaitForContinue()
+			
+			# do the attack roll; modifies the attack profile
+			profile = scenario.DoAttackRoll(profile)
+			
+			if profile['result'] == 'NO PENETRATION':
+				PlaySoundFor(self, 'armour_save')
+			
+			# wait if player is involved
+			if profile['attacker'] == scenario.player_unit or self == scenario.player_unit:
+				scenario.UpdateScenarioDisplay()
+				WaitForContinue()
+			
+			# turn off attack console display if any
+			scenario.attack_con_active = False
+			scenario.UpdateScenarioDisplay()
+			
+			# apply result if any
+			if profile['result'] == 'NO PENETRATION':
 				
-				# apply result if any
-				if profile['result'] == 'NO PENETRATION':
+				# check for stun test
+				difference = profile['final_chance'] - profile['roll']
+				
+				if 0.0 < difference <= AP_STUN_MARGIN:
 					
-					# check for stun test
-					difference = profile['final_chance'] - profile['roll']
-					
-					if 0.0 < difference <= AP_STUN_MARGIN:
-						
-						# player was target
-						if self == scenario.player_unit:
-							
-							#print('DEBUG: doing stun tests')
-							
-							for position in self.positions_list:
-								if position.crewman is None: continue
-								position.crewman.DoStunCheck(AP_STUN_MARGIN - difference)
-						
-						# FUTURE: target was AI unit
-						else:
-							
-							pass
-							
-				elif profile['result'] == 'PENETRATED':
-					
-					# TODO: roll for penetration result here, use the
-					# final 'roll' difference vs. 'final_chance' as modifier
-					
-					self.DestroyMe()
-					
-					# display message
+					# player was target
 					if self == scenario.player_unit:
-						text = 'You were'
-					else:
-						text = self.GetName() + ' was'
-					text += ' destroyed by '
-					if profile['attacker'] == scenario.player_unit:
-						text += 'you.'
-					else:
-						text += profile['attacker'].GetName() + '.'
-					ShowMessage(text)
+						
+						#print('DEBUG: doing stun tests')
+						
+						for position in self.positions_list:
+							if position.crewman is None: continue
+							position.crewman.DoStunCheck(AP_STUN_MARGIN - difference)
 					
-					# add to log if player kill
-					if profile['attacker'] == scenario.player_unit:
-						campaign.AddLog('Destroyed a ' + self.GetName())
-					
-					return
+					# FUTURE: target was AI unit
+					else:
+						
+						pass
+						
+			elif profile['result'] == 'PENETRATED':
+				
+				# TODO: roll for penetration result here, use the
+				# final 'roll' difference vs. 'final_chance' as modifier
+				
+				self.DestroyMe()
+				
+				# display message
+				if self == scenario.player_unit:
+					text = 'You were'
+				else:
+					text = self.GetName() + ' was'
+				text += ' destroyed by '
+				if profile['attacker'] == scenario.player_unit:
+					text += 'you.'
+				else:
+					text += profile['attacker'].GetName() + '.'
+				ShowMessage(text)
+				
+				# add to log if player kill
+				if profile['attacker'] == scenario.player_unit:
+					campaign.AddLog('Destroyed a ' + self.GetName())
+				
+				return
 
 		# clear unresolved hits
 		self.ap_hits_to_resolve = []
@@ -5910,6 +5905,7 @@ class Scenario:
 			for unit in self.units:
 				if not unit.alive: continue
 				if unit.owning_player == 0: continue
+				if unit.GetStat('category') == 'Train Car': continue
 				if unit.ai is None: continue		# probably not needed but safer
 				if unit.ai.recall: continue
 				unit_list.append(unit)
@@ -6736,7 +6732,7 @@ class Scenario:
 				return 'No ammo loaded'
 			if weapon.ammo_stores[weapon.ammo_type] == 0:
 				return 'No more ammo of the selected type'
-			if weapon.ammo_type == 'AP' and target.GetStat('category') != 'Vehicle':
+			if weapon.ammo_type == 'AP' and target.GetStat('armour') is None:
 				return 'AP has no effect on target'
 		
 		# check firing group restrictions

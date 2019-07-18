@@ -1154,9 +1154,6 @@ class CampaignDay:
 		self.weather_update_clock = 0		# number of minutes until next weather update
 		self.GenerateWeather()
 		
-		# number of minutes until next zone capture check
-		self.zone_capture_clock = libtcod.random_get_int(0, ZONE_CAPTURE_CLOCK_MIN, ZONE_CAPTURE_CLOCK_MAX)
-		
 		self.fate_points = libtcod.random_get_int(0, 1, 3)	# fate points protecting the player
 		
 		# set max number of units in player squad
@@ -1531,15 +1528,6 @@ class CampaignDay:
 			if scenario is not None:
 				if scenario.init_complete:
 					scenario.UpdateScenarioInfoCon()
-		
-		# see if we need to trigger a zone capture check
-		# but - don't update if we are within a scenario
-		if scenario is None:
-			self.zone_capture_clock -= hours * 60
-			self.zone_capture_clock -= minutes
-			if self.zone_capture_clock <= 0:
-				self.CheckForZoneCapture()
-			
 	
 	
 	# display an animated screen for the start of a new combat day
@@ -1721,12 +1709,11 @@ class CampaignDay:
 	
 	
 	# check for zone capture/loss
-	def CheckForZoneCapture(self):
+	# if zone_just_captured is True, then the player's own zone won't be selected as one that
+	# the enemy captures
+	def CheckForZoneCapture(self, zone_just_captured=False):
 		
 		global scenario
-		
-		# reset clock
-		self.zone_capture_clock = libtcod.random_get_int(0, ZONE_CAPTURE_CLOCK_MIN, ZONE_CAPTURE_CLOCK_MAX)
 		
 		# set odds of each possible oocurance based on current day mission
 		if campaign.today['mission'] == 'Advance':
@@ -1777,6 +1764,11 @@ class CampaignDay:
 			for (hx, hy) in self.map_hexes:
 				map_hex = self.map_hexes[(hx,hy)]
 				if map_hex.controlled_by == 1: continue
+				
+				# don't capture player's zone if they just took it
+				if zone_just_captured:
+					(hx2, hy2) = self.player_unit_location
+					if hx == hx2 and hy == hy2: continue
 				
 				# make sure there is at least one adjacent enemy hex
 				for direction in range(5):
@@ -2970,9 +2962,10 @@ class CampaignDay:
 						self.UpdateCDDisplay()
 						libtcod.console_flush()
 						self.CheckForRandomEvent()
+						self.CheckForZoneCapture(zone_just_captured=True)
 						SaveGame()
 					else:
-						# player was destroyed	
+						# player was destroyed or abandoned tank	
 						self.DisplayCampaignDaySummary()
 						exit_loop = True
 						continue
@@ -3112,6 +3105,7 @@ class CampaignDay:
 					self.UpdateCDUnitCon()
 					self.UpdateCDDisplay()
 					self.CheckForRandomEvent()
+					self.CheckForZoneCapture()
 					SaveGame()
 					continue
 			
@@ -3124,6 +3118,7 @@ class CampaignDay:
 					campaign_day.AdvanceClock(0, 15)
 					DisplayTimeInfo(time_con)
 					self.CheckForRandomEvent()
+					self.CheckForZoneCapture()
 					SaveGame()
 					continue
 				
@@ -3156,8 +3151,8 @@ class CampaignDay:
 						self.UpdateCDCommandCon()
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()
-						
 						self.CheckForRandomEvent()
+						self.CheckForZoneCapture()
 						
 					# proceed with travel
 					else:
@@ -3220,7 +3215,7 @@ class CampaignDay:
 						self.UpdateCDCommandCon()
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()
-						
+						self.CheckForZoneCapture(zone_just_captured=True)
 						self.CheckForRandomEvent()
 					
 					SaveGame()
@@ -3235,6 +3230,7 @@ class CampaignDay:
 					self.AdvanceClock(0, 30)
 					DisplayTimeInfo(time_con)
 					self.UpdateCDDisplay()
+					self.CheckForZoneCapture()
 					self.CheckForRandomEvent()
 					SaveGame()
 

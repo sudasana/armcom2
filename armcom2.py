@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.5.0 rc1'					# game version
+VERSION = '0.5.0 rc2'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1672,7 +1672,7 @@ class CampaignDay:
 		
 		global scenario
 		
-		print('DEBUG: Starting zone capture check')
+		#print('DEBUG: Starting zone capture check')
 		
 		# set odds of each possible oocurance based on current day mission
 		if campaign.today['mission'] == 'Advance':
@@ -1698,6 +1698,11 @@ class CampaignDay:
 			for (hx, hy) in self.map_hexes:
 				map_hex = self.map_hexes[(hx,hy)]
 				if map_hex.controlled_by == 0: continue
+				
+				# automatically a candidate if in bottom hex row
+				if hy == 8:
+					hex_list.append((hx,hy))
+					continue
 				
 				# make sure there is at least one adjacent friendly hex
 				for direction in range(5):
@@ -1730,6 +1735,11 @@ class CampaignDay:
 				if zone_just_captured:
 					if hx == player_hx and hy == player_hy:
 						continue
+				
+				# automatically a candidate if in top hex row
+				if hy == 0:
+					hex_list.append((hx,hy))
+					continue
 				
 				# make sure there is at least one adjacent enemy hex
 				for direction in range(5):
@@ -3131,7 +3141,7 @@ class CampaignDay:
 						campaign_day.AdvanceClock(0, mins)
 						
 						# set new player location and clear travel direction
-						print('DEBUG: moving player to ' + str(hx) + ',' + str(hy))
+						#print('DEBUG: moving player to ' + str(hx) + ',' + str(hy))
 						self.player_unit_location = (hx, hy)
 						self.selected_direction = None
 						

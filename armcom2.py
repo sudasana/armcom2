@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.5.0 rc1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -460,10 +460,6 @@ BASE_CD_RANDOM_EVENT_CHANCE = 5.0
 
 # base number of minutes between weather update checks
 BASE_WEATHER_UPDATE_CLOCK = 30
-
-# time range of zone capture checks
-ZONE_CAPTURE_CLOCK_MIN = 5
-ZONE_CAPTURE_CLOCK_MAX = 15
 
 
 
@@ -1676,16 +1672,18 @@ class CampaignDay:
 		
 		global scenario
 		
+		print('DEBUG: Starting zone capture check')
+		
 		# set odds of each possible oocurance based on current day mission
 		if campaign.today['mission'] == 'Advance':
-			friendly_capture_odds = 65.0
+			friendly_capture_odds = 55.0
 			enemy_capture_odds = 10.0
 		elif campaign.today['mission'] == 'Battle':
-			friendly_capture_odds = 50.0
+			friendly_capture_odds = 40.0
 			enemy_capture_odds = 40.0
 		elif campaign.today['mission'] == 'Fighting Withdrawl':
 			friendly_capture_odds = 10.0
-			enemy_capture_odds = 75.0
+			enemy_capture_odds = 65.0
 		# no other missions for now
 		else:
 			return
@@ -1718,7 +1716,7 @@ class CampaignDay:
 		
 		roll = GetPercentileRoll()
 		
-		(hx2, hy2) = self.player_unit_location
+		(player_hx, player_hy) = self.player_unit_location
 		
 		# friendly zone lost
 		if roll <= enemy_capture_odds:
@@ -1730,8 +1728,7 @@ class CampaignDay:
 				
 				# don't capture player's zone if they just took it
 				if zone_just_captured:
-					if hx == hx2 and hy == hy2:
-						print('DEBUG: Skipped player zone for capture')
+					if hx == player_hx and hy == player_hy:
 						continue
 				
 				# make sure there is at least one adjacent enemy hex
@@ -1748,15 +1745,16 @@ class CampaignDay:
 				(hx, hy) = choice(hex_list)
 				self.map_hexes[(hx,hy)].CaptureMe(1)
 				
-				if hx != hx2 and hy != hy2:
-					# player is not present in zone
-					ShowMessage('Enemy forces have captured an allied-held zone!')
-				else:
+				if hx == player_hx and hy == player_hy:
 					# player is present, trigger a scenario
 					ShowMessage('Enemy forces attack your area!')
 					map_hex = self.map_hexes[(hx,hy)]
 					scenario = Scenario(map_hex)
 					self.scenario = scenario
+				else:
+					# player is not present in zone
+					ShowMessage('Enemy forces have captured an allied-held zone!')
+					
 	
 		# update consoles and screen
 		self.UpdateCDUnitCon()
@@ -3133,10 +3131,13 @@ class CampaignDay:
 						campaign_day.AdvanceClock(0, mins)
 						
 						# set new player location and clear travel direction
-						# save direction from which player entered zone
+						print('DEBUG: moving player to ' + str(hx) + ',' + str(hy))
 						self.player_unit_location = (hx, hy)
-						#source_direction = ConstrainDir(self.selected_direction + 3)
 						self.selected_direction = None
+						
+						# FUTURE: save direction from which player entered zone
+						#source_direction = ConstrainDir(self.selected_direction + 3)
+						
 						self.UpdateCDGUICon()
 						
 						# roll to trigger battle encounter if enemy-controlled
@@ -6199,9 +6200,6 @@ class Scenario:
 			for i in range(3):
 				if libtcod.random_get_int(0, 0, 10) >= self.cd_map_hex.enemy_strength:
 					num_units -= 1
-		
-		# TEMP
-		num_units = 1
 		
 		enemy_unit_list = []
 		while len(enemy_unit_list) < num_units:

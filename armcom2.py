@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.5.0'					# game version
+VERSION = '0.5.0 rc1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1718,6 +1718,8 @@ class CampaignDay:
 		
 		roll = GetPercentileRoll()
 		
+		(hx2, hy2) = self.player_unit_location
+		
 		# friendly zone lost
 		if roll <= enemy_capture_odds:
 			
@@ -1728,8 +1730,9 @@ class CampaignDay:
 				
 				# don't capture player's zone if they just took it
 				if zone_just_captured:
-					(hx2, hy2) = self.player_unit_location
-					if hx == hx2 and hy == hy2: continue
+					if hx == hx2 and hy == hy2:
+						print('DEBUG: Skipped player zone for capture')
+						continue
 				
 				# make sure there is at least one adjacent enemy hex
 				for direction in range(5):
@@ -1744,7 +1747,6 @@ class CampaignDay:
 				
 				(hx, hy) = choice(hex_list)
 				self.map_hexes[(hx,hy)].CaptureMe(1)
-				(hx2, hy2) = self.player_unit_location
 				
 				if hx != hx2 and hy != hy2:
 					# player is not present in zone
@@ -6197,6 +6199,9 @@ class Scenario:
 			for i in range(3):
 				if libtcod.random_get_int(0, 0, 10) >= self.cd_map_hex.enemy_strength:
 					num_units -= 1
+		
+		# TEMP
+		num_units = 1
 		
 		enemy_unit_list = []
 		while len(enemy_unit_list) < num_units:

@@ -3123,7 +3123,7 @@ class CampaignDay:
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()
 						self.CheckForRandomEvent()
-						self.CheckForZoneCapture()
+						#self.CheckForZoneCapture()
 						
 					# proceed with travel
 					else:

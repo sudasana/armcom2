@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.5.0 rc2'					# game version
+VERSION = '0.5.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1463,6 +1463,9 @@ class CampaignDay:
 			if self.weather['Cloud Cover'] == 'Clear' and self.weather['Precipitation'] != 'None':
 				self.weather['Precipitation'] = 'None'
 				ShowMessage('The rain has stopped.')
+				
+				# stop rain animation
+				self.InitAnimations()
 
 	
 	# advance the current campaign day time, check for end of day, and also weather conditions update

@@ -2564,20 +2564,12 @@ class CampaignDay:
 		# support
 		if self.active_menu == 1:
 			
-			# overcast sky, no support possible
-			no_air_support = False
-			if self.weather['Cloud Cover'] == 'Overcast':
-				no_air_support = True
-			
 			# display current support levels
-			if no_air_support:
-				text = 'Overcast: Air Supp. N/A'
+			text = 'Air Support: '
+			if self.air_support_level == 0.0:
+				text += 'None'
 			else:
-				text = 'Air Support: '
-				if self.air_support_level == 0.0:
-					text += 'None'
-				else:
-					text += str(self.air_support_level)
+				text += str(self.air_support_level)
 			libtcod.console_print(cd_command_con, 1, 3, text)
 			
 			text = 'Artillery Support: '
@@ -2587,44 +2579,6 @@ class CampaignDay:
 				text += str(self.arty_support_level)
 			libtcod.console_print(cd_command_con, 1, 5, text)
 			
-			# no direction selected yet
-			if self.selected_direction is None:
-				libtcod.console_print(cd_command_con, 3, 12, 'Select a direction')
-				return
-			
-			# get the target hex
-			(hx, hy) = self.player_unit_location
-			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
-			
-			# hex is off map
-			if (hx, hy) not in self.map_hexes: return
-			
-			map_hex = self.map_hexes[(hx,hy)]
-			
-			# display call support options
-			if map_hex.air_support:
-				libtcod.console_set_default_foreground(cd_command_con, ALLIED_UNIT_COL)
-				libtcod.console_print(cd_command_con, 1, 13, 'Air Support inbound')
-			elif not no_air_support and map_hex.controlled_by == 1 and self.air_support_level > 0.0:
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				libtcod.console_print_ex(cd_command_con, 12, 16, libtcod.BKGND_NONE, libtcod.CENTER,
-					'15 mins to attempt call')
-				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-				libtcod.console_print(cd_command_con, 3, 21, EnKey('r').upper())
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-				libtcod.console_print(cd_command_con, 5, 21, 'Call Air Support')
-			
-			if map_hex.arty_support:
-				libtcod.console_set_default_foreground(cd_command_con, ALLIED_UNIT_COL)
-				libtcod.console_print(cd_command_con, 1, 14, 'Arty Support inbound')
-			elif map_hex.controlled_by == 1 and self.arty_support_level > 0.0:
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				libtcod.console_print_ex(cd_command_con, 12, 16, libtcod.BKGND_NONE, libtcod.CENTER,
-					'15 mins to attempt call')
-				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-				libtcod.console_print(cd_command_con, 3, 22, EnKey('f').upper())
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-				libtcod.console_print(cd_command_con, 5, 22, 'Call Arty Support')
 		
 		# crew
 		elif self.active_menu == 2:
@@ -3053,65 +3007,15 @@ class CampaignDay:
 			
 			# support menu active
 			if self.active_menu == 1:
+				
+				# FUTURE: add request additional support option here
+				pass
 			
-				# call support
-				if key_char in ['r', 'f']:
-					if self.selected_direction is None: continue
-					(hx, hy) = self.player_unit_location
-					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
-					if (hx, hy) not in self.map_hexes: continue
-					map_hex = self.map_hexes[(hx,hy)]
-					
-					# support not possible or already called
-					if map_hex.controlled_by == 0: continue
-					if key_char == 'r':
-						if self.air_support_level == 0.0: continue
-						if map_hex.air_support: continue
-					if key_char == 'f':
-						if self.arty_support_level == 0.0: continue
-						if map_hex.arty_support: continue
-					
-					# do roll
-					roll = GetPercentileRoll()
-					
-					if DEBUG:
-						if session.debug['Support Requests Always Granted']:
-							roll = 1.0
-					
-					if key_char == 'r':
-						
-						# Overcast, air support not allowed
-						if self.weather['Cloud Cover'] == 'Overcast':
-							continue
-						
-						if roll > self.air_support_level:
-							ShowMessage('Request for air support was not successful.')
-						else:
-							ShowMessage('Request successful! Air support inbound.')
-							map_hex.air_support = True
-							self.air_support_level -= self.air_support_step
-							if self.air_support_level < 0.0: self.air_support_level = 0.0 
-						
-					elif key_char == 'f':
-						if roll > self.arty_support_level:
-							ShowMessage('Request for artillery support was not successful.')
-						else:
-							ShowMessage('Request successful! Artillery support inbound.')
-							map_hex.arty_support = True
-							self.arty_support_level -= self.arty_support_step
-							if self.arty_support_level < 0.0: self.arty_support_level = 0.0
-					
-					# spend time
-					campaign_day.AdvanceClock(0, 15)
-					DisplayTimeInfo(time_con)
-					self.UpdateCDGUICon()
-					self.UpdateCDCommandCon()
-					self.UpdateCDUnitCon()
-					self.UpdateCDDisplay()
-					self.CheckForRandomEvent()
-					self.CheckForZoneCapture()
-					SaveGame()
-					continue
+			# crew menu actiove
+			elif self.active_menu == 2:
+				
+				# FUTURE: add crew selection commands
+				pass
 			
 			# travel menu active
 			elif self.active_menu == 3:

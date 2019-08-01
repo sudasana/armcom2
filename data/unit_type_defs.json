@@ -927,7 +927,7 @@
 		"portrait" : "unit_pz_III_D.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
-		"turret" : "TRUE",
+		"turret" : "Fast",
 		"armour" : {
 			"turret_front" : "0",
 			"turret_side" : "2",
@@ -1013,7 +1013,7 @@
 		"portrait" : "unit_pz_III_F.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
-		"turret" : "TRUE",
+		"turret" : "Fast",
 		"armour" : {
 			"turret_front" : "2",
 			"turret_side" : "4",
@@ -1099,7 +1099,7 @@
 		"portrait" : "unit_pz_IV_A.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
-		"turret" : "TRUE",
+		"turret" : "Fast",
 		"armour" : {
 			"turret_front" : "1",
 			"turret_side" : "2",
@@ -1183,7 +1183,7 @@
 		"portrait" : "unit_pz_IV_C.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
-		"turret" : "TRUE",
+		"turret" : "Fast",
 		"armour" : {
 			"turret_front" : "3",
 			"turret_side" : "2",

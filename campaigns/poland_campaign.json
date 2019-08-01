@@ -18,6 +18,12 @@
 		"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
 		"75mm wz. 97/25", "Polski Fiat 621", "Riflemen", "HMG Team", "Light Artillery Car"
 	],
+	"decorations_list" : {
+		"20" : "Iron Cross Second Class",
+		"40" : "Iron Cross First Class",
+		"50" : "Knight's Cross",
+		"60" : "Knight's Cross with Oak Leaves"
+	},
 	"calendar": [
 		{
 			"date" : "1939.09.01",

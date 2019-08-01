@@ -5202,6 +5202,11 @@ class Unit:
 			text = 'H ' + armour['hull_front'] + '/' + armour['hull_side']
 			libtcod.console_print(console, x+1, y+14, text)
 		
+		# turret traverse if any
+		if self.GetStat('turret'):
+			if self.GetStat('turret') == 'Fast':
+				libtcod.console_print(console, x+8, y+13, '(fast)')
+		
 		# movement
 		libtcod.console_set_default_foreground(console, libtcod.light_green)
 		libtcod.console_print_ex(console, x+24, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,
@@ -6791,7 +6796,13 @@ class Scenario:
 			# weapon has turret rotated
 			elif weapon.GetStat('mount') == 'Turret':
 				if turret_rotate or attacker.turret_facing != attacker.previous_turret_facing:
-					modifier_list.append(('Turret Rotated', -20.0))
+					
+					# calculate modifier - assume that vehicle has a turret
+					if attacker.GetStat('turret') == 'Fast':
+						mod = -10.0
+					else:
+						mod = -20.0
+					modifier_list.append(('Turret Rotated', mod))
 			
 			# attacker pinned
 			if attacker.pinned:
@@ -7777,6 +7788,7 @@ class Scenario:
 	# rotate turret of player unit
 	def RotatePlayerTurret(self, clockwise):
 		
+		# no turret on vehicle
 		if scenario.player_unit.turret_facing is None: return
 		
 		if clockwise:

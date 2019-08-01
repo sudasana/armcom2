@@ -19,6 +19,12 @@
 		"PSW 231 (8 rad)", "3.7cm PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
 		"Riflemen"
 	],
+	"decorations_list" : {
+		"20" : "Cross of Valour",
+		"40" : "Order of Polonia Restituta Fifth Class",
+		"50" : "Order of Polonia Restituta Fourth Class",
+		"60" : "Cross of Independance"
+	},
 	"calendar": [
 		{
 			"date" : "1939.09.01",

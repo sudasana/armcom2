@@ -480,6 +480,8 @@ class Campaign:
 		self.today = None		# pointer to current day in calendar
 		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
 		
+		self.decoration = ''		# decoration awarded to player at end of campaign
+		
 		# records for end-of-campaign summary
 		self.records = {}
 		for text in RECORD_LIST:
@@ -756,6 +758,27 @@ class Campaign:
 		return (selected_unit.unit_id, player_tank_name)
 	
 	
+	# calculate decorations to be awarded at the end of a campaign
+	def AwardDecorations(self):
+		
+		# no decorations set
+		if 'decorations_list' not in self.stats:
+			return
+		
+		# generate an ordered list of required VP scores and decoration names for this campaign
+		deco_list = []
+		
+		for key, value in self.stats['decorations_list'].items():
+			deco_list.append((int(key), value))
+		deco_list.sort(key = lambda x: x[0], reverse=True)
+		
+		# see if player has enough VP for a decoration
+		for (vp_req, decoration) in deco_list:
+			if self.player_vp >= vp_req:
+				self.decoration = decoration
+				return
+	
+	
 	# display a summary of a completed campaign
 	def DisplayCampaignSummary(self):
 		
@@ -777,6 +800,11 @@ class Campaign:
 			self.stats['name'])
 		
 		# FUTURE: display outcome for player character
+		
+		# display decoration if any
+		if self.decoration != '':
+			libtcod.console_print_ex(temp_con, 14, 6, libtcod.BKGND_NONE, libtcod.CENTER,
+				self.decoration)
 		
 		# total VP
 		libtcod.console_set_default_foreground(temp_con, libtcod.white)
@@ -1075,6 +1103,7 @@ class Campaign:
 					campaign_day = None
 					
 					# TEMP - assume that campaign is only a single day
+					campaign.AwardDecorations()
 					campaign.DisplayCampaignSummary()
 					EraseGame()
 					exit_loop = True
@@ -10779,6 +10808,7 @@ while not exit_game:
 			        
 			        # create a new campaign object and allow player to select a campaign
 				campaign = Campaign()
+				
 				result = campaign.CampaignSelectionMenu()
 				
 				# player canceled new campaign start

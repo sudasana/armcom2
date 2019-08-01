@@ -803,6 +803,7 @@ class Campaign:
 		
 		# display decoration if any
 		if self.decoration != '':
+			libtcod.console_set_default_foreground(temp_con, libtcod.yellow)
 			libtcod.console_print_ex(temp_con, 14, 6, libtcod.BKGND_NONE, libtcod.CENTER,
 				self.decoration)
 		

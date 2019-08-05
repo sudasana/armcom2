@@ -930,6 +930,10 @@ class Campaign:
 		# proceed menu - show summary of expected day
 		if self.active_calendar_menu == 1:
 			
+			# day has finished
+			if campaign_day is not None:
+				return
+			
 			x = 15
 			y = 1
 			

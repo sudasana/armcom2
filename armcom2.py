@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.6.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -201,7 +201,7 @@ MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG', 'HMG']
 # types of records to store for each combat day and for entire campaign
 # also order in which they are displayed
 RECORD_LIST = [
-	'Map Areas Captured', 'Gun Hits', 'Vehicles Destroyed', 'Guns Destroyed',
+	'Map Areas Captured', 'Map Areas Defended', 'Gun Hits', 'Vehicles Destroyed', 'Guns Destroyed',
 	'Infantry Destroyed'
 ]
 
@@ -1205,8 +1205,7 @@ class CampaignDay:
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy)
-		
-			# set zone terrain type too
+			# set zone terrain type
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
 		
 		# set up initial zone control based on day mission
@@ -1223,9 +1222,21 @@ class CampaignDay:
 					self.map_hexes[(hx, hy)].controlled_by = 0
 		
 		# create map objectives
+		if campaign.today['mission'] == 'Battle':
+			objective_dict = {
+				'objective_type' : 'Capture',
+				'vp_reward' : 5,
+				'time_limit' : None
+				}
+			self.map_hexes[(-2, 6)].SetObjective(objective_dict)
+			objective_dict = {
+				'objective_type' : 'Defend',
+				'vp_reward' : 5,
+				'time_limit' : None
+				}
+			self.map_hexes[(1, 2)].SetObjective(objective_dict)
 		
-		# TEMP - advance day mission only
-		if campaign.today['mission'] == 'Advance':
+		elif campaign.today['mission'] == 'Advance':
 			objective_dict = {
 				'objective_type' : 'Capture',
 				'vp_reward' : 5,
@@ -1233,6 +1244,16 @@ class CampaignDay:
 				}
 			self.map_hexes[(-2, 6)].SetObjective(objective_dict)
 			self.map_hexes[(1, 2)].SetObjective(objective_dict)
+		
+		elif campaign.today['mission'] == 'Fighting Withdrawl':
+			objective_dict = {
+				'objective_type' : 'Defend',
+				'vp_reward' : 5,
+				'time_limit' : None
+				}
+			self.map_hexes[(-2, 6)].SetObjective(objective_dict)
+			self.map_hexes[(1, 2)].SetObjective(objective_dict)
+		
 		
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}
@@ -2124,6 +2145,10 @@ class CampaignDay:
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
 		
+		# TEMP testing - clear any exisitng roads
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			self.map_hexes[(hx,hy)].dirt_roads = []
+		
 		# generate one road from the bottom to the top of the map
 		hx = choice([-4,-3,-2,-1,0])
 		for hy in range(8, -1, -1):
@@ -2412,11 +2437,6 @@ class CampaignDay:
 			map_hex = self.map_hexes[(hx,hy)]
 			
 			(x,y) = self.PlotCDHex(hx, hy)
-			
-			if map_hex.air_support:
-				libtcod.console_put_char_ex(cd_unit_con, x-1, y, 'A', ALLIED_UNIT_COL, libtcod.black)
-			if map_hex.arty_support:
-				libtcod.console_put_char_ex(cd_unit_con, x+1, y, 'R', ALLIED_UNIT_COL, libtcod.black)
 			
 			if map_hex.controlled_by == 0: continue
 			if not map_hex.known_to_player: continue
@@ -2734,15 +2754,7 @@ class CampaignDay:
 			else:
 				text = 'Unknown'
 			libtcod.console_print(cd_hex_info_con, 10, 3, text)
-		
-		# support
-		libtcod.console_set_default_foreground(cd_hex_info_con, ALLIED_UNIT_COL)
-		if cd_hex.air_support:
-			libtcod.console_print(cd_hex_info_con, 0, 5, 'Air Support inbound')
-		if cd_hex.arty_support:
-			libtcod.console_print(cd_hex_info_con, 0, 5, 'Arty Support inbound')
-		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)
-		
+				
 		# objective
 		if cd_hex.objective is not None:
 			libtcod.console_set_default_foreground(cd_hex_info_con, ACTION_KEY_COL)
@@ -2917,8 +2929,7 @@ class CampaignDay:
 					# capture area if player is still alive and in tank
 					if campaign.player_unit.alive and not self.abandoned_tank:
 						(hx, hy) = self.player_unit_location
-						if self.map_hexes[(hx,hy)].controlled_by == 1:
-							self.map_hexes[(hx,hy)].CaptureMe(0)
+						self.map_hexes[(hx,hy)].CaptureMe(0)
 						self.DoCrewCheck(campaign.player_unit)
 						self.CheckForEndOfDay()
 						self.UpdateCDDisplay()
@@ -3166,8 +3177,6 @@ class CDMapHex:
 		
 		self.controlled_by = 1		# which player side currently controls this zone
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
-		self.air_support = False	# player has air support called in
-		self.arty_support = False	# " arty "
 		
 		self.objective = None		# player objective for this zone
 		
@@ -3194,27 +3203,41 @@ class CDMapHex:
 	
 	
 	# set control of this hex by the given player
+	# also handles successful defense of a friendly zone
 	# if no_vp is True, player doesn't receive VP or credit for this capture
 	def CaptureMe(self, player_num, no_vp=False):
-		self.controlled_by = player_num
-		self.air_support = False
-		self.arty_support = False
 		
-		# if captured by enemy, we can return here
-		if player_num == 1: return
+		# if captured by enemy, we can just set the zone control and then return
+		if player_num == 1:
+			self.controlled_by = player_num
+			return
 		
 		# check for VP reward
 		if not no_vp:
 			campaign.AwardVP(campaign_day.capture_zone_vp)
-			campaign_day.AddRecord('Map Areas Captured', 1)
+			
+			# set record
+			if self.controlled_by == 0:
+				campaign_day.AddRecord('Map Areas Defended', 1)
+			else:
+				campaign_day.AddRecord('Map Areas Captured', 1)
 		
 			# check for objective reward
 			if self.objective is not None:
-				if self.objective['objective_type'] == 'Capture':
+				
+				if self.controlled_by == 0 and self.objective['objective_type'] == 'Defend':
+					campaign.AwardVP(self.objective['vp_reward'])
+					ShowMessage('You have defended an objective!')
+					campaign.AddLog('Defended an objective area')
+				
+				elif self.controlled_by == 1 and self.objective['objective_type'] == 'Capture':
 					campaign.AwardVP(self.objective['vp_reward'])
 					ShowMessage('You have captured an objective!')
 					campaign.AddLog('Captured an objective area')
-				
+		
+		# set new zone control
+		self.controlled_by = player_num
+		
 		# clear the objective if any
 		self.objective = None
 
@@ -8760,27 +8783,6 @@ class Scenario:
 		self.UpdateHexmapCon()
 		self.UpdateScenarioDisplay()
 		
-		# check for support attack
-		if self.cd_map_hex.arty_support or self.cd_map_hex.air_support:
-			if self.cd_map_hex.arty_support:
-				ShowMessage('Friendly artillery bombardment inbound!')
-				self.ArtilleryAttack()
-				self.cd_map_hex.arty_support = False
-			else:
-				self.cd_map_hex.air_support = False
-				# check for change in weather
-				if campaign_day.weather['Cloud Cover'] == 'Overcast':
-					ShowMessage('Cloud cover too heavy, air attack aborted!')
-				else:
-					ShowMessage('Friendly air attack inbound!')
-					self.AirAttack()
-			
-			# resolve any fp from support attacks on enemy units
-			for unit in reversed(self.units):
-				if not unit.alive: continue
-				if unit.owning_player == 0: continue
-				unit.ResolveFP()
-		
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
 		mouse_y = -1
@@ -10226,6 +10228,14 @@ def ShowDebugMenu():
 			y += 2
 			n += 1
 		
+		# special commands
+		y += 2
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print(con, 30, y, '1')
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		libtcod.console_print(con, 33, y, 'Regenerate CD Map Roads')
+		
+		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 33, 56, 'Esc')
 		libtcod.console_print(con, 33, 57, 'Enter')
@@ -10275,6 +10285,16 @@ def ShowDebugMenu():
 			session.debug[k] = not session.debug[k]
 			DrawDebugMenu()
 			continue
+		
+		# regenerate CD map roads
+		if int(key_char) == 1:
+			if campaign_day is not None:
+				campaign_day.GenerateRoads()
+				campaign_day.UpdateCDMapCon()
+				campaign_day.UpdateCDDisplay()
+				ShowMessage('Roads regenerated')
+				DrawDebugMenu()
+				continue
 	
 	# re-draw original root console
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)

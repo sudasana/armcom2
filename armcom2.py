@@ -2145,48 +2145,66 @@ class CampaignDay:
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
 		
-		# TEMP testing - clear any exisitng roads
+		# TEMP testing - clear any existing roads
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)].dirt_roads = []
 		
-		# generate one road from the bottom to the top of the map
-		hx = choice([-4,-3,-2,-1,0])
-		for hy in range(8, -1, -1):
-			direction = choice([5,0])
-			(hx2,hy2) = self.GetAdjacentCDHex(hx, hy, direction)
-			if (hx2,hy2) not in self.map_hexes:
-				if direction == 0:
-					direction = 5
-				else:
-					direction = 0
-				(hx2,hy2) = self.GetAdjacentCDHex(hx, hy, direction)
-			self.map_hexes[(hx,hy)].dirt_roads.append(direction)
-			# avoid looking for final hex off-map
-			if (hx2,hy2) in self.map_hexes:
-				self.map_hexes[(hx2,hy2)].dirt_roads.append(ConstrainDir(direction + 3))
-			hx = hx2
+		# choose a random edge hex
+		edge_list = []
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			for d in range(6):
+				if self.GetAdjacentCDHex(hx, hy, d) not in CAMPAIGN_DAY_HEXES:
+					edge_list.append((hx, hy))
+					break
+		(hx1, hy1) = choice(edge_list)
 		
-		# 1-2 branch roads
-		target_hy_list = sample(range(0, 9), libtcod.random_get_int(0, 1, 3))
-		for target_hy in target_hy_list:
-			for (hx, hy) in CAMPAIGN_DAY_HEXES:
-				if hy != target_hy: continue
-				if len(self.map_hexes[(hx,hy)].dirt_roads) == 0: continue
+		# find the hex on opposite edge of map
+		hx2 = hx1 * -1
+		if hy1 > 4:
+			hy2 = hy1 - ((hy1 - 4) * 2)
+		elif hy1 == 4:
+			hy2 = 4
+		else:
+			hy2 = hy1 + ((4 - hy1) * 2)
+		
+		# plot the road
+		hx, hy = hx1, hy1
+		while hx != hx2 or hy != hy2:
+			path_choices = []
+			distance = GetHexDistance(hx, hy, hx2, hy2)
+			for d in range(6):
 				
-				direction = choice([1,4])
-				# make sure can take at least one step in this direction
-				if self.GetAdjacentCDHex(hx, hy, direction) not in self.map_hexes:
-					if direction == 1:
-						direction = 4
-					else:
-						direction = 1
+				# already a road link here
+				if d in self.map_hexes[(hx,hy)].dirt_roads:
+					continue
+				(hx_p, hy_p) = self.GetAdjacentCDHex(hx, hy, d)
 				
-				# create road
-				while (hx,hy) in self.map_hexes:
-					self.map_hexes[(hx,hy)].dirt_roads.append(direction)
-					(hx,hy) = self.GetAdjacentCDHex(hx, hy, direction)
-					if (hx,hy) in self.map_hexes:
-						self.map_hexes[(hx,hy)].dirt_roads.append(ConstrainDir(direction + 3))
+				# target hex not on map
+				if (hx_p, hy_p) not in CAMPAIGN_DAY_HEXES:
+					continue
+				
+				# further away or same distance from target hex
+				if GetHexDistance(hx_p, hy_p, hx2, hy2) >= distance:
+					continue
+				
+				path_choices.append(d)
+			
+			# no path choices remaining
+			if len(path_choices) == 0:
+				break
+			
+			# choose one and make a link to it
+			d = choice(path_choices)
+			self.map_hexes[(hx,hy)].dirt_roads.append(d)
+			(hx_p,hy_p) = self.GetAdjacentCDHex(hx, hy, d)
+			self.map_hexes[(hx_p,hy_p)].dirt_roads.append(ConstrainDir(d + 3))
+			
+			# move current hex to the one just linked
+			hx, hy = hx_p, hy_p
+		
+		# TODO: link all settled hexes to a road branch
+		
+		
 		
 		
 	# plot the centre of a day map hex location onto the map console

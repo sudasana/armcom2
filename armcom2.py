@@ -2145,7 +2145,7 @@ class CampaignDay:
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
 		
-		# TEMP testing - clear any existing roads
+		# for DEBUG - clear any existing roads
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)].dirt_roads = []
 		
@@ -2202,8 +2202,56 @@ class CampaignDay:
 			# move current hex to the one just linked
 			hx, hy = hx_p, hy_p
 		
-		# TODO: link all settled hexes to a road branch
+		# link all settled hexes to a road branch
 		
+		# build a list of all settled hexes
+		hex_list = []
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			if self.map_hexes[(hx,hy)].terrain in ['Villages']:
+				
+				# already on road
+				if len(self.map_hexes[(hx,hy)].dirt_roads) > 0: continue
+				
+				hex_list.append((hx, hy))
+		
+		if len(hex_list) > 0:
+			shuffle(hex_list)
+			for (hx1, hy1) in hex_list:
+				
+				# find the nearest CD map hex with at least one road link
+				link_list = []
+				for (hx2, hy2) in CAMPAIGN_DAY_HEXES:
+					# same hex
+					if hx2 == hx1 and hy2 == hy1: continue
+					
+					# no roads there
+					if len(self.map_hexes[(hx2,hy2)].dirt_roads) == 0: continue
+					
+					# get the distance to the possible link
+					d = GetHexDistance(hx, hy, hx2, hy2)
+					
+					link_list.append((d,hx2,hy2))
+				
+				# no possible links!
+				if len(link_list) == 0:
+					print('DEBUG: no possible links for ' + str(hx1) + ',' + str(hy1))
+					continue
+				
+				# sort the list by distance and get the nearest one
+				link_list.sort(key = lambda x: x[0])
+				(d,hx2,hy2) = link_list[0]
+				
+				# generate a road to link the two
+				line = GetHexLine(hx1, hy1, hx2, hy2)
+				
+				for i in range(len(line)):
+					# TEMP - unfinished
+					pass
+				
+				
+					
+					
+				
 		
 		
 		
@@ -9428,6 +9476,50 @@ def GetDirectionalArrow(direction):
 	elif direction == 5:
 		return chr(231)
 	return ''
+
+
+# return a list of hexes along a line from hex1 to hex2
+# adapted from http://www.redblobgames.com/grids/hexagons/implementation.html#line-drawing
+def GetHexLine(hx1, hy1, hx2, hy2):
+	
+	def Lerp(a, b, t):
+		a = float(a)
+		b = float(b)
+		return a + (b - a) * t
+	
+	def CubeRound(x, y, z):
+		rx = round(x)
+		ry = round(y)
+		rz = round(z)
+		x_diff = abs(rx - x)
+		y_diff = abs(ry - y)
+		z_diff = abs(rz - z)
+		if x_diff > y_diff and x_diff > z_diff:
+			rx = 0 - ry - rz
+		elif y_diff > z_diff:
+			ry = 0 - rx - rz
+		else:
+			rz = 0 - rx - ry
+		return (int(rx), int(ry), int(rz))
+
+	# get cube coordinates and distance between start and end hexes
+	# (repeated here from GetHexDistance because we need more than just the distance)
+	(x1, y1, z1) = GetCubeCoords(hx1, hy1)
+	(x2, y2, z2) = GetCubeCoords(hx2, hy2)
+	distance = int((abs(x1-x2) + abs(y1-y2) + abs(z1-z2)) / 2)
+	
+	hex_list = []
+	
+	for i in range(distance+1):
+		t = 1.0 / float(distance) * float(i)
+		x = Lerp(x1, x2, t)
+		y = Lerp(y1, y2, t)
+		z = Lerp(z1, z2, t)
+		(x,y,z) = CubeRound(x,y,z)
+		# convert from cube to hex coordinates and add to list
+		hex_list.append((x, z))
+
+	return hex_list
 
 
 # returns a ring of hexes around a center point for a given radius

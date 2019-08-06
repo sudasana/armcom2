@@ -1224,13 +1224,13 @@ class CampaignDay:
 		# create map objectives
 		if campaign.today['mission'] == 'Battle':
 			objective_dict = {
-				'objective_type' : 'Capture',
+				'objective_type' : 'Defend',
 				'vp_reward' : 5,
 				'time_limit' : None
 				}
 			self.map_hexes[(-2, 6)].SetObjective(objective_dict)
 			objective_dict = {
-				'objective_type' : 'Defend',
+				'objective_type' : 'Capture',
 				'vp_reward' : 5,
 				'time_limit' : None
 				}
@@ -2207,7 +2207,7 @@ class CampaignDay:
 		# build a list of all settled hexes
 		hex_list = []
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			if self.map_hexes[(hx,hy)].terrain in ['Villages']:
+			if self.map_hexes[(hx,hy)].terrain_type in ['Villages']:
 				
 				# already on road
 				if len(self.map_hexes[(hx,hy)].dirt_roads) > 0: continue
@@ -2228,7 +2228,7 @@ class CampaignDay:
 					if len(self.map_hexes[(hx2,hy2)].dirt_roads) == 0: continue
 					
 					# get the distance to the possible link
-					d = GetHexDistance(hx, hy, hx2, hy2)
+					d = GetHexDistance(hx1, hy1, hx2, hy2)
 					
 					link_list.append((d,hx2,hy2))
 				
@@ -2243,16 +2243,12 @@ class CampaignDay:
 				
 				# generate a road to link the two
 				line = GetHexLine(hx1, hy1, hx2, hy2)
-				
-				for i in range(len(line)):
-					# TEMP - unfinished
-					pass
-				
-				
-					
-					
-				
-		
+				for i in range(len(line)-1):
+					(hx, hy) = line[i]
+					(hx_p, hy_p) = line[i+1]
+					d = self.GetDirectionToAdjacentCD(hx, hy, hx_p, hy_p)
+					self.map_hexes[(hx,hy)].dirt_roads.append(d)
+					self.map_hexes[(hx_p,hy_p)].dirt_roads.append(ConstrainDir(d+3))
 		
 		
 	# plot the centre of a day map hex location onto the map console
@@ -2267,6 +2263,16 @@ class CampaignDay:
 	def GetAdjacentCDHex(self, hx1, hy1, direction):
 		(hx_m, hy_m) = CD_DESTHEX[direction]
 		return (hx1+hx_m, hy1+hy_m)
+	
+	
+	# returns the direction toward an adjacent hex
+	def GetDirectionToAdjacentCD(self, hx1, hy1, hx2, hy2):
+		hx_mod = hx2 - hx1
+		hy_mod = hy2 - hy1
+		if (hx_mod, hy_mod) in CD_DESTHEX:
+			return CD_DESTHEX.index((hx_mod, hy_mod))
+			# hex is not adjacent
+			return -1
 	
 	
 	# display a summary of a completed campaign day

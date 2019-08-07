@@ -7055,12 +7055,23 @@ class Scenario:
 			turret_facing = True
 		
 		facing = GetFacing(attacker, target, turret_facing=turret_facing)
+		
+		# set rear facing flag if applicable
+		rear_facing = False
+		if facing == 'Rear':
+			rear_facing = True
+			facing = 'Side'
+		
 		hit_location = (location + '_' + facing).lower()
 		
 		# generate a text description of location hit
 		if location == 'Turret' and target.turret_facing is None:
 			location = 'Upper Hull'
-		profile['location_desc'] = location + ' ' + facing
+		profile['location_desc'] = location + ' '
+		if rear_facing:
+			profile['location_desc'] += 'Rear'
+		else:
+			profile['location_desc'] += facing
 		
 		# calculate base chance of penetration
 		if weapon.GetStat('name') == 'AT Rifle':
@@ -7138,6 +7149,10 @@ class Scenario:
 						modifier = modifier * 1.8
 					
 					modifier_list.append(('Target Armour', modifier))
+					
+					# apply rear facing modifier if any
+					if rear_facing:
+						modifier_list.append(('Rear Facing', 15.0))
 					
 					# apply critical hit modifier if any
 					if profile['result'] == 'CRITICAL HIT':
@@ -9626,6 +9641,8 @@ def GetFacing(attacker, target, turret_facing=False):
 		bearing = RectifyBearing(bearing - (turret_diff * 60))
 	if bearing >= 300 or bearing <= 60:
 		return 'Front'
+	if 140 < bearing < 220:
+		return 'Rear'
 	return 'Side'
 
 

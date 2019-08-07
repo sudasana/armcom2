@@ -2058,6 +2058,10 @@ class CampaignDay:
 				
 				weapon.ammo_stores[selected_ammo_type] += add_num
 				ammo_num += add_num
+				if add_num == 1:
+					PlaySoundFor(None, 'move_1_shell')
+				else:
+					PlaySoundFor(None, 'move_10_shell')
 				UpdateMenuCon()
 				continue
 			
@@ -2070,6 +2074,10 @@ class CampaignDay:
 				
 				weapon.ammo_stores[selected_ammo_type] -= add_num
 				ammo_num -= add_num
+				if add_num == 1:
+					PlaySoundFor(None, 'move_1_shell')
+				else:
+					PlaySoundFor(None, 'move_10_shell')
 				UpdateMenuCon()
 				continue
 			
@@ -2105,7 +2113,8 @@ class CampaignDay:
 				else:
 					weapon.ammo_stores['HE'] = int(float(weapon.stats['max_ammo']) * 0.75)
 					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo']) - weapon.ammo_stores['HE']
-							
+				
+				PlaySoundFor(None, 'move_10_shell')
 				UpdateMenuCon()
 				continue
 				
@@ -10584,6 +10593,14 @@ def PlaySoundFor(obj, action):
 	
 	elif action == 'sniper_hit':
 		PlaySound('sniper_hit')
+		return
+	
+	elif action == 'move_1_shell':
+		PlaySound('shell_move_1')
+		return
+	
+	elif action == 'move_10_shell':
+		PlaySound('shell_move_10')
 		return
 	
 	print ('ERROR: Could not determine which sound to play for action: ' + action)

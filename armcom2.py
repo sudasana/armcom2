@@ -7600,7 +7600,7 @@ class Scenario:
 		for unit in plane_unit_list:
 			
 			# find a target unit in the target hex
-			if len(self.hex_dict[(hx,hy)].unit_stack) == 0
+			if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
 				ShowMessage('No possible targets, calling off atttack.')
 				return
 			target = choice(self.hex_dict[(hx,hy)].unit_stack)

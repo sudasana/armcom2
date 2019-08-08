@@ -5863,6 +5863,7 @@ class Scenario:
 		self.support_target_list = []				# list of possible support attack targets
 		self.support_target = None				# target map hex for support attacks
 		self.support_status = None				# current stage of support attack
+		self.support_arrival_time = None			# time that support will actually arrive
 	
 	
 	# check for end of scenario and set flag if it has ended
@@ -7335,6 +7336,13 @@ class Scenario:
 		self.UpdateUnitInfoCon()
 	
 	
+	# reset all support variables after attack has finished or was cancelled
+	def ResetSupport(self):
+		self.support_target = None
+		self.support_status = None
+		self.support_arrival_time = None
+	
+	
 	# build a list of possible support attack target hexes
 	def BuildSupportTargetList(self):
 		
@@ -7425,13 +7433,27 @@ class Scenario:
 			if campaign_day.arty_support_level < 0.0:
 				campaign_day.arty_support_level = 0.0
 		
+		# set time of arrival silently
+		hour = campaign_day.day_clock['hour']
+		minute = self.day_clock['minute'] + libtcod.random_get_int(0, 2, 10)
+		if minute > 59:
+			hour += 1
+			minute -= 60
+		self.support_arrival_time = (hour, minute)
+		print('DEBUG: set support arrival time to ' + str(self.support_arrival_time))
+		
 	
 	# do an artillery attack against a target hex
 	def ArtilleryAttack(self):
 		
 		# record the support attack location and then clear it
-		hx, hy = hx, hy = self.support_target.hx, self.support_target.hy
-		self.support_target = None
+		hx, hy = self.support_target.hx, self.support_target.hy
+		
+		# check that there are 1+ targets left
+		if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
+			ShowMessage('No more targets, ending attack.')
+			self.ResetSupport()
+			return
 		
 		# display bombardment animation
 		(x, y) = self.PlotHex(hx, hy)
@@ -7559,7 +7581,12 @@ class Scenario:
 		
 		# record the support attack location and then clear it
 		hx, hy = self.support_target.hx, self.support_target.hy
-		self.support_target = None
+		
+		# check that there are 1+ targets left
+		if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
+			ShowMessage('No more targets, ending attack.')
+			self.ResetSupport()
+			return
 		
 		# roll for number of planes
 		roll = libtcod.random_get_int(0, 1, 10)
@@ -7608,8 +7635,7 @@ class Scenario:
 			# determine attack direction and starting position
 			(x, y) = self.PlotHex(target.hx, target.hy)
 			(x2, y2) = (x, y)
-		
-			#x = x2
+			
 			if y2 <= 30:
 				y1 = y2 + 15
 				if y1 > 51: y1 = 51
@@ -8179,13 +8205,17 @@ class Scenario:
 			
 			# check for support attacks first
 			if self.support_status is not None:
-				if self.support_status == 'Artillery inbound':
-					self.ArtilleryAttack()
-					self.support_status = None
-				elif self.support_status == 'Air attack inbound':
-					self.AirAttack()
-					self.support_status = None
-				DisplayTimeInfo(time_con)
+				
+				# check that support arrival time has been hit
+				(hour, minute) = self.support_arrival_time
+				if hour > campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute => campaign_day.day_clock['minute']):
+					if self.support_status == 'Artillery inbound':
+						ShowMessage('Artillery attack begins.')
+						self.ArtilleryAttack()
+					elif self.support_status == 'Air attack inbound':
+						ShowMessage('Air attack begins.')
+						self.AirAttack()
+					DisplayTimeInfo(time_con)
 			
 			# player squad acts
 			for unit in scenario.player_unit.squad:

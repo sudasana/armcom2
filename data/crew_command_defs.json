@@ -46,7 +46,7 @@
 	},
 	
 	"Drive" : {
-		"desc" : "Move forward or backward, pivot hull, reposition, or attempt to gain Hull Down",
+		"desc" : "Move forward or backward, pivot hull, or attempt to gain Hull Down",
 		"position_list" : ["Driver"],
 		"spotting_allowed" : false
 	},

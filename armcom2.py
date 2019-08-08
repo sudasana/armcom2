@@ -7430,7 +7430,7 @@ class Scenario:
 	def ArtilleryAttack(self):
 		
 		# record the support attack location and then clear it
-		(hx, hy) = self.support_target
+		hx, hy = hx, hy = self.support_target.hx, self.support_target.hy
 		self.support_target = None
 		
 		# display bombardment animation
@@ -7558,7 +7558,7 @@ class Scenario:
 	def AirAttack(self):
 		
 		# record the support attack location and then clear it
-		(hx, hy) = self.support_target
+		hx, hy = self.support_target.hx, self.support_target.hy
 		self.support_target = None
 		
 		# roll for number of planes

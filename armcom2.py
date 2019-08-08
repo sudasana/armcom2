@@ -7363,6 +7363,10 @@ class Scenario:
 	# select the next or previous support target hex
 	def CycleSupportTarget(self, forward):
 		
+		# attack already in progress
+		if self.support_status is not None:
+			return
+		
 		# no targets to select from
 		if len(self.support_target_list) == 0: return
 		
@@ -7820,18 +7824,18 @@ class Scenario:
 			
 			# clear any alternative bonus and apply bonus for future moves
 			if forward:
-				scenario.player_unit.reverse_move_bonus = 0.0
-				scenario.player_unit.forward_move_bonus += BASE_MOVE_BONUS
+				self.player_unit.reverse_move_bonus = 0.0
+				self.player_unit.forward_move_bonus += BASE_MOVE_BONUS
 			else:
-				scenario.player_unit.forward_move_bonus = 0.0
-				scenario.player_unit.reverse_move_bonus += BASE_MOVE_BONUS
+				self.player_unit.forward_move_bonus = 0.0
+				self.player_unit.reverse_move_bonus += BASE_MOVE_BONUS
 			
 			# show pop-up message to player
 			ShowMessage('You move but not far enough to enter a new map hex')
 			
 			# set new terrain for player and squad
 			for unit in self.units:
-				if unit != scenario.player_unit and unit not in scenario.player_unit.squad: continue
+				if unit != self.player_unit and unit not in self.player_unit.squad: continue
 				unit.GenerateTerrain()
 				unit.CheckForHD()
 			
@@ -7841,8 +7845,8 @@ class Scenario:
 			return
 		
 		# move was successful, clear all bonuses
-		scenario.player_unit.forward_move_bonus = 0.0
-		scenario.player_unit.reverse_move_bonus = 0.0
+		self.player_unit.forward_move_bonus = 0.0
+		self.player_unit.reverse_move_bonus = 0.0
 		
 		# calculate new hex positions for each unit in play
 		if forward:
@@ -7854,8 +7858,8 @@ class Scenario:
 		# player movement will never move an enemy unit into ring 4 nor off board
 		for unit in self.units:
 			
-			if unit == scenario.player_unit: continue
-			if unit in scenario.player_unit.squad: continue
+			if unit == self.player_unit: continue
+			if unit in self.player_unit.squad: continue
 			
 			(new_hx, new_hy) = GetAdjacentHex(unit.hx, unit.hy, direction)
 			
@@ -7873,8 +7877,8 @@ class Scenario:
 			unit.dest_hex = (new_hx, new_hy)
 			
 			# calculate animation locations
-			(x1, y1) = scenario.PlotHex(unit.hx, unit.hy)
-			(x2, y2) = scenario.PlotHex(new_hx, new_hy)
+			(x1, y1) = self.PlotHex(unit.hx, unit.hy)
+			(x2, y2) = self.PlotHex(new_hx, new_hy)
 			unit.animation_cells = GetLine(x1, y1, x2, y2)
 			# special case: unit is jumping over 0,0
 			if jump:
@@ -7884,27 +7888,39 @@ class Scenario:
 		# animate movement
 		for i in range(6):
 			for unit in self.units:
-				if unit == scenario.player_unit: continue
-				if unit in scenario.player_unit.squad: continue
+				if unit == self.player_unit: continue
+				if unit in self.player_unit.squad: continue
 				if len(unit.animation_cells) > 0:
 					unit.animation_cells.pop(0)
 			self.UpdateUnitCon()
 			self.UpdateScenarioDisplay()
 			Wait(15)
 		
+		# move support attack target if any
+		if self.support_target is not None:
+			(new_hx, new_hy) = GetAdjacentHex(self.support_target.hx, self.support_target.hy, direction)
+			if GetHexDistance(0, 0, new_hx, new_hy) > 3:
+				ShowMessage('Support target out of range, ending attack')
+				self.ResetSupport()
+			else:
+				if new_hx == 0 and new_hy == 0:
+					(new_hx, new_hy) = GetAdjacentHex(0, 0, direction)
+				self.support_target = self.hex_dict[(new_hx, new_hy)]
+				Print('DEBUG: moved support target')
+		
 		# set new hex location for each moving unit and move into new hex stack
 		for unit in self.units:
 			if unit.dest_hex is None: continue
-			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
+			self.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
 			(unit.hx, unit.hy) = unit.dest_hex
-			scenario.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
+			self.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
 			# clear destination hex and animation data
 			unit.dest_hex = None
 			unit.animation_cells = []
 		
 		# set new terrain for player and squad
 		for unit in self.units:
-			if unit != scenario.player_unit and unit not in scenario.player_unit.squad: continue
+			if unit != self.player_unit and unit not in self.player_unit.squad: continue
 			unit.GenerateTerrain()
 			unit.CheckForHD()
 			unit.SetSmokeLevel()
@@ -7934,6 +7950,12 @@ class Scenario:
 			(new_hx, new_hy) = RotateHex(unit.hx, unit.hy, r)
 			# set destination hex
 			unit.dest_hex = (new_hx, new_hy)
+		
+		# move support attack target if any
+		if self.support_target is not None:
+			(new_hx, new_hy) = RotateHex(self.support_target.hx, self.support_target.hy, r)
+			self.support_target = self.hex_dict[(new_hx, new_hy)]
+			Print('DEBUG: Rotated support target')
 		
 		# TODO: animate movement
 		
@@ -8543,14 +8565,20 @@ class Scenario:
 				
 				# TODO: display current support status: ranging in, ranged in; in transit, on attack run
 				
-				# display support commands
-				libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-				libtcod.console_print(cmd_menu_con, 1, 4, 'Tab')
-				if self.support_status is None:
+				# display support status or commands
+				if self.support_status is not None:
+					
+					libtcod.console_print_ex(cmd_menu_con, 12, 4, libtcod.BKGND_NONE,
+						libtcod.CENTER, self.support_status)
+					
+				else:
+				
+					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+					libtcod.console_print(cmd_menu_con, 1, 4, 'Tab')
 					libtcod.console_print(cmd_menu_con, 1, 5, EnKey('f').upper())
-				libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-				libtcod.console_print(cmd_menu_con, 8, 4, 'Cycle Target Hex')
-				if self.support_status is None:
+					
+					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+					libtcod.console_print(cmd_menu_con, 8, 4, 'Cycle Target Hex')
 					libtcod.console_print(cmd_menu_con, 8, 5, 'Request Attack')
 				
 			
@@ -9228,7 +9256,7 @@ class Scenario:
 				position = self.player_unit.positions_list[self.selected_position]
 				if position.crewman is None: continue
 				
-				# TODO: support commands
+				# support commands
 				if position.crewman.current_cmd == 'Request Support':
 					
 					if key.vk == libtcod.KEY_TAB:

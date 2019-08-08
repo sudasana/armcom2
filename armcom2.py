@@ -3766,10 +3766,22 @@ class Personnel:
 		
 		self.current_position.hatch_open = not self.current_position.hatch_open
 		
-		# FUTURE: change other hatches in this group if any
-		
 		# set CE status based on new hatch status
 		self.SetCEStatus()
+		
+		# change other hatches in this group if any
+		if self.current_position.hatch_group is None:
+			return True
+			
+		for position in self.unit.positions_list:
+			if position.hatch_group is None: continue
+			if position.hatch_group == self.current_position.hatch_group:
+				# set the hatch to this one's current status
+				position.hatch_open = self.current_position.hatch_open
+				print('DEBUG: Toggled a linked hatch')
+				# set CE status for crewman in position with linked hatch
+				if position.crewman is not None:
+					position.crewman.SetCEStatus()
 		
 		return True
 	

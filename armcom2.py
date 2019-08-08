@@ -5859,6 +5859,10 @@ class Scenario:
 		self.selected_target = None				# player's current selected target
 		
 		self.selected_position = 0				# index of selected position in player unit
+		
+		self.support_target_list = []				# list of possible support attack targets
+		self.support_target = None				# target map hex for support attacks
+		self.support_status = None				# current stage of support attack
 	
 	
 	# check for end of scenario and set flag if it has ended
@@ -5994,9 +5998,6 @@ class Scenario:
 		# an event was triggered, so reset random event chance
 		self.random_event_chance = BASE_RANDOM_EVENT_CHANCE
 		
-		
-
-	
 	
 	# go through procedure for player crew bailing out of tank
 	def PlayerBailOut(self):
@@ -7674,6 +7675,50 @@ class Scenario:
 		self.UpdateUnitInfoCon()
 	
 	
+	# build a list of possible support attack target hexes
+	def BuildSupportTargetList(self):
+		
+		self.support_target_list = []
+		self.support_target = None
+		
+		for map_hex in self.map_hexes:
+			# no units present
+			if len(map_hex.unit_stack) == 0: continue
+			for unit in map_hex.unit_stack:
+				if unit.owning_player == 1:
+					self.support_target_list.append(map_hex)
+					break
+		
+		print('DEBUG: ' + str(len(self.support_target_list)) + ' possible support targets')
+	
+	
+	# select the next or previous support target hex
+	def CycleSupportTarget(self, forward):
+		
+		# no targets to select from
+		if len(self.support_target_list) == 0: return
+		
+		# no target selected yet
+		if self.support_target is None:
+			self.support_target = self.support_target_list[0]
+			return
+		
+		if forward:
+			m = 1
+		else:
+			m = -1
+		
+		i = self.support_target_list.index(self.support_target)
+		i += m
+		
+		if i < 0:
+			self.support_target = self.support_target_list[-1]
+		elif i > len(self.support_target_list) - 1:
+			self.support_target = self.support_target_list[0]
+		else:
+			self.support_target = self.support_target_list[i]
+	
+	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
 	def MovePlayer(self, forward):
 		
@@ -8010,6 +8055,8 @@ class Scenario:
 		
 		# crew action phase:
 		elif self.phase == PHASE_CREW_ACTION:
+			
+			self.BuildSupportTargetList()
 			
 			input_command = False
 			
@@ -8360,7 +8407,7 @@ class Scenario:
 			i += 1
 	
 	
-	# update player command console
+	# update player command console 25x12
 	def UpdateCmdCon(self):
 		libtcod.console_clear(cmd_menu_con)
 		
@@ -8390,18 +8437,37 @@ class Scenario:
 		# Crew action phase
 		elif self.phase == PHASE_CREW_ACTION:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cmd_menu_con, 1, 0, EnKey('w').upper() + '/' + EnKey('s').upper())
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Position')
+			libtcod.console_print(cmd_menu_con, 8, 0, 'Select Position')
 			
 			# crew command specific actions
 			if self.selected_position is None: return
 			position = self.player_unit.positions_list[self.selected_position]
 			if position.crewman is None: return
 			
-			# TODO: display support commands
 			if position.crewman.current_cmd == 'Request Support':
-				pass
+				
+				# display current support level
+				if campaign_day.air_support_level > 0.0:
+					text = 'Air Support: ' + str(campaign_day.air_support_level)
+				else:
+					text = 'Artillery Support: ' + str(campaign_day.arty_support_level)
+				libtcod.console_print_ex(cmd_menu_con, 12, 2, libtcod.BKGND_NONE,
+					libtcod.CENTER, text)
+				
+				# TODO: display current support status: ranging in, ranged in; in transit, on attack run
+				
+				# display support commands
+				libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+				libtcod.console_print(cmd_menu_con, 1, 4, 'Tab')
+				libtcod.console_print(cmd_menu_con, 1, 5, EnKey('f').upper())
+				libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+				libtcod.console_print(cmd_menu_con, 8, 4, 'Cycle Target Hex')
+				
+				# TODO: switch to cancel if attack in progress
+				libtcod.console_print(cmd_menu_con, 8, 5, 'Request Attack')
+				
 			
 		# Movement phase
 		elif self.phase == PHASE_MOVEMENT:
@@ -8530,7 +8596,13 @@ class Scenario:
 		# crew action phase
 		elif self.phase == PHASE_CREW_ACTION:
 			
-			pass
+			# display support target if any
+			if self.support_target is not None:
+				(x,y) = self.PlotHex(self.support_target.hx, self.support_target.hy)
+				libtcod.console_put_char_ex(gui_con, x-1, y-1, 218, libtcod.light_blue, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x+1, y-1, 191, libtcod.light_blue, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x-1, y+1, 192, libtcod.light_blue, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x+1, y+1, 217, libtcod.light_blue, libtcod.black)
 			
 		
 		# shooting phase
@@ -8545,7 +8617,7 @@ class Scenario:
 			
 			# display target recticle if a target is selected
 			if self.selected_target is not None:
-				(x1,y1) = self.PlotHex(0,0)
+				#(x1,y1) = self.PlotHex(0,0)
 				(x2,y2) = self.PlotHex(self.selected_target.hx, self.selected_target.hy)
 				
 				libtcod.console_put_char_ex(gui_con, x2-1, y2-1, 218, libtcod.red, libtcod.black)
@@ -9073,7 +9145,14 @@ class Scenario:
 				
 				# TODO: support commands
 				if position.crewman.current_cmd == 'Request Support':
-					pass
+					
+					if key.vk == libtcod.KEY_TAB:
+						self.CycleSupportTarget(True)
+						self.UpdateGuiCon()
+						self.UpdateScenarioDisplay()
+						continue
+					
+					
 				
 					
 			# Movement phase only

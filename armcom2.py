@@ -8011,6 +8011,8 @@ class Scenario:
 		# crew action phase:
 		elif self.phase == PHASE_CREW_ACTION:
 			
+			input_command = False
+			
 			for position in self.player_unit.positions_list:
 				if position.crewman is None: continue
 				
@@ -8030,8 +8032,14 @@ class Scenario:
 					self.UpdateUnitCon()
 					self.UpdateScenarioDisplay()
 					libtcod.console_flush()
+				
+				# check for action that needs inpout in this phase
+				if position.crewman.current_cmd in ['Request Support']:
+					input_command = True
 			
-			self.advance_phase = True
+			if not input_command:
+				self.advance_phase = True
+			
 		
 		# movement phase: 
 		elif self.phase == PHASE_MOVEMENT:
@@ -8391,19 +8399,24 @@ class Scenario:
 			position = self.player_unit.positions_list[self.selected_position]
 			if position.crewman is None: return
 			
+			# TODO: display support commands
+			if position.crewman.current_cmd == 'Request Support':
+				pass
+			
 		# Movement phase
 		elif self.phase == PHASE_MOVEMENT:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper() + '/' + EnKey('s').upper())
 			libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
-			#libtcod.console_print(cmd_menu_con, 1, 3, EnKey('r').upper())
-			libtcod.console_print(cmd_menu_con, 1, 4, 'H')
+			libtcod.console_print(cmd_menu_con, 1, 3, 'H')
+			#libtcod.console_print(cmd_menu_con, 1, 4, EnKey('r').upper())
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Forward/Reverse')
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Pivot Hull')
-			#libtcod.console_print(cmd_menu_con, 8, 3, 'Reposition')
-			libtcod.console_print(cmd_menu_con, 8, 4, 'Attempt HD')
+			libtcod.console_print(cmd_menu_con, 8, 3, 'Attempt HD')
+			#libtcod.console_print(cmd_menu_con, 8, 4, 'Reposition')
+			
 		
 		# Shooting phase
 		elif self.phase == PHASE_SHOOTING:
@@ -9057,7 +9070,12 @@ class Scenario:
 				if self.selected_position is None: continue
 				position = self.player_unit.positions_list[self.selected_position]
 				if position.crewman is None: continue
-			
+				
+				# TODO: support commands
+				if position.crewman.current_cmd == 'Request Support':
+					pass
+				
+					
 			# Movement phase only
 			elif scenario.phase == PHASE_MOVEMENT:
 				

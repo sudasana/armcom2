@@ -7422,6 +7422,11 @@ class Scenario:
 			ShowMessage('Cannot call support - none available.')
 			return
 		
+		# check for weather restrictions
+		if campaign_day.weather['Cloud Cover'] == 'Overcast' and air_attack:
+			ShowMessage('Air support not possible - cloud cover too heavy.')
+			return
+		
 		roll = GetPercentileRoll()
 		if DEBUG:
 			if session.debug['Support Requests Always Granted']:
@@ -7591,7 +7596,13 @@ class Scenario:
 	# attempt an air attack against the support attack target hex
 	def AirAttack(self):
 		
-		# record the support attack location and then clear it
+		# check for weather restrictions
+		if campaign_day.weather['Cloud Cover'] == 'Overcast':
+			ShowMessage('Calling off air attack - cloud cover too heavy.')
+			self.ResetSupport()
+			return
+		
+		# record the support attack location
 		hx, hy = self.support_target.hx, self.support_target.hy
 		
 		# check that there are 1+ targets left

@@ -4268,16 +4268,20 @@ class AI:
 			# move was not successful
 			if roll > chance:
 				self.owner.forward_move_chance += BASE_MOVE_BONUS
+				return
 			
-			# move was successful, clear any bonus and move into new hex
-			else:
-				self.owner.forward_move_chance = 0.0
-				scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
-				self.owner.hx = hx
-				self.owner.hy = hy
-				scenario.hex_dict[(hx, hy)].unit_stack.append(self.owner)
-				for weapon in self.owner.weapon_list:
-					weapon.UpdateCoveredHexes()
+			# move was successful but may be cancelled by a breakdown
+			if self.owner.BreakdownCheck():
+				return
+			
+			# clear any bonus and move into new hex
+			self.owner.forward_move_chance = 0.0
+			scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
+			self.owner.hx = hx
+			self.owner.hy = hy
+			scenario.hex_dict[(hx, hy)].unit_stack.append(self.owner)
+			for weapon in self.owner.weapon_list:
+				weapon.UpdateCoveredHexes()
 			
 			self.owner.GenerateTerrain()
 			self.owner.CheckForHD()
@@ -4621,6 +4625,24 @@ class Unit:
 		if stat_name not in self.stats:
 			return None
 		return self.stats[stat_name]
+	
+	
+	# do a breakdown check
+	def BreakdownCheck(self):
+		
+		# only certain classes of unit can break down
+		if self.GetStat('category') not in ['Vehicle']:
+			return False
+		
+		chance = 1.0
+		
+		if 'unreliable' in self.stats:
+			chance = 5.0
+		
+		roll = GetPercentileRoll()
+		if roll <= chance:
+			return True
+		return False
 	
 	
 	# set a random smoke level for this unit, upon spawn or after move
@@ -7863,6 +7885,12 @@ class Scenario:
 			
 			return
 		
+		# successful move may be cancelled by breakdown
+		if self.player_unit.BreakdownCheck():
+			ShowMessage('Your vehicle stalls, making you unable to move further.')
+			self.advance_phase = True
+			return
+		
 		# move was successful, clear all bonuses
 		self.player_unit.forward_move_bonus = 0.0
 		self.player_unit.reverse_move_bonus = 0.0
@@ -8720,6 +8748,14 @@ class Scenario:
 		
 		libtcod.console_clear(gui_con)
 		
+		# display support targeted hex if attack in progress
+		if self.support_target is not None and self.support_status is not None:
+			(x,y) = scenario.PlotHex(self.support_target.hx, self.support_target.hy)
+			libtcod.console_put_char_ex(gui_con, x-2, y-2, 43, libtcod.light_blue, libtcod.black)
+			libtcod.console_put_char_ex(gui_con, x+2, y-2, 43, libtcod.light_blue, libtcod.black)
+			libtcod.console_put_char_ex(gui_con, x-2, y+2, 43, libtcod.light_blue, libtcod.black)
+			libtcod.console_put_char_ex(gui_con, x+2, y+2, 43, libtcod.light_blue, libtcod.black)
+				
 		# display field of view if in command phase
 		if self.phase == PHASE_COMMAND:
 			
@@ -8753,13 +8789,12 @@ class Scenario:
 			
 			# display target recticle if a target is selected
 			if self.selected_target is not None:
-				#(x1,y1) = self.PlotHex(0,0)
-				(x2,y2) = self.PlotHex(self.selected_target.hx, self.selected_target.hy)
+				(x,y) = self.PlotHex(self.selected_target.hx, self.selected_target.hy)
 				
-				libtcod.console_put_char_ex(gui_con, x2-1, y2-1, 218, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x2+1, y2-1, 191, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x2-1, y2+1, 192, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x2+1, y2+1, 217, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x-1, y-1, 218, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x+1, y-1, 191, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x-1, y+1, 192, libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(gui_con, x+1, y+1, 217, libtcod.red, libtcod.black)
 	
 	
 	# update the scenario info console, on the top right of the screen
@@ -9340,6 +9375,11 @@ class Scenario:
 					self.player_unit.moving = True
 					self.player_unit.ClearAcquiredTargets()
 					PlaySoundFor(self.player_unit, 'movement')
+					
+					if self.player_unit.BreakdownCheck():
+						ShowMessage('Your vehicle stalls, making you unable to move further.')
+						self.advance_phase = True
+						continue
 					
 					result = self.player_unit.CheckForHD(driver_attempt=True)
 					if result:

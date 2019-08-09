@@ -383,7 +383,7 @@ SCENARIO_TERRAIN_ODDS = {
 	}
 }
 
-# TODO: modifiers and effects for different types of terrain on the scenario layer
+# modifiers and effects for different types of terrain on the scenario layer
 SCENARIO_TERRAIN_EFFECTS = {
 	'Open Ground' : {
 		'HD Chance' : 5.0
@@ -439,6 +439,14 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'HD Chance' : 30.0,
 		'Hidden Mod' : 20.0,
 		'Burnable' : True
+	},
+	'Marsh': {
+		'TEM' : {
+			'All' : -10.0
+		},
+		'HD Chance' : 15.0,
+		'Movement Mod' : -30.0,
+		'Bog Mod' : 30.0
 	}
 }
 
@@ -7388,7 +7396,7 @@ class Scenario:
 					self.support_target_list.append(map_hex)
 					break
 		
-		print('DEBUG: ' + str(len(self.support_target_list)) + ' possible support targets')
+		#print('DEBUG: ' + str(len(self.support_target_list)) + ' possible support targets')
 	
 	
 	# select the next or previous support target hex
@@ -7954,7 +7962,7 @@ class Scenario:
 				if new_hx == 0 and new_hy == 0:
 					(new_hx, new_hy) = GetAdjacentHex(0, 0, direction)
 				self.support_target = self.hex_dict[(new_hx, new_hy)]
-				Print('DEBUG: moved support target')
+				print('DEBUG: moved support target')
 		
 		# set new hex location for each moving unit and move into new hex stack
 		for unit in self.units:

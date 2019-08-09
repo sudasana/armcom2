@@ -9010,7 +9010,7 @@ class Scenario:
 				self.animation['small_arms_fire_action'] = None
 			else:
 				self.animation['small_arms_lifetime'] -= 1
-				(x,y) = choice(self.animation['small_arms_fire_line'])
+				(x,y) = choice(self.animation['small_arms_fire_line'][1:])
 				libtcod.console_put_char_ex(anim_con, x, y, 250, libtcod.yellow,
 					libtcod.black)
 		

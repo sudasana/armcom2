@@ -7676,69 +7676,70 @@ class Scenario:
 			if calibre <= bomb_calibre:
 				break
 		
+		# do one attack animation
+		
+		# determine attack direction and starting position
+		(x, y) = self.PlotHex(hx, hy)
+		(x2, y2) = (x, y)
+		
+		if y2 <= 30:
+			y1 = y2 + 15
+			if y1 > 51: y1 = 51
+			y2 += 1
+			direction = -1
+		else:
+			y1 = y2 - 15
+			if y1 < 9: y1 = 9
+			y2 -= 3
+			direction = 1
+		
+		# create plane console
+		temp_con = libtcod.console_new(3, 3)
+		libtcod.console_set_default_background(temp_con, libtcod.black)
+		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+		libtcod.console_clear(temp_con)
+		
+		libtcod.console_put_char(temp_con, 0, 1, chr(196))
+		libtcod.console_put_char(temp_con, 1, 1, chr(197))
+		libtcod.console_put_char(temp_con, 2, 1, chr(196))
+		if direction == -1:
+			libtcod.console_put_char(temp_con, 1, 2, chr(193))
+		else:
+			libtcod.console_put_char(temp_con, 1, 0, chr(194))
+		
+		# create air attack animation
+		self.animation['air_attack'] = temp_con
+		self.animation['air_attack_line'] = GetLine(x, y1, x, y2)
+		
+		PlaySoundFor(None, 'plane_incoming')
+		
+		# let animation run
+		while self.animation['air_attack'] is not None:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			CheckForAnimationUpdate()
+		
+		PlaySoundFor(None, 'stuka_divebomb')
+		
+		# create bomb animation
+		self.animation['bomb_effect'] = (x, y2+direction)
+		self.animation['bomb_effect_lifetime'] = 16
+		
+		# let animation run
+		while self.animation['bomb_effect'] is not None:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			CheckForAnimationUpdate()
+		
 		# do one attack per plane
 		results = False
 		for unit in plane_unit_list:
 			
 			# find a target unit in the target hex
 			if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
-				ShowMessage('No possible targets, calling off atttack.')
-				return
+				continue
 			target = choice(self.hex_dict[(hx,hy)].unit_stack)
 		
-			# determine attack direction and starting position
-			(x, y) = self.PlotHex(target.hx, target.hy)
-			(x2, y2) = (x, y)
-			
-			if y2 <= 30:
-				y1 = y2 + 15
-				if y1 > 51: y1 = 51
-				y2 += 1
-				direction = -1
-			else:
-				y1 = y2 - 15
-				if y1 < 9: y1 = 9
-				y2 -= 3
-				direction = 1
-			
-			# create plane console
-			temp_con = libtcod.console_new(3, 3)
-			libtcod.console_set_default_background(temp_con, libtcod.black)
-			libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
-			libtcod.console_clear(temp_con)
-			
-			libtcod.console_put_char(temp_con, 0, 1, chr(196))
-			libtcod.console_put_char(temp_con, 1, 1, chr(197))
-			libtcod.console_put_char(temp_con, 2, 1, chr(196))
-			if direction == -1:
-				libtcod.console_put_char(temp_con, 1, 2, chr(193))
-			else:
-				libtcod.console_put_char(temp_con, 1, 0, chr(194))
-			
-			# create air attack animation
-			self.animation['air_attack'] = temp_con
-			self.animation['air_attack_line'] = GetLine(x, y1, x, y2)
-			
-			PlaySoundFor(None, 'plane_incoming')
-			
-			# let animation run
-			while self.animation['air_attack'] is not None:
-				if libtcod.console_is_window_closed(): sys.exit()
-				libtcod.console_flush()
-				CheckForAnimationUpdate()
-			
-			PlaySoundFor(None, 'stuka_divebomb')
-			
-			# create bomb animation
-			self.animation['bomb_effect'] = (x, y2+direction)
-			self.animation['bomb_effect_lifetime'] = 16
-			
-			# let animation run
-			while self.animation['bomb_effect'] is not None:
-				if libtcod.console_is_window_closed(): sys.exit()
-				libtcod.console_flush()
-				CheckForAnimationUpdate()
-			
 			# calculate basic to-effect score required
 			if not target.spotted:
 				chance = PF_BASE_CHANCE[0][1]
@@ -8286,7 +8287,7 @@ class Scenario:
 				
 				# check that support arrival time has been hit
 				(hour, minute) = self.support_arrival_time
-				if hour > campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute >= campaign_day.day_clock['minute']):
+				if hour < campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute >= campaign_day.day_clock['minute']):
 					if self.support_status == 'Artillery inbound':
 						ShowMessage('Artillery attack begins.')
 						self.ArtilleryAttack()

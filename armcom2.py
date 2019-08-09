@@ -1215,7 +1215,7 @@ class CampaignDay:
 		elif campaign.today['mission'] == 'Battle':
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 1
-			for hy in range(4, 9):
+			for hy in range(6, 9):
 				hx1 = 0 - floor(hy / 2)
 				for hx in range(hx1, hx1 + 5):
 					if (hx, hy) not in self.map_hexes: continue
@@ -1282,7 +1282,7 @@ class CampaignDay:
 		if campaign.today['mission'] == 'Fighting Withdrawl':
 			self.player_unit_location = (2, 0)	# top center of map
 		elif campaign.today['mission'] == 'Battle':
-			self.player_unit_location = (0, 4)	# center of map
+			self.player_unit_location = (-1, 6)	# lower center of map
 		else:
 			self.player_unit_location = (-2, 8)	# bottom center of map
 		
@@ -2814,9 +2814,10 @@ class CampaignDay:
 		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_green)
 		libtcod.console_print(cd_hex_info_con, 11, 0, cd_hex.coordinate)
 		
-		# TEMP - display hx,hy
-		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.yellow)
-		libtcod.console_print(cd_hex_info_con, 14, 0, str(hx) + ',' + str(hy))
+		# DEBUG - display hx,hy
+		if DEBUG:
+			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.yellow)
+			libtcod.console_print(cd_hex_info_con, 14, 0, str(hx) + ',' + str(hy))
 		
 		# terrain
 		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)

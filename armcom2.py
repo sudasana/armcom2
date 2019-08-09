@@ -5915,17 +5915,23 @@ class Scenario:
 		# friendly air attack
 		if roll <= 10.0:
 			
-			if campaign_day.air_support_level <= 0.0: return
-			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
-			ShowMessage('Friendly air forces launch an attack!')
-			self.AirAttack()
+			# TODO: choose a target first
+			return
+			
+			#if campaign_day.air_support_level <= 0.0: return
+			#if campaign_day.weather['Cloud Cover'] == 'Overcast': return
+			#ShowMessage('Friendly air forces launch an attack!')
+			#self.AirAttack()
 		
 		# friendly arty attack
 		elif roll <= 20.0:
 			
-			if campaign_day.arty_support_level <= 0.0: return
-			ShowMessage('Friendly artillery forces fire a bombardment!')
-			self.ArtilleryAttack()
+			# TODO: choose a target first
+			return
+			
+			#if campaign_day.arty_support_level <= 0.0: return
+			#ShowMessage('Friendly artillery forces fire a bombardment!')
+			#self.ArtilleryAttack()
 		
 		# enemy reinforcement
 		elif roll <= 30.0:
@@ -7343,8 +7349,10 @@ class Scenario:
 		self.support_arrival_time = None
 	
 	
-	# build a list of possible support attack target hexes
+	# build a list of possible support attack target hexes if none already selected
 	def BuildSupportTargetList(self):
+		
+		if self.support_target is not None: return
 		
 		self.support_target_list = []
 		self.support_target = None
@@ -7439,7 +7447,7 @@ class Scenario:
 		
 		# set time of arrival silently
 		hour = campaign_day.day_clock['hour']
-		minute = self.day_clock['minute'] + libtcod.random_get_int(0, 2, 10)
+		minute = campaign_day.day_clock['minute'] + libtcod.random_get_int(0, 2, 10)
 		if minute > 59:
 			hour += 1
 			minute -= 60
@@ -7461,13 +7469,13 @@ class Scenario:
 		
 		# display bombardment animation
 		(x, y) = self.PlotHex(hx, hy)
-		for i in range(7):
+		for i in range(5):
 			xm = 3 - libtcod.random_get_int(0, 0, 6)
 			ym = 3 - libtcod.random_get_int(0, 0, 6)
 			PlaySoundFor(None, 'he_explosion')
 			# create bomb animation
 			self.animation['bomb_effect'] = (x+xm, y+ym)
-			self.animation['bomb_effect_lifetime'] = 8
+			self.animation['bomb_effect_lifetime'] = 6
 			
 			# let animation run
 			while self.animation['bomb_effect'] is not None:
@@ -8230,7 +8238,7 @@ class Scenario:
 				
 				# check that support arrival time has been hit
 				(hour, minute) = self.support_arrival_time
-				if hour > campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute => campaign_day.day_clock['minute']):
+				if hour > campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute >= campaign_day.day_clock['minute']):
 					if self.support_status == 'Artillery inbound':
 						ShowMessage('Artillery attack begins.')
 						self.ArtilleryAttack()
@@ -8570,6 +8578,10 @@ class Scenario:
 					
 					libtcod.console_print_ex(cmd_menu_con, 12, 4, libtcod.BKGND_NONE,
 						libtcod.CENTER, self.support_status)
+					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+					libtcod.console_print(cmd_menu_con, 1, 6, EnKey('c').upper())
+					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+					libtcod.console_print(cmd_menu_con, 8, 6, 'Cancel Attack')
 					
 				else:
 				
@@ -9265,10 +9277,22 @@ class Scenario:
 						self.UpdateScenarioDisplay()
 						continue
 					
+					elif key_char == 'c':
+						if self.support_status is None: continue
+						ShowMessage('Support attack cancelled.')
+						self.ResetSupport()
+						DisplayTimeInfo(time_con)
+						self.UpdateGuiCon()
+						self.UpdateCmdCon()
+						self.UpdateScenarioDisplay()
+						continue
+					
 					elif key_char == 'f':
+						if self.support_status is not None: continue
 						self.CallSupport()
 						DisplayTimeInfo(time_con)
 						self.UpdateGuiCon()
+						self.UpdateCmdCon()
 						self.UpdateScenarioDisplay()
 						continue
 				

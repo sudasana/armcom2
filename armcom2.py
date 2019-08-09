@@ -3008,8 +3008,8 @@ class CampaignDay:
 					
 					campaign.AddLog('Combat ends')
 					
-					# capture area if player is still alive and in tank
-					if campaign.player_unit.alive and not self.abandoned_tank:
+					# capture area if player is still alive
+					if campaign.player_unit.alive:
 						(hx, hy) = self.player_unit_location
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 						self.DoCrewCheck(campaign.player_unit)

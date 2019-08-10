@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-                                                         
 # Python 3.6.6 x64
-# Libtcod 1.6.4 x64
+# Libtcod 1.6.4 x64                                                               
 ##########################################################################################
 #                                                                                        #
 #                                Armoured Commander II                                   #
@@ -5347,6 +5347,14 @@ class Unit:
 		
 		# make sure attack is possible
 		if scenario.CheckAttack(self, weapon, target) != '': return False
+		
+		# if firing weapon is mounted on turret and turret has rotated, all weapons on turret lose acquired target
+		if weapon.GetStat('Mount') == 'Turret' and self.turret_facing is not None:
+			if self.turret_facing != self.previous_turret_facing:
+				for weapon2 in self.weapon_list:
+					if weapon2.GetStat('Mount') == 'Turret':
+						if weapon2.GetStat('firing_group') == weapon.GetStat('firing_group'):
+							weapon2.acquired_target = None
 		
 		# display message if player is the target
 		if target == scenario.player_unit:

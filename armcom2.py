@@ -57,9 +57,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.6.0 09-08-19'				# game version
+VERSION = '0.6.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -3943,6 +3943,8 @@ class Weapon:
 		self.covered_hexes = []			# map hexes that could be targeted by this weapon
 		self.fired = False
 		self.maintained_rof = False
+		
+		self.acquired_target = None		# acquired target status and target unit
 	
 	
 	# check for the value of a stat, return None if stat not present
@@ -3950,6 +3952,28 @@ class Weapon:
 		if stat_name not in self.stats:
 			return None
 		return self.stats[stat_name]
+	
+	
+	# add a target as the current acquired target, or add one level
+	def AddAcquiredTarget(self, target):
+		
+		# no target previously acquired
+		if self.acquired_target == None:
+			self.acquired_target = (target, 0)
+		
+		# adding one level
+		elif self.acquired_target == (target, 0):
+			self.acquired_target = (target, 1)
+		
+		# already at max
+		elif self.acquired_target == (target, 1):
+			return
+		
+		# same or new target
+		else:
+			self.acquired_target = (target, 0)
+		
+		print('DEBUG: ' + self.stats['name'] + ' on ' + self.unit.unit_id + ' has ' + target.unit_id + ' as AC')
 	
 	
 	# calculate the map hexes covered by this weapon
@@ -4095,16 +4119,6 @@ class AI:
 					
 		roll = GetPercentileRoll()
 		
-		# modify roll if player has this unit as an acquired target and vice-versa
-		if scenario.player_unit.acquired_target is not None:
-			(ac_target, level) = scenario.player_unit.acquired_target
-			if ac_target == self.owner:
-				roll -= 10.0
-		if self.owner.acquired_target is not None:
-			(ac_target, level) = self.owner.acquired_target
-			if ac_target == scenario.player_unit:
-				roll -= 10.0
-		
 		if DEBUG:
 			if session.debug['AI Hates Player']:
 				roll = 0.0
@@ -4186,11 +4200,6 @@ class AI:
 		# player squad doesn't move on its own and doesn't harass or attack the player
 		if self.owner in scenario.player_unit.squad:
 			if self.disposition in ['Harass Player', 'Attack Player', 'Movement']:
-				self.disposition = 'Combat'
-		
-		# chance that movement action will be cancelled if we have an acquired target
-		if self.owner.acquired_target is not None and self.disposition == 'Movement':
-			if GetPercentileRoll() <= 80.0:
 				self.disposition = 'Combat'
 		
 		# MG teams less likely to move
@@ -4478,6 +4487,7 @@ class AI:
 					self.owner.facing = direction
 					if self.owner.turret_facing is not None:
 						self.owner.turret_facing = direction
+					self.owner.ClearAcquiredTargets(no_enemy=True)
 					#print('AI DEBUG: AI unit pivoted hull to fire')
 				
 				scenario.UpdateUnitCon()
@@ -4569,8 +4579,6 @@ class Unit:
 		
 		self.pinned = False
 		self.deployed = False
-		
-		self.acquired_target = None		# tuple: unit has acquired this unit to this level (1/2)
 		
 		self.forward_move_chance = 0.0		# set by CalculateMoveChances()
 		self.reverse_move_chance = 0.0
@@ -4721,38 +4729,24 @@ class Unit:
 	
 	
 	# clear any acquired target from this unit, and clear it from any enemy unit
-	def ClearAcquiredTargets(self):
-		self.acquired_target = None
-		for unit in scenario.units:
+	# if no_enemy, enemy units retain AC on this unit
+	def ClearAcquiredTargets(self, no_enemy=False):
+		
+		print('DEBUG: Clearing AC for ' + self.unit_id)
+		
+		for weapon in self.weapon_list:
+			weapon.acquired_target = None
+		
+		if no_enemy: return
+		
+		for unit in scenario.unit_list:
 			if unit.owning_player == self.owning_player: continue
-			if unit.acquired_target is None: continue
-			(target, level) = unit.acquired_target
-			if target == self:
-				unit.acquired_target = None
-	
-	
-	# set a newly acquired target, or add a level
-	def AddAcquiredTarget(self, target):
+			for weapon in unit.weapon_list:
+				if weapon.acquired_target is None: continue
+				(ac_target, level) = weapon.acquired_target
+				if ac_target == self:
+					weapon.acquired_target = None
 		
-		# no previous acquired target
-		if self.acquired_target is None:
-			self.acquired_target = (target, False)
-			return
-		
-		(old_target, level) = self.acquired_target
-		
-		# had an old target but now have a new one
-		if old_target != target:
-			self.acquired_target = (target, False)
-			return
-		
-		# possible to add one level
-		if not level:
-			self.acquired_target = (target, True)
-			return
-		
-		# otherwise, already acquired target to 2 levels, no further effect
-	
 	
 	# calcualte chances of a successful forward/reverse move action for this unit
 	def CalculateMoveChances(self):
@@ -5445,9 +5439,9 @@ class Unit:
 			# do the roll, display results to the screen, and modify the attack profile
 			profile = scenario.DoAttackRoll(profile)
 			
-			# add one level of acquired target if firing gun
-			if weapon.GetStat('type') == 'Gun':
-				self.AddAcquiredTarget(target)
+			# add one level of acquired target if firing gun or MG
+			if weapon.GetStat('type') == 'Gun' or weapon.GetStat('type') in MG_WEAPONS:
+				weapon.AddAcquiredTarget(target)
 			
 			# wait for the player if they are involved
 			# if RoF is maintained, may choose to attack again
@@ -5733,7 +5727,7 @@ class Unit:
 	# pin this unit
 	def PinMe(self):
 		self.pinned = True
-		self.acquired_target = None
+		self.ClearAcquiredTargets()
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
 		ShowMessage(self.GetName() + ' is now Pinned.')
@@ -5946,7 +5940,7 @@ class Scenario:
 		# friendly air attack
 		if roll <= 10.0:
 			
-			# TODO: choose a target first
+			# TODO: choose a random target hex first
 			return
 			
 			#if campaign_day.air_support_level <= 0.0: return
@@ -5957,7 +5951,7 @@ class Scenario:
 		# friendly arty attack
 		elif roll <= 20.0:
 			
-			# TODO: choose a target first
+			# TODO: choose a random target hex first
 			return
 			
 			#if campaign_day.arty_support_level <= 0.0: return
@@ -6580,16 +6574,15 @@ class Scenario:
 			
 			# spotted target
 			else:
-			
-				# acquired target
-				if attacker.acquired_target is not None:
-					(ac_target, level) = attacker.acquired_target
+				
+				# check to see if weapon has acquired target
+				if weapon.acquired_target is not None:
+					(ac_target, level) = weapon.acquired_target
 					if ac_target == target:
-						if not level:
-							mod = AC_BONUS[0]
-						else:
-							mod = AC_BONUS[1]
-						modifier_list.append(('Acquired Target', mod))
+						text = 'Acquired Target'
+						if level == 1:
+							text += '+'
+						modifier_list.append((text, AC_BONUS[level]))
 				
 				# target vehicle moving
 				if target.moving and target.GetStat('category') == 'Vehicle':
@@ -6706,6 +6699,16 @@ class Scenario:
 			if not target.spotted:
 				modifier_list.append(('Unspotted Target', -10.0))
 			else:
+				
+				# check to see if MG has acquired target
+				if weapon.acquired_target is not None:
+					(ac_target, level) = weapon.acquired_target
+					if ac_target == target:
+						mod = round(15.0 + (float(level) * 15.0), 2)
+						text = 'Acquired Target'
+						if level == 1:
+							text += '+'
+						modifier_list.append((text, mod))
 			
 				# target is infantry and moving
 				if target.moving and target.GetStat('category') == 'Infantry':
@@ -8167,7 +8170,7 @@ class Scenario:
 				
 				# player pivoted during movement phase
 				if self.player_pivot != 0:
-					self.player_unit.acquired_target = None
+					self.player_unit.ClearAcquiredTargets(no_enemy=True)
 			
 			# end of shooting phase
 			elif self.phase == PHASE_SHOOTING:
@@ -8436,6 +8439,17 @@ class Scenario:
 				libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 				libtcod.console_print_ex(context_con, 17, 0, libtcod.BKGND_NONE,
 					libtcod.RIGHT, weapon.stats['mount'])
+			
+			# display acquired target if any
+			if self.selected_target is not None and weapon.acquired_target is not None:
+				(ac_target, level) = weapon.acquired_target
+				if ac_target == self.selected_target:
+					text = 'Acquired Target'
+					if level == 1:
+						text += '+'
+					libtcod.console_set_default_foreground(context_con, libtcod.light_blue)
+					libtcod.console_print(context_con, 0, 8, text)
+					libtcod.console_set_default_foreground(context_con, libtcod.red)
 			
 			# if weapon is a gun, display ammo info
 			if weapon.GetStat('type') == 'Gun':
@@ -8879,25 +8893,6 @@ class Scenario:
 				libtcod.console_print(unit_info_con, 0, 3, 'Moving')
 			if unit.fired:
 				libtcod.console_print(unit_info_con, 7, 3, 'Fired')
-			
-			# acquired target
-			libtcod.console_set_default_foreground(unit_info_con, libtcod.white)
-			if scenario.player_unit.acquired_target is not None:
-				(target, level) = scenario.player_unit.acquired_target
-				if target == unit:
-					text = 'AC'
-					if level:
-						text += '2'
-					libtcod.console_print(unit_info_con, 0, 4, text)
-			
-			libtcod.console_set_default_foreground(unit_info_con, ENEMY_UNIT_COL)
-			if unit.acquired_target is not None:
-				(target, level) = unit.acquired_target
-				if target == scenario.player_unit:
-					text = 'AC'
-					if level:
-						text += '2'
-					libtcod.console_print(unit_info_con, 4, 4, text)
 			
 			# facing if any
 			if unit.facing is not None and unit.GetStat('category') != 'Infantry':

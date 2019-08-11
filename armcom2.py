@@ -1068,7 +1068,7 @@ class Campaign:
 				mouse_x = mouse.cx
 				mouse_y = mouse.cy
 				
-				# TODO: update here any consoles that change based on mouse cursor
+				# FUTURE: update here any consoles that change based on mouse cursor
 			
 			if not keypress: continue
 			
@@ -1932,7 +1932,7 @@ class CampaignDay:
 					
 					y += 6
 			
-			# TODO: visual depicition of ready rack
+			# FUTURE: visual depicition of ready rack
 			
 			# visual depicition of main stores
 			x = 41
@@ -2010,7 +2010,7 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			
 			
-			# TODO: visual depicition of extra ammo
+			# FUTURE: visual depicition of extra ammo
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			
@@ -5610,7 +5610,7 @@ class Unit:
 						
 			elif profile['result'] == 'PENETRATED':
 				
-				# TODO: roll for penetration result here, use the
+				# FUTURE: roll for penetration result here, use the
 				# final 'roll' difference vs. 'final_chance' as modifier
 				
 				self.DestroyMe()
@@ -5681,7 +5681,7 @@ class Unit:
 		for i in range(2, self.fp_to_resolve + 1):
 			base_chance += RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
 		
-		# TODO: calculate modifiers
+		# FUTURE: calculate and apply any modifiers
 		
 		# restrict final chances
 		base_chance = RestrictChance(base_chance)
@@ -5707,9 +5707,7 @@ class Unit:
 		
 		chance = MORALE_CHECK_BASE_CHANCE + modifier
 		
-		# TODO: apply terrain modifiers
-		
-		# TODO: check for leader skill
+		# FUTURE: apply terrain modifiers
 		
 		chance = RestrictChance(chance)
 		
@@ -5945,27 +5943,43 @@ class Scenario:
 		# roll for type of event
 		roll = GetPercentileRoll()
 		
+		# choose a random map hex with 1+ enemies for friendly attack results
+		target_hex = None
+		hex_list = []
+		for map_hex in self.map_hexes:
+			if len(map_hex.unit_stack) == 0: continue
+			if map_hex.unit_stack[0].owning_player == 0: continue
+			hex_list.append(map_hex)
+		if len(hex_list) > 0:
+			target_hex = choice(hex_list)
+		
 		# friendly air attack
 		if roll <= 10.0:
 			
-			# TODO: choose a random target hex first
-			return
+			# support attack already in progress
+			if self.support_status is not None: return
+			if campaign_day.air_support_level <= 0.0: return
+			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
+			if target_hex is None: return
+			ShowMessage('Friendly air forces launch an attack!')
+			self.support_target.hx = target_hex.hx
+			self.support_target.hy = target_hex.hy
+			self.AirAttack()
+			self.ResetSupport()
 			
-			#if campaign_day.air_support_level <= 0.0: return
-			#if campaign_day.weather['Cloud Cover'] == 'Overcast': return
-			#ShowMessage('Friendly air forces launch an attack!')
-			#self.AirAttack()
-		
 		# friendly arty attack
 		elif roll <= 20.0:
 			
-			# TODO: choose a random target hex first
-			return
+			# support attack already in progress
+			if self.support_status is not None: return
+			if campaign_day.arty_support_level <= 0.0: return
+			if target_hex is None: return
+			ShowMessage('Friendly artillery forces fire a bombardment!')
+			self.support_target.hx = target_hex.hx
+			self.support_target.hy = target_hex.hy
+			self.ArtilleryAttack()
+			self.ResetSupport()
 			
-			#if campaign_day.arty_support_level <= 0.0: return
-			#ShowMessage('Friendly artillery forces fire a bombardment!')
-			#self.ArtilleryAttack()
-		
 		# enemy reinforcement
 		elif roll <= 30.0:
 			
@@ -7593,7 +7607,7 @@ class Scenario:
 				else:
 					hit_location = 'turret_side'
 				
-				# TODO: direct hit vs. near miss
+				# FUTURE: direct hit vs. near miss
 				
 				# start with base AP chance
 				chance = ap_chance
@@ -7810,7 +7824,7 @@ class Scenario:
 					if calibre <= bomb_calibre:
 						break
 				
-				# TODO: direct hit vs. near miss
+				# FUTURE: direct hit vs. near miss
 				
 				# target armour modifier
 				armour = target.GetStat('armour')
@@ -8023,9 +8037,8 @@ class Scenario:
 		if self.support_target is not None:
 			(new_hx, new_hy) = RotateHex(self.support_target.hx, self.support_target.hy, r)
 			self.support_target = self.hex_dict[(new_hx, new_hy)]
-			Print('DEBUG: Rotated support target')
 		
-		# TODO: animate movement
+		# FUTURE: animate movement?
 		
 		# set new hex location for each unit and move into new hex stack
 		for unit in self.units:
@@ -8485,9 +8498,6 @@ class Scenario:
 				libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 				libtcod.console_print_ex(context_con, 7, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, weapon.stats['max_ammo'])
-				
-				# TODO: highlight currenly selected ammo type
-				#if weapon.ammo_type is not None:
 			
 			libtcod.console_set_default_foreground(context_con, libtcod.red)
 			
@@ -8642,7 +8652,7 @@ class Scenario:
 				libtcod.console_print_ex(cmd_menu_con, 12, 2, libtcod.BKGND_NONE,
 					libtcod.CENTER, text)
 				
-				# TODO: display current support status: ranging in, ranged in; in transit, on attack run
+				# FUTURE: display current support status: ranging in, ranged in; in transit, on attack run
 				
 				# display support status or commands
 				if self.support_status is not None:

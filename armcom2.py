@@ -2737,6 +2737,7 @@ class CampaignDay:
 					libtcod.console_print(cd_command_con, 1, 3, 'Strength: ' + str(map_hex.enemy_strength))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
+			# calculate travel time
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			text = 'Travel Time: '
 			if self.selected_direction in map_hex.dirt_roads:
@@ -3173,7 +3174,7 @@ class CampaignDay:
 						# do sound effect
 						PlaySoundFor(campaign.player_unit, 'movement')
 					
-						# advance clock
+						# calculate travel time and advance clock
 						if self.selected_direction in map_hex1.dirt_roads:
 							mins = 10
 						else:
@@ -3395,6 +3396,7 @@ class Session:
 	def LoadMainTheme(self):
 		global main_theme
 		main_theme = mixer.Mix_LoadMUS((SOUNDPATH + 'armcom2_theme.ogg').encode('ascii'))
+		mixer.Mix_VolumeMusic(80)
 
 
 

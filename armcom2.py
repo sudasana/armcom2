@@ -4749,7 +4749,7 @@ class Unit:
 		
 		if no_enemy: return
 		
-		for unit in scenario.unit_list:
+		for unit in scenario.units:
 			if unit.owning_player == self.owning_player: continue
 			for weapon in unit.weapon_list:
 				if weapon.acquired_target is None: continue

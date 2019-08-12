@@ -5972,8 +5972,7 @@ class Scenario:
 			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
 			if target_hex is None: return
 			ShowMessage('Friendly air forces launch an attack!')
-			self.support_target.hx = target_hex.hx
-			self.support_target.hy = target_hex.hy
+			self.support_target = target_hex
 			self.AirAttack()
 			self.ResetSupport()
 			
@@ -5985,8 +5984,7 @@ class Scenario:
 			if campaign_day.arty_support_level <= 0.0: return
 			if target_hex is None: return
 			ShowMessage('Friendly artillery forces fire a bombardment!')
-			self.support_target.hx = target_hex.hx
-			self.support_target.hy = target_hex.hy
+			self.support_target = target_hex
 			self.ArtilleryAttack()
 			self.ResetSupport()
 			
@@ -7882,7 +7880,6 @@ class Scenario:
 				target.DestroyMe()
 				ShowMessage(target.GetName() + ' was destroyed by air attack')
 				
-				target_list.remove(target)
 				
 		if not results:
 			ShowMessage('Air attack had no effect.')

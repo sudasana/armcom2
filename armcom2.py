@@ -1756,14 +1756,14 @@ class CampaignDay:
 		
 		# set odds of each possible oocurance based on current day mission
 		if campaign.today['mission'] == 'Advance':
-			friendly_capture_odds = 55.0
-			enemy_capture_odds = 10.0
+			friendly_capture_odds = 45.0
+			enemy_capture_odds = 5.0
 		elif campaign.today['mission'] == 'Battle':
-			friendly_capture_odds = 40.0
-			enemy_capture_odds = 40.0
+			friendly_capture_odds = 20.0
+			enemy_capture_odds = 20.0
 		elif campaign.today['mission'] == 'Fighting Withdrawl':
-			friendly_capture_odds = 10.0
-			enemy_capture_odds = 65.0
+			friendly_capture_odds = 5.0
+			enemy_capture_odds = 45.0
 		# no other missions for now
 		else:
 			return

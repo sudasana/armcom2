@@ -6750,7 +6750,12 @@ class Scenario:
 						mod = PF_SIZE_MOD[size_class]
 						modifier_list.append((text, mod))
 				
-		# FUTURE: Commander directing fire
+				# gun shield
+				if target.GetStat('gun_shield') is not None:
+					if GetFacing(attacker, target) == 'Front':
+						modifier_list.append(('Gun Shield', -15.0))
+				
+		# TODO: Commander directing fire
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]

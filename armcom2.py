@@ -7529,12 +7529,12 @@ class Scenario:
 		
 		# set time of arrival silently
 		hour = campaign_day.day_clock['hour']
-		minute = campaign_day.day_clock['minute'] + libtcod.random_get_int(0, 2, 10)
+		minute = campaign_day.day_clock['minute'] + libtcod.random_get_int(0, 6, 10)
 		if minute > 59:
 			hour += 1
 			minute -= 60
 		self.support_arrival_time = (hour, minute)
-		print('DEBUG: set support arrival time to ' + str(self.support_arrival_time))
+		#print('DEBUG: set support arrival time to ' + str(self.support_arrival_time))
 		
 	
 	# do an artillery attack against a target hex

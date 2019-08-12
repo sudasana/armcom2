@@ -1300,6 +1300,22 @@ class CampaignDay:
 			'rain_active' : False,
 			'rain_drops' : []
 		}
+	
+	
+	# calculate required tarvel time in minutes from one zone to another
+	def CalculateTravelTime(self, hx1, hy1, hx2, hy2):
+		
+		# check for road link
+		direction = self.GetDirectionToAdjacentCD(hx1, hy1, hx2, hy2)
+		if direction in self.map_hexes[(hx1,hy1)].dirt_roads:
+			mins = 10
+		else:
+			mins = 15
+		
+		# check ground conditions
+		if self.weather['Ground'] == 'Muddy':
+			mins = mins * 2
+		return mins
 		
 	
 	# increments one of the combat day records, also increments campaign record
@@ -2712,12 +2728,12 @@ class CampaignDay:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 				libtcod.console_print(cd_command_con, 3, 12, 'Select a direction')
 				return
-			(hx, hy) = self.player_unit_location
-			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
-			if (hx, hy) not in self.map_hexes: return
+			(hx1, hy1) = self.player_unit_location
+			(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, self.selected_direction)
+			if (hx2, hy2) not in self.map_hexes: return
 				
 			# display enemy strength/organization if any and chance of encounter
-			map_hex = self.map_hexes[(hx,hy)]
+			map_hex = self.map_hexes[(hx2,hy2)]
 			if map_hex.controlled_by == 1:
 				
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
@@ -2735,17 +2751,10 @@ class CampaignDay:
 					libtcod.console_print(cd_command_con, 1, 3, 'Strength: ' + str(map_hex.enemy_strength))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
-			# calculate travel time
+			# calculate and display travel time
+			mins = self.CalculateTravelTime(hx1, hy1, hx2, hy2)
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			text = 'Travel Time: '
-			if self.selected_direction in map_hex.dirt_roads:
-				mins = 10
-			else:
-				mins = 15
-			if self.weather['Ground'] == 'Muddy':
-				mins = mins * 2
-			text += str(mins) + ' mins.'
-			libtcod.console_print(cd_command_con, 1, 5, text)
+			libtcod.console_print(cd_command_con, 1, 5, 'Travel Time: ' + str(mins) + ' mins.')
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			libtcod.console_print(cd_command_con, 5, 22, 'Enter')
@@ -3126,12 +3135,16 @@ class CampaignDay:
 				
 				# wait/defend
 				if key_char == 'w':
-					ShowMessage('You remain in place, ready for possible attack.')
-					campaign_day.AdvanceClock(0, 15)
-					DisplayTimeInfo(time_con)
-					self.CheckForRandomEvent()
-					self.CheckForZoneCapture()
-					SaveGame()
+					
+					if ShowNotification('Remain in place for 15 minutes?', confirm=True):
+						ShowMessage('You remain in place, ready for possible attack.')
+						self.selected_direction = None
+						campaign_day.AdvanceClock(0, 15)
+						DisplayTimeInfo(time_con)
+						self.UpdateCDDisplay()
+						self.CheckForRandomEvent()
+						self.CheckForZoneCapture()
+						SaveGame()
 					continue
 				
 				# recon or proceed with travel
@@ -3141,12 +3154,12 @@ class CampaignDay:
 					if self.selected_direction is None: continue
 					
 					# ensure that travel/recon is possible
-					(hx, hy) = self.player_unit_location
-					map_hex1 = self.map_hexes[(hx,hy)]
-					(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
-					if (hx, hy) not in self.map_hexes:
+					(hx1, hy1) = self.player_unit_location
+					#map_hex1 = self.map_hexes[(hx1,hy1)]
+					(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, self.selected_direction)
+					if (hx2, hy2) not in self.map_hexes:
 						continue
-					map_hex2 = self.map_hexes[(hx,hy)]
+					map_hex2 = self.map_hexes[(hx2,hy2)]
 					
 					# recon
 					if key_char == 'r':
@@ -3164,7 +3177,6 @@ class CampaignDay:
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()
 						self.CheckForRandomEvent()
-						#self.CheckForZoneCapture()
 						
 					# proceed with travel
 					else:
@@ -3173,17 +3185,11 @@ class CampaignDay:
 						PlaySoundFor(campaign.player_unit, 'movement')
 					
 						# calculate travel time and advance clock
-						if self.selected_direction in map_hex1.dirt_roads:
-							mins = 10
-						else:
-							mins = 15
-						if campaign_day.weather['Ground'] == 'Muddy':
-							mins = mins * 2
+						mins = self.CalculateTravelTime(hx1,hy1,hx2,hy2)
 						campaign_day.AdvanceClock(0, mins)
 						
 						# set new player location and clear travel direction
-						#print('DEBUG: moving player to ' + str(hx) + ',' + str(hy))
-						self.player_unit_location = (hx, hy)
+						self.player_unit_location = (hx2, hy2)
 						self.selected_direction = None
 						
 						# FUTURE: save direction from which player entered zone

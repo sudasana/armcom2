@@ -3220,7 +3220,7 @@ class CampaignDay:
 								continue
 							
 							ShowMessage('You find no resistance and gain control of the area.')
-							self.map_hexes[(hx,hy)].CaptureMe(0)
+							self.map_hexes[(hx2,hy2)].CaptureMe(0)
 							campaign_day.encounter_mod += 30.0
 						
 						# entering a friendly zone

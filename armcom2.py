@@ -3983,7 +3983,7 @@ class Weapon:
 		else:
 			self.acquired_target = (target, 0)
 		
-		print('DEBUG: ' + self.stats['name'] + ' on ' + self.unit.unit_id + ' has ' + target.unit_id + ' as AC')
+		#print('DEBUG: ' + self.stats['name'] + ' on ' + self.unit.unit_id + ' has ' + target.unit_id + ' as AC')
 	
 	
 	# calculate the map hexes covered by this weapon
@@ -4742,7 +4742,7 @@ class Unit:
 	# if no_enemy, enemy units retain AC on this unit
 	def ClearAcquiredTargets(self, no_enemy=False):
 		
-		print('DEBUG: Clearing AC for ' + self.unit_id)
+		#print('DEBUG: Clearing AC for ' + self.unit_id)
 		
 		for weapon in self.weapon_list:
 			weapon.acquired_target = None

@@ -253,7 +253,7 @@ PF_BASE_CHANCE = [
 	[58.0, 35.0]			# 3 hex range
 ]
 
-# bonus for level 1 and level 2 acquired target
+# bonus for level 1 and level 2 acquired target for point fire
 AC_BONUS = [10.0, 25.0]
 
 # modifier for target size if target is known
@@ -277,8 +277,6 @@ FP_CRIT_EFFECT = 0.1		# multipler for critical effect
 RESOLVE_FP_BASE_CHANCE = 5.0	# base chance of a 1 firepower attack destroying a unit
 RESOLVE_FP_CHANCE_STEP = 5.0	# each additional firepower beyond 1 adds this additional chance
 RESOLVE_FP_CHANCE_MOD = 1.05	# additional firepower modifier increased by this much beyond 1
-
-ARTY_BASE_SPOT_CHANCE = 50.0	# base chance of ranging in with an artillery support attack
 
 MORALE_CHECK_BASE_CHANCE = 70.0	# base chance of passing a morale check
 
@@ -3487,7 +3485,7 @@ class Personnel:
 				self.stats[key] = 5
 	
 	
-	# return the effective modifier for a given action, based on relavent stat and current status
+	# return the effective modifier for a given action, based on relevant stat and current status
 	def GetActionMod(self, action_type):
 		
 		modifier = 0.0
@@ -3504,6 +3502,10 @@ class Personnel:
 				modifier = modifier * 0.5
 		elif action_type == 'Direct Movement':
 			modifier = float(self.stats['Knowledge']) * 2.0
+			if not self.ce:
+				modifier = modifier * 0.5
+		elif action_type == 'Direct Fire':
+			modifier = float(self.stats['Knowledge']) * 2.5
 			if not self.ce:
 				modifier = modifier * 0.5
 		
@@ -4825,7 +4827,7 @@ class Unit:
 		if driver_attempt:
 			crewman = self.GetPersonnelByPosition('Driver')
 			if crewman is not None:
-				crewman.GetActionMod('Attempt HD')
+				chance += crewman.GetActionMod('Attempt HD')
 			for position in ['Commander', 'Commander/Gunner']:
 				crewman = self.GetPersonnelByPosition(position)
 				if crewman is None: continue
@@ -6755,7 +6757,15 @@ class Scenario:
 					if GetFacing(attacker, target) == 'Front':
 						modifier_list.append(('Gun Shield', -15.0))
 				
-		# TODO: Commander directing fire
+		# check for Commander directing fire
+		for position in ['Commander']:
+			crewman = self.player_unit.GetPersonnelByPosition(position)
+			if crewman is None: continue
+			if crewman.current_cmd == 'Direct Fire':
+				mod = crewman.GetActionMod('Direct Fire')
+				if mod > 0.0:
+					modifier_list.append(('Commander', 0.0 - mod)) 
+					break
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -7896,6 +7906,14 @@ class Scenario:
 		else:
 			chance = scenario.player_unit.reverse_move_chance
 		roll = GetPercentileRoll()
+		
+		# check for crew action modifier
+		for position in ['Commander', 'Commander/Gunner']:
+			crewman = self.player_unit.GetPersonnelByPosition(position)
+			if crewman is None: continue
+			if crewman.current_cmd == 'Direct Movement':
+				chance += crewman.GetActionMod('Direct Movement')
+				break
 		
 		# check for debug flag
 		if DEBUG:
@@ -9092,7 +9110,6 @@ class Scenario:
 		libtcod.console_blit(status_con, 0, 0, 0, 0, con, 71, 48)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		#libtcod.console_flush()
 	
 	
 	# main input loop for scenarios

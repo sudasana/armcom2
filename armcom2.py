@@ -1752,8 +1752,6 @@ class CampaignDay:
 		
 		global scenario
 		
-		#print('DEBUG: Starting zone capture check')
-		
 		# set odds of each possible oocurance based on current day mission
 		if campaign.today['mission'] == 'Advance':
 			friendly_capture_odds = 45.0
@@ -2265,7 +2263,7 @@ class CampaignDay:
 				
 				# no possible links!
 				if len(link_list) == 0:
-					print('DEBUG: no possible links for ' + str(hx1) + ',' + str(hy1))
+					#print('DEBUG: no possible links for ' + str(hx1) + ',' + str(hy1))
 					continue
 				
 				# sort the list by distance and get the nearest one
@@ -3797,7 +3795,7 @@ class Personnel:
 			if position.hatch_group == self.current_position.hatch_group:
 				# set the hatch to this one's current status
 				position.hatch_open = self.current_position.hatch_open
-				print('DEBUG: Toggled a linked hatch')
+				#print('DEBUG: Toggled a linked hatch')
 				# set CE status for crewman in position with linked hatch
 				if position.crewman is not None:
 					position.crewman.SetCEStatus()
@@ -4617,8 +4615,6 @@ class Unit:
 			
 			if roll <= 10.0:
 				self.smoke -= 1
-				#print('DEBUG: smoke disperses around ' + self.unit_id)
-				
 				if self == scenario.player_unit:
 					if self.smoke == 1:
 						ShowMessage('The smoke concealing you thins out.')
@@ -4741,8 +4737,6 @@ class Unit:
 	# clear any acquired target from this unit, and clear it from any enemy unit
 	# if no_enemy, enemy units retain AC on this unit
 	def ClearAcquiredTargets(self, no_enemy=False):
-		
-		#print('DEBUG: Clearing AC for ' + self.unit_id)
 		
 		for weapon in self.weapon_list:
 			weapon.acquired_target = None
@@ -5540,6 +5534,11 @@ class Unit:
 				# armoured target
 				elif target.GetStat('armour') is not None:
 					target.ap_hits_to_resolve.append(profile)
+			
+			# update context console in case we maintained RoF
+			scenario.UpdateContextCon()
+			scenario.UpdateScenarioDisplay()
+			
 		
 		# turn off attack console display if any
 		scenario.attack_con_active = False
@@ -7668,6 +7667,9 @@ class Scenario:
 		
 		if not results:
 			ShowMessage('Artillery attack had no effect.')
+		if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
+			ShowMessage('All targets destroyed, ending attack.')
+			self.ResetSupport()
 	
 	
 	# attempt an air attack against the support attack target hex
@@ -7769,7 +7771,7 @@ class Scenario:
 		
 		# create bomb animation
 		self.animation['bomb_effect'] = (x, y2+direction)
-		self.animation['bomb_effect_lifetime'] = 16
+		self.animation['bomb_effect_lifetime'] = 14
 		
 		# let animation run
 		while self.animation['bomb_effect'] is not None:
@@ -7883,6 +7885,9 @@ class Scenario:
 				
 		if not results:
 			ShowMessage('Air attack had no effect.')
+		if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
+			ShowMessage('All targets destroyed, ending attack.')
+			self.ResetSupport()
 		
 		# clean up
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -8016,7 +8021,7 @@ class Scenario:
 				if new_hx == 0 and new_hy == 0:
 					(new_hx, new_hy) = GetAdjacentHex(0, 0, direction)
 				self.support_target = self.hex_dict[(new_hx, new_hy)]
-				print('DEBUG: moved support target')
+				#print('DEBUG: moved support target')
 		
 		# set new hex location for each moving unit and move into new hex stack
 		for unit in self.units:
@@ -8090,6 +8095,7 @@ class Scenario:
 					unit.hull_down[i] = ConstrainDir(unit.hull_down[i] + f)
 		
 		self.UpdatePlayerInfoCon()
+		self.UpdateGuiCon()
 		self.UpdateUnitCon()
 		
 		# pivot player HD if any
@@ -8339,7 +8345,7 @@ class Scenario:
 				
 				# check that support arrival time has been hit
 				(hour, minute) = self.support_arrival_time
-				if hour < campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute >= campaign_day.day_clock['minute']):
+				if hour < campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute <= campaign_day.day_clock['minute']):
 					if self.support_status == 'Artillery inbound':
 						ShowMessage('Artillery attack begins.')
 						self.ArtilleryAttack()
@@ -8882,8 +8888,9 @@ class Scenario:
 		libtcod.console_print(scen_info_con, 1, 11, self.cd_map_hex.terrain_type)
 	
 	
-	# update the tank/crew status console, which displays urgent information for the player
+	# update the tank/crew status console
 	# 18x11
+	# FUTURE: display urgent information for the player here
 	def UpdateStatusCon(self):
 		libtcod.console_clear(status_con)
 		

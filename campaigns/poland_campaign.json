@@ -20,9 +20,9 @@
 	],
 	"decorations_list" : {
 		"20" : "Iron Cross Second Class",
-		"40" : "Iron Cross First Class",
-		"50" : "Knight's Cross",
-		"60" : "Knight's Cross with Oak Leaves"
+		"30" : "Iron Cross First Class",
+		"40" : "Knight's Cross",
+		"50" : "Knight's Cross with Oak Leaves"
 	},
 	"calendar": [
 		{

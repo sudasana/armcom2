@@ -3509,7 +3509,7 @@ class Personnel:
 			if not self.ce:
 				modifier = modifier * 0.5
 		elif action_type == 'Direct Fire':
-			modifier = float(self.stats['Knowledge']) * 2.5
+			modifier = float(self.stats['Knowledge']) * 3.5
 			if not self.ce:
 				modifier = modifier * 0.5
 		
@@ -6762,12 +6762,12 @@ class Scenario:
 				
 		# check for Commander directing fire
 		for position in ['Commander']:
-			crewman = self.player_unit.GetPersonnelByPosition(position)
+			crewman = attacker.GetPersonnelByPosition(position)
 			if crewman is None: continue
 			if crewman.current_cmd == 'Direct Fire':
 				mod = crewman.GetActionMod('Direct Fire')
 				if mod > 0.0:
-					modifier_list.append(('Commander', 0.0 - mod)) 
+					modifier_list.append(('Cmdr Direction', mod)) 
 					break
 		
 		# save the list of modifiers

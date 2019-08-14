@@ -1834,9 +1834,15 @@ class CampaignDay:
 			if len(hex_list) > 0:
 				
 				(hx, hy) = choice(hex_list)
+				
+				# in FW mission, more likely that player zone is attacked
+				if campaign.today['mission'] == 'Fighting Withdrawl':
+					if (hx, hy) != self.player_unit_location:
+						(hx, hy) = choice(hex_list)
+				
 				self.map_hexes[(hx,hy)].CaptureMe(1)
 				
-				if hx == player_hx and hy == player_hy:
+				if (hx, hy) == self.player_unit_location:
 					# player is present, trigger a scenario
 					ShowMessage('Enemy forces attack your area!')
 					map_hex = self.map_hexes[(hx,hy)]

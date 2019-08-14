@@ -1165,7 +1165,10 @@ class CampaignDay:
 		campaign.player_squad_num = campaign.player_squad_max
 		
 		# victory point rewards for this campaign day
-		self.capture_zone_vp = 2
+		if campaign.today['mission'] == 'Fighting Withdrawl':
+			self.capture_zone_vp = 3
+		else:
+			self.capture_zone_vp = 2
 		self.unit_destruction_vp = {
 			'Infantry': 1,
 			'Gun' : 2,
@@ -1761,7 +1764,7 @@ class CampaignDay:
 			enemy_capture_odds = 20.0
 		elif campaign.today['mission'] == 'Fighting Withdrawl':
 			friendly_capture_odds = 5.0
-			enemy_capture_odds = 45.0
+			enemy_capture_odds = 75.0
 		# no other missions for now
 		else:
 			return

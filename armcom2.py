@@ -6014,7 +6014,7 @@ class Scenario:
 			for unit in self.units:
 				if not unit.alive: continue
 				if unit.owning_player == 0: continue
-				if unit.GetStat('category') == 'Train Car': continue
+				if unit.GetStat('category') in ['Gun', 'Train Car']: continue
 				if unit.ai is None: continue		# probably not needed but safer
 				if unit.ai.recall: continue
 				unit_list.append(unit)

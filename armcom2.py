@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.6.0 RC1'					# game version
+VERSION = '0.6.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2272,7 +2272,6 @@ class CampaignDay:
 				
 				# no possible links!
 				if len(link_list) == 0:
-					#print('DEBUG: no possible links for ' + str(hx1) + ',' + str(hy1))
 					continue
 				
 				# sort the list by distance and get the nearest one
@@ -3527,10 +3526,7 @@ class Personnel:
 			modifier = modifer * 0.5
 		
 		modifier = round(modifier, 1)
-		
-		#print('DEBUG: action modifier for ' + self.GetFullName() + ' doing ' + action_type +
-		#	' is: ' + str(modifier))
-		
+				
 		return modifier 
 	
 	# check to see whether this personnel is wounded/KIA and return result if any
@@ -3583,8 +3579,6 @@ class Personnel:
 		# unmodified 99.0-100.0 always counts as KIA, otherwise modifier is applied
 		if roll < 99.0:
 			roll += modifier
-
-		#print('DEBUG: final modified wound roll was: ' + str(roll))
 
 		if roll < 45.0:
 			
@@ -3698,10 +3692,7 @@ class Personnel:
 
 	# check for recovery from any current status
 	def DoRecoveryCheck(self):
-		if self.status == '': return
-		if self.status == 'Dead': return
-		
-		#print('DEBUG: doing recovery roll for ' + self.GetFullName())
+		if self.status in ['', 'Dead']: return
 		
 		roll = GetPercentileRoll()
 		if self.status == 'Unconscious': roll += 15.0
@@ -3804,7 +3795,6 @@ class Personnel:
 			if position.hatch_group == self.current_position.hatch_group:
 				# set the hatch to this one's current status
 				position.hatch_open = self.current_position.hatch_open
-				#print('DEBUG: Toggled a linked hatch')
 				# set CE status for crewman in position with linked hatch
 				if position.crewman is not None:
 					position.crewman.SetCEStatus()
@@ -3989,8 +3979,6 @@ class Weapon:
 		# same or new target
 		else:
 			self.acquired_target = (target, 0)
-		
-		#print('DEBUG: ' + self.stats['name'] + ' on ' + self.unit.unit_id + ' has ' + target.unit_id + ' as AC')
 	
 	
 	# calculate the map hexes covered by this weapon
@@ -4407,7 +4395,6 @@ class AI:
 				
 				# special: player squad cannot pivot
 				if pivot_req and self.owner in scenario.player_unit.squad:
-					#print ('DEBUG: discarded an attack because player squad member would have to pivot')
 					continue
 				
 				# set ammo type if required
@@ -5615,8 +5602,6 @@ class Unit:
 					# player was target
 					if self == scenario.player_unit:
 						
-						#print('DEBUG: doing stun tests')
-						
 						for position in self.positions_list:
 							if position.crewman is None: continue
 							position.crewman.DoStunCheck(AP_STUN_MARGIN - difference)
@@ -5658,8 +5643,6 @@ class Unit:
 	# resolve FP on this unit if any
 	def ResolveFP(self):
 		if self.fp_to_resolve == 0: return
-		
-		#print('DEBUG: resolving ' + str(self.fp_to_resolve) + ' fp on ' + self.unit_id)
 		
 		# move to top of hex stack
 		self.MoveToTopOfStack()
@@ -5703,8 +5686,6 @@ class Unit:
 		
 		# restrict final chances
 		base_chance = RestrictChance(base_chance)
-		
-		#print('DEBUG: chance to destroy: ' + str(base_chance) + '%')
 		
 		# roll for effect
 		roll = GetPercentileRoll()
@@ -5819,7 +5800,6 @@ class Unit:
 			elif self in scenario.player_unit.squad:
 				
 				campaign.player_squad_num -= 1
-				#print('DEBUG: decreased player squad size, now ' + str(campaign.player_squad_num))
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
@@ -7449,8 +7429,6 @@ class Scenario:
 				if unit.owning_player == 1:
 					self.support_target_list.append(map_hex)
 					break
-		
-		#print('DEBUG: ' + str(len(self.support_target_list)) + ' possible support targets')
 	
 	
 	# select the next or previous support target hex
@@ -7542,7 +7520,6 @@ class Scenario:
 			hour += 1
 			minute -= 60
 		self.support_arrival_time = (hour, minute)
-		#print('DEBUG: set support arrival time to ' + str(self.support_arrival_time))
 		
 	
 	# do an artillery attack against a target hex
@@ -8030,7 +8007,6 @@ class Scenario:
 				if new_hx == 0 and new_hy == 0:
 					(new_hx, new_hy) = GetAdjacentHex(0, 0, direction)
 				self.support_target = self.hex_dict[(new_hx, new_hy)]
-				#print('DEBUG: moved support target')
 		
 		# set new hex location for each moving unit and move into new hex stack
 		for unit in self.units:

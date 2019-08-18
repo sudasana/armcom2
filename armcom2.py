@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.6.0'					# game version
+VERSION = '1.0.0-beta.1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -11056,6 +11056,8 @@ mouse = libtcod.Mouse()
 key = libtcod.Key()
 
 
+
+
 ##########################################################################################
 #                                        Main Menu                                       #
 ##########################################################################################
@@ -11069,14 +11071,10 @@ TANK_IMAGES = [
 	'unit_t26_m39.xp', 'unit_bt5_m34.xp', 'unit_bt7_m37.xp', 'unit_t28_m34.xp'
 ]
 libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
+
 # display version number and program info
-libtcod.console_set_default_foreground(main_title, libtcod.red)
-libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-13, libtcod.BKGND_NONE,
-	libtcod.CENTER, 'Development Build!')
-libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-12, libtcod.BKGND_NONE,
-	libtcod.CENTER, 'Has bugs and incomplete features')
 libtcod.console_set_default_foreground(main_title, libtcod.light_grey)
-libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-10, libtcod.BKGND_NONE,
+libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
 	libtcod.CENTER, VERSION)
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-4,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2019')

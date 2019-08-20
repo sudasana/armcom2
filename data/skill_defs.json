@@ -1,0 +1,9 @@
+{
+	"Sample": {
+		"desc" : "A sample skill, doesn't actually do anything.",
+		"position_list" : [],
+		"mod_type" : "percent",
+		"levels" : ["10", "15", "20"]
+	}
+	
+}

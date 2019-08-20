@@ -478,6 +478,10 @@ BASE_WEATHER_UPDATE_CLOCK = 30
 class Campaign:
 	def __init__(self):
 		
+		# load skills from JSON file - they won't change over the course of a campaign
+		with open(DATAPATH + 'skill_defs.json', encoding='utf8') as data_file:
+			self.skills = json.load(data_file)
+		
 		self.logs = {}			# dictionary of logs, organized by combat day
 		self.player_unit = None		# placeholder for player unit
 		self.player_squad_max = 0	# maximum units in player squad
@@ -3463,8 +3467,8 @@ class Personnel:
 			'Knowledge' : 3,
 			'Morale' : 3
 		}
-		self.SetStats()
-		
+		self.SetStats()					# generate initial stat levels
+		self.skills = {}				# placeholder for skills
 		self.exp = 0					# experience points
 		
 		# advance points
@@ -3561,8 +3565,19 @@ class Personnel:
 				text = self.status
 			libtcod.console_print(crewman_menu_con, 39, 21, text)
 			
-			# TODO: list of crew skills
-			# add an extra line at the end for player to add a new skill
+			# list of crew skills
+			y = 23
+			n = 0
+			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
+			for key, value in self.skills.items():
+				y += 1
+				n += 1
+			libtcod.console_print(crewman_menu_con, 39, y, '[Add New Skill]')
+			
+			# highlight selected skill
+			libtcod.console_set_default_background(crewman_menu_con, HIGHLIGHT_MENU_COL)
+			libtcod.console_rect(crewman_menu_con, 39, 23 + selected_skill, 21, 1, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
 			
 			# current experience and advance points
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.darkest_grey)

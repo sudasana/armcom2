@@ -1,9 +1,60 @@
 {
-	"Sample": {
-		"desc" : "A sample skill, doesn't actually do anything.",
-		"position_list" : [],
+	"Fire Direction": {
+		"desc" : "Increases modifier when on Direct Fire action.",
+		"position_list" : ["Commander"],
 		"mod_type" : "percent",
-		"levels" : ["10", "15", "20"]
+		"levels" : ["5", "10", "15"]
+	},
+	"Driver Direction": {
+		"desc" : "Increases modifier when on Direct Movement action.",
+		"position_list" : ["Commander"],
+		"mod_type" : "percent",
+		"levels" : ["5", "10", "15"]
+	},
+	"Quick Trigger": {
+		"desc" : "Higher chance of maintaining Rate of Fire when firing a Gun.",
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
+		"mod_type" : "percent",
+		"levels" : ["3", "6", "10"]
+	},
+	"Knows Weak Spots": {
+		"desc" : "Higher chance of scoring a Critical Hit when firing a Gun.",
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
+		"mod_type" : "percent",
+		"levels" : ["3", "6", "10"]
+	},
+	"Target Tracker": {
+		"desc" : "Lower penalty when firing at a moving vehicle target.",
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
+		"mod_type" : "percent",
+		"levels" : ["5", "10", "15"]
+	},
+	"Fast Hands": {
+		"desc" : "Higher chance of maintaining Rate of Fire when reloading a Gun.",
+		"position_list" : ["Loader"],
+		"mod_type" : "percent",
+		"levels" : ["5", "10", "15"]
+	},
+	"Quick Shifter": {
+		"desc" : "Higher chance of a successful Move Forward or Backward action.",
+		"position_list" : ["Driver"],
+		"mod_type" : "percent",
+		"levels" : ["5", "10", "15"]
+	},
+	"Eye for Cover": {
+		"desc" : "When hatch is open, bonus to achieve Hull Down status after moving.",
+		"position_list" : ["Driver"],
+		"mod_type" : "percent",
+		"levels" : ["5", "10", "15"]
+	},
+	"Eagle Eyed": {
+		"desc" : "When hatch is open, bonus to spot and identify enemy units.",
+		"mod_type" : "percent",
+		"levels" : ["5", "10", "15"]
+	},
+	"Gymnast": {
+		"desc" : "Bonus to successfully bail out.",
+		"mod_type" : "percent",
+		"levels" : ["20", "40"]
 	}
-	
 }

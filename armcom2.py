@@ -7318,33 +7318,35 @@ class Scenario:
 		# check to see if this weapon maintains Rate of Fire
 		def CheckRoF(profile):
 			
+			bonus = 0.0
+			
 			if profile['weapon'].GetStat('type') == 'Gun':
-			
-				# guns must have a Loader on proper order to get RoF
-				position_list = profile['weapon'].GetStat('reloaded_by')
-				if position_list is None:
-					return False
 				
-				crewman_found = False
-				for position in position_list:
-					crewman = profile['attacker'].GetPersonnelByPosition(position)
-					if crewman is None: continue
-					if crewman.current_cmd != 'Reload': continue
-					crewman_found = True
-					break
-				
-				if not crewman_found:
-					return False
-			
 				# guns must have at least one shell of the current type available
 				if profile['weapon'].ammo_type is not None:
 					if profile['weapon'].ammo_stores[profile['weapon'].ammo_type] == 0:
 						return False
+				
+				# if guns have a Loader on proper order, bonus is applied
+				crewman_found = False
+				
+				position_list = profile['weapon'].GetStat('reloaded_by')
+				if position_list is not None:
+					for position in position_list:
+						crewman = profile['attacker'].GetPersonnelByPosition(position)
+						if crewman is None: continue
+						if crewman.current_cmd != 'Reload': continue
+						crewman_found = True
+						break
+				
+				if crewman_found:
+					bonus = 10.0
 			
-			base_chance = float(profile['weapon'].GetStat('rof'))
-			roll = GetPercentileRoll()
+			# TODO: check for skill bonus from gunner
 			
-			if roll <= base_chance:
+			roll = GetPercentileRoll() - bonus
+			
+			if roll <= float(profile['weapon'].GetStat('rof')):
 				return True
 			return False
 		

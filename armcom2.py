@@ -131,6 +131,7 @@ CAMPAIGN_DAY_HEXES = [
 KEY_COLOR = libtcod.Color(255, 0, 255)			# key color for transparency
 ACTION_KEY_COL = libtcod.Color(51, 153, 255)		# colour for key commands
 HIGHLIGHT_MENU_COL = libtcod.Color(30, 70, 130)		# background highlight colour for selected menu option
+TITLE_COL = libtcod.Color(102, 178, 255)		# menu titles
 PORTRAIT_BG_COL = libtcod.Color(217, 108, 0)		# background color for unit portraits
 UNKNOWN_UNIT_COL = libtcod.grey				# unknown enemy unit display colour
 ENEMY_UNIT_COL = libtcod.Color(255, 20, 20)		# known "
@@ -916,9 +917,19 @@ class Campaign:
 				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
 				libtcod.console_print(calendar_cmd_con, 11, 18, 'End Day')
 		
-		# crew
+		# crew menu
 		elif self.active_calendar_menu == 2:
-			pass
+			
+			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+			libtcod.console_print(calendar_cmd_con, 1, 4, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(calendar_cmd_con, 1, 5, EnKey('f').upper())
+			libtcod.console_print(calendar_cmd_con, 1, 6, 'N')
+			
+			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+			libtcod.console_print(calendar_cmd_con, 5, 4, 'Select Position')
+			libtcod.console_print(calendar_cmd_con, 5, 5, 'Crewman Menu')
+			libtcod.console_print(calendar_cmd_con, 5, 6, 'Set Nickname')
+			
 		
 		# tank
 		elif self.active_calendar_menu == 3:
@@ -930,7 +941,7 @@ class Campaign:
 	
 	
 	# update the main calendar display panel
-	def UpdateCCMainPanel(self):
+	def UpdateCCMainPanel(self, selected_position):
 		libtcod.console_clear(calendar_main_panel)
 		
 		# proceed menu - show summary of expected day
@@ -991,6 +1002,10 @@ class Campaign:
 				libtcod.console_print(calendar_main_panel, x, y1, line)
 				y1+=1
 				if y1 == y+24: break
+		
+		# crew menu - show list of crewmen
+		elif self.active_calendar_menu == 2:
+			DisplayCrew(campaign.player_unit, calendar_main_panel, 18, 8, selected_position)
 	
 	
 	# update the display of the campaign calendar interface
@@ -1013,8 +1028,10 @@ class Campaign:
 		
 		# consoles for campaign calendar interface
 		global calendar_bkg, day_outline, calendar_cmd_con, calendar_main_panel
-	
 		global campaign_day
+		
+		# selected crew position
+		selected_position = 0
 		
 		# create consoles
 		calendar_bkg = LoadXP('calendar_bkg.xp')
@@ -1025,7 +1042,7 @@ class Campaign:
 		# generate consoles for the first time
 		self.UpdateDayOutlineCon()
 		self.UpdateCalendarCmdCon()
-		self.UpdateCCMainPanel()
+		self.UpdateCCMainPanel(selected_position)
 		
 		# not moving directly into the campaign day loop
 		if campaign_day is None:
@@ -1091,7 +1108,7 @@ class Campaign:
 				if self.active_calendar_menu != int(key_char):
 					self.active_calendar_menu = int(key_char)
 					self.UpdateCalendarCmdCon()
-					self.UpdateCCMainPanel()
+					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 				continue
 			
@@ -1122,7 +1139,31 @@ class Campaign:
 			
 			# crew menu active
 			elif self.active_calendar_menu == 2:
-				pass
+				
+				# select different crew position
+				if key_char in ['w', 's']:
+					if key_char == 'w':
+						selected_position -= 1
+						if selected_position < 0:
+							selected_position = len(campaign.player_unit.positions_list) - 1
+				
+					else:
+						selected_position += 1
+						if selected_position == len(campaign.player_unit.positions_list):
+							selected_position = 0
+				
+					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCDisplay()
+					continue
+				
+				# open crew menu
+				elif key_char == 'f':
+					crewman = campaign.player_unit.positions_list[selected_position].crewman
+					if crewman is None: continue
+					crewman.ShowCrewmanMenu()
+					self.UpdateCCDisplay()
+					continue
+					
 			
 			# tank menu active
 			elif self.active_calendar_menu == 3:
@@ -3379,15 +3420,9 @@ class Session:
 		# background for attack console
 		self.attack_bkg = LoadXP('attack_bkg.xp')
 		
-		# game menu background console
-		self.game_menu_bkg = LoadXP('game_menu.xp')
-		
 		# field of view highlight on scenario hex map
 		self.scen_hex_fov = LoadXP('scen_hex_fov.xp')
 		libtcod.console_set_key_color(self.scen_hex_fov, KEY_COLOR)
-		
-		# scroll location for log
-		self.log_scroll = 0
 		
 		# animation timer, used by both the campaign day and the scenario object
 		self.anim_timer = 0.0
@@ -3430,7 +3465,13 @@ class Personnel:
 		}
 		self.SetStats()
 		
-		self.adv_points = 0				# current number of advance points
+		self.exp = 0					# experience points
+		
+		# advance points
+		if self.current_position in ['Commander', 'Commander/Gunner']:
+			self.adv = 2
+		else:
+			self.adv = 1
 		
 		self.ce = False					# crewman is exposed in a vehicle
 		self.SetCEStatus()				# set CE status
@@ -3442,6 +3483,147 @@ class Personnel:
 		self.wound = ''					# current wound: Light, Serious, or Critical
 		
 		self.bailed_out = False				# has bailed out of an AFV
+	
+	
+	# display a menu for this crewman, used for members of player's unit
+	def ShowCrewmanMenu(self):
+		
+		# update the crewman menu console
+		def UpdateCrewmanMenuCon():
+			libtcod.console_clear(crewman_menu_con)
+			
+			# frame and section dividers
+			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.grey)
+			DrawFrame(crewman_menu_con, 8, 2, 73, 56)
+			DrawFrame(crewman_menu_con, 29, 2, 32, 56)
+			libtcod.console_hline(crewman_menu_con, 30, 5, 30)
+			libtcod.console_hline(crewman_menu_con, 30, 8, 30)
+			libtcod.console_hline(crewman_menu_con, 30, 10, 30)
+			libtcod.console_hline(crewman_menu_con, 30, 12, 30)
+			libtcod.console_hline(crewman_menu_con, 30, 15, 30)
+			libtcod.console_hline(crewman_menu_con, 30, 20, 30)
+			libtcod.console_hline(crewman_menu_con, 30, 22, 30)
+			libtcod.console_hline(crewman_menu_con, 30, 49, 30)
+			
+			# main title
+			libtcod.console_set_default_background(crewman_menu_con, libtcod.darker_blue)
+			libtcod.console_rect(crewman_menu_con, 30, 3, 30, 2, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
+			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.lightest_blue)
+			libtcod.console_print(crewman_menu_con, 38, 3, 'Crewman Report')
+			
+			# section titles
+			libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
+			libtcod.console_print(crewman_menu_con, 30, 6, 'Name')
+			libtcod.console_print(crewman_menu_con, 30, 9, 'Age')
+			libtcod.console_print(crewman_menu_con, 30, 11, 'Rank')
+			libtcod.console_print(crewman_menu_con, 30, 13, 'Current')
+			libtcod.console_print(crewman_menu_con, 30, 14, 'Position')
+			libtcod.console_print(crewman_menu_con, 30, 16, 'Stats')
+			libtcod.console_print(crewman_menu_con, 30, 21, 'Status')
+			libtcod.console_print(crewman_menu_con, 30, 23, 'Skills')
+			libtcod.console_print(crewman_menu_con, 30, 50, 'Wounds')
+			
+			
+			# info
+			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
+			libtcod.console_print(crewman_menu_con, 39, 6, self.GetFullName().encode('IBM850'))
+			if self.nickname != '':
+				libtcod.console_print(crewman_menu_con, 39, 7, self.nickname)
+			# FUTURE: age and rank
+			libtcod.console_print(crewman_menu_con, 39, 13, self.unit.unit_id)
+			libtcod.console_print(crewman_menu_con, 39, 14, self.current_position.name)
+			
+			# stats
+			libtcod.console_put_char_ex(crewman_menu_con, 39, 16, chr(4), libtcod.yellow, libtcod.black)
+			libtcod.console_put_char_ex(crewman_menu_con, 39, 17, chr(3), libtcod.red, libtcod.black)
+			libtcod.console_put_char_ex(crewman_menu_con, 39, 18, chr(5), libtcod.blue, libtcod.black)
+			libtcod.console_put_char_ex(crewman_menu_con, 39, 19, chr(6), libtcod.green, libtcod.black)
+			
+			y = 16
+			for t in ['Perception', 'Morale', 'Grit', 'Knowledge', ]:
+				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
+				libtcod.console_print(crewman_menu_con, 41, y, t)
+				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
+				libtcod.console_print_ex(crewman_menu_con, 53, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(self.stats[t]))
+				y += 1
+			
+			libtcod.console_set_default_background(crewman_menu_con, libtcod.darkest_grey)
+			libtcod.console_rect(crewman_menu_con, 39, 17, 15, 1, False, libtcod.BKGND_SET)
+			libtcod.console_rect(crewman_menu_con, 39, 19, 15, 1, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
+			
+			# status
+			if self.status == '':
+				text = 'Good Order'
+			else:
+				text = self.status
+			libtcod.console_print(crewman_menu_con, 39, 21, text)
+			
+			# TODO: list of crew skills
+			# add an extra line at the end for player to add a new skill
+			
+			# current experience and advance points
+			libtcod.console_set_default_background(crewman_menu_con, libtcod.darkest_grey)
+			libtcod.console_rect(crewman_menu_con, 30, 47, 7, 2, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
+			libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
+			libtcod.console_print(crewman_menu_con, 30, 47, 'Exp')
+			libtcod.console_print(crewman_menu_con, 30, 48, 'Adv')
+			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
+			libtcod.console_print_ex(crewman_menu_con, 36, 47, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(self.exp))
+			libtcod.console_print_ex(crewman_menu_con, 36, 48, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(self.adv))
+			
+			# wounds if any
+			if self.wound == '':
+				text = 'None'
+				col = libtcod.light_grey
+			else:
+				text = self.wound
+				col = libtcod.red
+			libtcod.console_set_default_foreground(crewman_menu_con, col)
+			libtcod.console_print(crewman_menu_con, 39, 50, text)
+			
+			
+			# player commands
+			libtcod.console_set_default_foreground(crewman_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(crewman_menu_con, 10, 33, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(crewman_menu_con, 10, 34, EnKey('f').upper())
+			libtcod.console_print(crewman_menu_con, 10, 35, 'Esc')
+			
+			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
+			libtcod.console_print(crewman_menu_con, 14, 33, 'Select Skill')
+			libtcod.console_print(crewman_menu_con, 14, 34, 'Add/Improve')	
+			libtcod.console_print(crewman_menu_con, 14, 35, 'Exit Menu')
+			
+			libtcod.console_blit(crewman_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			
+		
+		global crewman_menu_con
+		crewman_menu_con = NewConsole(WINDOW_WIDTH, WINDOW_HEIGHT, libtcod.black, libtcod.white)
+		
+		selected_skill = 0				# which crew skill is currently selected
+		
+		# draw screen for first time
+		UpdateCrewmanMenuCon()
+		
+		exit_menu = False
+		while not exit_menu:
+			
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			keypress = GetInputEvent()
+			
+			if not keypress: continue
+			
+			# exit menu
+			if key.vk == libtcod.KEY_ESCAPE:
+				exit_menu = True
+				continue
+			
 	
 	
 	# generate a random first and last name for this person
@@ -10158,143 +10340,34 @@ def ShowNotification(text, confirm=False):
 # display the in-game menu: 84x54
 def ShowGameMenu():
 	
-	# draw the contents of the currently active tab to the menu console
-	def DrawMenuCon(active_tab, selected_position):
-		# blit menu background to game menu console
-		libtcod.console_blit(session.game_menu_bkg, 0, 0, 0, 0, game_menu_con, 0, 0)
+	# draw the menu console
+	def DrawMenuCon():
 		
-		# highlight active tab title
-		x1 = 2 + (active_tab * 11)
-		for x in range(x1+2, x1+5):
-			libtcod.console_set_char_foreground(game_menu_con, x, 1, ACTION_KEY_COL)
-		for x in range(x1, x1+9):
-			libtcod.console_set_char_foreground(game_menu_con, x, 2, libtcod.white)
+		# draw a frame to the game menu console
+		libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
+		DrawFrame(game_menu_con, 0, 0, 84, 54)
 		
-		# erase part of line so it appears that tab is in foreground
-		x1 = 1 + (active_tab * 11)
-		for x in range(x1, x1+10):
-			libtcod.console_put_char(game_menu_con, x, 3, chr(0))
+		# display version number and save&quit command
+		libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
+		libtcod.console_print_ex(game_menu_con, 42, 5, libtcod.BKGND_NONE,
+			libtcod.CENTER, NAME)
+		libtcod.console_print_ex(game_menu_con, 42, 7, libtcod.BKGND_NONE,
+			libtcod.CENTER, VERSION)
 		
-		# fill in active tab info
+		libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
+		libtcod.console_print(game_menu_con, 30, 11, 'Esc')
+		libtcod.console_print(game_menu_con, 30, 12, 'Q')
+		libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
+		libtcod.console_print(game_menu_con, 35, 11, 'Close Menu')
+		libtcod.console_print(game_menu_con, 35, 12, 'Save and Quit')
 		
-		# Root Game Menu
-		if active_tab == 0:
-			
-			libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
-			libtcod.console_print_ex(game_menu_con, 42, 8, libtcod.BKGND_NONE,
-				libtcod.CENTER, NAME)
-			libtcod.console_print_ex(game_menu_con, 42, 9, libtcod.BKGND_NONE,
-				libtcod.CENTER, 'Version: ' + VERSION)
-			
-			
-			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(game_menu_con, 29, 22, 'Q')
-			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-			libtcod.console_print(game_menu_con, 32, 22, 'Save and Quit to Main Menu')
-		
-		# Commander Menu
-		elif active_tab == 1:
-			
-			crewman = campaign.player_unit.positions_list[0].crewman
-			if crewman is not None:
-				DisplayPersonnelInfo(crewman, game_menu_con, 5, 8)
-			
-			# FUTURE: display more detailed character information here
-			
-		
-		# Crew Menu
-		elif active_tab == 2:
-			
-			# display list of crew in the player tank
-			DisplayCrew(campaign.player_unit, game_menu_con, 6, 8, selected_position)
-			
-			# display details on crewman in highlighted position
-			crewman = campaign.player_unit.positions_list[selected_position].crewman
-			if crewman is not None:
-				DisplayPersonnelInfo(crewman, game_menu_con, 38, 7)
-			
-			# crew menu options if any
-			if crewman is not None:
-				if crewman.nickname == '':
-					libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-					libtcod.console_print(game_menu_con, 8, 47, 'N')
-					libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-					libtcod.console_print(game_menu_con, 10, 47, 'Set Crewman Nickname')
-		
-		
-		# Tank Menu
-		elif active_tab == 3:
-			
-			# display player tank info
-			campaign.player_unit.DisplayMyInfo(game_menu_con, 27, 7)
-			
-			# unit description
-			text = ''
-			for t in campaign.player_unit.GetStat('description'):
-				text += t
-			lines = wrap(text, 33)
-			y = 25
-			libtcod.console_set_default_foreground(game_menu_con, libtcod.light_grey)
-			for line in lines[:20]:
-				libtcod.console_print(game_menu_con, 23, y, line)
-				y+=1
-			
-			# display ammo stores for main gun
-			weapon = campaign.player_unit.weapon_list[0]
-			if weapon.GetStat('type') == 'Gun':
-				y = 17
-				for ammo_type in AMMO_TYPES:
-					if ammo_type in weapon.ammo_stores:
-						libtcod.console_print(game_menu_con, 54, y, ammo_type)
-						libtcod.console_print_ex(game_menu_con, 59, y, libtcod.BKGND_NONE,
-							libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
-						y += 1
-		
-		# Log menu
-		elif active_tab == 4:
-			
-			libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
-			text = 'Log for ' + GetDateText(campaign.today['date'])
-			libtcod.console_print_ex(game_menu_con, 42, 6, libtcod.BKGND_NONE,
-				libtcod.CENTER, text)
-			
-			# log exists for this day
-			if campaign.today['date'] in campaign.logs:
-				
-				# display current day log so far
-				y = 9
-				i = session.log_scroll
-				libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-				while y < 47:
-					# end of log records for day
-					if i >= len(campaign.logs[campaign.today['date']]):
-						break
-					text = campaign.logs[campaign.today['date']][i]
-					lines = wrap(text, 70)
-					for line in lines:
-						libtcod.console_print(game_menu_con, 24, y, line)
-						y += 1
-						if y >= 47:
-							break
-					y += 1
-					i += 1
-			
-			libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(game_menu_con, 30, 49, 'W/S')
-			libtcod.console_print(game_menu_con, 30, 50, 'PgUp/PgDn')
-			libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-			libtcod.console_print(game_menu_con, 40, 49, 'Scroll Display')
-			libtcod.console_print(game_menu_con, 40, 50, 'Change Date')
-			
-		
-		# Options Menu
-		elif active_tab == 5:
-			
-			# display game options commands
-			DisplayGameOptions(game_menu_con, WINDOW_XM-15, 18, skip_esc=True)
+		# display game options
+		libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
+		libtcod.console_print_ex(game_menu_con, 42, 20, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Game Options')
+		DisplayGameOptions(game_menu_con, WINDOW_XM-15, 22, skip_esc=True)
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
-		libtcod.console_flush()
 		
 	
 	# create a local copy of the current screen to re-draw when we're done
@@ -10304,14 +10377,8 @@ def ShowGameMenu():
 	# darken screen background
 	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
 	
-	# always start on root menu
-	active_tab = 0
-	
-	# selected crew position in the player unit
-	selected_position = 0
-	
 	# generate menu console for the first time and blit to screen
-	DrawMenuCon(active_tab, selected_position)
+	DrawMenuCon()
 	
 	# get input from player
 	exit_menu = False
@@ -10320,179 +10387,25 @@ def ShowGameMenu():
 		libtcod.console_flush()
 		if not GetInputEvent(): continue
 		
-		key_char = DeKey(chr(key.c).lower())
-		
-		# Switch Active Menu
-		if key.vk == libtcod.KEY_ESCAPE or key_char in ['1', '2', '3', '4', '5']:
-			
-			# close menu
-			if key.vk == libtcod.KEY_ESCAPE and active_tab == 0:
-				exit_menu = True
-				continue
-			
-			# switch tab
-			if key.vk == libtcod.KEY_ESCAPE:
-				active_tab = 0
-			else:
-				active_tab = int(key_char)
-			DrawMenuCon(active_tab, selected_position)
+		if key.vk == libtcod.KEY_ESCAPE:
+			exit_menu = True
 			continue
 		
-		# Root Game Menu
-		if active_tab == 0:
-			# not mapped
-			if chr(key.c).lower() == 'q':
-				SaveGame()
-				session.exiting = True
-				exit_menu = True
+		key_char = DeKey(chr(key.c).lower())
 		
-		# Crew Menu
-		elif active_tab == 2:
-			# cycle selected position
-			if key_char in ['w', 's']:
-				if key_char == 'w':
-					selected_position -= 1
-					if selected_position < 0:
-						selected_position = len(campaign.player_unit.positions_list) - 1
-				
-				else:
-					selected_position += 1
-					if selected_position == len(campaign.player_unit.positions_list):
-						selected_position = 0
-				
-				DrawMenuCon(active_tab, selected_position)
-				continue
-			
-			# set crewman nickname
-			elif key_char == 'n':
-				crewman = campaign.player_unit.positions_list[selected_position].crewman
-				if crewman is None: continue
-				if crewman.nickname != '': continue
-				nickname = ShowTextInputMenu('Enter a nickname for ' + crewman.GetFullName(), '', MAX_NICKNAME_LENGTH, [])
-				# no text entered
-				if nickname == '':
-					DrawMenuCon(active_tab, selected_position)
-					continue
-				result = ShowNotification("Once set this cannot be changed, are you certain you want this crewman's nickname to be '" + nickname + "'?", confirm=True)
-				# nickname confirmed
-				if result:
-					crewman.nickname = nickname
-					# update crew info console if we are in a scenario
-					if scenario is not None:
-						scenario.UpdateCrewInfoCon()
-				DrawMenuCon(active_tab, selected_position)
-				continue
+		if chr(key.c).lower() == 'q':
+			SaveGame()
+			session.exiting = True
+			exit_menu = True
 		
-		# Tank Menu
-		elif active_tab == 3:
-			pass
-		
-		# Log Menu
-		elif active_tab == 4:
-			pass
-		
-		# Options Menu
-		elif active_tab == 5:
-			if ChangeGameSettings(key_char):
-				# redraw menu to reflect new settings
-				DrawMenuCon(active_tab, selected_position)
-				continue
+		if ChangeGameSettings(key_char):
+			# redraw menu to reflect new settings
+			DrawMenuCon()
+			continue
 	
+	# re-draw original screen
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
-
-
-
-# display info about a crewman to a console
-def DisplayPersonnelInfo(crewman, console, x, y):
-	
-	# outline and section dividers
-	libtcod.console_set_default_foreground(console, libtcod.grey)
-	DrawFrame(console, x, y, 31, 41)
-	libtcod.console_hline(console, x+1, y+4, 29)
-	libtcod.console_hline(console, x+1, y+7, 29)
-	libtcod.console_hline(console, x+1, y+9, 29)
-	libtcod.console_hline(console, x+1, y+11, 29)
-	libtcod.console_hline(console, x+1, y+14, 29)
-	libtcod.console_hline(console, x+1, y+20, 29)
-	libtcod.console_hline(console, x+1, y+28, 29)
-	
-	# section titles
-	libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
-	libtcod.console_print(console, x+1, y+2, 'Crewman Report')
-	libtcod.console_print(console, x+1, y+5, 'Name')
-	libtcod.console_print(console, x+1, y+8, 'Age')
-	libtcod.console_print(console, x+1, y+10, 'Rank')
-	libtcod.console_print(console, x+1, y+12, 'Current')
-	libtcod.console_print(console, x+1, y+13, 'Position')
-	libtcod.console_print(console, x+1, y+15, 'Assessment')
-	libtcod.console_print(console, x+1, y+21, 'Injuries')
-	libtcod.console_print(console, x+1, y+29, 'Status')
-	
-	# info
-	libtcod.console_set_default_foreground(console, libtcod.white)
-	libtcod.console_print(console, x+10, y+5, crewman.GetFullName().encode('IBM850'))
-	if crewman.nickname != '':
-		libtcod.console_print(console, x+10, y+6, '"' + crewman.nickname + '"')
-	
-	# FUTURE: have not been added yet
-	#libtcod.console_print(console, x+10, y+7, str(crewman.age))
-	#libtcod.console_print(console, x+10, y+9, crewman.rank_desc)
-	
-	libtcod.console_print(console, x+10, y+12, campaign.player_unit.unit_id)
-	libtcod.console_print(console, x+10, y+13, crewman.current_position.name)
-	
-	# list traits
-	y1 = y+16
-	
-	libtcod.console_put_char_ex(console, x+7, y1, chr(4), libtcod.yellow, libtcod.black)
-	libtcod.console_put_char_ex(console, x+7, y1+1, chr(3), libtcod.red, libtcod.black)
-	libtcod.console_put_char_ex(console, x+7, y1+2, chr(5), libtcod.blue, libtcod.black)
-	libtcod.console_put_char_ex(console, x+7, y1+3, chr(6), libtcod.green, libtcod.black)
-	
-	for t in ['Perception', 'Morale', 'Grit', 'Knowledge', ]:
-		libtcod.console_set_default_foreground(console, libtcod.white)
-		libtcod.console_print(console, x+9, y1, t)
-		libtcod.console_set_default_foreground(console, libtcod.light_grey)
-		libtcod.console_print_ex(console, x+21, y1, libtcod.BKGND_NONE, libtcod.RIGHT,
-			str(crewman.stats[t]))
-		y1 += 1
-	
-	libtcod.console_set_default_background(console, libtcod.darkest_grey)
-	libtcod.console_rect(console, x+7, y+17, 15, 1, False, libtcod.BKGND_SET)
-	libtcod.console_rect(console, x+7, y+19, 15, 1, False, libtcod.BKGND_SET)
-	libtcod.console_set_default_background(console, libtcod.black)
-	
-	# current wound if any
-	if crewman.wound == '':
-		text = 'None'
-		col = libtcod.light_grey
-	else:
-		text = crewman.wound
-		col = libtcod.red
-	libtcod.console_set_default_foreground(console, col)
-	libtcod.console_print(console, x+2, y+23, text)
-	
-	
-	# current status if any
-	if crewman.status != '':
-	
-		y1 = y+31
-		libtcod.console_set_default_foreground(console, libtcod.red)
-		libtcod.console_print(console, x+2, y1, crewman.status)
-		
-		libtcod.console_set_default_foreground(console, libtcod.light_grey)
-		text = ''
-		if crewman.status == 'Stunned':
-			text = 'Less effective but still in the fight.'
-		elif crewman.status == 'Unconscious':
-			text = 'Cannot act or bail out.'
-		elif crewman.status == 'Dead':
-			text = 'Out of action.'
-		libtcod.console_print(console, x+2, y1+1, text)
-	
-	libtcod.console_set_default_foreground(console, libtcod.white)
-	libtcod.console_set_default_background(console, libtcod.black)
 
 
 

@@ -3637,7 +3637,7 @@ class Personnel:
 		selected_skill = 0				# which crew skill is currently selected
 		number_of_skills = 0				# how many skills this crewman has
 		
-		# draw screen for first time
+		# draw screen for first time (also counts current number of crewman skills)
 		UpdateCrewmanMenuCon()
 		
 		exit_menu = False
@@ -3662,7 +3662,12 @@ class Personnel:
 			
 			# add or upgrade skill
 			elif key_char == 'f':
-				pass
+				
+				# TEMP - assume that add new skill is selected
+				
+				result = ShowSkillMenu(self)
+				continue
+
 	
 	
 	# generate a random first and last name for this person
@@ -9710,6 +9715,139 @@ class Scenario:
 ##########################################################################################	
 
 
+# show a menu for selecting a new crewman skill
+def ShowSkillMenu(crewman):
+	
+	# build list of skills that can be added
+	skill_list = []
+	for k, value in campaign.skills.items():
+		
+		# crewman already has this skill
+		if k in crewman.skills: continue
+		
+		# restricted to one or more positions
+		if 'position_list' in value:
+			if crewman.current_position.name not in value['position_list']: continue
+		
+		# skill ok, add to list
+		skill_list.append(k) 
+	
+	# no more skills can be added
+	if len(skill_list) == 0:
+		ShowMessage('No further skills available for this crewman.')
+		return ''
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	
+	# darken background 
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.5)
+	
+	# create display console
+	skill_menu_con = NewConsole(43, 36, libtcod.black, libtcod.white)
+	
+	selected_skill = 0
+	result = ''
+	exit_menu = False
+	while not exit_menu:
+		
+		# update the display console
+		libtcod.console_clear(skill_menu_con)
+		libtcod.console_set_default_foreground(skill_menu_con, libtcod.grey)
+		DrawFrame(skill_menu_con, 0, 0, 43, 36)
+		
+		libtcod.console_set_default_foreground(skill_menu_con, TITLE_COL)
+		libtcod.console_print(skill_menu_con, 17, 1, 'Add Skill')
+		
+		# list of skills
+		libtcod.console_set_default_foreground(skill_menu_con, libtcod.white)
+		y = 4
+		n = 0
+		for skill_name in skill_list:
+			libtcod.console_print(skill_menu_con, 2, y, skill_name)
+			if n == selected_skill:
+				
+				# highlight selected skill
+				libtcod.console_set_default_background(skill_menu_con, HIGHLIGHT_MENU_COL)
+				libtcod.console_rect(skill_menu_con, 2, y, 20, 1, False, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(skill_menu_con, libtcod.black)
+				
+				# description of skill
+				lines = wrap(campaign.skills[skill_name]['desc'], 19)
+				y1 = 10
+				libtcod.console_set_default_foreground(skill_menu_con, libtcod.light_grey)
+				for line in lines:
+					libtcod.console_print(skill_menu_con, 23, y1, line)
+					y1 += 1
+				libtcod.console_set_default_foreground(skill_menu_con, libtcod.white)
+				
+			y += 1
+			n += 1
+		
+		# player commands
+		libtcod.console_set_default_foreground(skill_menu_con, ACTION_KEY_COL)
+		libtcod.console_print(skill_menu_con, 13, 32, EnKey('w').upper() + '/' + EnKey('s').upper())
+		libtcod.console_print(skill_menu_con, 13, 33, EnKey('f').upper())
+		libtcod.console_print(skill_menu_con, 13, 34, 'Esc')
+		
+		libtcod.console_set_default_foreground(skill_menu_con, libtcod.light_grey)
+		libtcod.console_print(skill_menu_con, 20, 32, 'Select Skill')
+		libtcod.console_print(skill_menu_con, 20, 33, 'Add Skill')
+		libtcod.console_print(skill_menu_con, 20, 34, 'Cancel')
+		
+		libtcod.console_blit(skill_menu_con, 0, 0, 0, 0, 0, 24, 15)
+		
+		refresh_menu = False
+		while not refresh_menu:
+			
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			keypress = GetInputEvent()
+			
+			if not keypress: continue
+			
+			# exit menu
+			if key.vk == libtcod.KEY_ESCAPE:
+				exit_menu = True
+				refresh_menu = True
+				continue
+			
+			key_char = DeKey(chr(key.c).lower())
+			
+			# change selected skill
+			if key_char in ['w', 's']:
+				
+				if key_char == 'w':
+					if selected_skill == 0:
+						selected_skill = len(skill_list) - 1
+					else:
+						selected_skill -= 1
+				else:
+					if selected_skill == len(skill_list) - 1:
+						selected_skill = 0
+					else:
+						selected_skill += 1
+				
+				refresh_menu = True
+				continue
+			
+			# add skill
+			elif key_char == 'f':
+				
+				# TODO: get confirmation from player before adding skill
+				result = skill_list[selected_skill]
+				exit_menu = True
+				refresh_menu = True
+				continue
+	
+	# re-draw original screen
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	del temp_con
+	
+	return result
+
+
 # shortcut for generating consoles
 def NewConsole(x, y, bg, fg, key_colour=False):
 	new_con = libtcod.console_new(x, y)
@@ -9724,7 +9862,6 @@ def NewConsole(x, y, bg, fg, key_colour=False):
 # return a text description of a given calendar date
 def GetDateText(text):
 	date_list = text.split('.')
-	
 	return (MONTH_NAMES[int(date_list[1].lstrip('0'))] + ' ' + str(date_list[2].lstrip('0')) + 
 		', ' + date_list[0])
 
@@ -9835,10 +9972,7 @@ def ShowMessage(text, portrait=None):
 	global msg_con
 	
 	# create message console: 29x19
-	msg_con = libtcod.console_new(29, 19)
-	libtcod.console_set_default_background(msg_con, libtcod.darkest_grey)
-	libtcod.console_set_default_foreground(msg_con, libtcod.white)
-	libtcod.console_clear(msg_con)
+	msg_con = NewConsole(29, 19, libtcod.darkest_grey, libtcod.white) 
 	DrawFrame(msg_con, 0, 0, 29, 19)
 	y = 1
 	

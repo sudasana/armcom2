@@ -3567,17 +3567,31 @@ class Personnel:
 			
 			# list of crew skills
 			y = 23
-			n = 0
+			number_of_skills = 0
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
 			for key, value in self.skills.items():
 				y += 1
-				n += 1
+				number_of_skills += 1
 			libtcod.console_print(crewman_menu_con, 39, y, '[Add New Skill]')
 			
 			# highlight selected skill
 			libtcod.console_set_default_background(crewman_menu_con, HIGHLIGHT_MENU_COL)
 			libtcod.console_rect(crewman_menu_con, 39, 23 + selected_skill, 21, 1, False, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
+			
+			# display info about selected skill or info about adding a new skill
+			libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
+			libtcod.console_print(crewman_menu_con, 67, 23, 'Info')
+			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
+			y = 25
+			if selected_skill == number_of_skills:
+				text = 'Select this option to spend an advance point and add a new skill'
+			else:
+				# TEMP - grab skill description from campaign.skills dictionary
+				text = ''
+			for line in wrap(text, 18):
+				libtcod.console_print(crewman_menu_con, 62, y, line)
+				y+=1	
 			
 			# current experience and advance points
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.darkest_grey)
@@ -3621,6 +3635,7 @@ class Personnel:
 		crewman_menu_con = NewConsole(WINDOW_WIDTH, WINDOW_HEIGHT, libtcod.black, libtcod.white)
 		
 		selected_skill = 0				# which crew skill is currently selected
+		number_of_skills = 0				# how many skills this crewman has
 		
 		# draw screen for first time
 		UpdateCrewmanMenuCon()
@@ -3639,6 +3654,15 @@ class Personnel:
 				exit_menu = True
 				continue
 			
+			key_char = DeKey(chr(key.c).lower())
+			
+			# change selected skill
+			if key_char in ['w', 's']:
+				pass
+			
+			# add or upgrade skill
+			elif key_char == 'f':
+				pass
 	
 	
 	# generate a random first and last name for this person

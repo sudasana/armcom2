@@ -1,60 +1,61 @@
 {
-	"Fire Direction": {
-		"desc" : "Increases modifier when on Direct Fire action.",
-		"position_list" : ["Commander"],
-		"mod_type" : "percent",
-		"levels" : ["5", "10", "15"]
+	"Fire Spotter": {
+		"desc" : "Slightly increases chance to hit when on Direct Fire action.",
+		"position_list" : ["Commander"]
 	},
+	
+	"MG Spotter": {
+		"desc" : "Greatly increases chance to hit when on Direct Fire action and tank is firing a machine gun.",
+		"position_list" : ["Commander"],
+		"prerequisite" : "Fire Spotter"
+	},
+	
+	"Gun Spotter": {
+		"desc" : "Greatly increases chance to hit when on Direct Fire action and tank is firing a gun.",
+		"position_list" : ["Commander"],
+		"prerequisite" : "Fire Spotter"
+	},
+	
 	"Driver Direction": {
 		"desc" : "Increases modifier when on Direct Movement action.",
-		"position_list" : ["Commander"],
-		"mod_type" : "percent",
-		"levels" : ["5", "10", "15"]
+		"position_list" : ["Commander"]
 	},
+	
 	"Quick Trigger": {
 		"desc" : "Higher chance of maintaining Rate of Fire when firing a Gun.",
-		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
-		"mod_type" : "percent",
-		"levels" : ["3", "6", "10"]
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"]
 	},
+	
 	"Knows Weak Spots": {
 		"desc" : "Higher chance of scoring a Critical Hit when firing a Gun.",
-		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
-		"mod_type" : "percent",
-		"levels" : ["3", "6", "10"]
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"]
 	},
+	
 	"Target Tracker": {
 		"desc" : "Lower penalty when firing at a moving vehicle target.",
-		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
-		"mod_type" : "percent",
-		"levels" : ["5", "10", "15"]
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"]
 	},
+	
 	"Fast Hands": {
 		"desc" : "Higher chance of maintaining Rate of Fire when reloading a Gun.",
-		"position_list" : ["Loader"],
-		"mod_type" : "percent",
-		"levels" : ["5", "10", "15"]
+		"position_list" : ["Loader"]
 	},
+	
 	"Quick Shifter": {
 		"desc" : "Higher chance of a successful Move Forward or Backward action.",
-		"position_list" : ["Driver"],
-		"mod_type" : "percent",
-		"levels" : ["5", "10", "15"]
+		"position_list" : ["Driver"]
 	},
+	
 	"Eye for Cover": {
 		"desc" : "When hatch is open, bonus to achieve Hull Down status after moving.",
-		"position_list" : ["Driver"],
-		"mod_type" : "percent",
-		"levels" : ["5", "10", "15"]
+		"position_list" : ["Driver"]
 	},
+	
 	"Eagle Eyed": {
-		"desc" : "When hatch is open, bonus to spot and identify enemy units.",
-		"mod_type" : "percent",
-		"levels" : ["5", "10", "15"]
+		"desc" : "When hatch is open, bonus to spot and identify enemy units."
 	},
+	
 	"Gymnast": {
-		"desc" : "Bonus to successfully bail out.",
-		"mod_type" : "percent",
-		"levels" : ["20", "40"]
+		"desc" : "Bonus to successfully bail out."
 	}
 }

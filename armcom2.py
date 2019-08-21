@@ -3468,7 +3468,7 @@ class Personnel:
 			'Morale' : 3
 		}
 		self.SetStats()					# generate initial stat levels
-		self.skills = {}				# placeholder for skills
+		self.skills = []				# list of skills
 		self.exp = 0					# experience points
 		
 		# advance points
@@ -3569,7 +3569,8 @@ class Personnel:
 			y = 23
 			number_of_skills = 0
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
-			for key, value in self.skills.items():
+			for skill in self.skills:
+				libtcod.console_print(crewman_menu_con, 39, y, skill)
 				y += 1
 				number_of_skills += 1
 			libtcod.console_print(crewman_menu_con, 39, y, '[Add New Skill]')
@@ -3587,8 +3588,8 @@ class Personnel:
 			if selected_skill == number_of_skills:
 				text = 'Select this option to spend an advance point and add a new skill'
 			else:
-				# TEMP - grab skill description from campaign.skills dictionary
-				text = ''
+				# grab skill description from campaign.skills dictionary
+				text = campaign.skills[self.skills[selected_skill]]['desc']
 			for line in wrap(text, 18):
 				libtcod.console_print(crewman_menu_con, 62, y, line)
 				y+=1	
@@ -3620,15 +3621,21 @@ class Personnel:
 			# player commands
 			libtcod.console_set_default_foreground(crewman_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(crewman_menu_con, 10, 33, EnKey('w').upper() + '/' + EnKey('s').upper())
-			libtcod.console_print(crewman_menu_con, 10, 34, EnKey('f').upper())
+			# TODO: make sure that 1+ advance points are available
+			if selected_skill == number_of_skills:
+				libtcod.console_print(crewman_menu_con, 10, 34, EnKey('f').upper())
 			libtcod.console_print(crewman_menu_con, 10, 35, 'Esc')
 			
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
 			libtcod.console_print(crewman_menu_con, 14, 33, 'Select Skill')
-			libtcod.console_print(crewman_menu_con, 14, 34, 'Add/Improve')	
+			# TODO: make sure that 1+ advance points are available
+			if selected_skill == number_of_skills:
+				libtcod.console_print(crewman_menu_con, 14, 34, 'Add New Skill')	
 			libtcod.console_print(crewman_menu_con, 14, 35, 'Exit Menu')
 			
 			libtcod.console_blit(crewman_menu_con, 0, 0, 0, 0, 0, 0, 0)
+			
+			return number_of_skills
 			
 		
 		global crewman_menu_con
@@ -3638,7 +3645,7 @@ class Personnel:
 		number_of_skills = 0				# how many skills this crewman has
 		
 		# draw screen for first time (also counts current number of crewman skills)
-		UpdateCrewmanMenuCon()
+		number_of_skills = UpdateCrewmanMenuCon()
 		
 		exit_menu = False
 		while not exit_menu:
@@ -3658,14 +3665,33 @@ class Personnel:
 			
 			# change selected skill
 			if key_char in ['w', 's']:
-				pass
-			
-			# add or upgrade skill
-			elif key_char == 'f':
 				
-				# TEMP - assume that add new skill is selected
+				if key_char == 'w':
+					if selected_skill == 0:
+						selected_skill = number_of_skills
+					else:
+						selected_skill -= 1
+				else:
+					if selected_skill == number_of_skills:
+						selected_skill = 0
+					else:
+						selected_skill += 1
+				
+				UpdateCrewmanMenuCon()
+				continue
+			
+			# add skill
+			elif key_char == 'f' and selected_skill == number_of_skills:
+				
+				# TODO: make sure that 1+ advance points are available
 				
 				result = ShowSkillMenu(self)
+				
+				if result != '':
+					self.skills.append(result)
+					number_of_skills = UpdateCrewmanMenuCon()
+				
+				
 				continue
 
 	
@@ -9729,6 +9755,10 @@ def ShowSkillMenu(crewman):
 		if 'position_list' in value:
 			if crewman.current_position.name not in value['position_list']: continue
 		
+		# crewman does not have prerequisite skill
+		if 'prerequisite' in value:
+			if value['prerequisite'] not in crewman.skills: continue
+		
 		# skill ok, add to list
 		skill_list.append(k) 
 	
@@ -9835,10 +9865,14 @@ def ShowSkillMenu(crewman):
 			# add skill
 			elif key_char == 'f':
 				
-				# TODO: get confirmation from player before adding skill
-				result = skill_list[selected_skill]
-				exit_menu = True
-				refresh_menu = True
+				# get confirmation from player before adding skill
+				if ShowNotification('Spend one advance point to gain the skill: ' + skill_list[selected_skill] + '?', confirm=True):
+					result = skill_list[selected_skill]
+					
+					# TODO: spend advance point
+					
+					exit_menu = True
+					refresh_menu = True
 				continue
 	
 	# re-draw original screen

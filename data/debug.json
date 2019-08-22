@@ -10,5 +10,6 @@
  "No AI Actions": true,
  "AI Hates Player": false,
  "Player Always Penetrated": false,
- "Player Crew Hapless": false
+ "Player Crew Hapless": false,
+ "Free Crew Advances": true
 }

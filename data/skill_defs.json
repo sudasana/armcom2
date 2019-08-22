@@ -1,61 +1,106 @@
 {
 	"Fire Spotter": {
-		"desc" : "Slightly increases chance to hit when on Direct Fire action.",
+		"desc" : "Slightly increases effect of Direct Fire action.",
 		"position_list" : ["Commander"]
 	},
 	
 	"MG Spotter": {
-		"desc" : "Greatly increases chance to hit when on Direct Fire action and tank is firing a machine gun.",
+		"desc" : "Greatly increases effect of Direct Fire action when attacking with a machine gun.",
 		"position_list" : ["Commander"],
 		"prerequisite" : "Fire Spotter"
 	},
 	
 	"Gun Spotter": {
-		"desc" : "Greatly increases chance to hit when on Direct Fire action and tank is firing a gun.",
+		"desc" : "Greatly increases effect of Direct Fire action when attacking with a gun.",
 		"position_list" : ["Commander"],
 		"prerequisite" : "Fire Spotter"
 	},
 	
+	
 	"Driver Direction": {
-		"desc" : "Increases modifier when on Direct Movement action.",
-		"position_list" : ["Commander"]
+		"desc" : "Slightly increases effect of Direct Movement action.",
+		"position_list" : ["Commander", "Commander/Gunner"]
 	},
 	
+	"Lay of the Land": {
+		"desc" : "Greatly increases effect of Direct Movement action when attempting Hull Down.",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"prerequisite" : "Driver Direction"
+	},
+	
+	"Forward!": {
+		"desc" : "Greatly increases effect of Direct Movement action when moving forward.",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"prerequisite" : "Driver Direction"
+	},
+	
+	
 	"Quick Trigger": {
-		"desc" : "Higher chance of maintaining Rate of Fire when firing a Gun.",
+		"desc" : "Slightly increases chance of maintaining Rate of Fire when firing a Gun.",
 		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"]
 	},
 	
-	"Knows Weak Spots": {
-		"desc" : "Higher chance of scoring a Critical Hit when firing a Gun.",
+	"Time on Target": {
+		"desc" : "Greatly increases chance of maintaining Rate of Fire when firing a Gun at a stationary target.",
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
+		"prerequisite" : "Quick Trigger"
+	},
+	
+	
+	"Burst Fire": {
+		"desc" : "Slightly increases chance of maintaining Rate of Fire when firing a Machine Gun.",
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader", "Assistant Driver"]
+	},
+	
+	
+	"Crack Shot": {
+		"desc" : "Slightly increases chance to hit when firing a Gun.",
 		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"]
 	},
 	
 	"Target Tracker": {
-		"desc" : "Lower penalty when firing at a moving vehicle target.",
+		"desc" : "Greatly increases chance to hit firing a Gun at a moving target.",
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
+		"prerequisite" : "Crack Shot"
+	},
+	
+	"Sniper": {
+		"desc" : "Greatly increases chance to hit firing a Gun at a long-range target.",
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
+		"prerequisite" : "Crack Shot"
+	},
+	
+	
+	"Knows Weak Spots": {
+		"desc" : "Slightly increases chance of scoring a Critical Hit when firing a Gun at an armoured target.",
 		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"]
 	},
 	
+	
 	"Fast Hands": {
-		"desc" : "Higher chance of maintaining Rate of Fire when reloading a Gun.",
+		"desc" : "Slightly increases chance of maintaining Rate of Fire when reloading a Gun.",
 		"position_list" : ["Loader"]
 	},
 	
+	
 	"Quick Shifter": {
-		"desc" : "Higher chance of a successful Move Forward or Backward action.",
+		"desc" : "Slightly increases chance of a successful Move Forward or Backward action.",
 		"position_list" : ["Driver"]
 	},
+	
 	
 	"Eye for Cover": {
-		"desc" : "When hatch is open, bonus to achieve Hull Down status after moving.",
+		"desc" : "Slightly increases chance to achieve Hull Down status after moving.",
 		"position_list" : ["Driver"]
 	},
 	
+	
 	"Eagle Eyed": {
-		"desc" : "When hatch is open, bonus to spot and identify enemy units."
+		"desc" : "When hatch is open, slightly increases chance to spot and identify enemy units."
 	},
 	
+	
 	"Gymnast": {
-		"desc" : "Bonus to successfully bail out."
+		"desc" : "Slightly increases chance to successfully bail out."
 	}
 }

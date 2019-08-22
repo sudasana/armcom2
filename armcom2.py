@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '1.0.0-beta.1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -3596,15 +3596,15 @@ class Personnel:
 			
 			# current experience and advance points
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.darkest_grey)
-			libtcod.console_rect(crewman_menu_con, 30, 47, 7, 2, False, libtcod.BKGND_SET)
+			libtcod.console_rect(crewman_menu_con, 30, 47, 21, 2, False, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
 			libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
-			libtcod.console_print(crewman_menu_con, 30, 47, 'Exp')
-			libtcod.console_print(crewman_menu_con, 30, 48, 'Adv')
+			libtcod.console_print(crewman_menu_con, 30, 47, 'Experience Points')
+			libtcod.console_print(crewman_menu_con, 30, 48, 'Advance Points')
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
-			libtcod.console_print_ex(crewman_menu_con, 36, 47, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(crewman_menu_con, 50, 47, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(self.exp))
-			libtcod.console_print_ex(crewman_menu_con, 36, 48, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(crewman_menu_con, 50, 48, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(self.adv))
 			
 			# wounds if any
@@ -3680,27 +3680,26 @@ class Personnel:
 				UpdateCrewmanMenuCon()
 				continue
 			
-			# add skill
+			# display add skill menu
 			elif key_char == 'f' and selected_skill == number_of_skills:
-				
-				# TODO: make sure that 1+ advance points are available
-				
 				result = ShowSkillMenu(self)
-				
 				if result != '':
+					# spend an advance point and add the skill
+					if DEBUG:
+						if session.debug['Free Crew Advances']:
+							self.adv += 1
+					self.adv -= 1
 					self.skills.append(result)
+					SaveGame()
 					number_of_skills = UpdateCrewmanMenuCon()
-				
-				
 				continue
 
-	
 	
 	# generate a random first and last name for this person
 	def GenerateName(self):
 		
-		# TEMP: have to normalize extended characters so they can be displayed on screen
-		# FUTURE: will have their own glyphs as part of font
+		# have to normalize extended characters so they can be displayed on screen
+		# FUTURE: will have their own glyphs as part of font?
 		def FixName(text):
 			CODE = {
 				u'Ś' : 'S', u'Ż' : 'Z', u'Ł' : 'L',
@@ -4921,7 +4920,7 @@ class Unit:
 		
 		roll = GetPercentileRoll()
 		
-		# TEMP
+		# FUTURE: account for effects of rain and wind here
 		if roll <= 80.0:
 			self.smoke = 0
 		elif roll <= 95.0:
@@ -6293,7 +6292,7 @@ class Scenario:
 				ShowMessage(crew_target.GetFullName() + ' has been hit by a sniper.')
 				crew_target.DoWoundCheck(roll_modifier = 45.0)
 		
-		# TEMP - no other event types for now
+		# FUTURE: add more event types
 		else:
 			return
 		
@@ -8573,7 +8572,7 @@ class Scenario:
 		# close combat phase
 		elif self.phase == PHASE_CC:
 			
-			# TEMP - advance automatically past this phase
+			# FUTURE: add in events for this phase
 			self.advance_phase = True
 		
 		# allied action
@@ -9865,12 +9864,21 @@ def ShowSkillMenu(crewman):
 			# add skill
 			elif key_char == 'f':
 				
+				# make sure crewman has 1+ advance point to spend
+				adv_pt = False
+				if DEBUG:
+					if session.debug['Free Crew Advances']:
+						adv_pt = True
+				if crewman.adv > 0:
+					adv_pt = True
+				
+				if not adv_pt:
+					ShowNotification('Crewman has no Advance Points remaining.')
+					continue
+				
 				# get confirmation from player before adding skill
 				if ShowNotification('Spend one advance point to gain the skill: ' + skill_list[selected_skill] + '?', confirm=True):
 					result = skill_list[selected_skill]
-					
-					# TODO: spend advance point
-					
 					exit_menu = True
 					refresh_menu = True
 				continue
@@ -9953,11 +9961,11 @@ def DisplayWeatherInfo(console):
 	w = libtcod.console_get_width(console)
 	x = int(w/2)
 	
-	# current temperature (TEMP static)
+	# current temperature (static for now)
 	libtcod.console_set_default_background(console, libtcod.dark_blue)
 	libtcod.console_rect(console, 0, 0, w, 2, False, libtcod.BKGND_SET)
 	libtcod.console_print(console, 0, 0, 'Mild')
-	# wind strength and direction (TEMP static)
+	# wind strength and direction (static for now)
 	libtcod.console_print_ex(console, w-1, 0, libtcod.BKGND_NONE,
 		libtcod.RIGHT, 'No wind')
 	
@@ -9977,7 +9985,7 @@ def DisplayWeatherInfo(console):
 	libtcod.console_print_ex(console, x, 6, libtcod.BKGND_NONE, libtcod.CENTER,
 		campaign_day.weather['Ground'])
 	
-	# fog level if any (TEMP static)
+	# fog level if any (static for now)
 	libtcod.console_print_ex(console, w-1, 4, libtcod.BKGND_NONE,
 		libtcod.RIGHT, '')
 	
@@ -10815,10 +10823,10 @@ def ShowTextInputMenu(prompt, original_text, max_length, string_list):
 		FlushKeyboardEvents()
 		ShowText(text)
 		
-	
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
 	return text
+
 
 
 # display the debug flags menu, not enabled in distribution versions
@@ -10830,25 +10838,31 @@ def ShowDebugMenu():
 		libtcod.console_set_default_foreground(con, libtcod.light_red)
 		libtcod.console_print_ex(con, WINDOW_XM, 2, libtcod.BKGND_NONE, libtcod.CENTER, 'DEBUG MENU')
 		
-		y = 6
+		libtcod.console_set_default_foreground(con, TITLE_COL)
+		libtcod.console_print(con, 6, 6, 'Flags')
+		
+		y = 8
 		n = 1
 		for k, value in session.debug.items():
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-			libtcod.console_print(con, 33, y, chr(n+64))
+			libtcod.console_print(con, 6, y, chr(n+64))
 			if value:
 				libtcod.console_set_default_foreground(con, libtcod.white)
 			else:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
-			libtcod.console_print(con, 35, y, k)
+			libtcod.console_print(con, 8, y, k)
 			y += 2
 			n += 1
 		
 		# special commands
-		y += 2
+		libtcod.console_set_default_foreground(con, TITLE_COL)
+		libtcod.console_print(con, 50, 6, 'Commands')
+		x = 50
+		y = 8
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		libtcod.console_print(con, 30, y, '1')
+		libtcod.console_print(con, x, y, '1')
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		libtcod.console_print(con, 33, y, 'Regenerate CD Map Roads')
+		libtcod.console_print(con, x+3, y, 'Regenerate CD Map Roads')
 		
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)

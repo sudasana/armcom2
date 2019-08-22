@@ -219,6 +219,9 @@ MISSION_DESC = {
 
 # FUTURE: move these to a JSON file
 
+# list of crew stats
+CREW_STATS = ['Perception', 'Morale', 'Grit', 'Knowledge']
+
 # length of scenario turn in minutes
 TURN_LENGTH = 2
 
@@ -3545,7 +3548,7 @@ class Personnel:
 			libtcod.console_put_char_ex(crewman_menu_con, 39, 19, chr(6), libtcod.green, libtcod.black)
 			
 			y = 16
-			for t in ['Perception', 'Morale', 'Grit', 'Knowledge', ]:
+			for t in CREW_STATS:
 				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
 				libtcod.console_print(crewman_menu_con, 41, y, t)
 				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
@@ -3620,15 +3623,27 @@ class Personnel:
 			
 			# player commands
 			libtcod.console_set_default_foreground(crewman_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(crewman_menu_con, 10, 28, '1')
+			libtcod.console_print(crewman_menu_con, 10, 29, '2')
+			libtcod.console_print(crewman_menu_con, 10, 30, '3')
+			libtcod.console_print(crewman_menu_con, 10, 31, '4')
+			
 			libtcod.console_print(crewman_menu_con, 10, 33, EnKey('w').upper() + '/' + EnKey('s').upper())
-			# TODO: make sure that 1+ advance points are available
 			if selected_skill == number_of_skills:
 				libtcod.console_print(crewman_menu_con, 10, 34, EnKey('f').upper())
 			libtcod.console_print(crewman_menu_con, 10, 35, 'Esc')
 			
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
+			libtcod.console_print(crewman_menu_con, 14, 28, 'Increase')
+			libtcod.console_print(crewman_menu_con, 14, 29, 'Increase')
+			libtcod.console_print(crewman_menu_con, 14, 30, 'Increase')
+			libtcod.console_print(crewman_menu_con, 14, 31, 'Increase')
+			libtcod.console_put_char_ex(crewman_menu_con, 23, 28, chr(4), libtcod.yellow, libtcod.black)
+			libtcod.console_put_char_ex(crewman_menu_con, 23, 29, chr(3), libtcod.red, libtcod.black)
+			libtcod.console_put_char_ex(crewman_menu_con, 23, 30, chr(5), libtcod.blue, libtcod.black)
+			libtcod.console_put_char_ex(crewman_menu_con, 23, 31, chr(6), libtcod.green, libtcod.black)
+			
 			libtcod.console_print(crewman_menu_con, 14, 33, 'Select Skill')
-			# TODO: make sure that 1+ advance points are available
 			if selected_skill == number_of_skills:
 				libtcod.console_print(crewman_menu_con, 14, 34, 'Add New Skill')	
 			libtcod.console_print(crewman_menu_con, 14, 35, 'Exit Menu')
@@ -3663,8 +3678,35 @@ class Personnel:
 			
 			key_char = DeKey(chr(key.c).lower())
 			
+			# increase stat
+			if key_char in ['1', '2', '3', '4']:
+				
+				stat_name = CREW_STATS[int(key_char) - 1]
+				
+				if self.stats[stat_name] == 10:
+					ShowNotification('Stat already at maximum level.')
+					continue
+				
+				# make sure crewman has 1+ advance point available
+				pt_cost = 1
+				if DEBUG:
+					if session.debug['Free Crew Advances']:
+						pt_cost = 0
+				
+				if self.adv - pt_cost < 0:
+					ShowNotification('Crewman has no Advance Points remaining.')
+					continue
+				
+				if ShowNotification('Spend an advance point and increase ' + stat_name + ' by one?', confirm=True):
+					self.adv -= pt_cost
+					self.stats[stat_name] += 1
+					UpdateCrewmanMenuCon()
+					SaveGame()
+				
+				continue
+			
 			# change selected skill
-			if key_char in ['w', 's']:
+			elif key_char in ['w', 's']:
 				
 				if key_char == 'w':
 					if selected_skill == 0:

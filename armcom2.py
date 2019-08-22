@@ -5085,7 +5085,6 @@ class Unit:
 					# check for skill modifier
 					if 'Lay of the Land' in crewman.skills:
 						chance += 15.0
-						print('DEBUG: Applied Lay of the Land bonus')
 					
 				break
 		
@@ -5095,8 +5094,6 @@ class Unit:
 			if crewman is not None:
 				if 'Eye for Cover' in crewman.skills:
 					chance += 5.0
-					print('DEBUG: Applied Eye for Cover bonus')
-		
 		
 		chance = RestrictChance(chance)
 		
@@ -5221,7 +5218,6 @@ class Unit:
 				# spotting crew skill
 				if 'Eagle Eyed' in position.crewman.skills and position.crewman.ce:
 					chance += 10.0
-					print('DEBUG: Applied Eagle Eyed bonus')
 				
 				# target is HD to spotter
 				if len(unit.hull_down) > 0:
@@ -6479,7 +6475,6 @@ class Scenario:
 				
 				if 'Gymnast' in position.crewman.skills:
 					modifier -= 10.0
-					print('DEBUG: Applied Gymnast bonus')
 				
 				roll = GetPercentileRoll()
 				
@@ -6796,11 +6791,7 @@ class Scenario:
 			return None
 		
 		# NEW: determine crewman operating weapon
-		profile['crewman'] = attacker.GetPersonnelByPosition(weapon['fired_by'][0])
-		
-		# DEBUG
-		if profile['crewman'] is not None:
-			print('DEBUG: weapon fired by: ' + profile['crewman'].current_position)
+		profile['crewman'] = attacker.GetPersonnelByPosition(weapon.stats['fired_by'][0])
 		
 		# calculate distance to target
 		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
@@ -6819,7 +6810,6 @@ class Scenario:
 				if 'Knows Weak Spots' in profile['crewman'].skills:
 					if weapon_type == 'Gun' and target.GetStat('armour') is not None:
 						profile['critical_hit'] += 2.0
-						print('DEBUG: Added Knows Weak Spots bonus, crit chance now: ' + str(profile['critical_hit']))
 			
 			# calculate base success chance
 			
@@ -7477,7 +7467,6 @@ class Scenario:
 					bonus = 10.0
 					if 'Fast Hands' in crewman.skills:
 						bonus = 15.0
-						print('DEBUG: Applied Fast Hands bonus')
 			
 			# check for skill bonuses from crewman operating the weapon
 			if profile['crewman'] is not None:
@@ -8244,11 +8233,8 @@ class Scenario:
 				# check for skill modifiers
 				if 'Driver Direction' in crewman.skills:
 					chance += 5.0
-					print('DEBUG: Applied Driver Direction bonus')
-				
 				if forward and 'Forward!' in crewman.skills:
 					chance += 10.0
-					print('DEBUG: Applied Forward! bonus')
 				
 			break
 		
@@ -8257,7 +8243,6 @@ class Scenario:
 		if crewman is not None:
 			if 'Quick Shifter' in crewman.skills:
 				chance += 5.0
-				print('DEBUG: Applied Quick Shifter bonus')
 		
 		# check for debug flag
 		if DEBUG:

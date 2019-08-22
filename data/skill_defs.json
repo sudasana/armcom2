@@ -5,13 +5,13 @@
 	},
 	
 	"MG Spotter": {
-		"desc" : "Greatly increases effect of Direct Fire action when attacking with a machine gun.",
+		"desc" : "Greatly increases effect of Direct Fire action when attacking with a Machine Gun.",
 		"position_list" : ["Commander"],
 		"prerequisite" : "Fire Spotter"
 	},
 	
 	"Gun Spotter": {
-		"desc" : "Greatly increases effect of Direct Fire action when attacking with a gun.",
+		"desc" : "Greatly increases effect of Direct Fire action when attacking with a Gun.",
 		"position_list" : ["Commander"],
 		"prerequisite" : "Fire Spotter"
 	},

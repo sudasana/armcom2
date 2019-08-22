@@ -238,7 +238,7 @@ BASE_REVERSE_MOVE_CHANCE = 20.0
 # bonus per unsuccessful move attempt
 BASE_MOVE_BONUS = 15.0
 
-# critical hit and miss thresholds
+# base critical hit and miss thresholds
 CRITICAL_HIT = 3.0
 CRITICAL_MISS = 97.0
 
@@ -5075,12 +5075,28 @@ class Unit:
 			crewman = self.GetPersonnelByPosition('Driver')
 			if crewman is not None:
 				chance += crewman.GetActionMod('Attempt HD')
+			
 			for position in ['Commander', 'Commander/Gunner']:
 				crewman = self.GetPersonnelByPosition(position)
 				if crewman is None: continue
 				if crewman.current_cmd == 'Direct Movement':
 					chance += crewman.GetActionMod('Direct Movement')
-					break
+					
+					# check for skill modifier
+					if 'Lay of the Land' in crewman.skills:
+						chance += 15.0
+						print('DEBUG: Applied Lay of the Land bonus')
+					
+				break
+		
+		# regular move action
+		else:
+			crewman = self.GetPersonnelByPosition('Driver')
+			if crewman is not None:
+				if 'Eye for Cover' in crewman.skills:
+					chance += 5.0
+					print('DEBUG: Applied Eye for Cover bonus')
+		
 		
 		chance = RestrictChance(chance)
 		
@@ -5201,6 +5217,11 @@ class Unit:
 				
 				# spotting crew modifier
 				chance += position.crewman.GetActionMod('Spotting')
+				
+				# spotting crew skill
+				if 'Eagle Eyed' in position.crewman.skills and position.crewman.ce:
+					chance += 10.0
+					print('DEBUG: Applied Eagle Eyed bonus')
 				
 				# target is HD to spotter
 				if len(unit.hull_down) > 0:
@@ -6456,6 +6477,10 @@ class Scenario:
 				elif position.crewman.ce:
 					modifier -= 20.0
 				
+				if 'Gymnast' in position.crewman.skills:
+					modifier -= 10.0
+					print('DEBUG: Applied Gymnast bonus')
+				
 				roll = GetPercentileRoll()
 				
 				# unmodified 97.0-100.0 always fail, otherwise modifier is applied
@@ -6770,6 +6795,13 @@ class Scenario:
 			print('ERROR: Weapon type not recognized: ' + weapon.stats['name'])
 			return None
 		
+		# NEW: determine crewman operating weapon
+		profile['crewman'] = attacker.GetPersonnelByPosition(weapon['fired_by'][0])
+		
+		# DEBUG
+		if profile['crewman'] is not None:
+			print('DEBUG: weapon fired by: ' + profile['crewman'].current_position)
+		
 		# calculate distance to target
 		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 		
@@ -6780,6 +6812,14 @@ class Scenario:
 		
 		# point fire attacks (eg. large guns)
 		if profile['type'] == 'Point Fire':
+			
+			# calculate critical hit chance
+			profile['critical_hit'] = CRITICAL_HIT
+			if profile['crewman'] is not None:
+				if 'Knows Weak Spots' in profile['crewman'].skills:
+					if weapon_type == 'Gun' and target.GetStat('armour') is not None:
+						profile['critical_hit'] += 2.0
+						print('DEBUG: Added Knows Weak Spots bonus, crit chance now: ' + str(profile['critical_hit']))
 			
 			# calculate base success chance
 			
@@ -7001,14 +7041,39 @@ class Scenario:
 						modifier_list.append(('Gun Shield', -15.0))
 				
 		# check for Commander directing fire
+		# FUTURE: may be possible for other positions as well (Commander/Driver?)
 		for position in ['Commander']:
 			crewman = attacker.GetPersonnelByPosition(position)
 			if crewman is None: continue
 			if crewman.current_cmd == 'Direct Fire':
 				mod = crewman.GetActionMod('Direct Fire')
 				if mod > 0.0:
-					modifier_list.append(('Cmdr Direction', mod)) 
-					break
+					modifier_list.append(('Cmdr Direction', mod))
+				
+					# check for skill modifiers
+					if 'Fire Spotter' in crewman.skills:
+						modifier_list.append(('Fire Spotter', 3.0))
+					
+					if 'MG Spotter' in crewman.skills:
+						if weapon_type in MG_WEAPONS:
+							modifier_list.append(('MG Spotter', 7.0))
+					
+					if 'Gun Spotter' in crewman.skills:
+						if weapon_type == 'Gun':
+							modifier_list.append(('Gun Spotter', 7.0))
+					
+				break
+		
+		# check for firing crew skills
+		if profile['crewman'] is not None:
+			
+			if weapon_type == 'Gun':
+				if 'Crack Shot' in profile['crewman'].skills:
+					modifier_list.append(('Crack Shot', 3.0))
+				if target.moving and 'Target Tracker' in profile['crewman'].skills:
+					modifier_list.append(('Target Tracker', 7.0))
+				if distance == 3 and 'Sniper' in profile['crewman'].skills:
+					modifier_list.append(('Sniper', 7.0))
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -7410,8 +7475,23 @@ class Scenario:
 				
 				if crewman_found:
 					bonus = 10.0
+					if 'Fast Hands' in crewman.skills:
+						bonus = 15.0
+						print('DEBUG: Applied Fast Hands bonus')
 			
-			# TODO: check for skill bonus from gunner
+			# check for skill bonuses from crewman operating the weapon
+			if profile['crewman'] is not None:
+				
+				if profile['weapon'].GetStat('type') == 'Gun':
+					if 'Quick Trigger' in profile['crewman'].skills:
+						bonus += 5.0
+					
+					if 'Time on Target' in profile['crewman'].skills and not profile['target'].moving:
+						bonus += 10.0
+				
+				elif profile['weapon'].GetStat('type') in MG_WEAPONS:
+					if 'Burst Fire' in profile['crewman'].skills:
+						bonus += 10.0
 			
 			roll = GetPercentileRoll() - bonus
 			
@@ -7437,7 +7517,7 @@ class Scenario:
 					if profile['target'] == scenario.player_unit and campaign_day.fate_points > 0:
 						
 						# hit or penetration
-						if roll <= profile['final_chance'] or roll <= CRITICAL_HIT:
+						if roll <= profile['final_chance'] or roll <= profile['critical_hit']:
 							
 							# point fire hit
 							if profile['type'] == 'Point Fire':
@@ -7534,7 +7614,7 @@ class Scenario:
 			
 			if roll >= CRITICAL_MISS:
 				result_text = 'MISS'
-			elif roll <= CRITICAL_HIT:
+			elif roll <= profile['critical_hit']:
 				result_text = 'CRITICAL HIT'
 			elif roll <= profile['final_chance']:
 				result_text = 'HIT'
@@ -8160,7 +8240,24 @@ class Scenario:
 			if crewman is None: continue
 			if crewman.current_cmd == 'Direct Movement':
 				chance += crewman.GetActionMod('Direct Movement')
-				break
+				
+				# check for skill modifiers
+				if 'Driver Direction' in crewman.skills:
+					chance += 5.0
+					print('DEBUG: Applied Driver Direction bonus')
+				
+				if forward and 'Forward!' in crewman.skills:
+					chance += 10.0
+					print('DEBUG: Applied Forward! bonus')
+				
+			break
+		
+		# check for driver skill
+		crewman = self.player_unit.GetPersonnelByPosition('Driver')
+		if crewman is not None:
+			if 'Quick Shifter' in crewman.skills:
+				chance += 5.0
+				print('DEBUG: Applied Quick Shifter bonus')
 		
 		# check for debug flag
 		if DEBUG:

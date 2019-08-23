@@ -209,7 +209,7 @@ RECORD_LIST = [
 MISSION_DESC = {
 	'Advance' : 'Enemy resistance is scattered and we are pushing forward. Advance into enemy territory, destroy any resistance, and capture territory.',
 	'Battle' : 'Your group has been posted to the front line where there is heavy resistance. Break through the enemy defenses, destroy enemy units, and capture territory.',
-	'Fighting Withdrawl' : 'The enemy is mounting a strong attack against our lines. Help to defend territory and withdrawl into friendly territory if necessary.'
+	'Fighting Withdrawl' : 'The enemy is mounting a strong attack against our lines. Help to defend territory and withdraw into friendly territory if necessary.'
 }
 
 ##########################################################################################

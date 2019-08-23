@@ -170,9 +170,8 @@ SCEN_PHASE_COL = [
 # list of campaign calendar menus and their highlight colours
 CC_MENU_LIST = [
 	('Proceed', 1, libtcod.Color(70, 140, 0)),
-	('Crew', 2, libtcod.Color(140, 140, 0)),
-	('Tank', 3, libtcod.Color(40, 40, 40)),
-	('Group', 4, libtcod.Color(180, 0, 45)),
+	('Crew and Tank', 2, libtcod.Color(140, 140, 0)),
+	('Group', 3, libtcod.Color(180, 0, 45))
 	
 ]
 
@@ -202,8 +201,8 @@ MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG', 'HMG']
 # types of records to store for each combat day and for entire campaign
 # also order in which they are displayed
 RECORD_LIST = [
-	'Map Areas Captured', 'Map Areas Defended', 'Gun Hits', 'Vehicles Destroyed', 'Guns Destroyed',
-	'Infantry Destroyed'
+	'Battles Fought', 'Map Areas Captured', 'Map Areas Defended', 'Gun Hits', 'Vehicles Destroyed',
+	'Guns Destroyed', 'Infantry Destroyed'
 ]
 
 # text descriptions for different types of Campaign Day missions
@@ -1010,9 +1009,29 @@ class Campaign:
 				y1+=1
 				if y1 == y+24: break
 		
-		# crew menu - show list of crewmen
+		# crew menu
 		elif self.active_calendar_menu == 2:
-			DisplayCrew(campaign.player_unit, calendar_main_panel, 18, 8, selected_position)
+			
+			# show list of crewmen
+			libtcod.console_set_default_foreground(calendar_main_panel, TITLE_COL)
+			libtcod.console_print(calendar_main_panel, 3, 5, 'Tank Positions and Crewmen')
+			libtcod.console_print(calendar_main_panel, 41, 5, 'Player Tank')
+			
+			DisplayCrew(campaign.player_unit, calendar_main_panel, 4, 8, selected_position)
+			
+			# show info on player tank
+			campaign.player_unit.DisplayMyInfo(calendar_main_panel, 34, 8, status=False)
+			
+			# description of tank
+			text = ''
+			for t in campaign.player_unit.GetStat('description'):
+				text += t
+			lines = wrap(text, 27)
+			y = 24
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
+			for line in lines[:20]:
+				libtcod.console_print(calendar_main_panel, 33, y, line)
+				y+=1
 	
 	
 	# update the display of the campaign calendar interface
@@ -1896,6 +1915,7 @@ class CampaignDay:
 					map_hex = self.map_hexes[(hx,hy)]
 					scenario = Scenario(map_hex)
 					self.scenario = scenario
+					self.records['Battles Fought'] += 1
 				else:
 					# player is not present in zone
 					ShowMessage('Enemy forces have captured an allied-held zone!')
@@ -3193,7 +3213,7 @@ class CampaignDay:
 					if ShowNotification('Remain in place for 15 minutes?', confirm=True):
 						ShowMessage('You remain in place, ready for possible attack.')
 						self.selected_direction = None
-						campaign_day.AdvanceClock(0, 15)
+						self.AdvanceClock(0, 15)
 						DisplayTimeInfo(time_con)
 						self.UpdateCDDisplay()
 						self.CheckForRandomEvent()
@@ -3267,15 +3287,16 @@ class CampaignDay:
 							
 							if roll <= (float(map_hex2.enemy_strength) * 9.5):
 								ShowMessage('You encounter enemy resistance!')
-								campaign_day.AdvanceClock(0, 15)
+								self.AdvanceClock(0, 15)
 								scenario = Scenario(map_hex2)
 								self.scenario = scenario
-								campaign_day.encounter_mod = 0.0
+								self.encounter_mod = 0.0
+								self.records['Battles Fought'] += 1
 								continue
 							
 							ShowMessage('You find no resistance and gain control of the area.')
 							self.map_hexes[(hx2,hy2)].CaptureMe(0)
-							campaign_day.encounter_mod += 30.0
+							self.encounter_mod += 30.0
 						
 						# entering a friendly zone
 						else:
@@ -3464,15 +3485,18 @@ class Personnel:
 		self.GenerateName()				# generate random first and last name
 		self.nickname = ''				# player-set nickname
 		
-		self.stats = {					# default values for modification
-			'Perception' : 3,
-			'Grit' : 3,
-			'Knowledge' : 3,
-			'Morale' : 3
+		self.stats = {					# default stat values
+			'Perception' : 1,
+			'Grit' : 1,
+			'Knowledge' : 1,
+			'Morale' : 1
 		}
-		self.SetStats()					# generate initial stat levels
+		
+		# randomly increase two stats to 3
+		for i in sample(range(3), 2):
+			self.stats[CREW_STATS[i]] = 3
+		
 		self.skills = []				# list of skills
-		self.exp = 0					# experience points
 		
 		# advance points
 		if self.current_position in ['Commander', 'Commander/Gunner']:
@@ -3599,14 +3623,12 @@ class Personnel:
 			
 			# current experience and advance points
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.darkest_grey)
-			libtcod.console_rect(crewman_menu_con, 30, 47, 21, 2, False, libtcod.BKGND_SET)
+			libtcod.console_rect(crewman_menu_con, 30, 48, 21, 1, False, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
+			
 			libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
-			libtcod.console_print(crewman_menu_con, 30, 47, 'Experience Points')
 			libtcod.console_print(crewman_menu_con, 30, 48, 'Advance Points')
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
-			libtcod.console_print_ex(crewman_menu_con, 50, 47, libtcod.BKGND_NONE,
-				libtcod.RIGHT, str(self.exp))
 			libtcod.console_print_ex(crewman_menu_con, 50, 48, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(self.adv))
 			
@@ -3697,9 +3719,15 @@ class Personnel:
 					ShowNotification('Crewman has no Advance Points remaining.')
 					continue
 				
-				if ShowNotification('Spend an advance point and increase ' + stat_name + ' by one?', confirm=True):
+				# determine increase amount
+				if self.stats[stat_name] < 5:
+					increase = 2
+				else:
+					increase = 1
+				
+				if ShowNotification('Spend an advance point and increase ' + stat_name + ' by ' + str(increase) + '?', confirm=True):
 					self.adv -= pt_cost
-					self.stats[stat_name] += 1
+					self.stats[stat_name] += increase
 					UpdateCrewmanMenuCon()
 					SaveGame()
 				
@@ -3773,21 +3801,6 @@ class Personnel:
 	# return the person's full name
 	def GetFullName(self):
 		return (self.first_name + ' ' + self.last_name)
-	
-	
-	# randomly modify initial stat values
-	def SetStats(self):		
-		for i in range(5):
-			key = choice(list(self.stats))
-			self.stats[key] += 1 
-			key = choice(list(self.stats))
-			self.stats[key] -= 1
-		
-		for key in self.stats:
-			if self.stats[key] < 1:
-				self.stats[key] = 1
-			elif self.stats[key] > 5:
-				self.stats[key] = 5
 	
 	
 	# return the effective modifier for a given action, based on relevant stat and current status
@@ -11521,7 +11534,7 @@ while not exit_game:
 						if ammo_type in weapon.ammo_stores:
 							weapon.ammo_stores[ammo_type] = 0
 				
-				# TODO: allow player to review crew and set nicknames if any
+				# TODO: allow player to review crew and set nicknames if any?
 				
 				# placeholders for the currently active campaign day and scenario
 				campaign_day = None

@@ -1,8 +1,8 @@
 {
  "Player Immortality": true,
  "Support Requests Always Granted": false,
- "Always Scenario": true,
- "Never Scenario": false,
+ "Always Scenario": false,
+ "Never Scenario": true,
  "Always CD Random Event": false,
  "Player Always Hits": false,
  "Player Always Moves": false,

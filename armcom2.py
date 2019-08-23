@@ -3913,7 +3913,7 @@ class Personnel:
 				self.DoStunCheck(15)
 				if self.status == 'Stunned':
 					if show_messages:
-						ShowMessage(self.GetFullName() + ' has received a Light Wound and has been Stunned')
+						ShowMessage(self.GetFullName() + ' has received a Light Wound and has been Stunned.')
 					return 'Light Wound, Stunned'
 			
 			if show_messages:
@@ -3937,7 +3937,7 @@ class Personnel:
 					return 'Serious Wound, Unconscious'
 			
 			if show_messages:
-				ShowMessage(self.GetFullName() + ' has received a Serious Wound and is Stunned')
+				ShowMessage(self.GetFullName() + ' has received a Serious Wound and is Stunned.')
 			return 'Serious Wound, Stunned'
 			
 			
@@ -3951,11 +3951,11 @@ class Personnel:
 				if self.status == 'Unconscious':
 					if show_messages:
 						Message(self.GetFullName() + ' has received a Critical Wound ' +
-							'and has been knocked Unconscious')
+							'and has been knocked Unconscious.')
 					return 'Critical Wound, Unconscious'
 				
 				if show_messages:
-					ShowMessage(self.GetFullName() + ' has received a Critical Wound and is Stunned')
+					ShowMessage(self.GetFullName() + ' has received a Critical Wound and is Stunned.')
 				return 'Critical Wound, Stunned'
 		
 		else:
@@ -10997,10 +10997,13 @@ def ShowDebugMenu():
 		x = 50
 		y = 8
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		libtcod.console_print(con, x, y, '1')
+		for xm in range(3):
+			libtcod.console_print(con, x, y+xm, str(xm+1))
+		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		libtcod.console_print(con, x+3, y, 'Regenerate CD Map Roads')
-		
+		libtcod.console_print(con, x+3, y+1, 'Apply Serious Wound')
+		libtcod.console_print(con, x+3, y+2, 'Set Time to End of Day')
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 33, 56, 'Esc')
@@ -11039,7 +11042,6 @@ def ShowDebugMenu():
 			# save current debug settings
 			with open(DATAPATH + 'debug.json', 'w', encoding='utf8') as data_file:
 				json.dump(session.debug, data_file, indent=1)
-			
 			exit_menu = True
 			continue
 		
@@ -11059,6 +11061,29 @@ def ShowDebugMenu():
 				campaign_day.UpdateCDMapCon()
 				campaign_day.UpdateCDDisplay()
 				ShowMessage('Roads regenerated')
+				DrawDebugMenu()
+				continue
+		
+		# apply a serious wound to a random crewman
+		elif int(key_char) == 2:
+			if scenario is not None:
+				position = choice(scenario.player_unit.positions_list)
+				if position.crewman is None: continue
+				position.crewman.wound = 'Serious'
+				position.crewman.status = 'Stunned'
+				scenario.UpdateCrewInfoCon()
+				ShowMessage(position.crewman.GetFullName() + ' has received a Serious Wound and is Stunned.')
+				DrawDebugMenu()
+				continue
+		
+		# set current time to end of combat day
+		elif int(key_char) == 3:
+			if campaign_day is not None:
+				campaign_day.day_clock['hour'] = campaign_day.end_of_day['hour']
+				campaign_day.day_clock['minute'] = campaign_day.end_of_day['minute']
+				DisplayTimeInfo(time_con)
+				text = 'Time is now ' + str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
+				ShowMessage(text)
 				DrawDebugMenu()
 				continue
 	

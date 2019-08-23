@@ -11282,6 +11282,9 @@ global main_title, main_theme, msg_con
 global campaign, campaign_day, scenario, session
 global keyboard_decode, keyboard_encode
 
+# save console output to a file
+sys.stdout = open('log.txt', 'w')
+
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
 # try to load game settings from config file, will create a new file if none present

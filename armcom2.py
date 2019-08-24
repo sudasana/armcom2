@@ -170,9 +170,8 @@ SCEN_PHASE_COL = [
 # list of campaign calendar menus and their highlight colours
 CC_MENU_LIST = [
 	('Proceed', 1, libtcod.Color(70, 140, 0)),
-	('Crew and Tank', 2, libtcod.Color(140, 140, 0)),
-	('Group', 3, libtcod.Color(180, 0, 45))
-	
+	('Crew and Tank', 2, libtcod.Color(140, 140, 0))
+#	('Group', 3, libtcod.Color(180, 0, 45))
 ]
 
 # list of campaign day menus and their highlight colours
@@ -881,47 +880,48 @@ class Campaign:
 	def UpdateCalendarCmdCon(self):
 		libtcod.console_clear(calendar_cmd_con)
 		
+		libtcod.console_set_default_foreground(calendar_cmd_con, TITLE_COL)
+		libtcod.console_print(calendar_cmd_con, 6, 0, 'Command Menu')
+		libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+		libtcod.console_print(calendar_cmd_con, 0, 19, 'Use highlighted keys')
+		libtcod.console_print(calendar_cmd_con, 0, 20, 'to navigate interface')
+		
 		x = 0
 		for (text, num, col) in CC_MENU_LIST:
 			libtcod.console_set_default_background(calendar_cmd_con, col)
-			libtcod.console_rect(calendar_cmd_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
+			libtcod.console_rect(calendar_cmd_con, x, 1, 2, 1, True, libtcod.BKGND_SET)
 			
-			# group menu not active for now
-			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
-			if num == 4:
-				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.dark_grey)
-			libtcod.console_print(calendar_cmd_con, x, 0, str(num))
-			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.white)
-			
+			# display menu activation key, use darker bg colour for visibility
+			col2 = col * libtcod.light_grey
+			libtcod.console_put_char_ex(calendar_cmd_con, x, 1, str(num), ACTION_KEY_COL, col2)
 			x += 2
 			
 			# display menu text if active
 			if self.active_calendar_menu == num:
-				libtcod.console_rect(calendar_cmd_con, x, 0, len(text)+2, 1,
+				libtcod.console_rect(calendar_cmd_con, x, 1, len(text)+2, 1,
 					True, libtcod.BKGND_SET)
-				libtcod.console_print(calendar_cmd_con, x, 0, text)
+				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.white)
+				libtcod.console_print(calendar_cmd_con, x, 1, text)
 				x += len(text) + 2
 		
 		# fill in rest of menu line with final colour
-		libtcod.console_rect(calendar_cmd_con, x, 0, 25-x, 1, True, libtcod.BKGND_SET)
+		libtcod.console_rect(calendar_cmd_con, x, 1, 25-x, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(calendar_cmd_con, libtcod.black)
 		
 		# proceed - start day or continue to next day, summary of expected day
 		if self.active_calendar_menu == 1:
 			
+			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+			libtcod.console_print(calendar_cmd_con, 4, 10, 'Enter')
+			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+			
 			# day has not yet started
 			if campaign_day is None:
-				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
-				libtcod.console_print(calendar_cmd_con, 4, 18, 'Enter')
-				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
-				libtcod.console_print(calendar_cmd_con, 11, 18, 'Start Day')
+				libtcod.console_print(calendar_cmd_con, 11, 10, 'Start Day')
 			
 			# day has finished
 			else:
-				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
-				libtcod.console_print(calendar_cmd_con, 4, 18, 'Enter')
-				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
-				libtcod.console_print(calendar_cmd_con, 11, 18, 'End Day')
+				libtcod.console_print(calendar_cmd_con, 11, 10, 'End Day')
 		
 		# crew menu
 		elif self.active_calendar_menu == 2:
@@ -1187,6 +1187,19 @@ class Campaign:
 					crewman = campaign.player_unit.positions_list[selected_position].crewman
 					if crewman is None: continue
 					crewman.ShowCrewmanMenu()
+					self.UpdateCCDisplay()
+					continue
+				
+				# set nickname (not keymapped)
+				elif chr(key.c).lower() == 'n':
+					crewman = campaign.player_unit.positions_list[selected_position].crewman
+					if crewman is None: continue
+					if crewman.nickname != '': continue
+					new_nickname = ShowTextInputMenu('Enter a nickname for ' + crewman.GetFullName() + '; cannot be changed once set!',
+						'', MAX_NICKNAME_LENGTH, [])
+					if new_nickname != '':
+						crewman.nickname = new_nickname
+					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 					continue
 					
@@ -10701,25 +10714,41 @@ def ShowGameMenu():
 		libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
 		DrawFrame(game_menu_con, 0, 0, 84, 54)
 		
-		# display version number and save&quit command
-		libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
-		libtcod.console_print_ex(game_menu_con, 42, 5, libtcod.BKGND_NONE,
+		# display game name and version number
+		libtcod.console_set_default_background(game_menu_con, libtcod.darker_grey)
+		libtcod.console_rect(game_menu_con, 30, 2, 25, 7, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(game_menu_con, libtcod.black)
+		DrawFrame(game_menu_con, 30, 2, 25, 7)
+		
+		libtcod.console_print_ex(game_menu_con, 42, 4, libtcod.BKGND_NONE,
 			libtcod.CENTER, NAME)
-		libtcod.console_print_ex(game_menu_con, 42, 7, libtcod.BKGND_NONE,
+		libtcod.console_print_ex(game_menu_con, 42, 6, libtcod.BKGND_NONE,
 			libtcod.CENTER, VERSION)
 		
+		
+		# main commands
+		libtcod.console_print_ex(game_menu_con, 42, 12, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Game Commands')
 		libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
-		libtcod.console_print(game_menu_con, 30, 11, 'Esc')
-		libtcod.console_print(game_menu_con, 30, 12, 'Q')
+		libtcod.console_print(game_menu_con, 30, 14, 'Esc')
+		libtcod.console_print(game_menu_con, 30, 15, 'Q')
 		libtcod.console_set_default_foreground(game_menu_con, libtcod.lighter_grey)
-		libtcod.console_print(game_menu_con, 35, 11, 'Close Menu')
-		libtcod.console_print(game_menu_con, 35, 12, 'Save and Quit')
+		libtcod.console_print(game_menu_con, 35, 14, 'Close Menu')
+		libtcod.console_print(game_menu_con, 35, 15, 'Save and Quit')
 		
 		# display game options
 		libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
 		libtcod.console_print_ex(game_menu_con, 42, 20, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Game Options')
 		DisplayGameOptions(game_menu_con, WINDOW_XM-15, 22, skip_esc=True)
+		
+		# display quote
+		libtcod.console_set_default_foreground(game_menu_con, libtcod.grey)
+		libtcod.console_print(game_menu_con, 26, 46, 'We are the Dead. Short days ago')
+		libtcod.console_print(game_menu_con, 26, 47, 'We lived, felt dawn, saw sunset glow,')
+		libtcod.console_print(game_menu_con, 26, 48, 'Loved and were loved, and now we lie')
+		libtcod.console_print(game_menu_con, 26, 49, 'In Flanders fields.')
+		libtcod.console_print(game_menu_con, 26, 51, 'John McCrae (1872-1918)')
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		
@@ -10888,10 +10917,12 @@ def ShowTextInputMenu(prompt, original_text, max_length, string_list):
 		y += 1
 	
 	libtcod.console_set_default_foreground(0, ACTION_KEY_COL)
+	libtcod.console_print(0, 31, 34, 'Esc')
 	libtcod.console_print(0, 31, 35, 'Del')
 	libtcod.console_print(0, 31, 37, 'Enter')
 	
 	libtcod.console_set_default_foreground(0, libtcod.white)
+	libtcod.console_print(0, 37, 34, 'Cancel')
 	libtcod.console_print(0, 37, 35, 'Clear')
 	libtcod.console_print(0, 37, 37, 'Confirm and Continue')
 	
@@ -11283,7 +11314,8 @@ global campaign, campaign_day, scenario, session
 global keyboard_decode, keyboard_encode
 
 # save console output to a file
-sys.stdout = open('log.txt', 'w')
+if not DEBUG:
+	sys.stdout = open('log.txt', 'w')
 
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
@@ -11561,8 +11593,6 @@ while not exit_game:
 					for ammo_type in AMMO_TYPES:
 						if ammo_type in weapon.ammo_stores:
 							weapon.ammo_stores[ammo_type] = 0
-				
-				# TODO: allow player to review crew and set nicknames if any?
 				
 				# placeholders for the currently active campaign day and scenario
 				campaign_day = None

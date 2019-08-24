@@ -3854,6 +3854,7 @@ class Personnel:
 				
 		return modifier 
 	
+	
 	# check to see whether this personnel is wounded/KIA and return result if any
 	def DoWoundCheck(self, fp=0, roll_modifier=0.0, show_messages=True):
 		
@@ -4373,7 +4374,7 @@ class Weapon:
 	# set/reset all scenario statuses for a new turn
 	def ResetMe(self):
 		self.fired = False
-		self.moving = False
+		#self.moving = False
 		self.maintained_rof = False
 		self.UpdateCoveredHexes()
 	
@@ -4883,7 +4884,7 @@ class Unit:
 		self.ResetMe()
 	
 	
-	# set/reset all scenario statuses
+	# set/reset all scenario statuses for this unit
 	def ResetMe(self):
 		
 		self.hx = 0				# location in scenario hex map
@@ -9551,6 +9552,11 @@ class Scenario:
 			self.player_unit.squad = []
 			self.player_unit.SpawnAt(0,0)
 			self.player_unit.spotted = True
+			
+			# reset player crewman actions
+			for position in self.player_unit.positions_list:
+				if position.crewman is None: continue
+				position.crewman.current_cmd = 'Spot'
 			
 			# spawn rest of player squad
 			for i in range(campaign.player_squad_num):

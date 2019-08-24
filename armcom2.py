@@ -2364,6 +2364,12 @@ class CampaignDay:
 				for i in range(len(line)-1):
 					(hx, hy) = line[i]
 					(hx_p, hy_p) = line[i+1]
+					
+					# make sure that both hexes are on map, and break if either is not
+					if (hx, hy) not in self.map_hexes or (hx_p,hy_p) not in self.map_hexes:
+						break
+					
+					# create the road links
 					d = self.GetDirectionToAdjacentCD(hx, hy, hx_p, hy_p)
 					self.map_hexes[(hx,hy)].dirt_roads.append(d)
 					self.map_hexes[(hx_p,hy_p)].dirt_roads.append(ConstrainDir(d+3))
@@ -10744,11 +10750,11 @@ def ShowGameMenu():
 		
 		# display quote
 		libtcod.console_set_default_foreground(game_menu_con, libtcod.grey)
-		libtcod.console_print(game_menu_con, 26, 46, 'We are the Dead. Short days ago')
-		libtcod.console_print(game_menu_con, 26, 47, 'We lived, felt dawn, saw sunset glow,')
-		libtcod.console_print(game_menu_con, 26, 48, 'Loved and were loved, and now we lie')
-		libtcod.console_print(game_menu_con, 26, 49, 'In Flanders fields.')
-		libtcod.console_print(game_menu_con, 26, 51, 'John McCrae (1872-1918)')
+		libtcod.console_print(game_menu_con, 25, 46, 'We are the Dead. Short days ago')
+		libtcod.console_print(game_menu_con, 25, 47, 'We lived, felt dawn, saw sunset glow,')
+		libtcod.console_print(game_menu_con, 25, 48, 'Loved and were loved, and now we lie')
+		libtcod.console_print(game_menu_con, 25, 49, 'In Flanders fields.')
+		libtcod.console_print(game_menu_con, 25, 51, 'John McCrae (1872-1918)')
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		
@@ -11028,13 +11034,14 @@ def ShowDebugMenu():
 		x = 50
 		y = 8
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		for xm in range(3):
+		for xm in range(4):
 			libtcod.console_print(con, x, y+xm, str(xm+1))
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		libtcod.console_print(con, x+3, y, 'Regenerate CD Map Roads')
 		libtcod.console_print(con, x+3, y+1, 'Apply Serious Wound')
 		libtcod.console_print(con, x+3, y+2, 'Set Time to End of Day')
+		libtcod.console_print(con, x+3, y+3, 'End Current Scenario')
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 33, 56, 'Esc')
@@ -11092,7 +11099,7 @@ def ShowDebugMenu():
 				campaign_day.UpdateCDMapCon()
 				campaign_day.UpdateCDDisplay()
 				ShowMessage('Roads regenerated')
-				DrawDebugMenu()
+				#DrawDebugMenu()
 				continue
 		
 		# apply a serious wound to a random crewman
@@ -11104,7 +11111,7 @@ def ShowDebugMenu():
 				position.crewman.status = 'Stunned'
 				scenario.UpdateCrewInfoCon()
 				ShowMessage(position.crewman.GetFullName() + ' has received a Serious Wound and is Stunned.')
-				DrawDebugMenu()
+				#DrawDebugMenu()
 				continue
 		
 		# set current time to end of combat day
@@ -11115,7 +11122,15 @@ def ShowDebugMenu():
 				DisplayTimeInfo(time_con)
 				text = 'Time is now ' + str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
 				ShowMessage(text)
-				DrawDebugMenu()
+				#DrawDebugMenu()
+				continue
+		
+		# end the current scenario
+		elif int(key_char) == 4:
+			if scenario is not None:
+				scenario.finished = True
+				ShowMessage('Scenario finished flag set to True')
+				#DrawDebugMenu()
 				continue
 	
 	# re-draw original root console

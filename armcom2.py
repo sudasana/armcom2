@@ -1359,6 +1359,7 @@ class CampaignDay:
 		self.GenerateRoads()
 		
 		self.active_menu = 3				# number of currently active command menu
+		self.selected_position = 0			# selected crew position in crew command menu tab
 		self.selected_direction = None			# select direction for support, travel, etc.
 		self.abandoned_tank = False			# set to true if player abandoned their tank that day
 		self.scenario = None				# currently active scenario in progress
@@ -2732,13 +2733,16 @@ class CampaignDay:
 		libtcod.console_clear(cd_direction_con)
 		
 		x1 = 12
-		y1 = 6
+		y1 = 4
 		
 		# display possible support/move/recon directions
-		libtcod.console_set_default_foreground(cd_direction_con, libtcod.white)
-		libtcod.console_print_ex(cd_direction_con, 12, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+		libtcod.console_set_default_foreground(cd_direction_con, TITLE_COL)
+		libtcod.console_print_ex(cd_direction_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Directional Control')
+		
+		libtcod.console_set_default_foreground(cd_direction_con, libtcod.white)
 		libtcod.console_put_char(cd_direction_con, x1, y1, '@')
+		
 		for direction in range(6):
 			libtcod.console_set_default_foreground(cd_direction_con, ACTION_KEY_COL)
 			
@@ -2757,62 +2761,80 @@ class CampaignDay:
 		
 		if self.selected_direction is None:
 			libtcod.console_set_default_foreground(cd_direction_con, libtcod.light_grey)
-			libtcod.console_print_ex(cd_direction_con, 12, y1+5, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Select Direction')
+			libtcod.console_print_ex(cd_direction_con, 13, y1+4, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Select a Direction')
 	
 	
-	# generate/update the command menu console
+	# generate/update the command menu console 25x31
 	def UpdateCDCommandCon(self):
 		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 		libtcod.console_clear(cd_command_con)
 		
+		libtcod.console_set_default_foreground(cd_command_con, TITLE_COL)
+		libtcod.console_print(cd_command_con, 6, 0, 'Command Menu')
+		
 		x = 0
 		for (text, num, col) in CD_MENU_LIST:
 			libtcod.console_set_default_background(cd_command_con, col)
-			libtcod.console_rect(cd_command_con, x, 0, 2, 1, True, libtcod.BKGND_SET)
+			libtcod.console_rect(cd_command_con, x, 1, 2, 1, True, libtcod.BKGND_SET)
 			
 			# display menu number
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, x, 0, str(num))
+			libtcod.console_print(cd_command_con, x, 1, str(num))
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
 			x += 2
 			
 			# display menu text if tab is active
 			if self.active_menu == num:
-				libtcod.console_rect(cd_command_con, x, 0, len(text)+2, 1,
+				libtcod.console_rect(cd_command_con, x, 1, len(text)+2, 1,
 					True, libtcod.BKGND_SET)
-				libtcod.console_print(cd_command_con, x, 0, text)
+				libtcod.console_print(cd_command_con, x, 1, text)
 				x += len(text) + 2
 		
 		# fill in rest of menu line with final colour
-		libtcod.console_rect(cd_command_con, x, 0, 25-x, 1, True, libtcod.BKGND_SET)
+		libtcod.console_rect(cd_command_con, x, 1, 25-x, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(cd_command_con, libtcod.black)
 		
 		# support
 		if self.active_menu == 1:
 			
+			libtcod.console_print(cd_command_con, 1, 10, 'Current Support Levels:')
+			
 			# display current support levels
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.light_grey)
 			text = 'Air Support: '
 			if self.air_support_level == 0.0:
 				text += 'None'
 			else:
 				text += str(self.air_support_level)
-			libtcod.console_print(cd_command_con, 1, 3, text)
+			libtcod.console_print(cd_command_con, 1, 12, text)
 			
 			text = 'Artillery Support: '
 			if self.arty_support_level == 0.0:
 				text += 'None'
 			else:
 				text += str(self.arty_support_level)
-			libtcod.console_print(cd_command_con, 1, 5, text)
+			libtcod.console_print(cd_command_con, 1, 13, text)
 			
+			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+			libtcod.console_print(cd_command_con, 2, 28, 'R')
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			libtcod.console_print(cd_command_con, 5, 28, 'Request Additional')
+			libtcod.console_print(cd_command_con, 5, 29, 'Support (15 mins.)')
 		
 		# crew
 		elif self.active_menu == 2:
 			
-			libtcod.console_print(cd_command_con, 1, 2, 'Crew Status')
-			# TODO: list of crew statuses
+			DisplayCrew(campaign.player_unit, cd_command_con, 0, 3, self.selected_position)
+			
+			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+			libtcod.console_print(cd_command_con, 3, 28, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cd_command_con, 3, 29, EnKey('f').upper())
+			
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			libtcod.console_print(cd_command_con, 8, 28, 'Select Position')
+			libtcod.console_print(cd_command_con, 8, 29, 'Crewman Menu')
 		
 		
 		# travel
@@ -2820,14 +2842,12 @@ class CampaignDay:
 			
 			# display Wait command (always available)
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 5, 20, EnKey('w').upper())
+			libtcod.console_print(cd_command_con, 3, 27, EnKey('w').upper())
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 12, 20, 'Wait/Defend')
+			libtcod.console_print(cd_command_con, 10, 27, 'Wait/Defend')
 			
 			# check to see whether travel in selected direction is not possible
 			if self.selected_direction is None:
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-				libtcod.console_print(cd_command_con, 3, 12, 'Select a direction')
 				return
 			(hx1, hy1) = self.player_unit_location
 			(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, self.selected_direction)
@@ -2838,16 +2858,18 @@ class CampaignDay:
 			if map_hex.controlled_by == 1:
 				
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
-				libtcod.console_print(cd_command_con, 1, 2, 'Enemy Controlled')
+				libtcod.console_print(cd_command_con, 3, 12, 'Destination is')
+				libtcod.console_print(cd_command_con, 3, 13, 'Enemy Controlled')
 				
 				# display recon option
 				if not map_hex.known_to_player:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-					libtcod.console_print(cd_command_con, 1, 3, 'Recon: 15 mins.')
+					libtcod.console_print(cd_command_con, 1, 19, 'Recon: 15 mins.')
 					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-					libtcod.console_print(cd_command_con, 5, 21, EnKey('r').upper())
+					libtcod.console_print(cd_command_con, 3, 28, EnKey('r').upper())
+					
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-					libtcod.console_print(cd_command_con, 12, 21, 'Recon')
+					libtcod.console_print(cd_command_con, 10, 28, 'Recon')
 				else:
 					libtcod.console_print(cd_command_con, 1, 3, 'Strength: ' + str(map_hex.enemy_strength))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -2855,21 +2877,21 @@ class CampaignDay:
 			# calculate and display travel time
 			mins = self.CalculateTravelTime(hx1, hy1, hx2, hy2)
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			libtcod.console_print(cd_command_con, 1, 5, 'Travel Time: ' + str(mins) + ' mins.')
+			libtcod.console_print(cd_command_con, 1, 20, 'Travel Time: ' + str(mins) + ' mins.')
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 5, 22, 'Enter')
+			libtcod.console_print(cd_command_con, 3, 29, 'Enter')
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 12, 22, 'Proceed')
+			libtcod.console_print(cd_command_con, 10, 29, 'Proceed')
 		
 		# group
 		elif self.active_menu == 4:
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			libtcod.console_print(cd_command_con, 1, 2, 'Squad')
+			libtcod.console_print(cd_command_con, 1, 3, 'Squad')
 			text = str(campaign.player_squad_num) + ' x ' + campaign.player_unit.unit_id
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 1, 3, text)
+			libtcod.console_print(cd_command_con, 1, 4, text)
 		
 		# resupply menu
 		elif self.active_menu == 5:
@@ -2879,9 +2901,9 @@ class CampaignDay:
 			libtcod.console_print_ex(cd_command_con, 12, 11, libtcod.BKGND_NONE, libtcod.CENTER,
 				'30 mins.')
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 8, 22, EnKey('r').upper())
+			libtcod.console_print(cd_command_con, 2, 29, EnKey('r').upper())
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 10, 22, 'Resupply')
+			libtcod.console_print(cd_command_con, 5, 29, 'Request Resupply')
 	
 	
 	# generate/update the campaign info console 23x16
@@ -3047,7 +3069,7 @@ class CampaignDay:
 		
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
 		libtcod.console_blit(cd_direction_con, 0, 0, 0, 0, con, 1, 18)		# directional info		
-		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 35)		# command menu
+		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 28)		# command menu
 		
 		libtcod.console_blit(cd_weather_con, 0, 0, 0, 0, con, 66, 1)		# weather info
 		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 18)		# campaign info
@@ -3074,8 +3096,8 @@ class CampaignDay:
 		cd_gui_con = NewConsole(35, 53, KEY_COLOR, libtcod.red)
 		time_con = NewConsole(21, 5, libtcod.darkest_grey, libtcod.white)
 		cd_player_unit_con = NewConsole(25, 16, libtcod.black, libtcod.white)
-		cd_direction_con = NewConsole(25, 16, libtcod.black, libtcod.white)
-		cd_command_con = NewConsole(25, 24, libtcod.black, libtcod.white)
+		cd_direction_con = NewConsole(25, 9, libtcod.black, libtcod.white)
+		cd_command_con = NewConsole(25, 31, libtcod.black, libtcod.white)
 		cd_weather_con = NewConsole(23, 12, libtcod.black, libtcod.white)
 		cd_campaign_con = NewConsole(23, 16, libtcod.black, libtcod.white)
 		cd_hex_info_con = NewConsole(23, 9, libtcod.black, libtcod.white)
@@ -3222,14 +3244,66 @@ class CampaignDay:
 			# support menu active
 			if self.active_menu == 1:
 				
-				# FUTURE: add request additional support option here
-				pass
+				# request additional support (not keymapped)
+				if chr(key.c).lower() == 'r':
+					
+					# increase air support
+					if 'air_support_level' in campaign.today:
+						maximum = campaign.today['air_support_level']
+						if self.air_support_level == maximum:
+							ShowMessage('Already at maximum support level.')
+							continue
+					
+					# increase artillery support
+					else:
+						maximum = campaign.today['arty_support_level']
+						if self.arty_support_level == maximum:
+							ShowMessage('Already at maximum support level.')
+							continue
+					
+					ShowMessage('You radio in a request for additional support.')
+					self.AdvanceClock(0, 15)
+					DisplayTimeInfo(time_con)
+					
+					if 'air_support_level' in campaign.today:
+						self.air_support_level += float(libtcod.random_get_int(0, 1, 5)) * 5.0
+						if self.air_support_level > maximum:
+							self.air_support_level = maximum
+					else:
+						self.arty_support_level += float(libtcod.random_get_int(0, 1, 5)) * 5.0
+						if self.arty_support_level > maximum:
+							self.arty_support_level = maximum
+					
+					#self.CheckForRandomEvent()
+					#self.CheckForZoneCapture()
+					SaveGame()
+					continue
 			
-			# crew menu actiove
+			# crew menu active
 			elif self.active_menu == 2:
 				
-				# FUTURE: add crew selection commands
-				pass
+				# change selected crew position
+				if key_char in ['w', 's']:
+					if key_char == 'w':
+						self.selected_position -= 1
+						if self.selected_position < 0:
+							self.selected_position = len(campaign.player_unit.positions_list) - 1
+				
+					else:
+						self.selected_position += 1
+						if self.selected_position == len(campaign.player_unit.positions_list):
+							self.selected_position = 0
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					continue
+				
+				# open crewman menu
+				elif key_char == 'f':
+					crewman = campaign.player_unit.positions_list[self.selected_position].crewman
+					if crewman is None: continue
+					crewman.ShowCrewmanMenu()
+					self.UpdateCDDisplay()
+					continue
 			
 			# travel menu active
 			elif self.active_menu == 3:

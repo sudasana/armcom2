@@ -577,10 +577,12 @@ class Campaign:
 				
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 			libtcod.console_print(con, 32, 53, EnKey('a').upper() + '/' + EnKey('d').upper())
+			libtcod.console_print(con, 32, 54, 'R')
 			libtcod.console_print(con, 32, 55, 'Enter')
 			libtcod.console_print(con, 32, 56, 'Esc')
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print(con, 38, 53, 'Change Campaign')
+			libtcod.console_print(con, 38, 54, 'Random')
 			libtcod.console_print(con, 38, 55, 'Proceed')
 			libtcod.console_print(con, 38, 56, 'Return to Main Menu')
 			
@@ -646,6 +648,12 @@ class Campaign:
 					else:
 						selected_campaign = campaign_list[i-1]
 				UpdateCampaignSelectionScreen(selected_campaign)
+			
+			# select a random campaign (not keymapped)
+			elif chr(key.c).lower() == 'r':
+				selected_campaign = choice(campaign_list)
+				exit_menu = True
+				
 		
 		# create a local copy of selected scenario stats
 		with open(CAMPAIGNPATH + selected_campaign['filename'], encoding='utf8') as data_file:
@@ -3518,7 +3526,7 @@ class Personnel:
 		self.skills = []				# list of skills
 		
 		# advance points
-		if self.current_position in ['Commander', 'Commander/Gunner']:
+		if self.current_position.name in ['Commander', 'Commander/Gunner']:
 			self.adv = 2
 		else:
 			self.adv = 1

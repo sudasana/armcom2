@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '1.0.0-beta.1'				# game version
+VERSION = '0.7.0 26-08-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -811,13 +811,20 @@ class Campaign:
 		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
 		libtcod.console_clear(temp_con)
 		DrawFrame(temp_con, 0, 0, 29, 54)
-		libtcod.console_set_default_foreground(temp_con, libtcod.white)
 		
 		# campaign and calendar day info
-		libtcod.console_print_ex(temp_con, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+		libtcod.console_set_default_foreground(temp_con, TITLE_COL)
+		libtcod.console_print_ex(temp_con, 14, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Your Campaign is Finished')
-		libtcod.console_print_ex(temp_con, 14, 3, libtcod.BKGND_NONE, libtcod.CENTER,
-			self.stats['name'])
+		
+		libtcod.console_set_default_foreground(temp_con, libtcod.white)
+		y = 3
+		for line in wrap(self.stats['name'], 27):
+			libtcod.console_print_ex(temp_con, 14, y, libtcod.BKGND_NONE, libtcod.CENTER,
+				line)
+			y += 1
+		
+		# FUTURE: display start and end dates of player's campaign
 		
 		# FUTURE: display outcome for player character
 		
@@ -1724,15 +1731,9 @@ class CampaignDay:
 		# roll for type of event
 		roll = GetPercentileRoll()
 		
-		# reinforcements for player squad
+		# TEMP - need to replace with new event
 		if roll <= 35.0:
-			
-			# can't increase
-			if campaign.player_squad_num == campaign.player_squad_max:
-				return
-			
-			ShowMessage('Reinforcements arrive and bring your squad back up to full strength.')
-			campaign.player_squad_num = campaign.player_squad_max
+			pass
 		
 		# enemy strength increases
 		elif roll <= 45.0:
@@ -1815,9 +1816,14 @@ class CampaignDay:
 			if 'air_support_level' in campaign.today:
 				text += 'air'
 				self.air_support_level += (self.air_support_step * float(libtcod.random_get_int(0, 1, 3)))
+				# make sure does not go beyond initial level
+				if self.air_support_level > campaign.today['air_support_level']:
+					self.air_support_level = campaign.today['air_support_level']
 			elif 'arty_support_level' in campaign.today:
 				text += 'artillery'
 				self.arty_support_level += (self.arty_support_step * float(libtcod.random_get_int(0, 1, 3)))
+				if self.arty_support_level > campaign.today['arty_support_level']:
+					self.arty_support_level = campaign.today['arty_support_level']
 			else:
 				return
 			
@@ -1843,6 +1849,9 @@ class CampaignDay:
 	def CheckForZoneCapture(self, zone_just_captured=False):
 		
 		global scenario
+		
+		# don't trigger an event if day has already ended
+		if self.ended: return
 		
 		# set odds of each possible oocurance based on current day mission
 		if campaign.today['mission'] == 'Advance':
@@ -1937,7 +1946,7 @@ class CampaignDay:
 					map_hex = self.map_hexes[(hx,hy)]
 					scenario = Scenario(map_hex)
 					self.scenario = scenario
-					self.records['Battles Fought'] += 1
+					self.AddRecord('Battles Fought', 1)
 				else:
 					# player is not present in zone
 					ShowMessage('Enemy forces have captured an allied-held zone!')
@@ -2262,13 +2271,22 @@ class CampaignDay:
 		for position in unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status == 'Dead':
+				# TODO: preserve original order when replacing crewmen
 				unit.personnel_list.remove(position.crewman)
 				unit.personnel_list.append(Personnel(unit, unit.nation, position))
 				position.crewman = unit.personnel_list[-1]
 				if unit == campaign.player_unit:
 					text = position.crewman.GetFullName() + ' joins your crew in the ' + position.name + ' position.'
 					ShowMessage(text)
-				
+	
+	
+	# check to see if player squad needs to be refilled
+	def DoPlayerSquadCheck(self):
+		if campaign.player_squad_num == campaign.player_squad_max:
+			return
+		campaign.player_squad_num = campaign.player_squad_max
+		ShowMessage('You are joined by reserve units, bringing your squad back up to full strength.')
+		
 	
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
@@ -2427,8 +2445,13 @@ class CampaignDay:
 		libtcod.console_set_default_foreground(temp_con, libtcod.white)
 		
 		# campaign and calendar day info
-		libtcod.console_print_ex(temp_con, 14, 2, libtcod.BKGND_NONE, libtcod.CENTER,
-			campaign.stats['name'])
+		lines = wrap(campaign.stats['name'], 27)
+		y = 1
+		for line in lines:
+			libtcod.console_print_ex(temp_con, 14, y, libtcod.BKGND_NONE, libtcod.CENTER,
+				line)
+			y += 1
+			if y == 4: break
 		libtcod.console_print_ex(temp_con, 14, 4, libtcod.BKGND_NONE, libtcod.CENTER,
 			GetDateText(campaign.today['date']))
 		
@@ -2692,20 +2715,8 @@ class CampaignDay:
 	def UpdateCDGUICon(self):
 		libtcod.console_clear(cd_gui_con)
 		
-		# support menu, direction currently selected
-		if self.active_menu == 1 and self.selected_direction is not None:
-			# draw target on hex if any
-			(hx, hy) = self.player_unit_location
-			(hx, hy) = self.GetAdjacentCDHex(hx, hy, self.selected_direction)
-			if (hx, hy) in self.map_hexes:
-				(x,y) = self.PlotCDHex(hx, hy)
-				libtcod.console_put_char_ex(cd_gui_con, x-1, y-1, 92, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(cd_gui_con, x+1, y+1, 92, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(cd_gui_con, x+1, y-1, 47, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(cd_gui_con, x-1, y+1, 47, libtcod.red, libtcod.black)
-		
 		# movement menu, direction currently selected
-		elif self.active_menu == 3 and self.selected_direction is not None:
+		if self.active_menu == 3 and self.selected_direction is not None:
 			
 			# draw directional line
 			(hx, hy) = self.player_unit_location
@@ -3153,6 +3164,7 @@ class CampaignDay:
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 						self.DoCrewCheck(campaign.player_unit)
 						self.CheckForEndOfDay()
+						self.DoPlayerSquadCheck()
 						self.UpdateCDDisplay()
 						libtcod.console_flush()
 						self.CheckForRandomEvent()
@@ -3392,7 +3404,7 @@ class CampaignDay:
 								scenario = Scenario(map_hex2)
 								self.scenario = scenario
 								self.encounter_mod = 0.0
-								self.records['Battles Fought'] += 1
+								self.AddRecord('Battles Fought', 1)
 								continue
 							
 							ShowMessage('You find no resistance and gain control of the area.')
@@ -11227,7 +11239,7 @@ def ShowDebugMenu():
 				campaign_day.UpdateCDMapCon()
 				campaign_day.UpdateCDDisplay()
 				ShowMessage('Roads regenerated')
-				#DrawDebugMenu()
+				DrawDebugMenu()
 				continue
 		
 		# apply a serious wound to a random crewman
@@ -11239,7 +11251,7 @@ def ShowDebugMenu():
 				position.crewman.status = 'Stunned'
 				scenario.UpdateCrewInfoCon()
 				ShowMessage(position.crewman.GetFullName() + ' has received a Serious Wound and is Stunned.')
-				#DrawDebugMenu()
+				DrawDebugMenu()
 				continue
 		
 		# set current time to end of combat day
@@ -11250,7 +11262,7 @@ def ShowDebugMenu():
 				DisplayTimeInfo(time_con)
 				text = 'Time is now ' + str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
 				ShowMessage(text)
-				#DrawDebugMenu()
+				DrawDebugMenu()
 				continue
 		
 		# end the current scenario
@@ -11258,7 +11270,7 @@ def ShowDebugMenu():
 			if scenario is not None:
 				scenario.finished = True
 				ShowMessage('Scenario finished flag set to True')
-				#DrawDebugMenu()
+				DrawDebugMenu()
 				continue
 	
 	# re-draw original root console

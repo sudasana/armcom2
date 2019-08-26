@@ -5674,19 +5674,25 @@ class Unit:
 		if self.unit_name != '':
 			libtcod.console_print(console, x, y+2, self.unit_name)
 		
-		# weapons
+		# weapons - list turret and unmounted weapons on line 1, all others on line 2
 		libtcod.console_set_default_background(console, libtcod.darkest_red)
 		libtcod.console_rect(console, x, y+10, 25, 2, True, libtcod.BKGND_SET)
 		
 		text1 = ''
 		text2 = ''
 		for weapon in self.weapon_list:
-			if weapon.GetStat('type') == 'Gun':
+			line1 = True
+			if weapon.GetStat('mount') is not None:
+				if weapon.GetStat('mount') != 'Turret':
+					line1 = False
+			
+			if line1:
 				if text1 != '': text1 += ', '
 				text1 += weapon.stats['name']
 			else:
 				if text2 != '': text2 += ', '
 				text2 += weapon.stats['name']
+			
 		libtcod.console_print(console, x, y+10, text1)
 		libtcod.console_print(console, x, y+11, text2)
 		
@@ -6947,8 +6953,10 @@ class Scenario:
 			print('ERROR: Weapon type not recognized: ' + weapon.stats['name'])
 			return None
 		
-		# NEW: determine crewman operating weapon
-		profile['crewman'] = attacker.GetPersonnelByPosition(weapon.stats['fired_by'][0])
+		# determine crewman operating weapon
+		profile['crewman'] = None
+		if weapon.GetStat('fired_by') is not None:
+			profile['crewman'] = attacker.GetPersonnelByPosition(weapon.stats['fired_by'][0])
 		
 		# calculate distance to target
 		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
@@ -6958,11 +6966,13 @@ class Scenario:
 		
 		modifier_list = []
 		
+		# base critical hit chance
+		profile['critical_hit'] = CRITICAL_HIT
+		
 		# point fire attacks (eg. large guns)
 		if profile['type'] == 'Point Fire':
 			
-			# calculate critical hit chance
-			profile['critical_hit'] = CRITICAL_HIT
+			# calculate critical hit chance modifier
 			if profile['crewman'] is not None:
 				if 'Knows Weak Spots' in profile['crewman'].skills:
 					if weapon_type == 'Gun' and target.GetStat('armour') is not None:
@@ -8972,7 +8982,7 @@ class Scenario:
 				libtcod.console_print_ex(context_con, 17, 0, libtcod.BKGND_NONE,
 					libtcod.RIGHT, weapon.stats['mount'])
 			
-			# display acquired target if any
+			# display target and acquired target status if any
 			if self.selected_target is not None and weapon.acquired_target is not None:
 				(ac_target, level) = weapon.acquired_target
 				if ac_target == self.selected_target:
@@ -9010,18 +9020,22 @@ class Scenario:
 				libtcod.console_print_ex(context_con, 7, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, weapon.stats['max_ammo'])
 			
-			libtcod.console_set_default_foreground(context_con, libtcod.red)
-			
 			if weapon.fired:
+				libtcod.console_set_default_foreground(context_con, libtcod.red)
 				libtcod.console_print(context_con, 0, 11, 'Fired')
 				return
 			
 			# display info about current target if any
 			if self.selected_target is not None:
+				
+				libtcod.console_set_default_foreground(context_con, libtcod.light_red)
+				libtcod.console_print(context_con, 0, 8, self.selected_target.GetName())
+				
 				result = self.CheckAttack(scenario.player_unit, weapon, self.selected_target)
 				if result != '':
 					lines = wrap(result, 18)
 					y = 9
+					libtcod.console_set_default_foreground(context_con, libtcod.red)
 					for line in lines:
 						libtcod.console_print(context_con, 0, y, line)
 						y += 1

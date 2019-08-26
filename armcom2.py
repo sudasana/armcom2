@@ -5006,6 +5006,7 @@ class Unit:
 		
 		self.pinned = False
 		self.deployed = False
+		self.fatigue = 0			# fatigue points
 		
 		self.forward_move_chance = 0.0		# set by CalculateMoveChances()
 		self.reverse_move_chance = 0.0
@@ -6128,10 +6129,17 @@ class Unit:
 		for i in range(2, self.fp_to_resolve + 1):
 			base_chance += RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
 		
-		# FUTURE: calculate and apply any modifiers
+		# apply any modifiers
+		if self.fatigue > 0:
+			base_chance += float(self.fatigue) * 15.0
+			print('DEBUG: Applied fatigue effects on ' + self.unit_id)
 		
-		# restrict final chances
+		# restrict final chance
 		base_chance = RestrictChance(base_chance)
+		
+		text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + '. '
+		text += str(base_chance) + '%% chance to destroy.'
+		ShowMessage(text)
 		
 		# roll for effect
 		roll = GetPercentileRoll()
@@ -6143,8 +6151,11 @@ class Unit:
 		else:
 			# pin test
 			self.PinTest(self.fp_to_resolve)
+			if not self.pinned:
+				ShowMessage('No effect.')
 		
 		self.fp_to_resolve = 0
+		self.fatigue += 1
 	
 	
 	# do a morale check for this unit to recover from Broken or Pinned status

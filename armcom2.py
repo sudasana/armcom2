@@ -9022,14 +9022,14 @@ class Scenario:
 			
 			if weapon.fired:
 				libtcod.console_set_default_foreground(context_con, libtcod.red)
-				libtcod.console_print(context_con, 0, 11, 'Fired')
+				libtcod.console_print(context_con, 0, 7, 'Fired')
 				return
 			
 			# display info about current target if any
 			if self.selected_target is not None:
 				
 				libtcod.console_set_default_foreground(context_con, libtcod.light_red)
-				libtcod.console_print(context_con, 0, 8, self.selected_target.GetName())
+				libtcod.console_print(context_con, 0, 7, self.selected_target.GetName())
 				
 				result = self.CheckAttack(scenario.player_unit, weapon, self.selected_target)
 				if result != '':

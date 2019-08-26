@@ -4034,7 +4034,7 @@ class Personnel:
 				self.DoKOCheck(0)
 				if self.status == 'Unconscious':
 					if show_messages:
-						Message(self.GetFullName() + ' has received a Serious Wound ' +
+						ShowMessage(self.GetFullName() + ' has received a Serious Wound ' +
 							'and has been knocked Unconscious')
 					return 'Serious Wound, Unconscious'
 			
@@ -4052,7 +4052,7 @@ class Personnel:
 				self.DoKOCheck(15)
 				if self.status == 'Unconscious':
 					if show_messages:
-						Message(self.GetFullName() + ' has received a Critical Wound ' +
+						ShowMessage(self.GetFullName() + ' has received a Critical Wound ' +
 							'and has been knocked Unconscious.')
 					return 'Critical Wound, Unconscious'
 				
@@ -4140,6 +4140,21 @@ class Personnel:
 			
 			# don't add "None" automatically
 			if k == 'None': continue
+			
+			# weapon operation needs a weapon in the unit
+			if k in ['Operate Gun', 'Operate MG']:
+				
+				for weapon in self.unit.weapon_list:
+					
+					if k == 'Operate Gun' and weapon.GetStat('type') != 'Gun': continue
+					if k == 'Operate MG' and weapon.GetStat('type') not in MG_WEAPONS: continue
+					if weapon.GetStat('fired_by') is None: continue
+					if self.current_position.name not in weapon.GetStat('fired_by'): continue
+					
+					# add the command to fire this weapon
+					self.cmd_list.append(k)
+					
+				continue
 			
 			if 'position_list' in d:
 				if self.current_position.name not in d['position_list']:

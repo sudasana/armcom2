@@ -35,13 +35,11 @@
 	
 	"Operate Gun" : {
 		"desc" : "Operate a main gun and the turret",
-		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader"],
 		"spotting_allowed" : false
 	},
 	
 	"Operate MG" : {
 		"desc" : "Operate the MG from this position",
-		"position_list" : ["Gunner", "Commander/Gunner", "Gunner/Loader", "Assistant Driver"],
 		"spotting_allowed" : false
 	},
 	

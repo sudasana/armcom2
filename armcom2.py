@@ -6112,6 +6112,7 @@ class Unit:
 						else:
 							ShowMessage('The hit damages the engine and drivetrain, immobilizing your tank.')
 							scenario.player_unit.ImmobilizeMe()
+							scenario.UpdatePlayerInfoCon()
 						continue
 					
 					# spalling
@@ -6128,6 +6129,7 @@ class Unit:
 							
 							# TODO: apply modifier here?
 							position.crewman.DoWoundCheck()
+							scenario.UpdateCrewInfoCon()
 						
 						continue
 					

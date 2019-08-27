@@ -4182,6 +4182,10 @@ class Personnel:
 				if not crew_injured:
 					continue
 			
+			# can't drive if vehicle is immbobilized
+			elif k == 'Drive':
+				if self.unit.immobilized: continue
+			
 			self.cmd_list.append(k)
 	
 	# select a new command from command list
@@ -5017,6 +5021,7 @@ class Unit:
 		self.previous_turret_facing = None
 		
 		self.pinned = False
+		self.immobilized = False
 		self.deployed = False
 		self.fatigue = 0			# fatigue points
 		
@@ -5745,10 +5750,15 @@ class Unit:
 			if self.GetStat('turret') == 'Fast':
 				libtcod.console_print(console, x+8, y+13, '(fast)')
 		
-		# movement
-		libtcod.console_set_default_foreground(console, libtcod.light_green)
+		# movement class
+		if self.immobilized:
+			libtcod.console_set_default_foreground(console, libtcod.light_red)
+			text = 'Immobilized'
+		else:
+			libtcod.console_set_default_foreground(console, libtcod.light_green)
+			text = self.GetStat('movement_class')
 		libtcod.console_print_ex(console, x+24, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,
-			self.GetStat('movement_class'))
+			text)
 		
 		# recce and/or off road
 		libtcod.console_set_default_foreground(console, libtcod.dark_green)
@@ -6072,8 +6082,56 @@ class Unit:
 						
 			elif profile['result'] == 'PENETRATED':
 				
-				# FUTURE: roll for penetration result here, use the
-				# final 'roll' difference vs. 'final_chance' as modifier
+				# if the player unit has been penetrated, multiple outcomes are possible
+				if self == scenario.player_unit:
+					
+					# possible outcomes: minor damage, spalling, immobilized, knocked out
+					
+					# apply roll penalty based on how much original roll failed by
+					difference = profile['roll'] - profile['final_chance']
+					print('DEBUG: roll was failed by: ' + str(difference))
+					
+					roll = GetPercentileRoll() + difference
+					
+					# TEMP - testing
+					roll = 30.0
+					
+					print('DEBUG: penetration result roll was: ' + str(roll))
+					
+					# minor damage
+					if roll <= 15.0:
+						ShowMessage('Your tank suffers minor damage but is otherwise unharmed.')
+						continue
+					
+					# immobilized
+					elif roll <= 30.0:
+						
+						# already immobilized
+						if scenario.player_unit.immobilized:
+							ShowMessage('Your tank suffers minor damage but is otherwise unharmed.')
+						else:
+							ShowMessage('The hit damages the engine and drivetrain, immobilizing your tank.')
+							scenario.player_unit.ImmobilizeMe()
+						continue
+					
+					# spalling
+					elif roll <= 50.0:
+						text = 'The hit shatters the armour plate, sending shards of hot metal into the ' + profile['location']
+						ShowMessage(text)
+						for position in scenario.player_unit.positions_list:
+							
+							if position.crewman is None: continue
+							
+							# only affects turret or hull
+							if position.location is not None:
+								if position.location != profile['location']: continue
+							
+							# TODO: apply modifier here?
+							position.crewman.DoWoundCheck()
+						
+						continue
+					
+					# otherwise: destroyed
 				
 				self.DestroyMe()
 				
@@ -6093,9 +6151,10 @@ class Unit:
 				if profile['attacker'] == scenario.player_unit:
 					campaign.AddLog('Destroyed a ' + self.GetName())
 				
-				return
+				# don't resolve any further hits
+				break
 
-		# clear unresolved hits
+		# clear resolved hits
 		self.ap_hits_to_resolve = []
 	
 	
@@ -6205,7 +6264,14 @@ class Unit:
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
 		ShowMessage(self.GetName() + ' is now Pinned.')
-	
+
+
+	# immobilize this unit
+	def ImmobilizeMe(self):
+		if self.GetStat('category') not in ['Vehicle']: return
+		self.moving = False
+		self.immobilized = True
+
 	
 	# destroy this unit and remove it from the game
 	def DestroyMe(self):
@@ -7723,8 +7789,8 @@ class Scenario:
 										# apply fate point
 										campaign_day.fate_points -= 1
 										roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
-										if roll > 100.0:
-											roll = 100.0
+										if roll > 97.0:
+											roll = 97.0
 							
 							# AP penetration
 							elif profile['type'] == 'ap':
@@ -7732,15 +7798,17 @@ class Scenario:
 								# apply fate point
 								campaign_day.fate_points -= 1
 								roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
-								if roll > 100.0:
-									roll = 100.0
+								if roll > 97.0:
+									roll = 97.0
 				
-					# check for debug flag
+					# check for debug flag - force a hit or penetration
 					if DEBUG:
 						if profile['attacker'] == scenario.player_unit and session.debug['Player Always Hits']:
-							roll = 3.0
+							while roll > profile['final_chance']:
+								roll = GetPercentileRoll()
 						elif profile['target'] == scenario.player_unit and profile['type'] == 'ap' and session.debug['Player Always Penetrated']:
-							roll = 3.0
+							while roll > profile['final_chance']:
+								roll = GetPercentileRoll()
 				
 				# clear any previous text
 				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,

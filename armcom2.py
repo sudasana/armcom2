@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.7.0 26-08-19'				# game version
+VERSION = '0.7.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -502,12 +502,10 @@ class Campaign:
 	
 	# add a line to the log for the current day
 	def AddLog(self, text):
-
 		# add timestamp if a campaign day is active
 		if campaign_day is not None:
 			text = (str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2) +
 				' - ' + text)
-		
 		self.logs[self.today['date']].append(text)
 	
 	
@@ -1731,7 +1729,7 @@ class CampaignDay:
 		# roll for type of event
 		roll = GetPercentileRoll()
 		
-		# TEMP - need to replace with new event
+		# TODO - need to replace with new event
 		if roll <= 35.0:
 			pass
 		
@@ -2462,7 +2460,10 @@ class CampaignDay:
 		if campaign_day.abandoned_tank:
 			col = libtcod.light_grey
 			text = 'ABANDONED TANK'
-		if campaign.player_unit.alive:
+		elif campaign.player_unit.immobilized:
+			col = libtcod.light_red
+			text = 'IMMOBILIZED'
+		elif campaign.player_unit.alive:
 			col = GOLD_COL
 			text = 'SURVIVED'
 		else:
@@ -3158,8 +3159,15 @@ class CampaignDay:
 					
 					campaign.AddLog('Combat ends')
 					
+					# tank was immobilzed, abandoned, or destroyed
+					if campaign.player_unit.immobilized or not campaign.player_unit.alive:
+						self.DisplayCampaignDaySummary()
+						self.ended = True
+						exit_loop = True
+						continue
+					
 					# capture area if player is still alive
-					if campaign.player_unit.alive:
+					else:
 						(hx, hy) = self.player_unit_location
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 						self.DoCrewCheck(campaign.player_unit)
@@ -3170,11 +3178,6 @@ class CampaignDay:
 						self.CheckForRandomEvent()
 						self.CheckForZoneCapture(zone_just_captured=True)
 						SaveGame()
-					else:
-						# player was destroyed or abandoned tank	
-						self.DisplayCampaignDaySummary()
-						exit_loop = True
-						continue
 				
 				DisplayTimeInfo(time_con)
 				self.UpdateCDCampaignCon()
@@ -4173,19 +4176,22 @@ class Personnel:
 					continue
 			
 			if k == 'Abandon Tank':
-				crew_injured = False
+				can_abandon = False
+				if self.unit.immobilized:
+					can_abandon = True 
 				for position in self.unit.positions_list:
 					if position.crewman is None: continue
 					if position.crewman.status == 'Dead' or position.crewman.wound in ['Critical']:
-						crew_injured = True
+						can_abandon = True
 						break
-				if not crew_injured:
+				if not can_abandon:
 					continue
 			
 			# can't drive if vehicle is immbobilized
 			elif k == 'Drive':
 				if self.unit.immobilized: continue
 			
+			# add the command
 			self.cmd_list.append(k)
 	
 	# select a new command from command list
@@ -6089,14 +6095,8 @@ class Unit:
 					
 					# apply roll penalty based on how much original roll failed by
 					difference = profile['roll'] - profile['final_chance']
-					print('DEBUG: roll was failed by: ' + str(difference))
 					
 					roll = GetPercentileRoll() + difference
-					
-					# TEMP - testing
-					roll = 30.0
-					
-					print('DEBUG: penetration result roll was: ' + str(roll))
 					
 					# minor damage
 					if roll <= 15.0:
@@ -6104,7 +6104,7 @@ class Unit:
 						continue
 					
 					# immobilized
-					elif roll <= 30.0:
+					elif roll <= 25.0:
 						
 						# already immobilized
 						if scenario.player_unit.immobilized:
@@ -6112,11 +6112,12 @@ class Unit:
 						else:
 							ShowMessage('The hit damages the engine and drivetrain, immobilizing your tank.')
 							scenario.player_unit.ImmobilizeMe()
+							campaign.AddLog('Our tank was hit by ' + profile['attacker'].GetName() + ' and immobilized.')
 							scenario.UpdatePlayerInfoCon()
 						continue
 					
 					# spalling
-					elif roll <= 50.0:
+					elif roll <= 45.0:
 						text = 'The hit shatters the armour plate, sending shards of hot metal into the ' + profile['location']
 						ShowMessage(text)
 						for position in scenario.player_unit.positions_list:
@@ -6127,8 +6128,8 @@ class Unit:
 							if position.location is not None:
 								if position.location != profile['location']: continue
 							
-							# TODO: apply modifier here?
-							position.crewman.DoWoundCheck()
+							# check for crew wound and apply modifier
+							position.crewman.DoWoundCheck(roll_modifier=15.0)
 							scenario.UpdateCrewInfoCon()
 						
 						continue
@@ -6273,7 +6274,7 @@ class Unit:
 		if self.GetStat('category') not in ['Vehicle']: return
 		self.moving = False
 		self.immobilized = True
-
+	
 	
 	# destroy this unit and remove it from the game
 	def DestroyMe(self):
@@ -6587,10 +6588,10 @@ class Scenario:
 		
 	
 	# go through procedure for player crew bailing out of tank
-	def PlayerBailOut(self):
+	def PlayerBailOut(self, skip_ko=False):
 		
 		# (re)draw the bail-out console and display on screen
-		def UpdateBailOutConsole(skip_ko=False):
+		def UpdateBailOutConsole():
 			
 			libtcod.console_clear(con)
 			
@@ -6680,7 +6681,7 @@ class Scenario:
 		# draw screen for first time and pause
 		UpdateBailOutConsole()
 		
-		Wait(120)
+		Wait(120, ignore_animations=True)
 		
 		# do roll procedures
 		
@@ -6712,9 +6713,9 @@ class Scenario:
 				
 				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 				libtcod.console_flush()
-				Wait(100)
+				Wait(100, ignore_animations=True)
 			
-			Wait(100)
+			Wait(100, ignore_animations=True)
 		
 		# bail out roll
 		y = 20
@@ -6760,7 +6761,7 @@ class Scenario:
 			libtcod.console_print(con, 49, y, text)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
-			Wait(100)
+			Wait(100, ignore_animations=True)
 		
 		# tank burn up roll
 		# FUTURE: apply modifiers
@@ -6788,7 +6789,7 @@ class Scenario:
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
-		Wait(100)
+		Wait(100, ignore_animations=True)
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		
@@ -6820,7 +6821,7 @@ class Scenario:
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
-			Wait(100)
+			Wait(100, ignore_animations=True)
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 41, 56, 'Enter')
@@ -7806,10 +7807,13 @@ class Scenario:
 					# check for debug flag - force a hit or penetration
 					if DEBUG:
 						if profile['attacker'] == scenario.player_unit and session.debug['Player Always Hits']:
-							while roll > profile['final_chance']:
+							while roll >= profile['final_chance']:
 								roll = GetPercentileRoll()
 						elif profile['target'] == scenario.player_unit and profile['type'] == 'ap' and session.debug['Player Always Penetrated']:
-							while roll > profile['final_chance']:
+							while roll >= profile['final_chance']:
+								roll = GetPercentileRoll()
+						elif profile['target'] == scenario.player_unit and profile['type'] != 'ap' and session.debug['AI Hates Player']:	
+							while roll >= profile['final_chance']:
 								roll = GetPercentileRoll()
 				
 				# clear any previous text
@@ -8780,6 +8784,7 @@ class Scenario:
 				if not unit.alive: continue
 				if unit.owning_player == self.active_player: continue
 				unit.ResolveFP()
+				libtcod.console_flush()
 			
 			self.phase = PHASE_ENEMY_ACTION
 			self.active_player = 1
@@ -8792,6 +8797,7 @@ class Scenario:
 				if not unit.alive: continue
 				if unit.owning_player == self.active_player: continue
 				unit.ResolveFP()
+				libtcod.console_flush()
 			
 			# advance clock
 			campaign_day.AdvanceClock(0, TURN_LENGTH)
@@ -8869,7 +8875,8 @@ class Scenario:
 				# check for abandoning tank
 				if position.crewman.current_cmd == 'Abandon Tank':
 					campaign.player_unit.alive = False
-					ShowMessage('You abandon your tank, ending the combat day.')
+					ShowMessage('You abandon your tank.')
+					self.PlayerBailOut(skip_ko=True)
 					campaign_day.ended = True
 					campaign_day.abandoned_tank = True
 					self.finished = True
@@ -8965,6 +8972,8 @@ class Scenario:
 					if not unit2.alive: continue
 					if unit2.owning_player == self.active_player: continue
 					unit2.ResolveAPHits()
+				
+				libtcod.console_flush()
 			
 			self.advance_phase = True
 		
@@ -8993,6 +9002,8 @@ class Scenario:
 					if not unit2.alive: continue
 					if unit2.owning_player == self.active_player: continue
 					unit2.ResolveAPHits()
+				
+				libtcod.console_flush()
 			
 			self.advance_phase = True
 		

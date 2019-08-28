@@ -4743,7 +4743,7 @@ class AI:
 				return
 			
 			# clear any bonus and move into new hex
-			self.owner.forward_move_chance = 0.0
+			self.owner.forward_move_chance = BASE_FORWARD_MOVE_CHANCE
 			scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
 			self.owner.hx = hx
 			self.owner.hy = hy

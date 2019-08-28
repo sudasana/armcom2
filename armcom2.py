@@ -57,7 +57,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.7.0 28-08-19'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -9498,18 +9498,11 @@ class Scenario:
 		# terrain
 		libtcod.console_print(scen_info_con, 0, 10, 'Terrain:')
 		libtcod.console_print(scen_info_con, 1, 11, self.cd_map_hex.terrain_type)
-	
-	
-	# update the tank/crew status console
-	# 18x11
-	# FUTURE: display urgent information for the player here
-	def UpdateStatusCon(self):
-		libtcod.console_clear(status_con)
 		
 		
-	# update the unit info console, which displays basic information about a unit under
+	# update unit info console, which displays basic information about a unit under
 	# the mouse cursor
-	# 18x11
+	# 61x5
 	def UpdateUnitInfoCon(self):
 		libtcod.console_clear(unit_info_con)
 		
@@ -9523,6 +9516,20 @@ class Scenario:
 		
 		map_hex = self.hex_map_index[(x,y)]
 	
+		# range from player
+		distance = GetHexDistance(0, 0, map_hex.hx, map_hex.hy)
+		if distance == 0:
+			text = '0-120m.'
+		elif distance == 1:
+			text = '120-480m.'
+		elif distance == 2:
+			text = '480-960m.'
+		else:
+			text = '960-1440m.'
+		libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
+		libtcod.console_print_ex(unit_info_con, 60, 0, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'Range: ' + text)
+	
 		# no units in hex
 		if len(map_hex.unit_stack) == 0: return
 		
@@ -9532,7 +9539,7 @@ class Scenario:
 		# smoke status
 		if unit.smoke > 0:
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.grey)
-			libtcod.console_print(unit_info_con, 0, 8, 'Smoke Lvl: ' + str(unit.smoke))
+			libtcod.console_print(unit_info_con, 0, 4, 'Smoke Lvl: ' + str(unit.smoke))
 		
 		if unit.owning_player == 1 and not unit.spotted:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
@@ -9559,29 +9566,28 @@ class Scenario:
 			if unit.fired:
 				libtcod.console_print(unit_info_con, 7, 3, 'Fired')
 			
+			# second column
+			
 			# facing if any
 			if unit.facing is not None and unit.GetStat('category') != 'Infantry':
-				libtcod.console_put_char_ex(unit_info_con, 0, 6, 'H',
+				libtcod.console_put_char_ex(unit_info_con, 23, 0, 'H',
 					libtcod.light_grey, libtcod.darkest_grey)
-				libtcod.console_put_char_ex(unit_info_con, 1, 6,
+				libtcod.console_put_char_ex(unit_info_con, 24, 0,
 					GetDirectionalArrow(unit.facing), libtcod.light_grey,
 					libtcod.darkest_grey)
 			
 			# HD status if any
 			if len(unit.hull_down) > 0:
 				libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
-				libtcod.console_print(unit_info_con, 3, 6, 'HD')
-				libtcod.console_put_char_ex(unit_info_con, 5, 6,
-					GetDirectionalArrow(unit.hull_down[0]), libtcod.sepia,
-					libtcod.darkest_grey)
+				libtcod.console_print(unit_info_con, 26, 0, 'HD' + GetDirectionalArrow(unit.hull_down[0]))
 			
 			# current terrain
 			if unit.terrain is not None:
 				libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
-				libtcod.console_print(unit_info_con, 0, 7, unit.terrain)
+				libtcod.console_print(unit_info_con, 23, 1, unit.terrain)
 			
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
-			libtcod.console_print(unit_info_con, 0, 10, 'R-Click for info')
+			libtcod.console_print(unit_info_con, 20, 4, 'Right click for details')
 	
 	
 	# starts or re-starts looping animations based on weather conditions
@@ -9728,8 +9734,7 @@ class Scenario:
 		libtcod.console_blit(context_con, 0, 0, 0, 0, con, 28, 1)
 		libtcod.console_blit(time_con, 0, 0, 0, 0, con, 48, 1)
 		libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 71, 1)
-		libtcod.console_blit(unit_info_con, 0, 0, 0, 0, con, 28, 48)
-		libtcod.console_blit(status_con, 0, 0, 0, 0, con, 71, 48)
+		libtcod.console_blit(unit_info_con, 0, 0, 0, 0, con, 28, 54)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
@@ -9740,7 +9745,7 @@ class Scenario:
 		# set up and load scenario consoles
 		global bkg_console, crew_con, cmd_menu_con, scen_info_con
 		global player_info_con, context_con, time_con, hexmap_con, unit_con, gui_con
-		global anim_con, status_con, attack_con, unit_info_con
+		global anim_con, attack_con, unit_info_con
 		
 		# background outline console for left column
 		bkg_console = LoadXP('bkg.xp')
@@ -9751,8 +9756,7 @@ class Scenario:
 		context_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
 		time_con = NewConsole(21, 6, libtcod.darkest_grey, libtcod.white)
 		scen_info_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
-		unit_info_con = NewConsole(18, 11, libtcod.darkest_grey, libtcod.white)
-		status_con = NewConsole(18, 11, libtcod.darkest_grey, libtcod.white)
+		unit_info_con = NewConsole(61, 5, libtcod.darkest_grey, libtcod.white)
 		hexmap_con = NewConsole(53, 43, libtcod.black, libtcod.black)
 		unit_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
 		gui_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
@@ -9813,7 +9817,6 @@ class Scenario:
 		self.UpdateContextCon()
 		DisplayTimeInfo(time_con)
 		self.UpdateScenarioInfoCon()
-		self.UpdateStatusCon()
 		self.UpdatePlayerInfoCon()
 		self.UpdateCrewInfoCon()
 		self.UpdateCmdCon()

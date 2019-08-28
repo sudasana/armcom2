@@ -1195,7 +1195,7 @@ class Campaign:
 					self.UpdateCCDisplay()
 					continue
 				
-				# open crew menu
+				# open crewman menu
 				elif key_char == 'f':
 					crewman = campaign.player_unit.positions_list[selected_position].crewman
 					if crewman is None: continue
@@ -9268,11 +9268,13 @@ class Scenario:
 			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper() + '/' + EnKey('s').upper())
 			libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
 			libtcod.console_print(cmd_menu_con, 1, 3, 'H')
+			libtcod.console_print(cmd_menu_con, 1, 4, EnKey('f').upper())
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Position')
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Select Command')
 			libtcod.console_print(cmd_menu_con, 8, 3, 'Open/Shut Hatch')
+			libtcod.console_print(cmd_menu_con, 8, 4, 'Crewman Menu')
 		
 		# Crew action phase
 		elif self.phase == PHASE_CREW_ACTION:
@@ -9805,6 +9807,8 @@ class Scenario:
 		# init looping animations
 		self.InitAnimations()
 		
+		SaveGame()
+		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
 		DisplayTimeInfo(time_con)
@@ -9920,7 +9924,7 @@ class Scenario:
 			# Command or Crew Action phase
 			
 			
-			# Command Phase
+			# Command Phase and Crew Action phase
 			if self.phase in [PHASE_COMMAND, PHASE_CREW_ACTION]:
 			
 				# change selected crew position
@@ -9969,8 +9973,7 @@ class Scenario:
 					
 					# no crewman in selected position
 					crewman = self.player_unit.positions_list[self.selected_position].crewman
-					if crewman is None:
-						continue
+					if crewman is None: continue
 					
 					if crewman.ToggleHatch():
 						self.player_unit.positions_list[self.selected_position].UpdateVisibleHexes()
@@ -9978,6 +9981,14 @@ class Scenario:
 						self.UpdateGuiCon()
 						self.UpdateScenarioDisplay()
 						continue
+				
+				# open crewman menu
+				elif key_char == 'f':
+					crewman = self.player_unit.positions_list[self.selected_position].crewman
+					if crewman is None: continue
+					crewman.ShowCrewmanMenu()
+					self.UpdateScenarioDisplay()
+					continue
 			
 			# crew action phase only
 			elif self.phase == PHASE_CREW_ACTION:

@@ -1729,13 +1729,8 @@ class CampaignDay:
 		# roll for type of event
 		roll = GetPercentileRoll()
 		
-		# TODO - need to replace with new event
-		if roll <= 35.0:
-			pass
-		
 		# enemy strength increases
-		elif roll <= 45.0:
-			
+		if roll <= 15.0:
 			hex_list = []
 			for (hx, hy) in self.map_hexes:
 				if self.map_hexes[(hx,hy)].controlled_by == 0: continue
@@ -1758,7 +1753,7 @@ class CampaignDay:
 			# FUTURE: highlight hex momentarily
 		
 		# reveal enemy strength
-		elif roll <= 55.0:
+		elif roll <= 35.0:
 			
 			hex_list = []
 			for (hx, hy) in self.map_hexes:
@@ -1776,12 +1771,12 @@ class CampaignDay:
 			# FUTURE: highlight hex momentarily
 		
 		# free resupply
-		elif roll <= 70.0:
+		elif roll <= 55.0:
 			ShowMessage('You happen to encounter a supply truck, and can restock your gun ammo.')
 			self.AmmoReloadMenu()
 		
 		# loss of recon knowledge and possible change in strength
-		elif roll <= 80.0:
+		elif roll <= 70.0:
 			
 			hex_list = []
 			for (hx, hy) in self.map_hexes:
@@ -1807,7 +1802,7 @@ class CampaignDay:
 				map_hex.enemy_strength = 10
 		
 		# increase current support level
-		elif roll <= 90.0:
+		elif roll <= 80.0:
 			
 			text = 'Additional '
 			
@@ -2246,6 +2241,7 @@ class CampaignDay:
 				
 	
 	# check to see whether we need to replace crew after a scenario
+	# at present this is only used for player unit, but in future could be used for AI units as well
 	def DoCrewCheck(self, unit):
 		
 		# Stunned, Unconscious, and Critical crew automatically recover
@@ -2253,8 +2249,11 @@ class CampaignDay:
 		replacement_needed = False
 		for position in unit.positions_list:
 			if position.crewman is None: continue
-			if position.crewman != '':
+			if position.crewman.status != '':
 				if position.crewman.status == 'Dead':
+					replacement_needed = True
+					continue
+				if position.crewman.wound in ['Serious', 'Critical']:
 					replacement_needed = True
 					continue
 				position.crewman.status = ''
@@ -2262,13 +2261,14 @@ class CampaignDay:
 		# replace dead crewmen if needed
 		if not replacement_needed: return
 		
-		if unit == campaign.player_unit:
+		# spend time if campaign day has not yet ended
+		if unit == campaign.player_unit and not campaign_day.ended:
 			self.AdvanceClock(0, 30)
 			ShowMessage('You await a transport to recover bodies and provide new crew, which takes 30 mins.')
 			
 		for position in unit.positions_list:
 			if position.crewman is None: continue
-			if position.crewman.status == 'Dead':
+			if position.crewman.status == 'Dead' or position.crewman.wound in ['Serious', 'Critical']:
 				# TODO: preserve original order when replacing crewmen
 				unit.personnel_list.remove(position.crewman)
 				unit.personnel_list.append(Personnel(unit, unit.nation, position))
@@ -3163,6 +3163,7 @@ class CampaignDay:
 					if campaign.player_unit.immobilized or not campaign.player_unit.alive:
 						self.DisplayCampaignDaySummary()
 						self.ended = True
+						self.DoCrewCheck(campaign.player_unit)
 						exit_loop = True
 						continue
 					
@@ -9838,9 +9839,9 @@ class Scenario:
 				return
 			
 			# check for scenario finished, return to campaign day map
-			if scenario.finished:
+			if self.finished:
 				# copy the scenario unit over to the campaign version
-				campaign.player_unit = scenario.player_unit
+				campaign.player_unit = self.player_unit
 				return
 			
 			if libtcod.console_is_window_closed(): sys.exit()

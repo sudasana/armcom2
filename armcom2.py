@@ -57,9 +57,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.7.0'					# game version
+VERSION = '0.7.0 28-08-19'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -9836,7 +9836,7 @@ class Scenario:
 			
 			# check for scenario finished, return to campaign day map
 			if scenario.finished:
-				# TODO: is this required? seems to be...
+				# copy the scenario unit over to the campaign version
 				campaign.player_unit = scenario.player_unit
 				return
 			

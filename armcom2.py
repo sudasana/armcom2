@@ -59,7 +59,7 @@ import sdl2.sdlmixer as mixer				# sound effects
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.7.0 28-08-19'					# game version
+VERSION = '0.7.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2740,44 +2740,7 @@ class CampaignDay:
 		campaign.player_unit.DisplayMyInfo(cd_player_unit_con, 0, 0, status=False)
 	
 	
-	# generate/update the directional console
-	def UpdateCDDirectionCon(self):
-		libtcod.console_clear(cd_direction_con)
-		
-		x1 = 12
-		y1 = 4
-		
-		# display possible support/move/recon directions
-		libtcod.console_set_default_foreground(cd_direction_con, TITLE_COL)
-		libtcod.console_print_ex(cd_direction_con, 12, 0, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Directional Control')
-		
-		libtcod.console_set_default_foreground(cd_direction_con, libtcod.white)
-		libtcod.console_put_char(cd_direction_con, x1, y1, '@')
-		
-		for direction in range(6):
-			libtcod.console_set_default_foreground(cd_direction_con, ACTION_KEY_COL)
-			
-			if self.selected_direction is not None:
-				if self.selected_direction == direction:
-					libtcod.console_set_default_foreground(cd_direction_con, libtcod.light_green)
-					
-			(k, x, y, char) = CD_TRAVEL_CMDS[direction]
-			libtcod.console_put_char(cd_direction_con, x1+x, y1+y, EnKey(k).upper())
-			if direction <= 2:
-				x+=1
-			else:
-				x-=1
-			libtcod.console_set_default_foreground(cd_direction_con, libtcod.dark_green)
-			libtcod.console_put_char(cd_direction_con, x1+x, y1+y, chr(char))
-		
-		if self.selected_direction is None:
-			libtcod.console_set_default_foreground(cd_direction_con, libtcod.light_grey)
-			libtcod.console_print_ex(cd_direction_con, 13, y1+4, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Select a Direction')
-	
-	
-	# generate/update the command menu console 25x31
+	# generate/update the command menu console 25x41
 	def UpdateCDCommandCon(self):
 		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 		libtcod.console_clear(cd_command_con)
@@ -2830,10 +2793,10 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 1, 13, text)
 			
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 2, 28, 'R')
+			libtcod.console_print(cd_command_con, 2, 38, 'R')
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 5, 28, 'Request Additional')
-			libtcod.console_print(cd_command_con, 5, 29, 'Support (15 mins.)')
+			libtcod.console_print(cd_command_con, 5, 38, 'Request Additional')
+			libtcod.console_print(cd_command_con, 5, 39, 'Support (15 mins.)')
 		
 		# crew
 		elif self.active_menu == 2:
@@ -2841,22 +2804,51 @@ class CampaignDay:
 			DisplayCrew(campaign.player_unit, cd_command_con, 0, 3, self.selected_position)
 			
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 3, 28, EnKey('w').upper() + '/' + EnKey('s').upper())
-			libtcod.console_print(cd_command_con, 3, 29, EnKey('f').upper())
+			libtcod.console_print(cd_command_con, 3, 38, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cd_command_con, 3, 39, EnKey('f').upper())
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 8, 28, 'Select Position')
-			libtcod.console_print(cd_command_con, 8, 29, 'Crewman Menu')
+			libtcod.console_print(cd_command_con, 8, 38, 'Select Position')
+			libtcod.console_print(cd_command_con, 8, 39, 'Crewman Menu')
 		
 		
 		# travel
 		elif self.active_menu == 3:
 			
+			# display directional options
+			x1 = 12
+			y1 = 6
+			
+			# display possible support/move/recon directions
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			libtcod.console_put_char(cd_command_con, x1, y1, '@')
+			
+			for direction in range(6):
+				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+				
+				if self.selected_direction is not None:
+					if self.selected_direction == direction:
+						libtcod.console_set_default_foreground(cd_command_con, libtcod.light_green)
+						
+				(k, x, y, char) = CD_TRAVEL_CMDS[direction]
+				libtcod.console_put_char(cd_command_con, x1+x, y1+y, EnKey(k).upper())
+				if direction <= 2:
+					x+=1
+				else:
+					x-=1
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_green)
+				libtcod.console_put_char(cd_command_con, x1+x, y1+y, chr(char))
+			
+			if self.selected_direction is None:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.light_grey)
+				libtcod.console_print_ex(cd_command_con, 13, y1+4, libtcod.BKGND_NONE, libtcod.CENTER,
+					'Select a Direction')
+			
 			# display Wait command (always available)
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 3, 27, EnKey('w').upper())
+			libtcod.console_print(cd_command_con, 3, 37, EnKey('w').upper())
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 10, 27, 'Wait/Defend')
+			libtcod.console_print(cd_command_con, 10, 37, 'Wait/Defend')
 			
 			# check to see whether travel in selected direction is not possible
 			if self.selected_direction is None:
@@ -2878,10 +2870,10 @@ class CampaignDay:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 					libtcod.console_print(cd_command_con, 1, 19, 'Recon: 15 mins.')
 					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-					libtcod.console_print(cd_command_con, 3, 28, EnKey('r').upper())
+					libtcod.console_print(cd_command_con, 3, 38, EnKey('r').upper())
 					
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-					libtcod.console_print(cd_command_con, 10, 28, 'Recon')
+					libtcod.console_print(cd_command_con, 10, 38, 'Recon')
 				else:
 					libtcod.console_print(cd_command_con, 1, 3, 'Strength: ' + str(map_hex.enemy_strength))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -2892,9 +2884,9 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 1, 20, 'Travel Time: ' + str(mins) + ' mins.')
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 3, 29, 'Enter')
+			libtcod.console_print(cd_command_con, 3, 39, 'Enter')
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 10, 29, 'Proceed')
+			libtcod.console_print(cd_command_con, 10, 39, 'Proceed')
 		
 		# group
 		elif self.active_menu == 4:
@@ -2903,7 +2895,7 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 1, 3, 'Squad')
 			text = str(campaign.player_squad_num) + ' x ' + campaign.player_unit.unit_id
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 1, 4, text)
+			libtcod.console_print(cd_command_con, 1, 5, text)
 		
 		# resupply menu
 		elif self.active_menu == 5:
@@ -2913,9 +2905,9 @@ class CampaignDay:
 			libtcod.console_print_ex(cd_command_con, 12, 11, libtcod.BKGND_NONE, libtcod.CENTER,
 				'30 mins.')
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 2, 29, EnKey('r').upper())
+			libtcod.console_print(cd_command_con, 2, 39, EnKey('r').upper())
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 5, 29, 'Request Resupply')
+			libtcod.console_print(cd_command_con, 5, 39, 'Request Resupply')
 	
 	
 	# generate/update the campaign info console 23x16
@@ -3079,9 +3071,8 @@ class CampaignDay:
 		
 		libtcod.console_blit(time_con, 0, 0, 0, 0, con, 36, 1)			# date and time
 		
-		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info
-		libtcod.console_blit(cd_direction_con, 0, 0, 0, 0, con, 1, 18)		# directional info		
-		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 28)		# command menu
+		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info		
+		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 18)		# command menu
 		
 		libtcod.console_blit(cd_weather_con, 0, 0, 0, 0, con, 66, 1)		# weather info
 		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 18)		# campaign info
@@ -3095,8 +3086,8 @@ class CampaignDay:
 		
 		# consoles for day map interface
 		global daymap_bkg, cd_map_con, cd_anim_con, cd_unit_con, cd_control_con, cd_command_con
-		global cd_player_unit_con, cd_direction_con, cd_gui_con, time_con
-		global cd_campaign_con, cd_weather_con, cd_hex_info_con
+		global cd_player_unit_con, cd_gui_con, time_con, cd_campaign_con, cd_weather_con
+		global cd_hex_info_con
 		global scenario
 		
 		# create consoles
@@ -3108,8 +3099,7 @@ class CampaignDay:
 		cd_gui_con = NewConsole(35, 53, KEY_COLOR, libtcod.red)
 		time_con = NewConsole(21, 5, libtcod.darkest_grey, libtcod.white)
 		cd_player_unit_con = NewConsole(25, 16, libtcod.black, libtcod.white)
-		cd_direction_con = NewConsole(25, 9, libtcod.black, libtcod.white)
-		cd_command_con = NewConsole(25, 31, libtcod.black, libtcod.white)
+		cd_command_con = NewConsole(25, 41, libtcod.black, libtcod.white)
 		cd_weather_con = NewConsole(23, 12, libtcod.black, libtcod.white)
 		cd_campaign_con = NewConsole(23, 16, libtcod.black, libtcod.white)
 		cd_hex_info_con = NewConsole(23, 9, libtcod.black, libtcod.white)
@@ -3120,7 +3110,6 @@ class CampaignDay:
 		self.UpdateCDControlCon()
 		self.UpdateCDGUICon()
 		self.UpdateCDPlayerUnitCon()
-		self.UpdateCDDirectionCon()
 		self.UpdateCDCommandCon()
 		self.UpdateCDCampaignCon()
 		self.UpdateCDHexInfoCon()
@@ -3251,7 +3240,6 @@ class CampaignDay:
 						self.selected_direction = None
 					else:
 						self.selected_direction = direction
-				self.UpdateCDDirectionCon()
 				self.UpdateCDGUICon()
 				self.UpdateCDCommandCon()
 				self.UpdateCDDisplay()
@@ -3424,7 +3412,6 @@ class CampaignDay:
 						self.UpdateCDCampaignCon()
 						self.UpdateCDControlCon()
 						self.UpdateCDUnitCon()
-						self.UpdateCDDirectionCon()
 						self.UpdateCDCommandCon()
 						self.UpdateCDHexInfoCon()
 						self.UpdateCDDisplay()

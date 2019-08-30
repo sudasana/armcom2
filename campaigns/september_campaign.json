@@ -28,8 +28,8 @@
 	"calendar": [
 		{
 			"date" : "1939.09.01",
-			"day_start" : "4:30",
-			"day_end" : "12:30",
+			"day_start" : "4:45",
+			"day_end" : "14:30",
 			"location" : "The German Border",
 			"desc" : "Reports are coming in of a surprise invasion by German forces. Mobilize your team and launch a counterattack.",
 			"mission" : "Fighting Withdrawl",

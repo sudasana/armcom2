@@ -26,8 +26,8 @@
 	"calendar": [
 		{
 			"date" : "1939.09.17",
-			"day_start" : "4:30",
-			"day_end" : "12:30",
+			"day_start" : "4:45",
+			"day_end" : "14:30",
 			"location" : "The Polish Border",
 			"desc" : "This morning we begin our invasion of Polish territory. Your battlegroup is tasked with destroying enemy forces and capturing territory wherever possible.",
 			"mission" : "Advance",

@@ -1409,9 +1409,9 @@ class CampaignDay:
 		# check for road link
 		direction = self.GetDirectionToAdjacentCD(hx1, hy1, hx2, hy2)
 		if direction in self.map_hexes[(hx1,hy1)].dirt_roads:
-			mins = 10
-		else:
 			mins = 15
+		else:
+			mins = 20
 		
 		# check ground conditions
 		if self.weather['Ground'] == 'Muddy':
@@ -2882,7 +2882,7 @@ class CampaignDay:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 					libtcod.console_print(cd_command_con, 10, 38, 'Recon')
 				else:
-					libtcod.console_print(cd_command_con, 1, 3, 'Strength: ' + str(map_hex.enemy_strength))
+					libtcod.console_print(cd_command_con, 3, 15, 'Strength: ' + str(map_hex.enemy_strength))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
 			# calculate and display travel time

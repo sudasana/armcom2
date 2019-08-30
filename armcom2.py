@@ -2523,6 +2523,7 @@ class CampaignDay:
 				(2,6), (3,6), (4,6), (3,7)
 		]
 		
+		# TODO: should this be def GetRandomLocation(generator)? is the var required?
 		def GetRandomLocation(gen):
 			return CHAR_LOCATIONS[libtcod.random_get_int(generator, 0, 21)]
 		

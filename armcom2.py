@@ -47,6 +47,7 @@ from math import floor, cos, sin, sqrt, degrees, atan2, ceil	# math and heading 
 import xp_loader, gzip					# loading xp image files
 import json						# for loading JSON data
 import time
+from datetime import datetime				# for timestamping logs
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
 import sdl2.sdlmixer as mixer				# sound effects
@@ -1172,6 +1173,7 @@ class Campaign:
 					# TEMP - assume that campaign is only a single day
 					campaign.AwardDecorations()
 					campaign.DisplayCampaignSummary()
+					ExportLog()
 					EraseGame()
 					exit_loop = True
 					continue
@@ -3725,7 +3727,7 @@ class Personnel:
 				libtcod.console_print(crewman_menu_con, 62, y, line)
 				y+=1	
 			
-			# current experience and advance points
+			# current advance points
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.darkest_grey)
 			libtcod.console_rect(crewman_menu_con, 30, 48, 21, 1, False, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
@@ -10119,6 +10121,41 @@ class Scenario:
 ##########################################################################################	
 
 
+# export the campaign log to a text file, normally done at the end of a campaign
+def ExportLog():
+	
+	with open('ArmCom2_Campaign_Log_' + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + '.txt', 'w+') as f:
+			
+		# campaign information
+		f.write(campaign.stats['name'] + '\n')
+		f.write(campaign.stats['desc'] + '\n')
+		f.write(GetDateText(campaign.stats['start_date']) + ' - ' + GetDateText(campaign.today['date']) + '\n')
+		f.write('\n')
+		
+		# final player tank and crew information
+		f.write(campaign.player_unit.unit_id + '\n')
+		f.write(campaign.player_unit.GetStat('class') + '\n')
+		f.write('\n')
+		
+		for position in campaign.player_unit.positions_list:
+			f.write(position.name + ':\n')
+			if position.crewman is None:
+				f.write('  [Empty]\n\n')
+				continue
+			f.write('  ' + position.crewman.GetFullName() + '\n')
+			if position.crewman.wound != '':
+				f.write('  ' + position.crewman.wound + '\n')
+			f.write('\n')
+		f.write('\n')
+		
+		# list of logs sorted by day
+		for k, v in campaign.logs.items():
+			f.write(GetDateText(k) + '\n')
+			for line in v:
+				f.write('  ' + line + '\n')
+			f.write('\n\n')
+
+
 # show a menu for selecting a new crewman skill
 def ShowSkillMenu(crewman):
 	
@@ -11257,7 +11294,7 @@ def ShowDebugMenu():
 		x = 50
 		y = 8
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		for xm in range(4):
+		for xm in range(5):
 			libtcod.console_print(con, x, y+xm, str(xm+1))
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
@@ -11265,6 +11302,7 @@ def ShowDebugMenu():
 		libtcod.console_print(con, x+3, y+1, 'Apply Serious Wound')
 		libtcod.console_print(con, x+3, y+2, 'Set Time to End of Day')
 		libtcod.console_print(con, x+3, y+3, 'End Current Scenario')
+		libtcod.console_print(con, x+3, y+4, 'Export Campaign Log')
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 33, 56, 'Esc')
@@ -11353,6 +11391,14 @@ def ShowDebugMenu():
 			if scenario is not None:
 				scenario.finished = True
 				ShowMessage('Scenario finished flag set to True')
+				DrawDebugMenu()
+				continue
+		
+		# export current campaign log
+		elif int(key_char) == 5:
+			if campaign is not None:
+				ExportLog()
+				ShowMessage('Log exported')
 				DrawDebugMenu()
 				continue
 	
@@ -11553,7 +11599,7 @@ global keyboard_decode, keyboard_encode
 
 # save console output to a file
 if not DEBUG:
-	sys.stdout = open('log.txt', 'w')
+	sys.stdout = open('runtime_log.txt', 'w')
 
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
@@ -11725,7 +11771,6 @@ options_menu_active = False
 
 # draw the main title console to the screen for the first time
 UpdateMainTitleCon(options_menu_active)
-
 
 # Main Menu loop
 exit_game = False

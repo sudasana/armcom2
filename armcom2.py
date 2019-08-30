@@ -1161,7 +1161,7 @@ class Campaign:
 						campaign_day = CampaignDay()	# generate a new campaign day object
 						campaign_day.AmmoReloadMenu()	# allow player to load ammo
 						campaign_day.ShowStartOfDay()	# show starting animation
-						campaign.AddLog('Day begins')
+						campaign.AddLog('Combat day begins')
 						continue			# continue in loop to go into campaign day layer
 				
 				# proceed to next day
@@ -1234,6 +1234,8 @@ class Campaign:
 # which may spawn a Scenario
 class CampaignDay:
 	def __init__(self):
+		
+		self.travel_time_spent = False
 		
 		# current weather conditions, will be set by GenerateWeather
 		self.weather = {
@@ -1645,12 +1647,15 @@ class CampaignDay:
 
 	
 	# advance the current campaign day time, check for end of day, and also weather conditions update
-	def AdvanceClock(self, hours, minutes):
+	def AdvanceClock(self, hours, minutes, skip_checks=False):
 		self.day_clock['hour'] += hours
 		self.day_clock['minute'] += minutes
 		while self.day_clock['minute'] >= 60:
 			self.day_clock['hour'] += 1
 			self.day_clock['minute'] -= 60
+		
+		if skip_checks: return
+		
 		self.CheckForEndOfDay()
 		
 		# check for weather update
@@ -2518,13 +2523,12 @@ class CampaignDay:
 	def UpdateCDMapCon(self):
 		
 		CHAR_LOCATIONS = [
-				(3,1), (2,2), (3,2), (4,2), (1,3), (2,3), (3,3), (4,3), (5,3),
-				(1,4), (2,4), (4,4), (5,4), (1,5), (2,5), (3,5), (4,5), (5,5),
-				(2,6), (3,6), (4,6), (3,7)
+			(3,1), (2,2), (3,2), (4,2), (1,3), (2,3), (3,3), (4,3), (5,3),
+			(1,4), (2,4), (4,4), (5,4), (1,5), (2,5), (3,5), (4,5), (5,5),
+			(2,6), (3,6), (4,6), (3,7)
 		]
 		
-		# TODO: should this be def GetRandomLocation(generator)? is the var required?
-		def GetRandomLocation(gen):
+		def GetRandomLocation():
 			return CHAR_LOCATIONS[libtcod.random_get_int(generator, 0, 21)]
 		
 		libtcod.console_clear(cd_map_con)
@@ -2581,7 +2585,7 @@ class CampaignDay:
 				
 				elements = libtcod.random_get_int(generator, 7, 13)
 				while elements > 0:
-					(x,y) = GetRandomLocation(generator)
+					(x,y) = GetRandomLocation()
 					if libtcod.console_get_char(temp_con, x, y) == 176: continue
 					libtcod.console_put_char_ex(temp_con, x, y, 176,
 						libtcod.Color(45,0,180), bg_col)
@@ -2591,7 +2595,7 @@ class CampaignDay:
 				
 				elements = libtcod.random_get_int(generator, 5, 9)
 				while elements > 0:
-					(x,y) = GetRandomLocation(generator)
+					(x,y) = GetRandomLocation()
 					if libtcod.console_get_char(temp_con, x, y) == 249: continue
 					libtcod.console_put_char_ex(temp_con, x, y, 249,
 						libtcod.Color(77,77,77), bg_col)
@@ -3118,8 +3122,19 @@ class CampaignDay:
 		self.UpdateCDHexInfoCon()
 		DisplayWeatherInfo(cd_weather_con)
 		DisplayTimeInfo(time_con)
+		
+		# TODO: shouldn't this be the opposite?
 		if self.scenario is not None:
 			self.UpdateCDDisplay()
+		
+		# calculate initial time to travel to front lines
+		if not self.travel_time_spent:
+			minutes = 15 + (libtcod.random_get_int(0, 1, 4) * 15)
+			self.AdvanceClock(0, minutes, skip_checks=True)
+			DisplayTimeInfo(time_con)
+			text = 'It takes you ' + str(minutes) + ' minutes to travel to the front lines.'
+			ShowMessage(text)
+			self.travel_time_spent = True
 		
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1

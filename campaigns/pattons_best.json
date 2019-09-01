@@ -1,0 +1,49 @@
+{
+	"name" : "Patton's Best",
+	"start_date" : "1944.07.27",
+	"end_date" : "1945.04.18",
+	"action_days" : "1",
+	"player_nation" : "United States of America",
+	"enemy_nations" : ["Germany"],
+	"desc" : "Join the 4th Armoured Division as it participates in the liberations of France and invasion of Germany.",
+	"player_unit_list" : [
+		"M4"
+	],
+	"player_air_support": [
+		"TBD"
+	],
+	"enemy_unit_list" : [
+		"Panzer IV A", "Panzer IV C",
+		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
+		"PSW 231 (8 rad)", "3.7cm PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
+		"Riflemen"
+	],
+	"decorations_list" : {
+		"20" : "Bronze Star",
+		"30" : "Silver Star",
+		"40" : "Distinguished Service Cross",
+		"50" : "Congressional Medal of Honor"
+	},
+	"calendar": [
+		{
+			"date" : "1944.07.27",
+			"day_start" : "5:00",
+			"day_end" : "19:15",
+			"location" : "Normandy",
+			"desc" : "TBD",
+			"mission" : "Advance",
+			"enemy_nation" : "Germany",
+			"air_support_level" : 60.0,
+			"arty_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Medium Tank" : "15",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100"
+			}
+		}
+	]
+}

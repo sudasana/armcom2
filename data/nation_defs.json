@@ -350,5 +350,72 @@
 			"Travere", "Travers", "Traverse", "Travert", "Tremblay",
 			"Tremble", "Victor", "Villeneuve", "Vincent", "Voclain"
 		]
+	},
+	
+	"United States of America": {
+		"short_code" : "USA",
+		"adjective" : "American",
+		"flag_image" : "flag_USA.xp",
+		"rank_names" : {
+			"0" : "Private",
+			"1" : "Private First Class",
+			"2" : "Corporal",
+			"3" : "Sergeant",
+			"4" : "Second Lieutenant",
+			"5" : "First Lieutenant",
+			"6" : "Captain"
+		},
+		"first_names" : [
+			"Andre", "Mario", "Louis", "Stephen", "Kenneth", "Angelo",
+			"Oliver", "Edward", "Joshua", "Ronald", "Victor", "Eli", "Mario",
+			"Dallas", "Arthur", "Anderson", "Dylan", "John", "Quentin", "Alexander",
+			"Timothy", "Wesley", "Spencer", "Leonardo", "Edgar", "Bob", "Chewy",
+			"Frank", "Dmitry", "Jens", "Conrad", "Robert", "James", "William",
+			"Charles", "George", "Joseph", "Richard", "Donald", "Thomas",
+			"Frank", "Harold", "Paul", "Raymond", "Walter", "Jack", "Henry",
+			"Kenneth", "Albert", "David", "Harry", "Eugene", "Ralph", "Howard",
+			"Carl", "Willie", "Louis", "Clarence", "Earl", "Roy", "Fred", "Joe", "Francis",
+			"Lawrence", "Herbert", "Leonard", "Ernest", "Alfred", "Anthony", "Stanley",
+			"Norman", "Gerald", "Daniel", "Samuel", "Bernard", "Billy", "Melvin", "Martin",
+			"Warren", "Michael", "Leroy", "Russell", "Leo", "Andrew", "Edwin", "Elmer",
+			"Peter", "Floyd", "Lloyd", "Ray", "Fredrick", "Theodore", "Clifford", "Vernon",
+			"Herman", "Clyde", "Chester", "Philip", "Alvin", "Lester", "Wayne", "Vincent",
+			"Gordon", "Leon", "Lewis", "Charlie", "Glenn", "Calvin", "Martin", "Milton",
+			"Jesse", "Dale", "Cecil", "Bill", "Harvey", "Roger", "Victor", "Benjamin",
+			"Wallace", "Sam", "Allen", "Arnold", "Willard", "Gilbert", "Edgar", "Oscar"
+		],
+		"surnames" : [
+			"Abraham", "Adler", "Allen", "Ankins", "Applegate", "Avery",
+			"Bacon", "Baker", "Barnham", "Belanger", "Bentz", "Bessler", "Best", "Blakely",
+			"Bleeker", "Bouche", "Brant", "Brawley", "Bretz", "Brock", "Brockman",
+			"Bruce", "Buchman", "Burnett", "Burns", "Butterfield",
+			"Caffey", "Christopher", "Cleary", "Codere", "Collins", "Coutu", "Cowell",
+			"Cowman", "Cox", "Craig", "Crankovitch", "Cuthburt", "Cuttling",
+			"Darwin", "Davis", "Delarosa", "Douglass", "Dorman", 
+			"Eakley", "Eddie", "Edwards", "Elliott", "Ellis", "Elsner", "English",
+			"Fanbrick", "Farwell", "Feigel", "Felten", "Fenske", "Feigel",
+			"Fields", "Fillman", "Finley", "Firske", "Fournier", "France", "Franklin",
+			"Freeman", "Furlong",
+			"Gallaway", "Garvin", "Germain", "Gilchrist", "Gillespie", "Gohl", "Goodwin",
+			"Gray", "Greenwald", "Greenwalt", "Griffen", "Griffith",
+			"Hahn", "Halsted", "Hammermeister", "Hancock", "Harmal", "Hass", "Hastings",
+			"Hayes", "Heminger", "Henchal", "Hessen", "Hilt", "Hollister", "Hollman",
+			"Howell", "Hyde", "Jordon",
+			"Kaiser", "Kasper", "Kegley", "Kinney", "Kleeman",
+			"Laird", "Leach", "Lehman", "Lesatz", "Levard", "Lindh", "Lynch",
+			"Madison", "Manse", "Matchinski", "Mathews", "Mauldin", "McAlpine", "McBurney",
+			"McCain", "McCarney", "McCown", "McCutchen", "McCutcheon", "McDonald", "McGraw",
+			"Medeiros", "Merrick", "Metic", "Mondt", "Morris", "Moses",
+			"Navarro", "Nickels", "Norval",
+			"O'Connell", "Olson", "O'Neal", "Ozanich",
+			"Patterson", "Patzer", "Peppin", "Petrovich", "Petty", "Perkins", "Porter",
+			"Posch", "Price", "Rapin", "Rapp", "Raslo", "Razner", "Rifenberg", "Riley", "Ripley", "Robertson",
+			"Rooney", "Rosental", "Rossini", "Russell", "Rychech",
+			"Sawyer", "Schafer", "Schmidt", "Schroeder", "Schwartz", "Scott", "Shattuck",
+			"Shaw", "Simmons", "Slack", "Smith", "Speltzer", "Stern", "Stewart", "Stone",
+			"Strenburg", "Strong", "Swanson", "Syveran", 
+			"Tenker", "Thomas", "Traver", "Vallier", "Vann", "Wagner", "Walsted", "Warner",
+			"Webber", "Weir", "Welch", "Westin", "White", "Winters", "Woods", "Wolff"
+		]
 	}
 }

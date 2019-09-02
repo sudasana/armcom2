@@ -11,5 +11,4 @@ savegame.dat
 log.txt
 data/armcom2.cfg
 data/debug.json
-build.bat
 runtime_log.txt

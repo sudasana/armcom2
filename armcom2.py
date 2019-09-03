@@ -58,9 +58,9 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.7.0'					# game version
+VERSION = '0.8.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -6435,6 +6435,9 @@ class Scenario:
 		
 		self.support_target_list = []				# list of possible support attack targets
 		self.support_target = None				# target map hex for support attacks
+		
+		
+		
 		self.support_status = None				# current stage of support attack
 		self.support_arrival_time = None			# time that support will actually arrive
 	
@@ -8902,7 +8905,6 @@ class Scenario:
 			
 			if not input_command:
 				self.advance_phase = True
-			
 		
 		# movement phase: 
 		elif self.phase == PHASE_MOVEMENT:
@@ -9285,9 +9287,9 @@ class Scenario:
 		# Crew action phase
 		elif self.phase == PHASE_CREW_ACTION:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(cmd_menu_con, 1, 0, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cmd_menu_con, 1, 9, EnKey('w').upper() + '/' + EnKey('s').upper())
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-			libtcod.console_print(cmd_menu_con, 8, 0, 'Select Position')
+			libtcod.console_print(cmd_menu_con, 8, 9, 'Select Position')
 			
 			# crew command specific actions
 			if self.selected_position is None: return
@@ -9296,17 +9298,24 @@ class Scenario:
 			
 			if position.crewman.current_cmd == 'Request Support':
 				
-				# display current support level
-				if campaign_day.air_support_level > 0.0:
-					text = 'Air Support: ' + str(campaign_day.air_support_level)
+				# display current support levels
+				text = 'Air Support: '
+				if 'air_support_level' not in campaign.today:
+					text += 'None'
 				else:
-					text = 'Artillery Support: ' + str(campaign_day.arty_support_level)
-				libtcod.console_print_ex(cmd_menu_con, 12, 2, libtcod.BKGND_NONE,
-					libtcod.CENTER, text)
+					text += str(campaign_day.air_support_level)
+				libtcod.console_print(cmd_menu_con, 1, 1, text)
 				
-				# FUTURE: display current support status: ranging in, ranged in; in transit, on attack run
+				text = 'Artillery Support: '
+				if 'arty_support_level' not in campaign.today:
+					text += 'None'
+				else:
+					text += str(campaign_day.arty_support_level)
+				libtcod.console_print(cmd_menu_con, 1, 2, text)
 				
 				# display support status or commands
+				
+				# support request or attack is in progress
 				if self.support_status is not None:
 					
 					libtcod.console_print_ex(cmd_menu_con, 12, 4, libtcod.BKGND_NONE,
@@ -9314,7 +9323,7 @@ class Scenario:
 					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 					libtcod.console_print(cmd_menu_con, 1, 6, EnKey('c').upper())
 					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-					libtcod.console_print(cmd_menu_con, 8, 6, 'Cancel Attack')
+					libtcod.console_print(cmd_menu_con, 8, 6, 'Cancel Support')
 					
 				else:
 				

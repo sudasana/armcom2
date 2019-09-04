@@ -6435,11 +6435,9 @@ class Scenario:
 		
 		self.support_target_list = []				# list of possible support attack targets
 		self.support_target = None				# target map hex for support attacks
-		
-		
-		
+		self.support_response_time = None			# time of support request response
 		self.support_status = None				# current stage of support attack
-		self.support_arrival_time = None			# time that support will actually arrive
+		
 	
 	
 	# check for end of scenario and set flag if it has ended
@@ -6503,7 +6501,7 @@ class Scenario:
 			
 			# support attack already in progress
 			if self.support_status is not None: return
-			if campaign_day.air_support_level <= 0.0: return
+			if 'air_support_level' not in campaign.today: return
 			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
 			if target_hex is None: return
 			ShowMessage('Friendly air forces launch an attack!')
@@ -6516,7 +6514,7 @@ class Scenario:
 			
 			# support attack already in progress
 			if self.support_status is not None: return
-			if campaign_day.arty_support_level <= 0.0: return
+			if 'arty_support_level' not in campaign.today: return
 			if target_hex is None: return
 			ShowMessage('Friendly artillery forces fire a bombardment!')
 			self.support_target = target_hex
@@ -8021,7 +8019,7 @@ class Scenario:
 	def ResetSupport(self):
 		self.support_target = None
 		self.support_status = None
-		self.support_arrival_time = None
+		self.support_response_time = None
 	
 	
 	# build a list of possible support attack target hexes if none already selected
@@ -8073,63 +8071,100 @@ class Scenario:
 	
 	
 	# attempt to contact and call in support
-	def CallSupport(self):
+	def CallSupport(self, air_support):
 		
-		# no target selected
-		if self.support_target is None:
-			return
+		# request or attack already in progress
+		if self.support_status is not None: return
 		
-		# support already in progress
-		if self.support_status is not None:
-			return
-		
-		# do support roll
-		air_attack = False
-		if campaign_day.air_support_level > 0.0:
-			level = campaign_day.air_support_level
-			air_attack = True
-		elif campaign_day.arty_support_level > 0.0:
-			level = campaign_day.arty_support_level
+		# no such support
+		if air_support:
+			if 'air_support_level' not in campaign.today: return
 		else:
-			# no support possible
-			ShowMessage('Cannot call support - none available.')
-			return
+			if 'arty_support_level' not in campaign.today: return
+		
+		# no support target selected
+		if self.support_target is None: return
+		
+		# no support currently available
+		if air_support:
+			if campaign_day.air_support_level <= 0.0:
+				ShowMessage('Cannot request support - none currently available.')
+				return
+		else:
+			if campaign_day.arty_support_level <= 0.0:
+				ShowMessage('Cannot request support - none currently available.')
+				return
 		
 		# check for weather restrictions
-		if campaign_day.weather['Cloud Cover'] == 'Overcast' and air_attack:
-			ShowMessage('Air support not possible - cloud cover too heavy.')
+		if air_support and campaign_day.weather['Cloud Cover'] == 'Overcast':
+			ShowMessage('Cannot request air support - cloud cover too heavy.')
 			return
 		
-		roll = GetPercentileRoll()
-		if DEBUG:
-			if session.debug['Support Requests Always Granted']:
-				roll = 1.0
-		
-		if roll > level:
-			ShowMessage('Unable to provide support attack.')
-			return
-		
-		# decrease support level
-		if air_attack:
-			ShowMessage('Air attack support request granted!')
-			self.support_status = 'Air attack inbound'
-			campaign_day.air_support_level -= campaign_day.air_support_step
-			if campaign_day.air_support_level < 0.0:
-				campaign_day.air_support_level = 0.0
-		else:
-			ShowMessage('Artillery attack support request granted!')
-			self.support_status = 'Artillery inbound'
-			campaign_day.arty_support_level -= campaign_day.arty_support_step
-			if campaign_day.arty_support_level < 0.0:
-				campaign_day.arty_support_level = 0.0
-		
-		# set time of arrival silently
+		# roll for time of response
 		hour = campaign_day.day_clock['hour']
 		minute = campaign_day.day_clock['minute'] + libtcod.random_get_int(0, 6, 10)
 		if minute > 59:
 			hour += 1
 			minute -= 60
-		self.support_arrival_time = (hour, minute)
+		self.support_response_time = (hour, minute)
+		
+		if air_support:
+			text = 'Air'
+			self.support_status = 'Air support requested'
+		else:
+			text = 'Artillery'
+			self.support_status = 'Artillery support requested'
+		text += ' support request sent, waiting for response.'
+		ShowMessage(text)
+	
+	
+	# roll to see what the response was to a support request
+	def DoSupportRoll(self):
+		
+		roll = GetPercentileRoll()
+		
+		# FUTURE: apply any skill effects here
+		
+		if DEBUG:
+			if session.debug['Support Requests Always Granted']:
+				roll = 1.0
+		
+		if self.support_status == 'Air support requested':
+			level = campaign_day.air_support_level
+		else:
+			level = campaign_day.arty_support_level
+		
+		if roll > level:
+			ShowMessage('Unable to provide support at this time.')
+			self.ResetSupport()
+			return
+		
+		# notify player and decrease support level
+		if self.support_status == 'Air support requested':
+			ShowMessage('Air attack support request granted!')
+			self.support_status = 'Air support inbound'
+			campaign_day.air_support_level -= campaign_day.air_support_step
+			if campaign_day.air_support_level < 0.0:
+				campaign_day.air_support_level = 0.0
+		else:
+			ShowMessage('Artillery attack support request granted!')
+			self.support_status = 'Artillery support inbound'
+			campaign_day.arty_support_level -= campaign_day.arty_support_step
+			if campaign_day.arty_support_level < 0.0:
+				campaign_day.arty_support_level = 0.0
+	
+	
+	# do support target check here (air spotting target / spotting rounds)
+	def DoSupportTargetCheck(self):
+		
+		if self.support_status == 'Air support inbound':
+			# TODO: do arrival roll
+			pass
+		elif self.support_status == 'Air attack inbound':
+			# TODO: do arrival roll
+			pass
+		
+		
 		
 	
 	# do an artillery attack against a target hex
@@ -8953,16 +8988,32 @@ class Scenario:
 			# check for support attacks first
 			if self.support_status is not None:
 				
-				# check that support arrival time has been hit
-				(hour, minute) = self.support_arrival_time
-				if hour < campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute <= campaign_day.day_clock['minute']):
-					if self.support_status == 'Artillery inbound':
-						ShowMessage('Artillery attack begins.')
-						self.ArtilleryAttack()
-					elif self.support_status == 'Air attack inbound':
+				# request pending 
+				if self.support_status in ['Air support requested', 'Artillery support requested']:
+				
+					# check to see if support response time has been hit
+					(hour, minute) = self.support_response_time
+					if hour < campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute <= campaign_day.day_clock['minute']):
+						self.DoSupportRoll()
+						DisplayTimeInfo(time_con)
+				
+				# attack inbound
+				elif self.support_status in ['Air support inbound', 'Artillery support inbound']:
+					
+					self.DoSupportTargetCheck()
+					DisplayTimeInfo(time_con)
+				
+				# attack in progress
+				elif self.support_status in ['Air attack', 'Artillery attack']: 
+					
+					if self.support_status == 'Air attack':
 						ShowMessage('Air attack begins.')
 						self.AirAttack()
+					else:
+						ShowMessage('Artillery attack begins.')
+						self.ArtilleryAttack()
 					DisplayTimeInfo(time_con)
+					
 			
 			# player squad acts
 			for unit in scenario.player_unit.squad:
@@ -9329,11 +9380,26 @@ class Scenario:
 				
 					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 					libtcod.console_print(cmd_menu_con, 1, 4, 'Tab')
-					libtcod.console_print(cmd_menu_con, 1, 5, EnKey('f').upper())
+					if 'air_support_level' not in campaign.today:
+						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
+					libtcod.console_print(cmd_menu_con, 1, 5, EnKey('q').upper())
+					
+					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+					if 'arty_support_level' not in campaign.today:
+						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
+					libtcod.console_print(cmd_menu_con, 1, 6, EnKey('e').upper())
 					
 					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 					libtcod.console_print(cmd_menu_con, 8, 4, 'Cycle Target Hex')
-					libtcod.console_print(cmd_menu_con, 8, 5, 'Request Attack')
+					
+					if 'air_support_level' not in campaign.today:
+						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
+					libtcod.console_print(cmd_menu_con, 8, 5, 'Call Air Support')
+					
+					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+					if 'arty_support_level' not in campaign.today:
+						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
+					libtcod.console_print(cmd_menu_con, 8, 6, 'Call Arty Support')
 				
 			
 		# Movement phase
@@ -10025,6 +10091,7 @@ class Scenario:
 						continue
 					
 					elif key_char == 'c':
+						# no request or support in progress
 						if self.support_status is None: continue
 						ShowMessage('Support attack cancelled.')
 						self.ResetSupport()
@@ -10034,9 +10101,9 @@ class Scenario:
 						self.UpdateScenarioDisplay()
 						continue
 					
-					elif key_char == 'f':
-						if self.support_status is not None: continue
-						self.CallSupport()
+					# request air or arty support
+					elif key_char in ['q', 'e']:
+						self.CallSupport(key_char == 'q')
 						DisplayTimeInfo(time_con)
 						self.UpdateGuiCon()
 						self.UpdateCmdCon()

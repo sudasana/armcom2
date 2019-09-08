@@ -8276,6 +8276,8 @@ class Scenario:
 				for direction in range(6):
 					(hx, hy) = GetAdjacentHex(self.support_target.hx,
 						self.support_target.hy, direction)
+					if hx == self.player_unit.hx and hy == self.player_unit.hy:
+						continue
 					if (hx, hy) in self.hex_dict:
 						hex_list.append((hx, hy))
 				(hx, hy) = choice(hex_list)

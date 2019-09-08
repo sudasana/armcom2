@@ -8238,9 +8238,6 @@ class Scenario:
 			# do roll
 			roll = GetPercentileRoll()
 			
-			# TEMP
-			roll = 1.0
-			
 			if roll > chance:
 				ShowMessage('No target spotted, will retry.')
 				return
@@ -8251,10 +8248,44 @@ class Scenario:
 		
 		# artillery
 		elif self.support_status == 'Artillery support inbound':
-			# TODO: do arrival roll
-			pass
-		
-		
+			
+			ShowMessage('Artillery firing spotting rounds.')
+			
+			chance = 35.0
+			
+			# weather modifier
+			if campaign_day.weather['Precipitation'] == 'Rain':
+				chance -= 10.0
+			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+				chance -= 15.0
+			
+			chance = RestrictChance(chance)
+			
+			# do roll
+			roll = GetPercentileRoll()
+			
+			if roll <= chance:
+				(x, y) = self.PlotHex(self.support_target.hx, self.support_target.hy)
+			else:
+				(x, y) = self.PlotHex(GetAdjacentHex(self.support_target.hx, self.support_target.hy, libtcod.random_get_int(0, 0, 5)))
+			
+			PlaySoundFor(None, 'he_explosion')
+			# create bomb animation
+			self.animation['bomb_effect'] = (x, y)
+			self.animation['bomb_effect_lifetime'] = 6
+			
+			# let animation run
+			while self.animation['bomb_effect'] is not None:
+				if libtcod.console_is_window_closed(): sys.exit()
+				libtcod.console_flush()
+				CheckForAnimationUpdate()
+			
+			if roll <= chance:
+				ShowMessage('Target found, will fire for effect.')
+				self.support_status = 'Artillery attack'
+			
+			else:
+				ShowMessage('Trajectory incorrect, recalculating.')
 		
 	
 	# do an artillery attack against a target hex

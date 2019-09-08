@@ -5414,6 +5414,8 @@ class Unit:
 				if self.GetStat('category') == 'Infantry':
 					chance = chance * 0.5
 				
+				# TODO: apply terrain modifier
+				
 				# spotting crew modifier
 				chance += position.crewman.GetActionMod('Spotting')
 				
@@ -8157,10 +8159,83 @@ class Scenario:
 	# do support target check here (air spotting target / spotting rounds)
 	def DoSupportTargetCheck(self):
 		
+		target_hex = self.hex_dict[(self.support_target.hx, self.support_target.hy)]
+		
+		# check that there are 1+ targets left
+		if len(target_hex.unit_stack) == 0:
+			ShowMessage('No more targets, calling off support request.')
+			self.ResetSupport()
+			return
+		
+		# air attack
 		if self.support_status == 'Air support inbound':
-			# TODO: do arrival roll
-			pass
-		elif self.support_status == 'Air attack inbound':
+			
+			# check for weather restrictions
+			if campaign_day.weather['Cloud Cover'] == 'Overcast':
+				ShowMessage('Calling off air attack - cloud cover too heavy.')
+				self.ResetSupport()
+				return
+			
+			ShowMessage('Air wing trying to spot target.')
+			
+			chance = 50.0
+			
+			# weather modifiers
+			if campaign_day.weather['Cloud Cover'] == 'Scattered':
+				chance -= 10.0
+			elif campaign_day.weather['Cloud Cover'] == 'Heavy':
+				chance -= 20.0
+			if campaign_day.weather['Precipitation'] == 'Rain':
+				chance -= 15.0
+			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+				chance -= 25.0
+			
+			print('DEBUG: base spotting chance: ' + str(chance))
+			
+			# potential target modifier
+			for unit in target_hex.unit_stack:
+				
+				modifier = 0.0
+				
+				if unit.smoke > 0:
+					modifier -= 5.0
+				
+				size_class = unit.GetStat('size_class')
+				if size_class is not None:
+					if size_class == 'Small':
+						modifier -= 7.0
+					elif size_class == 'Very Small':
+						modifier -= 18.0
+					elif size_class == 'Large':
+						modifier += 7.0
+					elif size_class == 'Very Large':
+						modifier += 18.0
+				
+				if unit.moving:
+					modifier += 10.0
+				
+				modifier += unit.GetTEM()
+				
+				chance += round(modifier * 0.25, 2)
+				print('DEBUG: unit present, spotting chance now: ' + str(chance))
+			
+			chance = RestrictChance(chance)
+			
+			print('DEBUG: final spotting chance is: ' + str(chance))
+			
+			# do roll
+			roll = GetPercentileRoll()
+			
+			if roll > chance:
+				ShowMessage('No target spotted, will retry.')
+				return
+			
+			ShowMessage('Target spotted, returning to attack.')
+			self.support_status = 'Air attack'
+			
+		
+		# artillery
+		elif self.support_status == 'Artillery support inbound':
 			# TODO: do arrival roll
 			pass
 		

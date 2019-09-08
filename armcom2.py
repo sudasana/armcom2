@@ -5211,7 +5211,7 @@ class Unit:
 		self.reverse_move_chance = BASE_REVERSE_MOVE_CHANCE
 		
 		# apply modifier from unit movement type
-		movement_class = scenario.player_unit.GetStat('movement_class')
+		movement_class = self.GetStat('movement_class')
 		if movement_class == 'Slow Tank':
 			self.forward_move_chance -= 15.0
 		elif movement_class == 'Fast Tank':
@@ -5220,7 +5220,7 @@ class Unit:
 			# FUTURE: additional modifier here if using road movement
 			self.forward_move_chance += 5.0
 		
-		if player_unit.GetStat('powerful_engine') is not None:
+		if self.GetStat('powerful_engine') is not None:
 			self.forward_move_chance += 5.0
 		
 		# apply modifier from current terrain type
@@ -6221,7 +6221,6 @@ class Unit:
 		# apply any modifiers
 		if self.fatigue > 0:
 			base_chance += float(self.fatigue) * 15.0
-			print('DEBUG: Applied fatigue effects on ' + self.unit_id)
 		
 		# restrict final chance
 		base_chance = RestrictChance(base_chance)
@@ -9476,13 +9475,11 @@ class Scenario:
 					text += str(campaign_day.arty_support_level)
 				libtcod.console_print(cmd_menu_con, 1, 2, text)
 				
-				# display support status or commands
+				# display support commands
 				
 				# support request or attack is in progress
 				if self.support_status is not None:
 					
-					libtcod.console_print_ex(cmd_menu_con, 12, 4, libtcod.BKGND_NONE,
-						libtcod.CENTER, self.support_status)
 					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 					libtcod.console_print(cmd_menu_con, 1, 6, EnKey('c').upper())
 					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
@@ -10581,15 +10578,21 @@ def DisplayTimeInfo(console):
 	
 	if scenario is None: return
 	
+	# current phase
+	libtcod.console_set_default_foreground(console, SCEN_PHASE_COL[scenario.phase])
+	libtcod.console_print_ex(console, 10, 2, libtcod.BKGND_NONE, libtcod.CENTER, 
+		SCEN_PHASE_NAMES[scenario.phase] + ' Phase')
+	
 	# display support status if any
 	if scenario.support_status is not None:
-		libtcod.console_set_default_foreground(console, libtcod.yellow)
-		libtcod.console_print_ex(console, 10, 4, libtcod.BKGND_NONE, libtcod.CENTER, 
-			scenario.support_status)
+		libtcod.console_set_default_foreground(console, ALLIED_UNIT_COL)
+		lines = wrap(scenario.support_status, 19)
+		libtcod.console_print_ex(console, 10, 4, libtcod.BKGND_NONE, libtcod.CENTER,
+			lines[0])
+		if len(lines) > 1:
+			libtcod.console_print_ex(console, 10, 5, libtcod.BKGND_NONE, libtcod.CENTER,
+				lines[1])
 	
-	libtcod.console_set_default_foreground(console, SCEN_PHASE_COL[scenario.phase])
-	libtcod.console_print_ex(console, 10, 5, libtcod.BKGND_NONE, libtcod.CENTER, 
-		SCEN_PHASE_NAMES[scenario.phase] + ' Phase')
 
 
 # display weather conditions info to a console, minimum width 12

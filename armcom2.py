@@ -8272,7 +8272,14 @@ class Scenario:
 			if roll <= chance:
 				(x, y) = self.PlotHex(self.support_target.hx, self.support_target.hy)
 			else:
-				(x, y) = self.PlotHex(GetAdjacentHex(self.support_target.hx, self.support_target.hy, libtcod.random_get_int(0, 0, 5)))
+				hex_list = []
+				for direction in range(6):
+					(hx, hy) = GetAdjacentHex(self.support_target.hx,
+						self.support_target.hy, direction)
+					if (hx, hy) in self.hex_dict:
+						hex_list.append((hx, hy))
+				(hx, hy) = choice(hex_list)
+				(x, y) = self.PlotHex(hx, hy)
 			
 			PlaySoundFor(None, 'he_explosion')
 			# create bomb animation

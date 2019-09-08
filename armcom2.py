@@ -4402,6 +4402,7 @@ class Weapon:
 		self.fired = False
 		self.maintained_rof = False
 		
+		self.selected_target = None		# for player unit
 		self.acquired_target = None		# acquired target status and target unit
 	
 	
@@ -6309,9 +6310,10 @@ class Unit:
 		if self in scenario.units:
 			scenario.units.remove(self)
 		
-		# remove from active target and target list
-		if scenario.selected_target == self:
-			scenario.selected_target = None
+		# remove as selected target from all player weapons, and remove from target list
+		for weapon in scenario.player_unit.weapon_list:
+			if weapon.selected_target == self:
+				weapon.selected_target = None
 		if self in scenario.target_list:
 			scenario.target_list.remove(self)
 		
@@ -6431,7 +6433,6 @@ class Scenario:
 		# player targeting
 		self.target_list = []					# list of possible player targets
 		self.selected_weapon = None				# player's currently selected weapon
-		self.selected_target = None				# player's current selected target
 		
 		self.selected_position = 0				# index of selected position in player unit
 		
@@ -7980,21 +7981,25 @@ class Scenario:
 			if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
 			self.target_list.append(unit)
 		
-		# old target no longer on list
-		if self.selected_target not in self.target_list:
-			self.selected_target = None
+		# old player weapon target no longer on list
+		for weapon in self.player_unit.weapon_list:
+			if weapon.selected_target not in self.target_list:
+				weapon.selected_target = None
 	
 	
-	# cycle selected player target
+	# cycle selected target for player weapon
 	# FUTURE: combine into general "next in list, previous in list, wrap around" function
 	def CycleTarget(self, forward):
+		
+		# no weapon selected
+		if self.selected_weapon is None: return
 		
 		# no targets to select from
 		if len(self.target_list) == 0: return
 		
 		# no target selected yet
-		if self.selected_target is None:
-			self.selected_target = self.target_list[0]
+		if self.selected_weapon.selected_target is None:
+			self.selected_weapon.selected_target = self.target_list[0]
 			return
 		
 		if forward:
@@ -8002,17 +8007,17 @@ class Scenario:
 		else:
 			m = -1
 		
-		i = self.target_list.index(self.selected_target)
+		i = self.target_list.index(self.selected_weapon.selected_target)
 		i += m
 		
 		if i < 0:
-			self.selected_target = self.target_list[-1]
+			self.selected_weapon.selected_target = self.target_list[-1]
 		elif i > len(self.target_list) - 1:
-			self.selected_target = self.target_list[0]
+			self.selected_weapon.selected_target = self.target_list[0]
 		else:
-			self.selected_target = self.target_list[i]
+			self.selected_weapon.selected_target = self.target_list[i]
 		
-		self.selected_target.MoveToTopOfStack()
+		self.selected_weapon.selected_target.MoveToTopOfStack()
 		self.UpdateUnitCon()
 		self.UpdateUnitInfoCon()
 	
@@ -9267,9 +9272,9 @@ class Scenario:
 					libtcod.RIGHT, weapon.stats['mount'])
 			
 			# display target and acquired target status if any
-			if self.selected_target is not None and weapon.acquired_target is not None:
+			if weapon.selected_target is not None and weapon.acquired_target is not None:
 				(ac_target, level) = weapon.acquired_target
-				if ac_target == self.selected_target:
+				if ac_target == weapon.selected_target:
 					text = 'Acquired Target'
 					if level == 1:
 						text += '+'
@@ -9310,12 +9315,12 @@ class Scenario:
 				return
 			
 			# display info about current target if any
-			if self.selected_target is not None:
+			if weapon.selected_target is not None:
 				
 				libtcod.console_set_default_foreground(context_con, libtcod.light_red)
-				libtcod.console_print(context_con, 0, 7, self.selected_target.GetName())
+				libtcod.console_print(context_con, 0, 7, weapon.selected_target.GetName())
 				
-				result = self.CheckAttack(scenario.player_unit, weapon, self.selected_target)
+				result = self.CheckAttack(scenario.player_unit, weapon, weapon.selected_target)
 				if result != '':
 					lines = wrap(result, 18)
 					y = 9
@@ -9662,14 +9667,14 @@ class Scenario:
 					libtcod.console_blit(session.scen_hex_fov, 0, 0, 0, 0, gui_con,
 						x-5, y-3)
 			
-			# display target recticle if a target is selected
-			if self.selected_target is not None:
-				(x,y) = self.PlotHex(self.selected_target.hx, self.selected_target.hy)
-				
-				libtcod.console_put_char_ex(gui_con, x-1, y-1, 218, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x+1, y-1, 191, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x-1, y+1, 192, libtcod.red, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x+1, y+1, 217, libtcod.red, libtcod.black)
+				# display target recticle if a weapon target is selected
+				if self.selected_weapon.selected_target is not None:
+					(x,y) = self.PlotHex(self.selected_weapon.selected_target.hx, self.selected_weapon.selected_target.hy)
+					
+					libtcod.console_put_char_ex(gui_con, x-1, y-1, 218, libtcod.red, libtcod.black)
+					libtcod.console_put_char_ex(gui_con, x+1, y-1, 191, libtcod.red, libtcod.black)
+					libtcod.console_put_char_ex(gui_con, x-1, y+1, 192, libtcod.red, libtcod.black)
+					libtcod.console_put_char_ex(gui_con, x+1, y+1, 217, libtcod.red, libtcod.black)
 	
 	
 	# update the scenario info console, on the top right of the screen
@@ -10308,7 +10313,7 @@ class Scenario:
 				# player fires active weapon at selected target
 				elif key_char == 'f':
 					result = scenario.player_unit.Attack(scenario.selected_weapon,
-						scenario.selected_target)
+						scenario.selected_weapon.selected_target)
 					if result:
 						self.UpdateUnitInfoCon()
 						self.UpdateContextCon()

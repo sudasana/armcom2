@@ -508,6 +508,7 @@ class Campaign:
 			text = (str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2) +
 				' - ' + text)
 		self.logs[self.today['date']].append(text)
+		print('DEBUG: Added log entry: ' + text)
 	
 	
 	# award VP to the player
@@ -599,6 +600,7 @@ class Campaign:
 			if not filename.endswith('.json'): continue
 			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
 				campaign_data = json.load(data_file)
+			if 'wip' in campaign_data: continue
 			new_campaign = {}
 			new_campaign['filename'] = filename
 			for k in BASIC_INFO:
@@ -3576,7 +3578,6 @@ class Session:
 		
 		# animation timer, used by both the campaign day and the scenario object
 		self.anim_timer = 0.0
-	
 	
 	# try to initialize SDL2 mixer
 	def InitMixer(self):

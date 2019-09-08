@@ -6258,12 +6258,8 @@ class Unit:
 	
 	# do a pin test on this unit
 	def PinTest(self, fp):
-		
-		# already pinned, no further effect
 		if self.pinned: return
-		
-		chance = float(fp) * 5.0
-		chance = RestrictChance(chance)
+		chance = RestrictChance(float(fp) * 5.0)
 		roll = GetPercentileRoll()
 		if roll <= chance:
 			self.PinMe()
@@ -6356,8 +6352,7 @@ class Unit:
 	# attempt to recover from pinned status at the end of an activation
 	def DoRecoveryRoll(self):
 		if not self.pinned: return
-		if not self.MoraleCheck(0):
-			return
+		if not self.MoraleCheck(0): return
 		self.pinned = False
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()

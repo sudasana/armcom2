@@ -7,7 +7,7 @@
 	"enemy_nations" : ["Germany"],
 	"desc" : "Join the 4th Armoured Division as it participates in the liberations of France and invasion of Germany.",
 	"player_unit_list" : [
-		"M4 Sherman"
+		"M4 Sherman", "M4A1 Sherman"
 	],
 	"player_air_support": [
 		"TBD"

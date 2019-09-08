@@ -8104,7 +8104,7 @@ class Scenario:
 		
 		# roll for time of response
 		hour = campaign_day.day_clock['hour']
-		minute = campaign_day.day_clock['minute'] + libtcod.random_get_int(0, 6, 10)
+		minute = campaign_day.day_clock['minute'] + libtcod.random_get_int(0, 2, 6)
 		if minute > 59:
 			hour += 1
 			minute -= 60
@@ -8178,7 +8178,7 @@ class Scenario:
 			
 			ShowMessage('Air wing trying to spot target.')
 			
-			chance = 50.0
+			chance = 35.0
 			
 			# weather modifiers
 			if campaign_day.weather['Cloud Cover'] == 'Scattered':
@@ -8223,8 +8223,23 @@ class Scenario:
 			
 			print('DEBUG: final spotting chance is: ' + str(chance))
 			
+			# show plane animation
+			self.animation['air_attack'] = GeneratePlaneCon(-1)
+			self.animation['air_attack_line'] = GetLine(26, 25, 26, 15)
+			
+			PlaySoundFor(None, 'plane_incoming')
+			
+			# let animation run
+			while self.animation['air_attack'] is not None:
+				if libtcod.console_is_window_closed(): sys.exit()
+				libtcod.console_flush()
+				CheckForAnimationUpdate()
+			
 			# do roll
 			roll = GetPercentileRoll()
+			
+			# TEMP
+			roll = 1.0
 			
 			if roll > chance:
 				ShowMessage('No target spotted, will retry.')
@@ -8447,22 +8462,8 @@ class Scenario:
 			y2 -= 3
 			direction = 1
 		
-		# create plane console
-		temp_con = libtcod.console_new(3, 3)
-		libtcod.console_set_default_background(temp_con, libtcod.black)
-		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
-		libtcod.console_clear(temp_con)
-		
-		libtcod.console_put_char(temp_con, 0, 1, chr(196))
-		libtcod.console_put_char(temp_con, 1, 1, chr(197))
-		libtcod.console_put_char(temp_con, 2, 1, chr(196))
-		if direction == -1:
-			libtcod.console_put_char(temp_con, 1, 2, chr(193))
-		else:
-			libtcod.console_put_char(temp_con, 1, 0, chr(194))
-		
 		# create air attack animation
-		self.animation['air_attack'] = temp_con
+		self.animation['air_attack'] = GeneratePlaneCon(direction)
 		self.animation['air_attack_line'] = GetLine(x, y1, x, y2)
 		
 		PlaySoundFor(None, 'plane_incoming')
@@ -8598,7 +8599,6 @@ class Scenario:
 		# clean up
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
-		del temp_con
 	
 	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
@@ -9536,7 +9536,7 @@ class Scenario:
 				self.hex_map_index[(x1, y)] = map_hex
 	
 	
-	# update hexmap console
+	# update hexmap console 53x43
 	def UpdateHexmapCon(self):
 		
 		libtcod.console_clear(hexmap_con)
@@ -9735,7 +9735,10 @@ class Scenario:
 			# HD status if any
 			if len(unit.hull_down) > 0:
 				libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
-				libtcod.console_print(unit_info_con, 26, 0, 'HD' + GetDirectionalArrow(unit.hull_down[0]))
+				libtcod.console_print(unit_info_con, 26, 0, 'HD')
+				libtcod.console_put_char_ex(unit_info_con, 28, 0,
+					GetDirectionalArrow(unit.hull_down[0]), libtcod.sepia,
+					libtcod.darkest_grey)
 			
 			# current terrain
 			if unit.terrain is not None:
@@ -10288,6 +10291,23 @@ class Scenario:
 ##########################################################################################	
 
 
+# generate and return a console image of a plane
+def GeneratePlaneCon(direction):
+	temp_con = libtcod.console_new(3, 3)
+	libtcod.console_set_default_background(temp_con, libtcod.black)
+	libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
+	libtcod.console_clear(temp_con)
+	
+	libtcod.console_put_char(temp_con, 0, 1, chr(196))
+	libtcod.console_put_char(temp_con, 1, 1, chr(197))
+	libtcod.console_put_char(temp_con, 2, 1, chr(196))
+	if direction == -1:
+		libtcod.console_put_char(temp_con, 1, 2, chr(193))
+	else:
+		libtcod.console_put_char(temp_con, 1, 0, chr(194))
+	return temp_con
+
+
 # export the campaign log to a text file, normally done at the end of a campaign
 def ExportLog():
 	
@@ -10838,7 +10858,7 @@ def GetDirectionalArrow(direction):
 		return chr(230)
 	elif direction == 5:
 		return chr(231)
-	return ''
+	return '*'
 
 
 # return a list of hexes along a line from hex1 to hex2

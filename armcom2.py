@@ -6528,7 +6528,7 @@ class Scenario:
 		elif roll <= 30.0:
 			
 			if self.enemy_reinforcements > 0:
-				if GetPercentileRoll() <= (float(self.enemy_reinforcements) * 30.0):
+				if GetPercentileRoll() <= (float(self.enemy_reinforcements) * 40.0):
 					return
 			
 			self.enemy_reinforcements += 1
@@ -12074,6 +12074,10 @@ while not exit_game:
 				
 				# load the saved game
 				LoadGame()
+				
+				# pause main theme if loaded
+				if main_theme is not None:
+					mixer.Mix_PauseMusic()
 			
 			else:
 				# confirm savegame overwrite
@@ -12098,6 +12102,10 @@ while not exit_game:
 					UpdateMainTitleCon(options_menu_active)
 					continue
 				
+				# pause main theme if loaded
+				if main_theme is not None:
+					mixer.Mix_PauseMusic()
+				
 				# allow player to select their tank and tank name
 				(unit_id, tank_name) = campaign.TankSelectionMenu()
 				
@@ -12118,10 +12126,6 @@ while not exit_game:
 				campaign_day = None
 				scenario = None
 				
-			# pause main theme if loaded
-			if main_theme is not None:
-				mixer.Mix_PauseMusic()
-			
 			# go to campaign calendar loop
 			campaign.DoCampaignCalendarLoop()
 			

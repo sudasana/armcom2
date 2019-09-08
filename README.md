@@ -1,6 +1,6 @@
 # Armoured Commander II
 
-<small>Started February 23, 2016; Restarted July 25, 2016; Restarted again January 11, 2018; Restarted again January 2, 2019</small>
+Started February 23, 2016; Restarted July 25, 2016; Restarted again January 11, 2018; Restarted again January 2, 2019
 
 ## This is Armoured Commander II, the World War II Tank Commander Roguelike.
 
@@ -18,14 +18,18 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Armoured Commander II, in the form of a file named "license.txt".
-If not, see <http://www.gnu.org/licenses/>.
+If not, see <https://www.gnu.org/licenses/>.
 
----
+## Running ArmCom2
 
 To run armcom2.py, you will need:
 
 * Python 3.6.6 https://www.python.org/downloads/release/python-366/
-* Libtcod 1.6.4	http://bitbucket.org/libtcod/libtcod
-* XPLoader http://github.com/RCIX/XPLoader
+* Libtcod 1.6.4	https://bitbucket.org/libtcod/libtcod
+* XPLoader https://github.com/RCIX/XPLoader
 * PySDL2 https://github.com/marcusva/py-sdl2
+
+Windows PyInstaller builds are also available from [the game's website](https://www.armouredcommander.com/blog/).
+
+--- 
 

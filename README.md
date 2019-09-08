@@ -1,11 +1,8 @@
 # Armoured Commander II
 
- Started February 23, 2016
- Restarted July 25, 2016
- Restarted again January 11, 2018
- Restarted again January 2, 2019
+<small>Started February 23, 2016; Restarted July 25, 2016; Restarted again January 11, 2018; Restarted again January 2, 2019</small>
 
-This is Armoured Commander II, the World War II Tank Commander Roguelike.
+## This is Armoured Commander II, the World War II Tank Commander Roguelike.
 
 Copyright (c) 2016-2019 Gregory Adam Scott (sudasana@gmail.com)
 

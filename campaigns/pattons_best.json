@@ -7,7 +7,7 @@
 	"enemy_nations" : ["Germany"],
 	"desc" : "Join the 4th Armoured Division as it participates in the liberations of France and invasion of Germany.",
 	"player_unit_list" : [
-		"M4 Sherman", "M4A1 Sherman"
+		"M4 Sherman", "M4A1 Sherman", "M4A3 Sherman"
 	],
 	"player_air_support": [
 		"TBD"
@@ -34,7 +34,7 @@
 			"mission" : "Advance",
 			"enemy_nation" : "Germany",
 			"air_support_level" : 60.0,
-			"arty_support_step" : 10.0,
+			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Medium Tank" : "15",

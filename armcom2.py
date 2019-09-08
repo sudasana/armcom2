@@ -5219,6 +5219,9 @@ class Unit:
 			# FUTURE: additional modifier here if using road movement
 			self.forward_move_chance += 5.0
 		
+		if player_unit.GetStat('powerful_engine') is not None:
+			self.forward_move_chance += 5.0
+		
 		# apply modifier from current terrain type
 		if self.terrain is not None:
 			if 'Movement Mod' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
@@ -5772,6 +5775,8 @@ class Unit:
 		else:
 			libtcod.console_set_default_foreground(console, libtcod.light_green)
 			text = self.GetStat('movement_class')
+			if self.GetStat('powerful_engine') is not None:
+				text += '+'
 		libtcod.console_print_ex(console, x+24, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,
 			text)
 		

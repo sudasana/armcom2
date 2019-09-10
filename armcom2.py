@@ -6880,7 +6880,7 @@ class Scenario:
 			
 			if libtcod.console_is_window_closed(): sys.exit()
 		
-			# choose a random unit class, rolling against its ubiquity factor
+			# choose a random unit class
 			unit_class = None
 			while unit_class is None:
 				k, value = choice(list(class_odds.items()))
@@ -6912,15 +6912,23 @@ class Scenario:
 					continue
 				
 				unit_id = choice(type_list)
-				# no ubiquity rating, select automatically
-				if 'ubiquity' not in unit_types[unit_id]:
+				
+				# if no rarity factor given, select automatically
+				if 'rarity' not in unit_types[unit_id]:
 					selected_unit_id = unit_id
 					continue
 				
-				# roll for ubiquity rating
-				if GetPercentileRoll() <= float(unit_types[unit_id]['ubiquity']):
-					selected_unit_id = unit_id
-					continue
+				
+				# TODO: roll against rarity for current date
+				
+				# if there's only one date given, use that rarity factor
+				
+				# otherwise, find the earliest one that does not pre-date the current date
+				
+				# roll againt rarity rarting
+				#if GetPercentileRoll() <= float(rarity):
+				#	selected_unit_id = unit_id
+				#	continue
 			
 			# add the final selected unit id to list to spawn
 			enemy_unit_list.append(selected_unit_id)

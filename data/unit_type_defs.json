@@ -48,7 +48,9 @@
 			"it is being widely deployed as part of infantry and cavalry ",
 			"companies."
 		],
-		"ubiquity" : "95",
+		"rarity" : {
+			"10.1939" : "90"
+		},
 		"op_value" : "17"
 	},
 	
@@ -98,7 +100,9 @@
 			"1933, with an improved hull, suspention, and a Polish-built Fiat ",
 			"engine."
 		],
-		"ubiquity" : "85",
+		"rarity" : {
+			"10.1939" : "90"
+		},
 		"op_value" : "19"
 	},
 	
@@ -153,7 +157,9 @@
 			"1933, with an improved hull, suspention, and a Polish-built Fiat ",
 			"engine. This version is rare variant armed with a 20mm gun."
 		],
-		"ubiquity" : "20",
+		"rarity" : {
+			"10.1939" : "50"
+		},
 		"op_value" : "21"
 	},
 	
@@ -207,7 +213,9 @@
 			"first modern tank. By the outbreak of the Second World War several ",
 			"thousand were still in use throughout the world."
 		],
-		"ubiquity" : "50",
+		"rarity" : {
+			"10.1939" : "80"
+		},
 		"op_value" : "16"
 	},
 	
@@ -276,7 +284,9 @@
 			"a Type B model, with a single turret mounting a short-barreled ",
 			"47mm gun."
 		],
-		"ubiquity" : "30",
+		"rarity" : {
+			"10.1939" : "50"
+		},
 		"op_value" : "29"
 	},
 	
@@ -344,7 +354,9 @@
 			"better armed. It is, however, still a light tank, and is vulnerable ",
 			"to anti-tank fire."
 		],
-		"ubiquity" : "50",
+		"rarity" : {
+			"10.1939" : "60"
+		},
 		"op_value" : "33"
 	},
 	
@@ -389,7 +401,9 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "75",
+		"rarity" : {
+			"10.1939" : "80"
+		},
 		"op_value" : "19"
 	},
 	
@@ -439,7 +453,9 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "50",
+		"rarity" : {
+			"10.1939" : "90"
+		},
 		"op_value" : "20"
 	},
 	
@@ -472,7 +488,9 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "60",
+		"rarity" : {
+			"10.1939" : "100"
+		},
 		"op_value" : "26"
 	},
 	
@@ -509,7 +527,9 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "22",
+		"rarity" : {
+			"10.1939" : "70"
+		},
 		"op_value" : "29"
 	},
 	
@@ -546,7 +566,9 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "13",
+		"rarity" : {
+			"10.1939" : "40"
+		},
 		"op_value" : "27"
 	},
 	
@@ -1195,6 +1217,89 @@
 				"type" : "Gun",
 				"calibre" : "75",
 				"long_range" : "S",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "87"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "3",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"ubiquity" : "25",
+		"op_value" : "46"
+	},
+	
+	"Panzer IV H": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "11",
+			"turret_side" : "1",
+			"hull_front" : "8",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
 				"rof" : "28.0",
 				"rr_size" : "6",
 				"mount" : "Turret",

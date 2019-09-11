@@ -16,7 +16,8 @@
 	"enemy_unit_list" : [
 		"Panzer IV A", "Panzer IV C", "Panzer IV H",
 		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
-		"PSW 231 (8 rad)", "3.7cm PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
+		"PSW 231 (8 rad)",
+		"PaK 38", "PaK 40", "PaK 43", "Opel Blitz 3-ton",
 		"Riflemen"
 	],
 	"decorations_list" : {

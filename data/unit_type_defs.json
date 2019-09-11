@@ -611,6 +611,9 @@
 		"description" : [
 			"An armoured steam locomotive, designed to move an armoured train."
 		],
+		"rarity" : {
+			"09.1939" : "100"
+		},
 		"op_value" : "27"
 	},
 	
@@ -665,6 +668,9 @@
 			"turret. Although it is limited to travel on rails, it is well-protected ",
 			"and armed."
 		],
+		"rarity" : {
+			"09.1939" : "15"
+		},
 		"op_value" : "27"
 	},
 	
@@ -717,6 +723,10 @@
 		"description" : [
 			""
 		],
+		"rarity" : {
+			"09.1939" : "110",
+			"01.1941" : "60"
+		},
 		"op_value" : "30"
 	},
 	
@@ -783,6 +793,9 @@
 			"light tank. This version entered production in 1937 and carries a ",
 			"20mm gun as its main armament."
 		],
+		"rarity" : {
+			"09.1939" : "100"
+		},
 		"op_value" : "35"
 	},
 	
@@ -861,6 +874,9 @@
 			"as the Panzerkampfwagen 35(t). Compared to most other light tanks ",
 			"of 1939 it is well-armoured and carries a powerful 37mm main gun."
 		],
+		"rarity" : {
+			"09.1939" : "70"
+		},
 		"op_value" : "40"
 	},
 	
@@ -940,6 +956,9 @@
 			"Panzerkampfwagen 38(t). This model A of the light tank is armed ",
 			"with a long-barreled 37mm main gun."
 		],
+		"rarity" : {
+			"09.1939" : "90"
+		},
 		"op_value" : "43"
 	},
 	
@@ -1025,7 +1044,9 @@
 			"battle tank of the German armoured forces. The D model is a prototype ",
 			"model and only a very small number ever entered service."
 		],
-		"ubiquity" : "5",
+		"rarity" : {
+			"09.1939" : "60"
+		},
 		"op_value" : "41"
 	},
 	
@@ -1111,7 +1132,10 @@
 			"production. It is intended to serve the main battle tank of the ",
 			"German armoured forces in 1939 but supplies remain limited."
 		],
-		"ubiquity" : "5",
+		"rarity" : {
+			"09.1939" : "40",
+			"01.1940" : "90"
+		},
 		"op_value" : "45"
 	},
 	
@@ -1195,7 +1219,10 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "15",
+		"rarity" : {
+			"09.1939" : "70",
+			"01.1940" : "90"
+		},
 		"op_value" : "42"
 	},
 	
@@ -1279,7 +1306,10 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "25",
+		"rarity" : {
+			"09.1939" : "70",
+			"01.1940" : "50"
+		},
 		"op_value" : "46"
 	},
 	
@@ -1354,7 +1384,11 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "25",
+		"rarity" : {
+			"08.1942" : "50",
+			"01.1943" : "70",
+			"07.1943" : "110"
+		},
 		"op_value" : "46"
 	},
 	
@@ -1408,7 +1442,9 @@
 			"The Kfz 13 was converted from an Adler touring car in 1935. Although ",
 			"lightly armoured, the vehicle is completely open on its top."
 		],
-		"ubiquity" : "65",
+		"rarity" : {
+			"09.1939" : "50"
+		},
 		"op_value" : "23"
 	},
 	
@@ -1460,7 +1496,9 @@
 			"has an excellent operational range, its off-road capabilities are ",
 			"fairly limited."
 		],
-		"ubiquity" : "75",
+		"rarity" : {
+			"09.1939" : "70"
+		},
 		"op_value" : "27"
 	},
 	
@@ -1529,7 +1567,10 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "75",
+		"rarity" : {
+			"09.1939" : "80",
+			"01.1943" : "70"
+		},
 		"op_value" : "36"
 	},
 	
@@ -1606,7 +1647,9 @@
 			"off-road capability. Although production ended in 1937, units continue ",
 			"to be deployed in reconnaissance roles."
 		],
-		"ubiquity" : "65",
+		"rarity" : {
+			"09.1939" : "60"
+		},
 		"op_value" : "32"
 	},
 	
@@ -1684,11 +1727,14 @@
 			"began in 1937 but 6-wheeled units continue to be deployed in ",
 			"reconnaissance roles."
 		],
-		"ubiquity" : "65",
+		"rarity" : {
+			"09.1939" : "70",
+			"01.1943" : "60"
+		},
 		"op_value" : "32"
 	},
 	
-	"3.7cm PaK 35/36": {
+	"PaK 35/36": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
 		"size_class" : "Small",
@@ -1720,7 +1766,125 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "80",
+		"rarity" : {
+			"09.1939" : "100"
+		},
+		"op_value" : "30"
+	},
+	
+	"PaK 38": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "50",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"01.1941" : "70",
+			"07.1941" : "80",
+			"01.1942" : "90",
+			"07.1942" : "100"
+		},
+		"op_value" : "30"
+	},
+	
+	"PaK 40": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"01.1942" : "50",
+			"04.1942" : "60",
+			"08.1942" : "70",
+			"12.1942" : "80",
+			"04.1943" : "90"
+		},
+		"op_value" : "30"
+	},
+	
+	"PaK 43": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"turntable" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"long_range" : "LL",
+				"rof" : "28.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"01.1944" : "70"
+		},
 		"op_value" : "30"
 	},
 	
@@ -1758,7 +1922,9 @@
 			"was quicky pressed into service as an anti-tank gun, a role ",
 			"in which it excelled."
 		],
-		"ubiquity" : "20",
+		"rarity" : {
+			"09.1939" : "80"
+		},
 		"op_value" : "55"
 	},
 	
@@ -1780,6 +1946,9 @@
 			"the German army. The 3-ton variant is the most common variant ",
 			"in use."
 		],
+		"rarity" : {
+			"09.1939" : "100"
+		},
 		"op_value" : "5"
 	},
 	
@@ -1799,6 +1968,9 @@
 			"This 4.5-ton truck is the workhorse of the German armed forces. ",
 			"It combines a reliable diesel engine with good rough terrain performance."
 		],
+		"rarity" : {
+			"09.1939" : "70"
+		},
 		"op_value" : "5"
 	},
 	
@@ -1827,7 +1999,6 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "100",
 		"op_value" : "0"
 	},
 	
@@ -1900,7 +2071,9 @@
 			"The T-26 tank was developed based on the British Vickers 6-ton ",
 			"design, and are by far the most numerous tank in Soviet forces."
 		],
-		"ubiquity" : "50",
+		"rarity" : {
+			"09.1939" : "110"
+		},
 		"op_value" : "33"
 	},
 	
@@ -1966,7 +2139,14 @@
 			"The BT-5 tank was designed to move quickly, in order to exploit ",
 			"holes in enemy defensive lines."
 		],
-		"ubiquity" : "50",
+		"rarity" : {
+			"09.1939" : "90",
+			"08.1941" : "80",
+			"09.1941" : "70",
+			"10.1941" : "60",
+			"11.1941" : "50",
+			"12.1941" : "40"
+		},
 		"op_value" : "33"
 	},
 	
@@ -2032,7 +2212,9 @@
 			"The BT-7 tank was based on the design of the BT-5, with better front ",
 			"armour, and a new engine and drive train."
 		],
-		"ubiquity" : "50",
+		"rarity" : {
+			"09.1939" : "100",
+		},
 		"op_value" : "33"
 	},
 

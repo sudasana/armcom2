@@ -7125,7 +7125,10 @@ class Scenario:
 			
 			# attacker pivoted
 			elif pivot or attacker.facing != attacker.previous_facing:
-				modifier_list.append(('Attacker Pivoted', -35.0))
+				if weapon.GetStat('turntable') is not None:
+					modifier_list.append(('Attacker Pivoted', -15.0))
+				else:
+					modifier_list.append(('Attacker Pivoted', -35.0))
 			
 			# player or player squad member attacker pivoted
 			elif self.player_pivot != 0 and (attacker == scenario.player_unit or attacker in scenario.player_unit.squad):
@@ -10714,6 +10717,9 @@ def ShowMessage(text, portrait=None):
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
 	msg_con = None
+
+
+# display a pop-up message on the screen, highlighting a given map hex
 
 
 # get keyboard and/or mouse event; returns False if no new key press

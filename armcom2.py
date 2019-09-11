@@ -10667,8 +10667,6 @@ def DrawFrame(console, x, y, w, h):
 
 
 # display a pop-up message window on the screen, pause, and then clear message
-# FUTURE: more options, add text to message log
-# FUTURE: integrate with animation?
 def ShowMessage(text, portrait=None):
 	
 	global msg_con

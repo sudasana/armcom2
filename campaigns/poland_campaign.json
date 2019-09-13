@@ -5,7 +5,7 @@
 	"action_days" : "1",
 	"player_nation" : "Germany",
 	"enemy_nations" : ["Poland"],
-	"desc" : "German invasion of Poland, 1939.",
+	"desc" : "Join the 3rd Panzer Division in the invasion of Poland, 1939.",
 	"player_unit_list" : [
 		"Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", "Panzer III D",
 		"Panzer III F"

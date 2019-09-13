@@ -3852,6 +3852,7 @@ class Personnel:
 					self.adv -= pt_cost
 					self.stats[stat_name] += increase
 					UpdateCrewmanMenuCon()
+					PlaySoundFor(None, 'add skill')
 					SaveGame()
 				
 				continue
@@ -3883,6 +3884,7 @@ class Personnel:
 							self.adv += 1
 					self.adv -= 1
 					self.skills.append(result)
+					PlaySoundFor(None, 'add skill')
 					SaveGame()
 					number_of_skills = UpdateCrewmanMenuCon()
 				continue
@@ -11830,6 +11832,10 @@ def PlaySoundFor(obj, action):
 	
 	elif action == 'move_10_shell':
 		PlaySound('shell_move_10')
+		return
+	
+	elif action == 'add skill':
+		PlaySound('add_skill')
 		return
 	
 	print ('ERROR: Could not determine which sound to play for action: ' + action)

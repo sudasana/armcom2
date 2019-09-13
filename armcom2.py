@@ -581,8 +581,8 @@ class Campaign:
 			libtcod.console_print(con, 32, 55, 'Enter')
 			libtcod.console_print(con, 32, 56, 'Esc')
 			libtcod.console_set_default_foreground(con, libtcod.white)
-			libtcod.console_print(con, 38, 53, 'Change Campaign')
-			libtcod.console_print(con, 38, 54, 'Random')
+			libtcod.console_print(con, 38, 53, 'Select Campaign')
+			libtcod.console_print(con, 38, 54, 'Select Random')
 			libtcod.console_print(con, 38, 55, 'Proceed')
 			libtcod.console_print(con, 38, 56, 'Return to Main Menu')
 			
@@ -600,7 +600,6 @@ class Campaign:
 			if not filename.endswith('.json'): continue
 			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
 				campaign_data = json.load(data_file)
-			if 'wip' in campaign_data: continue
 			new_campaign = {}
 			new_campaign['filename'] = filename
 			for k in BASIC_INFO:
@@ -609,7 +608,8 @@ class Campaign:
 			del campaign_data
 		
 		# sort campaigns by start date
-		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']))
+		# TEMP - reverse order for testing
+		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']), reverse=True)
 		
 		# select first campaign by default
 		selected_campaign = campaign_list[0]
@@ -882,14 +882,26 @@ class Campaign:
 		libtcod.console_print_ex(day_outline, 11, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 			GetDateText(campaign.today['date']))
 		libtcod.console_print_ex(day_outline, 11, 2, libtcod.BKGND_NONE, libtcod.CENTER,
-			campaign.today['day_start'])
-		libtcod.console_print_ex(day_outline, 11, 3, libtcod.BKGND_NONE, libtcod.CENTER,
 			campaign.today['location'])
 		
+		libtcod.console_set_default_foreground(day_outline, libtcod.lighter_grey)
+		if 'desc' in campaign.today:
+			lines = wrap(campaign.today['desc'], 20)
+			y = 4
+			for line in lines:
+				libtcod.console_print(day_outline, 2, y, line)
+				y += 1
+				if y == 17: break
+		
 		libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
+		libtcod.console_print(day_outline, 1, 19, 'Start of Day:')
 		libtcod.console_print(day_outline, 3, 20, 'End of Day:')
+		
 		libtcod.console_set_default_foreground(day_outline, libtcod.white)
-		libtcod.console_print(day_outline, 15, 20, campaign.today['day_end'])
+		libtcod.console_print_ex(day_outline, 19, 19, libtcod.BKGND_NONE, libtcod.RIGHT,
+			campaign.today['day_start'])
+		libtcod.console_print_ex(day_outline, 19, 20, libtcod.BKGND_NONE, libtcod.RIGHT,
+			campaign.today['day_end'])
 	
 	
 	# update the command menu for the campaign calendar interface, 24x21
@@ -937,7 +949,7 @@ class Campaign:
 			
 			# day has finished
 			else:
-				libtcod.console_print(calendar_cmd_con, 11, 10, 'End Day')
+				libtcod.console_print(calendar_cmd_con, 11, 10, 'Next Day')
 		
 		# crew menu
 		elif self.active_calendar_menu == 2:
@@ -1086,13 +1098,12 @@ class Campaign:
 		self.UpdateCalendarCmdCon()
 		self.UpdateCCMainPanel(selected_position)
 		
-		# not moving directly into the campaign day loop
-		if campaign_day is None:
+		update_screen = True
+		if campaign_day is not None:
+			if not campaign_day.ended:
+				update_screen = False
+		if update_screen:
 			self.UpdateCCDisplay()
-		
-		# record mouse cursor position to check when it has moved
-		mouse_x = -1
-		mouse_y = -1
 		
 		SaveGame()
 		
@@ -1114,19 +1125,12 @@ class Campaign:
 					# redraw the screen
 					self.UpdateDayOutlineCon()
 					self.UpdateCalendarCmdCon()
+					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 				
 			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_flush()
-			keypress = GetInputEvent()
-			
-			# check to see if mouse cursor has moved
-			if mouse.cx != mouse_x or mouse.cy != mouse_y:
-				mouse_x = mouse.cx
-				mouse_y = mouse.cy
-				
-				# FUTURE: update here any consoles that change based on mouse cursor
-			
+			keypress = GetInputEvent()	
 			if not keypress: continue
 			
 			# game menu
@@ -1171,6 +1175,12 @@ class Campaign:
 					
 					# delete the finished campaign day object
 					campaign_day = None
+					
+					# TODO: do end-of-day stuff
+					
+					# TODO: check for end of campaign
+					
+					# TODO: set today to next combat day in calendar
 					
 					# TEMP - assume that campaign is only a single day
 					campaign.AwardDecorations()
@@ -1219,15 +1229,6 @@ class Campaign:
 					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 					continue
-					
-			
-			# tank menu active
-			elif self.active_calendar_menu == 3:
-				pass
-			
-			# group menu active
-			elif self.active_calendar_menu == 4:
-				pass
 				
 				
 
@@ -3136,6 +3137,7 @@ class CampaignDay:
 			DisplayTimeInfo(time_con)
 			text = 'It takes you ' + str(minutes) + ' minutes to travel to the front lines.'
 			ShowMessage(text)
+			campaign.AddLog('We arrived at the front lines.')
 			self.travel_time_spent = True
 		
 		# record mouse cursor position to check when it has moved

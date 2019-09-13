@@ -2664,6 +2664,9 @@ class CampaignDay:
 		# draw dirt roads overtop
 		for (hx, hy), map_hex in self.map_hexes.items():
 			if len(map_hex.dirt_roads) == 0: continue
+			
+			(x1, y1) = self.PlotCDHex(hx, hy)
+			
 			for direction in map_hex.dirt_roads:
 				# only draw if in direction 0-2
 				if direction > 2: continue
@@ -2672,7 +2675,6 @@ class CampaignDay:
 				if (hx2, hy2) not in self.map_hexes: continue
 				
 				# paint road
-				(x1, y1) = self.PlotCDHex(hx, hy)
 				(x2, y2) = self.PlotCDHex(hx2, hy2)
 				line = GetLine(x1, y1, x2, y2)
 				for (x, y) in line:
@@ -2687,7 +2689,32 @@ class CampaignDay:
 					# if character is not blank or hex edge, remove it
 					if libtcod.console_get_char(cd_map_con, x, y) not in [0, 249, 250]:
 						libtcod.console_set_char(cd_map_con, x, y, 0)
-				
+			
+			# if map hex is on edge and has 1 dirt road connection, draw a road leading off the edge of the map
+			if len(map_hex.dirt_roads) > 1: continue
+			off_map_hexes = []
+			for direction in range(6):
+				(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
+				if (hx2, hy2) not in self.map_hexes:
+					off_map_hexes.append((hx2, hy2))
+			if len(off_map_hexes) == 0: continue
+			
+			(hx2, hy2) = off_map_hexes[0]
+			(x2, y2) = self.PlotCDHex(hx2, hy2)
+			line = GetLine(x1, y1, x2, y2)
+			for (x, y) in line:
+				if libtcod.console_get_char_background(cd_map_con, x, y) == libtcod.black:
+					break
+					
+				libtcod.console_set_char_background(cd_map_con, x, y,
+					DIRT_ROAD_COL, libtcod.BKGND_SET)
+					
+				# if character is not blank or hex edge, remove it
+				if libtcod.console_get_char(cd_map_con, x, y) not in [0, 249, 250]:
+					libtcod.console_set_char(cd_map_con, x, y, 0)
+			
+			
+		
 		# draw hex row guides
 		for i in range(0, 9):
 			libtcod.console_put_char_ex(cd_map_con, 0, 6+(i*5), chr(i+65),

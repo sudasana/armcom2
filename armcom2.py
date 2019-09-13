@@ -826,6 +826,8 @@ class Campaign:
 		
 		# TODO: roll for crew advances
 		
+		# chance based on value of campaign_day.records['Battles Fought']
+		
 		# TODO: display summary of crew advances
 		
 		pass
@@ -1224,11 +1226,11 @@ class Campaign:
 				# proceed to next day or end campaign
 				else:
 					
-					# delete the finished campaign day object
-					campaign_day = None
-					
 					# do end-of-day stuff
 					self.DoEndOfDay()
+					
+					# delete the finished campaign day object
+					campaign_day = None
 					
 					# check for end of campaign
 					day_index = campaign.stats['calendar'].index(campaign.today)
@@ -11969,7 +11971,7 @@ TANK_IMAGES = [
 	'unit_pz_I_B.xp', 'unit_pz_II.xp', 'unit_pz_35t.xp', 'unit_pz_38t_a.xp',
 	'unit_pz_III_D.xp', 'unit_pz_III_F.xp', 'unit_pz_IV_A.xp', 'unit_pz_IV_C.xp',
 	'unit_t26_m39.xp', 'unit_bt5_m34.xp', 'unit_bt7_m37.xp', 'unit_t28_m34.xp',
-	'unit_h35.xp', 'unit_m4.xp'
+	'unit_m4.xp'
 ]
 libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
 

@@ -2,7 +2,7 @@
 	"name" : "Patton's Best",
 	"start_date" : "1944.07.27",
 	"end_date" : "1945.04.18",
-	"action_days" : "1",
+	"action_days" : "2",
 	"player_nation" : "United States of America",
 	"enemy_nations" : ["Germany"],
 	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France and invasion of Germany.",

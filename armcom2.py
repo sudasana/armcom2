@@ -825,7 +825,6 @@ class Campaign:
 	def DoEndOfDay(self):
 		
 		# TODO: roll for crew advances
-		
 		# chance based on value of campaign_day.records['Battles Fought']
 		
 		# TODO: display summary of crew advances
@@ -3960,7 +3959,7 @@ class Personnel:
 	def GenerateName(self):
 		
 		# have to normalize extended characters so they can be displayed on screen
-		# FUTURE: will have their own glyphs as part of font?
+		# TODO: will have their own glyphs as part of font
 		def FixName(text):
 			CODE = {
 				u'Ś' : 'S', u'Ż' : 'Z', u'Ł' : 'L',
@@ -5487,7 +5486,8 @@ class Unit:
 				if self.GetStat('category') == 'Infantry':
 					chance = chance * 0.5
 				
-				# TODO: apply terrain modifier
+				# target terrain
+				chance += unit.GetTEM()
 				
 				# spotting crew modifier
 				chance += position.crewman.GetActionMod('Spotting')

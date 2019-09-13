@@ -491,6 +491,7 @@ class Campaign:
 		self.player_vp = 0		# total player victory points
 		self.stats = {}			# campaign stats
 		self.today = None		# pointer to current day in calendar
+		self.enemy_class_odds = {}	# placeholder for enemy unit spawn odds, set by campaign days
 		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
 		
 		self.decoration = ''		# decoration awarded to player at end of campaign
@@ -499,6 +500,14 @@ class Campaign:
 		self.records = {}
 		for text in RECORD_LIST:
 			self.records[text] = 0
+	
+	
+	# update the current set of enemy unit class spawn odds with any data present in the current campaign day
+	def UpdateEnemyUnitOdds(self):
+		if self.today is None: return
+		if 'enemy_unit_class_odds' not in self.today: return
+		for (k, v) in self.today['enemy_unit_class_odds'].items():
+			self.enemy_class_odds[k] = v
 	
 	
 	# add a line to the log for the current day
@@ -581,8 +590,8 @@ class Campaign:
 			libtcod.console_print(con, 32, 55, 'Enter')
 			libtcod.console_print(con, 32, 56, 'Esc')
 			libtcod.console_set_default_foreground(con, libtcod.white)
-			libtcod.console_print(con, 38, 53, 'Change Campaign')
-			libtcod.console_print(con, 38, 54, 'Random')
+			libtcod.console_print(con, 38, 53, 'Select Campaign')
+			libtcod.console_print(con, 38, 54, 'Select Random')
 			libtcod.console_print(con, 38, 55, 'Proceed')
 			libtcod.console_print(con, 38, 56, 'Return to Main Menu')
 			
@@ -600,7 +609,6 @@ class Campaign:
 			if not filename.endswith('.json'): continue
 			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
 				campaign_data = json.load(data_file)
-			if 'wip' in campaign_data: continue
 			new_campaign = {}
 			new_campaign['filename'] = filename
 			for k in BASIC_INFO:
@@ -609,7 +617,8 @@ class Campaign:
 			del campaign_data
 		
 		# sort campaigns by start date
-		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']))
+		# TEMP - reverse order for testing
+		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']), reverse=True)
 		
 		# select first campaign by default
 		selected_campaign = campaign_list[0]
@@ -662,6 +671,9 @@ class Campaign:
 		
 		# set current day to first day in calendar
 		self.today = self.stats['calendar'][0]
+		
+		# load enemy unit odds for first time
+		self.UpdateEnemyUnitOdds()
 		
 		return True
 		
@@ -779,6 +791,48 @@ class Campaign:
 		return (selected_unit.unit_id, player_tank_name)
 	
 	
+	# display an animated screen for the start of a new combat day
+	def ShowStartOfDay(self):
+		
+		libtcod.console_clear(con)
+		
+		for y in range(WINDOW_HEIGHT):
+			col = libtcod.Color(int(255 * (y / WINDOW_HEIGHT)), int(170 * (y / WINDOW_HEIGHT)), 0)
+			libtcod.console_set_default_background(con, col)
+			libtcod.console_rect(con, 0, y, WINDOW_WIDTH, 1, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(con, libtcod.black)
+		libtcod.console_rect(con, 30, 20, 30, 10, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		DrawFrame(con, 30, 20, 30, 10)
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print_ex(con, WINDOW_XM, 22, libtcod.BKGND_NONE, libtcod.CENTER,
+			GetDateText(self.today['date']))
+		libtcod.console_print_ex(con, WINDOW_XM, 23, libtcod.BKGND_NONE, libtcod.CENTER,
+			self.today['day_start'])
+		libtcod.console_print_ex(con, WINDOW_XM, 25, libtcod.BKGND_NONE, libtcod.CENTER,
+			self.today['location'])
+		
+		# fade in from black
+		for i in range(100, 0, -5):
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
+			libtcod.console_flush()
+			Wait(5, ignore_animations=True)
+		Wait(95, ignore_animations=True)
+	
+	
+	# do automatic actions that end a campaign day
+	def DoEndOfDay(self):
+		
+		# TODO: roll for crew advances
+		
+		# chance based on value of campaign_day.records['Battles Fought']
+		
+		# TODO: display summary of crew advances
+		
+		pass
+	
+	
 	# calculate decorations to be awarded at the end of a campaign
 	def AwardDecorations(self):
 		
@@ -882,14 +936,26 @@ class Campaign:
 		libtcod.console_print_ex(day_outline, 11, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 			GetDateText(campaign.today['date']))
 		libtcod.console_print_ex(day_outline, 11, 2, libtcod.BKGND_NONE, libtcod.CENTER,
-			campaign.today['day_start'])
-		libtcod.console_print_ex(day_outline, 11, 3, libtcod.BKGND_NONE, libtcod.CENTER,
 			campaign.today['location'])
 		
+		libtcod.console_set_default_foreground(day_outline, libtcod.lighter_grey)
+		if 'desc' in campaign.today:
+			lines = wrap(campaign.today['desc'], 20)
+			y = 4
+			for line in lines:
+				libtcod.console_print(day_outline, 2, y, line)
+				y += 1
+				if y == 17: break
+		
 		libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
+		libtcod.console_print(day_outline, 1, 19, 'Start of Day:')
 		libtcod.console_print(day_outline, 3, 20, 'End of Day:')
+		
 		libtcod.console_set_default_foreground(day_outline, libtcod.white)
-		libtcod.console_print(day_outline, 15, 20, campaign.today['day_end'])
+		libtcod.console_print_ex(day_outline, 19, 19, libtcod.BKGND_NONE, libtcod.RIGHT,
+			campaign.today['day_start'])
+		libtcod.console_print_ex(day_outline, 19, 20, libtcod.BKGND_NONE, libtcod.RIGHT,
+			campaign.today['day_end'])
 	
 	
 	# update the command menu for the campaign calendar interface, 24x21
@@ -937,7 +1003,7 @@ class Campaign:
 			
 			# day has finished
 			else:
-				libtcod.console_print(calendar_cmd_con, 11, 10, 'End Day')
+				libtcod.console_print(calendar_cmd_con, 11, 10, 'Next Day')
 		
 		# crew menu
 		elif self.active_calendar_menu == 2:
@@ -1086,13 +1152,12 @@ class Campaign:
 		self.UpdateCalendarCmdCon()
 		self.UpdateCCMainPanel(selected_position)
 		
-		# not moving directly into the campaign day loop
-		if campaign_day is None:
+		update_screen = True
+		if campaign_day is not None:
+			if not campaign_day.ended:
+				update_screen = False
+		if update_screen:
 			self.UpdateCCDisplay()
-		
-		# record mouse cursor position to check when it has moved
-		mouse_x = -1
-		mouse_y = -1
 		
 		SaveGame()
 		
@@ -1114,19 +1179,12 @@ class Campaign:
 					# redraw the screen
 					self.UpdateDayOutlineCon()
 					self.UpdateCalendarCmdCon()
+					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 				
 			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_flush()
-			keypress = GetInputEvent()
-			
-			# check to see if mouse cursor has moved
-			if mouse.cx != mouse_x or mouse.cy != mouse_y:
-				mouse_x = mouse.cx
-				mouse_y = mouse.cy
-				
-				# FUTURE: update here any consoles that change based on mouse cursor
-			
+			keypress = GetInputEvent()	
 			if not keypress: continue
 			
 			# game menu
@@ -1162,23 +1220,42 @@ class Campaign:
 					if key.vk == libtcod.KEY_ENTER:
 						campaign_day = CampaignDay()	# generate a new campaign day object
 						campaign_day.AmmoReloadMenu()	# allow player to load ammo
-						campaign_day.ShowStartOfDay()	# show starting animation
-						campaign.AddLog('Combat day begins')
+						self.AddLog('Combat day begins')
 						continue			# continue in loop to go into campaign day layer
 				
-				# proceed to next day
+				# proceed to next day or end campaign
 				else:
+					
+					# do end-of-day stuff
+					self.DoEndOfDay()
 					
 					# delete the finished campaign day object
 					campaign_day = None
 					
-					# TEMP - assume that campaign is only a single day
-					campaign.AwardDecorations()
-					campaign.DisplayCampaignSummary()
-					ExportLog()
-					EraseGame()
-					exit_loop = True
+					# check for end of campaign
+					day_index = campaign.stats['calendar'].index(campaign.today)
+					if day_index == len(campaign.stats['calendar']) - 1:
+						self.AwardDecorations()
+						self.DisplayCampaignSummary()
+						ExportLog()
+						EraseGame()
+						exit_loop = True
+						continue
+					
+					# set today to next day in calendar, and update enemy unit odds data
+					self.today = self.stats['calendar'][day_index+1]
+					self.UpdateEnemyUnitOdds()
+					
+					# show new day starting animation
+					self.ShowStartOfDay()	
+					
+					# redraw the screen
+					self.UpdateDayOutlineCon()
+					self.UpdateCalendarCmdCon()
+					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCDisplay()
 					continue
+					
 			
 			# crew menu active
 			elif self.active_calendar_menu == 2:
@@ -1219,15 +1296,6 @@ class Campaign:
 					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 					continue
-					
-			
-			# tank menu active
-			elif self.active_calendar_menu == 3:
-				pass
-			
-			# group menu active
-			elif self.active_calendar_menu == 4:
-				pass
 				
 				
 
@@ -1671,36 +1739,6 @@ class CampaignDay:
 			if scenario is not None:
 				if scenario.init_complete:
 					scenario.UpdateScenarioInfoCon()
-	
-	
-	# display an animated screen for the start of a new combat day
-	def ShowStartOfDay(self):
-		
-		libtcod.console_clear(con)
-		
-		for y in range(WINDOW_HEIGHT):
-			col = libtcod.Color(int(255 * (y / WINDOW_HEIGHT)), int(170 * (y / WINDOW_HEIGHT)), 0)
-			libtcod.console_set_default_background(con, col)
-			libtcod.console_rect(con, 0, y, WINDOW_WIDTH, 1, True, libtcod.BKGND_SET)
-		libtcod.console_set_default_background(con, libtcod.black)
-		libtcod.console_rect(con, 30, 20, 30, 10, True, libtcod.BKGND_SET)
-		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		DrawFrame(con, 30, 20, 30, 10)
-		libtcod.console_set_default_foreground(con, libtcod.white)
-		libtcod.console_print_ex(con, WINDOW_XM, 22, libtcod.BKGND_NONE, libtcod.CENTER,
-			GetDateText(campaign.today['date']))
-		libtcod.console_print_ex(con, WINDOW_XM, 23, libtcod.BKGND_NONE, libtcod.CENTER,
-			campaign.today['day_start'])
-		libtcod.console_print_ex(con, WINDOW_XM, 25, libtcod.BKGND_NONE, libtcod.CENTER,
-			campaign.today['location'])
-		
-		# fade in from black
-		for i in range(100, 0, -5):
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
-			libtcod.console_flush()
-			Wait(5, ignore_animations=True)
-		Wait(95, ignore_animations=True)
 		
 	
 	# sets flag if we've met or exceeded the set length of the combat day
@@ -3136,6 +3174,7 @@ class CampaignDay:
 			DisplayTimeInfo(time_con)
 			text = 'It takes you ' + str(minutes) + ' minutes to travel to the front lines.'
 			ShowMessage(text)
+			campaign.AddLog('We arrived at the front lines.')
 			self.travel_time_spent = True
 		
 		# record mouse cursor position to check when it has moved
@@ -6861,9 +6900,7 @@ class Scenario:
 	# FUTURE: will pull more data from the campaign day and campaign objects
 	def SpawnEnemyUnits(self, num_units=None):
 		
-		# pointers to data for class odds and unit type list from campaign object
-		
-		class_odds = campaign.today['enemy_unit_class_odds']
+		# pointer to unit type list from campaign object
 		unit_type_list = campaign.stats['enemy_unit_list']
 		
 		# load unit stats for reference from JSON file
@@ -6885,7 +6922,7 @@ class Scenario:
 			# choose a random unit class
 			unit_class = None
 			while unit_class is None:
-				k, value = choice(list(class_odds.items()))
+				k, value = choice(list(campaign.enemy_class_odds.items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			
@@ -11940,7 +11977,7 @@ TANK_IMAGES = [
 	'unit_pz_I_B.xp', 'unit_pz_II.xp', 'unit_pz_35t.xp', 'unit_pz_38t_a.xp',
 	'unit_pz_III_D.xp', 'unit_pz_III_F.xp', 'unit_pz_IV_A.xp', 'unit_pz_IV_C.xp',
 	'unit_t26_m39.xp', 'unit_bt5_m34.xp', 'unit_bt7_m37.xp', 'unit_t28_m34.xp',
-	'unit_h35.xp', 'unit_m4.xp'
+	'unit_m4.xp'
 ]
 libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
 
@@ -12143,6 +12180,9 @@ while not exit_game:
 				# placeholders for the currently active campaign day and scenario
 				campaign_day = None
 				scenario = None
+				
+				# show new day starting animation
+				campaign.ShowStartOfDay()
 				
 			# go to campaign calendar loop
 			campaign.DoCampaignCalendarLoop()

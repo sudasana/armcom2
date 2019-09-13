@@ -49,9 +49,8 @@
 			"companies."
 		],
 		"rarity" : {
-			"10.1939" : "90"
-		},
-		"op_value" : "17"
+			"1939.09.01" : "90"
+		}
 	},
 	
 	"TKS" : {
@@ -101,9 +100,8 @@
 			"engine."
 		],
 		"rarity" : {
-			"10.1939" : "90"
-		},
-		"op_value" : "19"
+			"1939.09.01" : "90"
+		}
 	},
 	
 	"TKS (20mm)" : {
@@ -158,9 +156,8 @@
 			"engine. This version is rare variant armed with a 20mm gun."
 		],
 		"rarity" : {
-			"10.1939" : "50"
-		},
-		"op_value" : "21"
+			"1939.09.01" : "50"
+		}
 	},
 	
 	"Renault FT": {
@@ -214,9 +211,8 @@
 			"thousand were still in use throughout the world."
 		],
 		"rarity" : {
-			"10.1939" : "80"
-		},
-		"op_value" : "16"
+			"1939.09.01" : "80"
+		}
 	},
 	
 	"Vickers 6-Ton Mark E": {
@@ -285,9 +281,8 @@
 			"47mm gun."
 		],
 		"rarity" : {
-			"10.1939" : "50"
-		},
-		"op_value" : "29"
+			"1939.09.01" : "50"
+		}
 	},
 	
 	"7TP": {
@@ -355,9 +350,8 @@
 			"to anti-tank fire."
 		],
 		"rarity" : {
-			"10.1939" : "60"
-		},
-		"op_value" : "33"
+			"1939.09.01" : "60"
+		}
 	},
 	
 	"wz. 34 (MG)": {
@@ -402,9 +396,8 @@
 			""
 		],
 		"rarity" : {
-			"10.1939" : "80"
-		},
-		"op_value" : "19"
+			"1939.09.01" : "80"
+		}
 	},
 	
 	"wz. 34 (37mm)": {
@@ -454,9 +447,8 @@
 			""
 		],
 		"rarity" : {
-			"10.1939" : "90"
-		},
-		"op_value" : "20"
+			"1939.09.01" : "90"
+		}
 	},
 	
 	"37mm wz. 36": {
@@ -489,9 +481,8 @@
 			""
 		],
 		"rarity" : {
-			"10.1939" : "100"
-		},
-		"op_value" : "26"
+			"1939.09.01" : "100"
+		}
 	},
 	
 	"75mm wz. 02/26": {
@@ -528,9 +519,8 @@
 			""
 		],
 		"rarity" : {
-			"10.1939" : "70"
-		},
-		"op_value" : "29"
+			"1939.09.01" : "70"
+		}
 	},
 	
 	"75mm wz. 97/25": {
@@ -567,9 +557,8 @@
 			""
 		],
 		"rarity" : {
-			"10.1939" : "40"
-		},
-		"op_value" : "27"
+			"1939.09.01" : "40"
+		}
 	},
 	
 	"Polski Fiat 621" : {
@@ -588,8 +577,7 @@
 			"Produced under license from the Italian Fiat company, the 621 ",
 			"serves as the workhorse of the Polish military, transporting ",
 			"soldiers, supplies, and even light tanks around the country."
-		],
-		"op_value" : "5"
+		]
 	},
 	
 	"Locomotive": {
@@ -612,9 +600,8 @@
 			"An armoured steam locomotive, designed to move an armoured train."
 		],
 		"rarity" : {
-			"09.1939" : "100"
-		},
-		"op_value" : "27"
+			"1939.09.01" : "100"
+		}
 	},
 	
 	"Light Artillery Car": {
@@ -669,9 +656,8 @@
 			"and armed."
 		],
 		"rarity" : {
-			"09.1939" : "15"
-		},
-		"op_value" : "27"
+			"1939.09.01" : "15"
+		}
 	},
 	
 	
@@ -724,10 +710,9 @@
 			""
 		],
 		"rarity" : {
-			"09.1939" : "110",
-			"01.1941" : "60"
-		},
-		"op_value" : "30"
+			"1939.09.01" : "110",
+			"1941.01.01" : "60"
+		}
 	},
 	
 	"Panzer II A": {
@@ -794,9 +779,8 @@
 			"20mm gun as its main armament."
 		],
 		"rarity" : {
-			"09.1939" : "100"
-		},
-		"op_value" : "35"
+			"1939.09.01" : "100"
+		}
 	},
 	
 	"Panzer 35(t)": {
@@ -875,9 +859,8 @@
 			"of 1939 it is well-armoured and carries a powerful 37mm main gun."
 		],
 		"rarity" : {
-			"09.1939" : "70"
-		},
-		"op_value" : "40"
+			"1939.09.01" : "70"
+		}
 	},
 	
 	"Panzer 38(t) A": {
@@ -957,9 +940,8 @@
 			"with a long-barreled 37mm main gun."
 		],
 		"rarity" : {
-			"09.1939" : "90"
-		},
-		"op_value" : "43"
+			"1939.09.01" : "90"
+		}
 	},
 	
 	"Panzer III D": {
@@ -1045,9 +1027,8 @@
 			"model and only a very small number ever entered service."
 		],
 		"rarity" : {
-			"09.1939" : "60"
-		},
-		"op_value" : "41"
+			"1939.09.01" : "60"
+		}
 	},
 	
 	"Panzer III F": {
@@ -1133,10 +1114,9 @@
 			"German armoured forces in 1939 but supplies remain limited."
 		],
 		"rarity" : {
-			"09.1939" : "40",
-			"01.1940" : "90"
-		},
-		"op_value" : "45"
+			"1939.09.01" : "40",
+			"1940.01.01" : "90"
+		}
 	},
 	
 	"Panzer IV A": {
@@ -1220,10 +1200,9 @@
 			""
 		],
 		"rarity" : {
-			"09.1939" : "70",
-			"01.1940" : "90"
-		},
-		"op_value" : "42"
+			"1939.09.01" : "70",
+			"1940.01.01" : "90"
+		}
 	},
 	
 	"Panzer IV C": {
@@ -1307,10 +1286,9 @@
 			""
 		],
 		"rarity" : {
-			"09.1939" : "70",
-			"01.1940" : "50"
-		},
-		"op_value" : "46"
+			"1939.09.01" : "70",
+			"1940.01.01" : "50"
+		}
 	},
 	
 	"Panzer IV H": {
@@ -1385,12 +1363,110 @@
 			""
 		],
 		"rarity" : {
-			"08.1942" : "50",
-			"01.1943" : "70",
-			"07.1943" : "110"
-		},
-		"op_value" : "46"
+			"1942.08.01" : "50",
+			"1943.01.01" : "70",
+			"1943.07.01" : "110"
+		}
 	},
+	
+	"Panzer VG 'Panther'": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "6",
+			"hull_front" : "18",
+			"hull_side" : "6"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "LL",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "79"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "5",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Radio Operator"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"fired_by" : ["Commander"],
+				"firing_group" : 0
+			}
+			
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Panther was introduced in 1943 to replace the Panzer III and IV, but ended ",
+			"up serving alongside them, and its heavier cousin the Tiger, until the end of ",
+			"the war. Although technically a medium tank, its total weight is quite high and ",
+			"is compensated for by a powerful V-12 engine."
+		],
+		"rarity" : {
+			"1943.10.01" : "70",
+			"1944.01.01" : "80",
+			"1945.01.01" : "90"
+		}
+	},
+	
 	
 	"Sd. Kfz. 13": {
 		"category" : "Vehicle",
@@ -1443,9 +1519,8 @@
 			"lightly armoured, the vehicle is completely open on its top."
 		],
 		"rarity" : {
-			"09.1939" : "50"
-		},
-		"op_value" : "23"
+			"1939.09.01" : "50"
+		}
 	},
 	
 	"PSW 221": {
@@ -1497,9 +1572,8 @@
 			"fairly limited."
 		],
 		"rarity" : {
-			"09.1939" : "70"
-		},
-		"op_value" : "27"
+			"1939.09.01" : "70"
+		}
 	},
 	
 	"PSW 222": {
@@ -1568,10 +1642,9 @@
 			""
 		],
 		"rarity" : {
-			"09.1939" : "80",
-			"01.1943" : "70"
-		},
-		"op_value" : "36"
+			"1939.09.01" : "80",
+			"1943.01.01" : "70"
+		}
 	},
 	
 	"PSW 231 (6 rad)": {
@@ -1648,9 +1721,8 @@
 			"to be deployed in reconnaissance roles."
 		],
 		"rarity" : {
-			"09.1939" : "60"
-		},
-		"op_value" : "32"
+			"1939.09.01" : "60"
+		}
 	},
 	
 	"PSW 231 (8 rad)": {
@@ -1728,10 +1800,9 @@
 			"reconnaissance roles."
 		],
 		"rarity" : {
-			"09.1939" : "70",
-			"01.1943" : "60"
-		},
-		"op_value" : "32"
+			"1939.09.01" : "70",
+			"1943.01.01" : "60"
+		}
 	},
 	
 	"PaK 35/36": {
@@ -1767,9 +1838,8 @@
 			""
 		],
 		"rarity" : {
-			"09.1939" : "100"
-		},
-		"op_value" : "30"
+			"1939.09.01" : "100"
+		}
 	},
 	
 	"PaK 38": {
@@ -1803,12 +1873,11 @@
 			""
 		],
 		"rarity" : {
-			"01.1941" : "70",
-			"07.1941" : "80",
-			"01.1942" : "90",
-			"07.1942" : "100"
-		},
-		"op_value" : "30"
+			"1941.01.01" : "70",
+			"1941.07.01" : "80",
+			"1942.01.01" : "90",
+			"1942.07.01" : "100"
+		}
 	},
 	
 	"PaK 40": {
@@ -1842,13 +1911,12 @@
 			""
 		],
 		"rarity" : {
-			"01.1942" : "50",
-			"04.1942" : "60",
-			"08.1942" : "70",
-			"12.1942" : "80",
-			"04.1943" : "90"
-		},
-		"op_value" : "30"
+			"1942.01.01" : "50",
+			"1942.04.01" : "60",
+			"1942.08.01" : "70",
+			"1942.12.01" : "80",
+			"1943.04.01" : "90"
+		}
 	},
 	
 	"PaK 43": {
@@ -1883,9 +1951,8 @@
 			""
 		],
 		"rarity" : {
-			"01.1944" : "70"
-		},
-		"op_value" : "30"
+			"1944.01.01" : "70"
+		}
 	},
 	
 	"8.8cm FlaK 18 o. 36": {
@@ -1923,9 +1990,8 @@
 			"in which it excelled."
 		],
 		"rarity" : {
-			"09.1939" : "80"
-		},
-		"op_value" : "55"
+			"1939.09.01" : "80"
+		}
 	},
 	
 	"Opel Blitz 3-ton" : {
@@ -1947,9 +2013,8 @@
 			"in use."
 		],
 		"rarity" : {
-			"09.1939" : "100"
-		},
-		"op_value" : "5"
+			"1939.09.01" : "100"
+		}
 	},
 	
 	"Buessing-NAG 4500 Truck" : {
@@ -1969,9 +2034,8 @@
 			"It combines a reliable diesel engine with good rough terrain performance."
 		],
 		"rarity" : {
-			"09.1939" : "70"
-		},
-		"op_value" : "5"
+			"1939.09.01" : "70"
+		}
 	},
 	
 	"Ju 87B Stuka": {
@@ -1998,8 +2062,7 @@
 		],
 		"description" : [
 			""
-		],
-		"op_value" : "0"
+		]
 	},
 	
 	
@@ -2072,9 +2135,8 @@
 			"design, and are by far the most numerous tank in Soviet forces."
 		],
 		"rarity" : {
-			"09.1939" : "110"
-		},
-		"op_value" : "33"
+			"1939.09.01" : "110"
+		}
 	},
 	
 	"BT-5 M34" : {
@@ -2140,14 +2202,13 @@
 			"holes in enemy defensive lines."
 		],
 		"rarity" : {
-			"09.1939" : "90",
-			"08.1941" : "80",
-			"09.1941" : "70",
-			"10.1941" : "60",
-			"11.1941" : "50",
-			"12.1941" : "40"
-		},
-		"op_value" : "33"
+			"1939.09.01" : "90",
+			"1941.08.01" : "80",
+			"1941.09.01" : "70",
+			"1941.10.01" : "60",
+			"1941.11.01" : "50",
+			"1941.12.01" : "40"
+		}
 	},
 	
 	"BT-7 M37" : {
@@ -2213,9 +2274,8 @@
 			"armour, and a new engine and drive train."
 		],
 		"rarity" : {
-			"09.1939" : "100",
-		},
-		"op_value" : "33"
+			"1939.09.01" : "100"
+		}
 	},
 
 	"T-28 M34" : {
@@ -2308,8 +2368,7 @@
 			"intended as an infantry support tank and to break through enemy ",
 			"defenses."
 		],
-		"ubiquity" : "50",
-		"op_value" : "33"
+		"ubiquity" : "50"
 	},
 	
 	"76.2mm obr. 00/02P": {
@@ -2344,8 +2403,7 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "22",
-		"op_value" : "27"
+		"ubiquity" : "22"
 	},
 	
 	
@@ -2410,8 +2468,7 @@
 			"was eventually adopted by the French cavalry as a light reconnaisance tank. ",
 			"This early variant has a short main gun and an underpowered engine."
 		],
-		"ubiquity" : "30",
-		"op_value" : "29"
+		"ubiquity" : "30"
 	},
 	
 	
@@ -2509,8 +2566,7 @@
 			"war. This is the welded hull design with a vision cupola for the ",
 			"commander."
 		],
-		"ubiquity" : "15",
-		"op_value" : "42"
+		"ubiquity" : "15"
 	},
 	
 	"M4A1 Sherman": {
@@ -2605,8 +2661,7 @@
 			"hull, giving it extra protection on the front. This version has a ",
 			"vision cupola for the commander."
 		],
-		"ubiquity" : "15",
-		"op_value" : "42"
+		"ubiquity" : "15"
 	},
 	
 	"M4A3 Sherman": {
@@ -2701,8 +2756,7 @@
 			"It ended up being the most commonly used model in the American forces. ",
 			"This version has a vision cupola for the commander."
 		],
-		"ubiquity" : "15",
-		"op_value" : "42"
+		"ubiquity" : "15"
 	},
 	
 	"P-47 Thunderbolt": {
@@ -2729,8 +2783,7 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "100",
-		"op_value" : "0"
+		"ubiquity" : "100"
 	},
 	
 	
@@ -2771,8 +2824,7 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "100",
-		"op_value" : "0"
+		"ubiquity" : "100"
 	},
 	
 	"HMG Team": {
@@ -2794,7 +2846,6 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "100",
-		"op_value" : "0"
+		"ubiquity" : "100"
 	}
 }

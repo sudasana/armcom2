@@ -30,7 +30,7 @@
 			"date" : "1944.07.27",
 			"day_start" : "5:00",
 			"day_end" : "19:15",
-			"location" : "Normandy",
+			"location" : "Cobra Breakout",
 			"desc" : "Operation Overlord has already been underway for three weeks. The 4th Armoured Division has landed in France to support the Allied advance.",
 			"mission" : "Advance",
 			"enemy_nation" : "Germany",
@@ -45,6 +45,17 @@
 				"Truck" : "90",
 				"Infantry Squad" : "100"
 			}
+		},
+		{
+			"date" : "1944.07.28",
+			"day_start" : "5:00",
+			"day_end" : "19:15",
+			"location" : "Coutances",
+			"desc" : "Our advance has pushed further into Normandy. Today we must take the town of Coutance, an important crossroads in the region.",
+			"mission" : "Battle",
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0
 		}
 	]
 }

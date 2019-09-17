@@ -65,10 +65,13 @@ DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
 
-if os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
-	RENDERER = libtcod.RENDERER_SDL
-else:
-	RENDERER = libtcod.RENDERER_GLSL
+# TEMP - extended font testing
+RENDERER = libtcod.RENDERER_OPENGL
+
+#if os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
+#	RENDERER = libtcod.RENDERER_SDL
+#else:
+#	RENDERER = libtcod.RENDERER_GLSL
 
 LIMIT_FPS = 50						# maximum screen refreshes per second
 ANIM_UPDATE_TIMER = 0.15				# number of seconds between animation frame checks
@@ -11926,15 +11929,18 @@ LoadCFG()
 
 os.putenv('SDL_VIDEO_CENTERED', '1')			# center game window on screen
 
+# TEMP testing - extended font
+fontname = 'c64_8x8_ext.png'
+
 # determine font to use based on settings file
-if config['ArmCom2'].getboolean('large_display_font'):
-	fontname = 'c64_16x16.png'
-else:
-	fontname = 'c64_8x8.png'
+#if config['ArmCom2'].getboolean('large_display_font'):
+#	fontname = 'c64_16x16.png'
+#else:
+#	fontname = 'c64_8x8_ext.png'
 
 # set up custom font and root console
 libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
-        0, 0)
+        16, 18)
 libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
 	fullscreen = False, renderer = RENDERER)
 
@@ -12007,6 +12013,15 @@ TANK_IMAGES = [
 	'unit_m4.xp'
 ]
 libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
+
+# TEMP - extended font testing
+libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-9, libtcod.BKGND_NONE,
+	libtcod.CENTER, 256)
+
+
+libtcod.console_put_char(main_title, WINDOW_XM, WINDOW_HEIGHT-8, 256)
+
+
 
 # display version number and program info
 libtcod.console_set_default_foreground(main_title, libtcod.light_grey)

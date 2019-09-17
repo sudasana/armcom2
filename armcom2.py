@@ -1291,7 +1291,7 @@ class Campaign:
 					crewman = campaign.player_unit.positions_list[selected_position].crewman
 					if crewman is None: continue
 					if crewman.nickname != '': continue
-					new_nickname = ShowTextInputMenu('Enter a nickname for ' + crewman.GetFullName() + '; cannot be changed once set!',
+					new_nickname = ShowTextInputMenu('Enter a nickname; cannot be changed once set!',
 						'', MAX_NICKNAME_LENGTH, [])
 					if new_nickname != '':
 						crewman.nickname = new_nickname
@@ -2323,7 +2323,7 @@ class CampaignDay:
 				unit.personnel_list.append(Personnel(unit, unit.nation, position))
 				position.crewman = unit.personnel_list[-1]
 				if unit == campaign.player_unit:
-					text = position.crewman.GetFullName() + ' joins your crew in the ' + position.name + ' position.'
+					text = 'A new crewman joins your crew in the ' + position.name + ' position.'
 					ShowMessage(text)
 	
 	
@@ -3749,7 +3749,8 @@ class Personnel:
 			
 			# info
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
-			libtcod.console_print(crewman_menu_con, 39, 6, self.GetFullName().encode('IBM850'))
+			self.DisplayName(crewman_menu_con, 39, 6)
+			#libtcod.console_print(crewman_menu_con, 39, 6, self.GetFullName().encode('IBM850'))
 			if self.nickname != '':
 				libtcod.console_print(crewman_menu_con, 39, 7, self.nickname)
 			# FUTURE: age and rank
@@ -3961,39 +3962,60 @@ class Personnel:
 	# generate a random first and last name for this person
 	def GenerateName(self):
 		
-		# have to normalize extended characters so they can be displayed on screen
-		# TODO: will have their own glyphs as part of font
-		def FixName(text):
-			CODE = {
-				u'Ś' : 'S', u'Ż' : 'Z', u'Ł' : 'L',
-				u'ą' : 'a', u'ć' : 'c', u'ę' : 'e', u'ł' : 'l', u'ń' : 'n', u'ó' : 'o',
-				u'ś' : 's', u'ź' : 'z', u'ż' : 'z'
-			}
-			
-			fixed_name = ''
-			for i in range(len(text)):
-				if text[i] in CODE:
-					fixed_name += CODE[text[i]]
-				else:
-					fixed_name += text[i]
-			return fixed_name
-		
 		name_okay = False
 		while not name_okay:
-		
 			first_name = choice(session.nations[self.nation]['first_names'])
-			self.first_name = FixName(first_name)
 			last_name = choice(session.nations[self.nation]['surnames'])
-			self.last_name = FixName(last_name)
-			
-			if self.first_name == self.last_name:
+			if first_name == last_name:
 				continue
 			name_okay = True
+		self.first_name = first_name
+		self.last_name = last_name
 	
+	# display this crewman's name to the screen, required because crew names use extended characters
+	def DisplayName(self, console, x, y, firstname_only = False, lastname_only = False, first_initial = False):
 	
-	# return the person's full name
-	def GetFullName(self):
-		return (self.first_name + ' ' + self.last_name)
+		CHAR_MAP = {
+			'Ą' : 256,
+			'Ć' : 257,
+			'Ę' : 258,
+			'Ł' : 259,
+			'Ń' : 260,
+			'Ó' : 261,
+			'Ś' : 262,
+			'Ź' : 263,
+			'Ż' : 264,
+			'ą' : 265,
+			'ć' : 266,
+			'ę' : 267,
+			'ł' : 268,
+			'ń' : 269,
+			'ó' : 270,
+			'ś' : 271,
+			'ź' : 272,
+			'ż' : 273
+		}
+		
+		# determine raw text string to use
+		if firstname_only:
+			name = self.first_name
+		elif lastname_only:
+			name = self.last_name
+		elif first_initial:
+			name = self.first_name[0] + ' ' + self.last_name
+		else:
+			name = self.first_name + ' ' + self.last_name
+		
+		cx = x
+		for char in name:
+			
+			if char in CHAR_MAP:
+				char_code = CHAR_MAP[char]
+			else:
+				char_code = ord(char)
+			
+			libtcod.console_put_char(console, cx, y, char_code)
+			cx += 1
 	
 	
 	# return the effective modifier for a given action, based on relevant stat and current status
@@ -4093,7 +4115,7 @@ class Personnel:
 			self.DoStunCheck(0)
 			if self.status == 'Stunned':
 				if show_messages:
-					ShowMessage(self.GetFullName() + ' has been Stunned.')
+					ShowMessage('Your ' + self.position.name + ' has been Stunned.')
 				return 'Stunned'
 			return None
 		
@@ -4107,11 +4129,11 @@ class Personnel:
 				self.DoStunCheck(15)
 				if self.status == 'Stunned':
 					if show_messages:
-						ShowMessage(self.GetFullName() + ' has received a Light Wound and has been Stunned.')
+						ShowMessage('Your ' + self.position.name + ' has received a Light Wound and has been Stunned.')
 					return 'Light Wound, Stunned'
 			
 			if show_messages:
-				ShowMessage(self.GetFullName() + ' has received a Light Wound.')
+				ShowMessage('Your ' + self.position.name + ' has received a Light Wound.')
 			return 'Light Wound'
 				
 			
@@ -4126,12 +4148,12 @@ class Personnel:
 				self.DoKOCheck(0)
 				if self.status == 'Unconscious':
 					if show_messages:
-						ShowMessage(self.GetFullName() + ' has received a Serious Wound ' +
+						ShowMessage('Your ' + self.position.name + ' has received a Serious Wound ' +
 							'and has been knocked Unconscious')
 					return 'Serious Wound, Unconscious'
 			
 			if show_messages:
-				ShowMessage(self.GetFullName() + ' has received a Serious Wound and is Stunned.')
+				ShowMessage('Your ' + self.position.name + ' has received a Serious Wound and is Stunned.')
 			return 'Serious Wound, Stunned'
 			
 			
@@ -4144,12 +4166,12 @@ class Personnel:
 				self.DoKOCheck(15)
 				if self.status == 'Unconscious':
 					if show_messages:
-						ShowMessage(self.GetFullName() + ' has received a Critical Wound ' +
+						ShowMessage('Your ' + self.position.name + ' has received a Critical Wound ' +
 							'and has been knocked Unconscious.')
 					return 'Critical Wound, Unconscious'
 				
 				if show_messages:
-					ShowMessage(self.GetFullName() + ' has received a Critical Wound and is Stunned.')
+					ShowMessage('Your ' + self.position.name + ' has received a Critical Wound and is Stunned.')
 				return 'Critical Wound, Stunned'
 		
 		else:
@@ -4159,7 +4181,7 @@ class Personnel:
 			self.wound = ''
 			
 			if show_messages:
-				ShowMessage(self.GetFullName() + ' has been killed.')
+				ShowMessage('Your ' + self.position.name + ' has been killed.')
 			
 			return 'Dead'
 				
@@ -4202,7 +4224,7 @@ class Personnel:
 				self.status = 'Dead'
 				self.wound = ''
 				if self.unit == scenario.player_unit:
-					ShowMessage(self.GetFullName() + ' has died from his wounds.')
+					ShowMessage('Your ' + self.position.name + ' has died from his wounds.')
 			return
 		
 		if roll <= self.stats['Grit'] * 15.0:
@@ -4210,13 +4232,13 @@ class Personnel:
 			if self.status == 'Stunned':
 				self.status = ''
 				if self.unit == scenario.player_unit:
-					ShowMessage(self.GetFullName() + ' recovers from being Stunned.')
+					ShowMessage('Your ' + self.position.name + ' recovers from being Stunned.')
 			
 			# unconscious
 			else:
 				self.status = 'Stunned'
 				if self.unit == scenario.player_unit:
-					ShowMessage(self.GetFullName() + ' regains consciousness and is now Stunned.')
+					ShowMessage('Your ' + self.position.name + ' regains consciousness and is now Stunned.')
 
 	
 	# (re)build a list of possible commands for this turn
@@ -6654,10 +6676,10 @@ class Scenario:
 			# miss
 			if roll > chance:
 				PlaySoundFor(None, 'ricochet')
-				ShowMessage("The ricochet from a sniper's bullet rings out, narrowly missing " + crew_target.GetFullName())
+				ShowMessage("The ricochet from a sniper's bullet rings out, narrowly missing your " + crew_target.position.name)
 			else:
 				PlaySoundFor(None, 'sniper_hit')
-				ShowMessage(crew_target.GetFullName() + ' has been hit by a sniper.')
+				ShowMessage('Your ' + crew_target.position.name + ' has been hit by a sniper.')
 				crew_target.DoWoundCheck(roll_modifier = 45.0)
 		
 		# FUTURE: add more event types
@@ -6721,9 +6743,7 @@ class Scenario:
 				if position.crewman is None:
 					libtcod.console_print(con, x, y+1, 'Empty')
 				else:
-					text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
-					libtcod.console_print(con, x, y+1, text.encode('IBM850'))
-					
+					position.crewman.DisplayName(con, x, y+1, first_initial=True)
 					if position.crewman.wound != '':
 						libtcod.console_put_char_ex(con, x+21, y+1,
 							position.crewman.wound[0], libtcod.black,
@@ -9457,12 +9477,7 @@ class Scenario:
 				if position.crewman.nickname != '':
 					libtcod.console_print(crew_con, 0, y+1, '"' + position.crewman.nickname + '"')
 				else:
-				
-					# build string of first initial and last name
-					text = position.crewman.first_name[0] + '. ' + position.crewman.last_name
-					
-					# names might have special characters so we encode it before printing it
-					libtcod.console_print(crew_con, 0, y+1, text.encode('IBM850'))
+					position.crewman.DisplayName(crew_con, 0, y+1, first_initial=True)
 				
 				# display wound status if any
 				if position.crewman.wound != '':
@@ -10413,7 +10428,6 @@ class Scenario:
 #                                  General Functions                                     #
 ##########################################################################################	
 
-
 # generate and return a console image of a plane
 def GeneratePlaneCon(direction):
 	temp_con = libtcod.console_new(3, 3)
@@ -10452,7 +10466,7 @@ def ExportLog():
 			if position.crewman is None:
 				f.write('  [Empty]\n\n')
 				continue
-			f.write('  ' + position.crewman.GetFullName() + '\n')
+			f.write('  ' + position.crewman.first_name + ' ' + position.crewman.first_name + '\n')
 			if position.crewman.wound != '':
 				f.write('  ' + position.crewman.wound + '\n')
 			f.write('\n')
@@ -11688,7 +11702,7 @@ def ShowDebugMenu():
 				position.crewman.wound = 'Serious'
 				position.crewman.status = 'Stunned'
 				scenario.UpdateCrewInfoCon()
-				ShowMessage(position.crewman.GetFullName() + ' has received a Serious Wound and is Stunned.')
+				ShowMessage('Your ' + position.name + ' has received a Serious Wound and is Stunned.')
 				DrawDebugMenu()
 				continue
 		
@@ -11748,10 +11762,8 @@ def DisplayCrew(unit, console, x, y, highlight):
 		if position.crewman is None:
 			libtcod.console_print(console, x, y+1, 'Empty')
 		else:
-			
-			# names might have special characters so we encode it before printing it
-			libtcod.console_print(console, x, y+1, position.crewman.first_name.encode('IBM850'))
-			libtcod.console_print(console, x+1, y+2, position.crewman.last_name.encode('IBM850'))
+			position.crewman.DisplayName(console, x, y+1, firstname_only=True)
+			position.crewman.DisplayName(console, x+1, y+2, lastname_only=True)
 		
 			if position.crewman.ce:
 				text = 'CE'
@@ -11929,14 +11941,11 @@ LoadCFG()
 
 os.putenv('SDL_VIDEO_CENTERED', '1')			# center game window on screen
 
-# TEMP testing - extended font
-fontname = 'c64_8x8_ext.png'
-
 # determine font to use based on settings file
-#if config['ArmCom2'].getboolean('large_display_font'):
-#	fontname = 'c64_16x16.png'
-#else:
-#	fontname = 'c64_8x8_ext.png'
+if config['ArmCom2'].getboolean('large_display_font'):
+	fontname = 'c64_16x16_ext.png'
+else:
+	fontname = 'c64_8x8_ext.png'
 
 # set up custom font and root console
 libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
@@ -12013,15 +12022,6 @@ TANK_IMAGES = [
 	'unit_m4.xp'
 ]
 libtcod.console_blit(LoadXP(choice(TANK_IMAGES)), 0, 0, 0, 0, main_title, 7, 6)
-
-# TEMP - extended font testing
-libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-9, libtcod.BKGND_NONE,
-	libtcod.CENTER, 256)
-
-
-libtcod.console_put_char(main_title, WINDOW_XM, WINDOW_HEIGHT-8, 256)
-
-
 
 # display version number and program info
 libtcod.console_set_default_foreground(main_title, libtcod.light_grey)

@@ -3215,7 +3215,8 @@ class CampaignDay:
 		SaveGame()
 		
 		# TEMP testing
-		ShowMessage("This is just a test message, it doesn't mean anything important.")
+		ShowMessage("This is just a test message, it doesn't mean anything important.",
+			portrait='unit_m4.xp')
 		
 		exit_loop = False
 		while not exit_loop:
@@ -3651,6 +3652,7 @@ class Session:
 		
 		# pop-up message console
 		self.msg_con = None
+		self.msg_location = None
 	
 	# try to initialize SDL2 mixer
 	def InitMixer(self):
@@ -10757,15 +10759,15 @@ def DrawFrame(console, x, y, w, h):
 		libtcod.console_put_char(console, x+w-1, y1, 179)
 
 
-# display a message window on the screen, pause, and then clear message
-# TODO: possible to highlight a CD/scenario hex, and to specify a display location
+# display a message window on the screen, pause, and then clear message from screen
+# TODO: possible to highlight a CD/scenario hex, and have message appear near highlighed hex
+# but not covering it
 # TODO: game options may override this and display the message in the center of the map regardless
-def ShowMessage(text, portrait=None, location=None, cd_highlight=None, scenario_highlight=None):
+def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None):
 	
-	# TODO: determine size of console
-	
+	# determine size of console
 	if portrait is not None:
-		width = 31
+		width = 27
 		height = 12
 	else:
 		width = 21
@@ -10774,50 +10776,44 @@ def ShowMessage(text, portrait=None, location=None, cd_highlight=None, scenario_
 	lines = wrap(text, width-4)
 	height += len(lines)
 	
-	# TODO: determine display location of console
+	# determine display location of console on screen
+	x = WINDOW_XM + 1 - int(width / 2)
+	y = WINDOW_YM - int(height / 2)
+	session.msg_location = (x, y)
 	
 	# create message console
 	session.msg_con = NewConsole(width, height, libtcod.darkest_grey, libtcod.white) 
 	DrawFrame(session.msg_con, 0, 0, width, height)
-	y = 0
 	
 	# display portrait if any
 	if portrait is not None:
 		libtcod.console_set_default_background(session.msg_con, PORTRAIT_BG_COL)
-		libtcod.console_rect(session.msg_con, 2, 2, 27, 8, True, libtcod.BKGND_SET)
-		libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, session.msg_con, 2, 1)
+		libtcod.console_rect(session.msg_con, 1, 1, 25, 8, True, libtcod.BKGND_SET)
+		libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, session.msg_con, 1, 1)
 		libtcod.console_set_default_background(session.msg_con, libtcod.black)
-		y = 9
 	
 	# display message
 	# try to center message vertically in window
 	x = int(width / 2)
-	y += int(height / 2) - int(len(lines) / 2)
+	y = int(height / 2) - int(len(lines) / 2)
+	if portrait is not None:
+		y += 4
 	
 	for line in lines:
 		libtcod.console_print_ex(session.msg_con, x, y, libtcod.BKGND_NONE, libtcod.CENTER, line.encode('IBM850'))
 		if y == height-1: break
 		y += 1
 	
-	# display closer to centre if we appear to be in the campaign day view
-	x = 31
-	if scenario is not None:
-		if scenario.init_complete:
-			x = 44
-	
-	# display message console
-	libtcod.console_blit(session.msg_con, 0, 0, 0, 0, 0, x, 21)
-	libtcod.console_flush()
-	
+	# allow the message to be viewed by player
+	# TODO: game option to change length that message is displayed
 	Wait(140)
 	
-	# re-draw screen and erase console
+	# erase console and re-draw screen
+	session.msg_con = None
+	session.msg_location = None
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
-	session.msg_con = None
 
-
-# display a pop-up message on the screen, highlighting a given map hex
 
 
 # get keyboard and/or mouse event; returns False if no new key press
@@ -10896,15 +10892,10 @@ def CheckForAnimationUpdate():
 			campaign_day.UpdateAnimCon()
 			campaign_day.UpdateCDDisplay()	
 	
-	# re-draw message console if any (a bit hacky but it works!)
+	# display message console overtop if any
 	if session.msg_con is not None:
-		if scenario is None:
-			x = 31
-		else:
-			x = 44
-		
-		# display message console
-		libtcod.console_blit(session.msg_con, 0, 0, 0, 0, 0, x, 21)
+		(x, y) = session.msg_location
+		libtcod.console_blit(session.msg_con, 0, 0, 0, 0, 0, x, y)
 
 
 # load a console image from an .xp file

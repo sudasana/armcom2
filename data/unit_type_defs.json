@@ -2368,7 +2368,9 @@
 			"intended as an infantry support tank and to break through enemy ",
 			"defenses."
 		],
-		"ubiquity" : "50"
+		"rarity" : {
+			"1939.09.01" : "60"
+		}
 	},
 	
 	"76.2mm obr. 00/02P": {
@@ -2403,7 +2405,9 @@
 		"description" : [
 			""
 		],
-		"ubiquity" : "22"
+		"rarity" : {
+			"1939.09.01" : "70"
+		}
 	},
 	
 	
@@ -2468,7 +2472,10 @@
 			"was eventually adopted by the French cavalry as a light reconnaisance tank. ",
 			"This early variant has a short main gun and an underpowered engine."
 		],
-		"ubiquity" : "30"
+		"rarity" : {
+			"1940.05.01" : "80",
+			"1940.06.01" : "70"
+		}
 	},
 	
 	
@@ -2566,7 +2573,9 @@
 			"war. This is the welded hull design with a vision cupola for the ",
 			"commander."
 		],
-		"ubiquity" : "15"
+		"rarity" : {
+			"1943.07.01" : "100"
+		}
 	},
 	
 	"M4A1 Sherman": {
@@ -2661,7 +2670,12 @@
 			"hull, giving it extra protection on the front. This version has a ",
 			"vision cupola for the commander."
 		],
-		"ubiquity" : "15"
+		"rarity" : {
+			"1942.12.01" : "60",
+			"1943.01.01" : "70",
+			"1943.02.01" : "80",
+			"1943.06.01" : "110"
+		}
 	},
 	
 	"M4A3 Sherman": {
@@ -2756,7 +2770,9 @@
 			"It ended up being the most commonly used model in the American forces. ",
 			"This version has a vision cupola for the commander."
 		],
-		"ubiquity" : "15"
+		"rarity" : {
+			"1943.07.01" : "70"
+		}
 	},
 	
 	"P-47 Thunderbolt": {
@@ -2782,8 +2798,7 @@
 		],
 		"description" : [
 			""
-		],
-		"ubiquity" : "100"
+		]
 	},
 	
 	
@@ -2823,8 +2838,7 @@
 		],
 		"description" : [
 			""
-		],
-		"ubiquity" : "100"
+		]
 	},
 	
 	"HMG Team": {
@@ -2845,7 +2859,6 @@
 		],
 		"description" : [
 			""
-		],
-		"ubiquity" : "100"
+		]
 	}
 }

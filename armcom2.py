@@ -1474,7 +1474,6 @@ class CampaignDay:
 			'rain_drops' : []
 		}
 	
-	
 	# calculate required tarvel time in minutes from one zone to another
 	def CalculateTravelTime(self, hx1, hy1, hx2, hy2):
 		
@@ -3215,6 +3214,9 @@ class CampaignDay:
 		
 		SaveGame()
 		
+		# TEMP testing
+		ShowMessage("This is just a test message, it doesn't mean anything important.")
+		
 		exit_loop = False
 		while not exit_loop:
 			
@@ -3646,6 +3648,9 @@ class Session:
 		
 		# animation timer, used by both the campaign day and the scenario object
 		self.anim_timer = 0.0
+		
+		# pop-up message console
+		self.msg_con = None
 	
 	# try to initialize SDL2 mixer
 	def InitMixer(self):
@@ -10752,36 +10757,46 @@ def DrawFrame(console, x, y, w, h):
 		libtcod.console_put_char(console, x+w-1, y1, 179)
 
 
-# display a pop-up message window on the screen, pause, and then clear message
-def ShowMessage(text, portrait=None):
+# display a message window on the screen, pause, and then clear message
+# TODO: possible to highlight a CD/scenario hex, and to specify a display location
+# TODO: game options may override this and display the message in the center of the map regardless
+def ShowMessage(text, portrait=None, location=None, cd_highlight=None, scenario_highlight=None):
 	
-	global msg_con
+	# TODO: determine size of console
 	
-	# create message console: 29x19
-	msg_con = NewConsole(29, 19, libtcod.darkest_grey, libtcod.white) 
-	DrawFrame(msg_con, 0, 0, 29, 19)
-	y = 1
+	if portrait is not None:
+		width = 31
+		height = 12
+	else:
+		width = 21
+		height = 4
+	
+	lines = wrap(text, width-4)
+	height += len(lines)
+	
+	# TODO: determine display location of console
+	
+	# create message console
+	session.msg_con = NewConsole(width, height, libtcod.darkest_grey, libtcod.white) 
+	DrawFrame(session.msg_con, 0, 0, width, height)
+	y = 0
 	
 	# display portrait if any
 	if portrait is not None:
-		libtcod.console_set_default_background(msg_con, PORTRAIT_BG_COL)
-		libtcod.console_rect(msg_con, 1, 1, 27, 8, True, libtcod.BKGND_SET)
-		libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, msg_con, 2, 1)
-		libtcod.console_set_default_background(msg_con, libtcod.black)
-		y = 10
+		libtcod.console_set_default_background(session.msg_con, PORTRAIT_BG_COL)
+		libtcod.console_rect(session.msg_con, 2, 2, 27, 8, True, libtcod.BKGND_SET)
+		libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, session.msg_con, 2, 1)
+		libtcod.console_set_default_background(session.msg_con, libtcod.black)
+		y = 9
 	
 	# display message
-	lines = wrap(text, 27)
-	
 	# try to center message vertically in window
-	ym = 9 - int(len(lines) / 2)
-	
-	if ym >= y:
-		y = ym
+	x = int(width / 2)
+	y += int(height / 2) - int(len(lines) / 2)
 	
 	for line in lines:
-		libtcod.console_print_ex(msg_con, 14, y, libtcod.BKGND_NONE, libtcod.CENTER, line.encode('IBM850'))
-		if y == 17: break
+		libtcod.console_print_ex(session.msg_con, x, y, libtcod.BKGND_NONE, libtcod.CENTER, line.encode('IBM850'))
+		if y == height-1: break
 		y += 1
 	
 	# display closer to centre if we appear to be in the campaign day view
@@ -10791,15 +10806,15 @@ def ShowMessage(text, portrait=None):
 			x = 44
 	
 	# display message console
-	libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, x, 21)
+	libtcod.console_blit(session.msg_con, 0, 0, 0, 0, 0, x, 21)
 	libtcod.console_flush()
 	
 	Wait(140)
 	
-	# re-draw screen
+	# re-draw screen and erase console
 	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	libtcod.console_flush()
-	msg_con = None
+	session.msg_con = None
 
 
 # display a pop-up message on the screen, highlighting a given map hex
@@ -10882,14 +10897,14 @@ def CheckForAnimationUpdate():
 			campaign_day.UpdateCDDisplay()	
 	
 	# re-draw message console if any (a bit hacky but it works!)
-	if msg_con is not None:
+	if session.msg_con is not None:
 		if scenario is None:
 			x = 31
 		else:
 			x = 44
 		
 		# display message console
-		libtcod.console_blit(msg_con, 0, 0, 0, 0, 0, x, 21)
+		libtcod.console_blit(session.msg_con, 0, 0, 0, 0, 0, x, 21)
 
 
 # load a console image from an .xp file
@@ -11926,7 +11941,7 @@ def PlaySoundFor(obj, action):
 #                                      Main Script                                       #
 ##########################################################################################
 
-global main_title, main_theme, msg_con
+global main_title, main_theme
 global campaign, campaign_day, scenario, session
 global keyboard_decode, keyboard_encode
 
@@ -11957,9 +11972,6 @@ libtcod.sys_set_fps(LIMIT_FPS)
 libtcod.console_set_default_background(0, libtcod.black)
 libtcod.console_set_default_foreground(0, libtcod.white)
 libtcod.console_clear(0)
-
-# create placeholder for message console
-msg_con = None
 
 # display loading screen
 libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,

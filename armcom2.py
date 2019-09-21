@@ -618,7 +618,7 @@ class Campaign:
 			del campaign_data
 		
 		# sort campaigns by start date
-		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']), reverse=True)
+		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']))
 		
 		# select first campaign by default
 		selected_campaign = campaign_list[0]
@@ -699,7 +699,7 @@ class Campaign:
 			libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Select a unit to command')
 			libtcod.console_print_ex(con, 45, 7, libtcod.BKGND_NONE, libtcod.CENTER,
-				'to start the campaign')
+				'at the start of the campaign')
 			
 			DrawFrame(con, 32, 10, 27, 18)
 			selected_unit.DisplayMyInfo(con, 33, 11, status=False)
@@ -3509,14 +3509,16 @@ class CampaignDay:
 				
 				# request resupply
 				if key_char == 'r':
-					ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
-					self.AmmoReloadMenu()
-					self.AdvanceClock(0, 30)
-					DisplayTimeInfo(time_con)
-					self.UpdateCDDisplay()
-					self.CheckForZoneCapture()
-					self.CheckForRandomEvent()
-					SaveGame()
+					if ShowNotification('Spend 30 minutes waiting for resupply?', confirm=True):
+						ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
+						self.AmmoReloadMenu()
+						self.AdvanceClock(0, 30)
+						DisplayTimeInfo(time_con)
+						self.UpdateCDDisplay()
+						self.CheckForZoneCapture()
+						self.CheckForRandomEvent()
+						SaveGame()
+					continue
 
 
 # Zone Hex: a hex on the campaign day map, each representing a map of scenario hexes
@@ -10710,40 +10712,49 @@ def DisplayTimeInfo(console):
 def DisplayWeatherInfo(console):
 	
 	libtcod.console_clear(console)
-	libtcod.console_set_default_foreground(console, libtcod.white)
+	
 	
 	w = libtcod.console_get_width(console)
 	x = int(w/2)
 	
-	# current temperature (static for now)
+	# background blocks
 	libtcod.console_set_default_background(console, libtcod.dark_blue)
 	libtcod.console_rect(console, 0, 0, w, 2, False, libtcod.BKGND_SET)
-	libtcod.console_print(console, 0, 0, 'Mild')
+	libtcod.console_set_default_background(console, libtcod.darker_grey)
+	libtcod.console_rect(console, 0, 2, w, 2, False, libtcod.BKGND_SET)
+	libtcod.console_set_default_background(console, libtcod.darkest_blue)
+	libtcod.console_rect(console, 0, 4, w, 2, False, libtcod.BKGND_SET)
+	libtcod.console_set_default_background(console, libtcod.dark_sepia)
+	libtcod.console_rect(console, 0, 6, w, 2, False, libtcod.BKGND_SET)
+	libtcod.console_set_default_background(console, libtcod.black)
+	
+	# titles
+	libtcod.console_set_default_foreground(console, libtcod.lighter_grey)
+	libtcod.console_print(console, 0, 0, 'Wind:')
+	libtcod.console_print(console, 0, 2, 'Cloud Cover:')
+	libtcod.console_print(console, 0, 4, 'Precipitation:')
+	libtcod.console_print(console, 0, 6, 'Ground Conditions:')
+	
+	# info
+	libtcod.console_set_default_foreground(console, libtcod.white)
+
 	# wind strength and direction (static for now)
-	libtcod.console_print_ex(console, w-1, 0, libtcod.BKGND_NONE,
+	libtcod.console_print_ex(console, w-1, 1, libtcod.BKGND_NONE,
 		libtcod.RIGHT, 'No wind')
 	
 	# cloud cover
-	libtcod.console_set_default_background(console, libtcod.light_grey)
-	libtcod.console_rect(console, 0, 2, w, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print_ex(console, x, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(console, w-1, 3, libtcod.BKGND_NONE, libtcod.RIGHT,
 		campaign_day.weather['Cloud Cover'])
 	
 	# precipitation
-	libtcod.console_print_ex(console, x, 4, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(console, w-1, 5, libtcod.BKGND_NONE, libtcod.RIGHT,
 		campaign_day.weather['Precipitation'])
 	
 	# ground conditions
-	libtcod.console_set_default_background(console, libtcod.dark_sepia)
-	libtcod.console_rect(console, 0, 6, w, 1, False, libtcod.BKGND_SET)
-	libtcod.console_print_ex(console, x, 6, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(console, w-1, 7, libtcod.BKGND_NONE, libtcod.RIGHT,
 		campaign_day.weather['Ground'])
+
 	
-	# fog level if any (static for now)
-	libtcod.console_print_ex(console, w-1, 4, libtcod.BKGND_NONE,
-		libtcod.RIGHT, '')
-	
-	libtcod.console_set_default_background(console, libtcod.black)
 
 
 # draw an ArmCom2-style frame to the given console

@@ -3214,10 +3214,6 @@ class CampaignDay:
 		
 		SaveGame()
 		
-		# TEMP testing
-		ShowMessage("This is just a test message, it doesn't mean anything important.",
-			portrait='unit_m4.xp')
-		
 		exit_loop = False
 		while not exit_loop:
 			
@@ -7014,17 +7010,30 @@ class Scenario:
 					selected_unit_id = unit_id
 					continue
 				
-				
-				# TODO: roll against rarity for current date
-				
-				# if there's only one date given, use that rarity factor
-				
-				# otherwise, find the earliest one that does not pre-date the current date
+				# roll against rarity for current date
+				rarity = None
+				todays_date = campaign.today['date'].split('.')
+				for date in unit_types[unit_id]['rarity']:
+					
+					# select the earliest rarity factor
+					if rarity is None:
+						rarity = int(unit_types[unit_id]['rarity'][date])
+						continue
+					
+					# see if this date is later than current date
+					date_str = date.split('.')
+					
+					# check year, month, and day
+					for i in range(3):
+						if int(date_str[i]) > int(todays_date[i]): break
+						
+					# earlier than or equal to today's date, use this rarity factor 
+					rarity = int(unit_types[unit_id]['rarity'][date])
 				
 				# roll againt rarity rarting
-				#if GetPercentileRoll() <= float(rarity):
-				#	selected_unit_id = unit_id
-				#	continue
+				if GetPercentileRoll() <= float(rarity):
+					selected_unit_id = unit_id
+					continue
 			
 			# add the final selected unit id to list to spawn
 			enemy_unit_list.append(selected_unit_id)

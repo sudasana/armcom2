@@ -58,20 +58,19 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.8.0'					# game version
+VERSION = '0.8.0 21-09-19'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
 
-# TEMP - extended font testing
-RENDERER = libtcod.RENDERER_OPENGL
+#RENDERER = libtcod.RENDERER_OPENGL
 
-#if os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
-#	RENDERER = libtcod.RENDERER_SDL
-#else:
-#	RENDERER = libtcod.RENDERER_GLSL
+if os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
+	RENDERER = libtcod.RENDERER_SDL
+else:
+	RENDERER = libtcod.RENDERER_GLSL
 
 LIMIT_FPS = 50						# maximum screen refreshes per second
 ANIM_UPDATE_TIMER = 0.15				# number of seconds between animation frame checks
@@ -520,7 +519,6 @@ class Campaign:
 			text = (str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2) +
 				' - ' + text)
 		self.logs[self.today['date']].append(text)
-		print('DEBUG: Added log entry: ' + text)
 	
 	
 	# award VP to the player
@@ -620,7 +618,6 @@ class Campaign:
 			del campaign_data
 		
 		# sort campaigns by start date
-		# TEMP - reverse order for testing
 		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']), reverse=True)
 		
 		# select first campaign by default
@@ -8311,8 +8308,6 @@ class Scenario:
 			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
 				chance -= 25.0
 			
-			print('DEBUG: base spotting chance: ' + str(chance))
-			
 			# potential target modifier
 			for unit in target_hex.unit_stack:
 				
@@ -8338,11 +8333,8 @@ class Scenario:
 				modifier += unit.GetTEM()
 				
 				chance += round(modifier * 0.25, 2)
-				print('DEBUG: unit present, spotting chance now: ' + str(chance))
 			
 			chance = RestrictChance(chance)
-			
-			print('DEBUG: final spotting chance is: ' + str(chance))
 			
 			# show plane animation
 			self.animation['air_attack'] = GeneratePlaneCon(-1)

@@ -7,13 +7,14 @@
 	"enemy_nations" : ["Germany"],
 	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France and invasion of Germany.",
 	"player_unit_list" : [
-		"M4 Sherman", "M4A1 Sherman", "M4A3 Sherman"
+		"M4 Sherman", "M4A1 Sherman", "M4A3 Sherman", "M4A3(75)W Sherman"
 	],
 	"player_air_support": [
 		"P-47 Thunderbolt"
 	],
 	"enemy_unit_list" : [
 		"Panzer IV A", "Panzer IV C", "Panzer IV H", "Panzer VG 'Panther'",
+		"STuG IIIG",
 		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
 		"PSW 231 (8 rad)",
 		"PaK 38", "PaK 40", "PaK 43", "Opel Blitz 3-ton",
@@ -38,6 +39,7 @@
 			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
+				"Assault Gun" : "80",
 				"Medium Tank" : "15",
 				"Armoured Car" : "90",
 				"Anti-Tank Gun" : "35",

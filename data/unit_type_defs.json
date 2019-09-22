@@ -1416,6 +1416,7 @@
 				"type" : "AA MG",
 				"fp" : "2",
 				"rof" : "17.0",
+				"mount" : "Turret",
 				"fired_by" : ["Commander"],
 				"firing_group" : 0
 			}
@@ -1468,6 +1469,80 @@
 	},
 	
 	
+	"STuG IIIG": {
+		"category" : "Vehicle",
+		"class" : "Assault Gun",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "3",
+			"hull_front" : "8",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "79"
+			},
+			{
+				"type" : "AA MG",
+				"front_only" : "TRUE",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Loader"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"hatch" : "TRUE",
+				"location" : "Hull",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The StuG III is an assualt gun built upon a Panzer III chassis. ",
+			"Originally intended as infantry support, it has been adapted for ",
+			"anti-tank combat as well."
+		],
+		"rarity" : {
+			"1942.06.01" : "70",
+			"1943.01.01" : "100",
+			"1944.01.01" : "110"
+		}
+		
+	},
+	
 	"Sd. Kfz. 13": {
 		"category" : "Vehicle",
 		"class" : "Armoured Car",
@@ -1486,6 +1561,7 @@
 				"type" : "AA MG",
 				"fp" : "4",
 				"rof" : "17.0",
+				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
 				"firing_group" : 0
 			}

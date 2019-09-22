@@ -58,14 +58,12 @@ import sdl2.sdlmixer as mixer				# sound effects
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.8.0'					# game version
+VERSION = '0.8.0 22-09-19'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
-
-#RENDERER = libtcod.RENDERER_OPENGL
 
 if os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
 	RENDERER = libtcod.RENDERER_SDL
@@ -296,11 +294,13 @@ AP_BASE_CHANCE = {
 	'37L' : 83.0,
 	'47S' : 72.0,
 	'45L' : 91.7,
+	'50L' : 120.0,
 	'75S' : 91.7,
 	'75' : 120.0,		# not sure if this and below are accurate, FUTURE: check balance
 	'75L' : 160.0,
 	'76S' : 83.0,
-	'88L' : 200.0
+	'88L' : 200.0,
+	'88LL' : 380.0
 }
 
 # effective FP of an HE hit from different weapon calibres
@@ -4014,7 +4014,7 @@ class Personnel:
 			if char in CHAR_MAP:
 				char_code = CHAR_MAP[char]
 			else:
-				char_code = ord(char)
+				char_code = ord(char.encode('IBM850'))
 			
 			libtcod.console_put_char(console, cx, y, char_code)
 			cx += 1
@@ -4531,6 +4531,15 @@ class Weapon:
 	# calculate the map hexes covered by this weapon
 	def UpdateCoveredHexes(self):
 		
+		def AddAllAround():
+			for r in range(1, self.max_range + 1):
+				ring_list = GetHexRing(self.unit.hx, self.unit.hy, r)
+				for (hx, hy) in ring_list:
+					# make sure hex is on map
+					if (hx, hy) in scenario.hex_dict:
+						self.covered_hexes.append((hx, hy))
+			
+		
 		self.covered_hexes = []
 		
 		# can always fire in own hex
@@ -4538,13 +4547,14 @@ class Weapon:
 		
 		# infantry can fire all around
 		if self.unit.GetStat('category') == 'Infantry':
-			for r in range(1, self.max_range + 1):
-				ring_list = GetHexRing(self.unit.hx, self.unit.hy, r)
-				for (hx, hy) in ring_list:
-					# make sure hex is on map
-					if (hx, hy) in scenario.hex_dict:
-						self.covered_hexes.append((hx, hy))
+			AddAllAround()
 			return
+		
+		# AA MGs normally can fire in any direction
+		if self.GetStat('type') == 'AA MG':
+			if self.GetStat('front_only') is None:
+				AddAllAround()
+				return
 		
 		# hull-mounted weapons fire in hull facing direction
 		if self.GetStat('mount') == 'Hull':

@@ -5244,13 +5244,13 @@ class Unit:
 			
 			# account for effects of rain
 			if campaign_day.weather['Precipitation'] == 'Rain':
-				roll -= 10.0
+				roll -= 3.0
 			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
-				roll -= 15.0
+				roll -= 5.0
 			
-			if roll <= 70.0:
+			if roll <= 93.0:
 				self.smoke[i] = 0
-			elif roll <= 90.0:
+			elif roll <= 98.0:
 				self.smoke[i] = 1
 			else:
 				self.smoke[i] = 2
@@ -5747,7 +5747,7 @@ class Unit:
 					if libtcod.random_get_int(generator, 1, 10) <= 6:
 						char = 15
 					else:
-						char = 42
+						char = 37
 					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, char, col, libtcod.black)
 				
 			elif self.terrain == 'Woods':
@@ -6718,7 +6718,7 @@ class Scenario:
 			# miss
 			if roll > chance:
 				PlaySoundFor(None, 'ricochet')
-				ShowMessage("The ricochet from a sniper's bullet rings out, narrowly missing your " + crew_target.position.name)
+				ShowMessage("The ricochet from a sniper's bullet rings out, narrowly missing your " + crew_target.current_position.name)
 			else:
 				PlaySoundFor(None, 'sniper_hit')
 				ShowMessage('Your ' + crew_target.position.name + ' has been hit by a sniper.')
@@ -10851,6 +10851,11 @@ def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None)
 	
 	# determine display location of console on screen
 	x = WINDOW_XM + 1 - int(width / 2)
+	
+	if scenario is not None:
+		if not scenario.finished:
+			x += 12
+	
 	y = WINDOW_YM - int(height / 2)
 	session.msg_location = (x, y)
 	

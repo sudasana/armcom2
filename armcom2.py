@@ -6897,8 +6897,11 @@ class Scenario:
 			Wait(100, ignore_animations=True)
 		
 		# tank burn up roll
-		# FUTURE: apply modifiers
 		chance = 80.0
+		if self.player_unit.GetStat('wet_stowage') is not None:
+			chance = 25.0
+		
+		# FUTURE: apply further modifiers based on killing hit
 		burns = False
 		
 		roll = GetPercentileRoll()

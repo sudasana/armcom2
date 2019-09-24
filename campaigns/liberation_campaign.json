@@ -2,7 +2,6 @@
 	"name" : "The Liberation Campaign of the Red Army",
 	"start_date" : "1939.09.17",
 	"end_date" : "1939.10.06",
-	"action_days" : "1",
 	"player_nation" : "Soviet Union",
 	"enemy_nations" : ["Poland"],
 	"desc" : "Soviet invasion of Poland, 1939.",

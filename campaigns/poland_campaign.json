@@ -2,7 +2,6 @@
 	"name" : "The Poland Campaign",
 	"start_date" : "1939.09.01",
 	"end_date" : "1939.10.06",
-	"action_days" : "1",
 	"player_nation" : "Germany",
 	"enemy_nations" : ["Poland"],
 	"desc" : "Join the 3rd Panzer Division in the invasion of Poland, 1939.",
@@ -24,14 +23,18 @@
 		"40" : "Knight's Cross",
 		"50" : "Knight's Cross with Oak Leaves"
 	},
-	"calendar": [
+	"calendar_weeks": [
 		{
-			"date" : "1939.09.01",
+			"start_date" : "1939.09.01",
 			"day_start" : "04:45",
 			"day_end" : "14:30",
-			"location" : "The Polish Border",
-			"desc" : "This morning we begin our invasion of Polish territory. Your battlegroup is tasked with destroying enemy forces and capturing territory wherever possible.",
-			"mission" : "Battle",
+			"combat_chance" : "60",
+			"week_description" : "Over the Polish Border",
+			"mission_odds" : {
+				"Advance" : "25",
+				"Battle" : "75",
+				"Fighting Withdrawl" : "0"
+			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 80.0,
 			"air_support_step" : 10.0,

@@ -51,14 +51,14 @@ from datetime import datetime				# for timestamping logs
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
 import sdl2.sdlmixer as mixer				# sound effects
-
+import calendar						# for date calculations
 
 
 ##########################################################################################
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.8.0 22-09-19'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -486,13 +486,15 @@ class Campaign:
 		with open(DATAPATH + 'skill_defs.json', encoding='utf8') as data_file:
 			self.skills = json.load(data_file)
 		
-		self.logs = {}			# dictionary of logs, organized by combat day
+		self.logs = {}			# dictionary of campaign logs, organized by combat day
 		self.player_unit = None		# placeholder for player unit
 		self.player_squad_max = 0	# maximum units in player squad
 		self.player_squad_num = 0	# current units in player squad
 		self.player_vp = 0		# total player victory points
-		self.stats = {}			# campaign stats
+		self.stats = {}			# local copy of campaign stats
+		self.combat_calendar = []	# list of combat days, created by GenerateCalendar
 		self.today = None		# pointer to current day in calendar
+		self.current_week = None	# " week
 		self.enemy_class_odds = {}	# placeholder for enemy unit spawn odds, set by campaign days
 		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
 		
@@ -503,13 +505,67 @@ class Campaign:
 		for text in RECORD_LIST:
 			self.records[text] = 0
 	
-	
-	# update the current set of enemy unit class spawn odds with any data present in the current campaign day
-	def UpdateEnemyUnitOdds(self):
-		if self.today is None: return
-		if 'enemy_unit_class_odds' not in self.today: return
-		for (k, v) in self.today['enemy_unit_class_odds'].items():
-			self.enemy_class_odds[k] = v
+	# randomly generate a list of combat days for this campaign
+	def GenerateCombatCalendar(self):
+		
+		(end_year, end_month, end_day) = self.stats['end_date'].split('.')
+		
+		# roll separately for each week of campaign
+		for week in self.stats['calendar_weeks']:
+			
+			# roll for number of combat days this week
+			combat_days = 1
+			combat_chance = float(week['combat_chance'])
+			while combat_days < 7:
+				if GetPercentileRoll() <= combat_chance:
+					combat_days += 1
+				else:
+					break
+			
+			# determine which calendar days are included from this week
+			
+			# add the first date
+			possible_days = []
+			possible_days.append(week['start_date'])
+			#print('DEBUG: added ' + week['start_date'] + ' as a possible combat day')
+			
+			# add the next 6
+			day_text = possible_days[0]
+			for i in range(6):
+				(year, month, day) = day_text.split('.')
+				
+				# last day of month
+				if int(day) == calendar.monthrange(int(year), int(month)):
+					
+					# last day of year
+					if int(month) == 12:
+						year = str(int(year) + 1)
+						month = '01'
+						day = '01'
+					else:
+						month = str(int(month) + 1)
+						day = '01'
+				
+				else:
+					day = str(int(day) + 1)
+				
+				# TODO: check that day is not past end of campaign
+				
+				day_text = year + '.' + month.zfill(2) + '.' + day.zfill(2)
+				
+				possible_days.append(day_text)
+				#print('DEBUG: added ' + day_text + ' as a possible combat day')
+			
+			# select from list of possible days
+			
+			# fewer possible days than needed
+			if len(possible_days) <= combat_days:
+				self.combat_calendar += possible_days
+				return
+			
+			for day_text in sample(possible_days, combat_days):
+				self.combat_calendar.append(day_text)
+				#print('DEBUG: added ' + day_text + ' as a combat day')
 	
 	
 	# add a line to the log for the current day
@@ -518,7 +574,7 @@ class Campaign:
 		if campaign_day is not None:
 			text = (str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2) +
 				' - ' + text)
-		self.logs[self.today['date']].append(text)
+		self.logs[self.today].append(text)
 	
 	
 	# award VP to the player
@@ -574,9 +630,6 @@ class Campaign:
 			text = GetDateText(selected_campaign['end_date'])
 			libtcod.console_print_ex(con, 45, 34, libtcod.BKGND_NONE, libtcod.CENTER, text)
 			
-			text = 'Combat Days: ' + selected_campaign['action_days']
-			libtcod.console_print_ex(con, 45, 36, libtcod.BKGND_NONE, libtcod.CENTER, text)
-			
 			# wrapped description text
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			y = 39
@@ -600,7 +653,7 @@ class Campaign:
 		
 		# load basic information of campaigns into a list of dictionaries
 		BASIC_INFO = [
-			'name', 'start_date', 'end_date', 'action_days', 'player_nation',
+			'name', 'start_date', 'end_date', 'player_nation',
 			'enemy_nations', 'desc'
 		]
 		
@@ -665,15 +718,16 @@ class Campaign:
 				exit_menu = True
 				
 		
-		# create a local copy of selected scenario stats
+		# create a local copy of selected campaign stats
 		with open(CAMPAIGNPATH + selected_campaign['filename'], encoding='utf8') as data_file:
 			self.stats = json.load(data_file)
 		
-		# set current day to first day in calendar
-		self.today = self.stats['calendar'][0]
+		# generate list of combat days
+		self.GenerateCombatCalendar()
 		
-		# load enemy unit odds for first time
-		self.UpdateEnemyUnitOdds()
+		# set current date and week
+		self.today = self.combat_calendar[0]
+		self.current_week = self.stats['calendar_weeks'][0]
 		
 		return True
 		
@@ -806,19 +860,22 @@ class Campaign:
 		DrawFrame(con, 30, 20, 30, 10)
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		libtcod.console_print_ex(con, WINDOW_XM, 22, libtcod.BKGND_NONE, libtcod.CENTER,
-			GetDateText(self.today['date']))
+			GetDateText(self.today))
 		libtcod.console_print_ex(con, WINDOW_XM, 23, libtcod.BKGND_NONE, libtcod.CENTER,
-			self.today['day_start'])
+			self.current_week['day_start'])
 		libtcod.console_print_ex(con, WINDOW_XM, 25, libtcod.BKGND_NONE, libtcod.CENTER,
-			self.today['location'])
+			self.current_week['week_description'])
 		
 		# fade in from black
-		for i in range(100, 0, -5):
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
-			libtcod.console_flush()
-			Wait(5, ignore_animations=True)
-		Wait(95, ignore_animations=True)
+		# TEMP disabled
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		Wait(5, ignore_animations=True)
+		#for i in range(100, 0, -5):
+		#	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		#	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
+		#	libtcod.console_flush()
+		#	Wait(5, ignore_animations=True)
+		#Wait(95, ignore_animations=True)
 	
 	
 	# do automatic actions that end a campaign day
@@ -932,19 +989,24 @@ class Campaign:
 	# update the day outline console, 24x22
 	def UpdateDayOutlineCon(self):
 		libtcod.console_clear(day_outline)
-		libtcod.console_print_ex(day_outline, 11, 1, libtcod.BKGND_NONE, libtcod.CENTER,
-			GetDateText(campaign.today['date']))
-		libtcod.console_print_ex(day_outline, 11, 2, libtcod.BKGND_NONE, libtcod.CENTER,
-			campaign.today['location'])
 		
-		libtcod.console_set_default_foreground(day_outline, libtcod.lighter_grey)
-		if 'desc' in campaign.today:
-			lines = wrap(campaign.today['desc'], 20)
-			y = 4
-			for line in lines:
-				libtcod.console_print(day_outline, 2, y, line)
-				y += 1
-				if y == 17: break
+		lines = wrap(campaign.stats['name'], 20)
+		y = 1
+		for line in lines[:2]:
+			libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
+				libtcod.CENTER, line)
+			y += 1
+		
+		libtcod.console_print_ex(day_outline, 11, 4, libtcod.BKGND_NONE, libtcod.CENTER,
+			GetDateText(campaign.today))
+		
+		lines = wrap(campaign.current_week['week_description'], 20)
+		y = 6
+		for line in lines:
+			libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
+				libtcod.CENTER, line)
+			y += 1
+			if y == 17: break
 		
 		libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
 		libtcod.console_print(day_outline, 1, 19, 'Start of Day:')
@@ -952,9 +1014,9 @@ class Campaign:
 		
 		libtcod.console_set_default_foreground(day_outline, libtcod.white)
 		libtcod.console_print_ex(day_outline, 19, 19, libtcod.BKGND_NONE, libtcod.RIGHT,
-			campaign.today['day_start'])
+			campaign.current_week['day_start'])
 		libtcod.console_print_ex(day_outline, 19, 20, libtcod.BKGND_NONE, libtcod.RIGHT,
-			campaign.today['day_end'])
+			campaign.current_week['day_end'])
 	
 	
 	# update the command menu for the campaign calendar interface, 24x21
@@ -997,7 +1059,7 @@ class Campaign:
 			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
 			
 			# day has not yet started
-			if campaign_day is None:
+			if not campaign_day.started:
 				libtcod.console_print(calendar_cmd_con, 11, 10, 'Start Day')
 			
 			# day has finished
@@ -1035,7 +1097,7 @@ class Campaign:
 		if self.active_calendar_menu == 1:
 			
 			# day has finished
-			if campaign_day is not None:
+			if campaign_day.ended:
 				return
 			
 			x = 15
@@ -1049,10 +1111,10 @@ class Campaign:
 				libtcod.CENTER,	"Today's Mission")
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_blue)
 			libtcod.console_print_ex(calendar_main_panel, x+15, y+2, libtcod.BKGND_NONE,
-				libtcod.CENTER,	campaign.today['mission'])
+				libtcod.CENTER,	campaign_day.mission)
 			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
-			lines = wrap(MISSION_DESC[campaign.today['mission']], 30)
+			lines = wrap(MISSION_DESC[campaign_day.mission], 30)
 			y1 = y+4
 			for line in lines:
 				libtcod.console_print(calendar_main_panel, x, y1, line)
@@ -1065,15 +1127,15 @@ class Campaign:
 			libtcod.console_print(calendar_main_panel, x, y+16, 'Artillery Support:')
 			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
-			if 'air_support_level' not in campaign.today:
+			if 'air_support_level' not in campaign.current_week:
 				text = 'None'
 			else:
-				text = str(campaign.today['air_support_level'])
+				text = str(campaign.current_week['air_support_level'])
 			libtcod.console_print(calendar_main_panel, x+19, y+15, text)
-			if 'arty_support_level' not in campaign.today:
+			if 'arty_support_level' not in campaign.current_week:
 				text = 'None'
 			else:
-				text = str(campaign.today['arty_support_level'])
+				text = str(campaign.current_week['arty_support_level'])
 			libtcod.console_print(calendar_main_panel, x+19, y+16, text)
 			
 			# expected enemy forces
@@ -1081,7 +1143,8 @@ class Campaign:
 			libtcod.console_print_ex(calendar_main_panel, x+10, y+19, libtcod.BKGND_NONE,
 				libtcod.CENTER,	'Expected Enemy Forces')
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
-			text = session.nations[campaign.stats['enemy_nations'][0]]['adjective']
+			
+			text = session.nations[campaign.current_week['enemy_nation']]['adjective']
 			text += ' infantry, guns, and AFVs'
 			lines = wrap(text, 30)
 			y1 = y+21
@@ -1151,11 +1214,7 @@ class Campaign:
 		self.UpdateCalendarCmdCon()
 		self.UpdateCCMainPanel(selected_position)
 		
-		update_screen = True
-		if campaign_day is not None:
-			if not campaign_day.ended:
-				update_screen = False
-		if update_screen:
+		if not (campaign_day.started and not campaign_day.ended):
 			self.UpdateCCDisplay()
 		
 		SaveGame()
@@ -1165,21 +1224,19 @@ class Campaign:
 			
 			# if we've initiated a campaign day or are resuming a saved game with a
 			# campaign day running, go into the campaign day loop now
-			if campaign_day is not None:
+			if campaign_day.started and not campaign_day.ended:
+			
+				campaign_day.DoCampaignDayLoop()
 				
-				if not campaign_day.ended:
+				if session.exiting:
+					exit_loop = True
+					continue
 				
-					campaign_day.DoCampaignDayLoop()
-					
-					if session.exiting:
-						exit_loop = True
-						continue
-					
-					# redraw the screen
-					self.UpdateDayOutlineCon()
-					self.UpdateCalendarCmdCon()
-					self.UpdateCCMainPanel(selected_position)
-					self.UpdateCCDisplay()
+				# redraw the screen
+				self.UpdateDayOutlineCon()
+				self.UpdateCalendarCmdCon()
+				self.UpdateCCMainPanel(selected_position)
+				self.UpdateCCDisplay()
 				
 			if libtcod.console_is_window_closed(): sys.exit()
 			libtcod.console_flush()
@@ -1215,11 +1272,11 @@ class Campaign:
 			if self.active_calendar_menu == 1:
 				
 				# start the day
-				if campaign_day is None:
+				if not campaign_day.ended:
 					if key.vk == libtcod.KEY_ENTER:
-						campaign_day = CampaignDay()	# generate a new campaign day object
 						campaign_day.AmmoReloadMenu()	# allow player to load ammo
 						self.AddLog('Combat day begins')
+						campaign_day.started = True
 						continue			# continue in loop to go into campaign day layer
 				
 				# proceed to next day or end campaign
@@ -1228,12 +1285,9 @@ class Campaign:
 					# do end-of-day stuff
 					self.DoEndOfDay()
 					
-					# delete the finished campaign day object
-					campaign_day = None
-					
 					# check for end of campaign
-					day_index = campaign.stats['calendar'].index(campaign.today)
-					if day_index == len(campaign.stats['calendar']) - 1:
+					day_index = campaign.combat_calendar.index(campaign.today)
+					if day_index == len(campaign.combat_calendar) - 1:
 						self.AwardDecorations()
 						self.DisplayCampaignSummary()
 						ExportLog()
@@ -1242,8 +1296,12 @@ class Campaign:
 						continue
 					
 					# set today to next day in calendar, and update enemy unit odds data
-					self.today = self.stats['calendar'][day_index+1]
-					self.UpdateEnemyUnitOdds()
+					self.today = self.combat_calendar[day_index+1]
+					
+					# TODO: check for start of new week
+					
+					# create a new campaign day
+					campaign_day = CampaignDay()
 					
 					# show new day starting animation
 					self.ShowStartOfDay()	
@@ -1304,6 +1362,11 @@ class Campaign:
 class CampaignDay:
 	def __init__(self):
 		
+		self.started = False				# day is in progress
+		self.ended = False				# day has been completed
+		self.mission = ''
+		self.GenerateMission()		# roll for type of mission today
+		
 		self.travel_time_spent = False
 		
 		# current weather conditions, will be set by GenerateWeather
@@ -1331,7 +1394,7 @@ class CampaignDay:
 		campaign.player_squad_num = campaign.player_squad_max
 		
 		# victory point rewards for this campaign day
-		if campaign.today['mission'] == 'Fighting Withdrawl':
+		if self.mission == 'Fighting Withdrawl':
 			self.capture_zone_vp = 3
 		else:
 			self.capture_zone_vp = 2
@@ -1349,13 +1412,13 @@ class CampaignDay:
 		
 		# current hour, and minute: set initial time from campaign info
 		self.day_clock = {}
-		time_str = campaign.today['day_start'].split(':')
+		time_str = campaign.current_week['day_start'].split(':')
 		self.day_clock['hour'] = int(time_str[0])
 		self.day_clock['minute'] = int(time_str[1])
 		
 		# end of day
 		self.end_of_day = {}
-		time_str = campaign.today['day_end'].split(':')
+		time_str = campaign.current_week['day_end'].split(':')
 		self.end_of_day['hour'] = int(time_str[0])
 		self.end_of_day['minute'] = int(time_str[1])
 		
@@ -1370,11 +1433,8 @@ class CampaignDay:
 		# current odds of a random event being triggered
 		self.random_event_chance = BASE_CD_RANDOM_EVENT_CHANCE
 		
-		# flag set when end of day has been reached
-		self.ended = False
-		
 		# add day to campaign log
-		campaign.logs[campaign.today['date']] = []
+		campaign.logs[campaign.today] = []
 		
 		# generate campaign day map
 		self.map_hexes = {}
@@ -1384,10 +1444,10 @@ class CampaignDay:
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
 		
 		# set up initial zone control based on day mission
-		if campaign.today['mission'] == 'Fighting Withdrawl':
+		if self.mission == 'Fighting Withdrawl':
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 0
-		elif campaign.today['mission'] == 'Battle':
+		elif self.mission == 'Battle':
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 1
 			for hy in range(6, 9):
@@ -1397,7 +1457,7 @@ class CampaignDay:
 					self.map_hexes[(hx, hy)].controlled_by = 0
 		
 		# create map objectives
-		if campaign.today['mission'] == 'Battle':
+		if self.mission == 'Battle':
 			objective_dict = {
 				'objective_type' : 'Defend',
 				'vp_reward' : 5,
@@ -1411,7 +1471,7 @@ class CampaignDay:
 				}
 			self.map_hexes[(1, 2)].SetObjective(objective_dict)
 		
-		elif campaign.today['mission'] == 'Advance':
+		elif self.mission == 'Advance':
 			objective_dict = {
 				'objective_type' : 'Capture',
 				'vp_reward' : 5,
@@ -1420,7 +1480,7 @@ class CampaignDay:
 			self.map_hexes[(-2, 6)].SetObjective(objective_dict)
 			self.map_hexes[(1, 2)].SetObjective(objective_dict)
 		
-		elif campaign.today['mission'] == 'Fighting Withdrawl':
+		elif self.mission == 'Fighting Withdrawl':
 			objective_dict = {
 				'objective_type' : 'Defend',
 				'vp_reward' : 5,
@@ -1443,21 +1503,21 @@ class CampaignDay:
 		self.scenario = None				# currently active scenario in progress
 		
 		self.air_support_level = 0.0
-		if 'air_support_level' in campaign.today:
-			self.air_support_level = campaign.today['air_support_level']
-			self.air_support_step = campaign.today['air_support_step']
+		if 'air_support_level' in campaign.current_week:
+			self.air_support_level = campaign.current_week['air_support_level']
+			self.air_support_step = campaign.current_week['air_support_step']
 		
 		self.arty_support_level = 0.0
-		if 'arty_support_level' in campaign.today:
-			self.arty_support_level = campaign.today['arty_support_level']
-			self.arty_support_step = campaign.today['arty_support_step']
+		if 'arty_support_level' in campaign.current_week:
+			self.arty_support_level = campaign.current_week['arty_support_level']
+			self.arty_support_step = campaign.current_week['arty_support_step']
 		
 		self.encounter_mod = 0.0			# increases every time player caputures an area without resistance
 		
 		# set up player location
-		if campaign.today['mission'] == 'Fighting Withdrawl':
+		if self.mission == 'Fighting Withdrawl':
 			self.player_unit_location = (2, 0)	# top center of map
-		elif campaign.today['mission'] == 'Battle':
+		elif self.mission == 'Battle':
 			self.player_unit_location = (-1, 6)	# lower center of map
 		else:
 			self.player_unit_location = (-2, 8)	# bottom center of map
@@ -1470,6 +1530,24 @@ class CampaignDay:
 			'rain_active' : False,
 			'rain_drops' : []
 		}
+	
+	
+	# roll for type of mission for today
+	def GenerateMission(self):
+		
+		roll = GetPercentileRoll()
+		
+		for k, v in campaign.current_week['mission_odds'].items():
+			if roll <= float(v):
+				self.mission = k
+				return
+			roll -= float(v)
+		
+		print('ERROR: unable to set a mission for today, choosing default')
+		for k, v in self.current_week['mission_odds'].items():
+			self.mission = k
+			return
+		
 	
 	# calculate required tarvel time in minutes from one zone to another
 	def CalculateTravelTime(self, hx1, hy1, hx2, hy2):
@@ -1851,17 +1929,17 @@ class CampaignDay:
 			
 			text = 'Additional '
 			
-			if 'air_support_level' in campaign.today:
+			if 'air_support_level' in campaign.current_week:
 				text += 'air'
 				self.air_support_level += (self.air_support_step * float(libtcod.random_get_int(0, 1, 3)))
 				# make sure does not go beyond initial level
-				if self.air_support_level > campaign.today['air_support_level']:
-					self.air_support_level = campaign.today['air_support_level']
-			elif 'arty_support_level' in campaign.today:
+				if self.air_support_level > campaign.current_week['air_support_level']:
+					self.air_support_level = campaign.current_week['air_support_level']
+			elif 'arty_support_level' in campaign.current_week:
 				text += 'artillery'
 				self.arty_support_level += (self.arty_support_step * float(libtcod.random_get_int(0, 1, 3)))
-				if self.arty_support_level > campaign.today['arty_support_level']:
-					self.arty_support_level = campaign.today['arty_support_level']
+				if self.arty_support_level > campaign.current_week['arty_support_level']:
+					self.arty_support_level = campaign.current_week['arty_support_level']
 			else:
 				return
 			
@@ -1892,13 +1970,13 @@ class CampaignDay:
 		if self.ended: return
 		
 		# set odds of each possible oocurance based on current day mission
-		if campaign.today['mission'] == 'Advance':
+		if campaign_day.mission == 'Advance':
 			friendly_capture_odds = 45.0
 			enemy_capture_odds = 5.0
-		elif campaign.today['mission'] == 'Battle':
+		elif campaign_day.mission == 'Battle':
 			friendly_capture_odds = 20.0
 			enemy_capture_odds = 20.0
-		elif campaign.today['mission'] == 'Fighting Withdrawl':
+		elif campaign_day.mission == 'Fighting Withdrawl':
 			friendly_capture_odds = 5.0
 			enemy_capture_odds = 75.0
 		# no other missions for now
@@ -1972,7 +2050,7 @@ class CampaignDay:
 				(hx, hy) = choice(hex_list)
 				
 				# in FW mission, more likely that player zone is attacked
-				if campaign.today['mission'] == 'Fighting Withdrawl':
+				if campaign_day.mission == 'Fighting Withdrawl':
 					if (hx, hy) != self.player_unit_location:
 						(hx, hy) = choice(hex_list)
 				
@@ -2496,7 +2574,7 @@ class CampaignDay:
 			y += 1
 			if y == 4: break
 		libtcod.console_print_ex(temp_con, 14, 4, libtcod.BKGND_NONE, libtcod.CENTER,
-			GetDateText(campaign.today['date']))
+			GetDateText(campaign.today))
 		
 		# day result: survived or destroyed
 		libtcod.console_print_ex(temp_con, 14, 7, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -2992,7 +3070,7 @@ class CampaignDay:
 			'Day Mission')
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
 		libtcod.console_print_ex(cd_campaign_con, 11, 2, libtcod.BKGND_NONE, libtcod.CENTER,
-			campaign.today['mission'])
+			campaign_day.mission)
 		
 		# current VP total
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.light_blue)
@@ -3336,15 +3414,15 @@ class CampaignDay:
 				if chr(key.c).lower() == 'r':
 					
 					# increase air support
-					if 'air_support_level' in campaign.today:
-						maximum = campaign.today['air_support_level']
+					if 'air_support_level' in campaign.current_week:
+						maximum = campaign.current_week['air_support_level']
 						if self.air_support_level == maximum:
 							ShowMessage('Already at maximum support level.')
 							continue
 					
 					# increase artillery support
 					else:
-						maximum = campaign.today['arty_support_level']
+						maximum = campaign.current_week['arty_support_level']
 						if self.arty_support_level == maximum:
 							ShowMessage('Already at maximum support level.')
 							continue
@@ -3353,7 +3431,7 @@ class CampaignDay:
 					self.AdvanceClock(0, 15)
 					DisplayTimeInfo(time_con)
 					
-					if 'air_support_level' in campaign.today:
+					if 'air_support_level' in campaign.current_week:
 						self.air_support_level += float(libtcod.random_get_int(0, 1, 5)) * 5.0
 						if self.air_support_level > maximum:
 							self.air_support_level = maximum
@@ -6639,7 +6717,7 @@ class Scenario:
 			
 			# support attack already in progress
 			if self.support_status is not None: return
-			if 'air_support_level' not in campaign.today: return
+			if 'air_support_level' not in campaign.current_week: return
 			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
 			if target_hex is None: return
 			ShowMessage('Friendly air forces launch an attack!')
@@ -6652,7 +6730,7 @@ class Scenario:
 			
 			# support attack already in progress
 			if self.support_status is not None: return
-			if 'arty_support_level' not in campaign.today: return
+			if 'arty_support_level' not in campaign.current_week: return
 			if target_hex is None: return
 			ShowMessage('Friendly artillery forces fire a bombardment!')
 			self.support_target = target_hex
@@ -7054,7 +7132,7 @@ class Scenario:
 				
 				# roll against rarity for current date
 				rarity = None
-				todays_date = campaign.today['date'].split('.')
+				todays_date = campaign.today.split('.')
 				for date in unit_types[unit_id]['rarity']:
 					
 					# select the earliest rarity factor
@@ -7114,7 +7192,7 @@ class Scenario:
 			# create the unit
 			unit = Unit(unit_id)
 			unit.owning_player = 1
-			unit.nation = campaign.today['enemy_nation']
+			unit.nation = campaign.current_week['enemy_nation']
 			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			unit.SpawnAt(hx, hy)
@@ -8254,9 +8332,9 @@ class Scenario:
 		
 		# no such support
 		if air_support:
-			if 'air_support_level' not in campaign.today: return
+			if 'air_support_level' not in campaign.current_week: return
 		else:
-			if 'arty_support_level' not in campaign.today: return
+			if 'arty_support_level' not in campaign.current_week: return
 		
 		# no support target selected
 		if self.support_target is None: return
@@ -9642,14 +9720,14 @@ class Scenario:
 				
 				# display current support levels
 				text = 'Air Support: '
-				if 'air_support_level' not in campaign.today:
+				if 'air_support_level' not in campaign.current_week:
 					text += 'None'
 				else:
 					text += str(campaign_day.air_support_level)
 				libtcod.console_print(cmd_menu_con, 1, 1, text)
 				
 				text = 'Artillery Support: '
-				if 'arty_support_level' not in campaign.today:
+				if 'arty_support_level' not in campaign.current_week:
 					text += 'None'
 				else:
 					text += str(campaign_day.arty_support_level)
@@ -9669,24 +9747,24 @@ class Scenario:
 				
 					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 					libtcod.console_print(cmd_menu_con, 1, 4, 'Tab')
-					if 'air_support_level' not in campaign.today:
+					if 'air_support_level' not in campaign.current_week:
 						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
 					libtcod.console_print(cmd_menu_con, 1, 5, EnKey('q').upper())
 					
 					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-					if 'arty_support_level' not in campaign.today:
+					if 'arty_support_level' not in campaign.current_week:
 						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
 					libtcod.console_print(cmd_menu_con, 1, 6, EnKey('e').upper())
 					
 					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 					libtcod.console_print(cmd_menu_con, 8, 4, 'Cycle Target Hex')
 					
-					if 'air_support_level' not in campaign.today:
+					if 'air_support_level' not in campaign.current_week:
 						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
 					libtcod.console_print(cmd_menu_con, 8, 5, 'Call Air Support')
 					
 					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-					if 'arty_support_level' not in campaign.today:
+					if 'arty_support_level' not in campaign.current_week:
 						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
 					libtcod.console_print(cmd_menu_con, 8, 6, 'Call Arty Support')
 				
@@ -10524,7 +10602,7 @@ def ExportLog():
 		# campaign information
 		f.write(campaign.stats['name'] + '\n')
 		f.write(campaign.stats['desc'] + '\n')
-		f.write(GetDateText(campaign.stats['start_date']) + ' - ' + GetDateText(campaign.today['date']) + '\n')
+		f.write(GetDateText(campaign.stats['start_date']) + ' - ' + GetDateText(campaign.today) + '\n')
 		f.write('\n')
 		
 		# final player tank and crew information
@@ -10727,7 +10805,7 @@ def DisplayTimeInfo(console):
 	
 	if campaign is None: return
 	
-	libtcod.console_print_ex(console, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, GetDateText(campaign.today['date']))
+	libtcod.console_print_ex(console, 10, 0, libtcod.BKGND_NONE, libtcod.CENTER, GetDateText(campaign.today))
 	
 	if campaign_day is None: return
 	
@@ -10735,7 +10813,7 @@ def DisplayTimeInfo(console):
 	libtcod.console_set_default_background(console, libtcod.darker_yellow)
 	libtcod.console_rect(console, 0, 1, 21, 1, True, libtcod.BKGND_SET)
 	
-	time_str = campaign.today['day_start'].split(':')
+	time_str = campaign.current_week['day_start'].split(':')
 	hours = campaign_day.day_clock['hour'] - int(time_str[0])
 	minutes = campaign_day.day_clock['minute'] - int(time_str[1])
 	if minutes < 0:
@@ -12271,7 +12349,6 @@ while not exit_game:
 			        
 			        # create a new campaign object and allow player to select a campaign
 				campaign = Campaign()
-				
 				result = campaign.CampaignSelectionMenu()
 				
 				# player canceled new campaign start
@@ -12300,12 +12377,14 @@ while not exit_game:
 						if ammo_type in weapon.ammo_stores:
 							weapon.ammo_stores[ammo_type] = 0
 				
-				# placeholders for the currently active campaign day and scenario
-				campaign_day = None
+				# create a new campaign day
+				campaign_day = CampaignDay()
+				
+				# placeholder for the currently active scenario
 				scenario = None
 				
 				# show new day starting animation
-				campaign.ShowStartOfDay()
+				#campaign.ShowStartOfDay()
 				
 			# go to campaign calendar loop
 			campaign.DoCampaignCalendarLoop()

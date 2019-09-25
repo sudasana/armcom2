@@ -546,8 +546,12 @@ class Campaign:
 				else:
 					day = str(int(day) + 1)
 				
-				# TODO: check that day is not past end of campaign
 				day_text = year + '.' + month.zfill(2) + '.' + day.zfill(2)
+				
+				# check that day is not past end of campaign
+				if day_text > self.stats['end_date']:
+					break
+				
 				possible_days.append(day_text)
 			
 			# select from list of possible days
@@ -1269,47 +1273,55 @@ class Campaign:
 			# proceed menu active
 			if self.active_calendar_menu == 1:
 				
-				# start the day
-				if not campaign_day.ended:
-					if key.vk == libtcod.KEY_ENTER:
+				# start or proceed to next day
+				if key.vk == libtcod.KEY_ENTER:
+				
+					# start new day
+					if not campaign_day.ended:
 						campaign_day.AmmoReloadMenu()	# allow player to load ammo
 						self.AddLog('Combat day begins')
 						campaign_day.started = True
 						continue			# continue in loop to go into campaign day layer
 				
-				# proceed to next day or end campaign
-				else:
-					
-					# do end-of-day stuff
-					self.DoEndOfDay()
-					
-					# check for end of campaign
-					day_index = campaign.combat_calendar.index(campaign.today)
-					if day_index == len(campaign.combat_calendar) - 1:
-						self.AwardDecorations()
-						self.DisplayCampaignSummary()
-						ExportLog()
-						EraseGame()
-						exit_loop = True
+					# proceed to next day or end campaign
+					else:
+						
+						# do end-of-day stuff
+						self.DoEndOfDay()
+						
+						# check for end of campaign
+						day_index = campaign.combat_calendar.index(campaign.today)
+						if day_index == len(campaign.combat_calendar) - 1:
+							self.AwardDecorations()
+							self.DisplayCampaignSummary()
+							ExportLog()
+							EraseGame()
+							exit_loop = True
+							continue
+						
+						# set today to next day in calendar, and update enemy unit odds data
+						self.today = self.combat_calendar[day_index+1]
+						
+						# check for start of new week
+						week_index = campaign.stats['calendar_weeks'].index(campaign.current_week)
+						if week_index < len(campaign.stats['calendar_weeks']) - 1:
+							week_index += 1
+							if self.today > campaign.stats['calendar_weeks'][week_index]['start_date']:
+								campaign.current_week = campaign.stats['calendar_weeks'][week_index]
+								print('DEBUG: start of new calendar week')
+						
+						# create a new campaign day
+						campaign_day = CampaignDay()
+						
+						# show new day starting animation
+						self.ShowStartOfDay()	
+						
+						# redraw the screen
+						self.UpdateDayOutlineCon()
+						self.UpdateCalendarCmdCon()
+						self.UpdateCCMainPanel(selected_position)
+						self.UpdateCCDisplay()
 						continue
-					
-					# set today to next day in calendar, and update enemy unit odds data
-					self.today = self.combat_calendar[day_index+1]
-					
-					# TODO: check for start of new week
-					
-					# create a new campaign day
-					campaign_day = CampaignDay()
-					
-					# show new day starting animation
-					self.ShowStartOfDay()	
-					
-					# redraw the screen
-					self.UpdateDayOutlineCon()
-					self.UpdateCalendarCmdCon()
-					self.UpdateCCMainPanel(selected_position)
-					self.UpdateCCDisplay()
-					continue
 					
 			
 			# crew menu active

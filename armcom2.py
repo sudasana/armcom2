@@ -869,15 +869,13 @@ class Campaign:
 			self.current_week['week_description'])
 		
 		# fade in from black
-		# TEMP disabled
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		Wait(5, ignore_animations=True)
-		#for i in range(100, 0, -5):
-		#	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		#	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
-		#	libtcod.console_flush()
-		#	Wait(5, ignore_animations=True)
-		#Wait(95, ignore_animations=True)
+		for i in range(100, 0, -5):
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
+			libtcod.console_flush()
+			Wait(5, ignore_animations=True)
+		Wait(95, ignore_animations=True)
 	
 	
 	# do automatic actions that end a campaign day
@@ -1057,8 +1055,13 @@ class Campaign:
 		if self.active_calendar_menu == 1:
 			
 			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+			if DEBUG:
+				libtcod.console_print(calendar_cmd_con, 4, 9, 'S')
 			libtcod.console_print(calendar_cmd_con, 4, 10, 'Enter')
+			
 			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+			if DEBUG:
+				libtcod.console_print(calendar_cmd_con, 11, 9, 'Skip Day')
 			
 			# day has not yet started
 			if not campaign_day.started:
@@ -1272,6 +1275,15 @@ class Campaign:
 			
 			# proceed menu active
 			if self.active_calendar_menu == 1:
+				
+				# debug - skip day
+				if chr(key.c).lower() == 's':
+					campaign_day.started = True
+					campaign_day.ended = True
+					self.UpdateCalendarCmdCon()
+					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCDisplay()
+					continue
 				
 				# start or proceed to next day
 				if key.vk == libtcod.KEY_ENTER:

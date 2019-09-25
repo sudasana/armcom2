@@ -28,7 +28,7 @@
 			"start_date" : "1939.09.01",
 			"day_start" : "04:45",
 			"day_end" : "14:30",
-			"combat_chance" : "60",
+			"combat_chance" : "80",
 			"week_description" : "Over the Polish Border",
 			"mission_odds" : {
 				"Advance" : "25",
@@ -37,6 +37,114 @@
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 80.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Tankette" : "40",
+				"Light Tank" : "25",
+				"Armoured Car" : "80",
+				"Anti-Tank Gun" : "60",
+				"Field Gun" : "20",
+				"Anti-Aircraft Gun" : "25",
+				"Truck" : "80",
+				"Infantry Squad" : "100",
+				"MG Team" : "80",
+				"Armoured Train Car" : "10"
+			}
+		},
+		{
+			"start_date" : "1939.09.08",
+			"day_start" : "04:45",
+			"day_end" : "14:30",
+			"combat_chance" : "70",
+			"week_description" : "Into Poland",
+			"mission_odds" : {
+				"Advance" : "25",
+				"Battle" : "75",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Poland",
+			"air_support_level" : 70.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Tankette" : "40",
+				"Light Tank" : "25",
+				"Armoured Car" : "80",
+				"Anti-Tank Gun" : "60",
+				"Field Gun" : "20",
+				"Anti-Aircraft Gun" : "25",
+				"Truck" : "80",
+				"Infantry Squad" : "100",
+				"MG Team" : "80",
+				"Armoured Train Car" : "10"
+			}
+		},
+		{
+			"start_date" : "1939.09.15",
+			"day_start" : "04:45",
+			"day_end" : "14:30",
+			"combat_chance" : "60",
+			"week_description" : "Into Poland",
+			"mission_odds" : {
+				"Advance" : "60",
+				"Battle" : "40",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Poland",
+			"air_support_level" : 70.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Tankette" : "40",
+				"Light Tank" : "25",
+				"Armoured Car" : "80",
+				"Anti-Tank Gun" : "60",
+				"Field Gun" : "20",
+				"Anti-Aircraft Gun" : "25",
+				"Truck" : "80",
+				"Infantry Squad" : "100",
+				"MG Team" : "80",
+				"Armoured Train Car" : "10"
+			}
+		},
+		{
+			"start_date" : "1939.09.22",
+			"day_start" : "04:45",
+			"day_end" : "14:30",
+			"combat_chance" : "50",
+			"week_description" : "Into Poland",
+			"mission_odds" : {
+				"Advance" : "85",
+				"Battle" : "15",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Poland",
+			"air_support_level" : 70.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Tankette" : "40",
+				"Light Tank" : "25",
+				"Armoured Car" : "80",
+				"Anti-Tank Gun" : "60",
+				"Field Gun" : "20",
+				"Anti-Aircraft Gun" : "25",
+				"Truck" : "80",
+				"Infantry Squad" : "100",
+				"MG Team" : "80",
+				"Armoured Train Car" : "10"
+			}
+		},
+		{
+			"start_date" : "1939.09.29",
+			"day_start" : "04:45",
+			"day_end" : "14:30",
+			"combat_chance" : "50",
+			"week_description" : "Into Poland",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "5",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Poland",
+			"air_support_level" : 70.0,
 			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "40",

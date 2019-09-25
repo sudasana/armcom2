@@ -524,18 +524,15 @@ class Campaign:
 			
 			# determine which calendar days are included from this week
 			
-			# add the first date
+			# add the first date, then the following 6
 			possible_days = []
 			possible_days.append(week['start_date'])
-			#print('DEBUG: added ' + week['start_date'] + ' as a possible combat day')
-			
-			# add the next 6
 			day_text = possible_days[0]
 			for i in range(6):
 				(year, month, day) = day_text.split('.')
 				
 				# last day of month
-				if int(day) == calendar.monthrange(int(year), int(month)):
+				if int(day) == calendar.monthrange(int(year), int(month))[1]:
 					
 					# last day of year
 					if int(month) == 12:
@@ -550,22 +547,23 @@ class Campaign:
 					day = str(int(day) + 1)
 				
 				# TODO: check that day is not past end of campaign
-				
 				day_text = year + '.' + month.zfill(2) + '.' + day.zfill(2)
-				
 				possible_days.append(day_text)
-				#print('DEBUG: added ' + day_text + ' as a possible combat day')
 			
 			# select from list of possible days
 			
 			# fewer possible days than needed
 			if len(possible_days) <= combat_days:
 				self.combat_calendar += possible_days
-				return
-			
-			for day_text in sample(possible_days, combat_days):
-				self.combat_calendar.append(day_text)
-				#print('DEBUG: added ' + day_text + ' as a combat day')
+			else:
+				for day_text in sample(possible_days, combat_days):
+					self.combat_calendar.append(day_text)
+		
+		# sort final list of days
+		self.combat_calendar.sort()
+		print('DEBUG: Final day list: ')
+		for day_text in self.combat_calendar:
+			print(day_text)
 	
 	
 	# add a line to the log for the current day

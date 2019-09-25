@@ -879,14 +879,64 @@ class Campaign:
 	
 	
 	# do automatic actions that end a campaign day
-	def DoEndOfDay(self):
+	def ShowEndOfDay(self):
 		
-		# TODO: roll for crew advances
+		# create background console
+		libtcod.console_clear(con)
+		
+		# starfield
+		for i in range(18):
+			x = libtcod.random_get_int(0, 0, WINDOW_WIDTH)
+			y = libtcod.random_get_int(0, 0, 18)
+			libtcod.console_put_char_ex(con, x, y, 250, libtcod.white, libtcod.black)
+		
+		# gradient
+		for y in range(19, WINDOW_HEIGHT):
+			col = libtcod.Color(int(200 * (y / WINDOW_HEIGHT)), 0, 0)
+			libtcod.console_set_default_background(con, col)
+			libtcod.console_rect(con, 0, y, WINDOW_WIDTH, 1, True, libtcod.BKGND_SET)
+		
+		# window
+		libtcod.console_set_default_background(con, libtcod.black)
+		libtcod.console_rect(con, 15, 12, 60, 40, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		DrawFrame(con, 15, 12, 60, 40)
+		
+		libtcod.console_set_default_foreground(con, libtcod.light_blue)
+		libtcod.console_print_ex(con, WINDOW_XM, 14, libtcod.BKGND_NONE, libtcod.CENTER,
+				'End of Day')
+		
+		# TODO: list of crew by position
+		
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print(con, 38, 49, 'Enter')
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		libtcod.console_print(con, 45, 49, 'Continue')
+		
+		
+		# fade in from black
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		for i in range(100, 0, -5):
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
+			libtcod.console_flush()
+			Wait(5, ignore_animations=True)
+		
+		# TODO: roll for crew recovery and advances
 		# chance based on value of campaign_day.records['Battles Fought']
 		
-		# TODO: display summary of crew advances
+		# TODO: display of crew recovery statuses and advances
 		
-		pass
+		
+		exit_menu = False
+		while not exit_menu:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			if not GetInputEvent(): continue
+			
+			if key.vk == libtcod.KEY_ENTER:
+				exit_menu = True
+
 	
 	
 	# calculate decorations to be awarded at the end of a campaign
@@ -1299,7 +1349,7 @@ class Campaign:
 					else:
 						
 						# do end-of-day stuff
-						self.DoEndOfDay()
+						self.ShowEndOfDay()
 						
 						# check for end of campaign
 						day_index = campaign.combat_calendar.index(campaign.today)

@@ -7167,7 +7167,7 @@ class Scenario:
 			# choose a random unit class
 			unit_class = None
 			while unit_class is None:
-				k, value = choice(list(campaign.enemy_class_odds.items()))
+				k, value = choice(list(campaign.current_week.enemy_unit_class_odds.items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			
@@ -7185,47 +7185,44 @@ class Scenario:
 			# no units of the correct class found
 			if len(type_list) == 0: continue
 			
-			# select unit type
-			selected_unit_id = None
+			# select unit type: run through shuffled list and roll against rarity if any
+			shuffle(type_list)
 			
-			while selected_unit_id is None:
-				
-				# only one choice in class
-				if len(type_list) == 1:
-					selected_unit_id = type_list[0]
-					continue
-				
-				unit_id = choice(type_list)
-				
+			for unit_id in type_list:
+			
 				# if no rarity factor given, select automatically
 				if 'rarity' not in unit_types[unit_id]:
 					selected_unit_id = unit_id
-					continue
+					break
 				
 				# roll against rarity for current date
 				rarity = None
-				todays_date = campaign.today.split('.')
 				for date in unit_types[unit_id]['rarity']:
 					
 					# select the earliest rarity factor
 					if rarity is None:
+						
+						# if the earliest rarity factor is still later than current date, do not spawn
+						if date > campaign.today:
+							break
+						
 						rarity = int(unit_types[unit_id]['rarity'][date])
 						continue
 					
-					# see if this date is later than current date
-					date_str = date.split('.')
-					
-					# check year, month, and day
-					for i in range(3):
-						if int(date_str[i]) > int(todays_date[i]): break
+					# break if this date is later than current date
+					if date > campaign.today: break
 						
 					# earlier than or equal to today's date, use this rarity factor 
 					rarity = int(unit_types[unit_id]['rarity'][date])
 				
+				# not able to get a rarity factor
+				if rarity is None:
+					continue
+				
 				# roll againt rarity rarting
 				if GetPercentileRoll() <= float(rarity):
 					selected_unit_id = unit_id
-					continue
+					break
 			
 			# add the final selected unit id to list to spawn
 			enemy_unit_list.append(selected_unit_id)

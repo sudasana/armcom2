@@ -7167,7 +7167,7 @@ class Scenario:
 			# choose a random unit class
 			unit_class = None
 			while unit_class is None:
-				k, value = choice(list(campaign.current_week.enemy_unit_class_odds.items()))
+				k, value = choice(list(campaign.current_week['enemy_unit_class_odds'].items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			

@@ -584,6 +584,7 @@ class Campaign:
 			text = (str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2) +
 				' - ' + text)
 		self.logs[self.today].append(text)
+		print('DEBUG: Added log: ' + text)
 	
 	
 	# award VP to the player
@@ -1706,13 +1707,19 @@ class CampaignDay:
 		# check for road link
 		direction = self.GetDirectionToAdjacentCD(hx1, hy1, hx2, hy2)
 		if direction in self.map_hexes[(hx1,hy1)].dirt_roads:
-			mins = 15
+			mins = 30
 		else:
-			mins = 20
+			if self.map_hexes[(hx2,hy2)].terrain_type == 'Forest':
+				mins = 60
+			else:
+				mins = 45
 		
 		# check ground conditions
 		if self.weather['Ground'] == 'Muddy':
-			mins = mins * 2
+			mins += 15
+		elif self.weather['Precipitation'] != 'None':
+			mins += 15
+		
 		return mins
 		
 	

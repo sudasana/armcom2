@@ -218,6 +218,13 @@ MISSION_DESC = {
 
 # FUTURE: move these to a JSON file
 
+# minimum and maximum advance chance (2 rolls) per day
+MIN_ADVANCE_CHANCE = 15.0
+MAX_ADVANCE_CHANCE = 90.0
+
+# percent chance of crew getting an advance, per scenario fought that day
+ADVANCE_CHANCE_PER_SCEN = 2.0
+
 # list of crew stats
 CREW_STATS = ['Perception', 'Morale', 'Grit', 'Knowledge']
 
@@ -892,7 +899,7 @@ class Campaign:
 		
 		# gradient
 		for y in range(19, WINDOW_HEIGHT):
-			col = libtcod.Color(int(200 * (y / WINDOW_HEIGHT)), 0, 0)
+			col = libtcod.Color(int(180 * (y / WINDOW_HEIGHT)), 0, 0)
 			libtcod.console_set_default_background(con, col)
 			libtcod.console_rect(con, 0, y, WINDOW_WIDTH, 1, True, libtcod.BKGND_SET)
 		
@@ -902,11 +909,34 @@ class Campaign:
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		DrawFrame(con, 15, 12, 60, 40)
 		
-		libtcod.console_set_default_foreground(con, libtcod.light_blue)
+		libtcod.console_set_default_background(con, libtcod.darker_blue)
+		libtcod.console_rect(con, 39, 13, 12, 3, True, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(con, libtcod.black)
+		libtcod.console_set_default_foreground(con, libtcod.lighter_blue)
 		libtcod.console_print_ex(con, WINDOW_XM, 14, libtcod.BKGND_NONE, libtcod.CENTER,
 				'End of Day')
 		
-		# TODO: list of crew by position
+		# crew advances and wound recovery
+		libtcod.console_set_default_foreground(con, libtcod.red)
+		libtcod.console_print(con, 43, 18, 'Wound')
+		libtcod.console_set_default_foreground(con, libtcod.light_blue)
+		libtcod.console_print(con, 55, 18, 'Advances')
+		
+		y = 20
+		for position in campaign.player_unit.positions_list:
+			if position.crewman is None: continue
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print(con, 19, y, position.name)
+			position.crewman.DisplayName(con, 19, y+1, first_initial=True)
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			for x in range(19, 68):
+				libtcod.console_put_char(con, x, y+2, '.')
+			y += 5
+		
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		for y1 in range(19, y-3):
+			libtcod.console_put_char(con, 40, y1, '.')
+			libtcod.console_put_char(con, 52, y1, '.')
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 38, 49, 'Enter')
@@ -919,13 +949,62 @@ class Campaign:
 		for i in range(100, 0, -5):
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
-			libtcod.console_flush()
 			Wait(5, ignore_animations=True)
 		
-		# TODO: roll for crew recovery and advances
-		# chance based on value of campaign_day.records['Battles Fought']
+		# roll and display crew wounds and advances
+		y = 20
+		for position in campaign.player_unit.positions_list:
+			if position.crewman is None: continue
+			
+			if position.crewman.wound == '':
+				libtcod.console_set_default_foreground(con, libtcod.light_grey)
+				libtcod.console_print(con, 43, y+1, 'None')
+			else:
+				# roll for wound recovery
+				roll = GetPercentileRoll()
+				if roll <= position.crewman.stats['Grit'] * 15.0:
+					position.crewman.wound = ''
+					libtcod.console_set_default_foreground(con, libtcod.dark_blue)
+					libtcod.console_print(con, 43, y+1, 'Recovered')
+				else:
+					libtcod.console_set_default_foreground(con, libtcod.dark_red)
+					libtcod.console_print(con, 43, y+1, position.crewman.wound)
+			
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			Wait(50, ignore_animations=True)
+			
+			# roll for advance
+			# chance based on value of 
+			crew_advance = 0
+			
+			chance = float(campaign_day.records['Battles Fought']) * ADVANCE_CHANCE_PER_SCEN
+			if chance < MIN_ADVANCE_CHANCE:
+				chance = MIN_ADVANCE_CHANCE
+			elif chance > MAX_ADVANCE_CHANCE:
+				chance = MAX_ADVANCE_CHANCE
+			print('DEBUG: Advance chance is: ' + str(chance))
+			roll = GetPercentileRoll()
+			
+			if roll <= chance:
+				crew_advance += 1
+				roll = GetPercentileRoll()
+				if roll <= chance:
+					crew_advance += 1
+			
+			if crew_advance == 0:
+				libtcod.console_set_default_foreground(con, libtcod.light_grey)
+				libtcod.console_print(con, 55, y+1, 'None')
+			else:
+				libtcod.console_set_default_foreground(con, libtcod.white)
+				libtcod.console_print(con, 55, y+1, '+' + str(crew_advance))
+				position.crewman.adv += crew_advance
+			
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			Wait(50, ignore_animations=True)
+			y += 5
 		
-		# TODO: display of crew recovery statuses and advances
+		
+
 		
 		
 		exit_menu = False
@@ -4154,7 +4233,7 @@ class Personnel:
 		elif lastname_only:
 			name = self.last_name
 		elif first_initial:
-			name = self.first_name[0] + ' ' + self.last_name
+			name = self.first_name[0] + '. ' + self.last_name
 		else:
 			name = self.first_name + ' ' + self.last_name
 		

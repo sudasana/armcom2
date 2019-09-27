@@ -3430,7 +3430,7 @@ class CampaignDay:
 		
 		# calculate initial time to travel to front lines
 		if not self.travel_time_spent:
-			minutes = 15 + (libtcod.random_get_int(0, 1, 4) * 15)
+			minutes = 45 + (libtcod.random_get_int(0, 1, 9) * 15)
 			self.AdvanceClock(0, minutes, skip_checks=True)
 			DisplayTimeInfo(time_con)
 			text = 'It takes you ' + str(minutes) + ' minutes to travel to the front lines.'

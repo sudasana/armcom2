@@ -26,8 +26,8 @@
 	"calendar_weeks": [
 		{
 			"start_date" : "1939.09.01",
-			"day_start" : "04:45",
-			"day_end" : "14:30",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
 			"combat_chance" : "80",
 			"week_description" : "Over the Polish Border",
 			"mission_odds" : {
@@ -53,8 +53,8 @@
 		},
 		{
 			"start_date" : "1939.09.08",
-			"day_start" : "04:45",
-			"day_end" : "14:30",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
 			"combat_chance" : "70",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
@@ -80,8 +80,8 @@
 		},
 		{
 			"start_date" : "1939.09.15",
-			"day_start" : "04:45",
-			"day_end" : "14:30",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
 			"combat_chance" : "60",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
@@ -107,8 +107,8 @@
 		},
 		{
 			"start_date" : "1939.09.22",
-			"day_start" : "04:45",
-			"day_end" : "14:30",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
 			"combat_chance" : "50",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
@@ -134,8 +134,8 @@
 		},
 		{
 			"start_date" : "1939.09.29",
-			"day_start" : "04:45",
-			"day_end" : "14:30",
+			"day_start" : "06:30",
+			"day_end" : "17:15",
 			"combat_chance" : "50",
 			"week_description" : "Into Poland",
 			"mission_odds" : {

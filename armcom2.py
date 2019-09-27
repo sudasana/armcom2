@@ -962,7 +962,7 @@ class Campaign:
 			else:
 				# roll for wound recovery
 				roll = GetPercentileRoll()
-				if roll <= position.crewman.stats['Grit'] * 15.0:
+				if roll <= position.crewman.stats['Grit'] * 8.0:
 					position.crewman.wound = ''
 					libtcod.console_set_default_foreground(con, libtcod.dark_blue)
 					libtcod.console_print(con, 43, y+1, 'Recovered')

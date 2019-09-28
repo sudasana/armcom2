@@ -60,7 +60,7 @@ import calendar						# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.8.0 22-09-19'					# game version
+VERSION = '0.8.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -139,6 +139,7 @@ ENEMY_UNIT_COL = libtcod.Color(255, 20, 20)		# known "
 ALLIED_UNIT_COL = libtcod.Color(120, 120, 255)		# allied unit display colour
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
 DIRT_ROAD_COL = libtcod.Color(80, 50, 20)		# dirt roads on campaign day map
+
 
 # text names for months
 MONTH_NAMES = [
@@ -602,10 +603,10 @@ class Campaign:
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 			libtcod.console_print_ex(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Campaign Selection')
-			libtcod.console_set_default_background(con, libtcod.dark_blue)
+			libtcod.console_set_default_background(con, libtcod.darkest_grey)
 			libtcod.console_rect(con, 27, 5, 35, 4, True, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(con, libtcod.black)
-			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_set_default_foreground(con, PORTRAIT_BG_COL)
 			lines = wrap(selected_campaign['name'], 33)
 			y = 6
 			for line in lines:
@@ -618,6 +619,7 @@ class Campaign:
 					0, 0, 0, 0, con, 30, 10)
 			
 			# player and enemy forces
+			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print_ex(con, 45, 26, libtcod.BKGND_NONE, libtcod.CENTER,
 				'PLAYER FORCE')
 			libtcod.console_print_ex(con, 45, 30, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -1058,7 +1060,7 @@ class Campaign:
 		libtcod.console_print_ex(temp_con, 14, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Your Campaign is Finished')
 		
-		libtcod.console_set_default_foreground(temp_con, libtcod.white)
+		libtcod.console_set_default_foreground(temp_con, PORTRAIT_BG_COL)
 		y = 3
 		for line in wrap(self.stats['name'], 27):
 			libtcod.console_print_ex(temp_con, 14, y, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -1120,6 +1122,7 @@ class Campaign:
 	def UpdateDayOutlineCon(self):
 		libtcod.console_clear(day_outline)
 		
+		libtcod.console_set_default_foreground(day_outline, PORTRAIT_BG_COL)
 		lines = wrap(campaign.stats['name'], 20)
 		y = 1
 		for line in lines[:2]:
@@ -1127,6 +1130,7 @@ class Campaign:
 				libtcod.CENTER, line)
 			y += 1
 		
+		libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
 		libtcod.console_print_ex(day_outline, 11, 4, libtcod.BKGND_NONE, libtcod.CENTER,
 			GetDateText(campaign.today))
 		
@@ -2721,9 +2725,9 @@ class CampaignDay:
 		libtcod.console_set_default_foreground(temp_con, libtcod.light_grey)
 		libtcod.console_clear(temp_con)
 		DrawFrame(temp_con, 0, 0, 29, 54)
-		libtcod.console_set_default_foreground(temp_con, libtcod.white)
 		
 		# campaign and calendar day info
+		libtcod.console_set_default_foreground(temp_con, PORTRAIT_BG_COL)
 		lines = wrap(campaign.stats['name'], 27)
 		y = 1
 		for line in lines:
@@ -2731,6 +2735,8 @@ class CampaignDay:
 				line)
 			y += 1
 			if y == 4: break
+		
+		libtcod.console_set_default_foreground(temp_con, libtcod.white)
 		libtcod.console_print_ex(temp_con, 14, 4, libtcod.BKGND_NONE, libtcod.CENTER,
 			GetDateText(campaign.today))
 		

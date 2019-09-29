@@ -24,12 +24,68 @@
 	},
 	"calendar": [
 		{
-			"date" : "1939.09.17",
-			"day_start" : "4:45",
-			"day_end" : "14:30",
-			"location" : "The Polish Border",
-			"desc" : "This morning we begin our invasion of Polish territory. Your battlegroup is tasked with destroying enemy forces and capturing territory wherever possible.",
-			"mission" : "Advance",
+			"start_date" : "1939.09.17",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "80",
+			"week_description" : "The Liberation Begins",
+			"mission_odds" : {
+				"Advance" : "85",
+				"Battle" : "15",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Poland",
+			"arty_support_level" : 80.0,
+			"arty_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Tankette" : "40",
+				"Light Tank" : "25",
+				"Armoured Car" : "80",
+				"Anti-Tank Gun" : "60",
+				"Field Gun" : "20",
+				"Anti-Aircraft Gun" : "25",
+				"Truck" : "80",
+				"Infantry Squad" : "100",
+				"MG Team" : "80"
+			}
+		},
+		{
+			"start_date" : "1939.09.24",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "70",
+			"week_description" : "Further Into Poland",
+			"mission_odds" : {
+				"Advance" : "85",
+				"Battle" : "15",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Poland",
+			"arty_support_level" : 80.0,
+			"arty_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Tankette" : "40",
+				"Light Tank" : "25",
+				"Armoured Car" : "80",
+				"Anti-Tank Gun" : "60",
+				"Field Gun" : "20",
+				"Anti-Aircraft Gun" : "25",
+				"Truck" : "80",
+				"Infantry Squad" : "100",
+				"MG Team" : "80"
+			}
+		},
+		{
+			"start_date" : "1939.09.31",
+			"day_start" : "06:30",
+			"day_end" : "17:15",
+			"combat_chance" : "70",
+			"week_description" : "Final Resistance",
+			"mission_odds" : {
+				"Advance" : "95",
+				"Battle" : "5",
+				"Fighting Withdrawl" : "0"
+			},
 			"enemy_nation" : "Poland",
 			"arty_support_level" : 80.0,
 			"arty_support_step" : 10.0,

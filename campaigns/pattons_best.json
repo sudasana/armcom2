@@ -1,8 +1,8 @@
 {
 	"name" : "Patton's Best",
+	"wip" : "TRUE",
 	"start_date" : "1944.07.27",
 	"end_date" : "1945.04.18",
-	"action_days" : "2",
 	"player_nation" : "United States of America",
 	"enemy_nations" : ["Germany"],
 	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France and invasion of Germany.",
@@ -28,14 +28,18 @@
 	},
 	"calendar": [
 		{
-			"date" : "1944.07.27",
-			"day_start" : "5:00",
+			"start_date" : "1944.07.27",
+			"day_start" : "05:00",
 			"day_end" : "19:15",
-			"location" : "Cobra Breakout",
-			"desc" : "Operation Overlord has already been underway for three weeks. The 4th Armoured Division has landed in France to support the Allied advance.",
-			"mission" : "Advance",
+			"combat_chance" : "80",
+			"week_description" : "Cobra Breakout",
+			"mission_odds" : {
+				"Advance" : "85",
+				"Battle" : "15",
+				"Fighting Withdrawl" : "0"
+			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 60.0,
+			"air_support_level" : 80.0,
 			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
@@ -49,15 +53,29 @@
 			}
 		},
 		{
-			"date" : "1944.07.28",
-			"day_start" : "5:00",
+			"start_date" : "1944.08.03",
+			"day_start" : "05:00",
 			"day_end" : "19:15",
-			"location" : "Coutances",
-			"desc" : "Our advance has pushed further into Normandy. Today we must take the town of Coutance, an important crossroads in the region.",
-			"mission" : "Battle",
+			"combat_chance" : "80",
+			"week_description" : "Advance Through Brittany",
+			"mission_odds" : {
+				"Advance" : "95",
+				"Battle" : "5",
+				"Fighting Withdrawl" : "0"
+			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 80.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Medium Tank" : "15",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100"
+			}
 		}
 	]
 }

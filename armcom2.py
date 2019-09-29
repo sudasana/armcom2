@@ -58,9 +58,9 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.8.0'					# game version
+VERSION = '0.8.0 RC1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -573,7 +573,7 @@ class Campaign:
 		
 		# sort final list of days
 		self.combat_calendar.sort()
-		print('DEBUG: Final day list: ')
+		#print('DEBUG: Final day list: ')
 		for day_text in self.combat_calendar:
 			print(day_text)
 	
@@ -585,7 +585,7 @@ class Campaign:
 			text = (str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2) +
 				' - ' + text)
 		self.logs[self.today].append(text)
-		print('DEBUG: Added log: ' + text)
+		#print('DEBUG: Added log: ' + text)
 	
 	
 	# award VP to the player
@@ -675,6 +675,8 @@ class Campaign:
 			if not filename.endswith('.json'): continue
 			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
 				campaign_data = json.load(data_file)
+			# skip unfinished campaigns
+			if not DEBUG and 'wip' in campaign_data: continue
 			new_campaign = {}
 			new_campaign['filename'] = filename
 			for k in BASIC_INFO:
@@ -985,7 +987,7 @@ class Campaign:
 				chance = MIN_ADVANCE_CHANCE
 			elif chance > MAX_ADVANCE_CHANCE:
 				chance = MAX_ADVANCE_CHANCE
-			print('DEBUG: Advance chance is: ' + str(chance))
+			#print('DEBUG: Advance chance is: ' + str(chance))
 			roll = GetPercentileRoll()
 			
 			if roll <= chance:
@@ -1006,9 +1008,9 @@ class Campaign:
 			Wait(50, ignore_animations=True)
 			y += 5
 		
-		
-
-		
+		# repair tank if required
+		if campaign.player_unit.immobilized:
+			campaign.player_unit.immobilized = False
 		
 		exit_menu = False
 		while not exit_menu:
@@ -1454,7 +1456,7 @@ class Campaign:
 							week_index += 1
 							if self.today > campaign.stats['calendar_weeks'][week_index]['start_date']:
 								campaign.current_week = campaign.stats['calendar_weeks'][week_index]
-								print('DEBUG: start of new calendar week')
+								#print('DEBUG: start of new calendar week')
 						
 						# create a new campaign day
 						campaign_day = CampaignDay()
@@ -5321,6 +5323,7 @@ class Unit:
 		self.unit_id = unit_id			# unique ID for unit type
 		self.unit_name = ''			# name of tank, etc.
 		self.alive = True			# unit is alive
+		self.immobilized = False		# vehicle or gun unit is immobilized
 		self.owning_player = 0			# unit is allied to 0:player 1:enemy
 		self.nation = None			# nationality of unit and personnel
 		self.ai = None				# AI controller if any
@@ -5389,7 +5392,6 @@ class Unit:
 		self.previous_turret_facing = None
 		
 		self.pinned = False
-		self.immobilized = False
 		self.deployed = False
 		self.fatigue = 0			# fatigue points
 		

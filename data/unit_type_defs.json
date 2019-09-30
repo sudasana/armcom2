@@ -1531,7 +1531,7 @@
 			}
 		],
 		"description" : [
-			"The StuG III is an assualt gun built upon a Panzer III chassis. ",
+			"The StuG III is an assault gun built upon a Panzer III chassis. ",
 			"Originally intended as infantry support, it has been adapted for ",
 			"anti-tank combat as well."
 		],
@@ -1539,6 +1539,65 @@
 			"1942.06.01" : "70",
 			"1943.01.01" : "100",
 			"1944.01.01" : "110"
+		}
+		
+	},
+	
+	"Marder II": {
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "4",
+			"turret_side" : "2",
+			"hull_front" : "3",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "79"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Built upon a Panzer II chassis, the Marder was developed as a ",
+			"makeshift tank destroyer, initially for countering Soviet tanks.",
+			"This variant has light armour but a powerful 75mm main gun."
+		],
+		"rarity" : {
+			"1942.05.01" : "80"
 		}
 		
 	},

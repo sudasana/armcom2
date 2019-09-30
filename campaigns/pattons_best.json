@@ -44,6 +44,7 @@
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
 				"Medium Tank" : "15",
 				"Armoured Car" : "90",
 				"Anti-Tank Gun" : "35",
@@ -69,6 +70,7 @@
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
 				"Medium Tank" : "15",
 				"Armoured Car" : "90",
 				"Anti-Tank Gun" : "35",

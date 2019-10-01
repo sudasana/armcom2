@@ -229,6 +229,19 @@ ADVANCE_CHANCE_PER_SCEN = 2.0
 # list of crew stats
 CREW_STATS = ['Perception', 'Morale', 'Grit', 'Knowledge']
 
+# list of possible new positions for a crew that is transferring to a different type of tank
+# listed in order of preference
+POSITION_TRANSFER_LIST = {
+	"Commander" : ["Commander", "Commander/Gunner"],
+	"Commander/Gunner" : ["Commander/Gunner", "Commander"],
+	"Gunner" : ["Gunner", "Gunner/Loader"],
+	"Gunner/Loader" : ["Gunner/Loader", "Gunner"],
+	"Loader" : ["Loader", "Gunner/Loader"],
+	"Driver" : ["Driver"],
+	"Assistant Driver" : ["Assistant Driver", "Radio Operator"],
+	"Radio Operator" : ["Radio Operator", "Assistant Driver"]
+}
+
 # length of scenario turn in minutes
 TURN_LENGTH = 2
 
@@ -512,6 +525,7 @@ class Campaign:
 		self.records = {}
 		for text in RECORD_LIST:
 			self.records[text] = 0
+	
 	
 	# randomly generate a list of combat days for this campaign
 	def GenerateCombatCalendar(self):
@@ -856,6 +870,70 @@ class Campaign:
 			
 		return (selected_unit.unit_id, player_tank_name)
 	
+	
+	# allow player to choose a new tank after losing one
+	def ReplacePlayerTank(self):
+		
+		exit_menu = False
+		while not exit_menu:
+			
+			# allow player to choose a new tank model
+			(unit_id, tank_name) = campaign.TankSelectionMenu()
+			
+			# determine crew transfer procedure
+			
+			# build a list of the required position names for the new tank type
+			open_position_list = []
+			with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
+				unit_types = json.load(data_file)
+				for position in unit_types[unit_id]['crew_positions']:
+					open_position_list.append(position['name'])
+			
+			# run through every position in current tank, try to place crew into a position in the new one
+			# if any crew cannot be fit into new position, put them into a list
+			transfer_dict = {}
+			discard_list = []
+			for position in campaign.player_unit.positions_list:
+				if position.crewman is None: continue
+				
+				# try to find an open position in the new unit that fits
+				open_spot = False
+				for new_position in POSITION_TRANSFER_LIST[position.name]:
+					
+					if new_position in open_position_list:
+						open_spot = True
+						open_position_list.pop(new_position)
+						transfer_dict[position.name] = new_position
+						print('DEBUG: found a transfer match: ' + position.name + ' -> ' + new_position)
+						break
+				
+				if not open_spot:
+					discard_list.append(position.name)
+					print('DEBUG: must discard crewman in ' + position.name + ' position')
+			
+			# display this info to player and allow them to cancel and choose a different tank model
+			if len(discard_list) > 0:
+				text = 'Crewmen in the following positions will leave your tank and be reassigned: '
+				for position_name in discard_list:
+					text += position_name + ' '
+			else:
+				text = 'All current crew can be assigned to this new tank.'
+			
+			if ShowNotification(text, confirm=True):
+				exit_menu = True
+			
+		new_unit = Unit(unit_id)
+		new.unit.unit_name = tank_name
+		new_unit.nation = campaign.stats['player_nation']
+		
+		# TODO: use transfer_dict to transfer crew to new tank
+		
+		# TODO: add new crewmen if required
+		
+		
+		new_unit.ClearGunAmmo()
+		self.player_unit = new_unit
+
 	
 	# display an animated screen for the start of a new combat day
 	def ShowStartOfDay(self):
@@ -1458,19 +1536,7 @@ class Campaign:
 						
 						# if player tank was destroyed, allow player to choose a new one
 						if not self.player_unit.alive:
-							(unit_id, tank_name) = campaign.TankSelectionMenu()
-							
-							new_unit = Unit(unit_id)
-							new.unit.unit_name = tank_name
-							new_unit.nation = campaign.stats['player_nation']
-							
-							# TODO: handle crew not fitting into new unit positions
-							
-							
-							new_unit.ClearGunAmmo()
-							
-							self.player_unit = new_unit
-							
+							self.ReplacePlayerTank()
 						
 						# create a new campaign day
 						campaign_day = CampaignDay()

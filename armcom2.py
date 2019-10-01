@@ -765,9 +765,7 @@ class Campaign:
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			
 			libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Select a unit to command')
-			libtcod.console_print_ex(con, 45, 7, libtcod.BKGND_NONE, libtcod.CENTER,
-				'at the start of the campaign')
+				'Select a tank type to command')
 			
 			DrawFrame(con, 32, 10, 27, 18)
 			selected_unit.DisplayMyInfo(con, 33, 11, status=False)
@@ -1457,6 +1455,22 @@ class Campaign:
 							if self.today > campaign.stats['calendar_weeks'][week_index]['start_date']:
 								campaign.current_week = campaign.stats['calendar_weeks'][week_index]
 								#print('DEBUG: start of new calendar week')
+						
+						# if player tank was destroyed, allow player to choose a new one
+						if not self.player_unit.alive:
+							(unit_id, tank_name) = campaign.TankSelectionMenu()
+							
+							new_unit = Unit(unit_id)
+							new.unit.unit_name = tank_name
+							new_unit.nation = campaign.stats['player_nation']
+							
+							# TODO: handle crew not fitting into new unit positions
+							
+							
+							new_unit.ClearGunAmmo()
+							
+							self.player_unit = new_unit
+							
 						
 						# create a new campaign day
 						campaign_day = CampaignDay()
@@ -3476,7 +3490,7 @@ class CampaignDay:
 					
 					campaign.AddLog('Combat ends')
 					
-					# tank was immobilzed, abandoned, or destroyed
+					# tank was immobilized, abandoned, or destroyed
 					if campaign.player_unit.immobilized or not campaign.player_unit.alive:
 						self.DisplayCampaignDaySummary()
 						self.ended = True
@@ -5458,6 +5472,15 @@ class Unit:
 		if stat_name not in self.stats:
 			return None
 		return self.stats[stat_name]
+	
+	
+	# clear all ammo loads for all guns in this unit
+	def ClearGunAmmo(self):
+		for weapon in self.weapon_list:
+			if weapon.GetStat('type') != 'Gun': continue
+			for ammo_type in AMMO_TYPES:
+				if ammo_type in weapon.ammo_stores:
+					weapon.ammo_stores[ammo_type] = 0
 	
 	
 	# do a breakdown check
@@ -12532,13 +12555,7 @@ while not exit_game:
 				campaign.player_unit.unit_name = tank_name
 				campaign.player_unit.nation = campaign.stats['player_nation']
 				campaign.player_unit.GenerateNewPersonnel()
-				
-				# clear ammo load in player unit guns
-				for weapon in campaign.player_unit.weapon_list:
-					if weapon.GetStat('type') != 'Gun': continue
-					for ammo_type in AMMO_TYPES:
-						if ammo_type in weapon.ammo_stores:
-							weapon.ammo_stores[ammo_type] = 0
+				campaign.player_unit.ClearGunAmmo()
 				
 				# create a new campaign day
 				campaign_day = CampaignDay()

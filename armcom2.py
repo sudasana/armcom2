@@ -587,9 +587,10 @@ class Campaign:
 		
 		# sort final list of days
 		self.combat_calendar.sort()
+		
 		#print('DEBUG: Final day list: ')
-		for day_text in self.combat_calendar:
-			print(day_text)
+		#for day_text in self.combat_calendar:
+		#	print(day_text)
 	
 	
 	# add a line to the log for the current day
@@ -822,7 +823,6 @@ class Campaign:
 			if 'rarity' in unit_types[unit_id]:
 				for date, chance in unit_types[unit_id]['rarity'].items():
 					if date > campaign.today:
-						print('DEBUG: skipped a player tank option not yet available')
 						continue
 					# earliest rarity date is on or after current date, proceed
 					break

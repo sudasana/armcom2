@@ -7,7 +7,9 @@
 	"enemy_nations" : ["Germany"],
 	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France and invasion of Germany.",
 	"player_unit_list" : [
-		"M4 Sherman", "M4A1 Sherman", "M4A3 Sherman", "M4A3(75)W Sherman"
+		"M4 Sherman", "M4A1 Sherman", "M4A3 Sherman", "M4A3(75)W Sherman",
+		"M4A3E2(75)W Sherman", "M4A3E2(76)W Sherman",
+		"M4A1(76)W Sherman", "M4A3(76)W Sherman"
 	],
 	"player_air_support": [
 		"P-47 Thunderbolt"
@@ -26,7 +28,7 @@
 		"80" : "Distinguished Service Cross",
 		"100" : "Congressional Medal of Honor"
 	},
-	"calendar": [
+	"calendar_weeks": [
 		{
 			"start_date" : "1944.07.27",
 			"day_start" : "05:00",

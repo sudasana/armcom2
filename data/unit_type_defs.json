@@ -2800,7 +2800,7 @@
 			}
 		],
 		"description" : [
-			"The M4A1 was the first revision of the M4 design, but it ended up ",
+			"The M4A1 was the second version of the M4 design, but it ended up ",
 			"entering production first in February 1942. It has a rounded, cast ",
 			"hull, giving it extra protection on the front. This version has a ",
 			"vision cupola for the commander."
@@ -3007,6 +3007,407 @@
 		],
 		"rarity" : {
 			"1944.06.01" : "90"
+		}
+	},
+	
+	"M4A3E2(75)W Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"powerful_engine" : "TRUE",
+		"HVSS" : "83",
+		"wet_stowage" : "TRUE",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "18",
+			"turret_side" : "6",
+			"hull_front" : "18",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed to fulfill the role of a heavily armoured assault tank, ",
+			"this is an up-armoured version of the M4A3 with a new turret."
+		],
+		"rarity" : {
+			"1944.09.01" : "50"
+		}
+	},
+	
+	"M4A3E2(76)W Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"powerful_engine" : "TRUE",
+		"HVSS" : "83",
+		"wet_stowage" : "TRUE",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "18",
+			"turret_side" : "6",
+			"hull_front" : "18",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed to fulfill the role of a heavily armoured assault tank, ",
+			"this is an up-armoured version of the M4A3 with a new turret. This ",
+			"is a conversion of the standard 75mm gun to a 76mm gun."
+		],
+		"rarity" : {
+			"1944.10.01" : "40",
+			"1945.04.01" : "50"
+		}
+	},
+	
+	"M4A1(76)W Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"HVSS" : "83",
+		"wet_stowage" : "TRUE",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "3",
+			"hull_front" : "11",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Loader"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"By 1942 it was clear that the 75mm gun on the Sherman was not ",
+			"sufficient to penetrated new heavy tanks. By 1944 some models of ",
+			"M4A1 were fitted with the 76mm gun, and these were rushed to France  ",
+			"soon after the Normandy landings."
+		],
+		"rarity" : {
+			"1944.07.01" : "80",
+			"1945.01.01" : "90"
+		}
+	},
+	
+	"M4A3(76)W Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"powerful_engine" : "TRUE",
+		"HVSS" : "83",
+		"wet_stowage" : "TRUE",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "3",
+			"hull_front" : "11",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Loader"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"This is a later variant of the M4A3, with a 76mm main gun and ",
+			"and wet stowage for main gun rounds."
+		],
+		"rarity" : {
+			"1944.07.01" : "90",
+			"1944.11.01" : "100",
+			"1945.03.01" : "110"
 		}
 	},
 	

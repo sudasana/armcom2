@@ -58,7 +58,7 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.8.0 RC1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -812,8 +812,21 @@ class Campaign:
 		
 		# generate tempoary list of units, one per possible unit type
 		unit_list = []
+		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
+			unit_types = json.load(data_file)
 		
 		for unit_id in self.stats['player_unit_list']:
+			
+			# check that unit is available at current point in calendar
+			if unit_id not in unit_types: continue
+			if 'rarity' in unit_types[unit_id]:
+				for date, chance in unit_types[unit_id]['rarity'].items():
+					if date > campaign.today:
+						print('DEBUG: skipped a player tank option not yet available')
+						continue
+					# earliest rarity date is on or after current date, proceed
+					break
+			
 			new_unit = Unit(unit_id)
 			unit_list.append(new_unit)
 		
@@ -926,7 +939,7 @@ class Campaign:
 		new.unit.unit_name = tank_name
 		new_unit.nation = campaign.stats['player_nation']
 		
-		# TODO: use transfer_dict to transfer crew to new tank
+		# TODO: use transfer_dict to transfer crew over to new tank
 		
 		# TODO: add new crewmen if required
 		
@@ -7176,6 +7189,10 @@ class Scenario:
 				# FUTURE: modify by location on tank penetrated
 				result = position.crewman.DoWoundCheck(show_messages=False)
 				
+				if DEBUG:
+					if session.debug['Player Crew Safe in Bail Out']:
+						result = None
+				
 				if result is None:
 					text = 'OK'
 				else:
@@ -7224,6 +7241,10 @@ class Scenario:
 				
 				roll = GetPercentileRoll()
 				
+				if DEBUG:
+					if session.debug['Player Crew Safe in Bail Out']:
+						roll = 3.0
+				
 				# unmodified 97.0-100.0 always fail, otherwise modifier is applied
 				if roll < 97.0:
 					roll += modifier
@@ -7248,6 +7269,9 @@ class Scenario:
 		burns = False
 		
 		roll = GetPercentileRoll()
+		if DEBUG:
+			if session.debug['Player Crew Safe in Bail Out']:
+				roll = chance + 1.0
 		
 		if roll <= chance:
 			libtcod.console_set_default_foreground(con, libtcod.light_red)
@@ -7380,7 +7404,7 @@ class Scenario:
 				
 				# roll against rarity for current date
 				rarity = None
-				for date in unit_types[unit_id]['rarity']:
+				for date, chance in unit_types[unit_id]['rarity'].items():
 					
 					# select the earliest rarity factor
 					if rarity is None:
@@ -7389,14 +7413,14 @@ class Scenario:
 						if date > campaign.today:
 							break
 						
-						rarity = int(unit_types[unit_id]['rarity'][date])
+						rarity = int(chance)
 						continue
 					
 					# break if this date is later than current date
 					if date > campaign.today: break
 						
 					# earlier than or equal to today's date, use this rarity factor 
-					rarity = int(unit_types[unit_id]['rarity'][date])
+					rarity = int(chance)
 				
 				# not able to get a rarity factor
 				if rarity is None:

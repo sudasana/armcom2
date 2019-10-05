@@ -936,7 +936,7 @@ class Campaign:
 				exit_menu = True
 			
 		new_unit = Unit(unit_id)
-		new.unit.unit_name = tank_name
+		new_unit.unit_name = tank_name
 		new_unit.nation = campaign.stats['player_nation']
 		
 		# use transfer_dict to transfer crew over to new tank
@@ -954,9 +954,13 @@ class Campaign:
 			if crewman is None: continue
 			
 			# target position should exist, and should be empty
-			new_unit.positions_list[new_position.name] = crewman
+			for position in new_unit.positions_list:
+				if position.name == new_position:
+					position.crewman = crewman
+					print('DEBUG: moved ' + position_name + ' to ' + new_position)
+					break
 			
-			print('DEBUG: moved ' + position_name + ' to ' + new_position.name)
+			
 		
 		# generate new crewmen if required
 		for position in new_unit.positions_list:
@@ -1073,9 +1077,14 @@ class Campaign:
 			if position.crewman.wound == '':
 				libtcod.console_set_default_foreground(con, libtcod.light_grey)
 				libtcod.console_print(con, 43, y+1, 'None')
+			elif position.crewman.wound == 'Critical':
+				position.crewman.wound = 'Serious'
+				libtcod.console_set_default_foreground(con, libtcod.dark_red)
+				libtcod.console_print(con, 43, y+1, position.crewman.wound)
 			else:
 				# roll for wound recovery
 				roll = GetPercentileRoll()
+				
 				if roll <= position.crewman.stats['Grit'] * 8.0:
 					position.crewman.wound = ''
 					libtcod.console_set_default_foreground(con, libtcod.dark_blue)
@@ -1113,9 +1122,15 @@ class Campaign:
 				libtcod.console_print(con, 55, y+1, '+' + str(crew_advance))
 				position.crewman.adv += crew_advance
 			
+			# crewmen recover too
+			position.crewman.status = ''
+			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(50, ignore_animations=True)
 			y += 5
+		
+		
+		
 		
 		# repair tank if required
 		if campaign.player_unit.immobilized:

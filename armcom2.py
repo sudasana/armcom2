@@ -12117,14 +12117,14 @@ def ShowDebugMenu():
 		y = 8
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		for xm in range(5):
-			libtcod.console_print(con, x, y+xm, str(xm+1))
+			libtcod.console_print(con, x, y+(xm*2), str(xm+1))
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		libtcod.console_print(con, x+3, y, 'Regenerate CD Map Roads')
-		libtcod.console_print(con, x+3, y+1, 'Apply Serious Wound')
-		libtcod.console_print(con, x+3, y+2, 'Set Time to End of Day')
-		libtcod.console_print(con, x+3, y+3, 'End Current Scenario')
-		libtcod.console_print(con, x+3, y+4, 'Export Campaign Log')
+		libtcod.console_print(con, x+2, y, 'Regenerate CD Map Roads')
+		libtcod.console_print(con, x+2, y+2, 'Apply Serious Wound')
+		libtcod.console_print(con, x+2, y+4, 'Set Time to End of Day')
+		libtcod.console_print(con, x+2, y+6, 'End Current Scenario')
+		libtcod.console_print(con, x+2, y+8, 'Export Campaign Log')
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 33, 56, 'Esc')

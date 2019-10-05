@@ -1428,19 +1428,23 @@ class Campaign:
 			
 			DisplayCrew(campaign.player_unit, calendar_main_panel, 4, 8, selected_position)
 			
-			# show info on player tank
-			campaign.player_unit.DisplayMyInfo(calendar_main_panel, 34, 8, status=False)
+			# show info on player tank if still alive
+			if campaign.player_unit.alive:
+				campaign.player_unit.DisplayMyInfo(calendar_main_panel, 34, 8, status=False)
+				
+				# description of tank
+				text = ''
+				for t in campaign.player_unit.GetStat('description'):
+					text += t
+				lines = wrap(text, 27)
+				y = 24
+				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
+				for line in lines[:20]:
+					libtcod.console_print(calendar_main_panel, 33, y, line)
+					y+=1
 			
-			# description of tank
-			text = ''
-			for t in campaign.player_unit.GetStat('description'):
-				text += t
-			lines = wrap(text, 27)
-			y = 24
-			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
-			for line in lines[:20]:
-				libtcod.console_print(calendar_main_panel, 33, y, line)
-				y+=1
+			else:
+				libtcod.console_print(calendar_main_panel, 41, 8, 'None')
 	
 	
 	# update the display of the campaign calendar interface

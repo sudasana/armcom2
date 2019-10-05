@@ -1370,7 +1370,8 @@
 		}
 	},
 	
-	"Panzer VG 'Panther'": {
+	"Panzer VG": {
+		"nick_name" : "Panther",
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
 		"size_class" : "Large",
@@ -3012,6 +3013,7 @@
 	},
 	
 	"M4A3E2(75)W Sherman": {
+		"nick_name" : "Jumbo",
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
 		"portrait" : "unit_m4.xp",
@@ -3110,6 +3112,7 @@
 	},
 	
 	"M4A3E2(76)W Sherman": {
+		"nick_name" : "Jumbo",
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
 		"portrait" : "unit_m4.xp",

@@ -5452,6 +5452,7 @@ class Unit:
 	def __init__(self, unit_id):
 		
 		self.unit_id = unit_id			# unique ID for unit type
+		self.nick_name = ''			# nickname for model, eg. Sherman
 		self.unit_name = ''			# name of tank, etc.
 		self.alive = True			# unit is alive
 		self.immobilized = False		# vehicle or gun unit is immobilized
@@ -5472,6 +5473,9 @@ class Unit:
 			self.unit_id = None
 			return
 		self.stats = unit_types[unit_id].copy()
+		
+		if 'nick_name' in self.stats:
+			self.nick_name = self.stats['nick_name']
 		
 		if 'crew_positions' in self.stats:
 			for position_dict in self.stats['crew_positions']:
@@ -6236,10 +6240,15 @@ class Unit:
 		if portrait is not None:
 			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, console, x, y+2)
 		
-		# display name if any overtop portrait
+		# display nickname if any overtop portrait
 		libtcod.console_set_default_foreground(console, libtcod.white)
+		if self.nick_name != '':
+			libtcod.console_print(console, x, y+2, "'" + self.nick_name + "'")
+		
+		# display name if any overtop portrait
 		if self.unit_name != '':
-			libtcod.console_print(console, x, y+2, self.unit_name)
+			libtcod.console_print_ex(console, x+24, y+2, libtcod.BKGND_NONE, libtcod.RIGHT,
+				self.unit_name)
 		
 		# weapons - list turret and unmounted weapons on line 1, all others on line 2
 		libtcod.console_set_default_background(console, libtcod.darkest_red)

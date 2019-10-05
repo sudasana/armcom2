@@ -939,10 +939,30 @@ class Campaign:
 		new.unit.unit_name = tank_name
 		new_unit.nation = campaign.stats['player_nation']
 		
-		# TODO: use transfer_dict to transfer crew over to new tank
+		# use transfer_dict to transfer crew over to new tank
+		for position_name, new_position in transfer_dict.items():
+			
+			# find a crewman currently in this position
+			crewman = None
+			for position in campaign.player_unit.positions_list:
+				if position_name != position.name: continue
+				if position.crewman is None: continue
+				crewman = position.crewman
+				break
+			
+			# no crewman in that position to move
+			if crewman is None: continue
+			
+			# target position should exist, and should be empty
+			new_unit.positions_list[new_position.name] = crewman
+			
+			print('DEBUG: moved ' + position_name + ' to ' + new_position.name)
 		
-		# TODO: add new crewmen if required
-		
+		# generate new crewmen if required
+		for position in new_unit.positions_list:
+			if position.crewman is None:
+				position.crewman = Personnel(new_unit, new_unit.nation, position)
+				print('DEBUG: generated new crewman for ' + position.name)
 		
 		new_unit.ClearGunAmmo()
 		self.player_unit = new_unit
@@ -1412,15 +1432,10 @@ class Campaign:
 	def UpdateCCDisplay(self):
 		
 		libtcod.console_blit(calendar_bkg, 0, 0, 0, 0, con, 0, 0)		# background frame
-		portrait = campaign.player_unit.GetStat('portrait')			# player unit portrait
-		if portrait is not None:
-			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, con, 0, 6)
 		libtcod.console_blit(day_outline, 0, 0, 0, 0, con, 1, 15)		# summary of current day
 		libtcod.console_blit(calendar_cmd_con, 0, 0, 0, 0, con, 1, 38)		# command menu
 		libtcod.console_blit(calendar_main_panel, 0, 0, 0, 0, con, 26, 15)	# main panel
-		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-		
 		
 	
 	# main campaign calendar loop

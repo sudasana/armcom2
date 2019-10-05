@@ -1294,6 +1294,7 @@
 	"Panzer IV H": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
+		"portrait" : "unit_pz_IV_H.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
 		"turret" : "Fast",

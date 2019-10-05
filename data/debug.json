@@ -1,17 +1,17 @@
 {
- "Suspend Save": true,
+ "Suspend Save": false,
  "Player Immortality": false,
  "Support Requests Always Granted": false,
- "Always Scenario": true,
+ "Always Scenario": false,
  "Never Scenario": false,
  "Always CD Random Event": false,
  "Player Always Hits": false,
  "Player Always Moves": false,
  "Player Always HD": false,
  "No AI Actions": false,
- "AI Hates Player": true,
- "Player Always Penetrated": true,
+ "AI Hates Player": false,
+ "Player Always Penetrated": false,
  "Player Crew Hapless": false,
  "Free Crew Advances": false,
- "Player Crew Safe in Bail Out": true
+ "Player Crew Safe in Bail Out": false
 }

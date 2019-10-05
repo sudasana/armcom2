@@ -1129,12 +1129,10 @@ class Campaign:
 			Wait(50, ignore_animations=True)
 			y += 5
 		
-		
-		
-		
 		# repair tank if required
 		if campaign.player_unit.immobilized:
 			campaign.player_unit.immobilized = False
+			ShowMessage('Your tank is repaired and is again mobile.')
 		
 		exit_menu = False
 		while not exit_menu:

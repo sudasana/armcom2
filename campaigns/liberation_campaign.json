@@ -22,7 +22,7 @@
 		"40" : "Order of the Red Banner",
 		"50" : "Order of Lenin"
 	},
-	"calendar": [
+	"calendar_weeks": [
 		{
 			"start_date" : "1939.09.17",
 			"day_start" : "05:30",

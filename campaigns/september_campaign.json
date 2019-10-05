@@ -25,7 +25,7 @@
 		"40" : "Order of Polonia Restituta Fourth Class",
 		"50" : "Cross of Independance"
 	},
-	"calendar": [
+	"calendar_weeks": [
 		{
 			"start_date" : "1939.09.01",
 			"day_start" : "05:30",

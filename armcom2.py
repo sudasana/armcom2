@@ -763,7 +763,7 @@ class Campaign:
 		
 	# menu to select player tank
 	# also allows input/generation of tank name, and return both
-	# FUTURE: can be used when replacing a tank mid-campaign as well
+	# can be used when replacing a tank mid-campaign as well
 	def TankSelectionMenu(self):
 		
 		def UpdateTankSelectionScreen(selected_unit, player_tank_name):
@@ -915,7 +915,7 @@ class Campaign:
 					
 					if new_position in open_position_list:
 						open_spot = True
-						open_position_list.pop(new_position)
+						open_position_list.pop(open_position_list.index(new_position))
 						transfer_dict[position.name] = new_position
 						print('DEBUG: found a transfer match: ' + position.name + ' -> ' + new_position)
 						break
@@ -2638,6 +2638,9 @@ class CampaignDay:
 	# check to see whether we need to replace crew after a scenario
 	# at present this is only used for player unit, but in future could be used for AI units as well
 	def DoCrewCheck(self, unit):
+		
+		# don't bother for dead tanks
+		if not unit.alive: return
 		
 		# Stunned, Unconscious, and Critical crew automatically recover
 		# FUTURE: Do a final recovery roll for Critical crew
@@ -4908,8 +4911,9 @@ class Weapon:
 				AddAllAround()
 				return
 		
-		# hull-mounted weapons fire in hull facing direction
-		if self.GetStat('mount') == 'Hull':
+		# hull-mounted weapons fire in hull facing direction, also weapons mounted high on the hull
+		# if no rotatable turret present
+		if self.GetStat('mount') == 'Hull' or self.unit.turret_facing is None:
 			hextant_hex_list = GetCoveredHexes(self.unit.hx, self.unit.hy, self.unit.facing)
 			
 		# turret-mounted weapons fire in turret direction
@@ -6608,6 +6612,10 @@ class Unit:
 					difference = profile['roll'] - profile['final_chance']
 					
 					roll = GetPercentileRoll() + difference
+					
+					if DEBUG:
+						if session.debug['Player Always Penetrated']:
+							roll = 100.0
 					
 					# minor damage
 					if roll <= 15.0:
@@ -11611,6 +11619,10 @@ def RestrictChance(chance):
 
 # save the current game in progress
 def SaveGame():
+	
+	if DEBUG:
+		if session.debug['Suspend Save']: return
+	
 	save = shelve.open('savegame', 'n')
 	save['campaign'] = campaign
 	save['campaign_day'] = campaign_day

@@ -1,4 +1,5 @@
 {
+ "Suspend Save": true,
  "Player Immortality": false,
  "Support Requests Always Granted": false,
  "Always Scenario": true,
@@ -7,9 +8,9 @@
  "Player Always Hits": false,
  "Player Always Moves": false,
  "Player Always HD": false,
- "No AI Actions": true,
- "AI Hates Player": false,
- "Player Always Penetrated": false,
+ "No AI Actions": false,
+ "AI Hates Player": true,
+ "Player Always Penetrated": true,
  "Player Crew Hapless": false,
  "Free Crew Advances": false,
  "Player Crew Safe in Bail Out": true

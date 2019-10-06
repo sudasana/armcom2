@@ -1475,6 +1475,7 @@
 	"STuG IIIG": {
 		"category" : "Vehicle",
 		"class" : "Assault Gun",
+		"portrait" : "unit_stug_iiig.xp",
 		"size_class" : "Small",
 		"movement_class" : "Tank",
 		"armour" : {

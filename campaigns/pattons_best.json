@@ -1,11 +1,10 @@
 {
 	"name" : "Patton's Best",
-	"wip" : "TRUE",
 	"start_date" : "1944.07.27",
 	"end_date" : "1945.04.18",
 	"player_nation" : "United States of America",
 	"enemy_nations" : ["Germany"],
-	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France and invasion of Germany.",
+	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France and invasion of Germany. (Unfinished)",
 	"player_unit_list" : [
 		"M4 Sherman", "M4A1 Sherman", "M4A3 Sherman", "M4A3(75)W Sherman",
 		"M4A3E2(75)W Sherman", "M4A3E2(76)W Sherman",

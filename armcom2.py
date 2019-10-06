@@ -690,8 +690,6 @@ class Campaign:
 			if not filename.endswith('.json'): continue
 			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
 				campaign_data = json.load(data_file)
-			# skip unfinished campaigns
-			if not DEBUG and 'wip' in campaign_data: continue
 			new_campaign = {}
 			new_campaign['filename'] = filename
 			for k in BASIC_INFO:

@@ -320,6 +320,7 @@ AP_BASE_CHANCE = {
 	'75' : 120.0,		# not sure if this and below are accurate, FUTURE: check balance
 	'75L' : 160.0,
 	'76S' : 83.0,
+	'76L' : 160.0,
 	'88L' : 200.0,
 	'88LL' : 380.0
 }

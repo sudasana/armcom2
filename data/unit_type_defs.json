@@ -2922,6 +2922,7 @@
 		"HVSS" : "50",
 		"wet_stowage" : "TRUE",
 		"turret" : "Fast",
+		"smoke_mortar" : "Loader",
 		"armour" : {
 			"turret_front" : "8",
 			"turret_side" : "6",
@@ -3005,7 +3006,8 @@
 			"This is a later variant of the M4A3 with glacis front hull armour ",
 			"and wet stowage for main gun rounds, reducing the chance of fire ",
 			"from a ruptured shell casing. Some are built with Horizontal Volute ",
-			"Spring Suspension, offering better traction."
+			"Spring Suspension, offering better traction. A Smoke Mortar is mounted ",
+			"on the turret, fired by the Loader."
 		],
 		"rarity" : {
 			"1944.06.01" : "90"
@@ -3023,6 +3025,7 @@
 		"HVSS" : "83",
 		"wet_stowage" : "TRUE",
 		"turret" : "Fast",
+		"smoke_mortar" : "Loader",
 		"armour" : {
 			"turret_front" : "18",
 			"turret_side" : "6",
@@ -3104,7 +3107,8 @@
 		],
 		"description" : [
 			"Designed to fulfill the role of a heavily armoured assault tank, ",
-			"this is an up-armoured version of the M4A3 with a new turret."
+			"this is an up-armoured version of the M4A3 with a new turret. ",
+			"A Smoke Mortar is mounted on the turret, fired by the Loader."
 		],
 		"rarity" : {
 			"1944.09.01" : "50"
@@ -3122,6 +3126,7 @@
 		"HVSS" : "83",
 		"wet_stowage" : "TRUE",
 		"turret" : "Fast",
+		"smoke_mortar" : "Loader",
 		"armour" : {
 			"turret_front" : "18",
 			"turret_side" : "6",
@@ -3205,7 +3210,8 @@
 		"description" : [
 			"Designed to fulfill the role of a heavily armoured assault tank, ",
 			"this is an up-armoured version of the M4A3 with a new turret. This ",
-			"is a conversion of the standard 75mm gun to a 76mm gun."
+			"is a conversion of the standard 75mm gun to a 76mm gun. ",
+			"A Smoke Mortar is mounted on the turret, fired by the Loader."
 		],
 		"rarity" : {
 			"1944.10.01" : "40",

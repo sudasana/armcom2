@@ -58,5 +58,10 @@
 	"Abandon Tank" : {
 		"desc" : "All crew bail out of the tank and retreat to friendly lines",
 		"spotting_allowed" : false
+	},
+	
+	"Fire Smoke Mortar" : {
+		"desc" : "Fire the smoke mortar, creating concealing smoke in front of the turret",
+		"spotting_allowed" : false
 	}
 }

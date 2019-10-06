@@ -822,8 +822,11 @@ class Campaign:
 			if unit_id not in unit_types: continue
 			if 'rarity' in unit_types[unit_id]:
 				for date, chance in unit_types[unit_id]['rarity'].items():
+					# not yet available at this time
 					if date > campaign.today:
-						continue
+						# TEMP - check disabled for testing
+						break
+						#continue
 					# earliest rarity date is on or after current date, proceed
 					break
 			
@@ -4663,6 +4666,12 @@ class Personnel:
 			# can't drive if vehicle is immbobilized
 			elif k == 'Drive':
 				if self.unit.immobilized: continue
+			
+			# check that a mortar is attached and is fired by this position
+			elif k == 'Fire Smoke Mortar':
+				position_name = self.unit.GetStat('smoke_mortar')
+				if position_name is None: continue
+				if self.current_position.name != position_name: continue
 			
 			# add the command
 			self.cmd_list.append(k)
@@ -9633,6 +9642,17 @@ class Scenario:
 					self.UpdateScenarioDisplay()
 					libtcod.console_flush()
 				
+				# check for smoke mortar
+				if position.crewman.current_cmd == 'Fire Smoke Mortar':
+					direction = self.player_unit.turret_facing
+					if direction is None:
+						direction = self.player_unit.facing
+					self.player_unit.smoke[direction] = 2
+					ShowMessage('The ' + position.name + ' fires off a smoke mortar round.')
+					self.UpdateUnitCon()
+					self.UpdateScenarioDisplay()
+					libtcod.console_flush()
+				
 				# check for action that needs inpout in this phase
 				if position.crewman.current_cmd in ['Request Support']:
 					input_command = True
@@ -10694,8 +10714,6 @@ class Scenario:
 			if key.vk == libtcod.KEY_SPACE:
 				self.advance_phase = True
 				continue
-			
-			# Command or Crew Action phase
 			
 			
 			# Command Phase and Crew Action phase

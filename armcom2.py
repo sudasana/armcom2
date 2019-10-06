@@ -58,7 +58,7 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.8.0 RC1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -824,9 +824,7 @@ class Campaign:
 				for date, chance in unit_types[unit_id]['rarity'].items():
 					# not yet available at this time
 					if date > campaign.today:
-						# TEMP - check disabled for testing
-						break
-						#continue
+						continue
 					# earliest rarity date is on or after current date, proceed
 					break
 			

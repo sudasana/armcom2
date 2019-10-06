@@ -3456,6 +3456,7 @@
 	"Riflemen": {
 		"category" : "Infantry",
 		"class" : "Infantry Squad",
+		"portrait" : "unit_riflemen.xp",
 		"movement_class" : "Infantry",
 		"weapon_list" : [
 			{
@@ -3492,6 +3493,7 @@
 	"HMG Team": {
 		"category" : "Infantry",
 		"class" : "MG Team",
+		"portrait" : "unit_hmg.xp",
 		"movement_class" : "Infantry",
 		"weapon_list" : [
 			{

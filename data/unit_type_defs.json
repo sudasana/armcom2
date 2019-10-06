@@ -1374,6 +1374,7 @@
 		"nick_name" : "Panther",
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
+		"portrait" : "unit_pz_VG.xp",
 		"size_class" : "Large",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",

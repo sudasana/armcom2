@@ -12439,9 +12439,9 @@ global main_title, main_theme
 global campaign, campaign_day, scenario, session
 global keyboard_decode, keyboard_encode
 
-# save console output to a file
-if not DEBUG:
-	sys.stdout = open('runtime_log.txt', 'w')
+# FUTURE save console output to a log file
+#if not DEBUG:
+#	sys.stdout = open('runtime_log.txt', 'w')
 
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 

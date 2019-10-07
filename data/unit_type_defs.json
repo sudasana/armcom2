@@ -1550,6 +1550,7 @@
 	"Marder II": {
 		"category" : "Vehicle",
 		"class" : "Tank Destroyer",
+		"portrait" : "unit_marder_II.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
 		"armour" : {

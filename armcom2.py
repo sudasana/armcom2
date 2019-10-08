@@ -3344,9 +3344,16 @@ class CampaignDay:
 		# resupply menu
 		elif self.active_menu == 5:
 			
-			libtcod.console_print_ex(cd_command_con, 12, 10, libtcod.BKGND_NONE, libtcod.CENTER,
+			# display current main gun ammo levels
+			weapon = campaign.player_unit.weapon_list[0]
+			if weapon.GetStat('type') == 'Gun':
+				libtcod.console_print(cd_command_con, 6, 3, weapon.stats['name'] + ' Main Gun:')
+				weapon.DisplayAmmo(cd_command_con, 6, 5, skip_active=True)
+			
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			libtcod.console_print_ex(cd_command_con, 12, 14, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Request resupply:')
-			libtcod.console_print_ex(cd_command_con, 12, 11, libtcod.BKGND_NONE, libtcod.CENTER,
+			libtcod.console_print_ex(cd_command_con, 12, 15, libtcod.BKGND_NONE, libtcod.CENTER,
 				'30 mins.')
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			libtcod.console_print(cd_command_con, 2, 39, EnKey('r').upper())
@@ -4885,6 +4892,31 @@ class Weapon:
 			return None
 		return self.stats[stat_name]
 	
+	
+	# display information about current available ammo to a console
+	def DisplayAmmo(self, console, x, y, skip_active=False):
+		# general stores
+		for ammo_type in AMMO_TYPES:
+			if ammo_type in self.ammo_stores:
+				
+				# highlight if this ammo type currently active
+				if self.ammo_type is not None and not skip_active:
+					if self.ammo_type == ammo_type:
+						libtcod.console_set_default_background(console, libtcod.darker_blue)
+						libtcod.console_rect(console, x, y, 18, 1, True, libtcod.BKGND_SET)
+						libtcod.console_set_default_background(console, libtcod.darkest_grey)
+				
+				libtcod.console_set_default_foreground(console, libtcod.white)
+				libtcod.console_print(console, x, y, ammo_type)
+				libtcod.console_set_default_foreground(console, libtcod.light_grey)
+				libtcod.console_print_ex(console, x+7, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(self.ammo_stores[ammo_type]))
+				y += 1
+		y += 1
+		libtcod.console_print(console, x, y, 'Max')
+		libtcod.console_set_default_foreground(console, libtcod.light_grey)
+		libtcod.console_print_ex(console, x+7, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, self.stats['max_ammo'])
 	
 	# add a target as the current acquired target, or add one level
 	def AddAcquiredTarget(self, target):
@@ -9890,30 +9922,8 @@ class Scenario:
 			# if weapon is a gun, display ammo info
 			if weapon.GetStat('type') == 'Gun':
 				
-				# general stores
-				y = 3
-				for ammo_type in AMMO_TYPES:
-					if ammo_type in weapon.ammo_stores:
-						
-						# highlight if this ammo type currently active
-						if weapon.ammo_type is not None:
-							if weapon.ammo_type == ammo_type:
-								libtcod.console_set_default_background(context_con, libtcod.darker_blue)
-								libtcod.console_rect(context_con, 0, y, 18, 1, True, libtcod.BKGND_SET)
-								libtcod.console_set_default_background(context_con, libtcod.darkest_grey)
-						
-						libtcod.console_set_default_foreground(context_con, libtcod.white)
-						libtcod.console_print(context_con, 0, y, ammo_type)
-						libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
-						libtcod.console_print_ex(context_con, 7, y, libtcod.BKGND_NONE,
-							libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
-						y += 1
-				y += 1
-				libtcod.console_print(context_con, 0, y, 'Max')
-				libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
-				libtcod.console_print_ex(context_con, 7, y, libtcod.BKGND_NONE,
-					libtcod.RIGHT, weapon.stats['max_ammo'])
-			
+				weapon.DisplayAmmo(context_con, 0, 3)
+				
 			if weapon.fired:
 				libtcod.console_set_default_foreground(context_con, libtcod.red)
 				libtcod.console_print(context_con, 0, 7, 'Fired')

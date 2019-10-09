@@ -58,7 +58,7 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.8.0 RC1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -6452,51 +6452,54 @@ class Unit:
 			
 			##### Attack Animation and Sound Effects #####
 			
-			if weapon.GetStat('type') == 'Gun':
-				
-				PlaySoundFor(weapon, 'fire')
-				
-				# start gun fire animation
-				scenario.animation['gun_fire_active'] = True
-				(x1, y1) = scenario.PlotHex(self.hx, self.hy)
-				(x2, y2) = scenario.PlotHex(target.hx, target.hy)
-				scenario.animation['gun_fire_line'] = GetLine(x1,y1,x2,y2)
-				
-				# continue when finished
-				while scenario.animation['gun_fire_active']:
-					if libtcod.console_is_window_closed(): sys.exit()
-					libtcod.console_flush()
-					CheckForAnimationUpdate()
-				
-				# add explosion effect if HE ammo
-				if weapon.ammo_type == 'HE':
+			# skip if in fast mode
+			if not (DEBUG and session.debug['Fast Mode']):
+			
+				if weapon.GetStat('type') == 'Gun':
 					
-					PlaySoundFor(weapon, 'he_explosion')
+					PlaySoundFor(weapon, 'fire')
 					
-					scenario.animation['bomb_effect'] = (x2, y2)
-					scenario.animation['bomb_effect_lifetime'] = 7
+					# start gun fire animation
+					scenario.animation['gun_fire_active'] = True
+					(x1, y1) = scenario.PlotHex(self.hx, self.hy)
+					(x2, y2) = scenario.PlotHex(target.hx, target.hy)
+					scenario.animation['gun_fire_line'] = GetLine(x1,y1,x2,y2)
 					
-					# let animation run
-					while scenario.animation['bomb_effect'] is not None:
+					# continue when finished
+					while scenario.animation['gun_fire_active']:
 						if libtcod.console_is_window_closed(): sys.exit()
 						libtcod.console_flush()
 						CheckForAnimationUpdate()
-			
-			elif weapon.GetStat('type') == 'Small Arms' or weapon.GetStat('type') in MG_WEAPONS:
+					
+					# add explosion effect if HE ammo
+					if weapon.ammo_type == 'HE':
+						
+						PlaySoundFor(weapon, 'he_explosion')
+						
+						scenario.animation['bomb_effect'] = (x2, y2)
+						scenario.animation['bomb_effect_lifetime'] = 7
+						
+						# let animation run
+						while scenario.animation['bomb_effect'] is not None:
+							if libtcod.console_is_window_closed(): sys.exit()
+							libtcod.console_flush()
+							CheckForAnimationUpdate()
 				
-				PlaySoundFor(weapon, 'fire')
-				# start small arms / MG animation
-				
-				scenario.animation['small_arms_fire_action'] = True
-				(x1, y1) = scenario.PlotHex(self.hx, self.hy)
-				(x2, y2) = scenario.PlotHex(target.hx, target.hy)
-				scenario.animation['small_arms_fire_line'] = GetLine(x1,y1,x2,y2)
-				scenario.animation['small_arms_lifetime'] = 12
-				
-				while scenario.animation['small_arms_fire_action']:
-					if libtcod.console_is_window_closed(): sys.exit()
-					libtcod.console_flush()
-					CheckForAnimationUpdate()
+				elif weapon.GetStat('type') == 'Small Arms' or weapon.GetStat('type') in MG_WEAPONS:
+					
+					PlaySoundFor(weapon, 'fire')
+					# start small arms / MG animation
+					
+					scenario.animation['small_arms_fire_action'] = True
+					(x1, y1) = scenario.PlotHex(self.hx, self.hy)
+					(x2, y2) = scenario.PlotHex(target.hx, target.hy)
+					scenario.animation['small_arms_fire_line'] = GetLine(x1,y1,x2,y2)
+					scenario.animation['small_arms_lifetime'] = 12
+					
+					while scenario.animation['small_arms_fire_action']:
+						if libtcod.console_is_window_closed(): sys.exit()
+						libtcod.console_flush()
+						CheckForAnimationUpdate()
 			
 			# do the roll, display results to the screen, and modify the attack profile
 			profile = scenario.DoAttackRoll(profile)
@@ -8445,6 +8448,11 @@ class Scenario:
 					libtcod.CENTER, text)
 				
 				scenario.UpdateScenarioDisplay()
+				
+				# don't animate if fast mode debug flag is set
+				if DEBUG and session.debug['Fast Mode']:
+					continue
+				
 				Wait(15)
 		
 		# record the final roll in the attack profile
@@ -11348,6 +11356,12 @@ def FlushKeyboardEvents():
 
 # wait for a specified amount of miliseconds, refreshing the screen in the meantime
 def Wait(wait_time, ignore_animations=False):
+	
+	# check for debug fast mode
+	if DEBUG:
+		if session.debug['Fast Mode']:
+			wait_time = int(wait_time/4)
+	
 	wait_time = wait_time * 0.01
 	start_time = time.time()
 	while time.time() - start_time < wait_time:

@@ -1948,6 +1948,7 @@
 	"PaK 35/36": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_pak_35-36.xp",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",
@@ -1985,6 +1986,7 @@
 	"PaK 38": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_pak_38.xp",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",
@@ -2023,6 +2025,7 @@
 	"PaK 40": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_pak_40.xp",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",

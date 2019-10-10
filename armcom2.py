@@ -220,11 +220,11 @@ MISSION_DESC = {
 # FUTURE: move these to a JSON file
 
 # minimum and maximum advance chance (2 rolls) per day
-MIN_ADVANCE_CHANCE = 15.0
-MAX_ADVANCE_CHANCE = 90.0
+MIN_ADVANCE_CHANCE = 16.0
+MAX_ADVANCE_CHANCE = 95.0
 
 # percent chance of crew getting an advance, per scenario fought that day
-ADVANCE_CHANCE_PER_SCEN = 2.0
+ADVANCE_CHANCE_PER_SCEN = 8.0
 
 # list of crew stats
 CREW_STATS = ['Perception', 'Morale', 'Grit', 'Knowledge']

@@ -22,10 +22,10 @@
 		"Riflemen"
 	],
 	"decorations_list" : {
-		"40" : "Bronze Star",
-		"60" : "Silver Star",
-		"80" : "Distinguished Service Cross",
-		"100" : "Congressional Medal of Honor"
+		"500" : "Bronze Star",
+		"600" : "Silver Star",
+		"800" : "Distinguished Service Cross",
+		"1000" : "Congressional Medal of Honor"
 	},
 	"calendar_weeks": [
 		{

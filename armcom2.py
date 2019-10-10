@@ -6558,7 +6558,7 @@ class Unit:
 				if self == scenario.player_unit:
 					campaign_day.AddRecord('Gun Hits', 1)
 				
-				# infantry or gun target
+				# infantry, gun, or unarmoured target
 				if target.GetStat('category') in ['Infantry', 'Gun']:
 					
 					# if HE hit, apply effective FP
@@ -6583,6 +6583,18 @@ class Unit:
 					# have no spotting effect
 					elif profile['ammo_type'] == 'AP':
 						target.fp_to_resolve += 1
+				
+				# unarmoured vehicle target, slightly different procedure
+				elif target.GetStat('armour') is None:
+					if profile['ammo_type'] == 'HE':
+						effective_fp = profile['weapon'].GetEffectiveFP()
+					else:
+						effective_fp = 1
+					if profile['result'] == 'CRITICAL HIT':
+						effective_fp = effective_fp * 2
+					target.fp_to_resolve += effective_fp
+					if not target.spotted:
+						target.hit_by_fp = True
 				
 				# armoured target
 				elif target.GetStat('armour') is not None:
@@ -6763,6 +6775,10 @@ class Unit:
 				for (fp, score) in VEH_FP_TK:
 					if fp <= self.fp_to_resolve:
 						break
+				
+				text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + '. '
+				text += str(score) + '%% chance to destroy.'
+				ShowMessage(text)
 				
 				if GetPercentileRoll() <= score:
 					text = self.GetName() + ' was destroyed.'
@@ -8092,10 +8108,7 @@ class Scenario:
 			if armour[hit_location] != '-':
 				target_armour = int(armour[hit_location])
 				if target_armour >= 0:
-					modifier = -9.0
-					for i in range(target_armour - 1):
-						modifier = modifier * 1.8
-					
+					modifier = target_armour * -12.0
 					modifier_list.append(('Target Armour', modifier))
 					
 					# apply rear facing modifier if any
@@ -8104,7 +8117,7 @@ class Scenario:
 					
 					# apply critical hit modifier if any
 					if profile['result'] == 'CRITICAL HIT':
-						modifier = round(abs(modifier) * 0.8, 2)
+						modifier = round(modifier * 0.8, 2)
 						modifier_list.append(('Critical Hit', modifier))
 		
 		# save the list of modifiers
@@ -8322,11 +8335,11 @@ class Scenario:
 		
 		# display prompts
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		if profile['attacker'] == self.player_unit:
+		if profile['attacker'] == self.player_unit and profile['type'] != 'ap':
 			libtcod.console_print(attack_con, 6, 56, 'Bksp')
 		libtcod.console_print(attack_con, 6, 57, 'Tab')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
-		if profile['attacker'] == self.player_unit:
+		if profile['attacker'] == self.player_unit and profile['type'] != 'ap':
 			libtcod.console_print(attack_con, 12, 56, 'Cancel')
 		libtcod.console_print(attack_con, 12, 57, 'Continue')
 		

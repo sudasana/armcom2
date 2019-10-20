@@ -58,9 +58,9 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.8.0 RC1'					# game version
+VERSION = '0.8.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -4496,7 +4496,7 @@ class Personnel:
 			self.DoStunCheck(0)
 			if self.status == 'Stunned':
 				if show_messages:
-					ShowMessage('Your ' + self.position.name + ' has been Stunned.')
+					ShowMessage('Your ' + self.current_position.name + ' has been Stunned.')
 				return 'Stunned'
 			return None
 		
@@ -4510,11 +4510,11 @@ class Personnel:
 				self.DoStunCheck(15)
 				if self.status == 'Stunned':
 					if show_messages:
-						ShowMessage('Your ' + self.position.name + ' has received a Light Wound and has been Stunned.')
+						ShowMessage('Your ' + self.current_position.name + ' has received a Light Wound and has been Stunned.')
 					return 'Light Wound, Stunned'
 			
 			if show_messages:
-				ShowMessage('Your ' + self.position.name + ' has received a Light Wound.')
+				ShowMessage('Your ' + self.current_position.name + ' has received a Light Wound.')
 			return 'Light Wound'
 				
 			
@@ -4529,12 +4529,12 @@ class Personnel:
 				self.DoKOCheck(0)
 				if self.status == 'Unconscious':
 					if show_messages:
-						ShowMessage('Your ' + self.position.name + ' has received a Serious Wound ' +
+						ShowMessage('Your ' + self.current_position.name + ' has received a Serious Wound ' +
 							'and has been knocked Unconscious')
 					return 'Serious Wound, Unconscious'
 			
 			if show_messages:
-				ShowMessage('Your ' + self.position.name + ' has received a Serious Wound and is Stunned.')
+				ShowMessage('Your ' + self.current_position.name + ' has received a Serious Wound and is Stunned.')
 			return 'Serious Wound, Stunned'
 			
 			
@@ -4547,12 +4547,12 @@ class Personnel:
 				self.DoKOCheck(15)
 				if self.status == 'Unconscious':
 					if show_messages:
-						ShowMessage('Your ' + self.position.name + ' has received a Critical Wound ' +
+						ShowMessage('Your ' + self.current_position.name + ' has received a Critical Wound ' +
 							'and has been knocked Unconscious.')
 					return 'Critical Wound, Unconscious'
 				
 				if show_messages:
-					ShowMessage('Your ' + self.position.name + ' has received a Critical Wound and is Stunned.')
+					ShowMessage('Your ' + self.current_position.name + ' has received a Critical Wound and is Stunned.')
 				return 'Critical Wound, Stunned'
 		
 		else:
@@ -4562,7 +4562,7 @@ class Personnel:
 			self.wound = ''
 			
 			if show_messages:
-				ShowMessage('Your ' + self.position.name + ' has been killed.')
+				ShowMessage('Your ' + self.current_position.name + ' has been killed.')
 			
 			return 'Dead'
 				
@@ -4605,7 +4605,7 @@ class Personnel:
 				self.status = 'Dead'
 				self.wound = ''
 				if self.unit == scenario.player_unit:
-					ShowMessage('Your ' + self.position.name + ' has died from his wounds.')
+					ShowMessage('Your ' + self.current_position.name + ' has died from his wounds.')
 			return
 		
 		if roll <= self.stats['Grit'] * 15.0:
@@ -4613,13 +4613,13 @@ class Personnel:
 			if self.status == 'Stunned':
 				self.status = ''
 				if self.unit == scenario.player_unit:
-					ShowMessage('Your ' + self.position.name + ' recovers from being Stunned.')
+					ShowMessage('Your ' + self.current_position.name + ' recovers from being Stunned.')
 			
 			# unconscious
 			else:
 				self.status = 'Stunned'
 				if self.unit == scenario.player_unit:
-					ShowMessage('Your ' + self.position.name + ' regains consciousness and is now Stunned.')
+					ShowMessage('Your ' + self.current_position.name + ' regains consciousness and is now Stunned.')
 
 	
 	# (re)build a list of possible commands for this turn

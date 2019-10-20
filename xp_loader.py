@@ -1,6 +1,10 @@
 # Changed slightly to be compatible with Python 3
 
-import libtcodpy as libtcod
+from sys import platform
+if platform == 'darwin':
+	import tcod as libtcod
+else:
+	import libtcodpy as libtcod
 import binascii
 
 ##################################

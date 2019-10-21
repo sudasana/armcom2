@@ -36,8 +36,10 @@
 
 ##### Libraries #####
 import os, sys						# OS-related stuff
-if os.name == 'posix':					# if linux - load system libtcodpy
-	import libtcodpy_local as libtcod		
+if sys.platform == 'darwin':
+	import tcod as libtcod
+elif os.name == 'posix':					# if linux - load system libtcodpy
+	import libtcodpy_local as libtcod
 else:
 	import libtcodpy as libtcod			# The Doryen Library
 	os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)	# set sdl2 dll path
@@ -65,7 +67,9 @@ DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
 
-if os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
+if sys.platform == 'darwin':
+	RENDERER = libtcod.RENDERER_SDL2
+elif os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
 	RENDERER = libtcod.RENDERER_SDL
 else:
 	RENDERER = libtcod.RENDERER_GLSL

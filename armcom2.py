@@ -11990,12 +11990,12 @@ def ChangeGameSettings(key_char, main_menu=False):
 		libtcod.console_delete(0)
 		if config.getboolean('ArmCom2', 'large_display_font'):
 			config['ArmCom2']['large_display_font'] = 'false'
-			fontname = 'c64_8x8.png'
+			fontname = 'c64_8x8_ext.png'
 		else:
 			config['ArmCom2']['large_display_font'] = 'true'
-			fontname = 'c64_16x16.png'
+			fontname = 'c64_16x16_ext.png'
 		libtcod.console_set_custom_font(DATAPATH+fontname,
-			libtcod.FONT_LAYOUT_ASCII_INROW, 0, 0)
+			libtcod.FONT_LAYOUT_ASCII_INROW, 16, 18)
 		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
 			NAME + ' - ' + VERSION, fullscreen = False,
 			renderer = RENDERER)

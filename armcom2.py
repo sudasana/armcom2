@@ -62,7 +62,7 @@ import calendar						# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.8.0'					# game version
+VERSION = '0.8.1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -11729,18 +11729,15 @@ def CheckSavedGameVersion():
 	saved_version = save['version']
 	save.close()
 	
-	# for now, version must be the same, but future will allow backward-compatable updates
-	if saved_version == VERSION:
+	# only allow loading the saved game if the first two components of the version numbers match
+
+	version_list = saved_version.split('.')
+	major_saved_version = version_list[0] + version_list[1]
+	version_list = VERSION.split('.')
+	major_current_version = version_list[0] + version_list[1]
+	if major_saved_version == major_current_version:
 		return ''
 	return saved_version
-	
-	#version_list = saved_version.split('.')
-	#major_saved_version = version_list[0] + version_list[1]
-	#version_list = VERSION.split('.')
-	#major_current_version = version_list[0] + version_list[1]
-	#if major_saved_version == major_current_version:
-	#	return ''
-	#return saved_version
 
 
 # remove a saved game

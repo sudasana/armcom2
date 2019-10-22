@@ -20,10 +20,10 @@
 		"Riflemen"
 	],
 	"decorations_list" : {
-		"20" : "Cross of Valour",
-		"30" : "Order of Polonia Restituta Fifth Class",
-		"40" : "Order of Polonia Restituta Fourth Class",
-		"50" : "Cross of Independance"
+		"600" : "Cross of Valour",
+		"800" : "Order of Polonia Restituta Fifth Class",
+		"1000" : "Order of Polonia Restituta Fourth Class",
+		"1200" : "Cross of Independance"
 	},
 	"calendar_weeks": [
 		{

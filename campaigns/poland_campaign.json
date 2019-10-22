@@ -18,10 +18,10 @@
 		"75mm wz. 97/25", "Polski Fiat 621", "Riflemen", "HMG Team", "Light Artillery Car"
 	],
 	"decorations_list" : {
-		"20" : "Iron Cross Second Class",
-		"30" : "Iron Cross First Class",
-		"40" : "Knight's Cross",
-		"50" : "Knight's Cross with Oak Leaves"
+		"600" : "Iron Cross Second Class",
+		"800" : "Iron Cross First Class",
+		"1000" : "Knight's Cross",
+		"1200" : "Knight's Cross with Oak Leaves"
 	},
 	"calendar_weeks": [
 		{

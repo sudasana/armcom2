@@ -17,10 +17,10 @@
 		"75mm wz. 97/25", "Polski Fiat 621", "Riflemen", "HMG Team"
 	],
 	"decorations_list" : {
-		"20" : "Medal for Battle Merit",
-		"30" : "Order of the Red Star",
-		"40" : "Order of the Red Banner",
-		"50" : "Order of Lenin"
+		"350" : "Medal for Battle Merit",
+		"500" : "Order of the Red Star",
+		"600" : "Order of the Red Banner",
+		"700" : "Order of Lenin"
 	},
 	"calendar_weeks": [
 		{

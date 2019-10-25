@@ -60,9 +60,9 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.8.1'					# game version
+VERSION = '0.9.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -6788,7 +6788,8 @@ class Unit:
 					text = self.GetName() + ' was destroyed.'
 					ShowMessage(text)
 					self.DestroyMe()
-				
+				else:
+					ShowMessage('No effect.')
 				return
 			
 			# FUTURE: chance of minor damage to vehicle

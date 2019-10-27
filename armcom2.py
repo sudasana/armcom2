@@ -12760,9 +12760,6 @@ while not exit_game:
 				# placeholder for the currently active scenario
 				scenario = None
 				
-				# show new day starting animation
-				#campaign.ShowStartOfDay()
-				
 			# go to campaign calendar loop
 			campaign.DoCampaignCalendarLoop()
 			

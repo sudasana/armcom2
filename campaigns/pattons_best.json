@@ -15,6 +15,7 @@
 	],
 	"enemy_unit_list" : [
 		"Panzer IV A", "Panzer IV C", "Panzer IV H", "Panzer VG", "Panzer VIe",
+		"Panzer VIe (Late)",
 		"STuG IIIG", "Marder II",
 		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
 		"PSW 231 (8 rad)",

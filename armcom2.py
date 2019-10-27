@@ -5103,8 +5103,18 @@ class AI:
 		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
-		# FUTURE: check for automatic action here
-					
+		# check for being recalled because campaign day is over
+		if campaign_day.ended and not self.recall:
+			if GetPercentileRoll() <= 25.0:
+				self.recall = True
+		
+		# if recalled, chance that unit simply disappears
+		if self.recall:
+			if GetPercentileRoll() <= 10.0:
+				ShowMessage(self.owner.GetName() + ' withdraws from the battlefield.')
+				self.owner.DestroyMe(no_vp=True)
+				return
+		
 		roll = GetPercentileRoll()
 		
 		if DEBUG:
@@ -6890,7 +6900,7 @@ class Unit:
 	
 	
 	# destroy this unit and remove it from the game
-	def DestroyMe(self):
+	def DestroyMe(self, no_vp=False):
 		
 		# check for debug flag
 		if self == scenario.player_unit and DEBUG:
@@ -6923,16 +6933,19 @@ class Unit:
 		
 		# award VP to player for unit destruction
 		if self.owning_player == 1:
-			campaign.AwardVP(campaign_day.unit_destruction_vp[self.GetStat('category')])
 			
-			# add to day records
-			category = self.GetStat('category')
-			if category == 'Vehicle':
-				campaign_day.AddRecord('Vehicles Destroyed', 1)
-			elif category == 'Gun':
-				campaign_day.AddRecord('Guns Destroyed', 1)
-			elif category == 'Infantry':
-				campaign_day.AddRecord('Infantry Destroyed', 1)
+			if not no_vp:
+			
+				campaign.AwardVP(campaign_day.unit_destruction_vp[self.GetStat('category')])
+				
+				# add to day records
+				category = self.GetStat('category')
+				if category == 'Vehicle':
+					campaign_day.AddRecord('Vehicles Destroyed', 1)
+				elif category == 'Gun':
+					campaign_day.AddRecord('Guns Destroyed', 1)
+				elif category == 'Infantry':
+					campaign_day.AddRecord('Infantry Destroyed', 1)
 		
 		# friendly unit destroyed
 		else:
@@ -7045,7 +7058,6 @@ class Scenario:
 		self.support_status = None				# current stage of support attack
 		
 	
-	
 	# check for end of scenario and set flag if it has ended
 	def CheckForEnd(self):
 		all_enemies_dead = True
@@ -7066,18 +7078,17 @@ class Scenario:
 			if position.crewman.status != 'Dead':
 				all_crew_dead = False
 				break
-		
 		if all_crew_dead:
 			ShowMessage('Your crew is all dead.')
 			scenario.player_unit.DestroyMe()
 			return
 		
-		# check for end of campaign day
+		# check for end of campaign day, but don't end the scenario
 		campaign_day.CheckForEndOfDay()
-		if campaign_day.ended:
-			ShowMessage('The campaign day is over.')
-			self.finished = True
-			return
+		#if campaign_day.ended:
+		#	ShowMessage('The campaign day is over.')
+		#	self.finished = True
+		#	return
 	
 	
 	# check for triggering of a random event in a scenario

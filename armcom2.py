@@ -860,8 +860,7 @@ class Campaign:
 			key_char = chr(key.c).lower()
 			
 			# change/generate player tank name
-			if key_char == 'n':
-				
+			if key_char == 'n':				
 				player_tank_name = ShowTextInputMenu('Enter a name for your tank', player_tank_name, MAX_TANK_NAME_LENGTH, [])
 				UpdateTankSelectionScreen(selected_unit, player_tank_name)
 			
@@ -1136,7 +1135,6 @@ class Campaign:
 		# repair tank if required
 		if campaign.player_unit.immobilized:
 			campaign.player_unit.immobilized = False
-			ShowMessage('Your tank is repaired and is again mobile.')
 		
 		exit_menu = False
 		while not exit_menu:
@@ -1333,7 +1331,7 @@ class Campaign:
 			else:
 				libtcod.console_print(calendar_cmd_con, 11, 10, 'Next Day')
 		
-		# crew menu
+		# crew and tank menu
 		elif self.active_calendar_menu == 2:
 			
 			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
@@ -1344,8 +1342,13 @@ class Campaign:
 			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
 			libtcod.console_print(calendar_cmd_con, 5, 4, 'Select Position')
 			libtcod.console_print(calendar_cmd_con, 5, 5, 'Crewman Menu')
-			libtcod.console_print(calendar_cmd_con, 5, 6, 'Set Nickname')
+			libtcod.console_print(calendar_cmd_con, 5, 6, 'Crewman Nickname')
 			
+			if campaign.player_unit.unit_name == '':
+				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+				libtcod.console_print(calendar_cmd_con, 1, 7, 'T')
+				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+				libtcod.console_print(calendar_cmd_con, 5, 7, 'Tank Name')
 		
 		# tank
 		elif self.active_calendar_menu == 3:
@@ -1420,7 +1423,7 @@ class Campaign:
 				y1+=1
 				if y1 == y+24: break
 		
-		# crew menu
+		# crew and tank menu
 		elif self.active_calendar_menu == 2:
 			
 			# show list of crewmen
@@ -1641,7 +1644,15 @@ class Campaign:
 					self.UpdateCCDisplay()
 					continue
 				
-				
+				# set tank nickname (not keymapped)
+				elif chr(key.c).lower() == 't':
+					if campaign.player_unit.unit_name != '': continue
+					player_tank_name = ShowTextInputMenu('Enter a name for your tank', '', MAX_TANK_NAME_LENGTH, [])
+					if player_tank_name != '':
+						campaign.player_unit.unit_name = player_tank_name
+					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCDisplay()
+					continue
 
 
 # Campaign Day: represents one calendar day in a campaign with a 5x7 map of terrain hexes, each of
@@ -12170,15 +12181,16 @@ def ShowDebugMenu():
 		x = 50
 		y = 8
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		for xm in range(5):
+		for xm in range(6):
 			libtcod.console_print(con, x, y+(xm*2), str(xm+1))
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		libtcod.console_print(con, x+2, y, 'Regenerate CD Map Roads')
 		libtcod.console_print(con, x+2, y+2, 'Apply Serious Wound')
-		libtcod.console_print(con, x+2, y+4, 'Set Time to End of Day')
-		libtcod.console_print(con, x+2, y+6, 'End Current Scenario')
-		libtcod.console_print(con, x+2, y+8, 'Export Campaign Log')
+		libtcod.console_print(con, x+2, y+4, 'Immobilize Player')
+		libtcod.console_print(con, x+2, y+6, 'Set Time to End of Day')
+		libtcod.console_print(con, x+2, y+8, 'End Current Scenario')
+		libtcod.console_print(con, x+2, y+10, 'Export Campaign Log')
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 33, 56, 'Esc')
@@ -12251,8 +12263,19 @@ def ShowDebugMenu():
 				DrawDebugMenu()
 				continue
 		
-		# set current time to end of combat day
+		# immobilize player
 		elif int(key_char) == 3:
+			if scenario is not None:
+				if scenario.player_unit.immobilized:
+					continue
+				scenario.player_unit.ImmobilizeMe()
+				scenario.UpdatePlayerInfoCon()
+				ShowMessage('Player tank immobilized')
+				DrawDebugMenu()
+				continue
+		
+		# set current time to end of combat day
+		elif int(key_char) == 4:
 			if campaign_day is not None:
 				campaign_day.day_clock['hour'] = campaign_day.end_of_day['hour']
 				campaign_day.day_clock['minute'] = campaign_day.end_of_day['minute']
@@ -12263,7 +12286,7 @@ def ShowDebugMenu():
 				continue
 		
 		# end the current scenario
-		elif int(key_char) == 4:
+		elif int(key_char) == 5:
 			if scenario is not None:
 				scenario.finished = True
 				ShowMessage('Scenario finished flag set to True')
@@ -12271,7 +12294,7 @@ def ShowDebugMenu():
 				continue
 		
 		# export current campaign log
-		elif int(key_char) == 5:
+		elif int(key_char) == 6:
 			if campaign is not None:
 				ExportLog()
 				ShowMessage('Log exported')

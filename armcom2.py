@@ -8754,9 +8754,9 @@ class Scenario:
 			ShowMessage('Cannot request air support - cloud cover too heavy.')
 			return
 		
-		# roll for time of response
+		# set time of response
 		hour = campaign_day.day_clock['hour']
-		minute = campaign_day.day_clock['minute'] + libtcod.random_get_int(0, 2, 6)
+		minute = campaign_day.day_clock['minute'] + 2
 		if minute > 59:
 			hour += 1
 			minute -= 60
@@ -10861,7 +10861,6 @@ class Scenario:
 						self.UpdateCmdCon()
 						self.UpdateScenarioDisplay()
 						continue
-				
 					
 			# Movement phase only
 			elif scenario.phase == PHASE_MOVEMENT:

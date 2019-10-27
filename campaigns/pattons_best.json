@@ -82,6 +82,114 @@
 				"Truck" : "90",
 				"Infantry Squad" : "100"
 			}
+		},
+		{
+			"start_date" : "1944.08.10",
+			"day_start" : "05:00",
+			"day_end" : "19:15",
+			"combat_chance" : "60",
+			"week_description" : "Liberating Nantes and Orleans",
+			"mission_odds" : {
+				"Advance" : "95",
+				"Battle" : "5",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 80.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.08.17",
+			"day_start" : "05:00",
+			"day_end" : "19:15",
+			"combat_chance" : "60",
+			"week_description" : "Across Northern France",
+			"mission_odds" : {
+				"Advance" : "95",
+				"Battle" : "5",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 80.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.08.24",
+			"day_start" : "05:00",
+			"day_end" : "19:15",
+			"combat_chance" : "60",
+			"week_description" : "Into North-eastern France",
+			"mission_odds" : {
+				"Advance" : "95",
+				"Battle" : "5",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 80.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.08.31",
+			"day_start" : "05:00",
+			"day_end" : "19:15",
+			"combat_chance" : "60",
+			"week_description" : "Taking Commercy",
+			"mission_odds" : {
+				"Advance" : "75",
+				"Battle" : "25",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100"
+			}
 		}
 	]
 }

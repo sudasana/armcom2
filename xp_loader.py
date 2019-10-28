@@ -3,6 +3,8 @@
 from sys import platform
 if platform == 'darwin':
 	import tcod as libtcod
+elif platform == 'linux':
+	import libtcodpy_local as libtcod
 else:
 	import libtcodpy as libtcod
 import binascii

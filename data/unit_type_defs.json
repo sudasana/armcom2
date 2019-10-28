@@ -1476,7 +1476,7 @@
 		"category" : "Vehicle",
 		"class" : "Heavy Tank",
 		"portrait" : "unit_pz_VI_e.xp",
-		"size_class" : "Very Large",
+		"size_class" : "Large",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",
 		"unreliable" : true,
@@ -1491,6 +1491,197 @@
 				"type" : "Gun",
 				"calibre" : "88",
 				"long_range" : "L",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "92"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "5",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Radio Operator"],
+				"firing_group" : 1
+			}
+			
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Panzer VIe, also known as the Tiger I, was developed in the wake ",
+			"of the 1941 invasion of the USSR. The first tank to mount the 88mm gun, ",
+			"its firepower and heavy armour were achieved at the cost of a high weight, ",
+			"and an unreliable drivetrain."
+		],
+		"rarity" : {
+			"1943.01.01" : "50",
+			"1945.01.01" : "0"
+		}
+	},
+	
+	"Panzer VIe (Late)": {
+		"nick_name" : "Tiger",
+		"category" : "Vehicle",
+		"class" : "Heavy Tank",
+		"portrait" : "unit_pz_VI_e.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "8",
+			"hull_front" : "11",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"long_range" : "L",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "92"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "5",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 0
+			}
+			
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Panzer VIe, also known as the Tiger I, was developed in the wake ",
+			"of the 1941 invasion of the USSR. The first tank to mount the 88mm gun, ",
+			"its firepower and heavy armour were achieved at the cost of a high weight, ",
+			"and an unreliable drivetrain. This represents a later version of the model, ",
+			"with increased reliability."
+		],
+		"rarity" : {
+			"1944.01.01" : "70"
+		}
+	},
+	
+	"Panzer VIb": {
+		"nick_name" : "King Tiger",
+		"category" : "Vehicle",
+		"class" : "Heavy Tank",
+		"portrait" : "unit_pz_VI_b.xp",
+		"size_class" : "Very Large",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "18",
+			"turret_side" : "11",
+			"hull_front" : "26",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"long_range" : "LL",
 				"rof" : "14.0",
 				"rr_size" : "6",
 				"mount" : "Turret",
@@ -1560,105 +1751,12 @@
 			}
 		],
 		"description" : [
-			"The Panzer VIe, also known as the Tiger I, was developed in the wake ",
-			"of the 1941 invasion of the USSR. The first tank to mount the 88mm gun, ",
-			"its firepower and heavy armour were achieved at the cost of a high weight, ",
-			"and an unreliable drivetrain."
+			"The Panzer VIb, also known as the King Tiger, was intended to be a ",
+			"successor to the Tiger I, but its thick armour and powerful main gun ",
+			"were comprimised by a lack of mobility and an unreliable engine."
 		],
 		"rarity" : {
-			"1943.01.01" : "50",
-			"1945.01.01" : "0"
-		}
-	},
-	
-	"Panzer VIe (Late)": {
-		"nick_name" : "Tiger",
-		"category" : "Vehicle",
-		"class" : "Heavy Tank",
-		"portrait" : "unit_pz_VI_e.xp",
-		"size_class" : "Very Large",
-		"movement_class" : "Tank",
-		"turret" : "TRUE",
-		"armour" : {
-			"turret_front" : "14",
-			"turret_side" : "8",
-			"hull_front" : "11",
-			"hull_side" : "8"
-		},
-		"weapon_list" : [
-			{
-				"type" : "Gun",
-				"calibre" : "88",
-				"long_range" : "L",
-				"rof" : "14.0",
-				"rr_size" : "6",
-				"mount" : "Turret",
-				"fired_by" : ["Gunner"],
-				"reloaded_by" : ["Loader"],
-				"firing_group" : 0,
-				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "92"
-			},
-			{
-				"type" : "Co-ax MG",
-				"fp" : "3",
-				"rof" : "17.0",
-				"mount" : "Turret",
-				"fired_by" : ["Gunner"],
-				"firing_group" : 0
-			},
-			{
-				"type" : "Hull MG",
-				"fp" : "5",
-				"rof" : "8.4",
-				"mount" : "Hull",
-				"fired_by" : ["Assistant Driver"],
-				"firing_group" : 1
-			}
-			
-		],
-		"crew_positions" : [
-			{
-				"name" : "Commander",
-				"location" : "Turret",
-				"hatch" : "TRUE",
-				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
-				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
-			},
-			{
-				"name" : "Gunner",
-				"location" : "Turret",
-				"bu_visible" : ["0"]
-			},
-			{
-				"name" : "Loader",
-				"location" : "Turret",
-				"bu_visible" : ["0"]
-			},
-			{
-				"name" : "Driver",
-				"location" : "Hull",
-				"hatch" : "TRUE",
-				"ce_visible" : ["0", "1", "5"],
-				"bu_visible" : ["0"]
-			},
-			{
-				"name" : "Assistant Driver",
-				"location" : "Hull",
-				"hatch" : "TRUE",
-				"ce_visible" : ["0", "1", "5"],
-				"bu_visible" : ["0"]
-			}
-		],
-		"description" : [
-			"The Panzer VIe, also known as the Tiger I, was developed in the wake ",
-			"of the 1941 invasion of the USSR. The first tank to mount the 88mm gun, ",
-			"its firepower and heavy armour were achieved at the cost of a high weight, ",
-			"and an unreliable drivetrain. This represents a later version of the model, ",
-			"with increased reliability."
-		],
-		"rarity" : {
-			"1944.01.01" : "70"
+			"1944.06.01" : "60"
 		}
 	},
 	

@@ -7628,6 +7628,16 @@ class Scenario:
 			# turreted vehicle
 			if 'turret' in unit.stats:
 				unit.turret_facing = direction
+			
+			# special: some units are spawned with non-combat companion units
+			if unit_id == 'Light Artillery Car':
+				unit = Unit('Locomotive')
+				unit.owning_player = 1
+				unit.nation = campaign.current_week['enemy_nation']
+				unit.ai = AI(unit)
+				unit.GenerateNewPersonnel()
+				unit.SpawnAt(hx, hy)
+				unit.facing = GetDirectionToward(unit.hx, unit.hy, 0, 0)
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a

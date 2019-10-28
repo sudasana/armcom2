@@ -6996,6 +6996,7 @@ class Scenario:
 		
 		self.init_complete = False			# flag to say that scenario has already been set up
 		self.cd_map_hex = cd_map_hex			# Campaign Day map hex where this scenario is taking place
+		self.ambush = False				# enemy units activate first, greater chance of spawning behind player
 		self.finished = False				# Scenario has ended, returning to Campaign Day map
 		
 		# animation object; keeps track of active animations on the animation console
@@ -7056,7 +7057,16 @@ class Scenario:
 		self.support_target = None				# target map hex for support attacks
 		self.support_response_time = None			# time of support request response
 		self.support_status = None				# current stage of support attack
+	
+	
+	# roll at start of scenario to see whether player has been ambushed
+	def DoAmbushRoll(self):
+		roll = GetPercentileRoll()
 		
+		# FUTURE: commander skills and/or recce status can modify this roll
+		if roll <= 20.0:
+			self.ambush = True
+	
 	
 	# check for end of scenario and set flag if it has ended
 	def CheckForEnd(self):
@@ -7593,9 +7603,11 @@ class Scenario:
 			
 			# choose a random hex in which to spawn
 			for (hx, hy) in hex_list:
-				# make it less likely that enemy units will spawn behind the player
-				if GetDirectionToward(hx, hy, 0, 0) in [5, 0, 1]:
-					if GetPercentileRoll() <= 75.0: continue
+				
+				# if player spotted enemy units first, unlikely that they will spawn behind the player
+				if not self.ambush:
+					if GetDirectionToward(hx, hy, 0, 0) in [5, 0, 1]:
+						if GetPercentileRoll() <= 85.0: continue
 				break
 			
 			# create the unit
@@ -10637,6 +10649,10 @@ class Scenario:
 				unit.SpawnAt(0,0)
 				self.player_unit.squad.append(unit)
 			
+			# roll for possible ambush if enemy-controlled
+			if self.cd_map_hex.controlled_by == 1:
+				self.DoAmbushRoll()
+			
 			# generate enemy units
 			self.SpawnEnemyUnits()
 			
@@ -10646,6 +10662,11 @@ class Scenario:
 			for unit in self.player_unit.squad:
 				unit.BuildCmdLists()
 				unit.ResetForNewTurn()
+			
+			# if player was ambushed, enemy units activate first
+			if self.ambush:
+				self.phase = PHASE_ALLIED_ACTION
+				self.advance_phase = True
 			
 			campaign.AddLog('Combat begins')
 			
@@ -10671,6 +10692,9 @@ class Scenario:
 		self.UpdateAnimCon()
 		self.UpdateHexmapCon()
 		self.UpdateScenarioDisplay()
+		
+		if self.ambush:
+			ShowMessage('You have been ambushed by enemy forces!')
 		
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
@@ -12636,7 +12660,7 @@ def UpdateMainTitleCon(options_menu_active):
 		
 	else:
 		
-		for (char, text) in [('C', 'Continue'), ('N', 'New Campaign Day'), ('O', 'Options'), ('Q', 'Quit')]:
+		for (char, text) in [('C', 'Continue'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]:
 			# grey-out continue game option if no saved game present
 			disabled = False
 			if char == 'C' and not os.path.exists('savegame.dat'):

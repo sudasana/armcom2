@@ -2012,6 +2012,7 @@
 		"size_class" : "Small",
 		"movement_class" : "Wheeled",
 		"turret" : "TRUE",
+		"open_topped" : "TRUE",
 		"recce" : "TRUE",
 		"armour" : {
 			"turret_front" : "1",

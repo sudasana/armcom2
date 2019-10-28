@@ -9072,6 +9072,7 @@ class Scenario:
 					hit_location = 'turret_side'
 				
 				# FUTURE: direct hit vs. near miss
+				# FUTURE: if direct hit and open topped, automatically destroyed
 				
 				# start with base AP chance
 				chance = ap_chance
@@ -9280,6 +9281,7 @@ class Scenario:
 						break
 				
 				# FUTURE: direct hit vs. near miss
+				# FUTURE: if direct hit and open topped, automatically destroyed
 				
 				# target armour modifier
 				armour = target.GetStat('armour')

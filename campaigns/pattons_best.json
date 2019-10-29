@@ -166,6 +166,7 @@
 		},
 		{
 			"start_date" : "1944.08.31",
+			"end_date" : "1944.09.01",
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "60",

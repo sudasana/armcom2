@@ -551,7 +551,7 @@ class Campaign:
 			
 			# determine which calendar days are included from this week
 			
-			# add the first date, then the following 6
+			# build list of possible dates this week: add the first date, then the following 6
 			possible_days = []
 			possible_days.append(week['start_date'])
 			day_text = possible_days[0]
@@ -583,12 +583,17 @@ class Campaign:
 			
 			# select from list of possible days
 			
-			# fewer possible days than needed
-			if len(possible_days) <= combat_days:
-				self.combat_calendar += possible_days
-			else:
-				for day_text in sample(possible_days, combat_days):
-					self.combat_calendar.append(day_text)
+			# if fewer possible days than needed, try to add them all
+			if len(possible_days) < combat_days:
+				combat_days = len(possible_days)
+				
+			for day_text in sample(possible_days, combat_days):
+				# if day is past end of calendar week, throw it out
+				if 'end_date' in week:
+					if day_text > week['end_date']:
+						continue
+					
+				self.combat_calendar.append(day_text)
 		
 		# sort final list of days
 		self.combat_calendar.sort()

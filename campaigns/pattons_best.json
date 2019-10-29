@@ -191,6 +191,38 @@
 				"Truck" : "90",
 				"Infantry Squad" : "100"
 			}
+		},
+		{
+			"start_date" : "1944.09.02",
+			"end_date" : "1944.09.10",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1944.09.11",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "80",
+			"week_description" : "Moselle Crossing",
+			"mission_odds" : {
+				"Advance" : "75",
+				"Battle" : "25",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100"
+			}
 		}
 	]
 }

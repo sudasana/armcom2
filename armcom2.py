@@ -535,10 +535,14 @@ class Campaign:
 	# randomly generate a list of combat days for this campaign
 	def GenerateCombatCalendar(self):
 		
-		(end_year, end_month, end_day) = self.stats['end_date'].split('.')
-		
 		# roll separately for each week of campaign
 		for week in self.stats['calendar_weeks']:
+			
+			# if refitting week, only add the first day to the calendar
+			if 'refitting' in week:
+				self.combat_calendar.append(week['start_date'])
+				print('DEBUG: added a refit day')
+				continue
 			
 			# roll for number of combat days this week
 			combat_days = 1
@@ -892,7 +896,7 @@ class Campaign:
 		return (selected_unit.unit_id, player_tank_name)
 	
 	
-	# allow player to choose a new tank after losing one
+	# allow player to choose a new tank after losing one or during a refit period
 	def ReplacePlayerTank(self):
 		
 		exit_menu = False
@@ -996,10 +1000,15 @@ class Campaign:
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		libtcod.console_print_ex(con, WINDOW_XM, 22, libtcod.BKGND_NONE, libtcod.CENTER,
 			GetDateText(self.today))
-		libtcod.console_print_ex(con, WINDOW_XM, 23, libtcod.BKGND_NONE, libtcod.CENTER,
-			self.current_week['day_start'])
-		libtcod.console_print_ex(con, WINDOW_XM, 25, libtcod.BKGND_NONE, libtcod.CENTER,
-			self.current_week['week_description'])
+		
+		if 'refitting' in self.current_week:
+			libtcod.console_print_ex(con, WINDOW_XM, 24, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Refitting')
+		else:
+			libtcod.console_print_ex(con, WINDOW_XM, 23, libtcod.BKGND_NONE, libtcod.CENTER,
+				self.current_week['day_start'])
+			libtcod.console_print_ex(con, WINDOW_XM, 25, libtcod.BKGND_NONE, libtcod.CENTER,
+				self.current_week['week_description'])
 		
 		# fade in from black
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -1470,6 +1479,18 @@ class Campaign:
 	# main campaign calendar loop
 	def DoCampaignCalendarLoop(self):
 		
+		def ProceedToNextDay():
+			# set today to next day in calendar, and update enemy unit odds data
+			self.today = self.combat_calendar[day_index+1]
+			
+			# check for start of new week
+			week_index = campaign.stats['calendar_weeks'].index(campaign.current_week)
+			if week_index < len(campaign.stats['calendar_weeks']) - 1:
+				week_index += 1
+				if self.today > campaign.stats['calendar_weeks'][week_index]['start_date']:
+					campaign.current_week = campaign.stats['calendar_weeks'][week_index]
+		
+		
 		# consoles for campaign calendar interface
 		global calendar_bkg, day_outline, calendar_cmd_con, calendar_main_panel
 		global campaign_day
@@ -1580,16 +1601,7 @@ class Campaign:
 							exit_loop = True
 							continue
 						
-						# set today to next day in calendar, and update enemy unit odds data
-						self.today = self.combat_calendar[day_index+1]
-						
-						# check for start of new week
-						week_index = campaign.stats['calendar_weeks'].index(campaign.current_week)
-						if week_index < len(campaign.stats['calendar_weeks']) - 1:
-							week_index += 1
-							if self.today > campaign.stats['calendar_weeks'][week_index]['start_date']:
-								campaign.current_week = campaign.stats['calendar_weeks'][week_index]
-								#print('DEBUG: start of new calendar week')
+						ProceedToNextDay()
 						
 						# if player tank was destroyed, allow player to choose a new one
 						if not self.player_unit.alive:
@@ -1600,6 +1612,18 @@ class Campaign:
 						
 						# show new day starting animation
 						self.ShowStartOfDay()	
+						
+						# handle refitting weeks here
+						if 'refitting' in campaign.current_week:
+							
+							# allow player to change tanks
+							if ShowNotification('Your battlegroup has been recalled for refitting. Do you want to request a new tank?', confirm=True):
+								self.ReplacePlayerTank()
+							
+							# proceed to next combat day
+							ProceedToNextDay()
+							campaign_day = CampaignDay()
+							self.ShowStartOfDay()
 						
 						# redraw the screen
 						self.UpdateDayOutlineCon()
@@ -4054,7 +4078,6 @@ class Session:
 			unit_types = json.load(data_file)
 		for tries in range(300):
 			unit_id = choice(list(unit_types.keys()))
-			print('DEBUG: checking ' + unit_id)
 			if 'portrait' not in unit_types[unit_id]: continue
 			if unit_types[unit_id]['class'] not in ['Light Tank', 'Medium Tank', 'Heavy Tank', 'Tank Destroyer']: continue
 			self.tank_portrait = LoadXP(unit_types[unit_id]['portrait'])

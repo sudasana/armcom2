@@ -3891,7 +3891,7 @@ class CampaignDay:
 							session.cd_y_offset = y
 							self.UpdateCDUnitCon()
 							self.UpdateCDDisplay()
-							Wait(60)
+							Wait(20)
 						session.cd_x_offset = 0
 						session.cd_y_offset = 0
 					

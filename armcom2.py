@@ -6727,7 +6727,16 @@ class Unit:
 			scenario.attack_con_active = False
 			scenario.UpdateScenarioDisplay()
 			
-			# apply result if any
+			# shock test
+			roll = GetPercentileRoll()
+			if roll > profile['final_chance']:
+				for weapon in self.weapon_list:
+					weapon.acquired_target = None
+				
+				if self == scenario.player_unit:
+					ShowMessage('The impact has knocked your weapons off target. All acquired targets lost.')
+			
+			# apply result
 			if profile['result'] == 'NO PENETRATION':
 				
 				# check for stun test
@@ -6746,7 +6755,7 @@ class Unit:
 					else:
 						
 						pass
-						
+					
 			elif profile['result'] == 'PENETRATED':
 				
 				# if the player unit has been penetrated, multiple outcomes are possible

@@ -3162,6 +3162,11 @@ class CampaignDay:
 		# draw player unit group
 		(hx, hy) = self.player_unit_location
 		(x,y) = self.PlotCDHex(hx, hy)
+		
+		# apply animation offset if any
+		x += session.cd_x_offset
+		y += session.cd_y_offset
+		
 		libtcod.console_put_char_ex(cd_unit_con, x, y, '@', libtcod.white, libtcod.black)
 	
 	
@@ -3866,9 +3871,29 @@ class CampaignDay:
 						
 					# proceed with travel
 					else:
+						# clear selected direction
+						self.selected_direction = None
+						self.UpdateCDGUICon()
+						
+						# calculate animation path
+						(x,y) = self.PlotCDHex(hx1, hy1)
+						(x2,y2) = self.PlotCDHex(hx2, hy2)
+						x2 -= x
+						y2 -= y
+						line = GetLine(0, 0, x2, y2)
 						
 						# do sound effect
 						PlaySoundFor(campaign.player_unit, 'movement')
+						
+						# show animation
+						for (x, y) in line:
+							session.cd_x_offset = x
+							session.cd_y_offset = y
+							self.UpdateCDUnitCon()
+							self.UpdateCDDisplay()
+							Wait(60)
+						session.cd_x_offset = 0
+						session.cd_y_offset = 0
 					
 						# calculate travel time and advance clock
 						mins = self.CalculateTravelTime(hx1,hy1,hx2,hy2)
@@ -3876,12 +3901,9 @@ class CampaignDay:
 						
 						# set new player location and clear travel direction
 						self.player_unit_location = (hx2, hy2)
-						self.selected_direction = None
 						
-						# FUTURE: save direction from which player entered zone
-						#source_direction = ConstrainDir(self.selected_direction + 3)
-						
-						self.UpdateCDGUICon()
+						self.UpdateCDUnitCon()
+						self.UpdateCDDisplay()
 						
 						# roll to trigger battle encounter if enemy-controlled
 						if map_hex2.controlled_by == 1:
@@ -4083,6 +4105,10 @@ class Session:
 			self.tank_portrait = LoadXP(unit_types[unit_id]['portrait'])
 			break
 		del unit_types
+		
+		# campaign day map player unit animation offset
+		self.cd_x_offset = 0
+		self.cd_y_offset = 0
 		
 	
 	# try to initialize SDL2 mixer
@@ -12337,6 +12363,8 @@ def ShowDebugMenu():
 			session.debug[k] = not session.debug[k]
 			DrawDebugMenu()
 			continue
+		
+		if key_char not in ['1', '2', '3', '4', '5', '6']: continue
 		
 		# regenerate CD map roads
 		if int(key_char) == 1:

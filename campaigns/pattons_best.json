@@ -20,7 +20,7 @@
 		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
 		"PSW 231 (8 rad)",
 		"PaK 38", "PaK 40", "PaK 43", "Opel Blitz 3-ton",
-		"Riflemen"
+		"Riflemen", "HMG Team"
 	],
 	"decorations_list" : {
 		"500" : "Bronze Star",
@@ -53,7 +53,8 @@
 				"Anti-Tank Gun" : "35",
 				"Anti-Aircraft Gun" : "5",
 				"Truck" : "90",
-				"Infantry Squad" : "100"
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
 			}
 		},
 		{
@@ -80,7 +81,8 @@
 				"Anti-Tank Gun" : "35",
 				"Anti-Aircraft Gun" : "5",
 				"Truck" : "90",
-				"Infantry Squad" : "100"
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
 			}
 		},
 		{
@@ -107,7 +109,8 @@
 				"Anti-Tank Gun" : "35",
 				"Anti-Aircraft Gun" : "5",
 				"Truck" : "90",
-				"Infantry Squad" : "100"
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
 			}
 		},
 		{
@@ -134,7 +137,8 @@
 				"Anti-Tank Gun" : "35",
 				"Anti-Aircraft Gun" : "5",
 				"Truck" : "90",
-				"Infantry Squad" : "100"
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
 			}
 		},
 		{
@@ -161,7 +165,8 @@
 				"Anti-Tank Gun" : "35",
 				"Anti-Aircraft Gun" : "5",
 				"Truck" : "90",
-				"Infantry Squad" : "100"
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
 			}
 		},
 		{
@@ -189,7 +194,8 @@
 				"Anti-Tank Gun" : "35",
 				"Anti-Aircraft Gun" : "5",
 				"Truck" : "90",
-				"Infantry Squad" : "100"
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
 			}
 		},
 		{
@@ -221,7 +227,8 @@
 				"Anti-Tank Gun" : "35",
 				"Anti-Aircraft Gun" : "5",
 				"Truck" : "90",
-				"Infantry Squad" : "100"
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
 			}
 		}
 	]

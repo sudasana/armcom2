@@ -208,7 +208,60 @@
 		"description" : [
 			"First developed during the Great War, the Renault FT was the world's",
 			"first modern tank. By the outbreak of the Second World War several ",
-			"thousand were still in use throughout the world."
+			"thousand were still in use throughout the world. This model has a ",
+			"short-barreled 37mm main gun."
+		],
+		"rarity" : {
+			"1939.09.01" : "80"
+		}
+	},
+	
+	"Renault FT (MG)": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_FT-17M.xp",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Turret MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First developed during the Great War, the Renault FT was the world's",
+			"first modern tank. By the outbreak of the Second World War several ",
+			"thousand were still in use throughout the world. This model is armed ",
+			"only with a turret-mounted machine gun."
 		],
 		"rarity" : {
 			"1939.09.01" : "80"

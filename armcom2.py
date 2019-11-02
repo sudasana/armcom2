@@ -6731,7 +6731,10 @@ class Unit:
 				scenario.DisplayAttack(profile)
 				scenario.attack_con_active = True
 				scenario.UpdateScenarioDisplay()
-				WaitForContinue()
+				
+				# only wait if outcome is not automatic
+				if profile['final_chance'] not in [0.0, 100.0]:
+					WaitForContinue()
 			
 			# do the attack roll; modifies the attack profile
 			profile = scenario.DoAttackRoll(profile)
@@ -8245,7 +8248,12 @@ class Scenario:
 			total_modifier += mod
 		
 		# calculate final chance of success
-		profile['final_chance'] = RestrictChance(profile['base_chance'] + total_modifier)
+		# possible to be impossible or for penetration to be automatic
+		profile['final_chance'] = round(profile['base_chance'] + total_modifier, 2)
+		if profile['final_chance'] < 0.0:
+			profile['final_chance'] = 0.0
+		elif profile['final_chance'] > 100.0:
+			profile['final_chance'] = 100.0
 		
 		return profile
 	
@@ -8253,10 +8261,6 @@ class Scenario:
 	# generate an attack console to display an attack or AP profile to the screen and prompt to proceed
 	# does not alter the profile
 	def DisplayAttack(self, profile):
-		
-		# don't display if player is not involved
-		#if profile['attacker'] != self.player_unit and profile['target'] != self.player_unit:
-		#	return
 		
 		libtcod.console_clear(attack_con)
 		
@@ -8444,8 +8448,14 @@ class Scenario:
 		
 			libtcod.console_set_default_foreground(attack_con, libtcod.white)
 			libtcod.console_set_default_background(attack_con, libtcod.black)
-		
+			
 			text = str(profile['final_chance']) + '%%'
+			# AP checks may be automatic or impossible
+			if profile['type'] == 'ap':
+				if profile['final_chance'] == 0.0:
+					text = 'Impossible'
+				elif profile['final_chance'] == 100.0:
+					text = 'Automatic'
 			libtcod.console_print_ex(attack_con, 13, 47, libtcod.BKGND_NONE,
 				libtcod.CENTER, text)
 		
@@ -8518,150 +8528,161 @@ class Scenario:
 		libtcod.console_print(attack_con, 6, 56, '                  ')
 		libtcod.console_print(attack_con, 6, 57, '                  ')
 		
-		# don't animate percentage rolls if player is not involved
-		if profile['attacker'] != scenario.player_unit and profile['target'] != scenario.player_unit:
-			roll = GetPercentileRoll()
-		else:
-			for i in range(6):
-				roll = GetPercentileRoll()
-				
-				# modifiers applied to the final roll, the one that counts
-				if i == 5:
-				
-					# check for player fate point usage
-					if profile['target'] == scenario.player_unit and campaign_day.fate_points > 0:
-						
-						# hit or penetration
-						if roll <= profile['final_chance'] or roll <= profile['critical_hit']:
-							
-							# point fire hit
-							if profile['type'] == 'Point Fire':
-								
-								# hit with large calibre weapon
-								if profile['weapon'].GetStat('calibre') is not None:
-									if int(profile['weapon'].GetStat('calibre')) > 25:
-										
-										# apply fate point
-										campaign_day.fate_points -= 1
-										roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
-										if roll > 97.0:
-											roll = 97.0
-							
-							# AP penetration
-							elif profile['type'] == 'ap':
-								
-								# apply fate point
-								campaign_day.fate_points -= 1
-								roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
-								if roll > 97.0:
-									roll = 97.0
-				
-					# check for debug flag - force a hit or penetration
-					if DEBUG:
-						if profile['attacker'] == scenario.player_unit and session.debug['Player Always Hits']:
-							while roll >= profile['final_chance']:
-								roll = GetPercentileRoll()
-						elif profile['target'] == scenario.player_unit and profile['type'] == 'ap' and session.debug['Player Always Penetrated']:
-							while roll >= profile['final_chance']:
-								roll = GetPercentileRoll()
-						elif profile['target'] == scenario.player_unit and profile['type'] != 'ap' and session.debug['AI Hates Player']:	
-							while roll >= profile['final_chance']:
-								roll = GetPercentileRoll()
-				
-				# clear any previous text
-				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
-					libtcod.CENTER, '      ')
-				
-				text = str(roll) + '%%'
-				libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
-					libtcod.CENTER, text)
-				
-				scenario.UpdateScenarioDisplay()
-				
-				# don't animate if fast mode debug flag is set
-				if DEBUG and session.debug['Fast Mode']:
-					continue
-				
-				Wait(15)
-		
-		# record the final roll in the attack profile
-		profile['roll'] = roll
-			
-		# determine location hit on target (not always used)
-		location_roll = GetPercentileRoll()
-		
-		if location_roll <= 75.0:
-			profile['location'] = 'Hull'
-		else:
-			profile['location'] = 'Turret'
-		
-		# armour penetration roll
+		# if AP roll, may not need to roll
 		if profile['type'] == 'ap':
-			
-			if roll >= CRITICAL_MISS:
+			if profile['final_chance'] == 0.0:
 				result_text = 'NO PENETRATION'
-			elif roll <= CRITICAL_HIT:
+			elif profile['final_chance'] == 100.0:
 				result_text = 'PENETRATED'
-			elif roll <= profile['final_chance']:
-				result_text = 'PENETRATED'
-			else:
-				result_text = 'NO PENETRATION'
 		
-		# area fire attack
-		elif profile['type'] == 'Area Fire':
-			
-			if roll <= profile['critical_effect']:
-				result_text = 'CRITICAL EFFECT'
-				profile['effective_fp'] = profile['base_fp'] * 2
-			elif roll <= profile['full_effect']:
-				result_text = 'FULL EFFECT'
-				profile['effective_fp'] = profile['base_fp']
-			elif roll <= profile['final_chance']:
-				result_text = 'PARTIAL EFFECT'
-				profile['effective_fp'] = int(floor(profile['base_fp'] / 2))
-			else:
-				result_text = 'NO EFFECT'
-			
-			# might be converted into an AP MG hit
-			if result_text in ['FULL EFFECT', 'CRITICAL EFFECT']:
-				if profile['weapon'].GetStat('type') in MG_WEAPONS and profile['target'].GetStat('armour') is not None:
-					distance = GetHexDistance(profile['attacker'].hx,
-						profile['attacker'].hy, profile['target'].hx,
-						profile['target'].hy)
-					if distance <= MG_AP_RANGE:
-						if result_text == 'FULL EFFECT':
-							result_text = 'HIT'
-						else:
-							result_text = 'CRITICAL HIT'
-
-		# point fire attack
-		else:
-			
-			if roll >= CRITICAL_MISS:
-				result_text = 'MISS'
-			elif roll <= profile['critical_hit']:
-				result_text = 'CRITICAL HIT'
-			elif roll <= profile['final_chance']:
-				result_text = 'HIT'
-			else:
-				result_text = 'MISS'
+		# only roll if outcome not yet determined
+		if profile['result'] == '':
 		
-		# if point fire hit or AP MG hit, may be saved by HD status
-		if result_text in ['HIT', 'CRITICAL HIT'] and len(profile['target'].hull_down) > 0:
+			# don't animate percentage rolls if player is not involved
+			if profile['attacker'] != scenario.player_unit and profile['target'] != scenario.player_unit:
+				roll = GetPercentileRoll()
+			else:
+				for i in range(6):
+					roll = GetPercentileRoll()
+					
+					# modifiers applied to the final roll, the one that counts
+					if i == 5:
+					
+						# check for player fate point usage
+						if profile['target'] == scenario.player_unit and campaign_day.fate_points > 0:
+							
+							# hit or penetration
+							if roll <= profile['final_chance'] or roll <= profile['critical_hit']:
+								
+								# point fire hit
+								if profile['type'] == 'Point Fire':
+									
+									# hit with large calibre weapon
+									if profile['weapon'].GetStat('calibre') is not None:
+										if int(profile['weapon'].GetStat('calibre')) > 25:
+											
+											# apply fate point
+											campaign_day.fate_points -= 1
+											roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
+											if roll > 97.0:
+												roll = 97.0
+								
+								# AP penetration
+								elif profile['type'] == 'ap':
+									
+									# apply fate point
+									campaign_day.fate_points -= 1
+									roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
+									if roll > 97.0:
+										roll = 97.0
+					
+						# check for debug flag - force a hit or penetration
+						if DEBUG:
+							if profile['attacker'] == scenario.player_unit and session.debug['Player Always Hits']:
+								while roll >= profile['final_chance']:
+									roll = GetPercentileRoll()
+							elif profile['target'] == scenario.player_unit and profile['type'] == 'ap' and session.debug['Player Always Penetrated']:
+								while roll >= profile['final_chance']:
+									roll = GetPercentileRoll()
+							elif profile['target'] == scenario.player_unit and profile['type'] != 'ap' and session.debug['AI Hates Player']:	
+								while roll >= profile['final_chance']:
+									roll = GetPercentileRoll()
+					
+					# clear any previous text
+					libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
+						libtcod.CENTER, '      ')
+					
+					text = str(roll) + '%%'
+					libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
+						libtcod.CENTER, text)
+					
+					scenario.UpdateScenarioDisplay()
+					
+					# don't animate if fast mode debug flag is set
+					if DEBUG and session.debug['Fast Mode']:
+						continue
+					
+					Wait(15)
 			
-			if profile['location'] == 'Hull':
-				direction = GetDirectionToward(profile['target'].hx,
-					profile['target'].hy, profile['attacker'].hx,
-					profile['attacker'].hy)
-				if direction in profile['target'].hull_down:
-					result_text = 'MISS - HULL DOWN'
-		
+			# record the final roll in the attack profile
+			profile['roll'] = roll
+				
+			# determine location hit on target (not always used)
+			location_roll = GetPercentileRoll()
+			
+			if location_roll <= 75.0:
+				profile['location'] = 'Hull'
+			else:
+				profile['location'] = 'Turret'
+			
+			# armour penetration roll
+			if profile['type'] == 'ap':
+				
+				if roll >= CRITICAL_MISS:
+					result_text = 'NO PENETRATION'
+				elif roll <= CRITICAL_HIT:
+					result_text = 'PENETRATED'
+				elif roll <= profile['final_chance']:
+					result_text = 'PENETRATED'
+				else:
+					result_text = 'NO PENETRATION'
+			
+			# area fire attack
+			elif profile['type'] == 'Area Fire':
+				
+				if roll <= profile['critical_effect']:
+					result_text = 'CRITICAL EFFECT'
+					profile['effective_fp'] = profile['base_fp'] * 2
+				elif roll <= profile['full_effect']:
+					result_text = 'FULL EFFECT'
+					profile['effective_fp'] = profile['base_fp']
+				elif roll <= profile['final_chance']:
+					result_text = 'PARTIAL EFFECT'
+					profile['effective_fp'] = int(floor(profile['base_fp'] / 2))
+				else:
+					result_text = 'NO EFFECT'
+				
+				# might be converted into an AP MG hit
+				if result_text in ['FULL EFFECT', 'CRITICAL EFFECT']:
+					if profile['weapon'].GetStat('type') in MG_WEAPONS and profile['target'].GetStat('armour') is not None:
+						distance = GetHexDistance(profile['attacker'].hx,
+							profile['attacker'].hy, profile['target'].hx,
+							profile['target'].hy)
+						if distance <= MG_AP_RANGE:
+							if result_text == 'FULL EFFECT':
+								result_text = 'HIT'
+							else:
+								result_text = 'CRITICAL HIT'
+	
+			# point fire attack
+			else:
+				
+				if roll >= CRITICAL_MISS:
+					result_text = 'MISS'
+				elif roll <= profile['critical_hit']:
+					result_text = 'CRITICAL HIT'
+				elif roll <= profile['final_chance']:
+					result_text = 'HIT'
+				else:
+					result_text = 'MISS'
+			
+			# if point fire hit or AP MG hit, may be saved by HD status
+			if result_text in ['HIT', 'CRITICAL HIT'] and len(profile['target'].hull_down) > 0:
+				
+				if profile['location'] == 'Hull':
+					direction = GetDirectionToward(profile['target'].hx,
+						profile['target'].hy, profile['attacker'].hx,
+						profile['attacker'].hy)
+					if direction in profile['target'].hull_down:
+						result_text = 'MISS - HULL DOWN'
+			
 		profile['result'] = result_text
 		
 		# if player is not involved, we can return here
 		if profile['attacker'] != scenario.player_unit and profile['target'] != scenario.player_unit:
 			return profile
 		
+		# display result on screen
 		libtcod.console_print_ex(attack_con, 13, 51, libtcod.BKGND_NONE,
 			libtcod.CENTER, result_text)
 		

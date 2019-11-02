@@ -2906,7 +2906,6 @@
 	"H35": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
-		"portrait" : "unit_h35.xp",
 		"size_class" : "Small",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",

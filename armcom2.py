@@ -60,7 +60,7 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.9.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -10927,6 +10927,8 @@ class Scenario:
 					if crewman is None:
 						continue
 					
+					PlaySoundFor(None, 'command_select')
+					
 					crewman.SelectCommand(key_char == 'a')
 					
 					self.player_unit.positions_list[self.selected_position].UpdateVisibleHexes()
@@ -12617,6 +12619,10 @@ def PlaySoundFor(obj, action):
 	
 	elif action == 'add skill':
 		PlaySound('add_skill')
+		return
+	
+	elif action == 'command_select':
+		PlaySound('command_select')
 		return
 	
 	print ('ERROR: Could not determine which sound to play for action: ' + action)

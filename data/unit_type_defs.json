@@ -3862,6 +3862,261 @@
 	},
 	
 	
+	"Sherman II": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "11",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Sherman II was the British and Commonwealth designation for the ",
+			"M4A1. Units in Commonwealth service did not have a loader hatch or ",
+			"a vision cupola for the commander."
+		],
+		"rarity" : {
+			"1942.10.01" : "100",
+			"1943.09.01" : "90",
+			"1944.01.01" : "80",
+			"1944.08.01" : "70"
+		}
+	},
+	
+	"Sherman V": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "8",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Sherman V was the British and Commonwealth designation for the ",
+			"M4A4. Units in Commonwealth service did not have a loader hatch or ",
+			"a vision cupola for the commander."
+		],
+		"rarity" : {
+			"1943.07.01" : "90",
+			"1943.09.01" : "100",
+			"1944.05.01" : "110"
+		}
+	},
+	
+	"Sherman VC": {
+		"nick_name" : "Firefly",
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "8",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "LL",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Sherman VC 'Firefly' was a standard M4A4 tank converted to carry ",
+			"a 17pdr main gun, with far superior armour penetration power compared ",
+			"to standard 75mm guns. Because of the large size of the main gun ammo, ",
+			"the assistant driver position and its MG has been removed."
+		],
+		"rarity" : {
+			"1944.06.01" : "80",
+			"1945.01.01" : "90"
+		}
+	},
 	
 	
 	

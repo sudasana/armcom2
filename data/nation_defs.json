@@ -1,4 +1,52 @@
 {
+	"Canada": {
+		"short_code" : "CAN",
+		"adjective" : "Canadian",
+		"flag_image" : "flag_CAN.xp",
+		"rank_names" : {
+			"0" : "Private",
+			"1" : "Private (Trained)",
+			"2" : "Corporal",
+			"3" : "Sergeant",
+			"4" : "Second Lieutenant",
+			"5" : "Lieutenant",
+			"6" : "Captain"
+		},
+		"first_names" : [
+			"Robert", "David", "John", "James", "William", "Richard", "Kenneth",
+			"Donald", "Ronald", "Douglas", "Michael", "Brian", "Thomas", "Gordon",
+			"Gary", "Peter", "Wayne", "Dennis", "Daniel", "Bruce", "Larry", "Edward",
+			"George", "Gerald", "Patrick", "Charles", "Gregory", "Allan", "Paul",
+			"Joseph", "Raymond ", "Norman", "Stephen", "Alan", "Barry", "Lawrence",
+			"Terry", "Christopher", "Leslie", "Arthur", "Mark", "Frederick", "Ian",
+			"Leonard", "Walter", "Eric", "Glen", "Keith", "Stanley", "Garry",
+			"Glenn", "Harold", "Roger", "Roy", "Dale", "Steven", "Frank",
+			"Ralph", "Russell", "Murray", "Philip", "Ross", "Victor", "Ernest",
+			"Andrew", "Rodney", "Clifford ", "Jack", "Albert", "Timothy",
+			"Craig", "Harry", "Henry", "Martin", "Terrance", "Lorne", "Randall",
+			"Colin", "Alexander", "Francis", "Grant", "Allen", "Bryan", "Terrence",
+			"Lloyd", "Anthony ", "Danny", "Lyle", "Robin", "Terence", "Marvin",
+			"Melvin", "Roderick", "Alfred", "Neil", "Randy", "Daryl", "Denis",
+			"Herbert", "Earl", "Howard"
+		],
+		"surnames" : [
+			"Smith", "Brown", "Tremblay", "Martin", "Roy", "Wilson", "Macdonald",
+			"Gagnon", "Johnson", "Taylor", "Cote", "Campbell", "Anderson", "Leblanc",
+			"Lee", "Jones", "White", "Williams", "Miller", "Thompson", "Gauthier",
+			"Young", "Morin", "Bouchard", "Scott", "Stewart", "Belanger", "Reid",
+			"Pelletier", "Moore", "Lavoie", "King", "Robinson", "Levesque", "Murphy",
+			"Fortin", "Gagne", "Clark", "Johnston", "Clarke", "Ross", "Walker",
+			"Thomas", "Boucher", "Landry", "Kelly", "Bergeron", "Davis", "Mitchell",
+			"Murray", "Poirier", "Mcdonald", "Richard", "Wright", "Girard", "Lewis",
+			"Baker", "Roberts", "Simard", "Graham", "Caron", "Harris", "Jackson",
+			"Green", "Beaulieu", "Fraser", "Fournier", "Kennedy", "Hall", "Hill",
+			"Wood", "Lapointe", "Ouellet", "Bell", "Dube", "Allen", "Adams", "Cloutier",
+			"Bennett", "Lefebvre", "Watson", "Robertson", "Walsh", "Collins", "Evans",
+			"Hebert", "Hamilton", "Cameron", "Desjardins", "Russell", "Nadeau",
+			"Cook", "Michau", "Morrison", "Grant", "Parsons"
+		]
+	},
+	
 	"Germany": {
 		"short_code" : "GER",
 		"adjective" : "German",

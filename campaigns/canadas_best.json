@@ -57,11 +57,6 @@
 			}
 		},
 		{
-			"start_date" : "1944.08.11",
-			"end_date" : "1944.08.13",
-			"refitting" : "TRUE"
-		},
-		{
 			"start_date" : "1944.08.14",
 			"day_start" : "05:00",
 			"day_end" : "19:15",

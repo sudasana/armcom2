@@ -2408,6 +2408,7 @@
 	"PaK 43": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_pak_43.xp",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",

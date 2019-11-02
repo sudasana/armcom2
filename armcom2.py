@@ -281,8 +281,13 @@ PF_BASE_CHANCE = [
 	[58.0, 35.0]			# 3 hex range
 ]
 
-# bonus for level 1 and level 2 acquired target for point fire
-AC_BONUS = [10.0, 25.0]
+# acquired target bonus for level 1 and level 2 for point fire
+AC_BONUS = [
+	[8.0, 15.0],	# distance 0
+	[10.0, 25.0],	# distance 1
+	[10.0, 25.0],	# distance 2
+	[20.0, 35.0]	# distance 3
+]
 
 # modifier for target size if target is known
 PF_SIZE_MOD = {
@@ -7897,7 +7902,7 @@ class Scenario:
 						text = 'Acquired Target'
 						if level == 1:
 							text += '+'
-						modifier_list.append((text, AC_BONUS[level]))
+						modifier_list.append((text, AC_BONUS[distance][level]))
 				
 				# target vehicle moving
 				if target.moving and target.GetStat('category') == 'Vehicle':
@@ -8026,6 +8031,8 @@ class Scenario:
 					(ac_target, level) = weapon.acquired_target
 					if ac_target == target:
 						mod = round(15.0 + (float(level) * 15.0), 2)
+						if distance == 3:
+							mod = round(mod * 1.15, 2)
 						text = 'Acquired Target'
 						if level == 1:
 							text += '+'

@@ -1949,6 +1949,71 @@
 		
 	},
 	
+	"Marder III M": {
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_marder_III_m.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "2",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "27"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Built upon a Panzer 38(t) chassis, the Marder was developed as a ",
+			"makeshift tank destroyer, initially for countering Soviet tanks.",
+			"This variant has light armour but a powerful 75mm main gun."
+		],
+		"rarity" : {
+			"1943.05.01" : "90"
+		}
+		
+	},
+	
 	"Sd. Kfz. 13": {
 		"category" : "Vehicle",
 		"class" : "Armoured Car",

@@ -512,7 +512,7 @@ class Campaign:
 		with open(DATAPATH + 'skill_defs.json', encoding='utf8') as data_file:
 			self.skills = json.load(data_file)
 		
-		self.logs = {}			# dictionary of campaign logs, organized by combat day
+		self.logs = []			# list of campaign logs for each combat day
 		self.player_unit = None		# placeholder for player unit
 		self.player_squad_max = 0	# maximum units in player squad
 		self.player_squad_num = 0	# current units in player squad
@@ -607,14 +607,11 @@ class Campaign:
 		#	print(day_text)
 	
 	
-	# add a line to the log for the current day
-	def AddLog(self, text):
-		# add timestamp if a campaign day is active
-		if campaign_day is not None:
-			text = (str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2) +
-				' - ' + text)
-		self.logs[self.today].append(text)
-		#print('DEBUG: Added log: ' + text)
+	# copy over day's records to a new entry in the campaign record log
+	def LogDayRecords(self):
+		self.logs.append(self.today)
+		self.logs[self.today] = campaign_day.records.copy()
+		print('DEBUG: copied over records for day: ' + str(self.today))
 	
 	
 	# award VP to the player
@@ -1581,7 +1578,6 @@ class Campaign:
 					# start new day
 					if not campaign_day.ended:
 						campaign_day.AmmoReloadMenu()	# allow player to load ammo
-						self.AddLog('Combat day begins')
 						campaign_day.started = True
 						continue			# continue in loop to go into campaign day layer
 				
@@ -1590,6 +1586,9 @@ class Campaign:
 						
 						# do end-of-day stuff
 						self.ShowEndOfDay()
+						
+						# add day records to campaign log
+						campaign.LogDayRecords()
 						
 						# check for end of campaign
 						day_index = campaign.combat_calendar.index(campaign.today)
@@ -1689,6 +1688,11 @@ class Campaign:
 class CampaignDay:
 	def __init__(self):
 		
+		# campaign day records
+		self.records = {}
+		for text in RECORD_LIST:
+			self.records[text] = 0
+		
 		self.started = False				# day is in progress
 		self.ended = False				# day has been completed
 		self.mission = ''
@@ -1732,11 +1736,6 @@ class CampaignDay:
 			'Train Car': 6
 		}
 		
-		# records for end-of-day summary
-		self.records = {}
-		for text in RECORD_LIST:
-			self.records[text] = 0
-		
 		# current hour, and minute: set initial time from campaign info
 		self.day_clock = {}
 		time_str = campaign.current_week['day_start'].split(':')
@@ -1759,9 +1758,6 @@ class CampaignDay:
 		
 		# current odds of a random event being triggered
 		self.random_event_chance = BASE_CD_RANDOM_EVENT_CHANCE
-		
-		# add day to campaign log
-		campaign.logs[campaign.today] = []
 		
 		# generate campaign day map
 		self.map_hexes = {}
@@ -3627,7 +3623,6 @@ class CampaignDay:
 			DisplayTimeInfo(time_con)
 			text = 'It takes you ' + str(minutes) + ' minutes to travel to the front lines.'
 			ShowMessage(text)
-			campaign.AddLog('We arrived at the front lines.')
 			self.travel_time_spent = True
 		
 		# record mouse cursor position to check when it has moved
@@ -3657,8 +3652,6 @@ class CampaignDay:
 					
 					self.scenario = None
 					scenario = None
-					
-					campaign.AddLog('Combat ends')
 					
 					# tank was immobilized, abandoned, or destroyed
 					if campaign.player_unit.immobilized or not campaign.player_unit.alive:
@@ -3692,7 +3685,6 @@ class CampaignDay:
 			# check for end of campaign day
 			if self.ended:
 				ShowMessage('Your combat day has ended.')
-				campaign.AddLog('Day ends')
 				self.DisplayCampaignDaySummary()
 				exit_loop = True
 				continue
@@ -4033,12 +4025,10 @@ class CDMapHex:
 				if self.controlled_by == 0 and self.objective['objective_type'] == 'Defend':
 					campaign.AwardVP(self.objective['vp_reward'])
 					ShowMessage('You have defended an objective!')
-					campaign.AddLog('Defended an objective area')
 				
 				elif self.controlled_by == 1 and self.objective['objective_type'] == 'Capture':
 					campaign.AwardVP(self.objective['vp_reward'])
 					ShowMessage('You have captured an objective!')
-					campaign.AddLog('Captured an objective area')
 		
 		# set new zone control
 		self.controlled_by = player_num
@@ -6812,7 +6802,6 @@ class Unit:
 						else:
 							ShowMessage('The hit damages the engine and drivetrain, immobilizing your tank.')
 							scenario.player_unit.ImmobilizeMe()
-							campaign.AddLog('Our tank was hit by ' + profile['attacker'].GetName() + ' and immobilized.')
 							scenario.UpdatePlayerInfoCon()
 						continue
 					
@@ -6849,10 +6838,6 @@ class Unit:
 				else:
 					text += profile['attacker'].GetName() + '.'
 				ShowMessage(text)
-				
-				# add to log if player kill
-				if profile['attacker'] == scenario.player_unit:
-					campaign.AddLog('Destroyed a ' + self.GetName())
 				
 				# don't resolve any further hits
 				break
@@ -7029,8 +7014,6 @@ class Unit:
 		
 			# player unit has been destroyed
 			if self == scenario.player_unit:
-				
-				campaign.AddLog('Our tank was destroyed')
 				
 				# set end-scenario flag
 				scenario.finished = True
@@ -10757,8 +10740,6 @@ class Scenario:
 				self.phase = PHASE_ALLIED_ACTION
 				self.advance_phase = True
 			
-			campaign.AddLog('Combat begins')
-			
 			self.init_complete = True
 		
 		# reset animation timer
@@ -11131,11 +11112,11 @@ def ExportLog():
 			f.write('\n')
 		f.write('\n')
 		
-		# list of logs sorted by day
-		for k, v in campaign.logs.items():
-			f.write(GetDateText(k) + '\n')
-			for line in v:
-				f.write('  ' + line + '\n')
+		# list of campaign day records
+		for day in campaign.logs:
+			f.write(GetDateText(day) + ':\n')
+			for record in RECORD_LIST:
+				f.write('  ' + record + ': ' + str(day[record]) + '\n')
 			f.write('\n\n')
 
 

@@ -8527,6 +8527,8 @@ class Scenario:
 		libtcod.console_print(attack_con, 6, 56, '                  ')
 		libtcod.console_print(attack_con, 6, 57, '                  ')
 		
+		result_text = ''
+		
 		# if AP roll, may not need to roll
 		if profile['type'] == 'ap':
 			if profile['final_chance'] == 0.0:
@@ -8535,7 +8537,7 @@ class Scenario:
 				result_text = 'PENETRATED'
 		
 		# only roll if outcome not yet determined
-		if profile['result'] == '':
+		if result_text == '':
 		
 			# don't animate percentage rolls if player is not involved
 			if profile['attacker'] != scenario.player_unit and profile['target'] != scenario.player_unit:

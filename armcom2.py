@@ -517,7 +517,7 @@ class Campaign:
 		with open(DATAPATH + 'skill_defs.json', encoding='utf8') as data_file:
 			self.skills = json.load(data_file)
 		
-		self.logs = []			# list of campaign logs for each combat day
+		self.logs = {}			# dictionary of campaign logs for each combat day
 		self.player_unit = None		# placeholder for player unit
 		self.player_squad_max = 0	# maximum units in player squad
 		self.player_squad_num = 0	# current units in player squad
@@ -614,7 +614,6 @@ class Campaign:
 	
 	# copy over day's records to a new entry in the campaign record log
 	def LogDayRecords(self):
-		self.logs.append(self.today)
 		self.logs[self.today] = campaign_day.records.copy()
 		print('DEBUG: copied over records for day: ' + str(self.today))
 	
@@ -11118,7 +11117,8 @@ def GeneratePlaneCon(direction):
 # export the campaign log to a text file, normally done at the end of a campaign
 def ExportLog():
 	
-	with open('ArmCom2_Campaign_Log_' + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + '.txt', 'w+') as f:
+	filename = 'ArmCom2_Campaign_Log_' + datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + '.txt'
+	with open(filename, 'w') as f:
 			
 		# campaign information
 		f.write(campaign.stats['name'] + '\n')
@@ -11136,17 +11136,17 @@ def ExportLog():
 			if position.crewman is None:
 				f.write('  [Empty]\n\n')
 				continue
-			f.write('  ' + position.crewman.first_name + ' ' + position.crewman.first_name + '\n')
+			f.write('  ' + position.crewman.first_name + ' ' + position.crewman.last_name + '\n')
 			if position.crewman.wound != '':
 				f.write('  ' + position.crewman.wound + '\n')
 			f.write('\n')
 		f.write('\n')
 		
 		# list of campaign day records
-		for day in campaign.logs:
+		for day, value in campaign.logs.items():
 			f.write(GetDateText(day) + ':\n')
 			for record in RECORD_LIST:
-				f.write('  ' + record + ': ' + str(day[record]) + '\n')
+				f.write('  ' + record + ': ' + str(value[record]) + '\n')
 			f.write('\n\n')
 
 
@@ -11571,9 +11571,10 @@ def CheckForAnimationUpdate():
 				scenario.UpdateScenarioDisplay()
 		
 	elif campaign_day is not None:
-		if time.time() - session.anim_timer >= ANIM_UPDATE_TIMER:
-			campaign_day.UpdateAnimCon()
-			campaign_day.UpdateCDDisplay()	
+		if campaign_day.started and not campaign_day.ended:
+			if time.time() - session.anim_timer >= ANIM_UPDATE_TIMER:
+				campaign_day.UpdateAnimCon()
+				campaign_day.UpdateCDDisplay()	
 	
 	# display message console overtop if any
 	if session.msg_con is not None:

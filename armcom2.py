@@ -60,7 +60,7 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.9.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -2228,7 +2228,7 @@ class CampaignDay:
 			# FUTURE: highlight hex momentarily
 		
 		# free resupply
-		elif roll <= 55.0:
+		elif roll <= 45.0:
 			ShowMessage('You happen to encounter a supply truck, and can restock your gun ammo.')
 			self.AmmoReloadMenu()
 		

@@ -7130,7 +7130,14 @@ class Scenario:
 	def DoAmbushRoll(self):
 		roll = GetPercentileRoll()
 		
-		# FUTURE: commander skills and/or recce status can modify this roll
+		for position in ['Commander', 'Commander/Gunner']:
+			crewman = self.player_unit.GetPersonnelByPosition(position)
+			if crewman is None: continue
+			if 'Enemy Spotted!' in crewman.skills:
+				roll += 10.0
+				break
+		
+		# FUTURE: recce status can modify this roll
 		if roll <= 20.0:
 			self.ambush = True
 	

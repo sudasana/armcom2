@@ -34,6 +34,11 @@
 		"prerequisite" : "Driver Direction"
 	},
 	
+	"Enemy Spotted!": {
+		"desc" : "Less chance of being ambushed at the start of a battle encounter.",
+		"position_list" : ["Commander", "Commander/Gunner"]
+	},
+	
 	
 	"Quick Trigger": {
 		"desc" : "Slightly increases chance of maintaining Rate of Fire when firing a Gun.",

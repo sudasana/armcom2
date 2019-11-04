@@ -2510,6 +2510,7 @@
 	"8.8cm FlaK 18 o. 36": {
 		"category" : "Gun",
 		"class" : "Anti-Aircraft Gun",
+		"portrait" : "unit_flak_36.xp",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",
@@ -2928,6 +2929,7 @@
 	"76.2mm obr. 00/02P": {
 		"category" : "Gun",
 		"class" : "Field Gun",
+		"portrait" : "unit_76mm_gun.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",

@@ -62,7 +62,7 @@ import calendar						# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.9.0'					# game version
+VERSION = '0.9.0 09-11-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -11491,8 +11491,7 @@ def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None)
 		y += 1
 	
 	# allow the message to be viewed by player
-	# TODO: game option to change length that message is displayed
-	Wait(140)
+	Wait(100 + (40 * config['ArmCom2'].getint('message_pause')))
 	
 	# erase console and re-draw screen
 	session.msg_con = None
@@ -11916,7 +11915,8 @@ def LoadCFG():
 		config['ArmCom2'] = {
 			'large_display_font' : 'true',
 			'sounds_enabled' : 'true',
-			'animation_speed' : 1,
+			'animation_speed' : 1,			# not used yet
+			'message_pause' : 1,
 			'keyboard' : '0'
 		}
 		
@@ -12091,7 +12091,7 @@ def ShowGameMenu():
 
 # display a list of game options and current settings
 def DisplayGameOptions(console, x, y, skip_esc=False):
-	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
+	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('P', 'Message Pause'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
 		
 		if char == 'Esc' and skip_esc: continue
 		
@@ -12123,6 +12123,11 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 				text = 'OFF'
 			libtcod.console_print(console, x+20, y, text)
 		
+		# message pause length
+		elif char == 'P':
+			text = ['Short', 'Normal', 'Long'][config['ArmCom2'].getint('message_pause')]
+			libtcod.console_print(console, x+20, y, text)
+		
 		# keyboard settings
 		elif char == 'K':
 			libtcod.console_print(console, x+20, y, KEYBOARDS[config['ArmCom2'].getint('keyboard')])
@@ -12135,7 +12140,7 @@ def ChangeGameSettings(key_char, main_menu=False):
 	
 	global main_theme
 
-	if key_char not in ['f', 's', 'k']:
+	if key_char not in ['f', 's', 'p', 'k']:
 		return False
 	
 	# switch font size
@@ -12167,7 +12172,16 @@ def ChangeGameSettings(key_char, main_menu=False):
 			session.LoadMainTheme()
 			if main_menu:
 				mixer.Mix_PlayMusic(main_theme, -1)
-		
+	
+	# switch message pause length
+	elif key_char == 'p':
+		i = config['ArmCom2'].getint('message_pause')
+		if i == 2:
+			i = 0
+		else:
+			i += 1
+		config['ArmCom2']['message_pause'] = str(i)
+	
 	# switch keyboard layout
 	elif key_char == 'k':
 		

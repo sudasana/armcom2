@@ -2497,6 +2497,82 @@
 		}
 	},
 	
+	"PSW 234/2": {
+		"nick_name" : "Puma",
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_psw_234_2.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Wheeled",
+		"off_road" : "TRUE",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "4",
+			"turret_side" : "1",
+			"hull_front" : "4",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "50",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66"
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Co-Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["2", "1", "3"],
+				"bu_visible" : ["2"]
+			}
+		],
+		"description" : [
+			"The Puma was a development of the earlier PSW 231 (8 rad) design, ",
+			"with improved armour and a more powerful engine."
+		],
+		"rarity" : {
+			"1933.10.01" : "50"
+		}
+	},
+	
 	"PaK 35/36": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",

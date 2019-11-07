@@ -2014,6 +2014,78 @@
 		
 	},
 	
+	"Jagdpanzer IV": {
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_jgdpz_iv.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "4",
+			"hull_front" : "14",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "55"
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "1",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Intended as a replacement for the StuG, the JgdPz IV is a Tank ",
+			"Destroyer developed in late 1943. It is built upon a Panzer IV chassis."
+		],
+		"rarity" : {
+			"1944.06.01" : "70"
+		}
+		
+	},
+	
 	"Sd. Kfz. 13": {
 		"category" : "Vehicle",
 		"class" : "Armoured Car",

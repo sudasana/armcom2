@@ -2083,7 +2083,79 @@
 		"rarity" : {
 			"1944.06.01" : "70"
 		}
-		
+	},
+	
+	"Jagdpanzer 38(t)": {
+		"nick_name" : "Hetzer",
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_jgdpz_38t.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "3",
+			"hull_front" : "14",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "55"
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "1",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Built upon a Panzer 38(t) chassis, this Tank Destroyer, commonly ",
+			"known as the Hetzer, was intended to replace the ad-hoc Tank ",
+			"Destroyers of earlier years."
+		],
+		"rarity" : {
+			"1944.08.01" : "90"
+		}
 	},
 	
 	"Sd. Kfz. 13": {

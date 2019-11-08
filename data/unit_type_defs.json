@@ -3354,7 +3354,7 @@
 	"M4A1 Sherman": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
-		"portrait" : "unit_m4.xp",
+		"portrait" : "unit_m4a1.xp",
 		"size_class" : "Large",
 		"movement_class" : "Tank",
 		"turret" : "Fast",
@@ -3755,7 +3755,7 @@
 		"nick_name" : "Jumbo",
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
-		"portrait" : "unit_m4.xp",
+		"portrait" : "unit_m4a3_76.xp",
 		"size_class" : "Large",
 		"movement_class" : "Tank",
 		"powerful_engine" : "TRUE",
@@ -3858,7 +3858,7 @@
 	"M4A1(76)W Sherman": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
-		"portrait" : "unit_m4.xp",
+		"portrait" : "unit_m4a1_76.xp",
 		"size_class" : "Large",
 		"movement_class" : "Tank",
 		"HVSS" : "83",
@@ -3959,7 +3959,7 @@
 	"M4A3(76)W Sherman": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
-		"portrait" : "unit_m4.xp",
+		"portrait" : "unit_m4a3_76.xp",
 		"size_class" : "Large",
 		"movement_class" : "Tank",
 		"powerful_engine" : "TRUE",

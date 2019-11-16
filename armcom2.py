@@ -11499,7 +11499,7 @@ def DisplayWeatherInfo(console):
 
 	# wind strength and direction (static for now)
 	libtcod.console_print_ex(console, w-1, 1, libtcod.BKGND_NONE,
-		libtcod.RIGHT, 'No wind')
+		libtcod.RIGHT, 'None')
 	
 	# cloud cover
 	libtcod.console_print_ex(console, w-1, 3, libtcod.BKGND_NONE, libtcod.RIGHT,

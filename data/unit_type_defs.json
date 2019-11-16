@@ -4269,7 +4269,7 @@
 		"nick_name" : "Firefly",
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
-		"portrait" : "unit_m4.xp",
+		"portrait" : "unit_firefly.xp",
 		"size_class" : "Large",
 		"movement_class" : "Tank",
 		"turret" : "Fast",

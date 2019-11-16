@@ -3482,7 +3482,7 @@ class CampaignDay:
 			# display current main gun ammo levels
 			weapon = campaign.player_unit.weapon_list[0]
 			if weapon.GetStat('type') == 'Gun':
-				libtcod.console_print(cd_command_con, 6, 3, weapon.stats['name'] + ' Main Gun:')
+				libtcod.console_print(cd_command_con, 3, 3, weapon.stats['name'] + ' Main Gun:')
 				weapon.DisplayAmmo(cd_command_con, 6, 5, skip_active=True)
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)

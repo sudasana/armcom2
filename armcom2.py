@@ -62,7 +62,7 @@ import calendar						# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.9.0 09-11-19'				# game version
+VERSION = '0.9.0 16-11-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -218,10 +218,93 @@ MISSION_DESC = {
 }
 
 ##########################################################################################
-#                                    Engine Constants                                    #
+#                                Game Engine Definitions                                 #
 ##########################################################################################
 
-# FUTURE: move these to a JSON file
+# FUTURE: move these to a JSON file?
+
+
+# region definitions: set by campaigns, determine terrain odds on the campaign day map,
+# types and odds of weather conditions at different times during the calendar year
+REGIONS = {
+	'Northeastern Europe' : {
+		
+		# campaign day map terrain type odds
+		'cd_terrain_odds' : {
+			'Flat' : 50.0,
+			'Forest' : 10.0,
+			'Hills' : 15.0,
+			'Fields' : 10.0,
+			'Marsh' : 5.0,
+			'Villages' : 10.0
+		},
+		
+		# seasons, start and end dates, and weather odds for each season
+		'season_weather_odds' : {
+			
+			'Spring' : {
+				'start_date' : '04.01',
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 40.0, 'Mist' : 10.0,
+					'Rain' : 30.0, 'Heavy Rain' : 20.0
+				},
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+				}
+			},
+			'Summer' : {
+				'start_date' : '06.15',
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 40.0, 'Mist' : 10.0,
+					'Rain' : 30.0, 'Heavy Rain' : 20.0
+				},
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+				}
+			},
+			'Autumn' : {
+				'start_date' : '10.01',
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 40.0, 'Mist' : 10.0,
+					'Rain' : 30.0, 'Heavy Rain' : 20.0
+				},
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+				}
+			},
+			'Winter' : {
+				'start_date' : '11.15',
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 40.0, 'Mist' : 10.0,
+					'Rain' : 30.0, 'Heavy Rain' : 20.0
+				},
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+				}
+			}
+		}
+		
+	}
+	#'Northwestern Europe' : {
+	#	
+	#}
+}
 
 # minimum and maximum advance chance (2 rolls) per day
 MIN_ADVANCE_CHANCE = 16.0
@@ -330,6 +413,7 @@ AP_BASE_CHANCE = {
 	'75L' : 160.0,
 	'76S' : 83.0,
 	'76L' : 160.0,
+	'76LL' : 300.0,
 	'88L' : 200.0,
 	'88LL' : 380.0
 }
@@ -1906,6 +1990,8 @@ class CampaignDay:
 	
 	# generate a new random set of initial weather conditions, should only be called when day is created
 	def GenerateWeather(self):
+		
+		# FUTURE: pull odds from REGIONS
 		
 		# cloud cover
 		roll = GetPercentileRoll()
@@ -3991,6 +4077,7 @@ class CDMapHex:
 		
 		roll = GetPercentileRoll()
 		
+		# TODO: determine correct cd_terrain_odds to use based on current campaign region in REGIONS
 		for terrain_type, odds in CD_TERRAIN_ODDS.items():
 			if roll <= odds:
 				self.terrain_type = terrain_type

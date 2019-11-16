@@ -34,6 +34,7 @@ To run armcom2.py, you will need:
 To run the game on Linux, two steps are required:
 * Install only Libtcod 1.6.5, newer versions will not work
 * Once libtcod is installed, copy the contents of /usr/lib/libtcod*.so.* into libtcodpy_local/
+
 Thanks to peterjohnhartman for this information!
 
 Windows PyInstaller builds are also available from [the game's website](https://www.armouredcommander.com/blog/).

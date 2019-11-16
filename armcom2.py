@@ -10561,13 +10561,13 @@ class Scenario:
 	def UpdateUnitInfoCon(self):
 		libtcod.console_clear(unit_info_con)
 		
-		# mouse cursor outside of map area
-		if mouse.cx < 32: return
-		
-		# check that cursor is on a map hex
+		# check that cursor is in map area and on a map hex
 		x = mouse.cx - 32
 		y = mouse.cy - 9
-		if (x,y) not in self.hex_map_index: return
+		if (x,y) not in self.hex_map_index:
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_grey)
+			libtcod.console_print(unit_info_con, 18, 2, 'Mouseover a hex for details')
+			return
 		
 		map_hex = self.hex_map_index[(x,y)]
 	
@@ -10639,8 +10639,9 @@ class Scenario:
 				libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
 				libtcod.console_print(unit_info_con, 23, 1, unit.terrain)
 			
-			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
-			libtcod.console_print(unit_info_con, 20, 4, 'Right click for details')
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_grey)
+			libtcod.console_print(unit_info_con, 20, 3, 'Right click for details')
+			libtcod.console_print(unit_info_con, 14, 4, 'Mousewheel to cycle units in stack')
 	
 	
 	# starts or re-starts looping animations based on weather conditions
@@ -10888,6 +10889,8 @@ class Scenario:
 		
 		if self.ambush:
 			ShowMessage('You have been ambushed by enemy forces!')
+			# reset flag, no longer needed an prevent message from showing on load game
+			self.ambush = False
 		
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
@@ -11486,10 +11489,10 @@ def DisplayWeatherInfo(console):
 	
 	# titles
 	libtcod.console_set_default_foreground(console, libtcod.lighter_grey)
-	libtcod.console_print(console, 0, 0, 'Wind:')
-	libtcod.console_print(console, 0, 2, 'Cloud Cover:')
-	libtcod.console_print(console, 0, 4, 'Precipitation:')
-	libtcod.console_print(console, 0, 6, 'Ground Conditions:')
+	libtcod.console_print(console, 0, 0, 'Wind')
+	libtcod.console_print(console, 0, 2, 'Cloud Cover')
+	libtcod.console_print(console, 0, 4, 'Precipitation')
+	libtcod.console_print(console, 0, 6, 'Ground')
 	
 	# info
 	libtcod.console_set_default_foreground(console, libtcod.white)

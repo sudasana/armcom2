@@ -5728,6 +5728,7 @@ class Unit:
 		
 		self.hull_down = []			# list of directions unit in which Hull Down
 		self.moving = False
+		self.bogged = False			# unit is bogged down, cannot move or pivot
 		self.fired = False
 		self.hit_by_fp = False			# was hit by an effective fp attack
 		

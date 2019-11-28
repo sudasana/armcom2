@@ -1960,6 +1960,71 @@ class CampaignDay:
 		}
 	
 	
+	# check for shift of campaign day map:
+	# shift displayed map up or down, triggered by player reaching other end of map
+	def CheckForCDMapShift(self):
+		
+		(player_hx, player_hy) = self.player_unit_location
+		
+		if self.mission == 'Fighting Withdrawl':
+			if player_hy != 8: return
+		else:
+			if player_hy != 0: return
+		
+		ShowMessage('You enter a new map region.')
+		
+		# determine direction to shift map based on current player location
+		
+		if player_hy == 8:
+			shift_down = False
+		elif player_hy == 0:
+			shift_down = True
+		else:
+			return
+		
+		if shift_down:
+			new_hy = 8
+			hx_mod = -4
+		else:
+			new_hy = 0
+			hx_mod = +4
+		
+		# copy terrain for current player row to new row
+		for hx in range(player_hx-4, player_hx+5):
+			if (hx, player_hy) not in CAMPAIGN_DAY_HEXES: continue
+			self.map_hexes[(hx+hx_mod, new_hy)] = self.map_hexes[(hx, player_hy)]
+			self.map_hexes[(hx+hx_mod, new_hy)].hx = hx+hx_mod
+			self.map_hexes[(hx+hx_mod, new_hy)].hy = new_hy
+			self.map_hexes[(hx+hx_mod, new_hy)].Reset()
+		
+		self.player_unit_location = (player_hx+hx_mod, new_hy)
+		
+		# generate new terrain for remainder of map
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			if hy == new_hy: continue
+			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy)
+			self.map_hexes[(hx,hy)].GenerateTerrainType()
+	
+		# set up zone control
+		if self.mission == 'Fighting Withdrawl':
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				self.map_hexes[(hx, hy)].controlled_by = 0
+		else:
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				self.map_hexes[(hx, hy)].controlled_by = 1
+			self.map_hexes[self.player_unit_location].controlled_by = 0
+		
+		# TODO: generate new map objectives
+		
+		# update consoles
+		self.UpdateCDMapCon()
+		self.UpdateCDGUICon()
+		self.UpdateCDPlayerUnitCon()
+		
+		SaveGame()
+		
+		
+	
 	# roll for type of mission for today
 	def GenerateMission(self):
 		
@@ -3783,7 +3848,7 @@ class CampaignDay:
 					self.scenario = None
 					scenario = None
 					
-					# tank was immobilized, abandoned, or destroyed
+					# tank was immobilized, abandoned, or destroyed: campaign day is over
 					if campaign.player_unit.immobilized or not campaign.player_unit.alive:
 						self.DisplayCampaignDaySummary()
 						self.ended = True
@@ -3803,7 +3868,10 @@ class CampaignDay:
 						self.CheckForRandomEvent()
 						self.CheckForZoneCapture(zone_just_captured=True)
 						SaveGame()
-				
+					
+					# check for CD map shift
+					self.CheckForCDMapShift()
+					
 				DisplayTimeInfo(time_con)
 				self.UpdateCDCampaignCon()
 				self.UpdateCDControlCon()
@@ -4058,7 +4126,10 @@ class CampaignDay:
 						else:
 							ShowMessage('You enter the allied-held zone.')
 						
-						# no battle triggered, update consoles
+						# no battle triggered, check for map shift
+						self.CheckForCDMapShift()
+						
+						# update consoles
 						DisplayTimeInfo(time_con)
 						self.UpdateCDCampaignCon()
 						self.UpdateCDControlCon()
@@ -4094,8 +4165,6 @@ class CDMapHex:
 		self.hx = hx
 		self.hy = hy
 		
-		self.coordinate = (chr(hy+65) + str(5 + int(hx - (hy - hy&1) / 2)))
-		
 		self.terrain_type = ''		# placeholder for terrain type in this zone
 		self.console_seed = libtcod.random_get_int(0, 1, 128)	# seed for console image generation
 		
@@ -4110,6 +4179,11 @@ class CDMapHex:
 		# set enemy strength level
 		self.enemy_strength = libtcod.random_get_int(0, 1, 5) + libtcod.random_get_int(0, 0, 5)
 		
+		self.Reset()
+	
+	# reset zone stats
+	def Reset(self):
+		self.coordinate = (chr(self.hy+65) + str(5 + int(self.hx - (self.hy - self.hy&1) / 2)))
 	
 	# generate a random terrain type for this hex
 	# FUTURE: can pull data from the campaign day to determine set of possible terrain types
@@ -4125,7 +4199,7 @@ class CDMapHex:
 			roll -= odds
 	
 	
-	# set up a new objective in this CD hex
+	# set up a new objective in this CD hex or clear it
 	def SetObjective(self, objective_dict):
 		self.objective = objective_dict
 	

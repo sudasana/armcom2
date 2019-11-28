@@ -60,7 +60,7 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.9.0 19-11-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -315,6 +315,9 @@ ADVANCE_CHANCE_PER_SCEN = 8.0
 
 # list of crew stats
 CREW_STATS = ['Perception', 'Morale', 'Grit', 'Knowledge']
+
+# list of positions that player character can be (Commander, etc.)
+PLAYER_POSITIONS = ['Commander', 'Commander/Gunner']
 
 # list of possible new positions for a crew that is transferring to a different type of tank
 # listed in order of preference
@@ -612,6 +615,8 @@ class Campaign:
 		self.current_week = None	# " week
 		self.enemy_class_odds = {}	# placeholder for enemy unit spawn odds, set by campaign days
 		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
+		self.ended = False		# campaign has ended due to player serious injury or death
+		self.player_oob = False		# player was seriously injured or killed
 		
 		self.decoration = ''		# decoration awarded to player at end of campaign
 		
@@ -619,6 +624,14 @@ class Campaign:
 		self.records = {}
 		for text in RECORD_LIST:
 			self.records[text] = 0
+	
+	
+	# end the campaign
+	def DoEnd(self):
+		self.AwardDecorations()
+		self.DisplayCampaignSummary()
+		ExportLog()
+		EraseGame()
 	
 	
 	# randomly generate a list of combat days for this campaign
@@ -1608,6 +1621,13 @@ class Campaign:
 			
 				campaign_day.DoCampaignDayLoop()
 				
+				# player was taken out
+				if campaign.ended:
+					self.LogDayRecords()
+					self.DoEnd()
+					exit_loop = True
+					continue
+				
 				if session.exiting:
 					exit_loop = True
 					continue
@@ -1676,15 +1696,12 @@ class Campaign:
 						self.ShowEndOfDay()
 						
 						# add day records to campaign log
-						campaign.LogDayRecords()
+						self.LogDayRecords()
 						
-						# check for end of campaign
+						# check for end of campaign as a result of reaching end of calendar
 						day_index = campaign.combat_calendar.index(campaign.today)
 						if day_index == len(campaign.combat_calendar) - 1:
-							self.AwardDecorations()
-							self.DisplayCampaignSummary()
-							ExportLog()
-							EraseGame()
+							self.DoEnd()
 							exit_loop = True
 							continue
 						
@@ -2789,9 +2806,13 @@ class CampaignDay:
 		# don't bother for dead tanks
 		if not unit.alive: return
 		
+		# skip if player died
+		if campaign.ended: return
+		
 		# Stunned, Unconscious, and Critical crew automatically recover
 		# FUTURE: Do a final recovery roll for Critical crew
 		replacement_needed = False
+		player_seriously_injured = False
 		for position in unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status != '':
@@ -2799,12 +2820,22 @@ class CampaignDay:
 					replacement_needed = True
 					continue
 				if position.crewman.wound in ['Serious', 'Critical']:
+					if position.name in PLAYER_POSITIONS:
+						player_seriously_injured = True
 					replacement_needed = True
 					continue
 				position.crewman.status = ''
 		
-		# replace dead crewmen if needed
+		# return if no replacements needed
 		if not replacement_needed: return
+		
+		# return if player has serious wound
+		if player_seriously_injured:
+			ShowMessage('You have been seriously injured and are taken off the front lines. Your campaign is over.')
+			self.ended = True
+			campaign.ended = True
+			campaign.player_oob = True
+			return
 		
 		# spend time if campaign day has not yet ended
 		if unit == campaign.player_unit and not campaign_day.ended:
@@ -3004,7 +3035,10 @@ class CampaignDay:
 		libtcod.console_print_ex(temp_con, 14, 7, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Outcome of Day:')
 		
-		if campaign_day.abandoned_tank:
+		if campaign.player_oob:
+			col = libtcod.red
+			text = 'COMMANDER OUT OF ACTION'
+		elif campaign_day.abandoned_tank:
 			col = libtcod.light_grey
 			text = 'ABANDONED TANK'
 		elif campaign.player_unit.immobilized:
@@ -3726,6 +3760,12 @@ class CampaignDay:
 		
 		exit_loop = False
 		while not exit_loop:
+			
+			# player was taken out of action
+			if campaign.player_oob:
+				self.DisplayCampaignDaySummary()
+				exit_loop = True
+				continue
 			
 			# if we've initiated a scenario or are resuming a saved game with a scenario
 			# running, go into the scenario loop now
@@ -4517,6 +4557,7 @@ class Personnel:
 		self.first_name = first_name
 		self.last_name = last_name
 	
+	
 	# display this crewman's name to the screen, required because crew names use extended characters
 	def DisplayName(self, console, x, y, firstname_only = False, lastname_only = False, first_initial = False):
 	
@@ -4597,7 +4638,7 @@ class Personnel:
 	
 	
 	# check to see whether this personnel is wounded/KIA and return result if any
-	def DoWoundCheck(self, fp=0, roll_modifier=0.0, show_messages=True):
+	def DoWoundCheck(self, fp=0, roll_modifier=0.0, show_messages=True, auto_kill=False, auto_serious=False):
 		
 		# can't get worse
 		if self.status == 'Dead': return None
@@ -4642,10 +4683,15 @@ class Personnel:
 		if DEBUG:
 			if session.debug['Player Crew Hapless']:
 				roll = 100.0
+		if auto_kill:
+			roll = 100.0
+		elif auto_serious:
+			roll = 85.0
+		else:
 		
-		# unmodified 99.0-100.0 always counts as KIA, otherwise modifier is applied
-		if roll < 99.0:
-			roll += modifier
+			# unmodified 99.0-100.0 always counts as KIA, otherwise modifier is applied
+			if roll < 99.0:
+				roll += modifier
 
 		if roll < 45.0:
 			
@@ -4726,8 +4772,17 @@ class Personnel:
 			self.wound = ''
 			
 			if show_messages:
-				ShowMessage('Your ' + self.current_position.name + ' has been killed.')
+				if self.current_position.name in PLAYER_POSITIONS:
+					ShowMessage('You have been killed. Your campaign is over.')
+				else:
+					ShowMessage('Your ' + self.current_position.name + ' has been killed.')
 			
+			# check for commander death
+			if self.current_position.name in PLAYER_POSITIONS:
+				scenario.finished = True
+				campaign_day.ended = True
+				campaign.ended = True
+				campaign.player_oob = True
 			return 'Dead'
 				
 	
@@ -12398,6 +12453,51 @@ def ShowTextInputMenu(prompt, original_text, max_length, string_list):
 	return text
 
 
+# allow the player to select one option from a list
+def GetOption(option_list):
+	
+	# create a local copy of the current screen to re-draw when we're done
+	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
+	# darken screen background
+	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	
+	# show list of options
+	c = 65
+	y = 15
+	for text in option_list:
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_put_char(con, 25, y, chr(c))
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		libtcod.console_print(con, 27, y, text)
+		y += 1
+		c += 1
+	
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
+	option = None
+	
+	exit_menu = False
+	while not exit_menu:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		if not GetInputEvent(): continue
+		
+		if key.vk == libtcod.KEY_ESCAPE:
+			exit_menu = True
+			continue
+		
+		option_code = key.c - 97
+		if option_code < len(option_list):
+			option = option_list[option_code]
+			exit_menu = True
+	
+	# re-draw original root console
+	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
+	del temp_con
+	
+	return option
+	
 
 # display the debug flags menu, not enabled in distribution versions
 def ShowDebugMenu():
@@ -12435,7 +12535,7 @@ def ShowDebugMenu():
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		libtcod.console_print(con, x+2, y, 'Regenerate CD Map Roads')
-		libtcod.console_print(con, x+2, y+2, 'Apply Serious Wound')
+		libtcod.console_print(con, x+2, y+2, 'Give Crewman Serious Wound')
 		libtcod.console_print(con, x+2, y+4, 'Immobilize Player')
 		libtcod.console_print(con, x+2, y+6, 'Set Time to End of Day')
 		libtcod.console_print(con, x+2, y+8, 'End Current Scenario')
@@ -12499,19 +12599,21 @@ def ShowDebugMenu():
 				campaign_day.UpdateCDMapCon()
 				campaign_day.UpdateCDDisplay()
 				ShowMessage('Roads regenerated')
-				DrawDebugMenu()
+				exit_menu = True
 				continue
 		
-		# apply a serious wound to a random crewman
+		# give crewman in selected position a serious wound
 		elif int(key_char) == 2:
 			if scenario is not None:
-				position = choice(scenario.player_unit.positions_list)
-				if position.crewman is None: continue
-				position.crewman.wound = 'Serious'
-				position.crewman.status = 'Stunned'
-				scenario.UpdateCrewInfoCon()
-				ShowMessage('Your ' + position.name + ' has received a Serious Wound and is Stunned.')
-				DrawDebugMenu()
+				option_list = []
+				for position in scenario.player_unit.positions_list:
+					option_list.append(position.name)
+				position_name = GetOption(option_list)
+				if position_name is None: return
+				crewman = scenario.player_unit.GetPersonnelByPosition(position_name)
+				if crewman is None: continue
+				crewman.DoWoundCheck(auto_serious=True)
+				exit_menu = True
 				continue
 		
 		# immobilize player
@@ -12522,7 +12624,7 @@ def ShowDebugMenu():
 				scenario.player_unit.ImmobilizeMe()
 				scenario.UpdatePlayerInfoCon()
 				ShowMessage('Player tank immobilized')
-				DrawDebugMenu()
+				exit_menu = True
 				continue
 		
 		# set current time to end of combat day
@@ -12533,7 +12635,7 @@ def ShowDebugMenu():
 				DisplayTimeInfo(time_con)
 				text = 'Time is now ' + str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
 				ShowMessage(text)
-				DrawDebugMenu()
+				exit_menu = True
 				continue
 		
 		# end the current scenario
@@ -12541,7 +12643,7 @@ def ShowDebugMenu():
 			if scenario is not None:
 				scenario.finished = True
 				ShowMessage('Scenario finished flag set to True')
-				DrawDebugMenu()
+				exit_menu = True
 				continue
 		
 		# export current campaign log
@@ -12549,7 +12651,7 @@ def ShowDebugMenu():
 			if campaign is not None:
 				ExportLog()
 				ShowMessage('Log exported')
-				DrawDebugMenu()
+				exit_menu = True
 				continue
 	
 	# re-draw original root console

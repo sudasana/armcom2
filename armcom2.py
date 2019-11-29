@@ -9560,6 +9560,7 @@ class Scenario:
 			y1 = y2 + 15
 			if y1 > 51: y1 = 51
 			y2 += 1
+			# TODO: needs changing
 			direction = -1
 		else:
 			y1 = y2 - 15
@@ -9870,7 +9871,7 @@ class Scenario:
 		self.UpdateUnitCon()
 		
 		# do bog check in new location
-		# TEMP: player only for now
+		# FUTURE: check AI units too
 		for unit in self.units:
 			if unit != self.player_unit: continue
 			unit.DoBogCheck(forward)

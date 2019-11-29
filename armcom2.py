@@ -60,7 +60,7 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.9.0 30-11-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -3801,7 +3801,6 @@ class CampaignDay:
 		DisplayWeatherInfo(cd_weather_con)
 		DisplayTimeInfo(time_con)
 		
-		# TODO: shouldn't this be the opposite?
 		if self.scenario is not None:
 			self.UpdateCDDisplay()
 		

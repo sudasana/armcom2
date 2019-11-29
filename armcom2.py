@@ -5972,8 +5972,6 @@ class Unit:
 		
 		roll = GetPercentileRoll()
 		
-		roll = 0.0
-		
 		if roll <= chance:
 			self.bogged = True
 	

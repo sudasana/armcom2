@@ -62,7 +62,7 @@ import calendar						# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.9.0 19-11-19'				# game version
+VERSION = '0.9.0 30-11-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -3857,17 +3857,22 @@ class CampaignDay:
 						continue
 					
 					# capture area if player is still alive
-					else:
-						(hx, hy) = self.player_unit_location
-						self.map_hexes[(hx,hy)].CaptureMe(0)
-						self.DoCrewCheck(campaign.player_unit)
-						self.CheckForEndOfDay()
-						self.DoPlayerSquadCheck()
-						self.UpdateCDDisplay()
-						libtcod.console_flush()
-						self.CheckForRandomEvent()
-						self.CheckForZoneCapture(zone_just_captured=True)
-						SaveGame()
+					(hx, hy) = self.player_unit_location
+					self.map_hexes[(hx,hy)].CaptureMe(0)
+					self.DoCrewCheck(campaign.player_unit)
+					self.CheckForEndOfDay()
+					self.DoPlayerSquadCheck()
+					self.UpdateCDDisplay()
+					libtcod.console_flush()
+					self.CheckForRandomEvent()
+					self.CheckForZoneCapture(zone_just_captured=True)
+					SaveGame()
+					
+					# check for automatic unbog
+					if campaign.player_unit.bogged:
+						ShowMessage('You free your tank from being bogged down.')
+						campaign.player_unit.bogged = False
+						self.UpdateCDPlayerUnitCon()
 					
 					# check for CD map shift
 					self.CheckForCDMapShift()
@@ -4960,9 +4965,14 @@ class Personnel:
 				if not can_abandon:
 					continue
 			
-			# can't drive if vehicle is immbobilized
+			# can't drive if vehicle is immobilized or bogged
 			elif k == 'Drive':
 				if self.unit.immobilized: continue
+				if self.unit.bogged: continue
+			
+			# can only unbog if vehicle is already bogged
+			elif k == 'Attempt Unbog':
+				if not self.unit.bogged: continue
 			
 			# check that a mortar is attached and is fired by this position
 			elif k == 'Fire Smoke Mortar':
@@ -5872,6 +5882,7 @@ class Unit:
 		
 		self.forward_move_chance = 0.0		# set by CalculateMoveChances()
 		self.reverse_move_chance = 0.0
+		self.bog_chance = 0.0			# "
 		
 		self.forward_move_bonus = 0.0
 		self.reverse_move_bonus = 0.0
@@ -5943,6 +5954,42 @@ class Unit:
 				if ammo_type in weapon.ammo_stores:
 					weapon.ammo_stores[ammo_type] = 0
 	
+	
+	# do a bog check
+	def DoBogCheck(self, forward, pivot=False):
+		
+		# some unit types don't bog
+		if self.GetStat('category') not in ['Vehicle', 'Gun']:
+			return
+		
+		chance = self.bog_chance
+		
+		if pivot:
+			chance = chance * 0.25
+		elif not forward:
+			chance = chance * 1.5 
+		chance = round(chance, 1)
+		
+		roll = GetPercentileRoll()
+		
+		roll = 0.0
+		
+		if roll <= chance:
+			self.bogged = True
+	
+	
+	# attempt to unbog unit
+	def DoUnbogCheck(self):
+		if not self.bogged: return
+		
+		chance = self.bog_chance
+		roll = GetPercentileRoll()
+		
+		if roll <= chance:
+			self.bogged = False
+			return True
+		return False
+		
 	
 	# do a breakdown check
 	def BreakdownCheck(self):
@@ -6054,28 +6101,34 @@ class Unit:
 					weapon.acquired_target = None
 		
 	
-	# calcualte chances of a successful forward/reverse move action for this unit
+	# calculate chances of a successful forward/reverse move action for this unit
+	# also calculate bog chances
 	def CalculateMoveChances(self):
 		
 		# set values to base values
 		self.forward_move_chance = BASE_FORWARD_MOVE_CHANCE
 		self.reverse_move_chance = BASE_REVERSE_MOVE_CHANCE
+		self.bog_chance = 3.0
 		
 		# apply modifier from unit movement type
 		movement_class = self.GetStat('movement_class')
 		if movement_class == 'Slow Tank':
 			self.forward_move_chance -= 15.0
+			self.bog_chance += 2.0
 		elif movement_class == 'Fast Tank':
 			self.forward_move_chance += 10.0
 		elif movement_class == 'Wheeled':
 			# FUTURE: additional modifier here if using road movement
 			self.forward_move_chance += 5.0
+			self.bog_chance += 4.0
 		
 		if self.GetStat('powerful_engine') is not None:
 			self.forward_move_chance += 5.0
+			self.bog_chance -= 0.5
 		if self.GetStat('HVSS') is not None:
 			self.forward_move_chance += 10.0
 			self.reverse_move_chance += 10.0
+			self.bog_chance -= 1.5
 		
 		# apply modifier from current terrain type
 		if self.terrain is not None:
@@ -6083,15 +6136,21 @@ class Unit:
 				mod = SCENARIO_TERRAIN_EFFECTS[self.terrain]['Movement Mod']
 				self.forward_move_chance += mod
 				self.reverse_move_chance += mod
+			if 'Bog Mod' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
+				mod = SCENARIO_TERRAIN_EFFECTS[self.terrain]['Bog Mod']
+				self.bog_chance += mod
 		
 		# apply modifier for ground conditions
 		if campaign_day.weather['Ground'] == 'Muddy':
 			if movement_class == 'Wheeled':
 				mod = -45.0
+				bog_mod = 10.0
 			else:
 				mod = -30.0
+				bog_mod = 3.0
 			self.forward_move_chance += mod
 			self.reverse_move_chance += mod
+			self.bog_chance += bog_mod
 		
 		# add bonuses from previous moves
 		self.forward_move_chance += self.forward_move_bonus
@@ -6109,6 +6168,11 @@ class Unit:
 		# limit chances
 		self.forward_move_chance = RestrictChance(self.forward_move_chance)
 		self.reverse_move_chance = RestrictChance(self.reverse_move_chance)
+		
+		if self.bog_chance < 0.0:
+			self.bog_chance = 0.0
+		elif self.bog_chance > 90.0:
+			self.bog_chance = 90.0
 	
 	
 	# upon spawning into a scenario map hex, or after moving or repositioning, roll to
@@ -6637,6 +6701,9 @@ class Unit:
 		if self.immobilized:
 			libtcod.console_set_default_foreground(console, libtcod.light_red)
 			text = 'Immobilized'
+		elif self.bogged:
+			libtcod.console_set_default_foreground(console, libtcod.light_red)
+			text = 'Bogged Down'
 		else:
 			libtcod.console_set_default_foreground(console, libtcod.light_green)
 			text = self.GetStat('movement_class')
@@ -7183,6 +7250,7 @@ class Unit:
 		if self.GetStat('category') not in ['Vehicle']: return
 		self.moving = False
 		self.immobilized = True
+		self.bogged = False
 	
 	
 	# destroy this unit and remove it from the game
@@ -9801,6 +9869,18 @@ class Scenario:
 		self.UpdatePlayerInfoCon()
 		self.UpdateUnitCon()
 		
+		# do bog check in new location
+		# TEMP: player only for now
+		for unit in self.units:
+			if unit != self.player_unit: continue
+			unit.DoBogCheck(forward)
+		
+		# notify player and update consoles if player bogged
+		if self.player_unit.bogged:
+			ShowMessage('Your tank has becomed bogged.')
+			self.UpdatePlayerInfoCon()
+			self.UpdateUnitCon()
+		
 		# end movement phase
 		self.advance_phase = True
 	
@@ -9869,8 +9949,7 @@ class Scenario:
 		
 		# record player pivot
 		self.player_pivot = ConstrainDir(self.player_pivot + f)
-	
-	
+		
 	# rotate turret of player unit
 	def RotatePlayerTurret(self, clockwise):
 		
@@ -9992,6 +10071,13 @@ class Scenario:
 				# player pivoted during movement phase
 				if self.player_pivot != 0:
 					self.player_unit.ClearAcquiredTargets(no_enemy=True)
+					
+					# do bog check for pivot
+					self.player_unit.DoBogCheck(False, pivot=True)
+					if self.player_unit.bogged:
+						ShowMessage('Your tank has becomed bogged.')
+						self.UpdatePlayerInfoCon()
+						self.UpdateUnitCon()
 			
 			# end of shooting phase
 			elif self.phase == PHASE_SHOOTING:
@@ -10046,6 +10132,16 @@ class Scenario:
 					campaign_day.abandoned_tank = True
 					self.finished = True
 					return
+				
+				# check for unbog attempt
+				if position.crewman.current_cmd == 'Attempt Unbog':
+					if self.player_unit.DoUnbogCheck():
+						ShowMessage('Your tank is no longer bogged down.')
+						self.UpdatePlayerInfoCon()
+					else:
+						ShowMessage('Your tank remains bogged down.')
+					self.UpdateScenarioDisplay()
+					libtcod.console_flush()
 				
 				# check for smoke grenade
 				if position.crewman.current_cmd == 'Smoke Grenade':
@@ -10232,8 +10328,8 @@ class Scenario:
 		elif self.phase == PHASE_MOVEMENT:
 			
 			libtcod.console_set_default_foreground(context_con, libtcod.white)
-			libtcod.console_print(context_con, 6, 0, 'Success')
-			#libtcod.console_print(context_con, 14, 0, 'Bog')
+			libtcod.console_print(context_con, 5, 0, 'Success')
+			libtcod.console_print(context_con, 14, 0, 'Bog')
 			
 			libtcod.console_print(context_con, 0, 2, 'Fwd')
 			libtcod.console_print(context_con, 0, 4, 'Rev')
@@ -10245,23 +10341,26 @@ class Scenario:
 			
 			# forward move
 			text = str(scenario.player_unit.forward_move_chance) + '%%'
-			libtcod.console_print_ex(context_con, 11, 2, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(context_con, 10, 2, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
-			#libtcod.console_print_ex(context_con, 16, 2, libtcod.BKGND_NONE,
-			#	libtcod.RIGHT, '10%%')
+			text = str(scenario.player_unit.bog_chance) + '%%'
+			libtcod.console_print_ex(context_con, 16, 2, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
 			
 			# reverse move
 			text = str(scenario.player_unit.reverse_move_chance) + '%%'
-			libtcod.console_print_ex(context_con, 11, 4, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(context_con, 10, 4, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
-			#libtcod.console_print_ex(context_con, 16, 4, libtcod.BKGND_NONE,
-			#	libtcod.RIGHT, '20%%')
+			text = str(round(scenario.player_unit.bog_chance * 1.5, 1)) + '%%'
+			libtcod.console_print_ex(context_con, 16, 4, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
 			
 			# pivot
-			libtcod.console_print_ex(context_con, 11, 6, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(context_con, 10, 6, libtcod.BKGND_NONE,
 				libtcod.RIGHT, '100%%')
-			#libtcod.console_print_ex(context_con, 16, 6, libtcod.BKGND_NONE,
-			#	libtcod.RIGHT, '1.5%%')
+			text = str(round(scenario.player_unit.bog_chance * 0.25, 1)) + '%%'
+			libtcod.console_print_ex(context_con, 16, 6, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
 			
 			# reposition
 			#libtcod.console_print_ex(context_con, 10, 8, libtcod.BKGND_NONE,

@@ -55,6 +55,12 @@
 		"spotting_allowed" : false
 	},
 	
+	"Attempt Unbog" : {
+		"desc" : "Attempt to free the vehicle from being bogged down",
+		"position_list" : ["Driver"],
+		"spotting_allowed" : false
+	},
+	
 	"Abandon Tank" : {
 		"desc" : "All crew bail out of the tank and retreat to friendly lines",
 		"spotting_allowed" : false

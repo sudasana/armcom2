@@ -5982,6 +5982,8 @@ class Unit:
 	def DoUnbogCheck(self):
 		if not self.bogged: return
 		
+		self.moving = True
+		
 		chance = self.bog_chance
 		roll = GetPercentileRoll()
 		
@@ -6995,8 +6997,8 @@ class Unit:
 		
 		#print('Resolving AP hits on ' + self.unit_id)
 		
-		# no effect if no armour on unit
-		if self.GetStat('armour') is None:
+		# no effect if infantry or gun
+		if self.GetStat('category') in ['Infantry', 'Gun']:
 			self.ap_hits_to_resolve = []
 			return
 		
@@ -8048,7 +8050,7 @@ class Scenario:
 				return 'No ammo loaded'
 			if weapon.ammo_stores[weapon.ammo_type] == 0:
 				return 'No more ammo of the selected type'
-			if weapon.ammo_type == 'AP' and target.GetStat('armour') is None:
+			if weapon.ammo_type == 'AP' and target.GetStat('category') in ['Infantry', 'Gun']:
 				return 'AP has no effect on target'
 		
 		# check firing group restrictions

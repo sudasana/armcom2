@@ -5987,7 +5987,7 @@ class Unit:
 		chance = self.bog_chance
 		roll = GetPercentileRoll()
 		
-		if roll <= chance:
+		if roll > chance:
 			self.bogged = False
 			return True
 		return False
@@ -6110,7 +6110,7 @@ class Unit:
 		# set values to base values
 		self.forward_move_chance = BASE_FORWARD_MOVE_CHANCE
 		self.reverse_move_chance = BASE_REVERSE_MOVE_CHANCE
-		self.bog_chance = 3.0
+		self.bog_chance = 1.0
 		
 		# apply modifier from unit movement type
 		movement_class = self.GetStat('movement_class')
@@ -6171,8 +6171,8 @@ class Unit:
 		self.forward_move_chance = RestrictChance(self.forward_move_chance)
 		self.reverse_move_chance = RestrictChance(self.reverse_move_chance)
 		
-		if self.bog_chance < 0.0:
-			self.bog_chance = 0.0
+		if self.bog_chance < 0.5:
+			self.bog_chance = 0.5
 		elif self.bog_chance > 90.0:
 			self.bog_chance = 90.0
 	

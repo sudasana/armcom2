@@ -238,29 +238,33 @@ REGIONS = {
 			'Villages' : 10.0
 		},
 		
-		# seasons, start and end dates, and weather odds for each season
-		# TODO: check over these and correct
+		# seasons, end dates, and weather odds for each season
 		'season_weather_odds' : {
 			
 			'Winter' : {
 				'end_date' : '03.31',
 				'ground_conditions' : {
-					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+					'Dry' : 20.0, 'Wet' : 0.0, 'Muddy' : 5.0,
+					'Snow' : 60.0, 'Deep Snow' : 15.0
 				},
 				'cloud_cover' : {
-					'Clear' : 50.0, 'Scattered' : 15.0,
-					'Heavy' : 20.0, 'Overcast' : 15.0
+					'Clear' : 40.0, 'Scattered' : 20.0,
+					'Heavy' : 20.0, 'Overcast' : 20.0
 				},
+				
+				# if precipitation is rolled and cloud cover is clear, cloud cover will be set to scattered+
 				'precipitation' : {
-					'None' : 40.0, 'Mist' : 10.0,
-					'Rain' : 30.0, 'Heavy Rain' : 20.0
+					'None' : 35.0, 'Mist' : 10.0,
+					'Rain' : 10.0, 'Heavy Rain' : 5.0,
+					'Light Snow' : 10.0, 'Snow' : 20.0,
+					'Blizzard' : 10.0
 				}
 				
 			},
 			'Spring' : {
 				'end_date' : '06.14',
 				'ground_conditions' : {
-					'Dry' : 70.0, 'Wet' : 10.0, 'Muddy' : 15.0,
+					'Dry' : 50.0, 'Wet' : 20.0, 'Muddy' : 25.0,
 					'Snow' : 5.0, 'Deep Snow' : 0.0
 				},
 				'cloud_cover' : {
@@ -268,47 +272,143 @@ REGIONS = {
 					'Heavy' : 20.0, 'Overcast' : 15.0
 				},
 				'precipitation' : {
-					'None' : 40.0, 'Mist' : 10.0,
-					'Rain' : 30.0, 'Heavy Rain' : 20.0
+					'None' : 30.0, 'Mist' : 10.0,
+					'Rain' : 30.0, 'Heavy Rain' : 20.0,
+					'Light Snow' : 10.0, 'Snow' : 0.0,
+					'Blizzard' : 0.0
 				}
 				
 			},
 			'Summer' : {
 				'end_date' : '09.31',
 				'ground_conditions' : {
-					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0,
+					'Snow' : 0.0, 'Deep Snow' : 0.0
 				},
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
 				},
 				'precipitation' : {
-					'None' : 40.0, 'Mist' : 10.0,
-					'Rain' : 30.0, 'Heavy Rain' : 20.0
+					'None' : 60.0, 'Mist' : 10.0,
+					'Rain' : 20.0, 'Heavy Rain' : 10.0,
+					'Light Snow' : 0.0, 'Snow' : 0.0,
+					'Blizzard' : 0.0
 				}
 				
 			},
 			'Autumn' : {
 				'end_date' : '12.01',
 				'ground_conditions' : {
-					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+					'Dry' : 65.0, 'Wet' : 10.0, 'Muddy' : 15.0,
+					'Snow' : 10.0, 'Deep Snow' : 0.0
 				},
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
 				},
 				'precipitation' : {
-					'None' : 40.0, 'Mist' : 10.0,
-					'Rain' : 30.0, 'Heavy Rain' : 20.0
+					'None' : 50.0, 'Mist' : 10.0,
+					'Rain' : 20.0, 'Heavy Rain' : 10.0,
+					'Light Snow' : 10.0, 'Snow' : 0.0,
+					'Blizzard' : 0.0
+				}
+				
+			}
+		}
+		
+	},
+	
+	# TODO: update these settings
+	'Northwestern Europe' : {
+
+		'cd_terrain_odds' : {
+			'Flat' : 50.0,
+			'Forest' : 10.0,
+			'Hills' : 15.0,
+			'Fields' : 10.0,
+			'Marsh' : 5.0,
+			'Villages' : 10.0
+		},
+
+		'season_weather_odds' : {
+			
+			'Winter' : {
+				'end_date' : '03.31',
+				'ground_conditions' : {
+					'Dry' : 20.0, 'Wet' : 0.0, 'Muddy' : 5.0,
+					'Snow' : 60.0, 'Deep Snow' : 15.0
+				},
+				'cloud_cover' : {
+					'Clear' : 40.0, 'Scattered' : 20.0,
+					'Heavy' : 20.0, 'Overcast' : 20.0
+				},
+				
+				'precipitation' : {
+					'None' : 35.0, 'Mist' : 10.0,
+					'Rain' : 10.0, 'Heavy Rain' : 5.0,
+					'Light Snow' : 10.0, 'Snow' : 20.0,
+					'Blizzard' : 10.0
+				}
+				
+			},
+			'Spring' : {
+				'end_date' : '06.14',
+				'ground_conditions' : {
+					'Dry' : 50.0, 'Wet' : 20.0, 'Muddy' : 25.0,
+					'Snow' : 5.0, 'Deep Snow' : 0.0
+				},
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 30.0, 'Mist' : 10.0,
+					'Rain' : 30.0, 'Heavy Rain' : 20.0,
+					'Light Snow' : 10.0, 'Snow' : 0.0,
+					'Blizzard' : 0.0
+				}
+				
+			},
+			'Summer' : {
+				'end_date' : '09.31',
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0,
+					'Snow' : 0.0, 'Deep Snow' : 0.0
+				},
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 60.0, 'Mist' : 10.0,
+					'Rain' : 20.0, 'Heavy Rain' : 10.0,
+					'Light Snow' : 0.0, 'Snow' : 0.0,
+					'Blizzard' : 0.0
+				}
+				
+			},
+			'Autumn' : {
+				'end_date' : '12.01',
+				'ground_conditions' : {
+					'Dry' : 65.0, 'Wet' : 10.0, 'Muddy' : 15.0,
+					'Snow' : 10.0, 'Deep Snow' : 0.0
+				},
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 50.0, 'Mist' : 10.0,
+					'Rain' : 20.0, 'Heavy Rain' : 10.0,
+					'Light Snow' : 10.0, 'Snow' : 0.0,
+					'Blizzard' : 0.0
 				}
 				
 			}
 		}
 		
 	}
-	#'Northwestern Europe' : {
-	#	
-	#}
 }
 
 # minimum and maximum advance chance (2 rolls) per day
@@ -2099,16 +2199,17 @@ class CampaignDay:
 			roll -= chance
 		self.weather['Cloud Cover'] = result
 		
-		# roll for precipitation, unless cloud cover is clear
-		if self.weather['Cloud Cover'] == 'Clear':
-			self.weather['Precipitation'] = 'None'
-		else:
-			roll = GetPercentileRoll()
-			for result, chance in weather_odds['precipitation'].items():
-				if roll <= chance:
-					break
-				roll -= chance
-			self.weather['Precipitation'] = result
+		# roll for precipitation
+		roll = GetPercentileRoll()
+		for result, chance in weather_odds['precipitation'].items():
+			if roll <= chance:
+				break
+			roll -= chance
+		self.weather['Precipitation'] = result
+		
+		# if precipitation has been rolled, fix clear cloud cover
+		if self.weather['Precipitation'] != 'None' and self.weather['Cloud Cover'] == 'Clear':
+			self.weather['Cloud Cover'] = choice(['Scattered', 'Heavy', 'Overcast'])
 		
 		# FUTURE fog level: 0-3
 		

@@ -319,14 +319,13 @@ REGIONS = {
 		
 	},
 	
-	# TODO: update these settings
 	'Northwestern Europe' : {
 
 		'cd_terrain_odds' : {
-			'Flat' : 50.0,
-			'Forest' : 10.0,
-			'Hills' : 15.0,
-			'Fields' : 10.0,
+			'Flat' : 40.0,
+			'Forest' : 20.0,
+			'Hills' : 10.0,
+			'Fields' : 15.0,
 			'Marsh' : 5.0,
 			'Villages' : 10.0
 		},
@@ -336,8 +335,8 @@ REGIONS = {
 			'Winter' : {
 				'end_date' : '03.31',
 				'ground_conditions' : {
-					'Dry' : 20.0, 'Wet' : 0.0, 'Muddy' : 5.0,
-					'Snow' : 60.0, 'Deep Snow' : 15.0
+					'Dry' : 25.0, 'Wet' : 0.0, 'Muddy' : 5.0,
+					'Snow' : 60.0, 'Deep Snow' : 10.0
 				},
 				'cloud_cover' : {
 					'Clear' : 40.0, 'Scattered' : 20.0,
@@ -347,8 +346,8 @@ REGIONS = {
 				'precipitation' : {
 					'None' : 35.0, 'Mist' : 10.0,
 					'Rain' : 10.0, 'Heavy Rain' : 5.0,
-					'Light Snow' : 10.0, 'Snow' : 20.0,
-					'Blizzard' : 10.0
+					'Light Snow' : 15.0, 'Snow' : 20.0,
+					'Blizzard' : 5.0
 				}
 				
 			},
@@ -2223,10 +2222,10 @@ class CampaignDay:
 		# reset update clock
 		self.weather_update_clock = BASE_WEATHER_UPDATE_CLOCK + (libtcod.random_get_int(0, 1, 16))
 		
-		# always apply ground condition update
+		# TODO: check for ground condition update
 		
 		roll = GetPercentileRoll()
-			
+		
 		if self.weather['Ground'] == 'Muddy':
 			if self.weather['Precipitation'] == 'None':
 				if roll <= 20.0:

@@ -60,9 +60,9 @@ import calendar						# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.9.0 30-11-19'				# game version
+VERSION = '0.9.0'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -244,6 +244,10 @@ REGIONS = {
 			
 			'Spring' : {
 				'start_date' : '04.01',
+				'ground_conditions' : {
+					'Dry' : 70.0, 'Wet' : 10.0, 'Muddy' : 15.0,
+					'Snow' : 5.0, 'Deep Snow' : 0.0
+				},
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -251,13 +255,14 @@ REGIONS = {
 				'precipitation' : {
 					'None' : 40.0, 'Mist' : 10.0,
 					'Rain' : 30.0, 'Heavy Rain' : 20.0
-				},
-				'ground_conditions' : {
-					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
 				}
+				
 			},
 			'Summer' : {
 				'start_date' : '06.15',
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+				},
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -265,13 +270,14 @@ REGIONS = {
 				'precipitation' : {
 					'None' : 40.0, 'Mist' : 10.0,
 					'Rain' : 30.0, 'Heavy Rain' : 20.0
-				},
-				'ground_conditions' : {
-					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
 				}
+				
 			},
 			'Autumn' : {
 				'start_date' : '10.01',
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+				},
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -279,13 +285,14 @@ REGIONS = {
 				'precipitation' : {
 					'None' : 40.0, 'Mist' : 10.0,
 					'Rain' : 30.0, 'Heavy Rain' : 20.0
-				},
-				'ground_conditions' : {
-					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
 				}
+				
 			},
 			'Winter' : {
 				'start_date' : '11.15',
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+				},
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -293,10 +300,8 @@ REGIONS = {
 				'precipitation' : {
 					'None' : 40.0, 'Mist' : 10.0,
 					'Rain' : 30.0, 'Heavy Rain' : 20.0
-				},
-				'ground_conditions' : {
-					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
 				}
+				
 			}
 		}
 		
@@ -2024,7 +2029,6 @@ class CampaignDay:
 		SaveGame()
 		
 		
-	
 	# roll for type of mission for today
 	def GenerateMission(self):
 		
@@ -2073,10 +2077,23 @@ class CampaignDay:
 	# generate a new random set of initial weather conditions, should only be called when day is created
 	def GenerateWeather(self):
 		
-		# FUTURE: pull odds from REGIONS
+		# TEMP - testing
+		weather_odds = REGIONS['Northeastern Europe']['season_weather_odds']['Spring']
 		
-		# cloud cover
+		# roll for ground cover first
 		roll = GetPercentileRoll()
+		for result, chance in weather_odds['ground_conditions'].items():
+			if roll <= chance:
+				break
+			roll -= chance
+		self.weather['Ground'] = result
+		print('DEBUG: Set initial ground conditions to ' + result + ', chance was ' + str(chance))
+		
+		
+		# roll for cloud cover next
+		roll = GetPercentileRoll()
+		
+		
 		
 		if roll <= 50.0:
 			self.weather['Cloud Cover'] = 'Clear'
@@ -2104,27 +2121,7 @@ class CampaignDay:
 		
 		# FUTURE fog level: 0-3
 		
-		# Ground conditions
-		roll = GetPercentileRoll()
 		
-		if self.weather['Cloud Cover'] == 'Clear':
-			roll -= 40.0
-		elif self.weather['Cloud Cover'] == 'Overcast':
-			roll += 10.0
-		
-		if self.weather['Precipitation'] == 'None':
-			roll -= 20.0
-		elif self.weather['Precipitation'] == 'Rain':
-			roll += 30.0
-		elif self.weather['Precipitation'] == 'Heavy Rain':
-			roll += 70.0
-		
-		if roll <= 75.0:
-			self.weather['Ground'] = 'Dry'
-		elif roll <= 85.0:
-			self.weather['Ground'] = 'Wet'
-		else:
-			self.weather['Ground'] = 'Muddy'
 		
 		# set first weather update countdown
 		self.weather_update_clock = BASE_WEATHER_UPDATE_CLOCK + (libtcod.random_get_int(0, 1, 16))

@@ -4,6 +4,7 @@
 	"end_date" : "1939.10.06",
 	"player_nation" : "Soviet Union",
 	"enemy_nations" : ["Poland"],
+	"region" : "Northeastern Europe",
 	"desc" : "Soviet invasion of Poland, 1939.",
 	"player_unit_list" : [
 		"T-26 M33", "BT-5 M34", "BT-7 M37", "T-28 M34"

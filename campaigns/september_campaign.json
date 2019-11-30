@@ -5,6 +5,7 @@
 	"action_days" : "1",
 	"player_nation" : "Poland",
 	"enemy_nations" : ["Germany"],
+	"region" : "Northeastern Europe",
 	"desc" : "The Polish defense against the German invasion, 1939.",
 	"player_unit_list" : [
 		"TKS (20mm)", "Vickers 6-Ton Mark E", "7TP"

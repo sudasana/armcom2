@@ -4,6 +4,7 @@
 	"end_date" : "1939.10.06",
 	"player_nation" : "Germany",
 	"enemy_nations" : ["Poland"],
+	"region" : "Northeastern Europe",
 	"desc" : "Join the 3rd Panzer Division in the invasion of Poland, 1939.",
 	"player_unit_list" : [
 		"Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", "Panzer III D",

@@ -223,7 +223,6 @@ MISSION_DESC = {
 
 # FUTURE: move these to a JSON file?
 
-
 # region definitions: set by campaigns, determine terrain odds on the campaign day map,
 # types and odds of weather conditions at different times during the calendar year
 REGIONS = {
@@ -240,10 +239,26 @@ REGIONS = {
 		},
 		
 		# seasons, start and end dates, and weather odds for each season
+		# TODO: check over these and correct
 		'season_weather_odds' : {
 			
+			'Winter' : {
+				'end_date' : '03.31',
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
+				},
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 40.0, 'Mist' : 10.0,
+					'Rain' : 30.0, 'Heavy Rain' : 20.0
+				}
+				
+			},
 			'Spring' : {
-				'start_date' : '04.01',
+				'end_date' : '06.14',
 				'ground_conditions' : {
 					'Dry' : 70.0, 'Wet' : 10.0, 'Muddy' : 15.0,
 					'Snow' : 5.0, 'Deep Snow' : 0.0
@@ -259,7 +274,7 @@ REGIONS = {
 				
 			},
 			'Summer' : {
-				'start_date' : '06.15',
+				'end_date' : '09.31',
 				'ground_conditions' : {
 					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
 				},
@@ -274,22 +289,7 @@ REGIONS = {
 				
 			},
 			'Autumn' : {
-				'start_date' : '10.01',
-				'ground_conditions' : {
-					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
-				},
-				'cloud_cover' : {
-					'Clear' : 50.0, 'Scattered' : 15.0,
-					'Heavy' : 20.0, 'Overcast' : 15.0
-				},
-				'precipitation' : {
-					'None' : 40.0, 'Mist' : 10.0,
-					'Rain' : 30.0, 'Heavy Rain' : 20.0
-				}
-				
-			},
-			'Winter' : {
-				'start_date' : '11.15',
+				'end_date' : '12.01',
 				'ground_conditions' : {
 					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0
 				},
@@ -446,17 +446,6 @@ VEH_FP_TK = [
 
 # amount within an AFV armour save that will result in Stun tests for crew/unit
 AP_STUN_MARGIN = 10.0
-
-# terrain type odds for campaign day hexes
-# FUTURE: can have different sets for different areas of the world
-CD_TERRAIN_ODDS = {
-	'Flat' : 50.0,
-	'Forest' : 10.0,
-	'Hills' : 15.0,
-	'Fields' : 10.0,
-	'Marsh' : 5.0,
-	'Villages' : 10.0
-}
 
 # for each campaign day hex terrain type, odds that a unit on the scenario map will be in
 # a given type of terrain in its scenario hex
@@ -2060,10 +2049,12 @@ class CampaignDay:
 				mins = 45
 		
 		# check ground conditions
-		if self.weather['Ground'] == 'Muddy':
+		if self.weather['Ground'] == 'Deep Snow':
+			mins += 25
+		elif self.weather['Ground'] in ['Muddy', 'Snow']:
 			mins += 15
 		elif self.weather['Precipitation'] != 'None':
-			mins += 15
+			mins += 10
 		
 		return mins
 		
@@ -2077,8 +2068,20 @@ class CampaignDay:
 	# generate a new random set of initial weather conditions, should only be called when day is created
 	def GenerateWeather(self):
 		
-		# TEMP - testing
-		weather_odds = REGIONS['Northeastern Europe']['season_weather_odds']['Spring']
+		# determine current calendar season
+		weather_odds_dict = REGIONS[campaign.stats['region']]['season_weather_odds']
+		date = campaign.today[campaign.today.find('.') + 1:]
+		
+		for season, value in weather_odds_dict.items():
+			if date <= value['end_date']:
+				break
+		else:
+			# catch cases where date is late in the calendar year
+			season = 'Winter'
+		
+		print('DEBUG: current weather season is: ' + season)
+		
+		weather_odds = weather_odds_dict[season]
 		
 		# roll for ground cover first
 		roll = GetPercentileRoll()
@@ -2087,41 +2090,27 @@ class CampaignDay:
 				break
 			roll -= chance
 		self.weather['Ground'] = result
-		print('DEBUG: Set initial ground conditions to ' + result + ', chance was ' + str(chance))
-		
-		
-		# roll for cloud cover next
+
+		# roll for cloud cover
 		roll = GetPercentileRoll()
+		for result, chance in weather_odds['cloud_cover'].items():
+			if roll <= chance:
+				break
+			roll -= chance
+		self.weather['Cloud Cover'] = result
 		
-		
-		
-		if roll <= 50.0:
-			self.weather['Cloud Cover'] = 'Clear'
-		elif roll <= 65.0:
-			self.weather['Cloud Cover'] = 'Scattered'
-		elif roll <= 85.0:
-			self.weather['Cloud Cover'] = 'Heavy'
-		else:
-			self.weather['Cloud Cover'] = 'Overcast'
-		
-		# precipitation
+		# roll for precipitation, unless cloud cover is clear
 		if self.weather['Cloud Cover'] == 'Clear':
 			self.weather['Precipitation'] = 'None'
 		else:
 			roll = GetPercentileRoll()
-			
-			if roll <= 40.0:
-				self.weather['Precipitation'] = 'None'
-			elif roll <= 50.0:
-				self.weather['Precipitation'] = 'Mist'
-			elif roll <= 80.0:
-				self.weather['Precipitation'] = 'Rain'
-			else:
-				self.weather['Precipitation'] = 'Heavy Rain'
+			for result, chance in weather_odds['precipitation'].items():
+				if roll <= chance:
+					break
+				roll -= chance
+			self.weather['Precipitation'] = result
 		
 		# FUTURE fog level: 0-3
-		
-		
 		
 		# set first weather update countdown
 		self.weather_update_clock = BASE_WEATHER_UPDATE_CLOCK + (libtcod.random_get_int(0, 1, 16))
@@ -3172,16 +3161,21 @@ class CampaignDay:
 		
 		# draw map hexes to console
 		
-		# load base zone image
-		dayhex_openground = LoadXP('dayhex_openground.xp')
+		# load base zone image - depends on current ground conditions
+		if self.weather['Ground'] in ['Snow', 'Deep Snow']:
+			dayhex = LoadXP('dayhex_openground_snow.xp')
+			bg_col = libtcod.Color(158,158,158)
+		else:
+			dayhex = LoadXP('dayhex_openground.xp')
+			bg_col = libtcod.Color(0,64,0)
 		temp_con = libtcod.console_new(7, 9)
 		libtcod.console_set_key_color(temp_con, KEY_COLOR)
-		bg_col = libtcod.Color(0,64,0)
+		
 		
 		for (hx, hy), cd_hex in self.map_hexes.items():
 			
 			# generate console image for this zone's terrain type
-			libtcod.console_blit(dayhex_openground, 0, 0, 0, 0, temp_con, 0, 0)
+			libtcod.console_blit(dayhex, 0, 0, 0, 0, temp_con, 0, 0)
 			
 			generator = libtcod.random_new_from_seed(cd_hex.console_seed)
 			
@@ -3242,9 +3236,6 @@ class CampaignDay:
 			libtcod.console_blit(temp_con, 0, 0, 0, 0, cd_map_con, x-3, y-4)
 			
 			# record screen locations of hex
-			# strictly speaking this only needs to be done once ever, but in
-			# the future it might be possible to scroll the campaign day map
-			# so we'd need to update this anyway
 			self.cd_map_index[(x, y-3)] = (hx, hy)
 			for x1 in range(x-1, x+2):
 				self.cd_map_index[(x1, y-2)] = (hx, hy)
@@ -3255,7 +3246,7 @@ class CampaignDay:
 				self.cd_map_index[(x1, y+1)] = (hx, hy)
 			self.cd_map_index[(x, y+3)] = (hx, hy)
 			
-		del temp_con, dayhex_openground
+		del temp_con, dayhex
 		
 		# draw dirt roads overtop
 		for (hx, hy), map_hex in self.map_hexes.items():
@@ -4182,18 +4173,17 @@ class CDMapHex:
 		
 		self.Reset()
 	
+	
 	# reset zone stats
 	def Reset(self):
 		self.coordinate = (chr(self.hy+65) + str(5 + int(self.hx - (self.hy - self.hy&1) / 2)))
 	
-	# generate a random terrain type for this hex
-	# FUTURE: can pull data from the campaign day to determine set of possible terrain types
+	
+	# generate a random terrain type for this zone hex
 	def GenerateTerrainType(self):
-		
 		roll = GetPercentileRoll()
-		
-		# TODO: determine correct cd_terrain_odds to use based on current campaign region in REGIONS
-		for terrain_type, odds in CD_TERRAIN_ODDS.items():
+		terrain_dict = REGIONS[campaign.stats['region']]['cd_terrain_odds']
+		for terrain_type, odds in terrain_dict.items():
 			if roll <= odds:
 				self.terrain_type = terrain_type
 				return
@@ -6137,13 +6127,21 @@ class Unit:
 				self.bog_chance += mod
 		
 		# apply modifier for ground conditions
-		if campaign_day.weather['Ground'] == 'Muddy':
-			if movement_class == 'Wheeled':
-				mod = -45.0
-				bog_mod = 10.0
-			else:
-				mod = -30.0
-				bog_mod = 3.0
+		if campaign_day.weather['Ground'] != 'Dry':
+			if campaign_day.weather['Ground'] == 'Deep Snow':
+				if movement_class == 'Wheeled':
+					mod = -65.0
+					bog_mod = 20.0
+				else:
+					mod = -50.0
+					bog_mod = 6.0
+			elif campaign_day.weather['Ground'] in ['Muddy', 'Snow']:
+				if movement_class == 'Wheeled':
+					mod = -45.0
+					bog_mod = 10.0
+				else:
+					mod = -30.0
+					bog_mod = 3.0
 			self.forward_move_chance += mod
 			self.reverse_move_chance += mod
 			self.bog_chance += bog_mod
@@ -6509,6 +6507,8 @@ class Unit:
 		# draw terrain greebles
 		if self.terrain is not None and not (self.owning_player == 1 and not self.spotted):
 			generator = libtcod.random_new_from_seed(self.terrain_seed)
+			
+			# TODO: Snow and Deep Snow need their own colours for greebles
 			
 			if self.terrain == 'Open Ground':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
@@ -6938,7 +6938,9 @@ class Unit:
 							effective_fp = effective_fp * 2
 						
 						# apply ground conditions modifier
-						if campaign_day.weather['Ground'] == 'Muddy':
+						if campaign_day.weather['Ground'] == 'Deep Snow':
+							effective_fp = int(float(effective_fp) * 0.25)
+						elif campaign_day.weather['Ground'] in ['Muddy', 'Snow']:
 							effective_fp = int(float(effective_fp) * 0.5)
 						
 						target.fp_to_resolve += effective_fp
@@ -10666,8 +10668,11 @@ class Scenario:
 		
 		libtcod.console_clear(hexmap_con)
 		
-		# FUTURE: can use different hex console images for different battlefield types / weather
-		scen_hex = LoadXP('scen_hex.xp')
+		# select base hex console image to use
+		if campaign_day.weather['Ground'] in ['Snow', 'Heavy Snow']:
+			scen_hex = LoadXP('scen_hex_snow.xp')
+		else:
+			scen_hex = LoadXP('scen_hex.xp')
 		libtcod.console_set_key_color(scen_hex, KEY_COLOR)
 		
 		# draw hexes to hex map console

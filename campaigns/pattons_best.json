@@ -4,6 +4,7 @@
 	"end_date" : "1945.04.18",
 	"player_nation" : "United States of America",
 	"enemy_nations" : ["Germany"],
+	"region" : "Northwestern Europe",
 	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France and invasion of Germany. (Unfinished)",
 	"player_unit_list" : [
 		"M4 Sherman", "M4A1 Sherman", "M4A3 Sherman", "M4A3(75)W Sherman",

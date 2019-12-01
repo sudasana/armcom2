@@ -247,6 +247,10 @@ REGIONS = {
 					'Dry' : 20.0, 'Wet' : 0.0, 'Muddy' : 5.0,
 					'Snow' : 60.0, 'Deep Snow' : 15.0
 				},
+				
+				# if ground cover is rolled as 'Dry', chance that snow could later fall
+				'freezing' : 80.0,
+				
 				'cloud_cover' : {
 					'Clear' : 40.0, 'Scattered' : 20.0,
 					'Heavy' : 20.0, 'Overcast' : 20.0
@@ -267,6 +271,7 @@ REGIONS = {
 					'Dry' : 50.0, 'Wet' : 20.0, 'Muddy' : 25.0,
 					'Snow' : 5.0, 'Deep Snow' : 0.0
 				},
+				'freezing' : 10.0,
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -285,6 +290,7 @@ REGIONS = {
 					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0,
 					'Snow' : 0.0, 'Deep Snow' : 0.0
 				},
+				'freezing' : 0.0,
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -303,6 +309,7 @@ REGIONS = {
 					'Dry' : 65.0, 'Wet' : 10.0, 'Muddy' : 15.0,
 					'Snow' : 10.0, 'Deep Snow' : 0.0
 				},
+				'freezing' : 15.0,
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -338,6 +345,7 @@ REGIONS = {
 					'Dry' : 25.0, 'Wet' : 0.0, 'Muddy' : 5.0,
 					'Snow' : 60.0, 'Deep Snow' : 10.0
 				},
+				'freezing' : 60.0,
 				'cloud_cover' : {
 					'Clear' : 40.0, 'Scattered' : 20.0,
 					'Heavy' : 20.0, 'Overcast' : 20.0
@@ -357,6 +365,7 @@ REGIONS = {
 					'Dry' : 50.0, 'Wet' : 20.0, 'Muddy' : 25.0,
 					'Snow' : 5.0, 'Deep Snow' : 0.0
 				},
+				'freezing' : 5.0,
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -375,6 +384,7 @@ REGIONS = {
 					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0,
 					'Snow' : 0.0, 'Deep Snow' : 0.0
 				},
+				'freezing' : 0.0,
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -393,6 +403,7 @@ REGIONS = {
 					'Dry' : 65.0, 'Wet' : 10.0, 'Muddy' : 15.0,
 					'Snow' : 10.0, 'Deep Snow' : 0.0
 				},
+				'freezing' : 10.0,
 				'cloud_cover' : {
 					'Clear' : 50.0, 'Scattered' : 15.0,
 					'Heavy' : 20.0, 'Overcast' : 15.0
@@ -409,6 +420,11 @@ REGIONS = {
 		
 	}
 }
+
+# base chance of a ground conditions change during weather update
+GROUND_CONDITION_CHANGE_CHANCE = 3.0
+# modifier for heavy rain/snow
+HEAVY_PRECEP_MOD = 5.0
 
 # minimum and maximum advance chance (2 rolls) per day
 MIN_ADVANCE_CHANCE = 16.0
@@ -1900,10 +1916,11 @@ class CampaignDay:
 		
 		# current weather conditions, will be set by GenerateWeather
 		self.weather = {
-			'Cloud Cover': '',
-			'Precipitation': '',
-			'Fog': 0,
-			'Ground': ''
+			'Cloud Cover' : '',
+			'Precipitation' : '',
+			'Fog' : 0,
+			'Ground' : '',
+			'Freezing' : False
 		}
 		self.weather_update_clock = 0		# number of minutes until next weather update
 		self.GenerateWeather()
@@ -2178,8 +2195,6 @@ class CampaignDay:
 			# catch cases where date is late in the calendar year
 			season = 'Winter'
 		
-		print('DEBUG: current weather season is: ' + season)
-		
 		weather_odds = weather_odds_dict[season]
 		
 		# roll for ground cover first
@@ -2189,6 +2204,13 @@ class CampaignDay:
 				break
 			roll -= chance
 		self.weather['Ground'] = result
+		
+		if result in ['Snow', 'Deep Snow']:
+			self.weather['Freezing'] = True
+		# even if ground conditions are dry, chance that snow might fall later
+		elif result == 'Dry':
+			if GetPercentileRoll() <= weather_odds['freezing']:
+				self.weather['Freezing'] = True
 
 		# roll for cloud cover
 		roll = GetPercentileRoll()
@@ -2201,10 +2223,24 @@ class CampaignDay:
 		# roll for precipitation
 		roll = GetPercentileRoll()
 		for result, chance in weather_odds['precipitation'].items():
+			
+			# only allow snow if weather is cold
+			if not self.weather['Freezing'] and result in ['Light Snow', 'Snow', 'Blizzard']:
+				roll -= chance
+				continue
+			
+			# only allow rain if weather is warm
+			if self.weather['Freezing'] and result in ['Rain', 'Heavy Rain']:
+				roll -= chance
+				continue
+			
 			if roll <= chance:
+				self.weather['Precipitation'] = result
 				break
 			roll -= chance
-		self.weather['Precipitation'] = result
+		else:
+			self.weather['Precipitation'] = 'None'
+		
 		
 		# if precipitation has been rolled, fix clear cloud cover
 		if self.weather['Precipitation'] != 'None' and self.weather['Cloud Cover'] == 'Clear':
@@ -2222,64 +2258,100 @@ class CampaignDay:
 		# reset update clock
 		self.weather_update_clock = BASE_WEATHER_UPDATE_CLOCK + (libtcod.random_get_int(0, 1, 16))
 		
-		# TODO: check for ground condition update
-		
+		# check for ground condition update
 		roll = GetPercentileRoll()
 		
+		# muddy ground drying out
 		if self.weather['Ground'] == 'Muddy':
 			if self.weather['Precipitation'] == 'None':
-				if roll <= 20.0:
+				if roll <= GROUND_CONDITION_CHANGE_CHANCE:
 					self.weather['Ground'] = 'Wet'
-					ShowMessage('The ground has become less muddy.')
+					ShowMessage('The muddy ground has dried out a little.')
 		
+		# wet ground drying out
 		elif self.weather['Ground'] == 'Wet':
 			if self.weather['Precipitation'] == 'None':
-				if roll <= 20.0:
+				if roll <= GROUND_CONDITION_CHANGE_CHANCE:
 					self.weather['Ground'] = 'Dry'
-					ShowMessage('The ground has dried out.')
-			else:
+					ShowMessage('The ground has completely dried out.')
+			
+			elif self.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
 				
 				if self.weather['Precipitation'] == 'Heavy Rain':
-					roll -= 10.0
-				
-				if roll <= 30.0:
+					roll -= HEAVY_PRECEP_MOD
+				if roll <= GROUND_CONDITION_CHANGE_CHANCE:
 					self.weather['Ground'] = 'Muddy'
 					ShowMessage('The ground has become muddy.')
-		# dry ground
+		
+		# snowy ground deepening
+		elif self.weather['Ground'] == 'Snow':
+			if self.weather['Precipitation'] in ['Snow', 'Blizzard']:
+				if self.weather['Precipitation'] == 'Blizzard':
+					roll -= HEAVY_PRECEP_MOD
+				if roll <= GROUND_CONDITION_CHANGE_CHANCE:
+					self.weather['Ground'] = 'Deep Snow'
+					ShowMessage('The snow has accumilated and is now deep.')
+		
+		# dry ground - can get wet or snowy
 		else:
-			if self.weather['Precipitation'] != 'None':
-				
+			
+			if self.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
 				if self.weather['Precipitation'] == 'Heavy Rain':
-					roll -= 10.0
-				
-				if roll <= 25.0:
+					roll -= HEAVY_PRECEP_MOD
+				if roll <= GROUND_CONDITION_CHANGE_CHANCE:
 					self.weather['Ground'] = 'Wet'
 					ShowMessage('The ground has become wet.')
+			
+			elif self.weather['Precipitation'] in ['Snow', 'Blizzard']:
+				if self.weather['Precipitation'] == 'Blizzard':
+					roll -= HEAVY_PRECEP_MOD
+				if roll <= GROUND_CONDITION_CHANGE_CHANCE:
+					self.weather['Ground'] = 'Snow'
+					ShowMessage('The ground is now covered in snow.')
+					
+					# update map consoles to reflect new ground cover
+					campaign_day.UpdateCDMapCon()
+					if scenario is not None:
+						scenario.UpdateHexmapCon()
 		
 		
-		# roll for possible type of change
+		# roll to see weather change takes place
+		if GetPercentileRoll() > 20.0: return
+		
+		# roll for possible type of weather change
 		roll = GetPercentileRoll()
 			
 		# change in precipitation level
 		if roll <= 50.0:
 			
+			# no change possible
 			if self.weather['Cloud Cover'] == 'Clear':
 				return
 			
 			roll = GetPercentileRoll()
 			
 			if self.weather['Precipitation'] == 'None':
-				if roll <= 20.0:
-					self.weather['Precipitation'] = 'Mist'
-					ShowMessage('A light mist begins to fall.')
-				elif roll <= 40.0:
-					self.weather['Precipitation'] = 'Rain'
-					ShowMessage('Rain begins to fall.')
-				elif roll <= 50.0:
-					self.weather['Precipitation'] = 'Heavy Rain'
-					ShowMessage('A heavy downpour suddenly begins to fall.')
+				
+				if self.weather['Freezing']:
+					if roll <= 80.0:
+						self.weather['Precipitation'] = 'Light Snow'
+						ShowMessage('Light snow begins to fall.')
+					else:
+						self.weather['Precipitation'] = 'Snow'
+						ShowMessage('Snow begins to fall.')
 				else:
-					return
+				
+					if roll <= 50.0:
+						self.weather['Precipitation'] = 'Mist'
+						ShowMessage('A light mist begins to fall.')
+					elif roll <= 85.0:
+						self.weather['Precipitation'] = 'Rain'
+						ShowMessage('Rain begins to fall.')
+					else:
+						self.weather['Precipitation'] = 'Heavy Rain'
+						ShowMessage('A heavy downpour suddenly begins to fall.')
+			
+			# TODO: recalucalte following odds, add cases to handle light / snow / Blizzard
 			
 			elif self.weather['Precipitation'] == 'Mist':
 				if roll <= 20.0:
@@ -2314,7 +2386,7 @@ class CampaignDay:
 				else:
 					return
 			
-			# if we get here, the rain level has been changed, so update animations
+			# so update animations
 			self.InitAnimations()
 		
 		# FUTURE: change in fog level
@@ -2370,7 +2442,7 @@ class CampaignDay:
 				else:
 					return
 			
-			# stop rain if clouds have cleared up
+			# stop any precipitation if clouds have cleared up
 			if self.weather['Cloud Cover'] == 'Clear' and self.weather['Precipitation'] != 'None':
 				self.weather['Precipitation'] = 'None'
 				ShowMessage('The rain has stopped.')
@@ -12805,7 +12877,7 @@ def ShowDebugMenu():
 		x = 50
 		y = 8
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		for xm in range(6):
+		for xm in range(7):
 			libtcod.console_print(con, x, y+(xm*2), str(xm+1))
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
@@ -12815,6 +12887,7 @@ def ShowDebugMenu():
 		libtcod.console_print(con, x+2, y+6, 'Set Time to End of Day')
 		libtcod.console_print(con, x+2, y+8, 'End Current Scenario')
 		libtcod.console_print(con, x+2, y+10, 'Export Campaign Log')
+		libtcod.console_print(con, x+2, y+12, 'Generate New Weather')
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 33, 56, 'Esc')
@@ -12865,10 +12938,10 @@ def ShowDebugMenu():
 			DrawDebugMenu()
 			continue
 		
-		if key_char not in ['1', '2', '3', '4', '5', '6']: continue
+		key_num = int(key_char)
 		
 		# regenerate CD map roads
-		if int(key_char) == 1:
+		if key_num == 1:
 			if campaign_day is not None:
 				campaign_day.GenerateRoads()
 				campaign_day.UpdateCDMapCon()
@@ -12878,7 +12951,7 @@ def ShowDebugMenu():
 				continue
 		
 		# give crewman in selected position a serious wound
-		elif int(key_char) == 2:
+		elif key_num == 2:
 			if scenario is not None:
 				option_list = []
 				for position in scenario.player_unit.positions_list:
@@ -12892,7 +12965,7 @@ def ShowDebugMenu():
 				continue
 		
 		# immobilize player
-		elif int(key_char) == 3:
+		elif key_num == 3:
 			if scenario is not None:
 				if scenario.player_unit.immobilized:
 					continue
@@ -12903,7 +12976,7 @@ def ShowDebugMenu():
 				continue
 		
 		# set current time to end of combat day
-		elif int(key_char) == 4:
+		elif key_num == 4:
 			if campaign_day is not None:
 				campaign_day.day_clock['hour'] = campaign_day.end_of_day['hour']
 				campaign_day.day_clock['minute'] = campaign_day.end_of_day['minute']
@@ -12914,7 +12987,7 @@ def ShowDebugMenu():
 				continue
 		
 		# end the current scenario
-		elif int(key_char) == 5:
+		elif key_num == 5:
 			if scenario is not None:
 				scenario.finished = True
 				ShowMessage('Scenario finished flag set to True')
@@ -12922,12 +12995,23 @@ def ShowDebugMenu():
 				continue
 		
 		# export current campaign log
-		elif int(key_char) == 6:
+		elif key_num == 6:
 			if campaign is not None:
 				ExportLog()
 				ShowMessage('Log exported')
 				exit_menu = True
 				continue
+		
+		# generate new weather
+		elif key_num == 7:
+			if campaign_day is not None:
+				campaign_day.GenerateWeather()
+				ShowMessage('New weather conditions generated')
+				DisplayWeatherInfo(cd_weather_con)
+				campaign_day.InitAnimations()
+				exit_menu = True
+				continue
+				
 	
 	# re-draw original root console
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)

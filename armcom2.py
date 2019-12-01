@@ -6542,9 +6542,9 @@ class Unit:
 						chance += 18.0
 				
 				# precipitation
-				if campaign_day.weather['Precipitation'] == 'Rain':
+				if campaign_day.weather['Precipitation'] in ['Rain', 'Snow']:
 					chance -= 5.0 * float(distance)
-				elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+				elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Blizzard']:
 					chance -= 10.0 * float(distance)
 				
 				# smoke concealment
@@ -7784,9 +7784,9 @@ class Scenario:
 			chance = BASE_SNIPER_TK_CHANCE
 			
 			# precipitation modifier
-			if campaign_day.weather['Precipitation'] == 'Rain':
+			if campaign_day.weather['Precipitation'] in ['Rain', 'Light Snow']:
 				chance -= 5.0
-			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+			elif campaign_day.weather['Precipitation'] == ['Heavy Rain', 'Blizzard']:
 				chance -= 15.0
 			
 			# target moving
@@ -8402,11 +8402,15 @@ class Scenario:
 			if attacker.pinned:
 				modifier_list.append(('Attacker Pinned', -60.0))
 			
-			# precipitation
+			# precipitation effects
 			if campaign_day.weather['Precipitation'] == 'Rain':
 				modifier_list.append(('Rain', -10.0 * float(distance)))
+			elif campaign_day.weather['Precipitation'] == 'Snow':
+				modifier_list.append(('Rain', -15.0 * float(distance)))
 			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
 				modifier_list.append(('Heavy Rain', -20.0 * float(distance)))
+			elif campaign_day.weather['Precipitation'] == 'Blizzard':
+				modifier_list.append(('Blizzard', -25.0 * float(distance)))
 			
 			# smoke
 			total_smoke = 0
@@ -9489,9 +9493,9 @@ class Scenario:
 				chance -= 10.0
 			elif campaign_day.weather['Cloud Cover'] == 'Heavy':
 				chance -= 20.0
-			if campaign_day.weather['Precipitation'] == 'Rain':
+			if campaign_day.weather['Precipitation'] in ['Rain', 'Snow']:
 				chance -= 15.0
-			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+			elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Blizzard']:
 				chance -= 25.0
 			
 			# potential target modifier
@@ -9556,9 +9560,9 @@ class Scenario:
 			chance = 35.0
 			
 			# weather modifier
-			if campaign_day.weather['Precipitation'] == 'Rain':
+			if campaign_day.weather['Precipitation'] in ['Rain', 'Snow']:
 				chance -= 10.0
-			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+			elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Blizzard']:
 				chance -= 15.0
 			
 			chance = RestrictChance(chance)

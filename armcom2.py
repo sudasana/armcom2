@@ -2066,7 +2066,9 @@ class CampaignDay:
 		# animation object; keeps track of active animations on the animation console
 		self.animation = {
 			'rain_active' : False,
-			'rain_drops' : []
+			'rain_drops' : [],
+			'snow_active' : False,
+			'snowflakes' : []
 		}
 	
 	
@@ -2203,6 +2205,10 @@ class CampaignDay:
 			if roll <= chance:
 				break
 			roll -= chance
+		
+		# TEMP testing
+		result = 'Snow'
+		
 		self.weather['Ground'] = result
 		
 		if result in ['Snow', 'Deep Snow']:
@@ -2223,6 +2229,10 @@ class CampaignDay:
 		# roll for precipitation
 		roll = GetPercentileRoll()
 		for result, chance in weather_odds['precipitation'].items():
+			
+			# TEMP testing
+			self.weather['Precipitation'] = 'Snow'
+			break
 			
 			# only allow snow if weather is cold
 			if not self.weather['Freezing'] and result in ['Light Snow', 'Snow', 'Blizzard']:
@@ -2316,13 +2326,13 @@ class CampaignDay:
 		
 		
 		# roll to see weather change takes place
-		if GetPercentileRoll() > 20.0: return
+		if GetPercentileRoll() > 15.0: return
 		
 		# roll for possible type of weather change
 		roll = GetPercentileRoll()
 			
 		# change in precipitation level
-		if roll <= 50.0:
+		if roll <= 70.0:
 			
 			# no change possible
 			if self.weather['Cloud Cover'] == 'Clear':
@@ -2351,42 +2361,67 @@ class CampaignDay:
 						self.weather['Precipitation'] = 'Heavy Rain'
 						ShowMessage('A heavy downpour suddenly begins to fall.')
 			
-			# TODO: recalucalte following odds, add cases to handle light / snow / Blizzard
-			
 			elif self.weather['Precipitation'] == 'Mist':
-				if roll <= 20.0:
+				if roll <= 40.0:
 					self.weather['Precipitation'] = 'None'
 					ShowMessage('The light mist has cleared up.')
-				elif roll <= 40.0:
+				elif roll <= 80.0:
 					self.weather['Precipitation'] = 'Rain'
 					ShowMessage('The light mist thickens into a steady rain.')
-				elif roll <= 50.0:
+				else:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('The light mist suddenly turns into a heavy downpour.')
-				else:
-					return
 			
 			elif self.weather['Precipitation'] == 'Rain':
-				if roll <= 15.0:
+				if roll <= 30.0:
 					self.weather['Precipitation'] = 'None'
 					ShowMessage('The rain has cleared up.')
-				elif roll <= 35.0:
+				elif roll <= 80.0:
 					self.weather['Precipitation'] = 'Mist'
 					ShowMessage('The rain turns into a light mist.')
-				elif roll <= 50.0:
+				else:
 					self.weather['Precipitation'] = 'Heavy Rain'
 					ShowMessage('The rain gets heavier.')
-				else:
-					return
 			
 			elif self.weather['Precipitation'] == 'Heavy Rain':
 				if roll <= 35.0:
+					self.weather['Precipitation'] = 'Mist'
+					ShowMessage('The rain turns into a light mist.')
+				else:
 					self.weather['Precipitation'] = 'Rain'
 					ShowMessage('The rain lightens a little.')
+
+			elif self.weather['Precipitation'] == 'Light Snow':
+				if roll <= 30.0:
+					self.weather['Precipitation'] = 'None'
+					ShowMessage('The snow stops falling.')
+				elif roll <= 80.0:
+					self.weather['Precipitation'] = 'Snow'
+					ShowMessage('The snow gets a little heavier.')
 				else:
-					return
+					self.weather['Precipitation'] = 'Blizzard'
+					ShowMessage('The snow starts falling very heavily.')
 			
-			# so update animations
+			elif self.weather['Precipitation'] == 'Snow':
+				if roll <= 20.0:
+					self.weather['Precipitation'] = 'None'
+					ShowMessage('The snow stops falling.')
+				elif roll <= 80.0:
+					self.weather['Precipitation'] = 'Light Snow'
+					ShowMessage('The snow gets a little lighter.')
+				else:
+					self.weather['Precipitation'] = 'Blizzard'
+					ShowMessage('The snow starts falling very heavily.')
+			
+			elif self.weather['Precipitation'] == 'Blizzard':
+				if roll <= 20.0:
+					self.weather['Precipitation'] = 'Light Snow'
+					ShowMessage('The snow gets quite a bit lighter.')
+				else:
+					self.weather['Precipitation'] = 'Snow'
+					ShowMessage('The snow gets a bit lighter.')
+			
+			# update animations
 			self.InitAnimations()
 		
 		# FUTURE: change in fog level
@@ -2399,55 +2434,42 @@ class CampaignDay:
 			roll = GetPercentileRoll()
 			
 			if self.weather['Cloud Cover'] == 'Clear':
-				if roll <= 25.0:
+				if roll <= 85.0:
 					self.weather['Cloud Cover'] = 'Scattered'
 					ShowMessage('Scattered clouds begin to form.')
-				elif roll <= 30.0:
+				else:
 					self.weather['Cloud Cover'] = 'Heavy'
 					ShowMessage('A heavy cloud front rolls in.')
-				else:
-					return
 			
 			elif self.weather['Cloud Cover'] == 'Scattered':
-				if roll <= 35.0:
-					# clouds won't disappear if precip is falling
-					if self.weather['Precipitation'] == 'None':
-						return
+				if roll <= 75.0:
 					self.weather['Cloud Cover'] = 'Clear'
 					ShowMessage('The clouds part and the sky is clear.')
-				elif roll <= 50.0:
+				elif roll <= 90.0:
 					self.weather['Cloud Cover'] = 'Heavy'
 					ShowMessage('The cloud cover gets thicker.')
-				elif roll <= 55.0:
+				else:
 					self.weather['Cloud Cover'] = 'Overcast'
 					ShowMessage('A storm front has rolled in.')
-				else:
-					return
 			
 			elif self.weather['Cloud Cover'] == 'Heavy':
-				if roll <= 25.0:
+				if roll <= 85.0:
 					self.weather['Cloud Cover'] = 'Scattered'
 					ShowMessage('The clouds begin to thin out.')
-				elif roll <= 40.0:
+				else:
 					self.weather['Cloud Cover'] = 'Overcast'
 					ShowMessage('The cloud cover thickens.')
-				else:
-					return
 			
 			# overcast
 			else:
-				if roll <= 25.0:
-					self.weather['Cloud Cover'] = 'Heavy'
-					ShowMessage('The cloud cover begins to part but remains heavy.')
-				else:
-					return
-			
+				self.weather['Cloud Cover'] = 'Heavy'
+				ShowMessage('The cloud cover begins to thin out but remains heavy.')
+
 			# stop any precipitation if clouds have cleared up
 			if self.weather['Cloud Cover'] == 'Clear' and self.weather['Precipitation'] != 'None':
 				self.weather['Precipitation'] = 'None'
-				ShowMessage('The rain has stopped.')
 				
-				# stop rain animation
+				# stop animation
 				self.InitAnimations()
 
 	
@@ -3843,10 +3865,14 @@ class CampaignDay:
 		# reset animations
 		self.animation['rain_active'] = False
 		self.animation['rain_drops'] = []
+		self.animation['snow_active'] = False
+		self.animation['snowflakes'] = []
 		
-		# check for rain animation
+		# check for rain or snow animation
 		if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
 			self.animation['rain_active'] = True
+		elif campaign_day.weather['Precipitation'] in ['Light Snow', 'Snow', 'Blizzard']:
+			self.animation['snow_active'] = True
 		
 		# set up rain if any
 		if self.animation['rain_active']:
@@ -3858,7 +3884,22 @@ class CampaignDay:
 				x = libtcod.random_get_int(0, 4, 36)
 				y = libtcod.random_get_int(0, 0, 50)
 				lifespan = libtcod.random_get_int(0, 1, 5)
-				self.animation['rain_drops'].append((x, y, 4))		
+				self.animation['rain_drops'].append((x, y, lifespan))		
+		
+		# set up snow if any
+		if self.animation['snow_active']:
+			self.animation['snowflakes'] = []
+			if campaign_day.weather['Precipitation'] == 'Light Snow':
+				num = 4
+			elif campaign_day.weather['Precipitation'] == 'Snow':
+				num = 8
+			else:
+				num = 16
+			for i in range(num):
+				x = libtcod.random_get_int(0, 4, 36)
+				y = libtcod.random_get_int(0, 0, 50)
+				lifespan = libtcod.random_get_int(0, 4, 10)
+				self.animation['snowflakes'].append((x, y, lifespan))	
 		
 	
 	# update campaign day animation frame and console 36x52
@@ -3879,7 +3920,6 @@ class CampaignDay:
 					y = libtcod.random_get_int(0, 0, 50)
 					lifespan = libtcod.random_get_int(0, 1, 5)
 				else:
-					#x -= 1
 					y += 2
 					lifespan -= 1
 				
@@ -3896,6 +3936,34 @@ class CampaignDay:
 				else:
 					char = 124
 				libtcod.console_put_char_ex(cd_anim_con, x, y, char, libtcod.light_blue,
+					libtcod.black)
+		
+		# update snow display
+		if self.animation['snow_active']:
+			
+			# update location of each snowflake
+			for i in range(len(self.animation['snowflakes'])):
+				(x, y, lifespan) = self.animation['snowflakes'][i]
+				
+				# respawn if finished
+				if lifespan == 0:
+					x = libtcod.random_get_int(0, 4, 36)
+					y = libtcod.random_get_int(0, 0, 50)
+					lifespan = libtcod.random_get_int(0, 4, 10)
+				else:
+					x += choice([-1, 0, 1])
+					y += 1
+					lifespan -= 1
+				
+				self.animation['snowflakes'][i] = (x, y, lifespan)
+			
+			# draw snowflakes to screen
+			for (x, y, lifespan) in self.animation['snowflakes']:
+				
+				# skip if off screen
+				if x < 0 or y > 50: continue
+				
+				libtcod.console_put_char_ex(cd_anim_con, x, y, 249, libtcod.white,
 					libtcod.black)
 		
 		# reset update timer

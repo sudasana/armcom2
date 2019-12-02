@@ -2404,6 +2404,8 @@ class CampaignDay:
 			
 			# update animations
 			self.InitAnimations()
+			if scenario is not None:
+				scenario.InitAnimations()
 		
 		# FUTURE: change in fog level
 		#elif roll <= 75.0:
@@ -2452,6 +2454,8 @@ class CampaignDay:
 				
 				# stop animation
 				self.InitAnimations()
+				if scenario is not None:
+					scenario.InitAnimations()
 
 	
 	# advance the current campaign day time, check for end of day, and also weather conditions update
@@ -4524,7 +4528,13 @@ class CDMapHex:
 		self.objective = None		# player objective for this zone
 		
 		# set enemy strength level
-		self.enemy_strength = libtcod.random_get_int(0, 1, 5) + libtcod.random_get_int(0, 0, 5)
+		self.enemy_strength = 1
+		if campaign_day.mission == 'Advance':
+			self.enemy_strength = libtcod.random_get_int(0, 1, 3) + libtcod.random_get_int(0, 0, 3)
+		elif campaign_day.mission in ['Battle', 'Fighting Withdrawl']:
+			self.enemy_strength = libtcod.random_get_int(0, 2, 5) + libtcod.random_get_int(0, 2, 5)
+		elif campaign_day.mission == 'Counterattack':
+			self.enemy_strength = libtcod.random_get_int(0, 0, 5) + libtcod.random_get_int(0, 1, 5)
 		
 		self.Reset()
 	
@@ -4562,13 +4572,20 @@ class CDMapHex:
 		
 		# check for VP reward
 		if not no_vp:
-			campaign.AwardVP(2)
 			
-			# set record
-			if self.controlled_by == 0:
-				campaign_day.AddRecord('Map Areas Defended', 1)
-			else:
+			if self.controlled_by == 1:
 				campaign_day.AddRecord('Map Areas Captured', 1)
+				if campaign_day.mission in ['Advance', 'Counterattack']:
+					campaign.AwardVP(2)
+				else:
+					campaign.AwardVP(1)
+			
+			elif self.controlled_by == 0:
+				campaign_day.AddRecord('Map Areas Defended', 1)
+				if campaign_day.mission == 'Fighting Withdrawl':
+					campaign.AwardVP(4)
+				else:
+					campaign.AwardVP(1)
 		
 			# check for objective reward
 			if self.objective is not None:
@@ -7875,6 +7892,8 @@ class Scenario:
 		self.animation = {
 			'rain_active' : False,
 			'rain_drops' : [],
+			'snow_active' : False,
+			'snowflakes' : [],
 			'gun_fire_active' : False,
 			'gun_fire_line' : [],
 			'small_arms_fire_action' : False,
@@ -11411,10 +11430,14 @@ class Scenario:
 		# reset animations
 		self.animation['rain_active'] = False
 		self.animation['rain_drops'] = []
+		self.animation['snow_active'] = False
+		self.animation['snowflakes'] = []
 		
 		# check for rain animation
 		if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
 			self.animation['rain_active'] = True
+		elif campaign_day.weather['Precipitation'] in ['Light Snow', 'Snow', 'Blizzard']:
+			self.animation['snow_active'] = True
 		
 		# set up rain if any
 		if self.animation['rain_active']:
@@ -11427,6 +11450,21 @@ class Scenario:
 				y = libtcod.random_get_int(0, 0, 38)
 				lifespan = libtcod.random_get_int(0, 1, 5)
 				self.animation['rain_drops'].append((x, y, 4))
+		
+		# set up snow if any
+		if self.animation['snow_active']:
+			self.animation['snowflakes'] = []
+			if campaign_day.weather['Precipitation'] == 'Light Snow':
+				num = 4
+			elif campaign_day.weather['Precipitation'] == 'Snow':
+				num = 8
+			else:
+				num = 16
+			for i in range(num):
+				x = libtcod.random_get_int(0, 4, 50)
+				y = libtcod.random_get_int(0, 0, 37)
+				lifespan = libtcod.random_get_int(0, 4, 10)
+				self.animation['snowflakes'].append((x, y, lifespan))
 	
 	
 	# update the scenario animation frame and console 53x43
@@ -11443,8 +11481,8 @@ class Scenario:
 				
 				# respawn if finished
 				if lifespan == 0:
-					x = libtcod.random_get_int(0, 4, 49)
-					y = libtcod.random_get_int(0, 0, 50)
+					x = libtcod.random_get_int(0, 4, 50)
+					y = libtcod.random_get_int(0, 0, 37)
 					lifespan = libtcod.random_get_int(0, 1, 5)
 				else:
 					y += 2
@@ -11464,6 +11502,35 @@ class Scenario:
 					char = 124
 				libtcod.console_put_char_ex(anim_con, x, y, char, libtcod.light_blue,
 					libtcod.black)
+		
+		# update snow display
+		if self.animation['snow_active']:
+			
+			# update location of each snowflake
+			for i in range(len(self.animation['snowflakes'])):
+				(x, y, lifespan) = self.animation['snowflakes'][i]
+				
+				# respawn if finished
+				if lifespan == 0:
+					x = libtcod.random_get_int(0, 4, 50)
+					y = libtcod.random_get_int(0, 0, 37)
+					lifespan = libtcod.random_get_int(0, 4, 10)
+				else:
+					x += choice([-1, 0, 1])
+					y += 1
+					lifespan -= 1
+				
+				self.animation['snowflakes'][i] = (x, y, lifespan)
+			
+			# draw snowflakes to screen
+			for (x, y, lifespan) in self.animation['snowflakes']:
+				
+				# skip if off screen
+				if x < 0 or y > 50: continue
+				
+				libtcod.console_put_char_ex(anim_con, x, y, 249, libtcod.white,
+					libtcod.black)
+		
 		
 		# update airplane animation if any
 		if self.animation['air_attack'] is not None:

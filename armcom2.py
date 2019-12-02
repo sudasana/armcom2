@@ -2744,7 +2744,9 @@ class CampaignDay:
 		
 		weapon = None
 		ammo_num = 0
+		rr_num = 0
 		add_num = 1
+		use_rr = False
 		
 		# update the menu console and draw to screen
 		def UpdateMenuCon():
@@ -2773,29 +2775,35 @@ class CampaignDay:
 			
 			# command menu
 			x = 58
-			y = 43
+			y = 35
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 			libtcod.console_print(con, x, y, EnKey('q').upper())
 			libtcod.console_print(con, x, y+1, EnKey('e').upper())
-			libtcod.console_print(con, x, y+3, EnKey('d').upper())
-			libtcod.console_print(con, x, y+4, EnKey('a').upper())
-			libtcod.console_print(con, x, y+6, EnKey('z').upper())
+			libtcod.console_print(con, x, y+2, EnKey('r').upper())
 			
-			libtcod.console_print(con, x, y+8, EnKey('x').upper())
+			libtcod.console_print(con, x, y+4, EnKey('d').upper())
+			libtcod.console_print(con, x, y+5, EnKey('a').upper())
 			
-			libtcod.console_print(con, x, y+10, 'Enter')
+			libtcod.console_print(con, x, y+7, EnKey('z').upper())
+			
+			libtcod.console_print(con, x, y+9, EnKey('x').upper())
+			
+			libtcod.console_print(con, x, y+11, 'Enter')
 			
 			
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print(con, x+2, y, 'Cycle Selected Gun')
 			libtcod.console_print(con, x+2, y+1, 'Cycle Selected Ammo Type')
-			libtcod.console_print(con, x+2, y+3, 'Load ' + str(add_num))
-			libtcod.console_print(con, x+2, y+4, 'Unload ' + str(add_num))
-			libtcod.console_print(con, x+2, y+6, 'Toggle 1/10')
+			libtcod.console_print(con, x+2, y+2, 'Toggle Ready Rack')
 			
-			libtcod.console_print(con, x+2, y+8, 'Default Load')
+			libtcod.console_print(con, x+2, y+4, 'Load ' + str(add_num))
+			libtcod.console_print(con, x+2, y+5, 'Unload ' + str(add_num))
 			
-			libtcod.console_print(con, x+6, y+10, 'Accept and Continue')
+			libtcod.console_print(con, x+2, y+7, 'Toggle 1/10')
+			
+			libtcod.console_print(con, x+2, y+9, 'Default Load')
+			
+			libtcod.console_print(con, x+6, y+11, 'Accept and Continue')
 			
 			
 			# possible but not likely
@@ -2807,8 +2815,13 @@ class CampaignDay:
 				libtcod.CENTER, weapon.GetStat('name'))
 			
 			# description of ammo types available to current gun
-			x = 62
-			y = 9
+			x = 3
+			y = 22
+			
+			libtcod.console_set_default_foreground(con, libtcod.light_blue)
+			libtcod.console_print(con, x, y, 'Available Ammo Types')
+			y += 3
+			
 			for ammo_type in weapon.stats['ammo_type_list']:
 				
 				libtcod.console_set_default_foreground(con, libtcod.white)
@@ -2830,16 +2843,30 @@ class CampaignDay:
 					
 					y += 6
 			
-			# FUTURE: visual depicition of ready rack
-			
-			# visual depicition of main stores
-			x = 41
-			y = 26
+			# visual depicition of main stores and ready rack
+			x = 33
+			y = 25
 			libtcod.console_set_default_foreground(con, libtcod.white)
-			libtcod.console_print(con, x-8, y+1, 'Stores')
+			libtcod.console_print(con, x, y, 'Stores')
+			libtcod.console_print(con, x+10, y, 'Ready Rack')
+			
+			# highlight active stores
+			libtcod.console_set_default_background(con, libtcod.darker_yellow)
+			if not use_rr:
+				xh = x
+				w = 9
+			else:
+				xh = x+10
+				w = 10
+			libtcod.console_rect(con, xh, y, w, 1, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(con, libtcod.black)
+			
+			y += 2
 			
 			ammo_count = weapon.ammo_stores.copy()
+			rr_count = weapon.ready_rack.copy()
 			
+			# main stores
 			libtcod.console_set_default_foreground(con, libtcod.darker_grey)
 			xm = 0
 			ym = 0
@@ -2874,16 +2901,58 @@ class CampaignDay:
 					else:
 						xm += 1
 			
+			# ready rack
+			x += 10
+			libtcod.console_set_default_foreground(con, libtcod.darker_grey)
+			xm = 0
+			ym = 0
+			total = 0
+			for ammo_type in AMMO_TYPES:
+				if ammo_type in rr_count:
+					for i in range(rr_count[ammo_type]):
+						
+						# determine colour to use
+						if ammo_type == 'HE':
+							col = libtcod.grey
+						elif ammo_type == 'AP':
+							col = libtcod.yellow
+						
+						libtcod.console_put_char_ex(con, x+xm, y+ym, 7, col, libtcod.black)
+						
+						if xm == 8:
+							xm = 0
+							ym += 1
+						else:
+							xm += 1
+						
+						total += 1
+			
+			# fill out empty slots up to max ammo
+			if total < weapon.rr_size:
+				for i in range(weapon.rr_size - total):
+					libtcod.console_put_char(con, x+xm, y+ym, 9)
+					if xm == 8:
+						xm = 0
+						ym += 1
+					else:
+						xm += 1
+			
+			
 			# show current numerical values for each ammo type
 			# also which type is currently selected
-			x = 52
-			y = 26
+			x = 58
+			y = 25
+			
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print_ex(con, x+11, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'RR')
+			y += 1
 			for ammo_type in AMMO_TYPES:
 				if ammo_type in weapon.ammo_stores:
 					
 					if selected_ammo_type == ammo_type:
 						libtcod.console_set_default_background(con, libtcod.dark_blue)
-						libtcod.console_rect(con, x, y, 10, 1, True, libtcod.BKGND_SET)
+						libtcod.console_rect(con, x, y, 12, 1, True, libtcod.BKGND_SET)
 						libtcod.console_set_default_background(con, libtcod.black)
 					
 					if ammo_type == 'HE':
@@ -2897,6 +2966,11 @@ class CampaignDay:
 					libtcod.console_set_default_foreground(con, libtcod.light_grey)
 					libtcod.console_print_ex(con, x+8, y, libtcod.BKGND_NONE,
 						libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
+					libtcod.console_print_ex(con, x+11, y, libtcod.BKGND_NONE,
+						libtcod.RIGHT, str(weapon.ready_rack[ammo_type]))
+					
+					
+					
 					y += 1
 			y += 1
 			libtcod.console_set_default_foreground(con, libtcod.white)
@@ -2904,9 +2978,10 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			libtcod.console_print_ex(con, x+8, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, weapon.stats['max_ammo'])
+			libtcod.console_print_ex(con, x+11, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(weapon.rr_size))
 			
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
-			
 			
 			# FUTURE: visual depicition of extra ammo
 			
@@ -2917,11 +2992,16 @@ class CampaignDay:
 		weapon = campaign.player_unit.weapon_list[0]
 		selected_ammo_type = weapon.stats['ammo_type_list'][0]
 		
-		# record initial total number of ammo
+		# record initial loaded number of ammo
 		ammo_num = 0
 		for ammo_type in AMMO_TYPES:
 			if ammo_type in weapon.ammo_stores:
 				ammo_num += weapon.ammo_stores[ammo_type]
+		rr_num = 0
+		for ammo_type in AMMO_TYPES:
+			if ammo_type in weapon.ready_rack:
+				rr_num += weapon.ready_rack[ammo_type]
+		
 		
 		# draw screen for first time
 		UpdateMenuCon()
@@ -2955,15 +3035,27 @@ class CampaignDay:
 				UpdateMenuCon()
 				continue
 			
+			# toggle load/unload ready rack
+			elif key_char == 'r':
+				use_rr = not use_rr
+				UpdateMenuCon()
+				continue
+			
 			# load one shell of selected type
 			elif key_char == 'd':
 				
-				# make sure room remains
-				if ammo_num + add_num > int(weapon.stats['max_ammo']):
-					continue
+				# make sure there is enough room before loading
+				if use_rr:
+					if rr_num + add_num > weapon.rr_size:
+						continue
+					weapon.ready_rack[selected_ammo_type] += add_num
+					rr_num += add_num
+				else:
+					if ammo_num + add_num > int(weapon.stats['max_ammo']):
+						continue
+					weapon.ammo_stores[selected_ammo_type] += add_num
+					ammo_num += add_num
 				
-				weapon.ammo_stores[selected_ammo_type] += add_num
-				ammo_num += add_num
 				if add_num == 1:
 					PlaySoundFor(None, 'move_1_shell')
 				else:
@@ -2975,11 +3067,18 @@ class CampaignDay:
 			elif key_char == 'a':
 				
 				# make sure shell(s) are available
-				if weapon.ammo_stores[selected_ammo_type] - add_num < 0:
-					continue
+				if use_rr:
+					if weapon.ready_rack[selected_ammo_type] - add_num < 0:
+						continue
+					weapon.ready_rack[selected_ammo_type] -= add_num
+					rr_num -= add_num
+				else:
 				
-				weapon.ammo_stores[selected_ammo_type] -= add_num
-				ammo_num -= add_num
+					if weapon.ammo_stores[selected_ammo_type] - add_num < 0:
+						continue
+					weapon.ammo_stores[selected_ammo_type] -= add_num
+					ammo_num -= add_num
+				
 				if add_num == 1:
 					PlaySoundFor(None, 'move_1_shell')
 				else:
@@ -3004,21 +3103,27 @@ class CampaignDay:
 				for ammo_type in AMMO_TYPES:
 					if ammo_type in weapon.ammo_stores:
 						weapon.ammo_stores[ammo_type] = 0
+					if ammo_type in weapon.ready_rack:
+						weapon.ready_rack[ammo_type] = 0
 				
 				# replace with default load
 				
 				# HE only
 				if 'HE' in weapon.ammo_stores and 'AP' not in weapon.ammo_stores:
 					weapon.ammo_stores['HE'] = int(weapon.stats['max_ammo'])
+					weapon.ready_rack['HE'] = weapon.rr_size
 					
 				# AP only
 				elif 'AP' in weapon.ammo_stores and 'HE' not in weapon.ammo_stores:
 					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo'])
+					weapon.ready_rack['AP'] = weapon.rr_size
 		
 				# HE and AP
 				else:
 					weapon.ammo_stores['HE'] = int(float(weapon.stats['max_ammo']) * 0.75)
+					weapon.ready_rack['HE'] = int(float(weapon.rr_size * 0.75))
 					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo']) - weapon.ammo_stores['HE']
+					weapon.ready_rack['AP'] = weapon.rr_size - weapon.ready_rack['HE']
 				
 				PlaySoundFor(None, 'move_10_shell')
 				UpdateMenuCon()
@@ -5156,6 +5261,21 @@ class Personnel:
 					
 				continue
 			
+			# manage ready rack needs a gun
+			if k == 'Manage Ready Rack':
+				for weapon in self.unit.weapon_list:
+					if weapon.GetStat('type') != 'Gun': continue
+					crewman_ok = False
+					if weapon.GetStat('fired_by') is not None:
+						if self.current_position.name in weapon.GetStat('fired_by'):
+							crewman_ok = True
+					if weapon.GetStat('reloaded_by') is not None:
+						if self.current_position.name in weapon.GetStat('reloaded_by'):
+							crewman_ok = True
+					if crewman_ok:
+						self.cmd_list.append(k)
+				continue
+			
 			if 'position_list' in d:
 				if self.current_position.name not in d['position_list']:
 					continue
@@ -5384,6 +5504,7 @@ class Weapon:
 		# if weapon is a gun, set up ammo stores and ready rack
 		self.ammo_stores = None
 		self.rr_size = 0
+		self.using_rr = False
 		if self.GetStat('type') == 'Gun' and 'ammo_type_list' in self.stats:
 			self.ammo_stores = {}
 			self.ready_rack = {}
@@ -5417,6 +5538,11 @@ class Weapon:
 		# calculate base chance
 		chance = float(self.GetStat('rof'))
 		
+		# guns need to be using RR for full benefit
+		if self.GetStat('type') == 'Gun':
+			if not self.using_rr:
+				chance = round(chance * 0.50, 2)
+		
 		bonus = 0.0
 		
 		# Gun-specific bonuses
@@ -5424,8 +5550,13 @@ class Weapon:
 			
 			# guns must have at least one shell of the current type available
 			if self.ammo_type is not None:
-				if self.ammo_stores[self.ammo_type] == 0:
-					return 0.0
+				
+				if self.using_rr:
+					if self.ready_rack[self.ammo_type] == 0:
+						return 0.0
+				else:
+					if self.ammo_stores[self.ammo_type] == 0:
+						return 0.0
 			
 			# if guns have a Loader on proper order, bonus is applied
 			crewman_found = False
@@ -5467,7 +5598,10 @@ class Weapon:
 	def DisplayAmmo(self, console, x, y, skip_active=False):
 		
 		# TODO: highlight if RR is in use
-		libtcod.console_set_default_foreground(console, libtcod.white)
+		if self.using_rr:
+			libtcod.console_set_default_foreground(console, libtcod.white)
+		else:
+			libtcod.console_set_default_foreground(console, libtcod.grey)
 		libtcod.console_print_ex(console, x+10, y, libtcod.BKGND_NONE,
 			libtcod.RIGHT, 'RR')
 		
@@ -7114,7 +7248,16 @@ class Unit:
 			
 			# expend a shell if gun weapon is firing
 			if weapon.GetStat('type') == 'Gun' and weapon.ammo_type is not None:
-				weapon.ammo_stores[weapon.ammo_type] -= 1
+				
+				if weapon.using_rr:
+					if weapon.ready_rack[weapon.ammo_type] > 0:
+						weapon.ready_rack[weapon.ammo_type] -= 1
+					else:
+						# if no more RR ammo, default to general stores
+						weapon.ammo_stores[weapon.ammo_type] -= 1
+						weapon.using_rr = False
+				else:
+					weapon.ammo_stores[weapon.ammo_type] -= 1
 				scenario.UpdateContextCon()
 			
 			
@@ -8356,8 +8499,17 @@ class Scenario:
 			
 			if weapon.ammo_type is None:
 				return 'No ammo loaded'
-			if weapon.ammo_stores[weapon.ammo_type] == 0:
+			
+			# check that at least one shell of required ammo is available
+			ammo_avail = False
+			if weapon.using_rr:
+				if weapon.ready_rack[weapon.ammo_type] > 0:
+					ammo_avail = True
+			if weapon.ammo_stores[weapon.ammo_type] > 0:
+				ammo_avail = True
+			if not ammo_avail:
 				return 'No more ammo of the selected type'
+			
 			if weapon.ammo_type == 'AP' and target.GetStat('category') in ['Infantry', 'Gun']:
 				return 'AP has no effect on target'
 		
@@ -10434,8 +10586,8 @@ class Scenario:
 					self.UpdateScenarioDisplay()
 					libtcod.console_flush()
 				
-				# check for action that needs inpout in this phase
-				if position.crewman.current_cmd in ['Request Support']:
+				# check for action that needs input in this phase
+				if position.crewman.current_cmd in ['Request Support', 'Manage Ready Rack']:
 					input_command = True
 			
 			if not input_command:
@@ -10645,6 +10797,16 @@ class Scenario:
 			#libtcod.console_print_ex(context_con, 16, 10, libtcod.BKGND_NONE,
 			#	libtcod.RIGHT, '2%%')
 		
+		elif self.phase == PHASE_CREW_ACTION:
+			position = scenario.player_unit.positions_list[self.selected_position]
+			if position.crewman is None: return
+			
+			if position.crewman.current_cmd == 'Manage Ready Rack':
+				weapon = self.selected_weapon
+				if weapon is None: return
+				
+				weapon.DisplayAmmo(context_con, 0, 1)
+			
 		# Shooting Phase
 		elif self.phase == PHASE_SHOOTING:
 			
@@ -10891,7 +11053,17 @@ class Scenario:
 					if 'arty_support_level' not in campaign.current_week:
 						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
 					libtcod.console_print(cmd_menu_con, 8, 6, 'Call Arty Support')
+			
+			elif position.crewman.current_cmd == 'Manage Ready Rack':
 				
+				libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+				libtcod.console_print(cmd_menu_con, 1, 1, EnKey('d').upper() + '/' + EnKey('a').upper())
+				libtcod.console_print(cmd_menu_con, 1, 2, EnKey('c').upper())
+				
+				libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+				libtcod.console_print(cmd_menu_con, 8, 1, 'Add/Remove Shell')
+				libtcod.console_print(cmd_menu_con, 8, 2, 'Cycle Ammo Type')
+		
 			
 		# Movement phase
 		elif self.phase == PHASE_MOVEMENT:
@@ -10915,14 +11087,16 @@ class Scenario:
 			libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
 			libtcod.console_print(cmd_menu_con, 1, 3, EnKey('q').upper() + '/' + EnKey('e').upper())
 			libtcod.console_print(cmd_menu_con, 1, 4, EnKey('c').upper())
-			libtcod.console_print(cmd_menu_con, 1, 5, EnKey('f').upper())
+			libtcod.console_print(cmd_menu_con, 1, 5, EnKey('r').upper())
+			libtcod.console_print(cmd_menu_con, 1, 6, EnKey('f').upper())
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Select Weapon')
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Select Target')
 			libtcod.console_print(cmd_menu_con, 8, 3, 'Rotate Turret')
 			libtcod.console_print(cmd_menu_con, 8, 4, 'Cycle Ammo Type')
-			libtcod.console_print(cmd_menu_con, 8, 5, 'Fire at Target')
+			libtcod.console_print(cmd_menu_con, 8, 5, 'Toggle RR Use')
+			libtcod.console_print(cmd_menu_con, 8, 6, 'Fire at Target')
 
 	
 	# plot the center of a given in-game hex on the scenario hex map console
@@ -11614,6 +11788,64 @@ class Scenario:
 						self.UpdateCmdCon()
 						self.UpdateScenarioDisplay()
 						continue
+				
+				# ready rack commands
+				elif position.crewman.current_cmd == 'Manage Ready Rack':
+					
+					if key_char == 'c':
+						result = scenario.selected_weapon.CycleAmmo()
+						if result:
+							self.UpdateContextCon()
+							self.UpdateScenarioDisplay()
+						continue
+					
+					# calculate current total general stores and RR load
+					total_num = 0
+					for ammo_type in AMMO_TYPES:
+						if ammo_type in scenario.selected_weapon.ammo_stores:
+							total_num += scenario.selected_weapon.ammo_stores[ammo_type]
+					rr_num = 0
+					for ammo_type in AMMO_TYPES:
+						if ammo_type in scenario.selected_weapon.ready_rack:
+							rr_num += scenario.selected_weapon.ready_rack[ammo_type]
+					
+					# try to add a shell to the RR / remove from
+					if key_char in ['a', 'd']:
+						
+						if key_char == 'a':
+							add_num = -1
+						else:
+							add_num = 1
+						
+						# no room in RR
+						if rr_num + add_num > scenario.selected_weapon.rr_size:
+							print('RR full')
+							continue
+						
+						# none remaining in stores
+						elif scenario.selected_weapon.ammo_stores[scenario.selected_weapon.ammo_type] - add_num < 0:
+							print('none in stores')
+							continue
+						
+						# none remaining in RR
+						elif scenario.selected_weapon.ready_rack[scenario.selected_weapon.ammo_type] + add_num < 0:
+							print('none in RR')
+							continue
+						
+						# no room in general stores
+						elif total_num - add_num > int(scenario.selected_weapon.stats['max_ammo']):
+							print('no room in stores')
+							continue
+						
+						scenario.selected_weapon.ready_rack[scenario.selected_weapon.ammo_type] += add_num
+						scenario.selected_weapon.ammo_stores[scenario.selected_weapon.ammo_type] -= add_num
+						
+						self.UpdateContextCon()
+						self.UpdateScenarioDisplay()
+						continue
+						
+					
+					pass
 					
 			# Movement phase only
 			elif scenario.phase == PHASE_MOVEMENT:
@@ -11698,6 +11930,13 @@ class Scenario:
 					if result:
 						self.UpdateContextCon()
 						self.UpdateScenarioDisplay()
+					continue
+				
+				# toggle read rack use
+				elif key_char == 'r':
+					scenario.selected_weapon.using_rr = not scenario.selected_weapon.using_rr
+					self.UpdateContextCon()
+					self.UpdateScenarioDisplay()
 					continue
 				
 				# player fires active weapon at selected target

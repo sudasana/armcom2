@@ -49,6 +49,11 @@
 		"spotting_allowed" : false
 	},
 	
+	"Manage Ready Rack" : {
+		"desc" : "Add or remove ammo from the Ready Rack",
+		"spotting_allowed" : false
+	},
+	
 	"Drive" : {
 		"desc" : "Move forward or backward, pivot hull, or attempt to gain Hull Down",
 		"position_list" : ["Driver"],

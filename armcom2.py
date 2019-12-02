@@ -186,7 +186,7 @@ CD_MENU_LIST = [
 	('Crew', 2, libtcod.Color(140, 140, 0)),
 	('Travel', 3, libtcod.Color(70, 140, 0)),
 	('Group', 4, libtcod.Color(180, 0, 45)),
-	('Supply', 5, libtcod.Color(128, 100, 64))
+	('Main Gun', 5, libtcod.Color(128, 100, 64))
 ]
 
 # directional arrows for directions on the campaign day map
@@ -3689,6 +3689,7 @@ class CampaignDay:
 	# generate/update the command menu console 25x41
 	def UpdateCDCommandCon(self):
 		libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+		libtcod.console_set_default_background(cd_command_con, libtcod.black)
 		libtcod.console_clear(cd_command_con)
 		
 		libtcod.console_set_default_foreground(cd_command_con, TITLE_COL)
@@ -3843,24 +3844,30 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 			libtcod.console_print(cd_command_con, 1, 5, text)
 		
-		# resupply menu
+		# main gun
 		elif self.active_menu == 5:
 			
 			# display current main gun ammo levels
 			weapon = campaign.player_unit.weapon_list[0]
 			if weapon.GetStat('type') == 'Gun':
-				libtcod.console_print(cd_command_con, 3, 3, weapon.stats['name'] + ' Main Gun:')
-				weapon.DisplayAmmo(cd_command_con, 6, 5, skip_active=True)
+				libtcod.console_print(cd_command_con, 6, 3, weapon.stats['name'])
+				weapon.DisplayAmmo(cd_command_con, 6, 5)
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			libtcod.console_print_ex(cd_command_con, 12, 14, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Request resupply:')
 			libtcod.console_print_ex(cd_command_con, 12, 15, libtcod.BKGND_NONE, libtcod.CENTER,
 				'30 mins.')
+			
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 2, 39, EnKey('r').upper())
+			libtcod.console_print(cd_command_con, 2, 36, EnKey('d').upper() + '/' + EnKey('a').upper())
+			libtcod.console_print(cd_command_con, 4, 37, EnKey('c').upper())
+			libtcod.console_print(cd_command_con, 4, 39, EnKey('r').upper())
+			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 5, 39, 'Request Resupply')
+			libtcod.console_print(cd_command_con, 6, 36, 'Add/Remove to RR')
+			libtcod.console_print(cd_command_con, 6, 37, 'Cycle Ammo Type')
+			libtcod.console_print(cd_command_con, 6, 39, 'Request Resupply')
 	
 	
 	# generate/update the campaign info console 23x16
@@ -4248,23 +4255,6 @@ class CampaignDay:
 					self.UpdateCDDisplay()
 				continue
 			
-			# select direction
-			DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
-			if key_char in DIRECTION_KEYS:
-				direction = DIRECTION_KEYS.index(key_char)
-				if self.selected_direction is None:
-					self.selected_direction = direction
-				else:
-					# cancel direction
-					if self.selected_direction == direction:
-						self.selected_direction = None
-					else:
-						self.selected_direction = direction
-				self.UpdateCDGUICon()
-				self.UpdateCDCommandCon()
-				self.UpdateCDDisplay()
-				continue
-			
 			# support menu active
 			if self.active_menu == 1:
 				
@@ -4331,6 +4321,23 @@ class CampaignDay:
 			
 			# travel menu active
 			elif self.active_menu == 3:
+				
+				# select direction
+				DIRECTION_KEYS = ['e', 'd', 'c', 'z', 'a', 'q'] 
+				if key_char in DIRECTION_KEYS:
+					direction = DIRECTION_KEYS.index(key_char)
+					if self.selected_direction is None:
+						self.selected_direction = direction
+					else:
+						# cancel direction
+						if self.selected_direction == direction:
+							self.selected_direction = None
+						else:
+							self.selected_direction = direction
+					self.UpdateCDGUICon()
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					continue
 				
 				# wait/defend
 				if key_char == 'w':
@@ -4460,9 +4467,31 @@ class CampaignDay:
 					
 					SaveGame()
 				
-			# supply menu active
+			# main gun menu active
 			elif self.active_menu == 5:
 				
+				weapon = campaign.player_unit.weapon_list[0]
+				if weapon.GetStat('type') == 'Gun':
+					
+					# cycle active ammo type
+					if key_char == 'c':
+						if weapon.CycleAmmo():
+							self.UpdateCDCommandCon()
+							self.UpdateCDDisplay()
+						continue
+				
+					# move shell to/from ready rack
+					elif key_char in ['a', 'd']:
+						if key_char == 'a':
+							add_num = -1
+						else:
+							add_num = 1
+						
+						if weapon.ManageRR(add_num):
+							self.UpdateCDCommandCon()
+							self.UpdateCDDisplay()
+						continue
+					
 				# request resupply
 				if key_char == 'r':
 					if ShowNotification('Spend 30 minutes waiting for resupply?', confirm=True):
@@ -5777,7 +5806,6 @@ class Weapon:
 	# set/reset all scenario statuses for a new turn
 	def ResetMe(self):
 		self.fired = False
-		#self.moving = False
 		self.maintained_rof = False
 		self.UpdateCoveredHexes()
 	
@@ -11831,9 +11859,9 @@ class Scenario:
 				# ready rack commands
 				elif position.crewman.current_cmd == 'Manage Ready Rack':
 					
+					# cycle active ammo type
 					if key_char == 'c':
-						result = scenario.selected_weapon.CycleAmmo()
-						if result:
+						if scenario.selected_weapon.CycleAmmo():
 							self.UpdateContextCon()
 							self.UpdateScenarioDisplay()
 						continue

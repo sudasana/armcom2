@@ -1910,7 +1910,7 @@ class CampaignDay:
 		self.started = False				# day is in progress
 		self.ended = False				# day has been completed
 		self.mission = ''
-		self.GenerateMission()		# roll for type of mission today
+		self.GenerateMission()				# roll for type of mission today
 		
 		self.travel_time_spent = False
 		
@@ -1925,7 +1925,7 @@ class CampaignDay:
 		self.weather_update_clock = 0		# number of minutes until next weather update
 		self.GenerateWeather()
 		
-		self.fate_points = libtcod.random_get_int(0, 1, 3)	# fate points protecting the player
+		self.fate_points = libtcod.random_get_int(0, 1, 2)	# fate points protecting the player
 		
 		# set max number of units in player squad
 		player_unit_class = campaign.player_unit.GetStat('class')
@@ -1935,21 +1935,9 @@ class CampaignDay:
 			campaign.player_squad_max = 3
 		elif player_unit_class == 'Medium Tank':
 			campaign.player_squad_max = 2
-		elif player_unit_class == 'Heavy Tank':		# for FUTURE
+		elif player_unit_class == 'Heavy Tank':
 			campaign.player_squad_max = 1
 		campaign.player_squad_num = campaign.player_squad_max
-		
-		# victory point rewards for this campaign day
-		if self.mission == 'Fighting Withdrawl':
-			self.capture_zone_vp = 3
-		else:
-			self.capture_zone_vp = 2
-		self.unit_destruction_vp = {
-			'Infantry': 1,
-			'Gun' : 2,
-			'Vehicle': 4,
-			'Train Car': 6
-		}
 		
 		# current hour, and minute: set initial time from campaign info
 		self.day_clock = {}
@@ -4447,7 +4435,7 @@ class CDMapHex:
 		
 		# check for VP reward
 		if not no_vp:
-			campaign.AwardVP(campaign_day.capture_zone_vp)
+			campaign.AwardVP(2)
 			
 			# set record
 			if self.controlled_by == 0:
@@ -4459,11 +4447,11 @@ class CDMapHex:
 			if self.objective is not None:
 				
 				if self.controlled_by == 0 and self.objective['objective_type'] == 'Defend':
-					campaign.AwardVP(self.objective['vp_reward'])
+					campaign.AwardVP(2)
 					ShowMessage('You have defended an objective!')
 				
 				elif self.controlled_by == 1 and self.objective['objective_type'] == 'Capture':
-					campaign.AwardVP(self.objective['vp_reward'])
+					campaign.AwardVP(2)
 					ShowMessage('You have captured an objective!')
 		
 		# set new zone control
@@ -7527,17 +7515,28 @@ class Unit:
 		if self.owning_player == 1:
 			
 			if not no_vp:
-			
-				campaign.AwardVP(campaign_day.unit_destruction_vp[self.GetStat('category')])
 				
-				# add to day records
+				# determine vp award amount and add to day records
 				category = self.GetStat('category')
-				if category == 'Vehicle':
-					campaign_day.AddRecord('Vehicles Destroyed', 1)
+				
+				if category == 'Infantry':
+					campaign_day.AddRecord('Infantry Destroyed', 1)
+					vp_amount = 1
 				elif category == 'Gun':
 					campaign_day.AddRecord('Guns Destroyed', 1)
-				elif category == 'Infantry':
-					campaign_day.AddRecord('Infantry Destroyed', 1)
+					vp_amount = 2
+				elif category == 'Vehicle':
+					campaign_day.AddRecord('Vehicles Destroyed', 1)
+					if self.GetStat('class') in ['Truck', 'Tankette']:
+						vp_amount = 1
+					elif self.GetStat('class') == 'Heavy Tank':
+						vp_amount = 4
+					else:
+						vp_amount = 3
+				elif category == 'Train Car':
+					vp_amount = 3
+				
+				campaign.AwardVP(vp_amount)
 		
 		# friendly unit destroyed
 		else:

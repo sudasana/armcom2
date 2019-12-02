@@ -625,7 +625,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		},
 		'HD Chance' : 10.0,
 		'Movement Mod' : -5.0,
-		'Bog Mod' : 5.0
+		'Bog Mod' : 1.0
 	},
 	'Brush': {
 		'TEM' : {
@@ -633,7 +633,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		},
 		'HD Chance' : 10.0,
 		'Movement Mod' : -15.0,
-		'Bog Mod' : 15.0,
+		'Bog Mod' : 2.0,
 		'Air Burst' : 10.0,
 		'Burnable' : True
 	},
@@ -643,7 +643,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		},
 		'HD Chance' : 20.0,
 		'Movement Mod' : -30.0,
-		'Bog Mod' : 30.0,
+		'Bog Mod' : 5.0,
 		'Air Burst' : 20.0,
 		'Burnable' : True
 	},
@@ -676,7 +676,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		},
 		'HD Chance' : 15.0,
 		'Movement Mod' : -30.0,
-		'Bog Mod' : 30.0
+		'Bog Mod' : 10.0
 	}
 }
 
@@ -2194,9 +2194,6 @@ class CampaignDay:
 				break
 			roll -= chance
 		
-		# TEMP testing
-		result = 'Snow'
-		
 		self.weather['Ground'] = result
 		
 		if result in ['Snow', 'Deep Snow']:
@@ -2217,10 +2214,6 @@ class CampaignDay:
 		# roll for precipitation
 		roll = GetPercentileRoll()
 		for result, chance in weather_odds['precipitation'].items():
-			
-			# TEMP testing
-			self.weather['Precipitation'] = 'Snow'
-			break
 			
 			# only allow snow if weather is cold
 			if not self.weather['Freezing'] and result in ['Light Snow', 'Snow', 'Blizzard']:
@@ -5388,10 +5381,18 @@ class Weapon:
 		
 		self.ammo_type = None
 		
-		# if weapon is a gun, set up ammo stores
+		# if weapon is a gun, set up ammo stores and ready rack
 		self.ammo_stores = None
+		self.rr_size = 0
 		if self.GetStat('type') == 'Gun' and 'ammo_type_list' in self.stats:
 			self.ammo_stores = {}
+			self.ready_rack = {}
+			
+			# set maximum ready rack capacity
+			if 'rr_size' in self.stats:
+				self.rr_size = int(self.stats['rr_size'])
+			else:
+				self.rr_size = 6
 			self.LoadGunAmmo()
 		
 		# weapon statuses
@@ -5410,9 +5411,68 @@ class Weapon:
 		return self.stats[stat_name]
 	
 	
+	# calculate the odds for maintain RoF with this weapon
+	def GetRoFChance(self):
+		
+		# calculate base chance
+		chance = float(self.GetStat('rof'))
+		
+		bonus = 0.0
+		
+		# Gun-specific bonuses
+		if self.GetStat('type') == 'Gun':
+			
+			# guns must have at least one shell of the current type available
+			if self.ammo_type is not None:
+				if self.ammo_stores[self.ammo_type] == 0:
+					return 0.0
+			
+			# if guns have a Loader on proper order, bonus is applied
+			crewman_found = False
+			
+			position_list = self.GetStat('reloaded_by')
+			if position_list is not None:
+				for position in position_list:
+					crewman = self.unit.GetPersonnelByPosition(position)
+					if crewman is None: continue
+					if crewman.current_cmd != 'Reload': continue
+					
+					bonus = 10.0
+					if 'Fast Hands' in crewman.skills:
+						bonus = 15.0
+					break
+		
+		# more general bonuses based on firing crewman
+		position_list = self.GetStat('fired_by')
+		if position_list is not None:
+			for position in position_list:
+				crewman = self.unit.GetPersonnelByPosition(position)
+				if crewman is None: continue
+				
+				if self.GetStat('type') == 'Gun':
+					if 'Quick Trigger' in crewman.skills:
+						bonus += 5.0
+					if self.selected_target is not None:
+						if 'Time on Target' in crewman.skills:
+							bonus += 10.0
+				
+				elif self.GetStat('type') in MG_WEAPONS:
+					if 'Burst Fire' in crewman.skills:
+						bonus += 10.0
+		
+		return chance + bonus
+		
+	
 	# display information about current available ammo to a console
 	def DisplayAmmo(self, console, x, y, skip_active=False):
-		# general stores
+		
+		# TODO: highlight if RR is in use
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_print_ex(console, x+10, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, 'RR')
+		
+		y += 1
+		# general stores and RR contents
 		for ammo_type in AMMO_TYPES:
 			if ammo_type in self.ammo_stores:
 				
@@ -5420,7 +5480,7 @@ class Weapon:
 				if self.ammo_type is not None and not skip_active:
 					if self.ammo_type == ammo_type:
 						libtcod.console_set_default_background(console, libtcod.darker_blue)
-						libtcod.console_rect(console, x, y, 18, 1, True, libtcod.BKGND_SET)
+						libtcod.console_rect(console, x, y, 11, 1, True, libtcod.BKGND_SET)
 						libtcod.console_set_default_background(console, libtcod.darkest_grey)
 				
 				libtcod.console_set_default_foreground(console, libtcod.white)
@@ -5428,15 +5488,25 @@ class Weapon:
 				libtcod.console_set_default_foreground(console, libtcod.light_grey)
 				libtcod.console_print_ex(console, x+7, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, str(self.ammo_stores[ammo_type]))
+				
+				libtcod.console_print_ex(console, x+10, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(self.ready_rack[ammo_type]))
+				
 				y += 1
+		
 		y += 1
 		libtcod.console_print(console, x, y, 'Max')
 		libtcod.console_set_default_foreground(console, libtcod.light_grey)
 		libtcod.console_print_ex(console, x+7, y, libtcod.BKGND_NONE,
 			libtcod.RIGHT, self.stats['max_ammo'])
+		libtcod.console_print_ex(console, x+10, y, libtcod.BKGND_NONE,
+			libtcod.RIGHT, str(self.rr_size))
 	
 	# add a target as the current acquired target, or add one level
 	def AddAcquiredTarget(self, target):
+		
+		# target is not yet spotted
+		if target.owning_player == 1 and not target.spotted: return
 		
 		# no target previously acquired
 		if self.acquired_target == None:
@@ -5509,9 +5579,10 @@ class Weapon:
 		
 		if not self.GetStat('type') == 'Gun': return
 		
-		# set up empty categories first
+		# set up empty categories first, also ready rack contents
 		for ammo_type in self.stats['ammo_type_list']:
 			self.ammo_stores[ammo_type] = 0
+			self.ready_rack[ammo_type] = 0
 		
 		# now determine loadout
 		max_ammo = int(self.stats['max_ammo'])
@@ -5528,7 +5599,7 @@ class Weapon:
 				self.ammo_stores['HE'] = int(max_ammo * 0.7)
 				self.ammo_stores['AP'] = max_ammo - self.ammo_stores['HE']
 				self.ammo_type = 'AP'
-	
+
 	
 	# set/reset all scenario statuses for a new turn
 	def ResetMe(self):
@@ -6354,22 +6425,24 @@ class Unit:
 				mod = SCENARIO_TERRAIN_EFFECTS[self.terrain]['Bog Mod']
 				self.bog_chance += mod
 		
-		# apply modifier for ground conditions
+		# apply modifiers for ground conditions
 		if campaign_day.weather['Ground'] != 'Dry':
+			mod = 0.0
+			bog_mod = 0.0
 			if campaign_day.weather['Ground'] == 'Deep Snow':
 				if movement_class == 'Wheeled':
 					mod = -65.0
-					bog_mod = 20.0
+					bog_mod = 4.0
 				else:
 					mod = -50.0
-					bog_mod = 6.0
+					bog_mod = 2.0
 			elif campaign_day.weather['Ground'] in ['Muddy', 'Snow']:
 				if movement_class == 'Wheeled':
 					mod = -45.0
-					bog_mod = 10.0
+					bog_mod = 2.0
 				else:
 					mod = -30.0
-					bog_mod = 3.0
+					bog_mod = 1.0
 			self.forward_move_chance += mod
 			self.reverse_move_chance += mod
 			self.bog_chance += bog_mod
@@ -9007,55 +9080,6 @@ class Scenario:
 	# returns an modified attack profile
 	def DoAttackRoll(self, profile):
 		
-		# check to see if this weapon maintains Rate of Fire
-		def CheckRoF(profile):
-			
-			bonus = 0.0
-			
-			if profile['weapon'].GetStat('type') == 'Gun':
-				
-				# guns must have at least one shell of the current type available
-				if profile['weapon'].ammo_type is not None:
-					if profile['weapon'].ammo_stores[profile['weapon'].ammo_type] == 0:
-						return False
-				
-				# if guns have a Loader on proper order, bonus is applied
-				crewman_found = False
-				
-				position_list = profile['weapon'].GetStat('reloaded_by')
-				if position_list is not None:
-					for position in position_list:
-						crewman = profile['attacker'].GetPersonnelByPosition(position)
-						if crewman is None: continue
-						if crewman.current_cmd != 'Reload': continue
-						crewman_found = True
-						break
-				
-				if crewman_found:
-					bonus = 10.0
-					if 'Fast Hands' in crewman.skills:
-						bonus = 15.0
-			
-			# check for skill bonuses from crewman operating the weapon
-			if profile['crewman'] is not None:
-				
-				if profile['weapon'].GetStat('type') == 'Gun':
-					if 'Quick Trigger' in profile['crewman'].skills:
-						bonus += 5.0
-					
-					if 'Time on Target' in profile['crewman'].skills and not profile['target'].moving:
-						bonus += 10.0
-				
-				elif profile['weapon'].GetStat('type') in MG_WEAPONS:
-					if 'Burst Fire' in profile['crewman'].skills:
-						bonus += 10.0
-			
-			roll = GetPercentileRoll() - bonus
-			
-			if roll <= float(profile['weapon'].GetStat('rof')):
-				return True
-			return False
-		
 		# clear prompts from attack console
 		libtcod.console_print(attack_con, 6, 56, '                  ')
 		libtcod.console_print(attack_con, 6, 57, '                  ')
@@ -9230,7 +9254,12 @@ class Scenario:
 			
 			# FUTURE: possibly allow AI units to maintain RoF?
 			if profile['attacker'] == scenario.player_unit:
-				profile['weapon'].maintained_rof = CheckRoF(profile) 
+				
+				if GetPercentileRoll() <= profile['weapon'].GetRoFChance():
+					profile['weapon'].maintained_rof = True
+				else:
+					profile['weapon'].maintained_rof = False
+				
 				if profile['weapon'].maintained_rof:
 					libtcod.console_print_ex(attack_con, 13, 53, libtcod.BKGND_NONE,
 						libtcod.CENTER, 'Maintained Rate of Fire')
@@ -10645,24 +10674,40 @@ class Scenario:
 					libtcod.console_print(context_con, 0, 8, text)
 					libtcod.console_set_default_foreground(context_con, libtcod.red)
 			
-			# if weapon is a gun, display ammo info
+			# if weapon is a gun, display ammo info here
 			if weapon.GetStat('type') == 'Gun':
-				
-				weapon.DisplayAmmo(context_con, 0, 3)
+				weapon.DisplayAmmo(context_con, 0, 1)
 				
 			if weapon.fired:
 				libtcod.console_set_default_foreground(context_con, libtcod.red)
 				libtcod.console_print(context_con, 0, 7, 'Fired')
 				return
 			
+			# display RoF chance if any
+			libtcod.console_set_default_foreground(context_con, libtcod.white)
+			libtcod.console_print_ex(context_con, 17, 1, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'RoF')
+			
+			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+			chance = weapon.GetRoFChance()
+			if chance > 0.0:
+				text = str(chance) + '%%'
+			else:
+				text = 'N/A'
+			libtcod.console_print_ex(context_con, 17, 2, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
+			
 			# display info about current target if any
 			if weapon.selected_target is not None:
 				
-				libtcod.console_set_default_foreground(context_con, libtcod.light_red)
-				libtcod.console_print(context_con, 0, 7, weapon.selected_target.GetName())
-				
 				result = self.CheckAttack(scenario.player_unit, weapon, weapon.selected_target)
-				if result != '':
+				
+				# attack is fine
+				if result == '':
+					libtcod.console_set_default_foreground(context_con, libtcod.light_blue)
+					libtcod.console_print(context_con, 0, 9, 'Ready to fire!')
+				# attack is not fine
+				else:
 					lines = wrap(result, 18)
 					y = 9
 					libtcod.console_set_default_foreground(context_con, libtcod.red)
@@ -10670,6 +10715,7 @@ class Scenario:
 						libtcod.console_print(context_con, 0, y, line)
 						y += 1
 						if y == 12: break
+				
 	
 	
 	# update player unit info console

@@ -5532,6 +5532,45 @@ class Weapon:
 		return self.stats[stat_name]
 	
 	
+	# move a shell into or out of Ready Rack
+	def ManageRR(self, add_num):
+		
+		# calculate current total general stores and RR load
+		total_num = 0
+		for ammo_type in AMMO_TYPES:
+			if ammo_type in self.ammo_stores:
+				total_num += self.ammo_stores[ammo_type]
+		rr_num = 0
+		for ammo_type in AMMO_TYPES:
+			if ammo_type in self.ready_rack:
+				rr_num += self.ready_rack[ammo_type]
+		
+		# no room in RR
+		if rr_num + add_num > self.rr_size:
+			print('RR full')
+			return False
+		
+		# none remaining in stores
+		elif self.ammo_stores[self.ammo_type] - add_num < 0:
+			print('none in stores')
+			return False
+		
+		# none remaining in RR
+		elif self.ready_rack[self.ammo_type] + add_num < 0:
+			print('none in RR')
+			return False
+		
+		# no room in general stores
+		elif total_num - add_num > int(self.stats['max_ammo']):
+			print('no room in stores')
+			return False
+		
+		self.ready_rack[self.ammo_type] += add_num
+		self.ammo_stores[self.ammo_type] -= add_num
+		
+		return True
+		
+	
 	# calculate the odds for maintain RoF with this weapon
 	def GetRoFChance(self):
 		
@@ -11799,17 +11838,7 @@ class Scenario:
 							self.UpdateScenarioDisplay()
 						continue
 					
-					# calculate current total general stores and RR load
-					total_num = 0
-					for ammo_type in AMMO_TYPES:
-						if ammo_type in scenario.selected_weapon.ammo_stores:
-							total_num += scenario.selected_weapon.ammo_stores[ammo_type]
-					rr_num = 0
-					for ammo_type in AMMO_TYPES:
-						if ammo_type in scenario.selected_weapon.ready_rack:
-							rr_num += scenario.selected_weapon.ready_rack[ammo_type]
-					
-					# try to add a shell to the RR / remove from
+					# try to move a shell into or out of Ready Rack
 					if key_char in ['a', 'd']:
 						
 						if key_char == 'a':
@@ -11817,35 +11846,10 @@ class Scenario:
 						else:
 							add_num = 1
 						
-						# no room in RR
-						if rr_num + add_num > scenario.selected_weapon.rr_size:
-							print('RR full')
-							continue
-						
-						# none remaining in stores
-						elif scenario.selected_weapon.ammo_stores[scenario.selected_weapon.ammo_type] - add_num < 0:
-							print('none in stores')
-							continue
-						
-						# none remaining in RR
-						elif scenario.selected_weapon.ready_rack[scenario.selected_weapon.ammo_type] + add_num < 0:
-							print('none in RR')
-							continue
-						
-						# no room in general stores
-						elif total_num - add_num > int(scenario.selected_weapon.stats['max_ammo']):
-							print('no room in stores')
-							continue
-						
-						scenario.selected_weapon.ready_rack[scenario.selected_weapon.ammo_type] += add_num
-						scenario.selected_weapon.ammo_stores[scenario.selected_weapon.ammo_type] -= add_num
-						
-						self.UpdateContextCon()
-						self.UpdateScenarioDisplay()
+						if scenario.selected_weapon.ManageRR(add_num):
+							self.UpdateContextCon()
+							self.UpdateScenarioDisplay()
 						continue
-						
-					
-					pass
 					
 			# Movement phase only
 			elif scenario.phase == PHASE_MOVEMENT:

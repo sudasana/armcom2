@@ -37,8 +37,9 @@
 			"combat_chance" : "80",
 			"week_description" : "Cobra Breakout",
 			"mission_odds" : {
-				"Advance" : "85",
+				"Advance" : "65",
 				"Battle" : "15",
+				"Counterattack" : "20",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
@@ -67,6 +68,7 @@
 			"mission_odds" : {
 				"Advance" : "95",
 				"Battle" : "5",
+				"Counterattack" : "0",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
@@ -93,8 +95,9 @@
 			"combat_chance" : "60",
 			"week_description" : "Liberating Nantes and Orleans",
 			"mission_odds" : {
-				"Advance" : "95",
+				"Advance" : "85",
 				"Battle" : "5",
+				"Counterattack" : "10",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
@@ -121,8 +124,9 @@
 			"combat_chance" : "60",
 			"week_description" : "Across Northern France",
 			"mission_odds" : {
-				"Advance" : "95",
+				"Advance" : "75",
 				"Battle" : "5",
+				"Counterattack" : "20",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
@@ -149,8 +153,9 @@
 			"combat_chance" : "60",
 			"week_description" : "Into North-eastern France",
 			"mission_odds" : {
-				"Advance" : "95",
+				"Advance" : "75",
 				"Battle" : "5",
+				"Counterattack" : "20",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
@@ -178,8 +183,9 @@
 			"combat_chance" : "60",
 			"week_description" : "Taking Commercy",
 			"mission_odds" : {
-				"Advance" : "75",
+				"Advance" : "65",
 				"Battle" : "25",
+				"Counterattack" : "10",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
@@ -211,8 +217,9 @@
 			"combat_chance" : "80",
 			"week_description" : "Moselle Crossing",
 			"mission_odds" : {
-				"Advance" : "75",
+				"Advance" : "55",
 				"Battle" : "25",
+				"Counterattack" : "20",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",

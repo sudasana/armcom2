@@ -34,8 +34,9 @@
 			"combat_chance" : "80",
 			"week_description" : "Invasion",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "20",
+				"Advance" : "5",
+				"Battle" : "10",
+				"Counterattack" : "15",
 				"Fighting Withdrawl" : "70"
 			},
 			"enemy_nation" : "Germany",
@@ -58,8 +59,9 @@
 			"combat_chance" : "70",
 			"week_description" : "Holding Back the Tide",
 			"mission_odds" : {
-				"Advance" : "20",
+				"Advance" : "0",
 				"Battle" : "10",
+				"Counterattack" : "20",
 				"Fighting Withdrawl" : "70"
 			},
 			"enemy_nation" : "Germany",
@@ -82,9 +84,10 @@
 			"combat_chance" : "60",
 			"week_description" : "Pincer Movement",
 			"mission_odds" : {
-				"Advance" : "50",
-				"Battle" : "20",
-				"Fighting Withdrawl" : "20"
+				"Advance" : "10",
+				"Battle" : "10",
+				"Counterattack" : "70",
+				"Fighting Withdrawl" : "10"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 70.0,
@@ -108,7 +111,8 @@
 			"mission_odds" : {
 				"Advance" : "0",
 				"Battle" : "10",
-				"Fighting Withdrawl" : "90"
+				"Counterattack" : "10",
+				"Fighting Withdrawl" : "80"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 50.0,
@@ -132,6 +136,7 @@
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "0",
+				"Counterattack" : "0",
 				"Fighting Withdrawl" : "50"
 			},
 			"enemy_nation" : "Germany",

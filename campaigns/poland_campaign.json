@@ -34,6 +34,7 @@
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "75",
+				"Counterattack" : "0",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",
@@ -61,6 +62,7 @@
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "75",
+				"Counterattack" : "0",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",
@@ -86,8 +88,9 @@
 			"combat_chance" : "60",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
-				"Advance" : "60",
+				"Advance" : "50",
 				"Battle" : "40",
+				"Counterattack" : "10",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",
@@ -113,8 +116,9 @@
 			"combat_chance" : "50",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
-				"Advance" : "85",
+				"Advance" : "70",
 				"Battle" : "15",
+				"Counterattack" : "15",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",
@@ -142,6 +146,7 @@
 			"mission_odds" : {
 				"Advance" : "90",
 				"Battle" : "5",
+				"Counterattack" : "0",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",

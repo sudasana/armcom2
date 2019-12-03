@@ -1982,38 +1982,7 @@ class CampaignDay:
 					if (hx, hy) not in self.map_hexes: continue
 					self.map_hexes[(hx, hy)].controlled_by = 0
 		
-		# create map objectives
-		if self.mission == 'Battle':
-			objective_dict = {
-				'objective_type' : 'Defend',
-				'vp_reward' : 5,
-				'time_limit' : None
-				}
-			self.map_hexes[(-2, 6)].SetObjective(objective_dict)
-			objective_dict = {
-				'objective_type' : 'Capture',
-				'vp_reward' : 5,
-				'time_limit' : None
-				}
-			self.map_hexes[(1, 2)].SetObjective(objective_dict)
 		
-		elif self.mission == 'Advance':
-			objective_dict = {
-				'objective_type' : 'Capture',
-				'vp_reward' : 5,
-				'time_limit' : None
-				}
-			self.map_hexes[(-2, 6)].SetObjective(objective_dict)
-			self.map_hexes[(1, 2)].SetObjective(objective_dict)
-		
-		elif self.mission == 'Fighting Withdrawl':
-			objective_dict = {
-				'objective_type' : 'Defend',
-				'vp_reward' : 5,
-				'time_limit' : None
-				}
-			self.map_hexes[(-2, 6)].SetObjective(objective_dict)
-			self.map_hexes[(1, 2)].SetObjective(objective_dict)
 		
 		
 		# dictionary of screen display locations on the display console
@@ -2059,6 +2028,43 @@ class CampaignDay:
 			'snowflakes' : []
 		}
 	
+	
+	# generate new objectives for this campaign day map
+	def GenerateObjectives(self):
+		
+		hex_list = []
+		
+		# clear any existing objectives and create a local list of hex zones
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			self.map_hexes[(hx,hy)].objective = None
+			hex_list.append((hx, hy))
+		shuffle(hex_list)
+		
+		# create new objectives based on day mission
+		if self.mission == 'Battle':
+			
+			objective_dict = {
+				'objective_type' : 'Capture',
+				'vp_reward' : 4,
+				'time_limit' : None
+				}
+			
+			for i in range(2):
+				for (hx, hy) in hex_list:
+					if self.map_hexes[(hx,hy)].controlled_by == 0: continue
+				self.map_hexes[(hx, hy)].SetObjective(objective_dict)
+		
+		elif self.mission in ['Advance', 'Counterattack']:
+			objective_dict = {
+				'objective_type' : 'Capture',
+				'vp_reward' : 2,
+				'time_limit' : None
+				}
+			for i in range(2):
+				for (hx, hy) in hex_list:
+					if self.map_hexes[(hx,hy)].controlled_by == 0: continue
+				self.map_hexes[(hx, hy)].SetObjective(objective_dict)
+		
 	
 	# check for shift of campaign day map:
 	# shift displayed map up or down, triggered by player reaching other end of map
@@ -2114,7 +2120,8 @@ class CampaignDay:
 				self.map_hexes[(hx, hy)].controlled_by = 1
 			self.map_hexes[self.player_unit_location].controlled_by = 0
 		
-		# TODO: generate new map objectives
+		# generate new map objectives
+		self.GenerateObjectives()
 		
 		# update consoles
 		self.UpdateCDMapCon()
@@ -5694,7 +5701,7 @@ class Weapon:
 	# display information about current available ammo to a console
 	def DisplayAmmo(self, console, x, y, skip_active=False):
 		
-		# TODO: highlight if RR is in use
+		# highlight if RR is in use
 		if self.using_rr:
 			libtcod.console_set_default_foreground(console, libtcod.white)
 		else:

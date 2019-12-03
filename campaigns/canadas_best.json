@@ -37,7 +37,8 @@
 			"week_description" : "Cintheaux",
 			"mission_odds" : {
 				"Advance" : "10",
-				"Battle" : "90",
+				"Battle" : "75",
+				"Counterattack" : "15",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
@@ -64,8 +65,9 @@
 			"combat_chance" : "80",
 			"week_description" : "Laison Valley",
 			"mission_odds" : {
-				"Advance" : "75",
+				"Advance" : "65",
 				"Battle" : "25",
+				"Counterattack" : "10",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",

@@ -33,6 +33,7 @@
 			"mission_odds" : {
 				"Advance" : "85",
 				"Battle" : "15",
+				"Counterattack" : "0",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",
@@ -57,8 +58,9 @@
 			"combat_chance" : "70",
 			"week_description" : "Further Into Poland",
 			"mission_odds" : {
-				"Advance" : "85",
+				"Advance" : "75",
 				"Battle" : "15",
+				"Counterattack" : "10",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",
@@ -83,8 +85,9 @@
 			"combat_chance" : "70",
 			"week_description" : "Final Resistance",
 			"mission_odds" : {
-				"Advance" : "95",
+				"Advance" : "85",
 				"Battle" : "5",
+				"Counterattack" : "10",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",

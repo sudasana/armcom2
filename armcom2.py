@@ -1983,8 +1983,8 @@ class CampaignDay:
 					if (hx, hy) not in self.map_hexes: continue
 					self.map_hexes[(hx, hy)].controlled_by = 0
 		
-		
-		
+		# set up objectives
+		self.GenerateObjectives()
 		
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}

@@ -214,6 +214,7 @@ RECORD_LIST = [
 MISSION_DESC = {
 	'Advance' : 'Enemy resistance is scattered and we are pushing forward. Advance into enemy territory, destroy any resistance, and capture territory.',
 	'Battle' : 'Your group has been posted to the front line where there is heavy resistance. Break through the enemy defenses, destroy enemy units, and capture territory.',
+	'Counterattack' : 'After being on the defensive, your battlegroup has been ordered to attack the enemy advance.',
 	'Fighting Withdrawl' : 'The enemy is mounting a strong attack against our lines. Help to defend territory and withdraw into friendly territory if necessary.'
 }
 
@@ -752,7 +753,7 @@ class Campaign:
 			# if refitting week, only add the first day to the calendar
 			if 'refitting' in week:
 				self.combat_calendar.append(week['start_date'])
-				print('DEBUG: added a refit day')
+				#print('DEBUG: added a refit day')
 				continue
 			
 			# roll for number of combat days this week
@@ -1965,7 +1966,7 @@ class CampaignDay:
 		# generate campaign day map
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy)
+			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy, self.mission)
 			# set zone terrain type
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
 		
@@ -4531,7 +4532,7 @@ class CampaignDay:
 
 # Zone Hex: a hex on the campaign day map, each representing a map of scenario hexes
 class CDMapHex:
-	def __init__(self, hx, hy):
+	def __init__(self, hx, hy, mission):
 		self.hx = hx
 		self.hy = hy
 		
@@ -4548,11 +4549,11 @@ class CDMapHex:
 		
 		# set enemy strength level
 		self.enemy_strength = 1
-		if campaign_day.mission == 'Advance':
+		if mission == 'Advance':
 			self.enemy_strength = libtcod.random_get_int(0, 1, 3) + libtcod.random_get_int(0, 0, 3)
-		elif campaign_day.mission in ['Battle', 'Fighting Withdrawl']:
+		elif mission in ['Battle', 'Fighting Withdrawl']:
 			self.enemy_strength = libtcod.random_get_int(0, 2, 5) + libtcod.random_get_int(0, 2, 5)
-		elif campaign_day.mission == 'Counterattack':
+		elif mission == 'Counterattack':
 			self.enemy_strength = libtcod.random_get_int(0, 0, 5) + libtcod.random_get_int(0, 1, 5)
 		
 		self.Reset()

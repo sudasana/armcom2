@@ -67,7 +67,7 @@ from calendar import monthrange			# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.9.0 RC1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -308,8 +308,7 @@ REGIONS = {
 					'Rain' : 20.0, 'Heavy Rain' : 10.0,
 					'Light Snow' : 0.0, 'Snow' : 0.0,
 					'Blizzard' : 0.0
-				}
-				
+				}	
 			},
 			'Autumn' : {
 				'end_date' : '12.01',
@@ -386,25 +385,49 @@ REGIONS = {
 				}
 				
 			},
+			
+			# TEMP testing
+			
 			'Summer' : {
 				'end_date' : '09.31',
 				'ground_conditions' : {
-					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0,
-					'Snow' : 0.0, 'Deep Snow' : 0.0
+					'Dry' : 0.0, 'Wet' : 0.0, 'Muddy' : 0.0,
+					'Snow' : 75.0, 'Deep Snow' : 25.0
 				},
-				'freezing' : 0.0,
+				'freezing' : 100.0,
 				'cloud_cover' : {
-					'Clear' : 50.0, 'Scattered' : 15.0,
-					'Heavy' : 20.0, 'Overcast' : 15.0
+					'Clear' : 0.0, 'Scattered' : 0.0,
+					'Heavy' : 20.0, 'Overcast' : 80.0
 				},
 				'precipitation' : {
-					'None' : 60.0, 'Mist' : 10.0,
-					'Rain' : 20.0, 'Heavy Rain' : 10.0,
-					'Light Snow' : 0.0, 'Snow' : 0.0,
-					'Blizzard' : 0.0
+					'None' : 0.0, 'Mist' : 0.0,
+					'Rain' : 0.0, 'Heavy Rain' : 0.0,
+					'Light Snow' : 25.0, 'Snow' : 50.0,
+					'Blizzard' : 25.0
 				}
 				
 			},
+			
+			
+			#'Summer' : {
+			#	'end_date' : '09.31',
+			#	'ground_conditions' : {
+			#		'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0,
+			#		'Snow' : 0.0, 'Deep Snow' : 0.0
+			#	},
+			#	'freezing' : 0.0,
+			#	'cloud_cover' : {
+			#		'Clear' : 50.0, 'Scattered' : 15.0,
+			#		'Heavy' : 20.0, 'Overcast' : 15.0
+			#	},
+			#	'precipitation' : {
+			#		'None' : 60.0, 'Mist' : 10.0,
+			#		'Rain' : 20.0, 'Heavy Rain' : 10.0,
+			#		'Light Snow' : 0.0, 'Snow' : 0.0,
+			#		'Blizzard' : 0.0
+			#	}
+				
+			#},
 			'Autumn' : {
 				'end_date' : '12.01',
 				'ground_conditions' : {
@@ -8741,13 +8764,13 @@ class Scenario:
 			
 			# precipitation effects
 			if campaign_day.weather['Precipitation'] == 'Rain':
-				modifier_list.append(('Rain', -10.0 * float(distance)))
+				modifier_list.append(('Rain', -5.0 * float(distance)))
 			elif campaign_day.weather['Precipitation'] == 'Snow':
-				modifier_list.append(('Rain', -15.0 * float(distance)))
+				modifier_list.append(('Snow', -10.0 * float(distance)))
 			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
-				modifier_list.append(('Heavy Rain', -20.0 * float(distance)))
+				modifier_list.append(('Heavy Rain', -15.0 * float(distance)))
 			elif campaign_day.weather['Precipitation'] == 'Blizzard':
-				modifier_list.append(('Blizzard', -25.0 * float(distance)))
+				modifier_list.append(('Blizzard', -20.0 * float(distance)))
 			
 			# smoke
 			total_smoke = 0
@@ -13736,9 +13759,8 @@ session = Session()
 main_theme = None
 if config['ArmCom2'].getboolean('sounds_enabled'):
 	if session.InitMixer():
-		# load and play main menu theme
+		# load main menu theme
 		session.LoadMainTheme()
-		mixer.Mix_PlayMusic(main_theme, -1)
 	else:
 		config['ArmCom2']['sounds_enabled'] = 'false'
 		print('Not able to init mixer, sounds disabled')
@@ -13774,6 +13796,18 @@ key = libtcod.Key()
 ##########################################################################################
 #                                        Main Menu                                       #
 ##########################################################################################
+
+# display studio logo and pause
+if not DEBUG:
+	libtcod.console_clear(0)
+	libtcod.console_blit(LoadXP('cats.xp'), 0, 0, 0, 0, 0, WINDOW_XM-15, WINDOW_YM-19)
+	libtcod.console_flush()
+	Wait(500, ignore_animations=True)
+	libtcod.console_clear(0)
+
+# player main them if loaded
+if main_theme is not None:
+	mixer.Mix_PlayMusic(main_theme, -1)
 
 # load and generate main title background
 main_title = LoadXP('main_title.xp')

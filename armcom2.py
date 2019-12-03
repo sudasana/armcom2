@@ -2635,16 +2635,24 @@ class CampaignDay:
 		# don't trigger an event if day has already ended
 		if self.ended: return
 		
-		# set odds of each possible oocurance based on current day mission
+		# set odds of each possible occurance based on current day mission
+		
+		enemy_max_capture = 1
+		
 		if campaign_day.mission == 'Advance':
 			friendly_capture_odds = 45.0
 			enemy_capture_odds = 5.0
 		elif campaign_day.mission == 'Battle':
 			friendly_capture_odds = 20.0
 			enemy_capture_odds = 20.0
+			enemy_max_capture = 2
 		elif campaign_day.mission == 'Fighting Withdrawl':
 			friendly_capture_odds = 5.0
 			enemy_capture_odds = 75.0
+			enemy_max_capture = 4
+		elif campaign_day.mission == 'Counterattack':
+			friendly_capture_odds = 45.0
+			enemy_capture_odds = 20.0
 		# no other missions for now
 		else:
 			return
@@ -2684,7 +2692,7 @@ class CampaignDay:
 		
 		(player_hx, player_hy) = self.player_unit_location
 		
-		# friendly zone lost
+		# friendly zone lost - may be multiple
 		if roll <= enemy_capture_odds:
 			
 			hex_list = []
@@ -2713,26 +2721,30 @@ class CampaignDay:
 			# 1+ possible hexes to capture
 			if len(hex_list) > 0:
 				
-				(hx, hy) = choice(hex_list)
+				capture_list = sample(hex_list, libtcod.random_get_int(0, 1, enemy_max_capture))
 				
 				# in FW mission, more likely that player zone is attacked
-				if campaign_day.mission == 'Fighting Withdrawl':
-					if (hx, hy) != self.player_unit_location:
-						(hx, hy) = choice(hex_list)
+				#if campaign_day.mission == 'Fighting Withdrawl':
+				#	if (hx, hy) != self.player_unit_location:
+				#		(hx, hy) = choice(hex_list)
 				
-				self.map_hexes[(hx,hy)].CaptureMe(1)
+				for (hx, hy) in capture_list:
+					self.map_hexes[(hx,hy)].CaptureMe(1)
 				
-				if (hx, hy) == self.player_unit_location:
+				# player zone was captured
+				if self.player_unit_location in capture_list:
 					# player is present, trigger a scenario
 					ShowMessage('Enemy forces attack your area!')
-					map_hex = self.map_hexes[(hx,hy)]
+					map_hex = self.map_hexes[self.player_unit_location]
 					scenario = Scenario(map_hex)
 					self.scenario = scenario
 					self.AddRecord('Battles Fought', 1)
 				else:
-					# player is not present in zone
-					ShowMessage('Enemy forces have captured an allied-held zone!')
-					
+					# player zone not captured
+					if len(capture_list) > 1:
+						ShowMessage('Enemy forces have captured allied-held zones!')
+					else:
+						ShowMessage('Enemy forces have captured an allied-held zone!')
 	
 		# update consoles and screen
 		self.UpdateCDUnitCon()

@@ -36,13 +36,20 @@
 
 ##### Libraries #####
 import os, sys						# OS-related stuff
+
+# OSX
 if sys.platform == 'darwin':
 	import tcod as libtcod
-elif os.name == 'posix':					# if linux - load system libtcodpy
+
+# linux
+elif os.name == 'posix':
 	import libtcodpy_local as libtcod
+
+# windows
 else:
 	import libtcodpy as libtcod			# The Doryen Library
 	os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)	# set sdl2 dll path
+
 from configparser import ConfigParser			# saving and loading configuration settings
 from random import choice, shuffle, sample		# for the illusion of randomness
 from math import floor, cos, sin, sqrt, degrees, atan2, ceil	# math and heading calculations
@@ -53,14 +60,14 @@ from datetime import datetime				# for timestamping logs
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
 import sdl2.sdlmixer as mixer				# sound effects
-import calendar						# for date calculations
+from calendar import monthrange			# for date calculations
 
 
 ##########################################################################################
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.9.0 RC1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -775,7 +782,7 @@ class Campaign:
 				(year, month, day) = day_text.split('.')
 				
 				# last day of month
-				if int(day) == calendar.monthrange(int(year), int(month))[1]:
+				if int(day) == monthrange(int(year), int(month))[1]:
 					
 					# last day of year
 					if int(month) == 12:

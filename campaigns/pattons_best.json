@@ -5,7 +5,7 @@
 	"player_nation" : "United States of America",
 	"enemy_nations" : ["Germany"],
 	"region" : "Northwestern Europe",
-	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France and invasion of Germany. (Unfinished)",
+	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France and invasion of Germany.",
 	"player_unit_list" : [
 		"M4 Sherman", "M4A1 Sherman", "M4A3 Sherman", "M4A3(75)W Sherman",
 		"M4A3E2(75)W Sherman", "M4A3E2(76)W Sherman",
@@ -220,6 +220,624 @@
 				"Advance" : "55",
 				"Battle" : "25",
 				"Counterattack" : "20",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.09.18",
+			"end_date" : "1944.09.22",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "40",
+			"week_description" : "Arracourt",
+			"mission_odds" : {
+				"Advance" : "55",
+				"Battle" : "45",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.09.25",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "70",
+			"week_description" : "Hill 318",
+			"mission_odds" : {
+				"Advance" : "50",
+				"Battle" : "5",
+				"Counterattack" : "45",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.10.02",
+			"day_start" : "06:30",
+			"day_end" : "17:15",
+			"combat_chance" : "80",
+			"week_description" : "Return to Arracourt",
+			"mission_odds" : {
+				"Advance" : "0",
+				"Battle" : "15",
+				"Counterattack" : "85",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.10.09",
+			"end_date" : "1944.11.08",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1944.11.09",
+			"day_start" : "07:15",
+			"day_end" : "16:15",
+			"combat_chance" : "30",
+			"week_description" : "Fonteny",
+			"mission_odds" : {
+				"Advance" : "40",
+				"Battle" : "0",
+				"Counterattack" : "60",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.11.16",
+			"day_start" : "07:15",
+			"day_end" : "16:15",
+			"combat_chance" : "30",
+			"week_description" : "Dieuze and Rodalbe",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.11.22",
+			"day_start" : "07:15",
+			"day_end" : "16:15",
+			"combat_chance" : "70",
+			"week_description" : "Crossing the Saare",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "0",
+				"Counterattack" : "10",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.11.28",
+			"day_start" : "07:15",
+			"day_end" : "16:15",
+			"combat_chance" : "40",
+			"week_description" : "Attacking Saare Union",
+			"mission_odds" : {
+				"Advance" : "80",
+				"Battle" : "20",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.12.04",
+			"end_date" : "1944.12.20",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1944.12.21",
+			"day_start" : "07:45",
+			"day_end" : "16:00",
+			"combat_chance" : "80",
+			"week_description" : "Martelange and Chaumont",
+			"mission_odds" : {
+				"Advance" : "60",
+				"Battle" : "30",
+				"Counterattack" : "10",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.12.29",
+			"end_date" : "1945.01.02",
+			"day_start" : "07:45",
+			"day_end" : "16:00",
+			"combat_chance" : "80",
+			"week_description" : "Defense of Bastogne Corridor",
+			"mission_odds" : {
+				"Advance" : "20",
+				"Battle" : "0",
+				"Counterattack" : "80",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.01.03",
+			"end_date" : "1945.01.08",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1945.01.09",
+			"day_start" : "07:45",
+			"day_end" : "16:00",
+			"combat_chance" : "30",
+			"week_description" : "Defensive Positions",
+			"mission_odds" : {
+				"Advance" : "0",
+				"Battle" : "0",
+				"Counterattack" : "90",
+				"Fighting Withdrawl" : "10"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.01.16",
+			"day_start" : "07:45",
+			"day_end" : "16:00",
+			"combat_chance" : "30",
+			"week_description" : "Defensive Positions",
+			"mission_odds" : {
+				"Advance" : "0",
+				"Battle" : "0",
+				"Counterattack" : "90",
+				"Fighting Withdrawl" : "10"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.01.23",
+			"day_start" : "07:45",
+			"day_end" : "16:00",
+			"combat_chance" : "30",
+			"week_description" : "Defensive Positions",
+			"mission_odds" : {
+				"Advance" : "0",
+				"Battle" : "0",
+				"Counterattack" : "90",
+				"Fighting Withdrawl" : "10"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.01.30",
+			"end_date" : "1945.02.02",
+			"day_start" : "07:45",
+			"day_end" : "16:00",
+			"combat_chance" : "30",
+			"week_description" : "Defensive Positions",
+			"mission_odds" : {
+				"Advance" : "0",
+				"Battle" : "0",
+				"Counterattack" : "90",
+				"Fighting Withdrawl" : "10"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.02.03",
+			"end_date" : "1945.02.21",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1945.02.22",
+			"day_start" : "07:15",
+			"day_end" : "17:30",
+			"combat_chance" : "80",
+			"week_description" : "Rittersdorf and Bitburg",
+			"mission_odds" : {
+				"Advance" : "20",
+				"Battle" : "80",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.03.01",
+			"end_date" : "1945.03.04",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1945.03.05",
+			"day_start" : "06:15",
+			"day_end" : "18:00",
+			"combat_chance" : "20",
+			"week_description" : "To the Rhine",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.03.12",
+			"end_date" : "1945.03.13",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1945.03.14",
+			"day_start" : "06:15",
+			"day_end" : "18:00",
+			"combat_chance" : "60",
+			"week_description" : "Bad Kreuznauch",
+			"mission_odds" : {
+				"Advance" : "70",
+				"Battle" : "30",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.03.21",
+			"end_date" : "1945.03.23",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1945.03.24",
+			"day_start" : "06:15",
+			"day_end" : "18:00",
+			"combat_chance" : "40",
+			"week_description" : "Across the Rhine and Main",
+			"mission_odds" : {
+				"Advance" : "70",
+				"Battle" : "30",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.03.31",
+			"day_start" : "05:15",
+			"day_end" : "19:00",
+			"combat_chance" : "40",
+			"week_description" : "Creuzburg and Gotha",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.04.06",
+			"day_start" : "05:15",
+			"day_end" : "19:00",
+			"combat_chance" : "40",
+			"week_description" : "Toward the Saale River",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.04.12",
+			"day_start" : "05:15",
+			"day_end" : "19:00",
+			"combat_chance" : "20",
+			"week_description" : "Holding Wolkenburg",
+			"mission_odds" : {
+				"Advance" : "0",
+				"Battle" : "10",
+				"Counterattack" : "90",
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",

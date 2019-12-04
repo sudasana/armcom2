@@ -67,7 +67,7 @@ from calendar import monthrange			# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.9.0 RC1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -385,49 +385,25 @@ REGIONS = {
 				}
 				
 			},
-			
-			# TEMP testing
-			
 			'Summer' : {
 				'end_date' : '09.31',
 				'ground_conditions' : {
-					'Dry' : 0.0, 'Wet' : 0.0, 'Muddy' : 0.0,
-					'Snow' : 75.0, 'Deep Snow' : 25.0
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0,
+					'Snow' : 0.0, 'Deep Snow' : 0.0
 				},
-				'freezing' : 100.0,
+				'freezing' : 0.0,
 				'cloud_cover' : {
-					'Clear' : 0.0, 'Scattered' : 0.0,
-					'Heavy' : 20.0, 'Overcast' : 80.0
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
 				},
 				'precipitation' : {
-					'None' : 0.0, 'Mist' : 0.0,
-					'Rain' : 0.0, 'Heavy Rain' : 0.0,
-					'Light Snow' : 25.0, 'Snow' : 50.0,
-					'Blizzard' : 25.0
+					'None' : 60.0, 'Mist' : 10.0,
+					'Rain' : 20.0, 'Heavy Rain' : 10.0,
+					'Light Snow' : 0.0, 'Snow' : 0.0,
+					'Blizzard' : 0.0
 				}
 				
 			},
-			
-			
-			#'Summer' : {
-			#	'end_date' : '09.31',
-			#	'ground_conditions' : {
-			#		'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0,
-			#		'Snow' : 0.0, 'Deep Snow' : 0.0
-			#	},
-			#	'freezing' : 0.0,
-			#	'cloud_cover' : {
-			#		'Clear' : 50.0, 'Scattered' : 15.0,
-			#		'Heavy' : 20.0, 'Overcast' : 15.0
-			#	},
-			#	'precipitation' : {
-			#		'None' : 60.0, 'Mist' : 10.0,
-			#		'Rain' : 20.0, 'Heavy Rain' : 10.0,
-			#		'Light Snow' : 0.0, 'Snow' : 0.0,
-			#		'Blizzard' : 0.0
-			#	}
-				
-			#},
 			'Autumn' : {
 				'end_date' : '12.01',
 				'ground_conditions' : {
@@ -3230,7 +3206,7 @@ class CampaignDay:
 		for position in unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status == 'Dead' or position.crewman.wound in ['Serious', 'Critical']:
-				# TODO: preserve original order when replacing crewmen
+				# FUTURE: preserve original order when replacing crewmen
 				unit.personnel_list.remove(position.crewman)
 				unit.personnel_list.append(Personnel(unit, unit.nation, position))
 				position.crewman = unit.personnel_list[-1]
@@ -7077,7 +7053,7 @@ class Unit:
 		if self.terrain is not None and not (self.owning_player == 1 and not self.spotted):
 			generator = libtcod.random_new_from_seed(self.terrain_seed)
 			
-			# TODO: Snow and Deep Snow need their own colours for greebles
+			# FUTURE: Snow and Deep Snow need their own colours for greebles
 			
 			if self.terrain == 'Open Ground':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
@@ -12439,9 +12415,9 @@ def DrawFrame(console, x, y, w, h):
 
 
 # display a message window on the screen, pause, and then clear message from screen
-# TODO: possible to highlight a CD/scenario hex, and have message appear near highlighed hex
+# FUTURE: possible to highlight a CD/scenario hex, and have message appear near highlighed hex
 # but not covering it
-# TODO: game options may override this and display the message in the center of the map regardless
+# FUTURE: game options may override this and display the message in the center of the map regardless
 def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None):
 	
 	# determine size of console
@@ -13802,8 +13778,9 @@ if not DEBUG:
 	libtcod.console_clear(0)
 	libtcod.console_blit(LoadXP('cats.xp'), 0, 0, 0, 0, 0, WINDOW_XM-15, WINDOW_YM-19)
 	libtcod.console_flush()
-	Wait(500, ignore_animations=True)
+	Wait(150, ignore_animations=True)
 	libtcod.console_clear(0)
+	libtcod.console_flush()
 
 # player main them if loaded
 if main_theme is not None:

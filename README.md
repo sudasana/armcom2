@@ -29,6 +29,17 @@ To run armcom2.py, you will need:
 * XPLoader https://github.com/RCIX/XPLoader
 * PySDL2 https://github.com/marcusva/py-sdl2
 
+## Running ArmCom2 on OSX
+
+To run on OSX use a virtual environment (e.g. pipenv) with Python >= 3.6.6 and install the following libraries:
+
+* tcod https://pypi.org/project/tcod/
+* pysdl2 https://github.com/marcusva/py-sdl2
+
+Then run python armcom2.py
+
+If the starting font size is too large then change "display_font_size" in data/armcom2.cfg
+
 ## Running ArmCom2 on Linux
 
 To run the game on Linux, two steps are required:

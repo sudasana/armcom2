@@ -67,9 +67,9 @@ from calendar import monthrange			# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.9.0 RC1'				# game version
+VERSION = '0.9.0 RC2'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -828,7 +828,6 @@ class Campaign:
 	# copy over day's records to a new entry in the campaign record log
 	def LogDayRecords(self):
 		self.logs[self.today] = campaign_day.records.copy()
-		print('DEBUG: copied over records for day: ' + str(self.today))
 	
 	
 	# award VP to the player
@@ -1980,6 +1979,14 @@ class CampaignDay:
 		if self.mission == 'Fighting Withdrawl':
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 0
+		elif self.mission == 'Counterattack':
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				self.map_hexes[(hx, hy)].controlled_by = 0
+			hy = 0
+			hx1 = 0 - floor(hy / 2)
+			for hx in range(hx1, hx1 + 5):
+				if (hx, hy) not in self.map_hexes: continue
+				self.map_hexes[(hx, hy)].controlled_by = 1
 		elif self.mission == 'Battle':
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 1
@@ -2021,6 +2028,8 @@ class CampaignDay:
 			self.player_unit_location = (2, 0)	# top center of map
 		elif self.mission == 'Battle':
 			self.player_unit_location = (-1, 6)	# lower center of map
+		elif self.mission == 'Counterattack':
+			self.player_unit_location = (2, 1)	# second row of map
 		else:
 			self.player_unit_location = (-2, 8)	# bottom center of map
 		
@@ -2061,7 +2070,7 @@ class CampaignDay:
 					if self.map_hexes[(hx,hy)].controlled_by == 0: continue
 				self.map_hexes[(hx, hy)].SetObjective(objective_dict)
 		
-		elif self.mission in ['Advance', 'Counterattack']:
+		elif self.mission in ['Advance']:
 			objective_dict = {
 				'objective_type' : 'Capture',
 				'vp_reward' : 2,
@@ -2079,7 +2088,7 @@ class CampaignDay:
 		
 		(player_hx, player_hy) = self.player_unit_location
 		
-		if self.mission == 'Fighting Withdrawl':
+		if self.mission in ['Fighting Withdrawl', 'Counterattack']:
 			if player_hy != 8: return
 		else:
 			if player_hy != 0: return
@@ -2661,12 +2670,13 @@ class CampaignDay:
 			enemy_capture_odds = 20.0
 			enemy_max_capture = 2
 		elif campaign_day.mission == 'Fighting Withdrawl':
-			friendly_capture_odds = 5.0
-			enemy_capture_odds = 75.0
+			friendly_capture_odds = 3.0
+			enemy_capture_odds = 85.0
 			enemy_max_capture = 4
 		elif campaign_day.mission == 'Counterattack':
-			friendly_capture_odds = 45.0
-			enemy_capture_odds = 20.0
+			friendly_capture_odds = 5.0
+			enemy_capture_odds = 80.0
+			enemy_max_capture = 2
 		# no other missions for now
 		else:
 			return
@@ -4560,7 +4570,7 @@ class CDMapHex:
 		elif mission in ['Battle', 'Fighting Withdrawl']:
 			self.enemy_strength = libtcod.random_get_int(0, 2, 5) + libtcod.random_get_int(0, 2, 5)
 		elif mission == 'Counterattack':
-			self.enemy_strength = libtcod.random_get_int(0, 0, 5) + libtcod.random_get_int(0, 1, 5)
+			self.enemy_strength = libtcod.random_get_int(0, 1, 5) + libtcod.random_get_int(0, 1, 5)
 		
 		self.Reset()
 	
@@ -4601,7 +4611,7 @@ class CDMapHex:
 			
 			if self.controlled_by == 1:
 				campaign_day.AddRecord('Map Areas Captured', 1)
-				if campaign_day.mission in ['Advance', 'Counterattack']:
+				if campaign_day.mission == 'Advance':
 					campaign.AwardVP(2)
 				else:
 					campaign.AwardVP(1)
@@ -4610,6 +4620,8 @@ class CDMapHex:
 				campaign_day.AddRecord('Map Areas Defended', 1)
 				if campaign_day.mission == 'Fighting Withdrawl':
 					campaign.AwardVP(4)
+				elif campaign_day.mission == 'Counterattack':
+					campaign.AwardVP(2)
 				else:
 					campaign.AwardVP(1)
 		

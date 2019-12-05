@@ -86,6 +86,407 @@
 				"Infantry Squad" : "100",
 				"MG Team" : "100"
 			}
+		},
+		{
+			"start_date" : "1944.08.21",
+			"day_start" : "05:00",
+			"day_end" : "19:15",
+			"combat_chance" : "40",
+			"week_description" : "Chambois and Le Newbourg",
+			"mission_odds" : {
+				"Advance" : "5",
+				"Battle" : "85",
+				"Counterattack" : "10",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.08.28",
+			"end_date" : "1944.08.30",
+			"day_start" : "05:00",
+			"day_end" : "19:15",
+			"combat_chance" : "60",
+			"week_description" : "Elbeuf-Seine Crossing",
+			"mission_odds" : {
+				"Advance" : "100",
+				"Battle" : "0",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.08.31",
+			"end_date" : "1944.09.02",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1944.09.09",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "60",
+			"week_description" : "Ghent Canal and Molentje",
+			"mission_odds" : {
+				"Advance" : "50",
+				"Battle" : "50",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.09.16",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "40",
+			"week_description" : "Braakman Inlet",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.09.23",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "50",
+			"week_description" : "Leopold Canal",
+			"mission_odds" : {
+				"Advance" : "70",
+				"Battle" : "30",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.09.30",
+			"end_date" : "1944.10.05",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "30",
+			"week_description" : "Regroup and Mop Up",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.10.06",
+			"end_date" : "1944.10.08",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1944.10.09",
+			"day_start" : "06:30",
+			"day_end" : "17:15",
+			"combat_chance" : "40",
+			"week_description" : "Brecht and Stroolburg",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.10.16",
+			"day_start" : "06:30",
+			"day_end" : "17:15",
+			"combat_chance" : "60",
+			"week_description" : "Esschen",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.10.22",
+			"day_start" : "06:30",
+			"day_end" : "17:15",
+			"combat_chance" : "50",
+			"week_description" : "Beveland Canal and Bergen op Zoom",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.10.29",
+			"day_start" : "06:30",
+			"day_end" : "17:15",
+			"combat_chance" : "70",
+			"week_description" : "Steebergen",
+			"mission_odds" : {
+				"Advance" : "50",
+				"Battle" : "50",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.11.05",
+			"day_start" : "07:15",
+			"day_end" : "16:15",
+			"combat_chance" : "30",
+			"week_description" : "Zijpe",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.11.12",
+			"end_date" : "1944.11.16",
+			"day_start" : "07:15",
+			"day_end" : "16:15",
+			"combat_chance" : "20",
+			"week_description" : "Clearing Zone of Responsibility",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1944.11.17",
+			"end_date" : "1945.01.25",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1945.01.26",
+			"end_date" : "1945.01.30",
+			"day_start" : "07:45",
+			"day_end" : "16:00",
+			"combat_chance" : "70",
+			"week_description" : "Operation Elephant",
+			"mission_odds" : {
+				"Advance" : "10",
+				"Battle" : "90",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.01.31",
+			"end_date" : "1945.02.25",
+			"refitting" : "TRUE"
 		}
 	]
 }

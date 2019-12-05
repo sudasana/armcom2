@@ -487,6 +487,222 @@
 			"start_date" : "1945.01.31",
 			"end_date" : "1945.02.25",
 			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1945.02.26",
+			"end_date" : "1945.03.04",
+			"day_start" : "07:15",
+			"day_end" : "17:30",
+			"combat_chance" : "80",
+			"week_description" : "Hochwald Gap",
+			"mission_odds" : {
+				"Advance" : "10",
+				"Battle" : "90",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.03.04",
+			"end_date" : "1945.03.05",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1945.03.06",
+			"end_date" : "1945.03.10",
+			"day_start" : "06:15",
+			"day_end" : "18:00",
+			"combat_chance" : "80",
+			"week_description" : "Veen",
+			"mission_odds" : {
+				"Advance" : "10",
+				"Battle" : "90",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.03.11",
+			"end_date" : "1945.03.31",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1945.04.01",
+			"day_start" : "05:15",
+			"day_end" : "19:00",
+			"combat_chance" : "50",
+			"week_description" : "Eiten, Twente, Almedo, Meppen",
+			"mission_odds" : {
+				"Advance" : "50",
+				"Battle" : "50",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.04.08",
+			"day_start" : "05:15",
+			"day_end" : "19:00",
+			"combat_chance" : "40",
+			"week_description" : "Sogel",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.04.15",
+			"day_start" : "05:15",
+			"day_end" : "19:00",
+			"combat_chance" : "60",
+			"week_description" : "Edewechterdamm",
+			"mission_odds" : {
+				"Advance" : "60",
+				"Battle" : "20",
+				"Counterattack" : "20",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.04.22",
+			"day_start" : "05:15",
+			"day_end" : "19:00",
+			"combat_chance" : "50",
+			"week_description" : "Edewecht and Querenstede",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
+		},
+		{
+			"start_date" : "1945.04.29",
+			"end_date" : "1945.05.04",
+			"day_start" : "05:15",
+			"day_end" : "19:00",
+			"combat_chance" : "50",
+			"week_description" : "Bad Zwischerwahn and Oldenburg",
+			"mission_odds" : {
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
+			},
+			"enemy_nation" : "Germany",
+			"air_support_level" : 50.0,
+			"air_support_step" : 10.0,
+			"enemy_unit_class_odds" : {
+				"Light Tank" : "70",
+				"Assault Gun" : "80",
+				"Tank Destroyer" : "50",
+				"Medium Tank" : "15",
+				"Heavy Tank" : "5",
+				"Armoured Car" : "90",
+				"Anti-Tank Gun" : "35",
+				"Anti-Aircraft Gun" : "5",
+				"Truck" : "90",
+				"Infantry Squad" : "100",
+				"MG Team" : "100"
+			}
 		}
 	]
 }

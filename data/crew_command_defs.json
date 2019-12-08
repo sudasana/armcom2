@@ -9,12 +9,6 @@
 		"spotting_allowed" : true
 	},
 	
-	"Request Support" : {
-		"desc" : "Use the radio to make or modify a support request",
-		"position_list" : ["Commander", "Commander/Gunner"],
-		"spotting_allowed" : false
-	},
-	
 	"Direct Movement" : {
 		"desc" : "Direct the movement of the vehicle",
 		"position_list" : ["Commander", "Commander/Gunner"],

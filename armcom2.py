@@ -67,7 +67,7 @@ from calendar import monthrange			# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.9.0 RC2'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -2021,6 +2021,10 @@ class CampaignDay:
 			self.arty_support_level = campaign.current_week['arty_support_level']
 			self.arty_support_step = campaign.current_week['arty_support_step']
 		
+		self.advancing_fire = False			# player is using advancing fire when moving
+		self.air_support_request = False		# " requesting air support upon move
+		self.arty_support_request = False		# " arty "
+		
 		self.encounter_mod = 0.0			# increases every time player caputures an area without resistance
 		
 		# set up player location
@@ -2745,7 +2749,11 @@ class CampaignDay:
 			# 1+ possible hexes to capture
 			if len(hex_list) > 0:
 				
-				capture_list = sample(hex_list, libtcod.random_get_int(0, 1, enemy_max_capture))
+				capture_num = libtcod.random_get_int(0, 1, enemy_max_capture)
+				if capture_num > len(hex_list):
+					capture_list = hex_list.copy()
+				else:
+					capture_list = sample(hex_list, capture_num)
 				
 				# in FW mission, more likely that player zone is attacked
 				#if campaign_day.mission == 'Fighting Withdrawl':
@@ -3874,6 +3882,45 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 3, 39, 'Enter')
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 			libtcod.console_print(cd_command_con, 10, 39, 'Proceed')
+			
+			# display support commands
+			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+			libtcod.console_print(cd_command_con, 1, 23, EnKey('t').upper())
+			libtcod.console_print(cd_command_con, 1, 26, EnKey('g').upper())
+			libtcod.console_print(cd_command_con, 1, 29, EnKey('b').upper())
+			
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			libtcod.console_print(cd_command_con, 3, 23, 'Advancing Fire')
+			if self.advancing_fire:
+				text = 'ON'
+			else:
+				text = 'OFF'
+			libtcod.console_print(cd_command_con, 4, 24, '(' + text + ')')
+			
+			# air support request
+			if 'air_support_level' not in campaign.current_week:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
+			libtcod.console_print(cd_command_con, 3, 26, 'Request Air Support')
+			if self.air_support_request:
+				text = 'ON'
+			else:
+				text = 'OFF'
+			if 'air_support_level' in campaign.current_week:
+				libtcod.console_print(cd_command_con, 4, 27, '(' + text + ')')
+			
+			# artillery support request
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			if 'arty_support_level' not in campaign.current_week:
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
+			libtcod.console_print(cd_command_con, 3, 29, 'Request Arty Support')
+			if self.arty_support_request:
+				text = 'ON'
+			else:
+				text = 'OFF'
+			if 'arty_support_level' in campaign.current_week:
+				libtcod.console_print(cd_command_con, 4, 30, '(' + text + ')')
+			
+			
 		
 		# group
 		elif self.active_menu == 4:
@@ -4393,6 +4440,34 @@ class CampaignDay:
 						SaveGame()
 					continue
 				
+				# toggle advancing fire
+				if key_char == 't':
+					self.advancing_fire = not self.advancing_fire
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					SaveGame()
+					continue
+				
+				# toggle air support request
+				if key_char == 'g':
+					if 'air_support_level' not in campaign.current_week:
+						continue
+					self.air_support_request = not self.air_support_request
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					SaveGame()
+					continue
+				
+				# toggle artillery support request
+				if key_char == 'b':
+					if 'arty_support_level' not in campaign.current_week:
+						continue
+					self.arty_support_request = not self.arty_support_request
+					self.UpdateCDCommandCon()
+					self.UpdateCDDisplay()
+					SaveGame()
+					continue
+				
 				# recon or proceed with travel
 				if key_char == 'r' or key.vk == libtcod.KEY_ENTER:
 					
@@ -4462,7 +4537,23 @@ class CampaignDay:
 						
 						# roll to trigger battle encounter if enemy-controlled
 						if map_hex2.controlled_by == 1:
-							ShowMessage('You enter the enemy-held zone.')
+							
+							text = 'You enter the enemy-held zone'
+							if self.advancing_fire:
+								text += ', firing at anything suspicious'
+								
+								# try to use ammo for main gun
+								weapon = campaign.player_unit.weapon_list[0]
+								if weapon.GetStat('type') == 'Gun':
+									if 'HE' in weapon.ammo_stores:
+										weapon.ammo_stores['HE'] -= libtcod.random_get_int(0, 4, 10)
+										if weapon.ammo_stores['HE'] < 0:
+											weapon.ammo_stores['HE'] = 0
+										print('DEBUG: used HE shells in advancing fire')
+								# FUTURE: how to handle tanks where main weapon is MG or similar, or no HE?
+								# Don't allow advancing fire?
+								
+							ShowMessage(text + '.')
 							
 							# roll for scenario trigger
 							roll = GetPercentileRoll()
@@ -5631,22 +5722,18 @@ class Weapon:
 		
 		# no room in RR
 		if rr_num + add_num > self.rr_size:
-			print('RR full')
 			return False
 		
 		# none remaining in stores
 		elif self.ammo_stores[self.ammo_type] - add_num < 0:
-			print('none in stores')
 			return False
 		
 		# none remaining in RR
 		elif self.ready_rack[self.ammo_type] + add_num < 0:
-			print('none in RR')
 			return False
 		
 		# no room in general stores
 		elif total_num - add_num > int(self.stats['max_ammo']):
-			print('no room in stores')
 			return False
 		
 		self.ready_rack[self.ammo_type] += add_num
@@ -7794,21 +7881,22 @@ class Unit:
 	
 	
 	# do a pin test on this unit
-	def PinTest(self, fp):
+	def PinTest(self, fp, no_msg=False):
 		if self.pinned: return
 		chance = RestrictChance(float(fp) * 5.0)
 		roll = GetPercentileRoll()
 		if roll <= chance:
-			self.PinMe()
+			self.PinMe(no_msg)
 	
 	
 	# pin this unit
-	def PinMe(self):
+	def PinMe(self, no_msg):
 		self.pinned = True
 		self.ClearAcquiredTargets()
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
-		ShowMessage(self.GetName() + ' is now Pinned.')
+		if not no_msg:
+			ShowMessage(self.GetName() + ' is now Pinned.')
 
 
 	# immobilize this unit
@@ -7983,11 +8071,6 @@ class Scenario:
 		self.selected_weapon = None				# player's currently selected weapon
 		
 		self.selected_position = 0				# index of selected position in player unit
-		
-		self.support_target_list = []				# list of possible support attack targets
-		self.support_target = None				# target map hex for support attacks
-		self.support_response_time = None			# time of support request response
-		self.support_status = None				# current stage of support attack
 	
 	
 	# roll at start of scenario to see whether player has been ambushed
@@ -8051,40 +8134,20 @@ class Scenario:
 		# roll for type of event
 		roll = GetPercentileRoll()
 		
-		# choose a random map hex with 1+ enemies for friendly attack results
-		target_hex = None
-		hex_list = []
-		for map_hex in self.map_hexes:
-			if len(map_hex.unit_stack) == 0: continue
-			if map_hex.unit_stack[0].owning_player == 0: continue
-			hex_list.append(map_hex)
-		if len(hex_list) > 0:
-			target_hex = choice(hex_list)
-		
 		# friendly air attack
 		if roll <= 10.0:
 			
-			# support attack already in progress
-			if self.support_status is not None: return
 			if 'air_support_level' not in campaign.current_week: return
 			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
-			if target_hex is None: return
 			ShowMessage('Friendly air forces launch an attack!')
-			self.support_target = target_hex
 			self.AirAttack()
-			self.ResetSupport()
 			
 		# friendly arty attack
 		elif roll <= 20.0:
 			
-			# support attack already in progress
-			if self.support_status is not None: return
 			if 'arty_support_level' not in campaign.current_week: return
-			if target_hex is None: return
 			ShowMessage('Friendly artillery forces fire a bombardment!')
-			self.support_target = target_hex
 			self.ArtilleryAttack()
-			self.ResetSupport()
 			
 		# enemy reinforcement
 		elif roll <= 30.0:
@@ -8576,6 +8639,12 @@ class Scenario:
 				unit.GenerateNewPersonnel()
 				unit.SpawnAt(hx, hy)
 				unit.facing = GetDirectionToward(unit.hx, unit.hy, 0, 0)
+			
+			# if player used advancing fire, test for pin
+			if campaign_day.advancing_fire:
+				if unit.GetStat('category') not in ['Infantry', 'Gun']:
+					continue
+				unit.PinTest(10.0, no_msg=True)
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a
@@ -9631,184 +9700,81 @@ class Scenario:
 		self.UpdateUnitInfoCon()
 	
 	
-	# reset all support variables after attack has finished or was cancelled
-	def ResetSupport(self):
-		self.support_target = None
-		self.support_status = None
-		self.support_response_time = None
-	
-	
-	# build a list of possible support attack target hexes if none already selected
-	def BuildSupportTargetList(self):
+	# roll to see if air and/or arty support requests were granted, and trigger attacks if so
+	def ResolveSupportRequests(self):
 		
-		if self.support_target is not None: return
+		# FUTURE: calculate any skill effects for the roll(s) here
 		
-		self.support_target_list = []
-		self.support_target = None
-		
-		for map_hex in self.map_hexes:
-			# no units present
-			if len(map_hex.unit_stack) == 0: continue
-			for unit in map_hex.unit_stack:
-				if unit.owning_player == 1:
-					self.support_target_list.append(map_hex)
-					break
-	
-	
-	# select the next or previous support target hex
-	def CycleSupportTarget(self, forward):
-		
-		# attack already in progress
-		if self.support_status is not None:
-			return
-		
-		# no targets to select from
-		if len(self.support_target_list) == 0: return
-		
-		# no target selected yet
-		if self.support_target is None:
-			self.support_target = self.support_target_list[0]
-			return
-		
-		if forward:
-			m = 1
-		else:
-			m = -1
-		
-		i = self.support_target_list.index(self.support_target)
-		i += m
-		
-		if i < 0:
-			self.support_target = self.support_target_list[-1]
-		elif i > len(self.support_target_list) - 1:
-			self.support_target = self.support_target_list[0]
-		else:
-			self.support_target = self.support_target_list[i]
-	
-	
-	# attempt to contact and call in support
-	def CallSupport(self, air_support):
-		
-		# request or attack already in progress
-		if self.support_status is not None: return
-		
-		# no such support
-		if air_support:
-			if 'air_support_level' not in campaign.current_week: return
-		else:
-			if 'arty_support_level' not in campaign.current_week: return
-		
-		# no support target selected
-		if self.support_target is None: return
-		
-		# no support currently available
-		if air_support:
-			if campaign_day.air_support_level <= 0.0:
-				ShowMessage('Cannot request support - none currently available.')
-				return
-		else:
-			if campaign_day.arty_support_level <= 0.0:
-				ShowMessage('Cannot request support - none currently available.')
-				return
-		
-		# check for weather restrictions
-		if air_support and campaign_day.weather['Cloud Cover'] == 'Overcast':
-			ShowMessage('Cannot request air support - cloud cover too heavy.')
-			return
-		
-		# set time of response
-		hour = campaign_day.day_clock['hour']
-		minute = campaign_day.day_clock['minute'] + 2
-		if minute > 59:
-			hour += 1
-			minute -= 60
-		self.support_response_time = (hour, minute)
-		
-		if air_support:
-			text = 'Air'
-			self.support_status = 'Air support requested'
-		else:
-			text = 'Artillery'
-			self.support_status = 'Artillery support requested'
-		text += ' support request sent, waiting for response.'
-		ShowMessage(text)
-	
-	
-	# roll to see what the response was to a support request
-	def DoSupportRoll(self):
-		
-		roll = GetPercentileRoll()
-		
-		# FUTURE: apply any skill effects here
-		
-		if DEBUG:
-			if session.debug['Support Requests Always Granted']:
-				roll = 1.0
-		
-		if self.support_status == 'Air support requested':
-			level = campaign_day.air_support_level
-		else:
-			level = campaign_day.arty_support_level
-		
-		if roll > level:
-			ShowMessage('Unable to provide support at this time.')
-			self.ResetSupport()
-			return
-		
-		# notify player and decrease support level
-		if self.support_status == 'Air support requested':
-			ShowMessage('Air attack support request granted!')
-			self.support_status = 'Air support inbound'
-			campaign_day.air_support_level -= campaign_day.air_support_step
-			if campaign_day.air_support_level < 0.0:
-				campaign_day.air_support_level = 0.0
-		else:
-			ShowMessage('Artillery attack support request granted!')
-			self.support_status = 'Artillery support inbound'
-			campaign_day.arty_support_level -= campaign_day.arty_support_step
-			if campaign_day.arty_support_level < 0.0:
-				campaign_day.arty_support_level = 0.0
-	
-	
-	# do support target check here (air spotting target / spotting rounds)
-	def DoSupportTargetCheck(self):
-		
-		target_hex = self.hex_dict[(self.support_target.hx, self.support_target.hy)]
-		
-		# check that there are 1+ targets left
-		if len(target_hex.unit_stack) == 0:
-			ShowMessage('No more targets, calling off support request.')
-			self.ResetSupport()
-			return
-		
-		# air attack
-		if self.support_status == 'Air support inbound':
+		# check for air attack first
+		if campaign_day.air_support_request:
+			roll = GetPercentileRoll()
+			granted = False
+			if DEBUG:
+				if session.debug['Support Requests Always Granted']:
+					granted = True
+			if roll <= campaign_day.air_support_level:
+				granted = True
 			
 			# check for weather restrictions
 			if campaign_day.weather['Cloud Cover'] == 'Overcast':
-				ShowMessage('Calling off air attack - cloud cover too heavy.')
-				self.ResetSupport()
-				return
+				ShowMessage('Cannot offer air attack support - cloud cover too heavy.')
+				granted = False
 			
-			ShowMessage('Air wing trying to spot target.')
+			if granted:
+				campaign_day.air_support_level -= campaign_day.air_support_step
+				if campaign_day.air_support_level < 0.0:
+					campaign_day.air_support_level = 0.0
+				self.DoAirAttack()
+		
+		# check for artillery attack
+		if campaign_day.arty_support_request:
+			roll = GetPercentileRoll()
+			granted = False
+			if DEBUG:
+				if session.debug['Support Requests Always Granted']:
+					granted = True
+			if roll <= campaign_day.arty_support_level:
+				granted = True
 			
-			chance = 35.0
+			if granted:
+				campaign_day.arty_support_level -= campaign_day.arty_support_step
+				if campaign_day.arty_support_level < 0.0:
+					campaign_day.arty_support_level = 0.0
+				self.DoArtilleryAttack()
+		
+		# reset flags
+		campaign_day.air_support_request = False
+		campaign_day.arty_support_request = False
+	
+	
+	# resolve an air support attack against enemy units
+	def DoAirAttack(self):
+		
+		ShowMessage('Air support attack inbound! Trying to spot targets.')
+		
+		# calculate base spotting chance and add weather modifiers
+		chance = 55.0
 			
-			# weather modifiers
-			if campaign_day.weather['Cloud Cover'] == 'Scattered':
-				chance -= 10.0
-			elif campaign_day.weather['Cloud Cover'] == 'Heavy':
-				chance -= 20.0
-			if campaign_day.weather['Precipitation'] in ['Rain', 'Snow']:
-				chance -= 15.0
-			elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Blizzard']:
-				chance -= 25.0
+		if campaign_day.weather['Cloud Cover'] == 'Scattered':
+			chance -= 10.0
+		elif campaign_day.weather['Cloud Cover'] == 'Heavy':
+			chance -= 20.0
+		if campaign_day.weather['Precipitation'] in ['Rain', 'Snow']:
+			chance -= 15.0
+		elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Blizzard']:
+			chance -= 25.0
+		
+		# check each hex with 1+ enemy units present
+		target_hex_list = []
+		for map_hex in self.map_hexes:
+			if len(map_hex.unit_stack) == 0: continue
+			if map_hex.unit_stack[0].owning_player == 0: continue
 			
-			# potential target modifier
-			for unit in target_hex.unit_stack:
-				
+			# roll to spot each enemy unit in hex
+			for unit in map_hex.unit_stack:
+			
 				modifier = 0.0
-				
+					
 				total_smoke = 0
 				for i in range(6):
 					total_smoke += unit.smoke[i]
@@ -9831,238 +9797,18 @@ class Scenario:
 				
 				modifier += unit.GetTEM()
 				
-				chance += round(modifier * 0.25, 2)
-			
-			chance = RestrictChance(chance)
-			
-			# show plane animation
-			self.animation['air_attack'] = GeneratePlaneCon(-1)
-			self.animation['air_attack_line'] = GetLine(26, 25, 26, 15)
-			
-			PlaySoundFor(None, 'plane_incoming')
-			
-			# let animation run
-			while self.animation['air_attack'] is not None:
-				if libtcod.console_is_window_closed(): sys.exit()
-				libtcod.console_flush()
-				CheckForAnimationUpdate()
-			
-			# do roll
-			roll = GetPercentileRoll()
-			
-			if roll > chance:
-				ShowMessage('No target spotted, will retry.')
-				return
-			
-			ShowMessage('Target spotted, returning to attack.')
-			self.support_status = 'Air attack'
-			
-		
-		# artillery
-		elif self.support_status == 'Artillery support inbound':
-			
-			ShowMessage('Artillery firing spotting rounds.')
-			
-			chance = 35.0
-			
-			# weather modifier
-			if campaign_day.weather['Precipitation'] in ['Rain', 'Snow']:
-				chance -= 10.0
-			elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Blizzard']:
-				chance -= 15.0
-			
-			chance = RestrictChance(chance)
-			
-			# do roll
-			roll = GetPercentileRoll()
-			
-			if roll <= chance:
-				(x, y) = self.PlotHex(self.support_target.hx, self.support_target.hy)
-			else:
-				hex_list = []
-				for direction in range(6):
-					(hx, hy) = GetAdjacentHex(self.support_target.hx,
-						self.support_target.hy, direction)
-					if hx == self.player_unit.hx and hy == self.player_unit.hy:
-						continue
-					if (hx, hy) in self.hex_dict:
-						hex_list.append((hx, hy))
-				(hx, hy) = choice(hex_list)
-				(x, y) = self.PlotHex(hx, hy)
-			
-			PlaySoundFor(None, 'he_explosion')
-			# create bomb animation
-			self.animation['bomb_effect'] = (x, y)
-			self.animation['bomb_effect_lifetime'] = 6
-			
-			# let animation run
-			while self.animation['bomb_effect'] is not None:
-				if libtcod.console_is_window_closed(): sys.exit()
-				libtcod.console_flush()
-				CheckForAnimationUpdate()
-			
-			if roll <= chance:
-				ShowMessage('Target found, will fire for effect.')
-				self.support_status = 'Artillery attack'
-			
-			else:
-				ShowMessage('Trajectory incorrect, recalculating.')
-		
-	
-	# do an artillery attack against a target hex
-	def ArtilleryAttack(self):
-		
-		# record the support attack location and then clear it
-		hx, hy = self.support_target.hx, self.support_target.hy
-		
-		# check that there are 1+ targets left
-		if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
-			ShowMessage('No more targets, ending attack.')
-			self.ResetSupport()
-			return
-		
-		# display bombardment animation
-		(x, y) = self.PlotHex(hx, hy)
-		for i in range(5):
-			xm = 3 - libtcod.random_get_int(0, 0, 6)
-			ym = 3 - libtcod.random_get_int(0, 0, 6)
-			PlaySoundFor(None, 'he_explosion')
-			# create bomb animation
-			self.animation['bomb_effect'] = (x+xm, y+ym)
-			self.animation['bomb_effect_lifetime'] = 6
-			
-			# let animation run
-			while self.animation['bomb_effect'] is not None:
-				if libtcod.console_is_window_closed(): sys.exit()
-				libtcod.console_flush()
-				CheckForAnimationUpdate()
-		
-		# spawn gun unit and determine effective FP
-		unit_id = choice(campaign.stats['player_arty_support'])
-		gun_unit = Unit(unit_id)
-		gun_calibre = int(gun_unit.weapon_list[0].GetStat('calibre'))
-		
-		# determine effective fp and base AP chance for gun
-		for (calibre, effective_fp) in HE_FP_EFFECT:
-			if calibre <= gun_calibre:
-				break
-		for (calibre, ap_chance) in HE_AP_CHANCE:
-			if calibre <= gun_calibre:
-				break
-		
-		# roll for possible hit against each enemy unit in target hex
-		results = False
-		for target in self.hex_dict[(hx,hy)].unit_stack:
-			
-			if target.owning_player == 0: continue
-			if not target.alive: continue
-			
-			# calculate base effect chance
-			if target.GetStat('category') == 'Vehicle':
-				chance = VEH_FP_BASE_CHANCE
-			else:
-				chance = INF_FP_BASE_CHANCE
-			for i in range(2, effective_fp + 1):
-				chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
-			
-			# FUTURE: apply modifiers here
-			
-			chance = round(chance, 2)
-			roll = GetPercentileRoll()
-			
-			# no effect
-			if roll > chance:
-				continue
-			
-			results = True
-			
-			# infantry or gun target hit
-			if target.GetStat('category') in ['Infantry', 'Gun']:
-				
-				# critical hit modifier
-				if roll <= 3.0:
-					target.fp_to_resolve += (effective_fp * 2)
-				else:
-					target.fp_to_resolve += effective_fp
-				
-				if not target.spotted:
-					target.hit_by_fp = True
-				
-				ShowMessage(target.GetName() + ' was hit by artillery attack')
-			
-			# vehicle hit
-			elif target.GetStat('category') == 'Vehicle':
-				
-				# determine location hit - use side locations and modify later
-				# for aerial attack
-				if GetPercentileRoll() <= 50.0:
-					hit_location = 'hull_side'
-				else:
-					hit_location = 'turret_side'
-				
-				# FUTURE: direct hit vs. near miss
-				# FUTURE: if direct hit and open topped, automatically destroyed
-				
-				# start with base AP chance
-				chance = ap_chance
-				
-				# apply target armour modifier
-				armour = target.GetStat('armour')
-				if armour is not None:
-					if armour[hit_location] != '-':
-						target_armour = int(armour[hit_location])
-						if target_armour >= 0:
-						
-							modifier = -9.0
-							for i in range(target_armour - 1):
-								modifier = modifier * 1.8
-							
-							chance += modifier
-							
-							# apply critical hit modifier if any
-							if roll <= 3.0:
-								modifier = round(abs(modifier) * 0.8, 2)
-								chance += modifier
-				
-				# calculate final chance of AP and do roll
-				chance = RestrictChance(chance)
-				roll = GetPercentileRoll()
-				
-				# no penetration
-				if roll > chance:
-					ShowMessage(target.GetName() + ' was hit by artillery attack but is unharmed.')
-					if not target.spotted:
-						target.hit_by_fp = True
+				# not spotted
+				if GetPercentileRoll() > RestrictChance(chance + round(modifier * 0.25, 2)):
 					continue
 				
-				# penetrated
-				target.DestroyMe()
-				ShowMessage(target.GetName() + ' was destroyed by artillery attack')
+				# spotted, add this hex to targets and don't check any other units present
+				target_hex_list.append(map_hex)
+				break
 		
-		if not results:
-			ShowMessage('Artillery attack had no effect.')
-		if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
-			ShowMessage('All targets destroyed, ending attack.')
-			self.ResetSupport()
-	
-	
-	# attempt an air attack against the support attack target hex
-	def AirAttack(self):
-		
-		# check for weather restrictions
-		if campaign_day.weather['Cloud Cover'] == 'Overcast':
-			ShowMessage('Calling off air attack - cloud cover too heavy.')
-			self.ResetSupport()
+		if len(target_hex_list) == 0:
+			ShowMessage('No targets spotted, ending attack.')
 			return
 		
-		# record the support attack location
-		hx, hy = self.support_target.hx, self.support_target.hy
-		
-		# check that there are 1+ targets left
-		if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
-			ShowMessage('No more targets, ending attack.')
-			self.ResetSupport()
-			return
 		
 		# roll for number of planes
 		roll = libtcod.random_get_int(0, 1, 10)
@@ -10098,164 +9844,309 @@ class Scenario:
 			if calibre <= bomb_calibre:
 				break
 		
-		# do one attack animation
+		# do one attack animation per target hex
+		for map_hex in target_hex_list:
 		
-		# determine attack direction and starting position
-		(x, y) = self.PlotHex(hx, hy)
-		(x2, y2) = (x, y)
-		
-		if y2 <= 30:
-			y1 = y2 + 15
-			if y1 > 51: y1 = 51
-			y2 += 1
-			# TODO: needs changing
-			direction = -1
-		else:
-			y1 = y2 - 15
-			if y1 < 9: y1 = 9
-			y2 -= 3
-			direction = 1
-		
-		# create air attack animation
-		self.animation['air_attack'] = GeneratePlaneCon(direction)
-		self.animation['air_attack_line'] = GetLine(x, y1, x, y2)
-		
-		PlaySoundFor(None, 'plane_incoming')
-		
-		# let animation run
-		while self.animation['air_attack'] is not None:
-			if libtcod.console_is_window_closed(): sys.exit()
-			libtcod.console_flush()
-			CheckForAnimationUpdate()
-		
-		PlaySoundFor(None, 'stuka_divebomb')
-		
-		# create bomb animation
-		self.animation['bomb_effect'] = (x, y2+direction)
-		self.animation['bomb_effect_lifetime'] = 14
-		
-		# let animation run
-		while self.animation['bomb_effect'] is not None:
-			if libtcod.console_is_window_closed(): sys.exit()
-			libtcod.console_flush()
-			CheckForAnimationUpdate()
-		
-		# do one attack per plane
-		results = False
-		for unit in plane_unit_list:
+			# determine attack direction and starting position
+			(x, y) = self.PlotHex(map_hex.hx, map_hex.hy)
+			(x2, y2) = (x, y)
 			
-			# find a target unit in the target hex
-			if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
-				continue
-			target = choice(self.hex_dict[(hx,hy)].unit_stack)
-		
-			# calculate basic to-effect score required
-			if not target.spotted:
-				chance = PF_BASE_CHANCE[0][1]
+			if y2 <= 30:
+				y1 = y2 + 15
+				if y1 > 51: y1 = 51
+				# TODO: needs changing: y2 is incorrect
+				y2 += 1
+				direction = -1
 			else:
-				if target.GetStat('category') == 'Vehicle':
-					chance = PF_BASE_CHANCE[0][0]
-				else:
-					chance = PF_BASE_CHANCE[0][1]
+				y1 = y2 - 15
+				if y1 < 9: y1 = 9
+				y2 -= 3
+				direction = 1
+			
+			# create air attack animation
+			self.animation['air_attack'] = GeneratePlaneCon(direction)
+			self.animation['air_attack_line'] = GetLine(x, y1, x, y2)
+			
+			PlaySoundFor(None, 'plane_incoming')
+			
+			# let animation run
+			while self.animation['air_attack'] is not None:
+				if libtcod.console_is_window_closed(): sys.exit()
+				libtcod.console_flush()
+				CheckForAnimationUpdate()
+			
+			PlaySoundFor(None, 'stuka_divebomb')
+			
+			# create bomb animation
+			self.animation['bomb_effect'] = (x, y2+direction)
+			self.animation['bomb_effect_lifetime'] = 14
+			
+			# let animation run
+			while self.animation['bomb_effect'] is not None:
+				if libtcod.console_is_window_closed(): sys.exit()
+				libtcod.console_flush()
+				CheckForAnimationUpdate()
 		
-			# target size modifier
-			size_class = target.GetStat('size_class')
-			if size_class is not None:
-				if size_class != 'Normal':
-					chance += PF_SIZE_MOD[size_class]
+		# do one attack per plane per target hex
+		results = False
+		for map_hex in target_hex_list:
+		
+			for unit in plane_unit_list:
 			
-			# smoke modifier
-			total_smoke = 0
-			for i in range(6):
-				total_smoke += target.smoke[i]
-			if total_smoke >= 2:
-				chance -= 30.0
-			elif total_smoke == 1:
-				chance -= 15.0
+				# find a target unit in the target hex
+				if len(map_hex.unit_stack) == 0:
+					continue
+				target = choice(map_hex.unit_stack)
 			
-			chance = RestrictChance(chance)
-			roll = GetPercentileRoll()
-			
-			if roll > chance: continue
-			
-			# hit
-			results = True
-			
-			# infantry or gun target
-			if target.GetStat('category') in ['Infantry', 'Gun']:
-				
-				# critical hit modifier
-				if roll <= 3.0:
-					target.fp_to_resolve += (effective_fp * 2)
-				else:
-					target.fp_to_resolve += effective_fp
-				
+				# calculate basic to-effect score required
 				if not target.spotted:
-					target.hit_by_fp = True
-				
-				ShowMessage(target.GetName() + ' was hit by air attack')
-			
-			# vehicle hit
-			elif target.GetStat('category') == 'Vehicle':
-				
-				# determine location hit - use side locations and modify later
-				# for aerial attack
-				if GetPercentileRoll() <= 50.0:
-					hit_location = 'hull_side'
+					chance = PF_BASE_CHANCE[0][1]
 				else:
-					hit_location = 'turret_side'
+					if target.GetStat('category') == 'Vehicle':
+						chance = PF_BASE_CHANCE[0][0]
+					else:
+						chance = PF_BASE_CHANCE[0][1]
+			
+				# target size modifier
+				size_class = target.GetStat('size_class')
+				if size_class is not None:
+					if size_class != 'Normal':
+						chance += PF_SIZE_MOD[size_class]
 				
-				# determine base penetration chance
-				for (calibre, chance) in HE_AP_CHANCE:
-					if calibre <= bomb_calibre:
-						break
+				# smoke modifier
+				total_smoke = 0
+				for i in range(6):
+					total_smoke += target.smoke[i]
+				if total_smoke >= 2:
+					chance -= 30.0
+				elif total_smoke == 1:
+					chance -= 15.0
 				
-				# FUTURE: direct hit vs. near miss
-				# FUTURE: if direct hit and open topped, automatically destroyed
-				
-				# target armour modifier
-				armour = target.GetStat('armour')
-				if armour is not None:
-					if armour[hit_location] != '-':
-						target_armour = int(armour[hit_location])
-						if target_armour >= 0:
-						
-							modifier = -9.0
-							for i in range(target_armour - 1):
-								modifier = modifier * 1.8
-							
-							chance += modifier
-							
-							# apply critical hit modifier if any
-							if roll <= 3.0:
-								modifier = round(abs(modifier) * 0.8, 2)
-								chance += modifier
-				
-				# calculate final chance
 				chance = RestrictChance(chance)
-				
-				# do AP roll
 				roll = GetPercentileRoll()
 				
-				# no penetration
-				if roll > chance:
-					ShowMessage(target.GetName() + ' was unaffected by air attack')
-					continue
+				if roll > chance: continue
 				
-				# penetrated
-				target.DestroyMe()
-				ShowMessage(target.GetName() + ' was destroyed by air attack')
+				# hit
+				results = True
 				
+				# infantry or gun target
+				if target.GetStat('category') in ['Infantry', 'Gun']:
+					
+					# critical hit modifier
+					if roll <= 3.0:
+						target.fp_to_resolve += (effective_fp * 2)
+					else:
+						target.fp_to_resolve += effective_fp
+					
+					if not target.spotted:
+						target.hit_by_fp = True
+					
+					ShowMessage(target.GetName() + ' was hit by air attack')
+				
+				# vehicle hit
+				elif target.GetStat('category') == 'Vehicle':
+					
+					# determine location hit - use side locations and modify later
+					# for aerial attack
+					if GetPercentileRoll() <= 50.0:
+						hit_location = 'hull_side'
+					else:
+						hit_location = 'turret_side'
+					
+					# determine base penetration chance
+					for (calibre, chance) in HE_AP_CHANCE:
+						if calibre <= bomb_calibre:
+							break
+					
+					# FUTURE: direct hit vs. near miss
+					# FUTURE: if direct hit and open topped, automatically destroyed
+					
+					# target armour modifier
+					armour = target.GetStat('armour')
+					if armour is not None:
+						if armour[hit_location] != '-':
+							target_armour = int(armour[hit_location])
+							if target_armour >= 0:
+							
+								modifier = -9.0
+								for i in range(target_armour - 1):
+									modifier = modifier * 1.8
+								
+								chance += modifier
+								
+								# apply critical hit modifier if any
+								if roll <= 3.0:
+									modifier = round(abs(modifier) * 0.8, 2)
+									chance += modifier
+					
+					# calculate final chance
+					chance = RestrictChance(chance)
+					
+					# do AP roll
+					roll = GetPercentileRoll()
+					
+					# no penetration
+					if roll > chance:
+						ShowMessage(target.GetName() + ' was unaffected by air attack')
+						continue
+					
+					# penetrated
+					target.DestroyMe()
+					ShowMessage(target.GetName() + ' was destroyed by air attack')
 				
 		if not results:
 			ShowMessage('Air attack had no effect.')
-		if len(self.hex_dict[(hx,hy)].unit_stack) == 0:
-			ShowMessage('All targets destroyed, ending attack.')
-			self.ResetSupport()
 		
 		# clean up
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		libtcod.console_flush()
+	
+	
+	# do an artillery attack against enemy units
+	# TODO: determine own target list
+	def DoArtilleryAttack(self):
+		
+		ShowMessage('Artillery support attack inbound! Trying to spot targets.')
+		
+		# do an attack on every hex with an enemy unit in it
+		target_hex_list = []
+		for map_hex in self.map_hexes:
+			if len(map_hex.unit_stack) == 0: continue
+			if map_hex.unit_stack[0].owning_player == 0: continue
+			target_hex_list.append(map_hex)
+		
+		# no possible targets
+		if len(target_hex_list) == 0:
+			ShowMessage('No targets spotted, ending attack.')
+			return
+		
+		ShowMessage('Target spotted, firing for effect.')
+		
+		# display bombardment animation
+		for map_hex in target_hex_list:
+			
+			(x, y) = self.PlotHex(map_hex.hx, map_hex.hy)
+			for i in range(3):
+				xm = 3 - libtcod.random_get_int(0, 0, 6)
+				ym = 3 - libtcod.random_get_int(0, 0, 6)
+				PlaySoundFor(None, 'he_explosion')
+				# create bomb animation
+				self.animation['bomb_effect'] = (x+xm, y+ym)
+				self.animation['bomb_effect_lifetime'] = 3
+				
+				# let animation run
+				while self.animation['bomb_effect'] is not None:
+					if libtcod.console_is_window_closed(): sys.exit()
+					libtcod.console_flush()
+					CheckForAnimationUpdate()
+		
+		# spawn gun unit and determine effective FP
+		unit_id = choice(campaign.stats['player_arty_support'])
+		gun_unit = Unit(unit_id)
+		gun_calibre = int(gun_unit.weapon_list[0].GetStat('calibre'))
+		
+		# determine effective fp and base AP chance for gun
+		for (calibre, effective_fp) in HE_FP_EFFECT:
+			if calibre <= gun_calibre:
+				break
+		for (calibre, ap_chance) in HE_AP_CHANCE:
+			if calibre <= gun_calibre:
+				break
+		
+		# roll for possible hit against each enemy unit in each target hex
+		results = False
+		for map_hex in target_hex_list:
+		
+			for target in map_hex.unit_stack:
+				
+				if target.owning_player == 0: continue
+				if not target.alive: continue
+				
+				# calculate base effect chance
+				if target.GetStat('category') == 'Vehicle':
+					chance = VEH_FP_BASE_CHANCE
+				else:
+					chance = INF_FP_BASE_CHANCE
+				for i in range(2, effective_fp + 1):
+					chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
+				
+				# FUTURE: apply modifiers here
+				
+				chance = round(chance, 2)
+				roll = GetPercentileRoll()
+				
+				# no effect
+				if roll > chance:
+					continue
+				
+				results = True
+				
+				# infantry or gun target hit
+				if target.GetStat('category') in ['Infantry', 'Gun']:
+					
+					# critical hit modifier
+					if roll <= 3.0:
+						target.fp_to_resolve += (effective_fp * 2)
+					else:
+						target.fp_to_resolve += effective_fp
+					
+					if not target.spotted:
+						target.hit_by_fp = True
+					
+					ShowMessage(target.GetName() + ' was hit by artillery attack')
+				
+				# vehicle hit
+				elif target.GetStat('category') == 'Vehicle':
+					
+					# determine location hit - use side locations and modify later
+					# for aerial attack
+					if GetPercentileRoll() <= 50.0:
+						hit_location = 'hull_side'
+					else:
+						hit_location = 'turret_side'
+					
+					# FUTURE: direct hit vs. near miss
+					# FUTURE: if direct hit and open topped, automatically destroyed
+					
+					# start with base AP chance
+					chance = ap_chance
+					
+					# apply target armour modifier
+					armour = target.GetStat('armour')
+					if armour is not None:
+						if armour[hit_location] != '-':
+							target_armour = int(armour[hit_location])
+							if target_armour >= 0:
+							
+								modifier = -9.0
+								for i in range(target_armour - 1):
+									modifier = modifier * 1.8
+								
+								chance += modifier
+								
+								# apply critical hit modifier if any
+								if roll <= 3.0:
+									modifier = round(abs(modifier) * 0.8, 2)
+									chance += modifier
+					
+					# calculate final chance of AP and do roll
+					chance = RestrictChance(chance)
+					roll = GetPercentileRoll()
+					
+					# no penetration
+					if roll > chance:
+						ShowMessage(target.GetName() + ' was hit by artillery attack but is unharmed.')
+						if not target.spotted:
+							target.hit_by_fp = True
+						continue
+					
+					# penetrated
+					target.DestroyMe()
+					ShowMessage(target.GetName() + ' was destroyed by artillery attack')
+		
+		if not results:
+			ShowMessage('Artillery attack had no effect.')
 	
 	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
@@ -10665,8 +10556,6 @@ class Scenario:
 		# crew action phase:
 		elif self.phase == PHASE_CREW_ACTION:
 			
-			self.BuildSupportTargetList()
-			
 			input_command = False
 			
 			for position in self.player_unit.positions_list:
@@ -10713,7 +10602,7 @@ class Scenario:
 					libtcod.console_flush()
 				
 				# check for action that needs input in this phase
-				if position.crewman.current_cmd in ['Request Support', 'Manage Ready Rack']:
+				if position.crewman.current_cmd in ['Manage Ready Rack']:
 					input_command = True
 			
 			if not input_command:
@@ -10762,36 +10651,6 @@ class Scenario:
 		
 		# allied action
 		elif self.phase == PHASE_ALLIED_ACTION:
-			
-			# check for support attacks first
-			if self.support_status is not None:
-				
-				# request pending 
-				if self.support_status in ['Air support requested', 'Artillery support requested']:
-				
-					# check to see if support response time has been hit
-					(hour, minute) = self.support_response_time
-					if hour < campaign_day.day_clock['hour'] or (hour == campaign_day.day_clock['hour'] and minute <= campaign_day.day_clock['minute']):
-						self.DoSupportRoll()
-						DisplayTimeInfo(time_con)
-				
-				# attack inbound
-				elif self.support_status in ['Air support inbound', 'Artillery support inbound']:
-					
-					self.DoSupportTargetCheck()
-					DisplayTimeInfo(time_con)
-				
-				# attack in progress
-				elif self.support_status in ['Air attack', 'Artillery attack']: 
-					
-					if self.support_status == 'Air attack':
-						ShowMessage('Air attack begins.')
-						self.AirAttack()
-					else:
-						ShowMessage('Artillery attack begins.')
-						self.ArtilleryAttack()
-					DisplayTimeInfo(time_con)
-					
 			
 			# player squad acts
 			for unit in scenario.player_unit.squad:
@@ -11128,59 +10987,7 @@ class Scenario:
 			position = self.player_unit.positions_list[self.selected_position]
 			if position.crewman is None: return
 			
-			if position.crewman.current_cmd == 'Request Support':
-				
-				# display current support levels
-				text = 'Air Support: '
-				if 'air_support_level' not in campaign.current_week:
-					text += 'None'
-				else:
-					text += str(campaign_day.air_support_level)
-				libtcod.console_print(cmd_menu_con, 1, 1, text)
-				
-				text = 'Artillery Support: '
-				if 'arty_support_level' not in campaign.current_week:
-					text += 'None'
-				else:
-					text += str(campaign_day.arty_support_level)
-				libtcod.console_print(cmd_menu_con, 1, 2, text)
-				
-				# display support commands
-				
-				# support request or attack is in progress
-				if self.support_status is not None:
-					
-					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-					libtcod.console_print(cmd_menu_con, 1, 6, EnKey('c').upper())
-					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-					libtcod.console_print(cmd_menu_con, 8, 6, 'Cancel Support')
-					
-				else:
-				
-					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-					libtcod.console_print(cmd_menu_con, 1, 4, 'Tab')
-					if 'air_support_level' not in campaign.current_week:
-						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
-					libtcod.console_print(cmd_menu_con, 1, 5, EnKey('q').upper())
-					
-					libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-					if 'arty_support_level' not in campaign.current_week:
-						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
-					libtcod.console_print(cmd_menu_con, 1, 6, EnKey('e').upper())
-					
-					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-					libtcod.console_print(cmd_menu_con, 8, 4, 'Cycle Target Hex')
-					
-					if 'air_support_level' not in campaign.current_week:
-						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
-					libtcod.console_print(cmd_menu_con, 8, 5, 'Call Air Support')
-					
-					libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-					if 'arty_support_level' not in campaign.current_week:
-						libtcod.console_set_default_foreground(cmd_menu_con, libtcod.darker_grey)
-					libtcod.console_print(cmd_menu_con, 8, 6, 'Call Arty Support')
-			
-			elif position.crewman.current_cmd == 'Manage Ready Rack':
+			if position.crewman.current_cmd == 'Manage Ready Rack':
 				
 				libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 				libtcod.console_print(cmd_menu_con, 1, 1, EnKey('d').upper() + '/' + EnKey('a').upper())
@@ -11310,14 +11117,6 @@ class Scenario:
 	def UpdateGuiCon(self):
 		
 		libtcod.console_clear(gui_con)
-		
-		# display support targeted hex if attack in progress
-		if self.support_target is not None and self.support_status is not None:
-			(x,y) = scenario.PlotHex(self.support_target.hx, self.support_target.hy)
-			libtcod.console_put_char_ex(gui_con, x-2, y-2, 43, libtcod.light_blue, libtcod.black)
-			libtcod.console_put_char_ex(gui_con, x+2, y-2, 43, libtcod.light_blue, libtcod.black)
-			libtcod.console_put_char_ex(gui_con, x-2, y+2, 43, libtcod.light_blue, libtcod.black)
-			libtcod.console_put_char_ex(gui_con, x+2, y+2, 43, libtcod.light_blue, libtcod.black)
 				
 		# display field of view if in command phase
 		if self.phase == PHASE_COMMAND:
@@ -11331,13 +11130,7 @@ class Scenario:
 		# crew action phase
 		elif self.phase == PHASE_CREW_ACTION:
 			
-			# display support target if any
-			if self.support_target is not None:
-				(x,y) = self.PlotHex(self.support_target.hx, self.support_target.hy)
-				libtcod.console_put_char_ex(gui_con, x-1, y-1, 218, libtcod.light_blue, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x+1, y-1, 191, libtcod.light_blue, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x-1, y+1, 192, libtcod.light_blue, libtcod.black)
-				libtcod.console_put_char_ex(gui_con, x+1, y+1, 217, libtcod.light_blue, libtcod.black)
+			pass
 			
 		
 		# shooting phase
@@ -11713,11 +11506,7 @@ class Scenario:
 				unit.SpawnAt(0,0)
 				self.player_unit.squad.append(unit)
 			
-			# roll for possible ambush if enemy-controlled
-			if self.cd_map_hex.controlled_by == 1:
-				self.DoAmbushRoll()
-			
-			# generate enemy units
+			# generate enemy units (also checks for pins from advancing fire)
 			self.SpawnEnemyUnits()
 			
 			# set up player unit for first activation
@@ -11726,6 +11515,10 @@ class Scenario:
 			for unit in self.player_unit.squad:
 				unit.BuildCmdLists()
 				unit.ResetForNewTurn(skip_smoke=True)
+			
+			# roll for possible ambush if enemy-controlled
+			if self.cd_map_hex.controlled_by == 1:
+				self.DoAmbushRoll()
 			
 			# if player was ambushed, enemy units activate first
 			if self.ambush:
@@ -11754,6 +11547,10 @@ class Scenario:
 		self.UpdateAnimCon()
 		self.UpdateHexmapCon()
 		self.UpdateScenarioDisplay()
+		
+		# check for support request(s) and resolve if any
+		if campaign_day.air_support_request or campaign_day.arty_support_request:
+			self.ResolveSupportRequests()
 		
 		if self.ambush:
 			ShowMessage('You have been ambushed by enemy forces!')
@@ -11934,37 +11731,8 @@ class Scenario:
 				position = self.player_unit.positions_list[self.selected_position]
 				if position.crewman is None: continue
 				
-				# support commands
-				if position.crewman.current_cmd == 'Request Support':
-					
-					if key.vk == libtcod.KEY_TAB:
-						self.CycleSupportTarget(True)
-						self.UpdateGuiCon()
-						self.UpdateScenarioDisplay()
-						continue
-					
-					elif key_char == 'c':
-						# no request or support in progress
-						if self.support_status is None: continue
-						ShowMessage('Support attack cancelled.')
-						self.ResetSupport()
-						DisplayTimeInfo(time_con)
-						self.UpdateGuiCon()
-						self.UpdateCmdCon()
-						self.UpdateScenarioDisplay()
-						continue
-					
-					# request air or arty support
-					elif key_char in ['q', 'e']:
-						self.CallSupport(key_char == 'q')
-						DisplayTimeInfo(time_con)
-						self.UpdateGuiCon()
-						self.UpdateCmdCon()
-						self.UpdateScenarioDisplay()
-						continue
-				
 				# ready rack commands
-				elif position.crewman.current_cmd == 'Manage Ready Rack':
+				if position.crewman.current_cmd == 'Manage Ready Rack':
 					
 					# cycle active ammo type
 					if key_char == 'c':
@@ -12352,16 +12120,6 @@ def DisplayTimeInfo(console):
 	libtcod.console_set_default_foreground(console, SCEN_PHASE_COL[scenario.phase])
 	libtcod.console_print_ex(console, 10, 2, libtcod.BKGND_NONE, libtcod.CENTER, 
 		SCEN_PHASE_NAMES[scenario.phase] + ' Phase')
-	
-	# display support status if any
-	if scenario.support_status is not None:
-		libtcod.console_set_default_foreground(console, ALLIED_UNIT_COL)
-		lines = wrap(scenario.support_status, 19)
-		libtcod.console_print_ex(console, 10, 4, libtcod.BKGND_NONE, libtcod.CENTER,
-			lines[0])
-		if len(lines) > 1:
-			libtcod.console_print_ex(console, 10, 5, libtcod.BKGND_NONE, libtcod.CENTER,
-				lines[1])
 	
 
 
@@ -13792,7 +13550,7 @@ if not DEBUG:
 	libtcod.console_clear(0)
 	libtcod.console_blit(LoadXP('cats.xp'), 0, 0, 0, 0, 0, WINDOW_XM-15, WINDOW_YM-19)
 	libtcod.console_flush()
-	Wait(150, ignore_animations=True)
+	Wait(120, ignore_animations=True)
 	libtcod.console_clear(0)
 	libtcod.console_flush()
 

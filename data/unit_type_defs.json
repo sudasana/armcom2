@@ -2767,6 +2767,44 @@
 		}
 	},
 	
+	"7.5cm leIG 18": {
+		"category" : "Gun",
+		"class" : "Infantry Gun",
+		"portrait" : "unit_75mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "S",
+				"rof" : "22.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1932.01.01" : "100"
+		}
+	},
+	
 	"Opel Blitz 3-ton" : {
 		"category" : "Vehicle",
 		"class" : "Truck",

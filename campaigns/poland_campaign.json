@@ -13,6 +13,9 @@
 	"player_air_support": [
 		"Ju 87B Stuka"
 	],
+	"player_arty_support": [
+		"7.5cm leIG 18"
+	],
 	"enemy_unit_list" : [
 		"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Renault FT (MG)", "Vickers 6-Ton Mark E", "7TP",
 		"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
@@ -40,6 +43,8 @@
 			"enemy_nation" : "Poland",
 			"air_support_level" : 80.0,
 			"air_support_step" : 10.0,
+			"arty_support_level" : 50.0,
+			"arty_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "40",
 				"Light Tank" : "25",
@@ -68,6 +73,8 @@
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
 			"air_support_step" : 10.0,
+			"arty_support_level" : 50.0,
+			"arty_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "40",
 				"Light Tank" : "25",
@@ -96,6 +103,8 @@
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
 			"air_support_step" : 10.0,
+			"arty_support_level" : 30.0,
+			"arty_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "40",
 				"Light Tank" : "25",
@@ -124,6 +133,8 @@
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
 			"air_support_step" : 10.0,
+			"arty_support_level" : 50.0,
+			"arty_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "40",
 				"Light Tank" : "25",
@@ -152,6 +163,8 @@
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
 			"air_support_step" : 10.0,
+			"arty_support_level" : 60.0,
+			"arty_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "40",
 				"Light Tank" : "25",

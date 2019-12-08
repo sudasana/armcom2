@@ -6433,30 +6433,32 @@ class Unit:
 	
 	
 	# reset this unit for new turn
-	def ResetForNewTurn(self):
+	def ResetForNewTurn(self, skip_smoke=False):
 		
 		# check for smoke dispersal
-		for i in range(6):
-			if self.smoke[i] > 0:
-				roll = GetPercentileRoll()
-				
-				if self.moving:
-					roll -= 5.0
-				
-				if campaign_day.weather['Precipitation'] == 'Rain':
-					roll -= 5.0
-				elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
-					roll -= 15.0
-				
-				if roll <= 5.0:
-					self.smoke[i] -= 1
+		if not skip_smoke:
+		
+			for i in range(6):
+				if self.smoke[i] > 0:
+					roll = GetPercentileRoll()
 					
-					# show message if player
-					if self == scenario.player_unit:
-						if self.smoke[i] > 0:
-							ShowMessage('Some of the smoke nearby disperses somewhat.')
-						else:
-							ShowMessage('Some of the smoke nearby has dispersed.')
+					if self.moving:
+						roll -= 5.0
+					
+					if campaign_day.weather['Precipitation'] == 'Rain':
+						roll -= 5.0
+					elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+						roll -= 15.0
+					
+					if roll <= 5.0:
+						self.smoke[i] -= 1
+						
+						# show message if player
+						if self == scenario.player_unit:
+							if self.smoke[i] > 0:
+								ShowMessage('Some of the smoke nearby disperses somewhat.')
+							else:
+								ShowMessage('Some of the smoke nearby has dispersed.')
 		
 		self.moving = False
 		self.previous_facing = self.facing
@@ -11720,10 +11722,10 @@ class Scenario:
 			
 			# set up player unit for first activation
 			self.player_unit.BuildCmdLists()
-			self.player_unit.ResetForNewTurn()
+			self.player_unit.ResetForNewTurn(skip_smoke=True)
 			for unit in self.player_unit.squad:
 				unit.BuildCmdLists()
-				unit.ResetForNewTurn()
+				unit.ResetForNewTurn(skip_smoke=True)
 			
 			# if player was ambushed, enemy units activate first
 			if self.ambush:

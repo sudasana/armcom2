@@ -3899,7 +3899,7 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 4, 24, '(' + text + ')')
 			
 			# air support request
-			if 'air_support_level' not in campaign.current_week:
+			if 'air_support_level' not in campaign.current_week or campaign_day.weather['Cloud Cover'] == 'Overcast':
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
 			libtcod.console_print(cd_command_con, 3, 26, 'Request Air Support')
 			if self.air_support_request:
@@ -4453,6 +4453,8 @@ class CampaignDay:
 				if key_char == 'g':
 					if 'air_support_level' not in campaign.current_week:
 						continue
+					if self.weather['Cloud Cover'] == 'Overcast':
+						continue
 					self.air_support_request = not self.air_support_request
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
@@ -4550,7 +4552,6 @@ class CampaignDay:
 										weapon.ammo_stores['HE'] -= libtcod.random_get_int(0, 4, 10)
 										if weapon.ammo_stores['HE'] < 0:
 											weapon.ammo_stores['HE'] = 0
-										print('DEBUG: used HE shells in advancing fire')
 								# FUTURE: how to handle tanks where main weapon is MG or similar, or no HE?
 								# Don't allow advancing fire?
 								
@@ -4578,6 +4579,8 @@ class CampaignDay:
 							ShowMessage('You find no resistance and gain control of the area.')
 							self.map_hexes[(hx2,hy2)].CaptureMe(0)
 							self.encounter_mod += 30.0
+							self.air_support_request = False
+							self.arty_support_request = False
 						
 						# entering a friendly zone
 						else:
@@ -8540,6 +8543,7 @@ class Scenario:
 			# select unit type: run through shuffled list and roll against rarity if any
 			shuffle(type_list)
 			
+			selected_unit_id = None
 			for unit_id in type_list:
 			
 				# if no rarity factor given, select automatically
@@ -8576,8 +8580,9 @@ class Scenario:
 					selected_unit_id = unit_id
 					break
 			
-			# add the final selected unit id to list to spawn
-			enemy_unit_list.append(selected_unit_id)
+			# if able to roll for rarity, add the final selected unit id to list to spawn
+			if selected_unit_id is not None:
+				enemy_unit_list.append(selected_unit_id)
 		
 		# spawn one unit per unit id in the list
 		for unit_id in enemy_unit_list:
@@ -9726,6 +9731,8 @@ class Scenario:
 				if campaign_day.air_support_level < 0.0:
 					campaign_day.air_support_level = 0.0
 				self.DoAirAttack()
+			else:
+				ShowMessage('Unable to provide air support at this time.')
 		
 		# check for artillery attack
 		if campaign_day.arty_support_request:
@@ -9742,6 +9749,8 @@ class Scenario:
 				if campaign_day.arty_support_level < 0.0:
 					campaign_day.arty_support_level = 0.0
 				self.DoArtilleryAttack()
+			else:
+				ShowMessage('Unable to provide artillery support at this time.')
 		
 		# reset flags
 		campaign_day.air_support_request = False
@@ -10094,7 +10103,9 @@ class Scenario:
 					if not target.spotted:
 						target.hit_by_fp = True
 					
-					ShowMessage(target.GetName() + ' was hit by artillery attack')
+					ShowMessage(target.GetName() + ' was hit by artillery attack.')
+					
+					target.ResolveFP()
 				
 				# vehicle hit
 				elif target.GetStat('category') == 'Vehicle':
@@ -10278,17 +10289,6 @@ class Scenario:
 			self.UpdateScenarioDisplay()
 			Wait(15)
 		
-		# move support attack target if any
-		if self.support_target is not None:
-			(new_hx, new_hy) = GetAdjacentHex(self.support_target.hx, self.support_target.hy, direction)
-			if GetHexDistance(0, 0, new_hx, new_hy) > 3:
-				ShowMessage('Support target out of range, ending attack')
-				self.ResetSupport()
-			else:
-				if new_hx == 0 and new_hy == 0:
-					(new_hx, new_hy) = GetAdjacentHex(0, 0, direction)
-				self.support_target = self.hex_dict[(new_hx, new_hy)]
-		
 		# set new hex location for each moving unit and move into new hex stack
 		for unit in self.units:
 			if unit.dest_hex is None: continue
@@ -10343,11 +10343,6 @@ class Scenario:
 			(new_hx, new_hy) = RotateHex(unit.hx, unit.hy, r)
 			# set destination hex
 			unit.dest_hex = (new_hx, new_hy)
-		
-		# move support attack target if any
-		if self.support_target is not None:
-			(new_hx, new_hy) = RotateHex(self.support_target.hx, self.support_target.hy, r)
-			self.support_target = self.hex_dict[(new_hx, new_hy)]
 		
 		# FUTURE: animate movement?
 		

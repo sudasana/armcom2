@@ -11,7 +11,7 @@
 		"TKS (20mm)", "Vickers 6-Ton Mark E", "7TP"
 	],
 	"player_arty_support": [
-		"75mm wz. 02/26"
+		"75mm wz. 02/26", "105mm wz. 29"
 	],
 	"enemy_unit_list" : [
 		"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", 
@@ -85,8 +85,8 @@
 			"week_description" : "Pincer Movement",
 			"mission_odds" : {
 				"Advance" : "10",
-				"Battle" : "10",
-				"Counterattack" : "70",
+				"Battle" : "70",
+				"Counterattack" : "10",
 				"Fighting Withdrawl" : "10"
 			},
 			"enemy_nation" : "Germany",
@@ -111,8 +111,8 @@
 			"mission_odds" : {
 				"Advance" : "0",
 				"Battle" : "10",
-				"Counterattack" : "10",
-				"Fighting Withdrawl" : "80"
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "90"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 50.0,
@@ -135,9 +135,9 @@
 			"week_description" : "Break Out",
 			"mission_odds" : {
 				"Advance" : "50",
-				"Battle" : "0",
+				"Battle" : "50",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "50"
+				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 40.0,

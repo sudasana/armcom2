@@ -614,6 +614,43 @@
 		}
 	},
 	
+	"105mm wz. 29": {
+		"category" : "Gun",
+		"class" : "Artillery Gun",
+		"portrait" : "unit_105mm_gun.xp",
+		"size_class" : "Large",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "105",
+				"long_range" : "",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP", "HE"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "60"
+		}
+	},
+	
 	"Polski Fiat 621" : {
 		"category" : "Vehicle",
 		"class" : "Truck",

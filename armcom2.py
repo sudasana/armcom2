@@ -545,7 +545,8 @@ AP_BASE_CHANCE = {
 	'76L' : 160.0,
 	'76LL' : 300.0,
 	'88L' : 200.0,
-	'88LL' : 380.0
+	'88LL' : 380.0,
+	'105' : 420.0
 }
 
 # effective FP of an HE hit from different weapon calibres

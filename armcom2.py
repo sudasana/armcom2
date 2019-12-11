@@ -69,7 +69,7 @@ from calendar import monthrange			# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.9.0'					# game version
+VERSION = '0.9.1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1734,6 +1734,10 @@ class Campaign:
 			# if we've initiated a campaign day or are resuming a saved game with a
 			# campaign day running, go into the campaign day loop now
 			if campaign_day.started and not campaign_day.ended:
+				
+				# TEMP fix - clear any existing scenario object
+				global scenario
+				scenario = None
 			
 				campaign_day.DoCampaignDayLoop()
 				
@@ -2129,7 +2133,7 @@ class CampaignDay:
 		# generate new terrain for remainder of map
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			if hy == new_hy: continue
-			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy)
+			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy, self.mission)
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
 	
 		# set up zone control
@@ -4213,6 +4217,9 @@ class CampaignDay:
 		if self.scenario is not None:
 			self.UpdateCDDisplay()
 		
+		# init looping animations
+		self.InitAnimations()
+		
 		# calculate initial time to travel to front lines
 		if not self.travel_time_spent:
 			minutes = 45 + (libtcod.random_get_int(0, 1, 9) * 15)
@@ -4225,9 +4232,6 @@ class CampaignDay:
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
 		mouse_y = -1
-		
-		# init looping animations
-		self.InitAnimations()
 		
 		SaveGame()
 		

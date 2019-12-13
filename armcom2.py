@@ -69,7 +69,7 @@ from calendar import monthrange			# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.9.1'					# game version
+VERSION = '0.9.2'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -8148,14 +8148,14 @@ class Scenario:
 			if 'air_support_level' not in campaign.current_week: return
 			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
 			ShowMessage('Friendly air forces launch an attack!')
-			self.AirAttack()
+			self.DoAirAttack()
 			
 		# friendly arty attack
 		elif roll <= 20.0:
 			
 			if 'arty_support_level' not in campaign.current_week: return
 			ShowMessage('Friendly artillery forces fire a bombardment!')
-			self.ArtilleryAttack()
+			self.DoArtilleryAttack()
 			
 		# enemy reinforcement
 		elif roll <= 30.0:

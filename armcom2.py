@@ -3224,15 +3224,6 @@ class CampaignDay:
 					text = 'A new crewman joins your crew in the ' + position.name + ' position.'
 					ShowMessage(text)
 	
-	
-	# check to see if player squad needs to be refilled
-	def DoPlayerSquadCheck(self):
-		if campaign.player_squad_num == campaign.player_squad_max:
-			return
-		campaign.player_squad_num = campaign.player_squad_max
-		ShowMessage('You are joined by reserve units, bringing your squad back up to full strength.')
-		
-	
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
 		
@@ -4260,7 +4251,6 @@ class CampaignDay:
 					self.map_hexes[(hx,hy)].CaptureMe(0)
 					self.DoCrewCheck(campaign.player_unit)
 					self.CheckForEndOfDay()
-					self.DoPlayerSquadCheck()
 					self.UpdateCDDisplay()
 					libtcod.console_flush()
 					self.CheckForRandomEvent()
@@ -4620,9 +4610,22 @@ class CampaignDay:
 				if key_char == 'r':
 					if ShowNotification('Spend 30 minutes waiting for resupply?', confirm=True):
 						ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
-						self.AmmoReloadMenu()
+						
+						# spend time
 						self.AdvanceClock(0, 30)
 						DisplayTimeInfo(time_con)
+						self.UpdateCDDisplay()
+						
+						# allow player to replenish ammo
+						self.AmmoReloadMenu()
+						self.UpdateCDDisplay()
+						
+						# check for player squad replenishment
+						if campaign.player_squad_num < campaign.player_squad_max:
+		
+							campaign.player_squad_num = campaign.player_squad_max
+							ShowMessage('You are joined by reserve units, bringing your squad back up to full strength.')
+						
 						self.UpdateCDDisplay()
 						self.CheckForZoneCapture()
 						self.CheckForRandomEvent()
@@ -7989,7 +7992,6 @@ class Unit:
 			
 			# player squad member has been destroyed
 			elif self in scenario.player_unit.squad:
-				
 				campaign.player_squad_num -= 1
 		
 		scenario.UpdateUnitCon()

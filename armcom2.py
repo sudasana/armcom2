@@ -4648,13 +4648,30 @@ class CDMapHex:
 		self.objective = None		# player objective for this zone
 		
 		# set enemy strength level
-		self.enemy_strength = 1
+		if 'average_resistance' in campaign.current_week:
+			avg_strength = int(campaign.current_week['average_resistance'])
+		else:
+			avg_strength = 5
+		
+		# apply mission modifiers
 		if mission == 'Advance':
-			self.enemy_strength = libtcod.random_get_int(0, 1, 3) + libtcod.random_get_int(0, 0, 3)
+			avg_strength -= 1
 		elif mission in ['Battle', 'Fighting Withdrawl']:
-			self.enemy_strength = libtcod.random_get_int(0, 2, 5) + libtcod.random_get_int(0, 2, 5)
+			avg_strength += 2
 		elif mission == 'Counterattack':
-			self.enemy_strength = libtcod.random_get_int(0, 1, 5) + libtcod.random_get_int(0, 1, 5)
+			avg_strength += 1
+		
+		# roll for actual strength level
+		self.enemy_strength = 0
+		for i in range(2):
+			self.enemy_strength += libtcod.random_get_int(0, 0, avg_strength)
+		self.enemy_strength = int(self.enemy_strength / 2)
+		print('DEBUG: rolled zone strength of ' + str(self.enemy_strength))
+		
+		if self.enemy_strength < 1:
+			self.enemy_strength = 1
+		elif self.enemy_strength > 10:
+			self.enemy_strength = 10
 		
 		self.Reset()
 	

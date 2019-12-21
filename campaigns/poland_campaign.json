@@ -33,6 +33,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "80",
+			"average_resistance" : "7",
 			"week_description" : "Over the Polish Border",
 			"mission_odds" : {
 				"Advance" : "25",
@@ -61,6 +62,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "70",
+			"average_resistance" : "5",
 			"week_description" : "Further Into Poland",
 			"mission_odds" : {
 				"Advance" : "25",
@@ -89,6 +91,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "60",
+			"average_resistance" : "4",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
 				"Advance" : "50",
@@ -117,6 +120,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "50",
+			"average_resistance" : "4",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
 				"Advance" : "70",
@@ -145,6 +149,7 @@
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "50",
+			"average_resistance" : "3",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
 				"Advance" : "90",

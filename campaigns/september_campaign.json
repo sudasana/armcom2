@@ -32,6 +32,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "80",
+			"average_resistance" : "7",
 			"week_description" : "Invasion",
 			"mission_odds" : {
 				"Advance" : "5",
@@ -56,6 +57,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "70",
+			"average_resistance" : "8",
 			"week_description" : "Holding Back the Tide",
 			"mission_odds" : {
 				"Advance" : "0",
@@ -80,6 +82,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "60",
+			"average_resistance" : "5",
 			"week_description" : "Pincer Movement",
 			"mission_odds" : {
 				"Advance" : "10",
@@ -104,6 +107,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "60",
+			"average_resistance" : "7",
 			"week_description" : "Retreat",
 			"mission_odds" : {
 				"Advance" : "0",
@@ -128,6 +132,7 @@
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "60",
+			"average_resistance" : "3",
 			"week_description" : "Break Out",
 			"mission_odds" : {
 				"Advance" : "50",

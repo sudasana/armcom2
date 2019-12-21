@@ -2163,8 +2163,18 @@ class CampaignDay:
 	# calculate required tarvel time in minutes from one zone to another
 	def CalculateTravelTime(self, hx1, hy1, hx2, hy2):
 		
-		# check for road link
+		# check for river block
 		direction = self.GetDirectionToAdjacentCD(hx1, hy1, hx2, hy2)
+		if direction in self.map_hexes[(hx1,hy1)].rivers:
+			if direction not in self.map_hexes[(hx1,hy1)].bridges:
+				return -1
+		direction2 = self.GetDirectionToAdjacentCD(hx2, hy2, hx1, hy1)
+		if direction2 in self.map_hexes[(hx2,hy2)].rivers:
+			if direction2 not in self.map_hexes[(hx2,hy2)].bridges:
+				return -1
+		
+		# check for road link
+		
 		if direction in self.map_hexes[(hx1,hy1)].dirt_roads:
 			mins = 30
 		else:
@@ -4009,8 +4019,13 @@ class CampaignDay:
 			
 			# calculate and display travel time
 			mins = self.CalculateTravelTime(hx1, hy1, hx2, hy2)
+			# travel not allowed
+			if mins == -1:
+				text = 'N/A'
+			else:
+				text = str(mins) + ' mins.'
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			libtcod.console_print(cd_command_con, 1, 20, 'Travel Time: ' + str(mins) + ' mins.')
+			libtcod.console_print(cd_command_con, 1, 20, 'Travel Time: ' + text)
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			libtcod.console_print(cd_command_con, 3, 39, 'Enter')
@@ -4054,8 +4069,6 @@ class CampaignDay:
 			if 'arty_support_level' in campaign.current_week:
 				libtcod.console_print(cd_command_con, 4, 30, '(' + text + ')')
 			
-			
-		
 		# group
 		elif self.active_menu == 4:
 			
@@ -4632,8 +4645,17 @@ class CampaignDay:
 						self.UpdateCDDisplay()
 						self.CheckForRandomEvent()
 						
-					# proceed with travel
+					# travel
 					else:
+						
+						# get travel time and check for river block
+						mins = self.CalculateTravelTime(hx1,hy1,hx2,hy2)
+						
+						# travel not allowed
+						if mins == -1:
+							ShowMessage('Route blocked by river crossing, cannot proceed.')
+							continue
+						
 						# clear selected direction
 						self.selected_direction = None
 						self.UpdateCDGUICon()
@@ -4658,8 +4680,7 @@ class CampaignDay:
 						session.cd_x_offset = 0
 						session.cd_y_offset = 0
 					
-						# calculate travel time and advance clock
-						mins = self.CalculateTravelTime(hx1,hy1,hx2,hy2)
+						# advance clock
 						campaign_day.AdvanceClock(0, mins)
 						
 						# set new player location and clear travel direction

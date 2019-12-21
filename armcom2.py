@@ -12768,10 +12768,21 @@ def ShowGameMenu():
 		libtcod.console_print_ex(game_menu_con, 42, 6, libtcod.BKGND_NONE,
 			libtcod.CENTER, VERSION)
 		
-		
-		# main commands
+		# section titles
+		libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
 		libtcod.console_print_ex(game_menu_con, 42, 12, libtcod.BKGND_NONE,
 			libtcod.CENTER, 'Game Commands')
+		libtcod.console_print_ex(game_menu_con, 42, 20, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Game Options')
+		libtcod.console_set_default_background(game_menu_con, libtcod.darkest_blue)
+		libtcod.console_rect(game_menu_con, 30, 12, 25, 1, False, libtcod.BKGND_SET)
+		libtcod.console_rect(game_menu_con, 30, 20, 25, 1, False, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(game_menu_con, libtcod.darker_blue)
+		libtcod.console_rect(game_menu_con, 32, 12, 21, 1, False, libtcod.BKGND_SET)
+		libtcod.console_rect(game_menu_con, 32, 20, 21, 1, False, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(game_menu_con, libtcod.black)
+		
+		# main commands
 		libtcod.console_set_default_foreground(game_menu_con, ACTION_KEY_COL)
 		libtcod.console_print(game_menu_con, 30, 14, 'Esc')
 		libtcod.console_print(game_menu_con, 30, 15, 'Q')
@@ -12780,18 +12791,15 @@ def ShowGameMenu():
 		libtcod.console_print(game_menu_con, 35, 15, 'Save and Quit')
 		
 		# display game options
-		libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
-		libtcod.console_print_ex(game_menu_con, 42, 20, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Game Options')
 		DisplayGameOptions(game_menu_con, WINDOW_XM-15, 22, skip_esc=True)
 		
 		# display quote
 		libtcod.console_set_default_foreground(game_menu_con, libtcod.grey)
-		libtcod.console_print(game_menu_con, 25, 46, 'We are the Dead. Short days ago')
-		libtcod.console_print(game_menu_con, 25, 47, 'We lived, felt dawn, saw sunset glow,')
-		libtcod.console_print(game_menu_con, 25, 48, 'Loved and were loved, and now we lie')
-		libtcod.console_print(game_menu_con, 25, 49, 'In Flanders fields.')
-		libtcod.console_print(game_menu_con, 25, 51, 'John McCrae (1872-1918)')
+		libtcod.console_print(game_menu_con, 25, 44, 'We are the Dead. Short days ago')
+		libtcod.console_print(game_menu_con, 25, 45, 'We lived, felt dawn, saw sunset glow,')
+		libtcod.console_print(game_menu_con, 25, 46, 'Loved and were loved, and now we lie')
+		libtcod.console_print(game_menu_con, 25, 47, 'In Flanders fields.')
+		libtcod.console_print(game_menu_con, 25, 49, 'John McCrae (1872-1918)')
 		
 		libtcod.console_blit(game_menu_con, 0, 0, 0, 0, 0, 3, 3)
 		

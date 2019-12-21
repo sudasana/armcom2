@@ -232,6 +232,10 @@ MISSION_DESC = {
 
 # FUTURE: move these to a JSON file?
 
+# base crew experience point and level system
+BASE_EXP_REQUIRED = 1.0
+EXP_EXPONENT = 1.2
+
 # region definitions: set by campaigns, determine terrain odds on the campaign day map,
 # types and odds of weather conditions at different times during the calendar year
 REGIONS = {
@@ -246,6 +250,9 @@ REGIONS = {
 			'Marsh' : 5.0,
 			'Villages' : 10.0
 		},
+		
+		# odds of 1 dirt road bring present on the map
+		'dirt_road_odds' : 50.0,
 		
 		# odds of 1+ rivers being spawned (with crossing points)
 		'river_odds' : 50.0,
@@ -348,6 +355,7 @@ REGIONS = {
 			'Villages' : 10.0
 		},
 		
+		'dirt_road_odds' : 80.0,
 		'river_odds' : 20.0,
 
 		'season_weather_odds' : {
@@ -438,13 +446,6 @@ REGIONS = {
 GROUND_CONDITION_CHANGE_CHANCE = 3.0
 # modifier for heavy rain/snow
 HEAVY_PRECEP_MOD = 5.0
-
-# minimum and maximum advance chance (2 rolls) per day
-MIN_ADVANCE_CHANCE = 16.0
-MAX_ADVANCE_CHANCE = 95.0
-
-# percent chance of crew getting an advance, per scenario fought that day
-ADVANCE_CHANCE_PER_SCEN = 8.0
 
 # list of crew stats
 CREW_STATS = ['Perception', 'Morale', 'Grit', 'Knowledge']
@@ -819,9 +820,14 @@ class Campaign:
 		self.logs[self.today] = campaign_day.records.copy()
 	
 	
-	# award VP to the player
+	# award VP to the player, also adds exp to active crew
 	def AwardVP(self, vp_to_add):
 		self.player_vp += vp_to_add
+		
+		for position in self.player_unit.positions_list:
+			if position.crewman is None: continue
+			if position.crewman.status not in ['Dead', 'Unconscious']:
+				position.crewman.AwardExp(vp_to_add)
 	
 	
 	# menu to select a campaign
@@ -1222,7 +1228,7 @@ class Campaign:
 		Wait(95, ignore_animations=True)
 	
 	
-	# do automatic actions that end a campaign day
+	# do automatic actions that end a campaign day: resolve wounds and check for crewman level up
 	def ShowEndOfDay(self):
 		
 		# create background console
@@ -1257,7 +1263,7 @@ class Campaign:
 		libtcod.console_set_default_foreground(con, libtcod.red)
 		libtcod.console_print(con, 43, 18, 'Wound')
 		libtcod.console_set_default_foreground(con, libtcod.light_blue)
-		libtcod.console_print(con, 55, 18, 'Advances')
+		libtcod.console_print(con, 55, 18, 'Level Up')
 		
 		y = 20
 		for position in campaign.player_unit.positions_list:
@@ -1315,31 +1321,20 @@ class Campaign:
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(50, ignore_animations=True)
 			
-			# roll for advance
-			# chance based on value of 
-			crew_advance = 0
+			# check for level up
+			levels_up = 0
+			for level in range(position.crewman.level+1, 31):
+				if position.crewman.exp <= GetExpRequiredFor(level):
+					levels_up += 1
 			
-			chance = float(campaign_day.records['Battles Fought']) * ADVANCE_CHANCE_PER_SCEN
-			if chance < MIN_ADVANCE_CHANCE:
-				chance = MIN_ADVANCE_CHANCE
-			elif chance > MAX_ADVANCE_CHANCE:
-				chance = MAX_ADVANCE_CHANCE
-			#print('DEBUG: Advance chance is: ' + str(chance))
-			roll = GetPercentileRoll()
-			
-			if roll <= chance:
-				crew_advance += 1
-				roll = GetPercentileRoll()
-				if roll <= chance:
-					crew_advance += 1
-			
-			if crew_advance == 0:
+			if levels_up == 0:
 				libtcod.console_set_default_foreground(con, libtcod.light_grey)
 				libtcod.console_print(con, 55, y+1, 'None')
 			else:
+				crewman.level += levels_up
+				crewman.adv += levels_up
 				libtcod.console_set_default_foreground(con, libtcod.white)
-				libtcod.console_print(con, 55, y+1, '+' + str(crew_advance))
-				position.crewman.adv += crew_advance
+				libtcod.console_print(con, 55, y+1, '+' + str(levels_up))
 			
 			# crewmen recover too
 			position.crewman.status = ''
@@ -3248,6 +3243,12 @@ class CampaignDay:
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)].dirt_roads = []
 		
+		# see if a road is generated on this map
+		if 'dirt_road_odds' not in REGIONS[campaign.stats['region']]:
+			return
+		if GetPercentileRoll() > float(REGIONS[campaign.stats['region']]['river_odds']):
+			return
+		
 		# choose a random edge hex
 		edge_list = []
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
@@ -5026,12 +5027,18 @@ class Personnel:
 		
 		self.skills = []				# list of skills
 		
-		# advance points
-		if self.current_position.name in ['Commander', 'Commander/Gunner']:
-			self.adv = 2
-		else:
-			self.adv = 1
+		# current level, exp, and advance points
+		self.level = 1
+		self.exp = 0
+		self.adv = 1
 		
+		# commanders start higher
+		if self.current_position.name in ['Commander', 'Commander/Gunner']:
+			self.level = 3
+			self.exp = GetExpRequiredFor(self.level)
+			self.adv = 3
+		
+		# exposed / buttoned up status
 		self.ce = False					# crewman is exposed in a vehicle
 		self.SetCEStatus()				# set CE status
 		
@@ -5043,6 +5050,10 @@ class Personnel:
 		
 		self.bailed_out = False				# has bailed out of an AFV
 	
+	
+	# award a number of exp to this crewman
+	def AwardExp(exp):
+		self.exp += exp
 	
 	# display a menu for this crewman, used for members of player's unit
 	def ShowCrewmanMenu(self):
@@ -5150,14 +5161,21 @@ class Personnel:
 				libtcod.console_print(crewman_menu_con, 62, y, line)
 				y+=1	
 			
-			# current advance points
+			# current level, exp, points
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.darkest_grey)
-			libtcod.console_rect(crewman_menu_con, 30, 48, 21, 1, False, libtcod.BKGND_SET)
+			libtcod.console_rect(crewman_menu_con, 30, 46, 21, 3, False, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
 			
 			libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
+			libtcod.console_print(crewman_menu_con, 30, 46, 'Level')
+			libtcod.console_print(crewman_menu_con, 30, 47, 'Exp')
 			libtcod.console_print(crewman_menu_con, 30, 48, 'Advance Points')
+			
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
+			libtcod.console_print_ex(crewman_menu_con, 50, 46, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(self.level))
+			libtcod.console_print_ex(crewman_menu_con, 50, 47, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(self.exp))
 			libtcod.console_print_ex(crewman_menu_con, 50, 48, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(self.adv))
 			
@@ -12037,6 +12055,14 @@ class Scenario:
 ##########################################################################################
 #                                  General Functions                                     #
 ##########################################################################################	
+
+# return the amount of EXP required for a personel to be at a given level
+def GetExpRequiredFor(level):
+	exp = 0
+	for l in range(1, level):
+		exp += int(ceil(BASE_EXP_REQUIRED * (pow(float(l), EXP_EXPONENT))))
+	return exp
+
 
 # generate and return a console image of a plane
 def GeneratePlaneCon(direction):

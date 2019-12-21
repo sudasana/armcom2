@@ -3348,7 +3348,7 @@ class CampaignDay:
 	# generate rivers and bridges along hex zone edges
 	def GenerateRivers(self):
 		
-		# roll for how many rivers are on map (max 2?)
+		# roll for how many rivers are on map (max 2)
 		if 'river_odds' not in REGIONS[campaign.stats['region']]:
 			return
 		
@@ -3400,6 +3400,10 @@ class CampaignDay:
 				
 				if (hx, hy) not in CAMPAIGN_DAY_HEXES: continue
 				
+				# chance that river will end in map
+				if GetPercentileRoll() <= 2.0:
+					break
+				
 				# each hex needs 1+ hexsides to become rivers
 				
 				# determine direction to previous hex
@@ -3447,6 +3451,8 @@ class CampaignDay:
 				print('DEBUG: best path is: ' + str(path))
 				
 				for direction in path[1:]:
+					# may have already been added by first river
+					if direction in self.map_hexes[(hx,hy)].rivers: continue
 					self.map_hexes[(hx,hy)].rivers.append(direction)
 				
 		# create bridges in the rivers
@@ -3456,14 +3462,14 @@ class CampaignDay:
 			for direction in self.map_hexes[(hx,hy)].rivers:
 				# road already here
 				if direction in self.map_hexes[(hx,hy)].dirt_roads:
-					self.map_hexes[(hx,hy)].bridges.append(direction)
+					if direction not in self.map_hexes[(hx,hy)].bridges:
+						self.map_hexes[(hx,hy)].bridges.append(direction)
 					continue
 				
 				# randomly add a bridge/ford here
 				if GetPercentileRoll() <= 10.0:
-					self.map_hexes[(hx,hy)].bridges.append(direction)
-				
-				
+					if direction not in self.map_hexes[(hx,hy)].bridges:
+						self.map_hexes[(hx,hy)].bridges.append(direction)
 		
 		
 	# plot the centre of a day map hex location onto the map console

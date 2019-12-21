@@ -2192,11 +2192,12 @@ class CampaignDay:
 		elif self.weather['Precipitation'] != 'None':
 			mins += 10
 		
-		# check for active support request flag(s)
-		if self.arty_support_request:
-			mins += 15
-		if self.air_support_request:
-			mins += 10
+		# check for active support request flag(s) when moving into enemy zone
+		if self.map_hexes[(hx2,hy2)].controlled_by == 1:
+			if self.arty_support_request:
+				mins += 15
+			if self.air_support_request:
+				mins += 10
 		
 		return mins
 		

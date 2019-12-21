@@ -4666,7 +4666,6 @@ class CDMapHex:
 		for i in range(2):
 			self.enemy_strength += libtcod.random_get_int(0, 0, avg_strength)
 		self.enemy_strength = int(self.enemy_strength / 2)
-		print('DEBUG: rolled zone strength of ' + str(self.enemy_strength))
 		
 		if self.enemy_strength < 1:
 			self.enemy_strength = 1

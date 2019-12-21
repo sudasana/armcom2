@@ -917,6 +917,10 @@ class Campaign:
 		for filename in os.listdir(CAMPAIGNPATH):
 			if not filename.endswith('.json'): continue
 			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
+				
+				# TEMP
+				print('Loading ' + filename)
+				
 				campaign_data = json.load(data_file)
 			new_campaign = {}
 			new_campaign['filename'] = filename
@@ -2019,12 +2023,10 @@ class CampaignDay:
 		self.air_support_level = 0.0
 		if 'air_support_level' in campaign.current_week:
 			self.air_support_level = campaign.current_week['air_support_level']
-			self.air_support_step = campaign.current_week['air_support_step']
 		
 		self.arty_support_level = 0.0
 		if 'arty_support_level' in campaign.current_week:
 			self.arty_support_level = campaign.current_week['arty_support_level']
-			self.arty_support_step = campaign.current_week['arty_support_step']
 		
 		self.advancing_fire = False			# player is using advancing fire when moving
 		self.air_support_request = False		# " requesting air support upon move
@@ -2629,13 +2631,13 @@ class CampaignDay:
 			
 			if 'air_support_level' in campaign.current_week:
 				text += 'air'
-				self.air_support_level += (self.air_support_step * float(libtcod.random_get_int(0, 1, 3)))
+				self.air_support_level += (10.0 * float(libtcod.random_get_int(0, 1, 3)))
 				# make sure does not go beyond initial level
 				if self.air_support_level > campaign.current_week['air_support_level']:
 					self.air_support_level = campaign.current_week['air_support_level']
 			elif 'arty_support_level' in campaign.current_week:
 				text += 'artillery'
-				self.arty_support_level += (self.arty_support_step * float(libtcod.random_get_int(0, 1, 3)))
+				self.arty_support_level += (10.0 * float(libtcod.random_get_int(0, 1, 3)))
 				if self.arty_support_level > campaign.current_week['arty_support_level']:
 					self.arty_support_level = campaign.current_week['arty_support_level']
 			else:
@@ -9731,7 +9733,7 @@ class Scenario:
 				granted = False
 			
 			if granted:
-				campaign_day.air_support_level -= campaign_day.air_support_step
+				campaign_day.air_support_level -= 10.0
 				if campaign_day.air_support_level < 0.0:
 					campaign_day.air_support_level = 0.0
 				self.DoAirAttack()
@@ -9749,7 +9751,7 @@ class Scenario:
 				granted = True
 			
 			if granted:
-				campaign_day.arty_support_level -= campaign_day.arty_support_step
+				campaign_day.arty_support_level -= 10.0
 				if campaign_day.arty_support_level < 0.0:
 					campaign_day.arty_support_level = 0.0
 				self.DoArtilleryAttack()

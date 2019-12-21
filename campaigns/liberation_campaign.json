@@ -38,7 +38,6 @@
 			},
 			"enemy_nation" : "Poland",
 			"arty_support_level" : 80.0,
-			"arty_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "40",
 				"Light Tank" : "25",
@@ -65,7 +64,6 @@
 			},
 			"enemy_nation" : "Poland",
 			"arty_support_level" : 80.0,
-			"arty_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "40",
 				"Light Tank" : "25",
@@ -92,7 +90,6 @@
 			},
 			"enemy_nation" : "Poland",
 			"arty_support_level" : 80.0,
-			"arty_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Tankette" : "40",
 				"Light Tank" : "25",

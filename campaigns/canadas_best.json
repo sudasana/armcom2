@@ -43,7 +43,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 80.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -72,7 +71,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -101,7 +99,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -131,7 +128,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -165,7 +161,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -194,7 +189,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -223,7 +217,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -253,7 +246,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -287,7 +279,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -316,7 +307,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -345,7 +335,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -374,7 +363,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -403,7 +391,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -433,7 +420,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -468,7 +454,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -503,7 +488,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -538,7 +522,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -572,7 +555,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -601,7 +583,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -630,7 +611,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -659,7 +639,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",
@@ -689,7 +668,6 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
 			"enemy_unit_class_odds" : {
 				"Light Tank" : "70",
 				"Assault Gun" : "80",

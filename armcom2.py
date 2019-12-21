@@ -760,19 +760,7 @@ class Campaign:
 			# if refitting week, only add the first day to the calendar
 			if 'refitting' in week:
 				self.combat_calendar.append(week['start_date'])
-				#print('DEBUG: added a refit day')
 				continue
-			
-			# roll for number of combat days this week
-			combat_days = 1
-			combat_chance = float(week['combat_chance'])
-			while combat_days < 7:
-				if GetPercentileRoll() <= combat_chance:
-					combat_days += 1
-				else:
-					break
-			
-			# determine which calendar days are included from this week
 			
 			# build list of possible dates this week: add the first date, then the following 6
 			possible_days = []
@@ -804,24 +792,18 @@ class Campaign:
 				
 				possible_days.append(day_text)
 			
-			# select from list of possible days
-			
-			# if fewer possible days than needed, try to add them all
-			if len(possible_days) < combat_days:
-				combat_days = len(possible_days)
-				
-			for day_text in sample(possible_days, combat_days):
-				# if day is past end of calendar week, throw it out
+			# for each possible day, roll to see if it's added to the combat calendar
+			chance = float(week['combat_chance'])
+			for day_text in possible_days:
+				# if day is past end of calendar week, stop
 				if 'end_date' in week:
 					if day_text > week['end_date']:
 						continue
-					
-				self.combat_calendar.append(day_text)
+				
+				if GetPercentileRoll() <= chance:
+					self.combat_calendar.append(day_text)
 		
-		# sort final list of days
-		self.combat_calendar.sort()
-		
-		#print('DEBUG: Final day list: ')
+		#print('DEBUG: Added ' + str(len(self.combat_calendar)) + ' days to combat calendar')
 		#for day_text in self.combat_calendar:
 		#	print(day_text)
 	

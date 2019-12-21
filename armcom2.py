@@ -150,7 +150,8 @@ ENEMY_UNIT_COL = libtcod.Color(255, 20, 20)		# known "
 ALLIED_UNIT_COL = libtcod.Color(120, 120, 255)		# allied unit display colour
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
 DIRT_ROAD_COL = libtcod.Color(80, 50, 20)		# dirt roads on campaign day map
-
+RIVER_COL = libtcod.Color(0, 0, 140)			# rivers "
+BRIDGE_COL = libtcod.Color(40, 20, 10)			# bridges/fords "
 
 # text names for months
 MONTH_NAMES = [
@@ -245,6 +246,9 @@ REGIONS = {
 			'Marsh' : 5.0,
 			'Villages' : 10.0
 		},
+		
+		# odds of 1+ rivers being spawned (with crossing points)
+		'river_odds' : 50.0,
 		
 		# seasons, end dates, and weather odds for each season
 		'season_weather_odds' : {
@@ -343,6 +347,8 @@ REGIONS = {
 			'Marsh' : 5.0,
 			'Villages' : 10.0
 		},
+		
+		'river_odds' : 20.0,
 
 		'season_weather_odds' : {
 			
@@ -1989,8 +1995,9 @@ class CampaignDay:
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}
 		
-		# generate dirt roads on campaign day map
+		# generate dirt roads and rivers on campaign day map
 		self.GenerateRoads()
+		self.GenerateRivers()
 		
 		self.active_menu = 3				# number of currently active command menu
 		self.selected_position = 0			# selected crew position in crew command menu tab
@@ -3336,6 +3343,127 @@ class CampaignDay:
 					d = self.GetDirectionToAdjacentCD(hx, hy, hx_p, hy_p)
 					self.map_hexes[(hx,hy)].dirt_roads.append(d)
 					self.map_hexes[(hx_p,hy_p)].dirt_roads.append(ConstrainDir(d+3))
+	
+	
+	# generate rivers and bridges along hex zone edges
+	def GenerateRivers(self):
+		
+		# roll for how many rivers are on map (max 2?)
+		if 'river_odds' not in REGIONS[campaign.stats['region']]:
+			return
+		
+		# for DEBUG - clear any existing rivers and bridges
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			self.map_hexes[(hx,hy)].rivers = []
+			self.map_hexes[(hx,hy)].bridges = []
+		
+		rivers = 0
+		odds = float(REGIONS[campaign.stats['region']]['river_odds'])
+		
+		if GetPercentileRoll() <= odds:
+			rivers += 1
+			if GetPercentileRoll() <= odds:
+				rivers += 1
+		
+		# TEMP - testing
+		rivers = 1
+		
+		if rivers == 0: return
+		
+		# create the rivers
+		for i in range(rivers):
+			
+			river_list = []
+			
+			# build a list of map edge hexes
+			edge_list = []
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				for d in range(6):
+					if self.GetAdjacentCDHex(hx, hy, d) not in CAMPAIGN_DAY_HEXES:
+						edge_list.append((hx, hy))
+						break
+			
+			# determine starting and ending hex 
+			(hx1, hy1) = choice(edge_list)
+			shuffle(edge_list)
+			for (hx2, hy2) in edge_list:
+				if GetHexDistance(hx1, hy1, hx2, hy2) < 5: continue
+				break
+			
+			print('DEBUG: Adding river from ' + str(hx1) + ',' + str(hy1) + ' to ' + str(hx2) + ',' + str(hy2))
+			
+			# run through the hex line
+			hex_line = GetHexLine(hx1, hy1, hx2, hy2)
+			for index in range(len(hex_line)):
+			
+				(hx, hy) = hex_line[index]
+				
+				if (hx, hy) not in CAMPAIGN_DAY_HEXES: continue
+				
+				# each hex needs 1+ hexsides to become rivers
+				
+				# determine direction to previous hex
+				if hx == hx1 and hy == hy1:
+					
+					# for first hex, we need to use off-board hex as previous location
+					for direction1 in range(6):
+						if self.GetAdjacentCDHex(hx, hy, direction1) not in CAMPAIGN_DAY_HEXES:
+							break
+				
+				else:
+					# otherwise use direction toward previous hex
+					(hx_n, hy_n) = hex_line[index-1]
+					direction1 = self.GetDirectionToAdjacentCD(hx, hy, hx_n, hy_n)
+				
+				# determine direction to next hex
+				if hx == hx2 and hy == hy2:
+					# for final hex, we need to use off-board hex as next location
+					for direction2 in range(6):
+						if self.GetAdjacentCDHex(hx, hy, direction2) not in CAMPAIGN_DAY_HEXES:
+							break
+				else:
+					# otherwise use direction toward next hex
+					(hx_n, hy_n) = hex_line[index+1]
+					direction2 = self.GetDirectionToAdjacentCD(hx, hy, hx_n, hy_n)
+				
+				print('DEBUG: for ' + str(hx) + ',' + str(hy) + ' rotating from ' + str(direction1) + ' to ' + str(direction2))
+				
+				# determine shortest rotation path (clockwise or counter clockwise)
+				path1 = []
+				for i in range(6):
+					path1.append(ConstrainDir(direction1 + i))
+					if ConstrainDir(direction1 + i) == direction2: break
+					
+				path2 = []
+				for i in range(6):
+					path2.append(ConstrainDir(direction1 - i))
+					if ConstrainDir(direction1 - i) == direction2: break
+					
+				if len(path1) < len(path2):
+					path = path1
+				else:
+					path = path2
+				
+				print('DEBUG: best path is: ' + str(path))
+				
+				for direction in path[1:]:
+					self.map_hexes[(hx,hy)].rivers.append(direction)
+				
+		# create bridges in the rivers
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			if len(self.map_hexes[(hx,hy)].rivers) == 0: continue
+		
+			for direction in self.map_hexes[(hx,hy)].rivers:
+				# road already here
+				if direction in self.map_hexes[(hx,hy)].dirt_roads:
+					self.map_hexes[(hx,hy)].bridges.append(direction)
+					continue
+				
+				# randomly add a bridge/ford here
+				if GetPercentileRoll() <= 10.0:
+					self.map_hexes[(hx,hy)].bridges.append(direction)
+				
+				
 		
 		
 	# plot the centre of a day map hex location onto the map console
@@ -3610,7 +3738,24 @@ class CampaignDay:
 				# if character is not blank or hex edge, remove it
 				if libtcod.console_get_char(cd_map_con, x, y) not in [0, 249, 250]:
 					libtcod.console_set_char(cd_map_con, x, y, 0)
+		
+		# draw rivers overtop
+		for (hx, hy), map_hex in self.map_hexes.items():
+			if len(map_hex.rivers) == 0: continue
 			
+			(x, y) = self.PlotCDHex(hx, hy)
+			
+			# draw each river edge
+			for direction in map_hex.rivers:
+				for (xm, ym) in CD_HEX_EDGE_CELLS[direction]:
+					libtcod.console_put_char_ex(cd_map_con, x+xm, y+ym, 0,
+						libtcod.white, RIVER_COL)
+					
+			# draw any bridges
+			for direction in map_hex.bridges:
+				for (xm, ym) in CD_HEX_EDGE_CELLS[direction][1:-1]:
+					libtcod.console_put_char_ex(cd_map_con, x+xm, y+ym, 240,
+						libtcod.darkest_sepia, DIRT_ROAD_COL)
 			
 		
 		# draw hex row guides
@@ -4644,6 +4789,8 @@ class CDMapHex:
 		
 		self.dirt_roads = []		# directions linked by a dirt road
 		self.stone_roads = []		# " stone road
+		self.rivers = []		# river edges
+		self.bridges = []		# bridged edges
 		
 		self.controlled_by = 1		# which player side currently controls this zone
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
@@ -13144,7 +13291,7 @@ def ShowDebugMenu():
 			libtcod.console_print(con, x, y+(xm*2), str(xm+1))
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		libtcod.console_print(con, x+2, y, 'Regenerate CD Map Roads')
+		libtcod.console_print(con, x+2, y, 'Regenerate CD Map Roads & Rivers')
 		libtcod.console_print(con, x+2, y+2, 'Give Crewman Serious Wound')
 		libtcod.console_print(con, x+2, y+4, 'Immobilize Player')
 		libtcod.console_print(con, x+2, y+6, 'Set Time to End of Day')
@@ -13207,9 +13354,10 @@ def ShowDebugMenu():
 		if key_num == 1:
 			if campaign_day is not None:
 				campaign_day.GenerateRoads()
+				campaign_day.GenerateRivers()
 				campaign_day.UpdateCDMapCon()
 				campaign_day.UpdateCDDisplay()
-				ShowMessage('Roads regenerated')
+				ShowMessage('Roads and rivers regenerated')
 				exit_menu = True
 				continue
 		

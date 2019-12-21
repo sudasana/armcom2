@@ -917,10 +917,6 @@ class Campaign:
 		for filename in os.listdir(CAMPAIGNPATH):
 			if not filename.endswith('.json'): continue
 			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
-				
-				# TEMP
-				print('Loading ' + filename)
-				
 				campaign_data = json.load(data_file)
 			new_campaign = {}
 			new_campaign['filename'] = filename
@@ -2194,6 +2190,12 @@ class CampaignDay:
 		elif self.weather['Ground'] in ['Muddy', 'Snow']:
 			mins += 15
 		elif self.weather['Precipitation'] != 'None':
+			mins += 10
+		
+		# check for active support request flag(s)
+		if self.arty_support_request:
+			mins += 15
+		if self.air_support_request:
 			mins += 10
 		
 		return mins
@@ -4382,8 +4384,6 @@ class CampaignDay:
 						if self.arty_support_level > maximum:
 							self.arty_support_level = maximum
 					
-					#self.CheckForRandomEvent()
-					#self.CheckForZoneCapture()
 					SaveGame()
 					continue
 			

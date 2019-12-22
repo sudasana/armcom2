@@ -232,6 +232,9 @@ MISSION_DESC = {
 
 # FUTURE: move these to a JSON file?
 
+# chance of a direct hit during air or artillery attacks
+DIRECT_HIT_CHANCE = 8.0
+
 # base crew experience point and level system
 BASE_EXP_REQUIRED = 10.0
 EXP_EXPONENT = 1.1
@@ -659,6 +662,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'HD Chance' : 20.0,
 		'Movement Mod' : -30.0,
 		'Bog Mod' : 5.0,
+		'Double Bog Check' : True,		# player must test to bog before moving out of this terrain type
 		'Air Burst' : 20.0,
 		'Burnable' : True
 	},
@@ -691,7 +695,8 @@ SCENARIO_TERRAIN_EFFECTS = {
 		},
 		'HD Chance' : 15.0,
 		'Movement Mod' : -30.0,
-		'Bog Mod' : 10.0
+		'Bog Mod' : 10.0,
+		'Double Bog Check' : True
 	}
 }
 
@@ -10141,14 +10146,19 @@ class Scenario:
 				# hit
 				results = True
 				
+				# roll for direct hit / near miss
+				direct_hit = False
+				if GetPercentileRoll() <= DIRECT_HIT_CHANCE:
+					direct_hit = True
+				
 				# infantry or gun target
 				if target.GetStat('category') in ['Infantry', 'Gun']:
 					
-					# critical hit modifier
-					if roll <= 3.0:
-						target.fp_to_resolve += (effective_fp * 2)
-					else:
-						target.fp_to_resolve += effective_fp
+					# direct hit: destroyed
+					if direct_hit:
+						ShowMessage(target.GetName() + ' was destroyed by a direct hit from the air attack.')
+						target.DestroyMe()
+						continue
 					
 					if not target.spotted:
 						target.hit_by_fp = True
@@ -10157,6 +10167,13 @@ class Scenario:
 				
 				# vehicle hit
 				elif target.GetStat('category') == 'Vehicle':
+					
+					# direct hit - unarmoured and open topped vehicles destroyed
+					if direct_hit:
+						if target.GetStat('armour') is None or target.GetStat('open_topped') is not None:
+							ShowMessage(target.GetName() + ' was destroyed by a direct hit from the air attack.')
+							target.DestroyMe()
+							continue
 					
 					# determine location hit - use side locations and modify later
 					# for aerial attack
@@ -10170,8 +10187,10 @@ class Scenario:
 						if calibre <= bomb_calibre:
 							break
 					
-					# FUTURE: direct hit vs. near miss
-					# FUTURE: if direct hit and open topped, automatically destroyed
+					# direct hit modifier
+					if direct_hit:
+						chance = round(chance * 2.0, 1)
+						print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
 					
 					# target armour modifier
 					armour = target.GetStat('armour')
@@ -10185,11 +10204,6 @@ class Scenario:
 									modifier = modifier * 1.8
 								
 								chance += modifier
-								
-								# apply critical hit modifier if any
-								if roll <= 3.0:
-									modifier = round(abs(modifier) * 0.8, 2)
-									chance += modifier
 					
 					# calculate final chance
 					chance = RestrictChance(chance)
@@ -10281,7 +10295,7 @@ class Scenario:
 				for i in range(2, effective_fp + 1):
 					chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
 				
-				# FUTURE: apply modifiers here
+				# FUTURE: apply further modifiers here
 				
 				chance = round(chance, 2)
 				roll = GetPercentileRoll()
@@ -10292,14 +10306,19 @@ class Scenario:
 				
 				results = True
 				
+				# roll for direct hit / near miss
+				direct_hit = False
+				if GetPercentileRoll() <= DIRECT_HIT_CHANCE:
+					direct_hit = True
+				
 				# infantry or gun target hit
 				if target.GetStat('category') in ['Infantry', 'Gun']:
 					
-					# critical hit modifier
-					if roll <= 3.0:
-						target.fp_to_resolve += (effective_fp * 2)
-					else:
-						target.fp_to_resolve += effective_fp
+					# direct hit: destroyed
+					if direct_hit:
+						ShowMessage(target.GetName() + ' was destroyed by a direct hit from the artillery attack.')
+						target.DestroyMe()
+						continue
 					
 					if not target.spotted:
 						target.hit_by_fp = True
@@ -10311,6 +10330,13 @@ class Scenario:
 				# vehicle hit
 				elif target.GetStat('category') == 'Vehicle':
 					
+					# direct hit - unarmoured and open topped vehicles destroyed
+					if direct_hit:
+						if target.GetStat('armour') is None or target.GetStat('open_topped') is not None:
+							ShowMessage(target.GetName() + ' was destroyed by a direct hit from the artillery attack.')
+							target.DestroyMe()
+							continue
+					
 					# determine location hit - use side locations and modify later
 					# for aerial attack
 					if GetPercentileRoll() <= 50.0:
@@ -10318,11 +10344,13 @@ class Scenario:
 					else:
 						hit_location = 'turret_side'
 					
-					# FUTURE: direct hit vs. near miss
-					# FUTURE: if direct hit and open topped, automatically destroyed
-					
 					# start with base AP chance
 					chance = ap_chance
+					
+					# direct hit modifier
+					if direct_hit:
+						chance = round(chance * 2.0, 1)
+						print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
 					
 					# apply target armour modifier
 					armour = target.GetStat('armour')
@@ -10337,11 +10365,6 @@ class Scenario:
 								
 								chance += modifier
 								
-								# apply critical hit modifier if any
-								if roll <= 3.0:
-									modifier = round(abs(modifier) * 0.8, 2)
-									chance += modifier
-					
 					# calculate final chance of AP and do roll
 					chance = RestrictChance(chance)
 					roll = GetPercentileRoll()
@@ -10363,6 +10386,22 @@ class Scenario:
 	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
 	def MovePlayer(self, forward):
+		
+		# check for double bog check 
+		if 'Double Bog Check' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
+			# FUTURE: check for squad units too
+			for unit in self.units:
+				if unit != self.player_unit: continue
+				unit.DoBogCheck(forward)
+		
+		# notify player and update consoles if player bogged
+		if self.player_unit.bogged:
+			ShowMessage('Your tank has becomed bogged.')
+			self.UpdatePlayerInfoCon()
+			self.UpdateUnitCon()
+			self.advance_phase = True
+			return
+		
 		
 		# do sound effect
 		PlaySoundFor(self.player_unit, 'movement')
@@ -10510,10 +10549,11 @@ class Scenario:
 		self.UpdatePlayerInfoCon()
 		self.UpdateUnitCon()
 		
-		# do bog check in new location
+		# recalculate move chances and do bog check in new location
 		# FUTURE: check AI units too
 		for unit in self.units:
 			if unit != self.player_unit: continue
+			unit.CalculateMoveChances()
 			unit.DoBogCheck(forward)
 		
 		# notify player and update consoles if player bogged

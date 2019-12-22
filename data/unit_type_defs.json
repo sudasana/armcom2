@@ -1938,6 +1938,7 @@
 			"hull_front" : "3",
 			"hull_side" : "1"
 		},
+		"open_topped" : "TRUE",
 		"weapon_list" : [
 			{
 				"type" : "Gun",
@@ -1998,6 +1999,7 @@
 			"hull_front" : "2",
 			"hull_side" : "1"
 		},
+		"open_topped" : "TRUE",
 		"weapon_list" : [
 			{
 				"type" : "Gun",
@@ -2208,6 +2210,7 @@
 			"hull_front" : "0",
 			"hull_side" : "0"
 		},
+		"open_topped" : "TRUE",
 		"weapon_list" : [
 			{
 				"type" : "AA MG",
@@ -2265,6 +2268,7 @@
 			"hull_front" : "1",
 			"hull_side" : "1"
 		},
+		"open_topped" : "TRUE",
 		"weapon_list" : [
 			{
 				"type" : "Co-ax MG",

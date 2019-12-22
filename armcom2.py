@@ -233,8 +233,8 @@ MISSION_DESC = {
 # FUTURE: move these to a JSON file?
 
 # base crew experience point and level system
-BASE_EXP_REQUIRED = 1.0
-EXP_EXPONENT = 1.2
+BASE_EXP_REQUIRED = 10.0
+EXP_EXPONENT = 1.1
 
 # region definitions: set by campaigns, determine terrain odds on the campaign day map,
 # types and odds of weather conditions at different times during the calendar year
@@ -1324,15 +1324,17 @@ class Campaign:
 			# check for level up
 			levels_up = 0
 			for level in range(position.crewman.level+1, 31):
-				if position.crewman.exp <= GetExpRequiredFor(level):
+				if position.crewman.exp >= GetExpRequiredFor(level):
 					levels_up += 1
+				else:
+					break
 			
 			if levels_up == 0:
 				libtcod.console_set_default_foreground(con, libtcod.light_grey)
 				libtcod.console_print(con, 55, y+1, 'None')
 			else:
-				crewman.level += levels_up
-				crewman.adv += levels_up
+				position.crewman.level += levels_up
+				position.crewman.adv += levels_up
 				libtcod.console_set_default_foreground(con, libtcod.white)
 				libtcod.console_print(con, 55, y+1, '+' + str(levels_up))
 			
@@ -3401,7 +3403,7 @@ class CampaignDay:
 				if GetHexDistance(hx1, hy1, hx2, hy2) < 5: continue
 				break
 			
-			print('DEBUG: Adding river from ' + str(hx1) + ',' + str(hy1) + ' to ' + str(hx2) + ',' + str(hy2))
+			#print('DEBUG: Adding river from ' + str(hx1) + ',' + str(hy1) + ' to ' + str(hx2) + ',' + str(hy2))
 			
 			# run through the hex line
 			hex_line = GetHexLine(hx1, hy1, hx2, hy2)
@@ -3441,7 +3443,7 @@ class CampaignDay:
 					(hx_n, hy_n) = hex_line[index+1]
 					direction2 = self.GetDirectionToAdjacentCD(hx, hy, hx_n, hy_n)
 				
-				print('DEBUG: for ' + str(hx) + ',' + str(hy) + ' rotating from ' + str(direction1) + ' to ' + str(direction2))
+				#print('DEBUG: for ' + str(hx) + ',' + str(hy) + ' rotating from ' + str(direction1) + ' to ' + str(direction2))
 				
 				# determine shortest rotation path (clockwise or counter clockwise)
 				path1 = []
@@ -3459,7 +3461,7 @@ class CampaignDay:
 				else:
 					path = path2
 				
-				print('DEBUG: best path is: ' + str(path))
+				#print('DEBUG: best path is: ' + str(path))
 				
 				for direction in path[1:]:
 					# may have already been added by first river
@@ -5052,7 +5054,7 @@ class Personnel:
 	
 	
 	# award a number of exp to this crewman
-	def AwardExp(exp):
+	def AwardExp(self, exp):
 		self.exp += exp
 	
 	# display a menu for this crewman, used for members of player's unit
@@ -12955,6 +12957,8 @@ def ShowGameMenu():
 	# draw the menu console
 	def DrawMenuCon():
 		
+		libtcod.console_clear(game_menu_con)
+		
 		# draw a frame to the game menu console
 		libtcod.console_set_default_foreground(game_menu_con, libtcod.white)
 		DrawFrame(game_menu_con, 0, 0, 84, 54)
@@ -13357,7 +13361,7 @@ def ShowDebugMenu():
 		libtcod.console_print(con, 33, 57, 'Enter')
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		libtcod.console_print(con, 39, 56, 'Return to Game')
-		libtcod.console_print(con, 39, 57, 'Save and Return')
+		libtcod.console_print(con, 39, 57, 'Save Flags and Return')
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		

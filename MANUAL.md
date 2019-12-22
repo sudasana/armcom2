@@ -16,5 +16,33 @@ If you start a **New Campaign**, any current saved campaign will be erased. You 
 
 **Game Options** can be accessed here and from the in-game menu as well. Changing the **Font Size** will change the total window size. **Sound Effects**, including the main menu theme, can be toggled here. **Message Pause** changes the length of time that pop-up messages are displayed before disappearing. Several **Keyboard** layouts are supported, and you can set your own keyboard mapping by editing the "custom" dictionary in the keyboard_mapping.json file in the data folder, and selecting it here.
 
-## 3. Campaigns
+## 3. Campaign Selection
+
+![Campaign selection image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_campaign_selection.png "Campaign Selection")
+
+Several campaigns are included with the game. Each one takes place over a fixed period of time between 1939 and 1945, placing you in the role of a tank and battlegroup commander. **Player Force** means the national military force that you will be a part of. **Enemy Forces** lists the expected national forces that will be your opponents in this campaign. Some campaigns are longer than others; the actual days within the campaign calendar on which you will be called up for action will be determined randomly.
+
+From this screen you can select a campaign to start, or have the game select one randomly.
+
+## 4. Tank Selection
+
+![Tank selection image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_tank_selection.png "Tank Selection")
+
+A selection of tank models are available to you at the start of the campaign. During **Refit Weeks**, and if you have to abandon your tank, you will have an opportunity to select a new model. Available models depend on the current calendar date; some models will only become available to you later on in a campaign. Pay close attention to the stats of your chosen tank, since you may be riding in it for some time.
+
+### 4.1 Tank Stats
+
+Virtually everything you need to know about a unit is included in its unit information display. Your tank's stats are especially important, so here is an example of how to read them:
+
+![Tank stats image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_tank_stats.png "Tank Stats")
+
+
+
+A full crew, with yourself as the commander, will be automatically generated for your chosen tank.
+
+## 5. The Campaign Calendar Layer
+
+## 6. The Campaign Day Layer
+
+## 7. The Scenario Layer
 

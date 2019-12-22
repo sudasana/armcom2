@@ -10,7 +10,7 @@ In *Armoured Commander II*, you play the role of a tank commander in World War I
 ![Main menu image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_main_menu.png "Main Menu")
 In the **Main Menu**, you can continue a previously saved campaign, start a new campaign, change game options, or quit the game.
 
-To **Continue** a campaign, it must have been saved with a compatible version of the game. If the first two version numbers match, it will be compatible. Otherwise you won't be able to resume your campaign.
+To **Continue** a campaign, it must have been saved with a compatible version of the game. If the first two version numbers (separated by single dots) match, it will be compatible. Otherwise you won't be able to resume your campaign.
 
 If you start a **New Campaign**, any current saved campaign will be erased. You can only have one saved campaign at any one time.
 
@@ -36,7 +36,10 @@ Virtually everything you need to know about a unit is included in its unit infor
 
 ![Tank stats image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_tank_stats.png "Tank Stats")
 
-
+* M4 Sherman: This is the unit identifier, unique to each model of tank
+* Medium Tank: This is the unit's class, indicating generally what type of unit it is
+* Portrait: A rough approximation of this unit as viewed from the side
+* 75mm, etc. (dark red background): A list of weapon systems on this unit, starting with its main armament
 
 A full crew, with yourself as the commander, will be automatically generated for your chosen tank.
 

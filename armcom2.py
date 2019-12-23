@@ -67,9 +67,9 @@ from calendar import monthrange			# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.10.0'					# game version
+VERSION = '0.10.0 23-12-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -4075,7 +4075,7 @@ class CampaignDay:
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			libtcod.console_print(cd_command_con, 1, 3, 'Squad')
-			text = str(campaign.player_squad_num) + ' x ' + campaign.player_unit.unit_id
+			text = str(campaign.player_squad_num) + '/' + str(campaign.player_squad_max) + ' ' + campaign.player_unit.unit_id
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 			libtcod.console_print(cd_command_con, 1, 5, text)
 		
@@ -4688,6 +4688,7 @@ class CampaignDay:
 						self.player_unit_location = (hx2, hy2)
 						
 						self.UpdateCDUnitCon()
+						DisplayWeatherInfo(cd_weather_con)
 						self.UpdateCDDisplay()
 						
 						# roll to trigger battle encounter if enemy-controlled

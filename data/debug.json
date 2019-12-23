@@ -1,8 +1,8 @@
 {
- "Suspend Save": true,
+ "Suspend Save": false,
  "Fast Mode": false,
  "Player Immortality": false,
- "Support Requests Always Granted": true,
+ "Support Requests Always Granted": false,
  "Always Scenario": true,
  "Never Scenario": false,
  "Always CD Random Event": false,

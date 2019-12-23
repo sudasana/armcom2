@@ -1724,11 +1724,7 @@ class Campaign:
 			# if we've initiated a campaign day or are resuming a saved game with a
 			# campaign day running, go into the campaign day loop now
 			if campaign_day.started and not campaign_day.ended:
-				
-				# TEMP fix - clear any existing scenario object
-				global scenario
-				scenario = None
-			
+							
 				campaign_day.DoCampaignDayLoop()
 				
 				# player was taken out
@@ -4322,7 +4318,7 @@ class CampaignDay:
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info		
 		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 18)		# command menu
 		
-		libtcod.console_blit(cd_weather_con, 0, 0, 0, 0, con, 66, 1)		# weather info
+		libtcod.console_blit(cd_weather_con, 0, 0, 0, 0, con, 71, 3)		# weather info
 		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 18)		# campaign info
 		libtcod.console_blit(cd_hex_info_con, 0, 0, 0, 0, con, 66, 50)		# zone info
 		
@@ -4348,7 +4344,7 @@ class CampaignDay:
 		time_con = NewConsole(21, 5, libtcod.darkest_grey, libtcod.white)
 		cd_player_unit_con = NewConsole(25, 16, libtcod.black, libtcod.white)
 		cd_command_con = NewConsole(25, 41, libtcod.black, libtcod.white)
-		cd_weather_con = NewConsole(23, 12, libtcod.black, libtcod.white)
+		cd_weather_con = NewConsole(14, 12, libtcod.black, libtcod.white)
 		cd_campaign_con = NewConsole(23, 16, libtcod.black, libtcod.white)
 		cd_hex_info_con = NewConsole(23, 9, libtcod.black, libtcod.white)
 		
@@ -6797,7 +6793,7 @@ class Unit:
 	
 	
 	# do a bog check
-	def DoBogCheck(self, forward, pivot=False):
+	def DoBogCheck(self, forward, pivot=False, reposition=False):
 		
 		# some unit types don't bog
 		if self.GetStat('category') not in ['Vehicle', 'Gun']:
@@ -6807,6 +6803,8 @@ class Unit:
 		
 		if pivot:
 			chance = chance * 0.25
+		elif reposition:
+			chance = chance * 0.5
 		elif not forward:
 			chance = chance * 1.5 
 		chance = round(chance, 1)
@@ -10385,23 +10383,24 @@ class Scenario:
 	
 	
 	# execute a player move forward/backward, repositioning units on the hex map as needed
-	def MovePlayer(self, forward):
+	def MovePlayer(self, forward, reposition=False):
 		
 		# check for double bog check 
-		if 'Double Bog Check' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
-			# FUTURE: check for squad units too
-			for unit in self.units:
-				if unit != self.player_unit: continue
-				unit.DoBogCheck(forward)
+		if not reposition:
 		
-		# notify player and update consoles if player bogged
-		if self.player_unit.bogged:
-			ShowMessage('Your tank has becomed bogged.')
-			self.UpdatePlayerInfoCon()
-			self.UpdateUnitCon()
-			self.advance_phase = True
-			return
-		
+			if 'Double Bog Check' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
+				# FUTURE: check for squad units too
+				for unit in self.units:
+					if unit != self.player_unit: continue
+					unit.DoBogCheck(forward)
+			
+			# notify player and update consoles if player bogged
+			if self.player_unit.bogged:
+				ShowMessage('Your tank has becomed bogged.')
+				self.UpdatePlayerInfoCon()
+				self.UpdateUnitCon()
+				self.advance_phase = True
+				return
 		
 		# do sound effect
 		PlaySoundFor(self.player_unit, 'movement')
@@ -10413,41 +10412,45 @@ class Scenario:
 			unit.moving = True
 			unit.ClearAcquiredTargets()
 		
-		# do move success roll
-		if forward:
-			chance = scenario.player_unit.forward_move_chance
+		if reposition:
+			roll = -100.0
 		else:
-			chance = scenario.player_unit.reverse_move_chance
-		roll = GetPercentileRoll()
 		
-		# check for crew action modifier
-		for position in ['Commander', 'Commander/Gunner']:
-			crewman = self.player_unit.GetPersonnelByPosition(position)
-			if crewman is None: continue
-			if crewman.current_cmd == 'Direct Movement':
-				chance += crewman.GetActionMod('Direct Movement')
-				
-				# check for skill modifiers
-				if 'Driver Direction' in crewman.skills:
+			# do move success roll
+			if forward:
+				chance = scenario.player_unit.forward_move_chance
+			else:
+				chance = scenario.player_unit.reverse_move_chance
+			roll = GetPercentileRoll()
+			
+			# check for crew action modifier
+			for position in ['Commander', 'Commander/Gunner']:
+				crewman = self.player_unit.GetPersonnelByPosition(position)
+				if crewman is None: continue
+				if crewman.current_cmd == 'Direct Movement':
+					chance += crewman.GetActionMod('Direct Movement')
+					
+					# check for skill modifiers
+					if 'Driver Direction' in crewman.skills:
+						chance += 5.0
+					if forward and 'Forward!' in crewman.skills:
+						chance += 10.0
+					
+				break
+			
+			# check for driver skill
+			crewman = self.player_unit.GetPersonnelByPosition('Driver')
+			if crewman is not None:
+				if 'Quick Shifter' in crewman.skills:
 					chance += 5.0
-				if forward and 'Forward!' in crewman.skills:
-					chance += 10.0
-				
-			break
-		
-		# check for driver skill
-		crewman = self.player_unit.GetPersonnelByPosition('Driver')
-		if crewman is not None:
-			if 'Quick Shifter' in crewman.skills:
-				chance += 5.0
-		
-		# check for debug flag
-		if DEBUG:
-			if session.debug['Player Always Moves']:
-				roll = 1.0
+			
+			# check for debug flag
+			if DEBUG:
+				if session.debug['Player Always Moves']:
+					roll = 1.0
 		
 		# move was not successful
-		if roll > chance:
+		if not reposition and roll > chance:
 			
 			# clear any alternative bonus and apply bonus for future moves
 			if forward:
@@ -10474,70 +10477,73 @@ class Scenario:
 		# successful move may be cancelled by breakdown
 		if self.player_unit.BreakdownCheck():
 			ShowMessage('Your vehicle stalls, making you unable to move further.')
+			if reposition: return
 			self.advance_phase = True
 			return
 		
-		# move was successful, clear all bonuses
-		self.player_unit.forward_move_bonus = 0.0
-		self.player_unit.reverse_move_bonus = 0.0
+		if not reposition:
 		
-		# calculate new hex positions for each unit in play
-		if forward:
-			direction = 3
-		else:
-			direction = 0
-		
-		# run through list of units and move them
-		# player movement will never move an enemy unit into ring 4 nor off board
-		for unit in self.units:
+			# move was successful, clear all bonuses
+			self.player_unit.forward_move_bonus = 0.0
+			self.player_unit.reverse_move_bonus = 0.0
 			
-			if unit == self.player_unit: continue
-			if unit in self.player_unit.squad: continue
+			# calculate new hex positions for each unit in play
+			if forward:
+				direction = 3
+			else:
+				direction = 0
 			
-			(new_hx, new_hy) = GetAdjacentHex(unit.hx, unit.hy, direction)
-			
-			# skip if unit would end up in ring 4 or off board
-			if GetHexDistance(0, 0, new_hx, new_hy) > 3:
-				continue
-				
-			# special case: jump over player hex 0,0
-			jump = False
-			if new_hx == 0 and new_hy == 0:
-				(new_hx, new_hy) = GetAdjacentHex(0, 0, direction)
-				jump = True
-			
-			# set destination hex
-			unit.dest_hex = (new_hx, new_hy)
-			
-			# calculate animation locations
-			(x1, y1) = self.PlotHex(unit.hx, unit.hy)
-			(x2, y2) = self.PlotHex(new_hx, new_hy)
-			unit.animation_cells = GetLine(x1, y1, x2, y2)
-			# special case: unit is jumping over 0,0
-			if jump:
-				for i in range(12, 0, -2):
-					unit.animation_cells.pop(i)
-		
-		# animate movement
-		for i in range(6):
+			# run through list of units and move them
+			# player movement will never move an enemy unit into ring 4 nor off board
 			for unit in self.units:
+				
 				if unit == self.player_unit: continue
 				if unit in self.player_unit.squad: continue
-				if len(unit.animation_cells) > 0:
-					unit.animation_cells.pop(0)
-			self.UpdateUnitCon()
-			self.UpdateScenarioDisplay()
-			Wait(15)
-		
-		# set new hex location for each moving unit and move into new hex stack
-		for unit in self.units:
-			if unit.dest_hex is None: continue
-			self.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
-			(unit.hx, unit.hy) = unit.dest_hex
-			self.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
-			# clear destination hex and animation data
-			unit.dest_hex = None
-			unit.animation_cells = []
+				
+				(new_hx, new_hy) = GetAdjacentHex(unit.hx, unit.hy, direction)
+				
+				# skip if unit would end up in ring 4 or off board
+				if GetHexDistance(0, 0, new_hx, new_hy) > 3:
+					continue
+					
+				# special case: jump over player hex 0,0
+				jump = False
+				if new_hx == 0 and new_hy == 0:
+					(new_hx, new_hy) = GetAdjacentHex(0, 0, direction)
+					jump = True
+				
+				# set destination hex
+				unit.dest_hex = (new_hx, new_hy)
+				
+				# calculate animation locations
+				(x1, y1) = self.PlotHex(unit.hx, unit.hy)
+				(x2, y2) = self.PlotHex(new_hx, new_hy)
+				unit.animation_cells = GetLine(x1, y1, x2, y2)
+				# special case: unit is jumping over 0,0
+				if jump:
+					for i in range(12, 0, -2):
+						unit.animation_cells.pop(i)
+			
+			# animate movement
+			for i in range(6):
+				for unit in self.units:
+					if unit == self.player_unit: continue
+					if unit in self.player_unit.squad: continue
+					if len(unit.animation_cells) > 0:
+						unit.animation_cells.pop(0)
+				self.UpdateUnitCon()
+				self.UpdateScenarioDisplay()
+				Wait(15)
+			
+			# set new hex location for each moving unit and move into new hex stack
+			for unit in self.units:
+				if unit.dest_hex is None: continue
+				self.hex_dict[(unit.hx, unit.hy)].unit_stack.remove(unit)
+				(unit.hx, unit.hy) = unit.dest_hex
+				self.hex_dict[(unit.hx, unit.hy)].unit_stack.append(unit)
+				# clear destination hex and animation data
+				unit.dest_hex = None
+				unit.animation_cells = []
 		
 		# set new terrain for player and squad
 		for unit in self.units:
@@ -10554,7 +10560,7 @@ class Scenario:
 		for unit in self.units:
 			if unit != self.player_unit: continue
 			unit.CalculateMoveChances()
-			unit.DoBogCheck(forward)
+			unit.DoBogCheck(forward, reposition=reposition)
 		
 		# notify player and update consoles if player bogged
 		if self.player_unit.bogged:
@@ -10562,7 +10568,7 @@ class Scenario:
 			self.UpdatePlayerInfoCon()
 			self.UpdateUnitCon()
 		
-		# end movement phase
+		if reposition: return
 		self.advance_phase = True
 	
 	
@@ -10806,6 +10812,13 @@ class Scenario:
 					campaign_day.abandoned_tank = True
 					self.finished = True
 					return
+				
+				# check for reposition
+				if position.crewman.current_cmd == 'Reposition':
+					self.MovePlayer(False, reposition=True)
+					self.UpdateUnitCon()
+					self.UpdateScenarioDisplay()
+					libtcod.console_flush()
 				
 				# check for unbog attempt
 				if position.crewman.current_cmd == 'Attempt Unbog':
@@ -11390,19 +11403,12 @@ class Scenario:
 	
 	
 	# update the scenario info console, on the top right of the screen
-	# will display current weather and terrain type
-	# 18x12
+	# displays current weather and terrain type
+	# 14x12
 	def UpdateScenarioInfoCon(self):
 		libtcod.console_clear(scen_info_con)
-		
-		libtcod.console_set_default_foreground(scen_info_con, libtcod.light_grey)
-		
 		DisplayWeatherInfo(scen_info_con)
-		
-		# terrain
-		libtcod.console_print(scen_info_con, 0, 10, 'Terrain:')
-		libtcod.console_print(scen_info_con, 1, 11, self.cd_map_hex.terrain_type)
-		
+	
 		
 	# update unit info console, which displays basic information about a unit under
 	# the mouse cursor
@@ -11684,7 +11690,7 @@ class Scenario:
 		# consoles around the edge of map
 		libtcod.console_blit(context_con, 0, 0, 0, 0, con, 28, 1)
 		libtcod.console_blit(time_con, 0, 0, 0, 0, con, 48, 1)
-		libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 71, 1)
+		libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 75, 1)
 		libtcod.console_blit(unit_info_con, 0, 0, 0, 0, con, 28, 54)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -11706,7 +11712,7 @@ class Scenario:
 		cmd_menu_con = NewConsole(25, 12, libtcod.black, libtcod.white)
 		context_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
 		time_con = NewConsole(21, 6, libtcod.darkest_grey, libtcod.white)
-		scen_info_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
+		scen_info_con = NewConsole(14, 11, libtcod.darkest_grey, libtcod.white)
 		unit_info_con = NewConsole(61, 5, libtcod.darkest_grey, libtcod.white)
 		hexmap_con = NewConsole(53, 43, libtcod.black, libtcod.black)
 		unit_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
@@ -12367,53 +12373,88 @@ def DisplayTimeInfo(console):
 	
 
 
-# display weather conditions info to a console, minimum width 12
+# display weather conditions info to a console, 14x12
 def DisplayWeatherInfo(console):
 	
 	libtcod.console_clear(console)
 	
+	if campaign_day is None: return
 	
-	w = libtcod.console_get_width(console)
-	x = int(w/2)
-	
-	# background blocks
+	# cloud conditions on first two lines
 	libtcod.console_set_default_background(console, libtcod.dark_blue)
-	libtcod.console_rect(console, 0, 0, w, 2, False, libtcod.BKGND_SET)
-	libtcod.console_set_default_background(console, libtcod.darker_grey)
-	libtcod.console_rect(console, 0, 2, w, 2, False, libtcod.BKGND_SET)
-	libtcod.console_set_default_background(console, libtcod.darkest_blue)
-	libtcod.console_rect(console, 0, 4, w, 2, False, libtcod.BKGND_SET)
-	libtcod.console_set_default_background(console, libtcod.dark_sepia)
-	libtcod.console_rect(console, 0, 6, w, 2, False, libtcod.BKGND_SET)
-	libtcod.console_set_default_background(console, libtcod.black)
+	libtcod.console_rect(console, 0, 0, 14, 2, False, libtcod.BKGND_SET)
 	
-	# titles
-	libtcod.console_set_default_foreground(console, libtcod.lighter_grey)
-	libtcod.console_print(console, 0, 0, 'Wind')
-	libtcod.console_print(console, 0, 2, 'Cloud Cover')
-	libtcod.console_print(console, 0, 4, 'Precipitation')
-	libtcod.console_print(console, 0, 6, 'Ground')
+	if campaign_day.weather['Cloud Cover'] == 'Scattered':
+		num = 4
+	elif campaign_day.weather['Cloud Cover'] == 'Heavy':
+		num = 8
+	elif campaign_day.weather['Cloud Cover'] ==  'Overcast':
+		num = 14
+	else:
+		# clear
+		num = 0
 	
-	# info
-	libtcod.console_set_default_foreground(console, libtcod.white)
-
-	# wind strength and direction (static for now)
-	libtcod.console_print_ex(console, w-1, 1, libtcod.BKGND_NONE,
-		libtcod.RIGHT, 'None')
-	
-	# cloud cover
-	libtcod.console_print_ex(console, w-1, 3, libtcod.BKGND_NONE, libtcod.RIGHT,
+	cell_list = (sample(list(range(14)), 14) + sample(list(range(14)), 14))
+	for i in range(num):
+		libtcod.console_set_char_background(console, cell_list[i], 0, libtcod.dark_grey,
+			libtcod.BKGND_SET)
+	for i in range(num):
+		libtcod.console_set_char_background(console, cell_list[i+num], 1, libtcod.dark_grey,
+			libtcod.BKGND_SET)
+		
+	libtcod.console_print_ex(console, 7, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 		campaign_day.weather['Cloud Cover'])
 	
 	# precipitation
-	libtcod.console_print_ex(console, w-1, 5, libtcod.BKGND_NONE, libtcod.RIGHT,
-		campaign_day.weather['Precipitation'])
+	if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
+		char = 250
+		libtcod.console_set_default_foreground(console, libtcod.light_blue)
+		libtcod.console_set_default_background(console, libtcod.dark_blue)
+	elif campaign_day.weather['Precipitation'] in ['Mist', 'Light Snow', 'Snow', 'Blizzard']:
+		char = 249
+		libtcod.console_set_default_foreground(console, libtcod.light_grey)
+		libtcod.console_set_default_background(console, libtcod.dark_grey)
+	else:
+		char = 0
+	libtcod.console_rect(console, 0, 2, 14, 7, False, libtcod.BKGND_SET)
+	
+	if campaign_day.weather['Precipitation'] in ['Rain', 'Light Snow']:
+		num = 15
+	elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Snow']:
+		num = 25
+	elif campaign_day.weather['Precipitation'] == 'Blizzard':
+		num = 30
+	else:
+		num = 0
+	
+	for i in range(num):
+		x = libtcod.random_get_int(0, 0, 13)
+		y = libtcod.random_get_int(0, 2, 7)
+		libtcod.console_put_char(console, x, y, char)
+	
+	if campaign_day.weather['Precipitation'] != 'None':
+		libtcod.console_print_ex(console, 7, 5, libtcod.BKGND_NONE, libtcod.CENTER,
+			campaign_day.weather['Precipitation'])
 	
 	# ground conditions
-	libtcod.console_print_ex(console, w-1, 7, libtcod.BKGND_NONE, libtcod.RIGHT,
-		campaign_day.weather['Ground'])
-
+	if campaign_day.weather['Ground'] in ['Dry', 'Wet']:
+		libtcod.console_set_default_foreground(console, libtcod.white)
+		libtcod.console_set_default_background(console, libtcod.dark_sepia)
+	elif campaign_day.weather['Ground'] == 'Muddy':
+		libtcod.console_set_default_foreground(console, libtcod.grey)
+		libtcod.console_set_default_background(console, libtcod.darker_sepia)
+	elif campaign_day.weather['Ground'] in ['Snow', 'Deep Snow']:
+		libtcod.console_set_default_foreground(console, libtcod.light_blue)
+		libtcod.console_set_default_background(console, libtcod.grey)
+	libtcod.console_rect(console, 0, 9, 14, 2, False, libtcod.BKGND_SET)
 	
+	libtcod.console_print_ex(console, 7, 9, libtcod.BKGND_NONE, libtcod.CENTER,
+		campaign_day.weather['Ground'])
+	
+	# current area terrain
+	text = campaign_day.map_hexes[campaign_day.player_unit_location].terrain_type
+	libtcod.console_print_ex(console, 7, 10, libtcod.BKGND_NONE,
+		libtcod.CENTER, text)
 
 
 # draw an ArmCom2-style frame to the given console

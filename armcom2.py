@@ -10386,7 +10386,7 @@ class Scenario:
 		# check for double bog check 
 		if not reposition:
 		
-			if 'Double Bog Check' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
+			if 'Double Bog Check' in SCENARIO_TERRAIN_EFFECTS[self.player_unit.terrain]:
 				# FUTURE: check for squad units too
 				for unit in self.units:
 					if unit != self.player_unit: continue

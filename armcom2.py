@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-# Python 3.6.6 x64
+# Python 3.6.6 x64                                                              
 # Libtcod 1.6.4 x64
 ##########################################################################################
 #                                                                                        #
@@ -3378,9 +3378,6 @@ class CampaignDay:
 			rivers += 1
 			if GetPercentileRoll() <= odds:
 				rivers += 1
-		
-		# TEMP - testing
-		rivers = 1
 		
 		if rivers == 0: return
 		

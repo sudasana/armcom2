@@ -40,6 +40,18 @@ Virtually everything you need to know about a unit is included in its unit infor
 * Medium Tank: This is the unit's class, indicating generally what type of unit it is
 * Portrait: A rough approximation of this unit as viewed from the side
 * 75mm, etc. (dark red background): A list of weapon systems on this unit, starting with its main armament
+  * Guns may be short (S) or long (L) barreled
+  * Co-ax weapons are mounted on the turret as or alongside the main gun
+  * Anti-Aircraft (AA) MG can fire in any direction, but must often be fired from outside of the tank
+  * Bow MGs are fixed to the front of the hull
+* Armoured or Unarmoured vehicles have their armour values listed here
+  * The T line refers to turret armour, but if there is no rotatable turret it will appear as U (Upper Structure) instead. The if the turret has a fast traverse, this will be noted by (fast)
+  * H refers to hull armour
+  * The two armour values x/x refer to front and side armour respectively for that area
+  * Rear armour values for any location are one level lower than its side level
+* The movement class of the unit is shown in green in the lower right.
+* The size class of the unit appears below that. Larger targets are easiser to spot and hit.
+* Finally, the normal number of crew for this unit
 
 A full crew, with yourself as the commander, will be automatically generated for your chosen tank.
 

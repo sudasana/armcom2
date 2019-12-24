@@ -67,7 +67,7 @@ from calendar import monthrange			# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.10.0 24-12-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -4732,8 +4732,21 @@ class CampaignDay:
 							ShowMessage('You find no resistance and gain control of the area.')
 							self.map_hexes[(hx2,hy2)].CaptureMe(0)
 							self.encounter_mod += 30.0
-							self.air_support_request = False
-							self.arty_support_request = False
+							
+							# spend support costs and reset flags
+							if self.air_support_request:
+								if GetPercentileRoll() <= self.air_support_level:
+									self.air_support_level -= 10.0
+								if self.air_support_level < 0.0:
+									self.air_support_level = 0.0
+								self.air_support_request = False
+							
+							if self.arty_support_request:
+								if GetPercentileRoll() <= self.arty_support_level:
+									self.arty_support_level -= 10.0
+								if self.arty_support_level < 0.0:
+									self.arty_support_level = 0.0
+								self.arty_support_request = False
 						
 						# entering a friendly zone
 						else:

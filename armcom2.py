@@ -5961,6 +5961,8 @@ class Weapon:
 		self.ready_rack[self.ammo_type] += add_num
 		self.ammo_stores[self.ammo_type] -= add_num
 		
+		PlaySoundFor(None, 'move_1_shell')
+		
 		return True
 		
 	

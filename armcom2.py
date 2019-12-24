@@ -69,7 +69,7 @@ from calendar import monthrange			# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.10.0 23-12-19'				# game version
+VERSION = '0.10.0 24-12-19'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -5014,6 +5014,8 @@ class Personnel:
 		self.last_name = ''				#   set by GenerateName()
 		self.GenerateName()				# generate random first and last name
 		self.nickname = ''				# player-set nickname
+		self.age = 21					# age in years
+		self.rank = 0					# rank level
 		
 		self.stats = {					# default stat values
 			'Perception' : 1,
@@ -5038,6 +5040,16 @@ class Personnel:
 			self.level = 3
 			self.exp = GetExpRequiredFor(self.level)
 			self.adv = 3
+			self.age += libtcod.random_get_int(0, 3, 8)
+			self.rank = 3
+		
+		# gunners a little higher
+		elif self.current_position.name in ['Gunner', 'Gunner/Loader']:
+			self.level = 2
+			self.exp = GetExpRequiredFor(self.level)
+			self.adv = 2
+			self.age += libtcod.random_get_int(0, 1, 4)
+			self.rank = 2
 		
 		# exposed / buttoned up status
 		self.ce = False					# crewman is exposed in a vehicle
@@ -5099,10 +5111,15 @@ class Personnel:
 			# info
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
 			self.DisplayName(crewman_menu_con, 39, 6)
-			#libtcod.console_print(crewman_menu_con, 39, 6, self.GetFullName().encode('IBM850'))
 			if self.nickname != '':
 				libtcod.console_print(crewman_menu_con, 39, 7, self.nickname)
-			# FUTURE: age and rank
+			
+			# age and rank
+			libtcod.console_print(crewman_menu_con, 39, 9, str(self.age))
+			libtcod.console_print(crewman_menu_con, 39, 11, session.nations[self.nation]['rank_names'][str(self.rank)])
+			
+			
+			# current position
 			libtcod.console_print(crewman_menu_con, 39, 13, self.unit.unit_id)
 			libtcod.console_print(crewman_menu_con, 39, 14, self.current_position.name)
 			

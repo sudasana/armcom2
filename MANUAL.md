@@ -71,5 +71,28 @@ Press **1** to return to the Proceed menu tab, and press **Enter** to start your
 
 ## 7. The Campaign Day Layer
 
+![Campaign day image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_campaign_day_map.png "Campaign Day Layer")
+
+In this layer you lead your tank and battlegroup across a terrain map of hex zones. Your own tank is displayed in the upper left of the screen, and several tabs of commands appear in the lower left. Current weather and ground conditions are displayed in the upper right, campaign and day mission information on the right, and hovering the mouse cursor over any map zone will display information about it in the lower right corner of the screen.
+
+The campaign day map is made up of 41 hex zones, each of which are randomly generated as one of six different terrain types. The terrain type of a hex zone influences the time required to travel into it, as well as the terrain for units on the scenario layer if a battle encounter occurs there.
+
+Dark brown lines joining hex zones are roads; travel along roads is usually faster than cross-country. Dark blue lines along the edges of hex zones are rivers; these can only br crossed at a bridge or ford, indicated by a dark brown cell with three horizontal lines.
+
+Objectives are indicated by a ring of light blue dots; capturing these hexes is worth extra VP.
+
+If you reach the top hex row (or the bottom one in Fighting Withdrawl mission), a new hex map will be generated.
+
+Five menu tabs are available in the command menu:
+* Support
+* Crew
+* Travel
+* Group
+* Main Gun
+
+The campaign day ends when you abandon your tank, your character is killed or seriously wounded, or you reach sunset as indicated by the background of the time display in the top centre of the screen.
+
+### 7.1 Strategy on the Campaign Day Layer
+
 ## 8. The Scenario Layer
 

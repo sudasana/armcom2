@@ -67,9 +67,9 @@ from calendar import monthrange			# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.10.0 24-12-19'				# game version
+VERSION = '0.10.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -714,7 +714,7 @@ BASE_SNIPER_TK_CHANCE = 45.0
 # base chance of a random event in a scenario
 BASE_RANDOM_EVENT_CHANCE = 5.0
 # base chance of a random event in a campaign day
-BASE_CD_RANDOM_EVENT_CHANCE = 5.0
+BASE_CD_RANDOM_EVENT_CHANCE = 3.0
 
 # base number of minutes between weather update checks
 BASE_WEATHER_UPDATE_CLOCK = 30
@@ -1993,6 +1993,16 @@ class CampaignDay:
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}
 		
+		# set up initial player location
+		if self.mission == 'Fighting Withdrawl':
+			self.player_unit_location = (2, 0)	# top center of map
+		elif self.mission == 'Battle':
+			self.player_unit_location = (-1, 6)	# lower center of map
+		elif self.mission == 'Counterattack':
+			self.player_unit_location = (2, 1)	# second row of map
+		else:
+			self.player_unit_location = (-2, 8)	# bottom center of map
+		
 		# generate dirt roads and rivers on campaign day map
 		self.GenerateRoads()
 		self.GenerateRivers()
@@ -2016,16 +2026,6 @@ class CampaignDay:
 		self.arty_support_request = False		# " arty "
 		
 		self.encounter_mod = 0.0			# increases every time player caputures an area without resistance
-		
-		# set up player location
-		if self.mission == 'Fighting Withdrawl':
-			self.player_unit_location = (2, 0)	# top center of map
-		elif self.mission == 'Battle':
-			self.player_unit_location = (-1, 6)	# lower center of map
-		elif self.mission == 'Counterattack':
-			self.player_unit_location = (2, 1)	# second row of map
-		else:
-			self.player_unit_location = (-2, 8)	# bottom center of map
 		
 		# set player location to player control
 		self.map_hexes[self.player_unit_location].controlled_by = 0
@@ -2594,7 +2594,7 @@ class CampaignDay:
 			# FUTURE: highlight hex momentarily
 		
 		# free resupply
-		elif roll <= 45.0:
+		elif roll <= 40.0:
 			ShowMessage('You happen to encounter a supply truck, and can restock your gun ammo.')
 			self.AmmoReloadMenu()
 		
@@ -2625,7 +2625,7 @@ class CampaignDay:
 				map_hex.enemy_strength = 10
 		
 		# increase current support level
-		elif roll <= 80.0:
+		elif roll <= 75.0:
 			
 			text = 'Additional '
 			
@@ -3366,7 +3366,7 @@ class CampaignDay:
 		if 'river_odds' not in REGIONS[campaign.stats['region']]:
 			return
 		
-		# for DEBUG - clear any existing rivers and bridges
+		# clear any existing rivers and bridges
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)].rivers = []
 			self.map_hexes[(hx,hy)].bridges = []
@@ -3382,105 +3382,129 @@ class CampaignDay:
 		if rivers == 0: return
 		
 		# create the rivers
-		for i in range(rivers):
+		
+		# try loop to make sure that map is still traversable
+		for tries in range(300):
 			
-			river_list = []
-			
-			# build a list of map edge hexes
-			edge_list = []
-			for (hx, hy) in CAMPAIGN_DAY_HEXES:
-				for d in range(6):
-					if self.GetAdjacentCDHex(hx, hy, d) not in CAMPAIGN_DAY_HEXES:
-						edge_list.append((hx, hy))
-						break
-			
-			# determine starting and ending hex 
-			(hx1, hy1) = choice(edge_list)
-			shuffle(edge_list)
-			for (hx2, hy2) in edge_list:
-				if GetHexDistance(hx1, hy1, hx2, hy2) < 5: continue
-				break
-			
-			#print('DEBUG: Adding river from ' + str(hx1) + ',' + str(hy1) + ' to ' + str(hx2) + ',' + str(hy2))
-			
-			# run through the hex line
-			hex_line = GetHexLine(hx1, hy1, hx2, hy2)
-			for index in range(len(hex_line)):
-			
-				(hx, hy) = hex_line[index]
+			for i in range(rivers):
 				
-				if (hx, hy) not in CAMPAIGN_DAY_HEXES: continue
+				libtcod.console_flush()
 				
-				# chance that river will end in map
-				if GetPercentileRoll() <= 2.0:
+				# build a list of map edge hexes
+				edge_list = []
+				for (hx, hy) in CAMPAIGN_DAY_HEXES:
+					for d in range(6):
+						if self.GetAdjacentCDHex(hx, hy, d) not in CAMPAIGN_DAY_HEXES:
+							edge_list.append((hx, hy))
+							break
+				
+				# determine starting and ending hex 
+				(hx1, hy1) = choice(edge_list)
+				shuffle(edge_list)
+				for (hx2, hy2) in edge_list:
+					if GetHexDistance(hx1, hy1, hx2, hy2) < 5: continue
 					break
 				
-				# each hex needs 1+ hexsides to become rivers
+				#print('DEBUG: Adding river from ' + str(hx1) + ',' + str(hy1) + ' to ' + str(hx2) + ',' + str(hy2))
 				
-				# determine direction to previous hex
-				if hx == hx1 and hy == hy1:
+				# run through the hex line
+				hex_line = GetHexLine(hx1, hy1, hx2, hy2)
+				for index in range(len(hex_line)):
+				
+					(hx, hy) = hex_line[index]
 					
-					# for first hex, we need to use off-board hex as previous location
-					for direction1 in range(6):
-						if self.GetAdjacentCDHex(hx, hy, direction1) not in CAMPAIGN_DAY_HEXES:
-							break
-				
-				else:
-					# otherwise use direction toward previous hex
-					(hx_n, hy_n) = hex_line[index-1]
-					direction1 = self.GetDirectionToAdjacentCD(hx, hy, hx_n, hy_n)
-				
-				# determine direction to next hex
-				if hx == hx2 and hy == hy2:
-					# for final hex, we need to use off-board hex as next location
-					for direction2 in range(6):
-						if self.GetAdjacentCDHex(hx, hy, direction2) not in CAMPAIGN_DAY_HEXES:
-							break
-				else:
-					# otherwise use direction toward next hex
-					(hx_n, hy_n) = hex_line[index+1]
-					direction2 = self.GetDirectionToAdjacentCD(hx, hy, hx_n, hy_n)
-				
-				#print('DEBUG: for ' + str(hx) + ',' + str(hy) + ' rotating from ' + str(direction1) + ' to ' + str(direction2))
-				
-				# determine shortest rotation path (clockwise or counter clockwise)
-				path1 = []
-				for i in range(6):
-					path1.append(ConstrainDir(direction1 + i))
-					if ConstrainDir(direction1 + i) == direction2: break
+					if (hx, hy) not in CAMPAIGN_DAY_HEXES: continue
 					
-				path2 = []
-				for i in range(6):
-					path2.append(ConstrainDir(direction1 - i))
-					if ConstrainDir(direction1 - i) == direction2: break
+					# chance that river will end in map
+					if GetPercentileRoll() <= 2.0:
+						break
 					
-				if len(path1) < len(path2):
-					path = path1
-				else:
-					path = path2
-				
-				#print('DEBUG: best path is: ' + str(path))
-				
-				for direction in path[1:]:
-					# may have already been added by first river
-					if direction in self.map_hexes[(hx,hy)].rivers: continue
-					self.map_hexes[(hx,hy)].rivers.append(direction)
-				
-		# create bridges in the rivers
-		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			if len(self.map_hexes[(hx,hy)].rivers) == 0: continue
+					# each hex needs 1+ hexsides to become rivers
+					
+					# determine direction to previous hex
+					if hx == hx1 and hy == hy1:
+						
+						# for first hex, we need to use off-board hex as previous location
+						for direction1 in range(6):
+							if self.GetAdjacentCDHex(hx, hy, direction1) not in CAMPAIGN_DAY_HEXES:
+								break
+					
+					else:
+						# otherwise use direction toward previous hex
+						(hx_n, hy_n) = hex_line[index-1]
+						direction1 = self.GetDirectionToAdjacentCD(hx, hy, hx_n, hy_n)
+					
+					# determine direction to next hex
+					if hx == hx2 and hy == hy2:
+						# for final hex, we need to use off-board hex as next location
+						for direction2 in range(6):
+							if self.GetAdjacentCDHex(hx, hy, direction2) not in CAMPAIGN_DAY_HEXES:
+								break
+					else:
+						# otherwise use direction toward next hex
+						(hx_n, hy_n) = hex_line[index+1]
+						direction2 = self.GetDirectionToAdjacentCD(hx, hy, hx_n, hy_n)
+					
+					# determine shortest rotation path (clockwise or counter clockwise)
+					path1 = []
+					for i in range(6):
+						path1.append(ConstrainDir(direction1 + i))
+						if ConstrainDir(direction1 + i) == direction2: break
+						
+					path2 = []
+					for i in range(6):
+						path2.append(ConstrainDir(direction1 - i))
+						if ConstrainDir(direction1 - i) == direction2: break
+						
+					if len(path1) < len(path2):
+						path = path1
+					else:
+						path = path2
+					
+					for direction in path[1:]:
+						# may have already been added by first river
+						if direction in self.map_hexes[(hx,hy)].rivers: continue
+						self.map_hexes[(hx,hy)].rivers.append(direction)
+					
+			# create bridges in the rivers
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				if len(self.map_hexes[(hx,hy)].rivers) == 0: continue
+			
+				for direction in self.map_hexes[(hx,hy)].rivers:
+					# road already here
+					if direction in self.map_hexes[(hx,hy)].dirt_roads:
+						if direction not in self.map_hexes[(hx,hy)].bridges:
+							self.map_hexes[(hx,hy)].bridges.append(direction)
+						continue
+					
+					# randomly add a bridge/ford here
+					if GetPercentileRoll() <= 10.0:
+						if direction not in self.map_hexes[(hx,hy)].bridges:
+							self.map_hexes[(hx,hy)].bridges.append(direction)
 		
-			for direction in self.map_hexes[(hx,hy)].rivers:
-				# road already here
-				if direction in self.map_hexes[(hx,hy)].dirt_roads:
-					if direction not in self.map_hexes[(hx,hy)].bridges:
-						self.map_hexes[(hx,hy)].bridges.append(direction)
-					continue
-				
-				# randomly add a bridge/ford here
-				if GetPercentileRoll() <= 10.0:
-					if direction not in self.map_hexes[(hx,hy)].bridges:
-						self.map_hexes[(hx,hy)].bridges.append(direction)
+			# do path checking
+			path_good = False
+			(hx1, hy1) = self.player_unit_location
+			if self.mission == 'Fighting Withdrawl':
+				hx2_max = 1
+				hy2 = 8
+			else:
+				hx2_max = 5
+				hy2 = 0
+			for hx2 in range(hx2_max - 5, hx2_max):
+				path = GetHexPath(hx1, hy1, hx2, hy2)
+				if len(path) != 0:
+					path_good = True
+					break
+			
+			# if path is good: break rather than trying again
+			if path_good:
+				break
+			
+			# clear any created rivers and bridges before trying again
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				self.map_hexes[(hx,hy)].rivers = []
+				self.map_hexes[(hx,hy)].bridges = []
 		
 		
 	# plot the centre of a day map hex location onto the map console
@@ -4839,6 +4863,12 @@ class CDMapHex:
 		
 		self.objective = None		# player objective for this zone
 		
+		# Pathfinding stuff
+		self.parent = None
+		self.g = 0
+		self.h = 0
+		self.f = 0
+		
 		# set enemy strength level
 		if 'average_resistance' in campaign.current_week:
 			avg_strength = int(campaign.current_week['average_resistance'])
@@ -4870,6 +4900,14 @@ class CDMapHex:
 	# reset zone stats
 	def Reset(self):
 		self.coordinate = (chr(self.hy+65) + str(5 + int(self.hx - (self.hy - self.hy&1) / 2)))
+	
+	
+	# reset pathfinding info for this zone
+	def ClearPathInfo(self):
+		self.parent = None
+		self.g = 0
+		self.h = 0
+		self.f = 0
 	
 	
 	# generate a random terrain type for this zone hex
@@ -10785,11 +10823,12 @@ class Scenario:
 					self.player_unit.ClearAcquiredTargets(no_enemy=True)
 					
 					# do bog check for pivot
-					self.player_unit.DoBogCheck(False, pivot=True)
-					if self.player_unit.bogged:
-						ShowMessage('Your tank has becomed bogged.')
-						self.UpdatePlayerInfoCon()
-						self.UpdateUnitCon()
+					if not player_unit.bogged:
+						self.player_unit.DoBogCheck(False, pivot=True)
+						if self.player_unit.bogged:
+							ShowMessage('Your tank has becomed bogged.')
+							self.UpdatePlayerInfoCon()
+							self.UpdateUnitCon()
 			
 			# end of shooting phase
 			elif self.phase == PHASE_SHOOTING:
@@ -10864,6 +10903,7 @@ class Scenario:
 				if position.crewman.current_cmd == 'Smoke Grenade':
 					for i in range(6):
 						self.player_unit.smoke[i] = 2
+					PlaySoundFor(None, 'smoke')
 					ShowMessage('You throw a smoke grenade.')
 					self.UpdateUnitCon()
 					self.UpdateScenarioDisplay()
@@ -10875,6 +10915,7 @@ class Scenario:
 					if direction is None:
 						direction = self.player_unit.facing
 					self.player_unit.smoke[direction] = 2
+					PlaySoundFor(None, 'smoke')
 					ShowMessage('The ' + position.name + ' fires off a smoke mortar round.')
 					self.UpdateUnitCon()
 					self.UpdateScenarioDisplay()
@@ -12662,6 +12703,104 @@ def LoadXP(filename):
 	return console
 
 
+# returns a path from one campaign day hex zone to another
+# can be set to be blocked by river crossings and/or enemy-held zones
+# based on function from ArmCom 1, which was based on:
+# http://stackoverflow.com/questions/4159331/python-speed-up-an-a-star-pathfinding-algorithm
+# http://www.policyalmanac.org/games/aStarTutorial.htm
+def GetHexPath(hx1, hy1, hx2, hy2, rivers_block=True, enemy_zones_block=False):
+	
+	# retrace a set of nodes and return the best path
+	def RetracePath(end_node):
+		path = []
+		node = end_node
+		done = False
+		while not done:
+			path.append((node.hx, node.hy))
+			if node.parent is None: break	# we've reached the end
+			node = node.parent	
+		path.reverse()
+		return path
+	
+	# sanity check
+	if campaign_day is None:
+		print('ERROR: Tried to generate a hex path without a campaign day object!')
+		return []
+	
+	# clear any old pathfinding info
+	for (hx, hy) in CAMPAIGN_DAY_HEXES:
+		campaign_day.map_hexes[(hx,hy)].ClearPathInfo()
+	
+	node1 = campaign_day.map_hexes[(hx1, hy1)]
+	node2 = campaign_day.map_hexes[(hx2, hy2)]
+	open_list = set()	# contains the nodes that may be traversed by the path
+	closed_list = set()	# contains the nodes that will be traversed by the path
+	start = node1
+	start.h = GetHexDistance(node1.hx, node1.hy, node2.hx, node2.hy)
+	start.f = start.g + start.h
+	end = node2
+	open_list.add(start)		# add the start node to the open list
+	
+	while open_list:
+		
+		# grab the node with the best H value from the list of open nodes
+		current = sorted(open_list, key=lambda inst:inst.f)[0]
+		
+		# we've reached our destination
+		if current == end:
+			return RetracePath(current)
+		
+		# move this node from the open to the closed list
+		open_list.remove(current)
+		closed_list.add(current)
+		
+		# add the nodes connected to this one to the open list
+		for direction in range(6):
+			
+			# get the hex coordinates in this direction
+			hx, hy = campaign_day.GetAdjacentCDHex(current.hx, current.hy, direction)
+			
+			# no map hex exists here, skip
+			if (hx, hy) not in CAMPAIGN_DAY_HEXES: continue
+			
+			node = campaign_day.map_hexes[(hx,hy)]
+			
+			# ignore nodes on closed list
+			if node in closed_list: continue
+			
+			# check for route blocking
+			if rivers_block:
+				if direction in campaign_day.map_hexes[(current.hx, current.hy)].rivers:
+					if direction not in campaign_day.map_hexes[(current.hx, current.hy)].bridges:
+						continue
+			
+			if enemy_zones_block:
+				if node.controlled_by == 1:
+					continue
+			
+			# not really used yet
+			cost = 1
+			
+			g = current.g + cost
+			
+			# if not in open list, add it
+			if node not in open_list:
+				node.g = g
+				node.h = GetHexDistance(node.hx, node.hy, node2.hx, node2.hy)
+				node.f = node.g + node.h
+				node.parent = current
+				open_list.add(node)
+			# if already in open list, check to see if can make a better path
+			else:
+				if g < node.g:
+					node.parent = current
+					node.g = g
+					node.f = node.g + node.h
+	
+	# no path possible
+	return []
+
+
 # Bresenham's Line Algorithm (based on an implementation on the roguebasin wiki)
 # returns a series of x, y points along a line
 # if los is true, does not include the starting location in the line
@@ -12824,7 +12963,6 @@ def GetHexRing(hx, hy, radius):
 	return hex_list
 
 
-
 # returns the direction to an adjacent hex
 def GetDirectionToAdjacent(hx1, hy1, hx2, hy2):
 	hx_mod = hx2 - hx1
@@ -12833,7 +12971,6 @@ def GetDirectionToAdjacent(hx1, hy1, hx2, hy2):
 		return DESTHEX.index((hx_mod, hy_mod))
 	# hex is not adjacent
 	return -1
-
 
 
 # returns the best facing to point in the direction of the target hex
@@ -13779,6 +13916,12 @@ def PlaySoundFor(obj, action):
 	elif action == 'command_select':
 		PlaySound('command_select')
 		return
+	
+	elif action == 'smoke':
+		PlaySound('smoke')
+		return
+	
+	
 	
 	print ('ERROR: Could not determine which sound to play for action: ' + action)
 			

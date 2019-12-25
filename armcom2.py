@@ -37,17 +37,12 @@
 ##### Libraries #####
 import os, sys						# OS-related stuff
 
-# OSX
-if sys.platform == 'darwin':
+if sys.platform == 'darwin':				# OSX
 	import tcod as libtcod
-
-# linux
-elif os.name == 'posix':
+elif os.name == 'posix':				# linux
 	import libtcodpy_local as libtcod
-
-# windows
-else:
-	import libtcodpy as libtcod			# The Doryen Library
+else:							# windows
+	import libtcodpy as libtcod
 	os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)	# set sdl2 dll path
 
 from configparser import ConfigParser			# saving and loading configuration settings
@@ -60,14 +55,14 @@ from datetime import datetime				# for timestamping logs
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
 import sdl2.sdlmixer as mixer				# sound effects
-from calendar import monthrange			# for date calculations
+from calendar import monthrange				# for date calculations
 
 
 ##########################################################################################
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.10.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -76,7 +71,7 @@ CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
 
 if sys.platform == 'darwin':
 	RENDERER = libtcod.RENDERER_SDL2
-elif os.name == 'posix':					# linux (and OS X?) has to use SDL for some reason
+elif os.name == 'posix':				# linux (and OS X?) has to use SDL for some reason
 	RENDERER = libtcod.RENDERER_SDL
 else:
 	RENDERER = libtcod.RENDERER_GLSL

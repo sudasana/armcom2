@@ -64,7 +64,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.10.0'					# game version
+VERSION = '0.10.0 25-12-19'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -8149,10 +8149,13 @@ class Unit:
 			ShowMessage(text)
 			self.DestroyMe()
 		else:
-			# pin test
-			self.PinTest(self.fp_to_resolve)
-			if not self.pinned:
+			# pin test if not already pinned
+			if self.pinned:
 				ShowMessage('No effect.')
+			else:
+				self.PinTest(self.fp_to_resolve)
+				if not self.pinned:
+					ShowMessage('No effect.')
 		
 		self.fp_to_resolve = 0
 		self.fatigue += 1

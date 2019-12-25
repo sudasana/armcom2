@@ -9865,6 +9865,10 @@ class Scenario:
 		if profile['attacker'] != scenario.player_unit and profile['target'] != scenario.player_unit:
 			return profile
 		
+		# play sound effect for HD save
+		if profile['result'] == 'MISS - HULL DOWN':
+			PlaySoundFor(None, 'hull_down_save')
+		
 		# display result on screen
 		libtcod.console_print_ex(attack_con, 13, 51, libtcod.BKGND_NONE,
 			libtcod.CENTER, result_text)
@@ -12023,6 +12027,7 @@ class Scenario:
 					if crewman is None: continue
 					
 					if crewman.ToggleHatch():
+						PlaySoundFor(crewman, 'hatch')
 						self.player_unit.positions_list[self.selected_position].UpdateVisibleHexes()
 						self.UpdateCrewInfoCon()
 						self.UpdateGuiCon()
@@ -13921,7 +13926,13 @@ def PlaySoundFor(obj, action):
 		PlaySound('smoke')
 		return
 	
+	elif action == 'hatch':
+		PlaySound('hatch')
+		return
 	
+	elif action == 'hull_down_save':
+		PlaySound('hull_down_save')
+		return
 	
 	print ('ERROR: Could not determine which sound to play for action: ' + action)
 			

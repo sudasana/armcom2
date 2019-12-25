@@ -3498,8 +3498,7 @@ class CampaignDay:
 				hx2_max = 5
 				hy2 = 0
 			for hx2 in range(hx2_max - 5, hx2_max):
-				path = GetHexPath(hx1, hy1, hx2, hy2)
-				if len(path) != 0:
+				if len(GetHexPath(hx1, hy1, hx2, hy2)) != 0:
 					path_good = True
 					break
 			
@@ -4825,6 +4824,22 @@ class CampaignDay:
 					
 				# request resupply
 				if key_char == 'r':
+					
+					# check for clear path to friendly edge
+					path_good = False
+					(hx1, hy1) = self.player_unit_location
+					
+					if hy1 == 8:
+						path_good = True
+					else:
+						for hx2 in range(-4, 1):
+							if len(GetHexPath(hx1, hy1, hx2, 8, enemy_zones_block=True)) != 0:
+								path_good = True
+								break
+					if not path_good:
+						ShowMessage('You are cut off from friendly forces! No resupply possible.')
+						continue
+					
 					if ShowNotification('Spend 30 minutes waiting for resupply?', confirm=True):
 						ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
 						

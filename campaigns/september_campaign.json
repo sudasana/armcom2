@@ -20,6 +20,15 @@
 		"PSW 231 (8 rad)", "PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
 		"Riflemen"
 	],
+	"enemy_unit_class_odds" : {
+		"Light Tank" : "70",
+		"Medium Tank" : "15",
+		"Armoured Car" : "90",
+		"Anti-Tank Gun" : "35",
+		"Anti-Aircraft Gun" : "5",
+		"Truck" : "90",
+		"Infantry Squad" : "100"
+	},
 	"decorations_list" : {
 		"600" : "Cross of Valour",
 		"800" : "Order of Polonia Restituta Fifth Class",
@@ -41,16 +50,7 @@
 				"Fighting Withdrawl" : "70"
 			},
 			"enemy_nation" : "Germany",
-			"arty_support_level" : 90.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Medium Tank" : "15",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100"
-			}
+			"arty_support_level" : 90.0
 		},
 		{
 			"start_date" : "1939.09.08",
@@ -67,14 +67,8 @@
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 80.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Medium Tank" : "15",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100"
+			"enemy_class_odds_modifier" : {
+				"Anti-Tank Gun" : "20"
 			}
 		},
 		{
@@ -92,14 +86,8 @@
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 70.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Medium Tank" : "15",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100"
+			"enemy_class_odds_modifier" : {
+				"Infantry Squad" : "50"
 			}
 		},
 		{
@@ -117,14 +105,8 @@
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 50.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Medium Tank" : "15",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100"
+			"enemy_class_odds_modifier" : {
+				"Infantry Squad" : "30"
 			}
 		},
 		{
@@ -141,16 +123,7 @@
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
-			"arty_support_level" : 40.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Medium Tank" : "15",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100"
-			}
+			"arty_support_level" : 40.0
 		}
 	]
 }

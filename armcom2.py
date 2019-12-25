@@ -1324,7 +1324,7 @@ class Campaign:
 					libtcod.console_print(con, 43, y+1, position.crewman.wound)
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			Wait(50, ignore_animations=True)
+			Wait(30, ignore_animations=True)
 			
 			# check for level up
 			levels_up = 0
@@ -1347,7 +1347,7 @@ class Campaign:
 			position.crewman.status = ''
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			Wait(50, ignore_animations=True)
+			Wait(30, ignore_animations=True)
 			y += 5
 		
 		# repair tank if required
@@ -1691,8 +1691,14 @@ class Campaign:
 			week_index = campaign.stats['calendar_weeks'].index(campaign.current_week)
 			if week_index < len(campaign.stats['calendar_weeks']) - 1:
 				week_index += 1
-				if self.today > campaign.stats['calendar_weeks'][week_index]['start_date']:
+				if self.today >= campaign.stats['calendar_weeks'][week_index]['start_date']:
 					campaign.current_week = campaign.stats['calendar_weeks'][week_index]
+					
+					# check for modified class spawn odds
+					if 'enemy_class_odds_modifier' in campaign.current_week:
+						for k, v in campaign.current_week['enemy_class_odds_modifier'].items():
+							if k in campaign.stats['enemy_unit_class_odds']:
+								campaign.stats['enemy_unit_class_odds'][k] = v
 		
 		
 		# consoles for campaign calendar interface
@@ -1819,6 +1825,8 @@ class Campaign:
 						
 						# create a new campaign day
 						campaign_day = CampaignDay()
+						campaign_day.GenerateRoads()
+						campaign_day.GenerateRivers()
 						
 						# show new day starting animation
 						self.ShowStartOfDay()	
@@ -1833,6 +1841,8 @@ class Campaign:
 							# proceed to next combat day
 							ProceedToNextDay()
 							campaign_day = CampaignDay()
+							campaign_day.GenerateRoads()
+							campaign_day.GenerateRivers()
 							self.ShowStartOfDay()
 						
 						# redraw the screen
@@ -2002,10 +2012,6 @@ class CampaignDay:
 			self.player_unit_location = (2, 1)	# second row of map
 		else:
 			self.player_unit_location = (-2, 8)	# bottom center of map
-		
-		# generate dirt roads and rivers on campaign day map
-		self.GenerateRoads()
-		self.GenerateRivers()
 		
 		self.active_menu = 3				# number of currently active command menu
 		self.selected_position = 0			# selected crew position in crew command menu tab
@@ -8794,7 +8800,7 @@ class Scenario:
 			# choose a random unit class
 			unit_class = None
 			while unit_class is None:
-				k, value = choice(list(campaign.current_week['enemy_unit_class_odds'].items()))
+				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			
@@ -13947,9 +13953,9 @@ global main_title, main_theme
 global campaign, campaign_day, scenario, session
 global keyboard_decode, keyboard_encode
 
-# FUTURE save console output to a log file
-#if not DEBUG:
-#	sys.stdout = open('runtime_log.txt', 'w')
+# save console output to a log file
+if not DEBUG:
+	sys.stdout = open('runtime_log.txt', 'w')
 
 print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
@@ -14234,6 +14240,8 @@ while not exit_game:
 				
 				# create a new campaign day
 				campaign_day = CampaignDay()
+				campaign_day.GenerateRoads()
+				campaign_day.GenerateRivers()
 				
 				# placeholder for the currently active scenario
 				scenario = None

@@ -17,6 +17,17 @@
 		"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
 		"75mm wz. 97/25", "Polski Fiat 621", "Riflemen", "HMG Team"
 	],
+	"enemy_unit_class_odds" : {
+		"Tankette" : "40",
+		"Light Tank" : "25",
+		"Armoured Car" : "80",
+		"Anti-Tank Gun" : "60",
+		"Field Gun" : "20",
+		"Anti-Aircraft Gun" : "25",
+		"Truck" : "80",
+		"Infantry Squad" : "100",
+		"MG Team" : "80"
+	},
 	"decorations_list" : {
 		"350" : "Medal for Battle Merit",
 		"500" : "Order of the Red Star",
@@ -38,18 +49,7 @@
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",
-			"arty_support_level" : 80.0,
-			"enemy_unit_class_odds" : {
-				"Tankette" : "40",
-				"Light Tank" : "25",
-				"Armoured Car" : "80",
-				"Anti-Tank Gun" : "60",
-				"Field Gun" : "20",
-				"Anti-Aircraft Gun" : "25",
-				"Truck" : "80",
-				"Infantry Squad" : "100",
-				"MG Team" : "80"
-			}
+			"arty_support_level" : 80.0
 		},
 		{
 			"start_date" : "1939.09.24",
@@ -66,16 +66,9 @@
 			},
 			"enemy_nation" : "Poland",
 			"arty_support_level" : 80.0,
-			"enemy_unit_class_odds" : {
-				"Tankette" : "40",
-				"Light Tank" : "25",
-				"Armoured Car" : "80",
-				"Anti-Tank Gun" : "60",
-				"Field Gun" : "20",
-				"Anti-Aircraft Gun" : "25",
-				"Truck" : "80",
-				"Infantry Squad" : "100",
-				"MG Team" : "80"
+			"enemy_class_odds_modifier" : {
+				"Tankette" : "20",
+				"Field Gun" : "30"
 			}
 		},
 		{
@@ -92,18 +85,7 @@
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Poland",
-			"arty_support_level" : 80.0,
-			"enemy_unit_class_odds" : {
-				"Tankette" : "40",
-				"Light Tank" : "25",
-				"Armoured Car" : "80",
-				"Anti-Tank Gun" : "60",
-				"Field Gun" : "20",
-				"Anti-Aircraft Gun" : "25",
-				"Truck" : "80",
-				"Infantry Squad" : "100",
-				"MG Team" : "80"
-			}
+			"arty_support_level" : 80.0
 		}
 	]
 }

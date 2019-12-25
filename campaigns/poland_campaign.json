@@ -21,6 +21,18 @@
 		"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
 		"75mm wz. 97/25", "Polski Fiat 621", "Riflemen", "HMG Team", "Light Artillery Car"
 	],
+	"enemy_unit_class_odds" : {
+		"Tankette" : "40",
+		"Light Tank" : "25",
+		"Armoured Car" : "80",
+		"Anti-Tank Gun" : "60",
+		"Field Gun" : "20",
+		"Anti-Aircraft Gun" : "25",
+		"Truck" : "80",
+		"Infantry Squad" : "100",
+		"MG Team" : "80",
+		"Armoured Train Car" : "10"
+	},
 	"decorations_list" : {
 		"600" : "Iron Cross Second Class",
 		"800" : "Iron Cross First Class",
@@ -43,19 +55,7 @@
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 80.0,
-			"arty_support_level" : 50.0,
-			"enemy_unit_class_odds" : {
-				"Tankette" : "40",
-				"Light Tank" : "25",
-				"Armoured Car" : "80",
-				"Anti-Tank Gun" : "60",
-				"Field Gun" : "20",
-				"Anti-Aircraft Gun" : "25",
-				"Truck" : "80",
-				"Infantry Squad" : "100",
-				"MG Team" : "80",
-				"Armoured Train Car" : "10"
-			}
+			"arty_support_level" : 50.0
 		},
 		{
 			"start_date" : "1939.09.08",
@@ -73,17 +73,8 @@
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
 			"arty_support_level" : 50.0,
-			"enemy_unit_class_odds" : {
-				"Tankette" : "40",
-				"Light Tank" : "25",
-				"Armoured Car" : "80",
-				"Anti-Tank Gun" : "60",
-				"Field Gun" : "20",
-				"Anti-Aircraft Gun" : "25",
-				"Truck" : "80",
-				"Infantry Squad" : "100",
-				"MG Team" : "80",
-				"Armoured Train Car" : "10"
+			"enemy_class_odds_modifier" : {
+				"Armoured Car" : "50"
 			}
 		},
 		{
@@ -102,17 +93,8 @@
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
 			"arty_support_level" : 30.0,
-			"enemy_unit_class_odds" : {
-				"Tankette" : "40",
-				"Light Tank" : "25",
-				"Armoured Car" : "80",
-				"Anti-Tank Gun" : "60",
-				"Field Gun" : "20",
-				"Anti-Aircraft Gun" : "25",
-				"Truck" : "80",
-				"Infantry Squad" : "100",
-				"MG Team" : "80",
-				"Armoured Train Car" : "10"
+			"enemy_class_odds_modifier" : {
+				"Anti-Tank Gun" : "40"
 			}
 		},
 		{
@@ -130,19 +112,7 @@
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
-			"arty_support_level" : 50.0,
-			"enemy_unit_class_odds" : {
-				"Tankette" : "40",
-				"Light Tank" : "25",
-				"Armoured Car" : "80",
-				"Anti-Tank Gun" : "60",
-				"Field Gun" : "20",
-				"Anti-Aircraft Gun" : "25",
-				"Truck" : "80",
-				"Infantry Squad" : "100",
-				"MG Team" : "80",
-				"Armoured Train Car" : "10"
-			}
+			"arty_support_level" : 50.0
 		},
 		{
 			"start_date" : "1939.09.29",
@@ -159,19 +129,7 @@
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
-			"arty_support_level" : 60.0,
-			"enemy_unit_class_odds" : {
-				"Tankette" : "40",
-				"Light Tank" : "25",
-				"Armoured Car" : "80",
-				"Anti-Tank Gun" : "60",
-				"Field Gun" : "20",
-				"Anti-Aircraft Gun" : "25",
-				"Truck" : "80",
-				"Infantry Squad" : "100",
-				"MG Team" : "80",
-				"Armoured Train Car" : "10"
-			}
+			"arty_support_level" : 60.0
 		}
 	]
 }

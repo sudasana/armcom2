@@ -23,6 +23,19 @@
 		"PaK 38", "PaK 40", "PaK 43", "Opel Blitz 3-ton",
 		"Riflemen", "HMG Team"
 	],
+	"enemy_unit_class_odds" : {
+		"Light Tank" : "70",
+		"Assault Gun" : "80",
+		"Tank Destroyer" : "50",
+		"Medium Tank" : "15",
+		"Heavy Tank" : "5",
+		"Armoured Car" : "90",
+		"Anti-Tank Gun" : "35",
+		"Anti-Aircraft Gun" : "5",
+		"Truck" : "90",
+		"Infantry Squad" : "100",
+		"MG Team" : "100"
+	},
 	"decorations_list" : {
 		"500" : "Bronze Star",
 		"600" : "Silver Star",
@@ -43,20 +56,7 @@
 				"Fighting Withdrawl" : "0"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 80.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_level" : 80.0
 		},
 		{
 			"start_date" : "1944.08.03",
@@ -72,20 +72,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 80.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.08.10",
@@ -101,20 +88,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 80.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.08.17",
@@ -130,20 +104,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 80.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.08.24",
@@ -159,20 +120,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 80.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.08.31",
@@ -189,20 +137,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.09.02",
@@ -223,20 +158,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.09.18",
@@ -253,20 +175,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.09.25",
@@ -282,20 +191,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.10.02",
@@ -311,20 +207,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.10.09",
@@ -345,20 +228,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.11.16",
@@ -374,20 +244,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.11.22",
@@ -403,20 +260,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.11.28",
@@ -432,20 +276,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.12.04",
@@ -466,20 +297,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1944.12.29",
@@ -496,20 +314,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.01.03",
@@ -530,20 +335,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.01.16",
@@ -559,20 +351,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.01.23",
@@ -588,20 +367,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.01.30",
@@ -618,20 +384,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.02.03",
@@ -652,20 +405,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.03.01",
@@ -686,20 +426,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.03.12",
@@ -720,20 +447,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.03.21",
@@ -754,20 +468,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.03.31",
@@ -783,20 +484,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.04.06",
@@ -812,20 +500,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		},
 		{
 			"start_date" : "1945.04.12",
@@ -841,20 +516,7 @@
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0,
-			"air_support_step" : 10.0,
-			"enemy_unit_class_odds" : {
-				"Light Tank" : "70",
-				"Assault Gun" : "80",
-				"Tank Destroyer" : "50",
-				"Medium Tank" : "15",
-				"Heavy Tank" : "5",
-				"Armoured Car" : "90",
-				"Anti-Tank Gun" : "35",
-				"Anti-Aircraft Gun" : "5",
-				"Truck" : "90",
-				"Infantry Squad" : "100",
-				"MG Team" : "100"
-			}
+			"air_support_step" : 10.0
 		}
 	]
 }

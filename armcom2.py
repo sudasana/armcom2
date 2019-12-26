@@ -64,7 +64,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.10.0 25-12-19'					# game version
+VERSION = '0.10.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -80,9 +80,7 @@ LIMIT_FPS = 50						# maximum screen refreshes per second
 ANIM_UPDATE_TIMER = 0.15				# number of seconds between animation frame checks
 WINDOW_WIDTH, WINDOW_HEIGHT = 90, 60			# size of game window in character cells
 WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of game window
-
 KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak', 'Custom']	# list of possible keyboard layout settings
-
 MAX_TANK_NAME_LENGTH = 20				# maximum length of tank names
 MAX_NICKNAME_LENGTH = 10				# " for crew nicknames
 
@@ -13106,8 +13104,12 @@ def CheckSavedGameVersion():
 	saved_version = save['version']
 	save.close()
 	
+	# if either is development version, must match exactly
+	if '-' in saved_version or '-' in VERSION:
+		if saved_version != VERSION:
+			return saved_version
+	
 	# only allow loading the saved game if the first two components of the version numbers match
-
 	version_list = saved_version.split('.')
 	major_saved_version = version_list[0] + version_list[1]
 	version_list = VERSION.split('.')

@@ -5,7 +5,7 @@
 	"player_nation" : "Canada",
 	"enemy_nations" : ["Germany"],
 	"region" : "Northwestern Europe",
-	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France, Belgium, the Netherlands, and the invasion of Germany. (Unfinished)",
+	"desc" : "Join the 4th Armoured Division as it participates in the liberation of France, Belgium, the Netherlands, and the invasion of Germany.",
 	"player_unit_list" : [
 		"Sherman II", "Sherman V", "Sherman VC"
 	],

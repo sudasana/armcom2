@@ -85,10 +85,15 @@ If you reach the top hex row (or the bottom one in Fighting Withdrawl mission), 
 
 Five menu tabs are available in the command menu:
 * Support
+  * Provides information on current air and artillery support levels. Here you can spend 15 minutes requesting additional support
 * Crew
+  * Displays a list of current crewmen in your tank. From here you can open the crew menu for any of them.
 * Travel
+  * In this menu you can select a direction from your current location, and either request reconnaissance information about an adjacent enemy-held hex, or travel to an adjacent hex. When moving, you can toggle advancing fire and air and artillery support requests on and off. Advancing fire uses up HE ammo but if a battle encounter is triggered, it has the chance of pinning enemy units before combat begins. You can also Wait in place, but there's a possibility that enemy forces may attack your hex.
 * Group
+  * Lists the current members of your tank squadron.
 * Main Gun
+  * Here you can view the stats of your tank's main gun, and manage the contents of the Ready Rack. From here you can also **Request Resupply** which, if granted, allows you to replenish main gun ammo, and willalso bring your tank squadron up to full strength.
 
 The campaign day ends when you abandon your tank, your character is killed or seriously wounded, or you reach sunset as indicated by the background of the time display in the top centre of the screen.
 

@@ -64,7 +64,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.10.0'					# game version
+VERSION = '0.10.0 26-12-19'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -4127,24 +4127,21 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 6, 39, 'Request Resupply')
 	
 	
-	# generate/update the campaign info console 23x16
+	# generate/update the campaign info console 23x5
 	def UpdateCDCampaignCon(self):
 		libtcod.console_clear(cd_campaign_con)
-		
-		# current day mission
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.light_blue)
+		libtcod.console_set_default_background(cd_campaign_con, libtcod.darkest_blue)
+		libtcod.console_rect(cd_campaign_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
 		libtcod.console_print_ex(cd_campaign_con, 11, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Day Mission')
-		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
-		libtcod.console_print_ex(cd_campaign_con, 11, 2, libtcod.BKGND_NONE, libtcod.CENTER,
-			campaign_day.mission)
-		
-		# current VP total
-		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.light_blue)
-		libtcod.console_print_ex(cd_campaign_con, 11, 13, libtcod.BKGND_NONE, libtcod.CENTER,
+		libtcod.console_rect(cd_campaign_con, 0, 3, 24, 1, True, libtcod.BKGND_SET)
+		libtcod.console_print_ex(cd_campaign_con, 11, 3, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Total VP')
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
-		libtcod.console_print_ex(cd_campaign_con, 11, 15, libtcod.BKGND_NONE, libtcod.CENTER,
+		libtcod.console_print_ex(cd_campaign_con, 11, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+			campaign_day.mission)
+		libtcod.console_print_ex(cd_campaign_con, 11, 4, libtcod.BKGND_NONE, libtcod.CENTER,
 			str(campaign.player_vp))
 	
 	
@@ -4153,60 +4150,62 @@ class CampaignDay:
 		libtcod.console_clear(cd_hex_info_con)
 		
 		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.blue)
-		libtcod.console_print(cd_hex_info_con, 0, 0, 'Area Info')
+		libtcod.console_print_ex(cd_hex_info_con, 11, 0, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Zone Info')
 		
-		# mouse cursor outside of map area
-		if mouse.cx < 31 or mouse.cx > 59:
-			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)
-			libtcod.console_print(cd_hex_info_con, 0, 2, 'Mouseover an area')
-			libtcod.console_print(cd_hex_info_con, 0, 3, 'for info')
-			return
 		x = mouse.cx - 29
 		y = mouse.cy - 6
 		
-		# no zone here
-		if (x,y) not in self.cd_map_index: return
+		# no zone here or mouse cursor outside of map area
+		if (x,y) not in self.cd_map_index or x < 2 or x > 30:
+			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)
+			libtcod.console_print(cd_hex_info_con, 2, 2, 'Mouseover an area')
+			libtcod.console_print(cd_hex_info_con, 2, 3, 'for info')
+			return
 		
+		# find the hex
 		(hx, hy) = self.cd_map_index[(x,y)]
 		cd_hex = self.map_hexes[(hx, hy)]
 		
 		# display hex zone coordinates
 		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_green)
-		libtcod.console_print(cd_hex_info_con, 11, 0, cd_hex.coordinate)
+		libtcod.console_print_ex(cd_hex_info_con, 11, 1, libtcod.BKGND_NONE,
+			libtcod.CENTER, cd_hex.coordinate)
 		
 		# DEBUG - display hx,hy
 		if DEBUG:
 			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.yellow)
-			libtcod.console_print(cd_hex_info_con, 14, 0, str(hx) + ',' + str(hy))
+			libtcod.console_print_ex(cd_hex_info_con, 22, 0, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(hx) + ',' + str(hy))
 		
 		# terrain
 		libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)
-		libtcod.console_print(cd_hex_info_con, 0, 1, cd_hex.terrain_type)
+		libtcod.console_print(cd_hex_info_con, 0, 3, cd_hex.terrain_type)
 		
 		# control
 		if cd_hex.controlled_by == 0:
 			libtcod.console_set_default_foreground(cd_hex_info_con, ALLIED_UNIT_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 2, 'Friendly controlled')
+			libtcod.console_print(cd_hex_info_con, 0, 5, 'Friendly controlled')
 		else:
 			libtcod.console_set_default_foreground(cd_hex_info_con, ENEMY_UNIT_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 2, 'Enemy controlled')
-			libtcod.console_print(cd_hex_info_con, 0, 3, 'Strength: ')
+			libtcod.console_print(cd_hex_info_con, 0, 5, 'Enemy controlled')
+			libtcod.console_print(cd_hex_info_con, 0, 6, 'Strength: ')
 			if cd_hex.known_to_player:
 				text = str(cd_hex.enemy_strength)
 			else:
 				text = 'Unknown'
-			libtcod.console_print(cd_hex_info_con, 10, 3, text)
+			libtcod.console_print(cd_hex_info_con, 10, 6, text)
 				
 		# objective
 		if cd_hex.objective is not None:
 			libtcod.console_set_default_foreground(cd_hex_info_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 6, 'Objective: ' + cd_hex.objective['objective_type'])
-			libtcod.console_print(cd_hex_info_con, 0, 7, 'VP: ' + str(cd_hex.objective['vp_reward']))
+			libtcod.console_print(cd_hex_info_con, 0, 8, 'Objective: ' + cd_hex.objective['objective_type'])
+			libtcod.console_print(cd_hex_info_con, 0, 9, 'VP: ' + str(cd_hex.objective['vp_reward']))
 		
 		# roads
 		if len(cd_hex.dirt_roads) > 0:
 			libtcod.console_set_default_foreground(cd_hex_info_con, DIRT_ROAD_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 8, 'Dirt roads')
+			libtcod.console_print(cd_hex_info_con, 0, 11, 'Dirt roads')
 	
 	
 	# starts or re-starts looping animations based on weather conditions
@@ -4339,7 +4338,7 @@ class CampaignDay:
 		
 		libtcod.console_blit(cd_weather_con, 0, 0, 0, 0, con, 71, 3)		# weather info
 		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 18)		# campaign info
-		libtcod.console_blit(cd_hex_info_con, 0, 0, 0, 0, con, 66, 50)		# zone info
+		libtcod.console_blit(cd_hex_info_con, 0, 0, 0, 0, con, 66, 24)		# zone info
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
@@ -4364,8 +4363,8 @@ class CampaignDay:
 		cd_player_unit_con = NewConsole(25, 16, libtcod.black, libtcod.white)
 		cd_command_con = NewConsole(25, 41, libtcod.black, libtcod.white)
 		cd_weather_con = NewConsole(14, 12, libtcod.black, libtcod.white)
-		cd_campaign_con = NewConsole(23, 16, libtcod.black, libtcod.white)
-		cd_hex_info_con = NewConsole(23, 9, libtcod.black, libtcod.white)
+		cd_campaign_con = NewConsole(23, 5, libtcod.black, libtcod.white)
+		cd_hex_info_con = NewConsole(23, 35, libtcod.black, libtcod.white)
 		
 		# generate consoles for the first time
 		self.UpdateCDMapCon()

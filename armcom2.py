@@ -13076,15 +13076,13 @@ def RestrictChance(chance):
 
 # save the current game in progress
 def SaveGame():
-	
 	if DEBUG:
 		if session.debug['Suspend Save']: return
-	
 	save = shelve.open('savegame', 'n')
 	save['campaign'] = campaign
 	save['campaign_day'] = campaign_day
 	save['scenario'] = scenario
-	save['version'] = VERSION		# for now the saved version must be identical to the current one
+	save['version'] = VERSION
 	save.close()
 
 

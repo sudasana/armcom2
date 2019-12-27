@@ -6031,8 +6031,13 @@ class Weapon:
 	# calculate the odds for maintain RoF with this weapon
 	def GetRoFChance(self):
 		
+		# no RoF on this weapon
+		rof = self.GetStat('rof')
+		if rof is None:
+			return 0.0
+		
 		# calculate base chance
-		chance = float(self.GetStat('rof'))
+		chance = float(rof)
 		
 		# guns need to be using RR for full benefit
 		if self.GetStat('type') == 'Gun':

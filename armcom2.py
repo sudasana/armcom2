@@ -4129,13 +4129,11 @@ class CampaignDay:
 	
 	# generate/update the campaign info console 23x5
 	def UpdateCDCampaignCon(self):
+		libtcod.console_set_default_background(cd_campaign_con, libtcod.darkest_blue)
 		libtcod.console_clear(cd_campaign_con)
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.light_blue)
-		libtcod.console_set_default_background(cd_campaign_con, libtcod.darkest_blue)
-		libtcod.console_rect(cd_campaign_con, 0, 0, 24, 1, True, libtcod.BKGND_SET)
 		libtcod.console_print_ex(cd_campaign_con, 11, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Day Mission')
-		libtcod.console_rect(cd_campaign_con, 0, 3, 24, 1, True, libtcod.BKGND_SET)
 		libtcod.console_print_ex(cd_campaign_con, 11, 3, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Total VP')
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)

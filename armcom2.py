@@ -10843,7 +10843,7 @@ class Scenario:
 					self.player_unit.ClearAcquiredTargets(no_enemy=True)
 					
 					# do bog check for pivot
-					if not player_unit.bogged:
+					if not self.player_unit.bogged:
 						self.player_unit.DoBogCheck(False, pivot=True)
 						if self.player_unit.bogged:
 							ShowMessage('Your tank has becomed bogged.')

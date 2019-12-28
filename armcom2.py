@@ -62,7 +62,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.10.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -435,6 +435,99 @@ REGIONS = {
 			}
 		}
 		
+	},
+	
+	'Nordic' : {
+		'cd_terrain_odds' : {
+			'Flat' : 20.0,
+			'Forest' : 40.0,
+			'Hills' : 20.0,
+			'Fields' : 10.0,
+			'Marsh' : 5.0,
+			'Villages' : 5.0
+		},
+		
+		'dirt_road_odds' : 20.0,
+		'river_odds' : 30.0,
+
+		'season_weather_odds' : {
+			
+			'Winter' : {
+				'end_date' : '03.31',
+				'ground_conditions' : {
+					'Dry' : 0.0, 'Wet' : 0.0, 'Muddy' : 0.0,
+					'Snow' : 70.0, 'Deep Snow' : 30.0
+				},
+				'freezing' : 100.0,
+				'cloud_cover' : {
+					'Clear' : 20.0, 'Scattered' : 10.0,
+					'Heavy' : 10.0, 'Overcast' : 60.0
+				},
+				'precipitation' : {
+					'None' : 40.0, 'Mist' : 0.0,
+					'Rain' : 0.0, 'Heavy Rain' : 0.0,
+					'Light Snow' : 25.0, 'Snow' : 25.0,
+					'Blizzard' : 10.0
+				}
+				
+			},
+			'Spring' : {
+				'end_date' : '06.14',
+				'ground_conditions' : {
+					'Dry' : 55.0, 'Wet' : 15.0, 'Muddy' : 5.0,
+					'Snow' : 15.0, 'Deep Snow' : 10.0
+				},
+				'freezing' : 20.0,
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 30.0, 'Mist' : 15.0,
+					'Rain' : 10.0, 'Heavy Rain' : 5.0,
+					'Light Snow' : 20.0, 'Snow' : 15.0,
+					'Blizzard' : 5.0
+				}
+				
+			},
+			'Summer' : {
+				'end_date' : '09.31',
+				'ground_conditions' : {
+					'Dry' : 75.0, 'Wet' : 10.0, 'Muddy' : 15.0,
+					'Snow' : 0.0, 'Deep Snow' : 0.0
+				},
+				'freezing' : 0.0,
+				'cloud_cover' : {
+					'Clear' : 50.0, 'Scattered' : 15.0,
+					'Heavy' : 20.0, 'Overcast' : 15.0
+				},
+				'precipitation' : {
+					'None' : 60.0, 'Mist' : 10.0,
+					'Rain' : 20.0, 'Heavy Rain' : 10.0,
+					'Light Snow' : 0.0, 'Snow' : 0.0,
+					'Blizzard' : 0.0
+				}
+				
+			},
+			'Autumn' : {
+				'end_date' : '12.01',
+				'ground_conditions' : {
+					'Dry' : 20.0, 'Wet' : 20.0, 'Muddy' : 30.0,
+					'Snow' : 20.0, 'Deep Snow' : 10.0
+				},
+				'freezing' : 50.0,
+				'cloud_cover' : {
+					'Clear' : 20.0, 'Scattered' : 10.0,
+					'Heavy' : 30.0, 'Overcast' : 40.0
+				},
+				'precipitation' : {
+					'None' : 15.0, 'Mist' : 10.0,
+					'Rain' : 15.0, 'Heavy Rain' : 20.0,
+					'Light Snow' : 20.0, 'Snow' : 15.0,
+					'Blizzard' : 5.0
+				}
+			}
+		}
 	}
 }
 

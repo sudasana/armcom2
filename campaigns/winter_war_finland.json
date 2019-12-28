@@ -1,0 +1,56 @@
+{
+	"name" : "The Winter War",
+	"start_date" : "1939.11.30",
+	"end_date" : "1940.03.12",
+	"player_nation" : "Finland",
+	"enemy_nations" : ["Soviet Union"],
+	"region" : "Nordic",
+	"desc" : "Defend your homeland against the Communist invaders (unfinished).",
+	"player_unit_list" : [
+		"Panzer II A"
+	],
+	"player_air_support": [
+		"Ju 87B Stuka"
+	],
+	"player_arty_support": [
+		"7.5cm leIG 18"
+	],
+	"enemy_unit_list" : [
+		"T-26 M33", "BT-5 M34", "BT-7 M37", "T-28 M34"
+	],
+	"enemy_unit_class_odds" : {
+		"Tankette" : "40",
+		"Light Tank" : "25",
+		"Armoured Car" : "80",
+		"Anti-Tank Gun" : "60",
+		"Field Gun" : "20",
+		"Anti-Aircraft Gun" : "25",
+		"Truck" : "80",
+		"Infantry Squad" : "100",
+		"MG Team" : "80",
+		"Armoured Train Car" : "10"
+	},
+	"decorations_list" : {
+		"1000" : "Order of the White Rose of Finland",
+		"1500" : "Order of the Cross of Liberty"
+	},
+	"calendar_weeks": [
+		{
+			"start_date" : "1939.11.30",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "80",
+			"average_resistance" : "7",
+			"week_description" : "The Tide Breaks",
+			"mission_odds" : {
+				"Advance" : "0",
+				"Battle" : "0",
+				"Counterattack" : "20",
+				"Fighting Withdrawl" : "80"
+			},
+			"enemy_nation" : "Soviet Union",
+			"air_support_level" : 80.0,
+			"arty_support_level" : 50.0
+		}
+	]
+}

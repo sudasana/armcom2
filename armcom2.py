@@ -62,7 +62,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.10.1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -2917,7 +2917,7 @@ class CampaignDay:
 				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, con, x, y)
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			if campaign.player_unit.unit_name != '':
-				libtcod.console_print(con, x, y, self.player_unit.unit_name)
+				libtcod.console_print(con, x, y, campaign.player_unit.unit_name)
 			libtcod.console_set_default_background(con, libtcod.black)
 			
 			# command menu

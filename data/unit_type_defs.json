@@ -1,4 +1,6 @@
 {
+	"Polish Forces" : {},
+	
 	"TK-3" : {
 		"category" : "Vehicle",
 		"class" : "Tankette",
@@ -751,12 +753,8 @@
 	},
 	
 	
-	
-	
-	
-	
-	
-	
+	"German Forces" : {},
+
 	"Panzer I B": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
@@ -1850,7 +1848,6 @@
 		}
 	},
 	
-	
 	"STuG IIIG": {
 		"category" : "Vehicle",
 		"class" : "Assault Gun",
@@ -2916,13 +2913,9 @@
 			""
 		]
 	},
+
 	
-	
-	
-	
-	
-	
-	
+	"Soviet Forces" : {},
 	
 	"T-26 M33" : {
 		"category" : "Vehicle",
@@ -3225,6 +3218,136 @@
 		}
 	},
 	
+	"BA-20": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_ba-20.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "0",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"This armoured car was designed upon a Ford model A chassis and uses ",
+			"a modified Model T engine."
+		],
+		"rarity" : {
+			"1936.01.01" : "70",
+			"1942.01.01" : "0"
+		}
+	},
+	
+	"BA-6": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_ba-6.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "45",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Front Gunner"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Front Gunner",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"This heavy armoured car is armed with a 45mm gun."
+		],
+		"rarity" : {
+			"1935.01.01" : "80",
+			"1944.01.01" : "0"
+		}
+	},
+	
 	"76.2mm obr. 00/02P": {
 		"category" : "Gun",
 		"class" : "Field Gun",
@@ -3263,12 +3386,29 @@
 		}
 	},
 	
+	"ZIS-5 Truck" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_zis-5_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"description" : [
+			"This 4.5-ton truck is the workhorse of the Soviet armed forces."
+		],
+		"rarity" : {
+			"1933.01.01" : "60"
+		}
+	},
 	
 	
-	
-	
-	
-	
+	"French Forces" : {},
+		
 	"H35": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
@@ -3331,7 +3471,7 @@
 	},
 	
 	
-	
+	"American Forces" : {},
 	
 	"M4 Sherman": {
 		"category" : "Vehicle",
@@ -4163,7 +4303,7 @@
 	},
 	
 	
-	
+	"British and Commonwealth Forces" : {},
 	
 	"Sherman II": {
 		"category" : "Vehicle",
@@ -4448,6 +4588,75 @@
 	},
 	
 	
+	"Finnish Forces" : {},
+	
+	"105 K/13": {
+		"category" : "Gun",
+		"class" : "Artillery Gun",
+		"portrait" : "unit_105mm_gun.xp",
+		"size_class" : "Large",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "105",
+				"long_range" : "",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP", "HE"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			"Originally built by the French, this 105mm gun has been adapted ",
+			"by many armed forces around the world."
+		],
+		"rarity" : {
+			"1939.09.01" : "60"
+		}
+	},
+	
+	"Fokker CX": {
+		"category" : "Airplane",
+		"class" : "Light Bomber",
+		"movement_class" : "Airplane",
+		"weapon_list" : [
+			{
+				"type" : "Ordinance",
+				"name" : "Bombs",
+				"calibre" : "120",
+				"max_range" : "1",
+				"max_ammo" : "1"
+			},
+			{
+				"type" : "MG",
+				"fp" : "6",
+				"rof" : "17.0"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Pilot",
+			"name" : "Observer"}
+		],
+		"description" : [
+			""
+		]
+	},
+	
+	
+	"Generic Forces" : {},
 	
 	"Riflemen": {
 		"category" : "Infantry",

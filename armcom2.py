@@ -12810,6 +12810,11 @@ def CheckForAnimationUpdate():
 
 # load a console image from an .xp file
 def LoadXP(filename):
+	# make sure that required file exists and, if not, return a placeholder console
+	if not os.path.exists(DATAPATH + filename):
+		console = libtcod.console_new(1, 1)
+		libtcod.console_put_char_ex(console, 0, 0, '?', libtcod.red, libtcod.black)
+		return console
 	xp_file = gzip.open(DATAPATH + filename)
 	raw_data = xp_file.read()
 	xp_file.close()

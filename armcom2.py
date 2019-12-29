@@ -6512,7 +6512,7 @@ class AI:
 					self.disposition = 'Movement'
 			
 		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
-		
+				
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
 			
@@ -6616,7 +6616,6 @@ class AI:
 			
 			if self.disposition in ['Attack Player', 'Harass Player']:
 				target_list.append(scenario.player_unit)
-				print('DEBUG: added player as target')
 			else:
 				for unit in scenario.units:
 					if unit == scenario.player_unit: continue
@@ -6626,7 +6625,7 @@ class AI:
 			
 			# no possible targets
 			if len(target_list) == 0:
-				print ('AI DEBUG: No possible targets for ' + self.owner.unit_id)
+				#print ('AI DEBUG: No possible targets for ' + self.owner.unit_id)
 				return
 			
 			# score possible weapon-target combinations
@@ -6662,7 +6661,7 @@ class AI:
 			
 			# no possible attacks
 			if len(attack_list) == 0:
-				print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
+				#print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
 				return
 			
 			# score each possible weapon-ammo-target combination
@@ -6740,29 +6739,29 @@ class AI:
 			
 			# no possible attacks
 			if len(scored_list) == 0:
-				print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
+				#print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
 				return
 			
 			# sort list by score
 			scored_list.sort(key=lambda x:x[0], reverse=True)
 			
 			# DEBUG: list scored attacks
-			print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-			n = 1
-			for (score, weapon, target, ammo_type) in scored_list:
-				text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-				if ammo_type != '':
-					text += '(' + ammo_type + ')'
-				text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-				print (text)
-				n += 1
+			#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+			#n = 1
+			#for (score, weapon, target, ammo_type) in scored_list:
+			#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+			#	if ammo_type != '':
+			#		text += '(' + ammo_type + ')'
+			#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+			#	print (text)
+			#	n += 1
 			
 			# select best attack
 			(score, weapon, target, ammo_type) = scored_list[0]
 			
 			# no good attacks
 			if score <= 3.0:
-				print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
+				#print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
 				return
 			
 			# proceed with best attack
@@ -6778,14 +6777,14 @@ class AI:
 				
 				if mount == 'Turret' and self.owner.turret_facing is not None:
 					self.owner.turret_facing = direction
-					print('AI DEBUG: AI unit rotated turret to fire')
+					#print('AI DEBUG: AI unit rotated turret to fire')
 				
 				elif mount == 'Hull' and self.owner.facing is not None:
 					self.owner.facing = direction
 					if self.owner.turret_facing is not None:
 						self.owner.turret_facing = direction
 					self.owner.ClearAcquiredTargets(no_enemy=True)
-					print('AI DEBUG: AI unit pivoted hull to fire')
+					#print('AI DEBUG: AI unit pivoted hull to fire')
 				
 				scenario.UpdateUnitCon()
 				scenario.UpdateScenarioDisplay()
@@ -6803,6 +6802,7 @@ class AI:
 							self.owner.ClearAcquiredTargets(no_enemy=True)
 							for weapon in self.owner.weapon_list:
 								weapon.UpdateCoveredHexes()
+							#print('DEBUG: AI unit pivoted to fire with turret')
 			
 			#text = 'AI DEBUG: ' + self.owner.unit_id + ' attacking with ' + weapon.stats['name']
 			#if ammo_type != '':

@@ -8008,15 +8008,15 @@ class Unit:
 				
 				# unarmoured vehicle target, slightly different procedure
 				elif target.GetStat('armour') is None:
-					if profile['ammo_type'] == 'HE':
-						effective_fp = profile['weapon'].GetEffectiveFP()
+					if profile['ammo_type'] == 'AP':
+						target.ap_hits_to_resolve.append(profile)
 					else:
-						effective_fp = 1
-					if profile['result'] == 'CRITICAL HIT':
-						effective_fp = effective_fp * 2
-					target.fp_to_resolve += effective_fp
-					if not target.spotted:
-						target.hit_by_fp = True
+						effective_fp = profile['weapon'].GetEffectiveFP()
+						if profile['result'] == 'CRITICAL HIT':
+							effective_fp = effective_fp * 2
+						target.fp_to_resolve += effective_fp
+						if not target.spotted:
+							target.hit_by_fp = True
 				
 				# armoured target
 				elif target.GetStat('armour') is not None:
@@ -9544,21 +9544,12 @@ class Scenario:
 		# calculate modifiers
 		
 		# unarmoured targets use flat modifiers
-		
 		# FUTURE: check for unarmoured locations on otherwise armoured targets
-		
 		armour = target.GetStat('armour')
 		if armour is None:
 			
 			if profile['result'] == 'CRITICAL HIT':
-				modifier_list.append(('Critical Hit', 75.0))
-			
-			elif profile['ammo_type'] == 'HE':
-				modifier_list.append(('Unarmoured Target', 25.0))
-			
-			# AP hits have a chance to punch right through
-			else:
-				modifier_list.append(('Unarmoured Target', -18.0))
+				modifier_list.append(('Critical Hit', 55.0))
 			
 		else:
 		

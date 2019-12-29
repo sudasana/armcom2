@@ -62,9 +62,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.10.2'					# game version
+VERSION = '0.11.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -11890,7 +11890,7 @@ class Scenario:
 		# consoles around the edge of map
 		libtcod.console_blit(context_con, 0, 0, 0, 0, con, 28, 1)
 		libtcod.console_blit(time_con, 0, 0, 0, 0, con, 48, 1)
-		libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 75, 1)
+		libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 73, 1)
 		libtcod.console_blit(unit_info_con, 0, 0, 0, 0, con, 28, 54)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)

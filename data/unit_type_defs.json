@@ -3266,6 +3266,64 @@
 		}
 	},
 	
+	"SU-12" : {
+		"category" : "Vehicle",
+		"class" : "Assault Gun",
+		"portrait" : "unit_su-12.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "S",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"blocked_hull_dirs" : ["0"],
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "79"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0", "1", "2", "4", "5"]
+			}
+		],
+		"description" : [
+			"The SU-12 was the first self-propelled gun developed in the " ,
+			"Soviet Union. A 76mm gun is fixed to a turret on the back of a ",
+			"standard truck."
+		],
+		"rarity" : {
+			"1933.06.01" : "70",
+			"1943.01.01" : "0"
+		}
+		
+	},
+	
 	"BA-6": {
 		"category" : "Vehicle",
 		"class" : "Armoured Car",

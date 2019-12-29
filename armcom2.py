@@ -62,9 +62,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.10.1'					# game version
+VERSION = '0.10.2'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -6616,6 +6616,7 @@ class AI:
 			
 			if self.disposition in ['Attack Player', 'Harass Player']:
 				target_list.append(scenario.player_unit)
+				print('DEBUG: added player as target')
 			else:
 				for unit in scenario.units:
 					if unit == scenario.player_unit: continue
@@ -6625,7 +6626,7 @@ class AI:
 			
 			# no possible targets
 			if len(target_list) == 0:
-				#print ('AI DEBUG: No possible targets for ' + self.owner.unit_id)
+				print ('AI DEBUG: No possible targets for ' + self.owner.unit_id)
 				return
 			
 			# score possible weapon-target combinations
@@ -6661,7 +6662,7 @@ class AI:
 			
 			# no possible attacks
 			if len(attack_list) == 0:
-				#print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
+				print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
 				return
 			
 			# score each possible weapon-ammo-target combination
@@ -6739,29 +6740,29 @@ class AI:
 			
 			# no possible attacks
 			if len(scored_list) == 0:
-				#print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
+				print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
 				return
 			
 			# sort list by score
 			scored_list.sort(key=lambda x:x[0], reverse=True)
 			
 			# DEBUG: list scored attacks
-			#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-			#n = 1
-			#for (score, weapon, target, ammo_type) in scored_list:
-			#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-			#	if ammo_type != '':
-			#		text += '(' + ammo_type + ')'
-			#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-			#	print (text)
-			#	n += 1
+			print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+			n = 1
+			for (score, weapon, target, ammo_type) in scored_list:
+				text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+				if ammo_type != '':
+					text += '(' + ammo_type + ')'
+				text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+				print (text)
+				n += 1
 			
 			# select best attack
 			(score, weapon, target, ammo_type) = scored_list[0]
 			
 			# no good attacks
 			if score <= 3.0:
-				#print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
+				print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
 				return
 			
 			# proceed with best attack
@@ -6777,19 +6778,31 @@ class AI:
 				
 				if mount == 'Turret' and self.owner.turret_facing is not None:
 					self.owner.turret_facing = direction
-					#print('AI DEBUG: AI unit rotated turret to fire')
+					print('AI DEBUG: AI unit rotated turret to fire')
 				
 				elif mount == 'Hull' and self.owner.facing is not None:
 					self.owner.facing = direction
 					if self.owner.turret_facing is not None:
 						self.owner.turret_facing = direction
 					self.owner.ClearAcquiredTargets(no_enemy=True)
-					#print('AI DEBUG: AI unit pivoted hull to fire')
+					print('AI DEBUG: AI unit pivoted hull to fire')
 				
 				scenario.UpdateUnitCon()
 				scenario.UpdateScenarioDisplay()
 				for weapon in self.owner.weapon_list:
 					weapon.UpdateCoveredHexes()
+			
+			# check for need for hull pivot due to blocked firing direction
+			if mount is not None:
+				if mount == 'Turret':
+					blocked_dirs = weapon.GetStat('blocked_hull_dirs')
+					if blocked_dirs is not None:
+						direction = ConstrainDir(self.owner.turret_facing - self.owner.facing)
+						if str(direction) in blocked_dirs:
+							self.owner.facing = ConstrainDir(self.owner.facing + 3)
+							self.owner.ClearAcquiredTargets(no_enemy=True)
+							for weapon in self.owner.weapon_list:
+								weapon.UpdateCoveredHexes()
 			
 			#text = 'AI DEBUG: ' + self.owner.unit_id + ' attacking with ' + weapon.stats['name']
 			#if ammo_type != '':
@@ -9111,7 +9124,17 @@ class Scenario:
 				if mount == 'Hull':
 					if GetDirectionToward(attacker.hx, attacker.hy, target.hx, target.hy) in attacker.hull_down:
 						return 'Weapon blocked by HD status'
-			
+		
+		# check for turret-mounted weapons blocked by hull direction
+		if not ignore_facing:
+			mount = weapon.GetStat('mount')
+			if mount is not None:
+				if mount == 'Turret':
+					blocked_dirs = weapon.GetStat('blocked_hull_dirs')
+					if blocked_dirs is not None:
+						if str(ConstrainDir(attacker.turret_facing - attacker.facing)) in blocked_dirs:
+							return 'Weapon blocked by hull direction'
+		
 		# attack can proceed
 		return ''
 	

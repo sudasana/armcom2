@@ -62,9 +62,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.11.0'					# game version
+VERSION = '0.10.2'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -5573,7 +5573,7 @@ class Personnel:
 		
 		# modify by current status
 		if self.status == 'Stunned':
-			modifier = modifer * 0.5
+			modifier = modifier * 0.5
 		
 		modifier = round(modifier, 1)
 				

@@ -6509,7 +6509,19 @@ class AI:
 			if self.disposition != 'Movement':
 				if GetPercentileRoll() <= 80.0:
 					self.disposition = 'Movement'
-			
+		
+		# if ambush is in progress, much more likely to attack
+		if scenario.ambush:
+			roll = GetPercentileRoll()
+			if roll <= 50.0:
+				self.disposition = 'Combat'
+			elif roll <= 65.0:
+				self.disposition = 'Attack Player'
+			elif roll <= 75.0:
+				self.disposition = 'Harass Player'
+			else:
+				self.disposition = 'None'
+		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 				
 		# Step 2: Determine action to take
@@ -11149,6 +11161,9 @@ class Scenario:
 				
 				libtcod.console_flush()
 			
+			# clear any scenario ambush flag
+			self.ambush = False
+			
 			self.advance_phase = True
 		
 		self.UpdateCrewInfoCon()
@@ -11974,8 +11989,6 @@ class Scenario:
 		# init looping animations
 		self.InitAnimations()
 		
-		SaveGame()
-		
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
 		DisplayTimeInfo(time_con)
@@ -11995,8 +12008,8 @@ class Scenario:
 		
 		if self.ambush:
 			ShowMessage('You have been ambushed by enemy forces!')
-			# reset flag, no longer needed an prevent message from showing on load game
-			self.ambush = False
+		
+		SaveGame()
 		
 		# record mouse cursor position to check when it has moved
 		mouse_x = -1
@@ -12056,7 +12069,6 @@ class Scenario:
 								self.ShowUnitInfoWindow(unit)
 							continue
 						elif len(map_hex.unit_stack) > 1:
-						
 							if mouse.wheel_up:
 								map_hex.unit_stack[:] = map_hex.unit_stack[1:] + [map_hex.unit_stack[0]]
 							elif mouse.wheel_down:

@@ -36,7 +36,6 @@
 
 ##### Libraries #####
 import os, sys						# OS-related stuff
-
 if sys.platform == 'darwin':				# OSX
 	import tcod as libtcod
 elif os.name == 'posix':				# linux
@@ -44,7 +43,6 @@ elif os.name == 'posix':				# linux
 else:							# windows
 	import libtcodpy as libtcod
 	os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)	# set sdl2 dll path
-
 from configparser import ConfigParser			# saving and loading configuration settings
 from random import choice, shuffle, sample		# for the illusion of randomness
 from math import floor, cos, sin, sqrt, degrees, atan2, ceil	# math and heading calculations
@@ -83,6 +81,7 @@ WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of gam
 KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak', 'Custom']	# list of possible keyboard layout settings
 MAX_TANK_NAME_LENGTH = 20				# maximum length of tank names
 MAX_NICKNAME_LENGTH = 10				# " for crew nicknames
+
 
 ##### Hex geometry definitions #####
 

@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.11.0'					# game version
+VERSION = '0.10.3'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -636,6 +636,7 @@ AP_BASE_CHANCE = {
 	'75S' : 91.7,
 	'75' : 120.0,		# not sure if this and below are accurate, FUTURE: check balance
 	'75L' : 160.0,
+	'75LL' : 250.0,
 	'76S' : 83.0,
 	'76L' : 160.0,
 	'76LL' : 300.0,
@@ -4058,12 +4059,14 @@ class CampaignDay:
 			DisplayCrew(campaign.player_unit, cd_command_con, 0, 3, self.selected_position)
 			
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 3, 38, EnKey('w').upper() + '/' + EnKey('s').upper())
-			libtcod.console_print(cd_command_con, 3, 39, EnKey('f').upper())
+			libtcod.console_print(cd_command_con, 3, 37, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cd_command_con, 3, 38, EnKey('f').upper())
+			libtcod.console_print(cd_command_con, 3, 39, 'H')
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 8, 38, 'Select Position')
-			libtcod.console_print(cd_command_con, 8, 39, 'Crewman Menu')
+			libtcod.console_print(cd_command_con, 8, 37, 'Select Position')
+			libtcod.console_print(cd_command_con, 8, 38, 'Crewman Menu')
+			libtcod.console_print(cd_command_con, 8, 39, 'Toggle Hatch')
 		
 		
 		# travel
@@ -4661,6 +4664,19 @@ class CampaignDay:
 					crewman.ShowCrewmanMenu()
 					self.UpdateCDDisplay()
 					continue
+				
+				# toggle hatch for selected crewman (not mapped)
+				elif chr(key.c).lower() == 'h':
+					
+					# no crewman in selected position
+					crewman = campaign.player_unit.positions_list[self.selected_position].crewman
+					if crewman is None: continue
+					
+					if crewman.ToggleHatch():
+						PlaySoundFor(crewman, 'hatch')
+						self.UpdateCDCommandCon()
+						self.UpdateCDDisplay()
+						continue
 			
 			# travel menu active
 			elif self.active_menu == 3:

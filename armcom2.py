@@ -9402,7 +9402,7 @@ class Scenario:
 			if profile['crewman'] is not None:
 				if 'Knows Weak Spots' in profile['crewman'].skills:
 					if weapon_type == 'Gun' and target.GetStat('armour') is not None:
-						profile['critical_hit'] += bonus = profile['crewman'].GetKnowledgeSkillMod(2.0)
+						profile['critical_hit'] += profile['crewman'].GetKnowledgeSkillMod(2.0)
 			
 			# calculate base success chance
 			

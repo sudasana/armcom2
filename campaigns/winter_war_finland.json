@@ -16,9 +16,8 @@
 		"105 K/13"
 	],
 	"enemy_unit_list" : [
-		"T-26 M33", "BT-5 M34", "BT-7 M37", "T-28 M34", "BA-20", "BA-6",
-		"SU-12",
-		"Riflemen", "HMG Team"
+		"T-26 M33", "BT-5 M34", "BT-7 M37", "BT-7A", "T-28 M34", "BA-20", "BA-6",
+		"SU-12", "Riflemen", "HMG Team"
 	],
 	"enemy_unit_class_odds" : {
 		"Light Tank" : "25",

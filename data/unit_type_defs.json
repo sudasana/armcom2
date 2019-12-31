@@ -3122,6 +3122,75 @@
 			"1939.09.01" : "100"
 		}
 	},
+	
+	"BT-7A" : {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_bt7a.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The BT-7A artillery tank was intended to provide support for platoons ",
+			"of BT fast tanks."
+		],
+		"rarity" : {
+			"1938.01.01" : "60",
+			"1942.01.01" : "0"
+		}
+	},
 
 	"T-28 M34" : {
 		"category" : "Vehicle",

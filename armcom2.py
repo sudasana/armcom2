@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-# Python 3.6.6 x64                                                              
+# Python 3.6.6 x64
 # Libtcod 1.6.4 x64
 ##########################################################################################
 #                                                                                        #
@@ -2647,6 +2647,9 @@ class CampaignDay:
 		# roll for type of event
 		roll = GetPercentileRoll()
 		
+		# TEMP
+		roll = 80.0
+		
 		# enemy strength increases
 		if roll <= 15.0:
 			hex_list = []
@@ -2741,6 +2744,16 @@ class CampaignDay:
 			text += ' support has made available to you from Command.'
 			ShowMessage(text)
 		
+		# crewmen lose fatigue points
+		elif roll <= 80.0:
+			for position in campaign.player_unit.positions_list:
+				if position.crewman is None: continue
+				if position.crewman.status in ['Dead', 'Unconscious']: continue 
+				position.crewman.fatigue -= position.crewman.stats['Morale']
+				if position.crewman.fatigue < 0:
+					position.crewman.fatigue = 0
+			ShowMessage('Your crew feel a little less fatigued than before.')
+				
 		# no other random events for now
 		else:
 			pass

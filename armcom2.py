@@ -10,7 +10,7 @@
 #          Restarted again January 11, 2018; Restarted again January 2, 2019             #
 ##########################################################################################
 #
-#    Copyright (c) 2016-2019 Gregory Adam Scott (sudasana@gmail.com)
+#    Copyright (c) 2016-2020 Gregory Adam Scott (sudasana@gmail.com)
 #
 #    This file is part of Armoured Commander II.
 #
@@ -14427,7 +14427,7 @@ libtcod.console_set_default_foreground(main_title, libtcod.light_grey)
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
 	libtcod.CENTER, VERSION)
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-4,
-	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2019')
+	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2020')
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-3,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'Free Software under the GNU GPL')
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-2,

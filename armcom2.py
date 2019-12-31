@@ -3272,6 +3272,9 @@ class CampaignDay:
 					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo']) - weapon.ammo_stores['HE']
 					weapon.ready_rack['AP'] = weapon.rr_size - weapon.ready_rack['HE']
 				
+				ammo_num = int(weapon.stats['max_ammo'])
+				rr_num = weapon.rr_size
+				
 				PlaySoundFor(None, 'move_10_shell')
 				UpdateMenuCon()
 				continue

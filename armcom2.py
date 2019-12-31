@@ -8652,18 +8652,12 @@ class Scenario:
 		
 		roll = GetPercentileRoll()
 		
-		# TEMP
-		#roll = 1.0
-		
 		if roll > self.random_event_chance:
 			self.random_event_chance += 1.5
 			return
 		
 		# roll for type of event
 		roll = GetPercentileRoll()
-		
-		# TEMP
-		#roll = 70.0
 		
 		# friendly air attack
 		if roll <= 10.0:

@@ -24,7 +24,7 @@ Several campaigns are included with the game. Each one takes place over a fixed 
 
 From this screen you can select a campaign to start, or have the game select one randomly.
 
-## 4. Tank Selection
+## 4. Tank and Crew Selection
 
 ![Tank selection image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_tank_selection.png "Tank Selection")
 
@@ -54,6 +54,30 @@ Virtually everything you need to know about a unit is included in its unit infor
 * Finally, the normal number of crew for this unit
 
 A full crew, with yourself as the commander, will be automatically generated for your chosen tank.
+
+### 4.2 Crew
+
+![Crew image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_crewman_report.png "Crew")
+
+Each crewman in your tank has their own set of stats, skills, and experience points. Names are randomly generated, but you can assign a nickname to each crewman.
+
+**Crew Stats**
+
+Each crewman has four stat values, which are randomly generated at the start of the game but can be improved by spending **Advance Points** later on.
+
+* *Perception* is used during attempts to spot enemy units on the scenario layer
+* *Morale* represents the crewman's ability to resist psychological stress and harm (not yet used as of Alpha 10)
+* *Grit* is used to resist wounds and negative status effects such as Stunned
+* *Knowledge* applies a small modifier to all skill bonuses
+
+**Crew Experience**
+
+Every time you earn a Victory Point in the game, any crewman who is conscious at the time also receives an experience point. At the end of each combat day they may go up one or more levels depending on their exp. Each time they go up a level, they are awarded with an Advance Point which can be spent increasing the crewman's stats or adding a skill.
+
+**Crew Skills**
+
+19 skills are available (as of Alpha 10), but not all are available to crewmen in all tank positions. Some of them have another skill as a prerequisite. All apply some kind of bonus as described in the skill description. (Full skill tree and description list to follow)
+
 
 ## 5. Game Menu
 

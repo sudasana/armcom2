@@ -5670,15 +5670,12 @@ class Personnel:
 			if not self.ce:
 				modifier = modifier * 0.25
 		elif action_type == 'Attempt HD':
-			modifier = float(self.stats['Knowledge']) * 3.0
 			if not self.ce:
 				modifier = modifier * 0.5
 		elif action_type == 'Direct Movement':
-			modifier = float(self.stats['Knowledge']) * 2.0
 			if not self.ce:
 				modifier = modifier * 0.5
 		elif action_type == 'Direct Fire':
-			modifier = float(self.stats['Knowledge']) * 3.5
 			if not self.ce:
 				modifier = modifier * 0.5
 		
@@ -5694,6 +5691,14 @@ class Personnel:
 		modifier = round(modifier, 1)
 				
 		return modifier 
+	
+	
+	# increase a given skill modifier according to the crewman's knowledge stat
+	def GetKnowledgeSkillMod(self, modifier):
+		modifier += float(self.stats['Knowledge']) * 0.1 * modifier
+		modifier = round(modifier, 1)
+		print('Skill mod is now: ' + str(modifier))
+		return modifier
 	
 	
 	# check to see whether this crewman gains a fatigue point
@@ -6303,7 +6308,7 @@ class Weapon:
 					
 					bonus = 10.0
 					if 'Fast Hands' in crewman.skills:
-						bonus = 15.0
+						bonus = crewman.GetKnowledgeSkillMod(15.0)
 					break
 		
 		# more general bonuses based on firing crewman
@@ -6315,14 +6320,14 @@ class Weapon:
 				
 				if self.GetStat('type') == 'Gun':
 					if 'Quick Trigger' in crewman.skills:
-						bonus += 5.0
+						bonus = crewman.GetKnowledgeSkillMod(5.0)
 					if self.selected_target is not None:
 						if 'Time on Target' in crewman.skills:
-							bonus += 10.0
+							bonus = crewman.GetKnowledgeSkillMod(10.0)
 				
 				elif self.GetStat('type') in MG_WEAPONS:
 					if 'Burst Fire' in crewman.skills:
-						bonus += 10.0
+						bonus = crewman.GetKnowledgeSkillMod(10.0)
 		
 		return chance + bonus
 		
@@ -7403,7 +7408,7 @@ class Unit:
 					
 					# check for skill modifier
 					if 'Lay of the Land' in crewman.skills:
-						chance += 15.0
+						chance += crewman.GetKnowledgeSkillMod(15.0)
 					
 				break
 		
@@ -7412,7 +7417,7 @@ class Unit:
 			crewman = self.GetPersonnelByPosition('Driver')
 			if crewman is not None:
 				if 'Eye for Cover' in crewman.skills:
-					chance += 5.0
+					chance += crewman.GetKnowledgeSkillMod(5.0)
 		
 		chance = RestrictChance(chance)
 		
@@ -7542,7 +7547,7 @@ class Unit:
 				
 				# spotting crew skill
 				if 'Eagle Eyed' in position.crewman.skills and position.crewman.ce:
-					chance += 10.0
+					chance += crewman.GetKnowledgeSkillMod(10.0)
 				
 				# target is HD to spotter
 				if len(unit.hull_down) > 0:
@@ -8573,6 +8578,7 @@ class Scenario:
 		self.cd_map_hex = cd_map_hex			# Campaign Day map hex where this scenario is taking place
 		self.ambush = False				# enemy units activate first, greater chance of spawning behind player
 		self.finished = False				# Scenario has ended, returning to Campaign Day map
+		self.class_type_dict = {}			# dictionary of unit types for each class; once set, further units will be of the same type
 		
 		# animation object; keeps track of active animations on the animation console
 		self.animation = {
@@ -8639,7 +8645,7 @@ class Scenario:
 			crewman = self.player_unit.GetPersonnelByPosition(position)
 			if crewman is None: continue
 			if 'Enemy Spotted!' in crewman.skills:
-				roll += 10.0
+				roll += crewman.GetKnowledgeSkillMod(10.0)
 				break
 		
 		if self.player_unit.GetStat('recce') is not None:
@@ -8983,7 +8989,7 @@ class Scenario:
 					modifier -= 20.0
 				
 				if 'Gymnast' in position.crewman.skills:
-					modifier -= 10.0
+					modifier -= position.crewman.GetKnowledgeSkillMod(10.0)
 				
 				roll = GetPercentileRoll()
 				
@@ -9124,63 +9130,72 @@ class Scenario:
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			
-			# FUTURE: if class unit type has already been set, use that one instead
-			
-			# choose a random unit type
-			type_list = []
-			for unit_id in unit_type_list:
-				# unrecognized unit id
-				if unit_id not in unit_types: continue
-				# not the right class
-				if unit_types[unit_id]['class'] != unit_class: continue
-				type_list.append(unit_id)
-			
-			# no units of the correct class found
-			if len(type_list) == 0: continue
-			
-			# select unit type: run through shuffled list and roll against rarity if any
-			shuffle(type_list)
-			
-			selected_unit_id = None
-			for unit_id in type_list:
-			
-				# if no rarity factor given, select automatically
-				if 'rarity' not in unit_types[unit_id]:
-					selected_unit_id = unit_id
-					break
+			# if class unit type has already been set, use that one instead
+			if unit_class in self.class_type_dict:
 				
-				# roll against rarity for current date
-				rarity = None
-				for date, chance in unit_types[unit_id]['rarity'].items():
+				selected_unit_id = self.class_type_dict[unit_class]
+			
+			else:
+			
+				# choose a random unit type
+				type_list = []
+				for unit_id in unit_type_list:
+					# unrecognized unit id
+					if unit_id not in unit_types: continue
+					# not the right class
+					if unit_types[unit_id]['class'] != unit_class: continue
+					type_list.append(unit_id)
+				
+				# no units of the correct class found
+				if len(type_list) == 0: continue
+				
+				# select unit type: run through shuffled list and roll against rarity if any
+				shuffle(type_list)
+				
+				selected_unit_id = None
+				for unit_id in type_list:
+				
+					# if no rarity factor given, select automatically
+					if 'rarity' not in unit_types[unit_id]:
+						selected_unit_id = unit_id
+						break
 					
-					# select the earliest rarity factor
-					if rarity is None:
+					# roll against rarity for current date
+					rarity = None
+					for date, chance in unit_types[unit_id]['rarity'].items():
 						
-						# if the earliest rarity factor is still later than current date, do not spawn
-						if date > campaign.today:
-							break
+						# select the earliest rarity factor
+						if rarity is None:
+							
+							# if the earliest rarity factor is still later than current date, do not spawn
+							if date > campaign.today:
+								break
+							
+							rarity = int(chance)
+							continue
 						
+						# break if this date is later than current date
+						if date > campaign.today: break
+							
+						# earlier than or equal to today's date, use this rarity factor 
 						rarity = int(chance)
+					
+					# not able to get a rarity factor
+					if rarity is None:
 						continue
 					
-					# break if this date is later than current date
-					if date > campaign.today: break
-						
-					# earlier than or equal to today's date, use this rarity factor 
-					rarity = int(chance)
+					# roll againt rarity rarting
+					if GetPercentileRoll() <= float(rarity):
+						selected_unit_id = unit_id
+						break
 				
-				# not able to get a rarity factor
-				if rarity is None:
-					continue
-				
-				# roll againt rarity rarting
-				if GetPercentileRoll() <= float(rarity):
-					selected_unit_id = unit_id
-					break
-			
-			# if able to roll for rarity, add the final selected unit id to list to spawn
-			if selected_unit_id is not None:
-				enemy_unit_list.append(selected_unit_id)
+				# add the final selected unit id to list to spawn
+				if selected_unit_id is not None:
+					enemy_unit_list.append(selected_unit_id)
+					
+					# also record in unit class dictionary
+					self.class_type_dict[unit_class] = selected_unit_id
+		
 		
 		# spawn one unit per unit id in the list
 		for unit_id in enemy_unit_list:
@@ -9387,7 +9402,7 @@ class Scenario:
 			if profile['crewman'] is not None:
 				if 'Knows Weak Spots' in profile['crewman'].skills:
 					if weapon_type == 'Gun' and target.GetStat('armour') is not None:
-						profile['critical_hit'] += 2.0
+						profile['critical_hit'] += bonus = profile['crewman'].GetKnowledgeSkillMod(2.0)
 			
 			# calculate base success chance
 			
@@ -9640,15 +9655,18 @@ class Scenario:
 				
 					# check for skill modifiers
 					if 'Fire Spotter' in crewman.skills:
-						modifier_list.append(('Fire Spotter', 3.0))
+						mod = crewman.GetKnowledgeSkillMod(3.0)
+						modifier_list.append(('Fire Spotter', mod))
 					
 					if 'MG Spotter' in crewman.skills:
 						if weapon_type in MG_WEAPONS:
-							modifier_list.append(('MG Spotter', 7.0))
+							mod = crewman.GetKnowledgeSkillMod(7.0)
+							modifier_list.append(('MG Spotter', mod))
 					
 					if 'Gun Spotter' in crewman.skills:
 						if weapon_type == 'Gun':
-							modifier_list.append(('Gun Spotter', 7.0))
+							mod = crewman.GetKnowledgeSkillMod(7.0)
+							modifier_list.append(('Gun Spotter', mod))
 					
 				break
 		
@@ -9657,11 +9675,14 @@ class Scenario:
 			
 			if weapon_type == 'Gun':
 				if 'Crack Shot' in profile['crewman'].skills:
-					modifier_list.append(('Crack Shot', 3.0))
+					mod = crewman.GetKnowledgeSkillMod(3.0)
+					modifier_list.append(('Crack Shot', mod))
 				if target.moving and 'Target Tracker' in profile['crewman'].skills:
-					modifier_list.append(('Target Tracker', 7.0))
+					mod = crewman.GetKnowledgeSkillMod(7.0)
+					modifier_list.append(('Target Tracker', mod))
 				if distance == 3 and 'Sniper' in profile['crewman'].skills:
-					modifier_list.append(('Sniper', 7.0))
+					mod = crewman.GetKnowledgeSkillMod(7.0)
+					modifier_list.append(('Sniper', mod))
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -10831,9 +10852,9 @@ class Scenario:
 					
 					# check for skill modifiers
 					if 'Driver Direction' in crewman.skills:
-						chance += 5.0
+						chance += crewman.GetKnowledgeSkillMod(3.0)
 					if forward and 'Forward!' in crewman.skills:
-						chance += 10.0
+						chance += crewman.GetKnowledgeSkillMod(10.0)
 					
 				break
 			
@@ -10841,7 +10862,7 @@ class Scenario:
 			crewman = self.player_unit.GetPersonnelByPosition('Driver')
 			if crewman is not None:
 				if 'Quick Shifter' in crewman.skills:
-					chance += 5.0
+					chance += crewman.GetKnowledgeSkillMod(5.0)
 			
 			# check for debug flag
 			if DEBUG:

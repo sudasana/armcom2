@@ -3396,7 +3396,7 @@
 	"BA-6": {
 		"category" : "Vehicle",
 		"class" : "Armoured Car",
-		"portrait" : "unit_ba-6.xp",
+		"portrait" : "unit_BA-6.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Wheeled",
 		"turret" : "TRUE",

@@ -2106,6 +2106,7 @@ class CampaignDay:
 		self.selected_position = 0			# selected crew position in crew command menu tab
 		self.selected_direction = None			# select direction for support, travel, etc.
 		self.abandoned_tank = False			# set to true if player abandoned their tank that day
+		self.player_withdrew = False			# set to true if player withdrew from the battle
 		self.scenario = None				# currently active scenario in progress
 		
 		self.air_support_level = 0.0
@@ -2133,6 +2134,41 @@ class CampaignDay:
 			'snowflakes' : []
 		}
 	
+	
+	# move the player from current position to a new position on the map
+	def MovePlayerTo(self, hx2, hy2):
+		(hx1, hy1) = self.player_unit_location
+		mins = self.CalculateTravelTime(hx1,hy1,hx2,hy2)
+		
+		# clear any selected direction
+		self.selected_direction = None
+		self.UpdateCDGUICon()
+		
+		# calculate animation path
+		(x,y) = self.PlotCDHex(hx1, hy1)
+		(x2,y2) = self.PlotCDHex(hx2, hy2)
+		line = GetLine(0, 0, x2-x, y2-y)
+		
+		# do sound effect
+		PlaySoundFor(campaign.player_unit, 'movement')
+		
+		# show animation
+		for (x, y) in line:
+			session.cd_x_offset = x
+			session.cd_y_offset = y
+			self.UpdateCDUnitCon()
+			self.UpdateCDDisplay()
+			Wait(20)
+		session.cd_x_offset = 0
+		session.cd_y_offset = 0
+		
+		# advance clock and set new player location
+		campaign_day.AdvanceClock(0, mins)
+		self.player_unit_location = (hx2, hy2)
+		DisplayWeatherInfo(cd_weather_con)
+		self.UpdateCDUnitCon()
+		self.UpdateCDDisplay()
+		
 	
 	# generate new objectives for this campaign day map
 	def GenerateObjectives(self):
@@ -4564,16 +4600,45 @@ class CampaignDay:
 						exit_loop = True
 						continue
 					
-					# capture area if player is still alive
-					(hx, hy) = self.player_unit_location
-					self.map_hexes[(hx,hy)].CaptureMe(0)
+					# player withdrew from the battle
+					if self.player_withdrew:
+						
+						# move player to adjacent friendly zone
+						hex_list = []
+						(hx1, hy1) = self.player_unit_location
+						for direction in range(6):
+							(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, direction)
+							if (hx2, hy2) not in self.map_hexes: continue
+							if self.map_hexes[(hx2,hy2)].controlled_by == 1: continue
+							if self.CalculateTravelTime(hx1,hy1,hx2,hy2) == -1:
+								continue
+							hex_list.append((hx2, hy2))
+						
+						# should always happen - otherwise, how did they get here?
+						if len(hex_list) > 0:
+							(hx, hy) = choice(hex_list)
+							self.MovePlayerTo(hx,hy)
+							self.CheckForCDMapShift()
+							
+						else:
+							ShowMessage('ERROR: Could not find an adjacent friendly hex zone!')
+						
+						# reset flag
+						self.player_withdrew = False
+						
+					else:
+					
+						# capture area
+						(hx, hy) = self.player_unit_location
+						self.map_hexes[(hx,hy)].CaptureMe(0)
+					
 					self.DoCrewCheck(campaign.player_unit)
 					self.CheckForEndOfDay()
 					self.UpdateCDDisplay()
 					libtcod.console_flush()
+					
 					self.CheckForRandomEvent()
 					self.CheckForZoneCapture(zone_just_captured=True)
-					SaveGame()
 					
 					# check for automatic unbog
 					if campaign.player_unit.bogged:
@@ -4588,6 +4653,8 @@ class CampaignDay:
 					
 					# check for CD map shift
 					self.CheckForCDMapShift()
+					
+					SaveGame()
 					
 				DisplayTimeInfo(time_con)
 				self.UpdateCDCampaignCon()
@@ -4820,47 +4887,12 @@ class CampaignDay:
 					# travel
 					else:
 						
-						# get travel time and check for river block
-						mins = self.CalculateTravelTime(hx1,hy1,hx2,hy2)
-						
 						# travel not allowed
-						if mins == -1:
+						if self.CalculateTravelTime(hx1,hy1,hx2,hy2) == -1:
 							ShowMessage('Route blocked by river crossing, cannot proceed.')
 							continue
 						
-						# clear selected direction
-						self.selected_direction = None
-						self.UpdateCDGUICon()
-						
-						# calculate animation path
-						(x,y) = self.PlotCDHex(hx1, hy1)
-						(x2,y2) = self.PlotCDHex(hx2, hy2)
-						x2 -= x
-						y2 -= y
-						line = GetLine(0, 0, x2, y2)
-						
-						# do sound effect
-						PlaySoundFor(campaign.player_unit, 'movement')
-						
-						# show animation
-						for (x, y) in line:
-							session.cd_x_offset = x
-							session.cd_y_offset = y
-							self.UpdateCDUnitCon()
-							self.UpdateCDDisplay()
-							Wait(20)
-						session.cd_x_offset = 0
-						session.cd_y_offset = 0
-					
-						# advance clock
-						campaign_day.AdvanceClock(0, mins)
-						
-						# set new player location and clear travel direction
-						self.player_unit_location = (hx2, hy2)
-						
-						self.UpdateCDUnitCon()
-						DisplayWeatherInfo(cd_weather_con)
-						self.UpdateCDDisplay()
+						self.MovePlayerTo(hx2,hy2)
 						
 						# roll to trigger battle encounter if enemy-controlled
 						if map_hex2.controlled_by == 1:
@@ -5947,6 +5979,19 @@ class Personnel:
 			# can only unbog if vehicle is already bogged
 			elif k == 'Attempt Unbog':
 				if not self.unit.bogged: continue
+			
+			# withdrawing from battle has a number of requirements
+			elif k == 'Withdraw':
+				if self.unit.immobilized: continue
+				if self.unit.bogged: continue
+				
+				enemies_far_away = True
+				for unit in scenario.units:
+					if unit.owning_player == 0: continue
+					if GetHexDistance(unit.hx, unit.hy, 0, 0) <= 2:
+						enemies_far_away = False
+						break
+				if not enemies_far_away: continue
 			
 			# check that a mortar is attached and is fired by this position
 			elif k == 'Fire Smoke Mortar':
@@ -9076,13 +9121,6 @@ class Scenario:
 			unit_class = None
 			while unit_class is None:
 				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
-				
-				# TEMP
-				if k == 'Light Tank':
-					unit_class = k
-				else:
-					continue
-				
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			
@@ -11164,6 +11202,15 @@ class Scenario:
 			
 			for position in self.player_unit.positions_list:
 				if position.crewman is None: continue
+				
+				# check for withdrawing
+				if position.crewman.current_cmd == 'Withdraw':
+					if ShowNotification('Withdraw from this battle?', confirm=True):
+						campaign_day.player_withdrew = True
+						self.finished = True
+						return
+					else:
+						continue
 				
 				# check for abandoning tank
 				if position.crewman.current_cmd == 'Abandon Tank':

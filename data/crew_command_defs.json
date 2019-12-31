@@ -66,6 +66,12 @@
 		"spotting_allowed" : false
 	},
 	
+	"Withdraw" : {
+		"desc" : "Withdraw from the battlefield, moving into an adjacent map hex",
+		"position_list" : ["Driver"],
+		"spotting_allowed" : true
+	},
+	
 	"Abandon Tank" : {
 		"desc" : "All crew bail out of the tank and retreat to friendly lines",
 		"spotting_allowed" : false

@@ -3551,7 +3551,7 @@
 	"ZIS-5 Truck" : {
 		"category" : "Vehicle",
 		"class" : "Truck",
-		"portrait" : "unit_zis-5_truck.xp",
+		"portrait" : "unit_ZIS-5.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Wheeled",
 		"crew_positions" : [

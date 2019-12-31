@@ -2647,9 +2647,6 @@ class CampaignDay:
 		# roll for type of event
 		roll = GetPercentileRoll()
 		
-		# TEMP
-		roll = 80.0
-		
 		# enemy strength increases
 		if roll <= 15.0:
 			hex_list = []
@@ -5660,9 +5657,7 @@ class Personnel:
 		# modify by fatigue level
 		modifier -= float(self.fatigue)
 		
-		if modifier <= 0.0:
-			print('DEBUG: skill modifier reduced to 0 by fatigue')
-			return 0.0
+		if modifier <= 0.0: return 0.0
 		
 		modifier = round(modifier, 1)
 				
@@ -5672,15 +5667,12 @@ class Personnel:
 	# check to see whether this crewman gains a fatigue point
 	def DoFatigueCheck(self):
 		if self.status in ['Dead', 'Unconscious']: return
-		# TEMP
-		#roll = GetPercentileRoll()
-		#if roll <= 50.0: return
-		#roll = GetPercentileRoll()
-		#if roll <= float(self.stats['Morale']) * 10.0:
-		#	print('DEBUG: ' + self.last_name + ' saved from getting a fatigue point')
-		#	return
+		roll = GetPercentileRoll()
+		if roll <= 50.0: return
+		roll = GetPercentileRoll()
+		if roll <= float(self.stats['Morale']) * 10.0:
+			return
 		self.fatigue += 1
-		print('DEBUG: ' + self.last_name + ' got a fatigue point')
 		
 	
 	# check to see whether this personnel is wounded/KIA and return result if any
@@ -6626,6 +6618,10 @@ class AI:
 			else:
 				self.disposition = 'None'
 		
+		# immobilized units can't move
+		if self.owner.immobilized and self.disposition == 'Movement':
+			self.disposition = 'Combat'
+		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 				
 		# Step 2: Determine action to take
@@ -7525,8 +7521,7 @@ class Unit:
 					# display message
 					if self.owning_player == 0:
 						text = unit.GetName() + ' spotted!'
-						portrait = unit.GetStat('portrait')
-						ShowMessage(text, portrait=portrait)
+						ShowMessage(text, portrait=unit.GetStat('portrait'))
 						
 					elif unit == scenario.player_unit:
 						ShowMessage('You have been spotted!')
@@ -8657,12 +8652,18 @@ class Scenario:
 		
 		roll = GetPercentileRoll()
 		
+		# TEMP
+		#roll = 1.0
+		
 		if roll > self.random_event_chance:
 			self.random_event_chance += 1.5
 			return
 		
 		# roll for type of event
 		roll = GetPercentileRoll()
+		
+		# TEMP
+		#roll = 70.0
 		
 		# friendly air attack
 		if roll <= 10.0:
@@ -8681,18 +8682,16 @@ class Scenario:
 			
 		# enemy reinforcement
 		elif roll <= 30.0:
-			
 			if self.enemy_reinforcements > 0:
 				if GetPercentileRoll() <= (float(self.enemy_reinforcements) * 40.0):
 					return
-			
 			self.enemy_reinforcements += 1
-			
 			self.SpawnEnemyUnits(num_units=1)
 			ShowMessage('Enemy reinforcements have arrived!')
 		
 		# random enemy unit is recalled
 		elif roll <= 40.0:
+			
 			unit_list = []
 			for unit in self.units:
 				if not unit.alive: continue
@@ -8704,7 +8703,8 @@ class Scenario:
 			if len(unit_list) == 0: return
 			unit = choice(unit_list)
 			unit.ai.recall = True
-			ShowMessage(unit.GetName() + ' is being recalled from the battle.')
+			if unit.spotted:
+				ShowMessage(unit.GetName() + ' is being recalled from the battle.')
 		
 		# sniper attack on player
 		elif roll <= 50.0:
@@ -8743,6 +8743,39 @@ class Scenario:
 				PlaySoundFor(None, 'sniper_hit')
 				ShowMessage('Your ' + crew_target.position.name + ' has been hit by a sniper.')
 				crew_target.DoWoundCheck(roll_modifier = 45.0)
+		
+		# random enemy tank is immobilized
+		elif roll <= 60.0:
+			
+			unit_list = []
+			for unit in self.units:
+				if unit.owning_player == 0: continue
+				if unit.GetStat('armour') is None: continue
+				unit_list.append(unit)
+			
+			# no possible units to immobilize
+			if len(unit_list) == 0:
+				return
+			
+			unit = choice(unit_list)
+			unit.ImmobilizeMe()
+			if unit.spotted:
+				ShowMessage(unit.GetName() + ' has been immobilized!')
+		
+		# random unspotted enemy unit is revealed
+		elif roll <= 70.0:
+			
+			unit_list = []
+			for unit in self.units:
+				if unit.owning_player == 0: continue
+				if unit.spotted: continue
+				unit_list.append(unit)
+			if len(unit_list) == 0:
+				return
+			unit = choice(unit_list)
+			unit.SpotMe()
+			text = unit.GetName() + ' spotted!'
+			ShowMessage(text, portrait=unit.GetStat('portrait'))
 		
 		# FUTURE: add more event types
 		else:
@@ -9049,6 +9082,13 @@ class Scenario:
 			unit_class = None
 			while unit_class is None:
 				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
+				
+				# TEMP
+				if k == 'Light Tank':
+					unit_class = k
+				else:
+					continue
+				
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			
@@ -11798,11 +11838,16 @@ class Scenario:
 				session.nations[unit.nation]['adjective'])
 			libtcod.console_print(unit_info_con, 0, 2, unit.GetStat('class'))
 			
-			# moving/fired status
-			if unit.moving:
+			# immobilized/moving/fired status
+			if unit.immobilized:
+				libtcod.console_print(unit_info_con, 0, 3, 'Immobilized')
+			elif unit.moving:
 				libtcod.console_print(unit_info_con, 0, 3, 'Moving')
+			
 			if unit.fired:
-				libtcod.console_print(unit_info_con, 7, 3, 'Fired')
+				libtcod.console_print(unit_info_con, 12, 3, 'Fired')
+			
+				
 			
 			# second column
 			

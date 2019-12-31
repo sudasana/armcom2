@@ -914,7 +914,6 @@ class Campaign:
 	# award VP to the player, also adds exp to active crew
 	def AwardVP(self, vp_to_add):
 		self.player_vp += vp_to_add
-		
 		for position in self.player_unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status not in ['Dead', 'Unconscious']:
@@ -1773,8 +1772,19 @@ class Campaign:
 	def DoCampaignCalendarLoop(self):
 		
 		def ProceedToNextDay():
-			# set today to next day in calendar, and update enemy unit odds data
+			
+			# record what will soon be the previous day
+			previous_day = self.today
+			
+			# set today to next day in calendar
 			self.today = self.combat_calendar[day_index+1]
+			
+			# check for crew birthdays
+			for position in campaign.player_unit.positions_list:
+				if position.crewman is None: continue
+				if previous_day < position.crewman.birthday <= self.today:
+					print('DEBUG: ' + position.crewman.last_name + ' is one year older!')
+					position.crewman.age += 1
 			
 			# check for start of new week
 			week_index = campaign.stats['calendar_weeks'].index(campaign.current_week)

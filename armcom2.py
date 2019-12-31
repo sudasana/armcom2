@@ -1412,6 +1412,9 @@ class Campaign:
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(30, ignore_animations=True)
 			
+			# reset fatigue points if any
+			position.crewman.fatigue = 0
+			
 			# check for level up
 			levels_up = 0
 			for level in range(position.crewman.level+1, 31):
@@ -4568,6 +4571,11 @@ class CampaignDay:
 						campaign.player_unit.bogged = False
 						self.UpdateCDPlayerUnitCon()
 					
+					# check for fatigue accumulation
+					for position in campaign.player_unit.positions_list:
+						if position.crewman is None: continue
+						position.crewman.DoFatigueCheck()
+					
 					# check for CD map shift
 					self.CheckForCDMapShift()
 					
@@ -5247,6 +5255,8 @@ class Personnel:
 			self.age += libtcod.random_get_int(0, 1, 4)
 			self.rank = 2
 		
+		self.fatigue = 0				# current fatigue points
+		
 		# exposed / buttoned up status
 		self.ce = False					# crewman is exposed in a vehicle
 		self.SetCEStatus()				# set CE status
@@ -5301,7 +5311,8 @@ class Personnel:
 			libtcod.console_print(crewman_menu_con, 30, 16, 'Stats')
 			libtcod.console_print(crewman_menu_con, 30, 21, 'Status')
 			libtcod.console_print(crewman_menu_con, 30, 23, 'Skills')
-			libtcod.console_print(crewman_menu_con, 30, 50, 'Wounds')
+			libtcod.console_print(crewman_menu_con, 30, 50, 'Fatigue')
+			libtcod.console_print(crewman_menu_con, 30, 51, 'Wounds')
 			
 			
 			# info
@@ -5393,6 +5404,15 @@ class Personnel:
 			libtcod.console_print_ex(crewman_menu_con, 50, 48, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(self.adv))
 			
+			# fatigue level
+			if self.fatigue == 0:
+				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
+				text = '-'
+			else:
+				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_red)
+				text = '-' + str(self.fatigue) + '%%'
+			libtcod.console_print(crewman_menu_con, 39, 50, text)
+			
 			# wounds if any
 			if self.wound == '':
 				text = 'None'
@@ -5401,7 +5421,7 @@ class Personnel:
 				text = self.wound
 				col = libtcod.red
 			libtcod.console_set_default_foreground(crewman_menu_con, col)
-			libtcod.console_print(crewman_menu_con, 39, 50, text)
+			libtcod.console_print(crewman_menu_con, 39, 51, text)
 			
 			
 			# player commands
@@ -5530,7 +5550,6 @@ class Personnel:
 	
 	# generate a random first and last name for this person
 	def GenerateName(self):
-		
 		name_okay = False
 		while not name_okay:
 			first_name = choice(session.nations[self.nation]['first_names'])
@@ -5616,10 +5635,31 @@ class Personnel:
 		if self.status == 'Stunned':
 			modifier = modifier * 0.5
 		
+		# modify by fatigue level
+		modifier -= float(self.fatigue)
+		
+		if modifier <= 0.0:
+			print('DEBUG: skill modifier reduced to 0 by fatigue')
+			return 0.0
+		
 		modifier = round(modifier, 1)
 				
 		return modifier 
 	
+	
+	# check to see whether this crewman gains a fatigue point
+	def DoFatigueCheck(self):
+		if self.status in ['Dead', 'Unconscious']: return
+		# TEMP
+		#roll = GetPercentileRoll()
+		#if roll <= 50.0: return
+		#roll = GetPercentileRoll()
+		#if roll <= float(self.stats['Morale']) * 10.0:
+		#	print('DEBUG: ' + self.last_name + ' saved from getting a fatigue point')
+		#	return
+		self.fatigue += 1
+		print('DEBUG: ' + self.last_name + ' got a fatigue point')
+		
 	
 	# check to see whether this personnel is wounded/KIA and return result if any
 	def DoWoundCheck(self, fp=0, roll_modifier=0.0, show_messages=True, auto_kill=False, auto_serious=False):

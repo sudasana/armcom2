@@ -17,16 +17,15 @@
 	],
 	"enemy_unit_list" : [
 		"T-26 M33", "BT-5 M34", "BT-7 M37", "BT-7A", "T-28 M34", "BA-20", "BA-6",
-		"SU-12", "Riflemen", "HMG Team"
+		"SU-12", "45mm obr. 1932", "76.2mm obr. 00/02P", "Riflemen", "HMG Team"
 	],
 	"enemy_unit_class_odds" : {
 		"Light Tank" : "25",
 		"Medium Tank" : "10",
 		"Assault Gun" : "50",
 		"Armoured Car" : "80",
-		"Anti-Tank Gun" : "20",
-		"Field Gun" : "10",
-		"Anti-Aircraft Gun" : "15",
+		"Anti-Tank Gun" : "15",
+		"Field Gun" : "5",
 		"Truck" : "80",
 		"Infantry Squad" : "100",
 		"MG Team" : "80"

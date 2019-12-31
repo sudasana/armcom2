@@ -215,7 +215,7 @@ MISSION_DESC = {
 	'Advance' : 'Enemy resistance is scattered and we are pushing forward. Advance into enemy territory, destroy any resistance, and capture territory.',
 	'Battle' : 'Your group has been posted to the front line where there is heavy resistance. Break through the enemy defenses, destroy enemy units, and capture territory.',
 	'Counterattack' : 'After being on the defensive, your battlegroup has been ordered to attack the enemy advance.',
-	'Fighting Withdrawl' : 'The enemy is mounting a strong attack against our lines. Help to defend territory and withdraw into friendly territory if necessary.'
+	'Fighting Withdrawl' : 'The enemy is mounting a strong attack against our lines. Destroy enemy units but withdraw into friendly territory if necessary.'
 }
 
 ##########################################################################################
@@ -5106,11 +5106,12 @@ class CDMapHex:
 		if not no_vp:
 			
 			if self.controlled_by == 1:
-				campaign_day.AddRecord('Map Areas Captured', 1)
-				if campaign_day.mission == 'Advance':
-					campaign.AwardVP(2)
-				else:
-					campaign.AwardVP(1)
+				if campaign_day.mission != 'Fighting Withdrawl':
+					campaign_day.AddRecord('Map Areas Captured', 1)
+					if campaign_day.mission == 'Advance':
+						campaign.AwardVP(2)
+					else:
+						campaign.AwardVP(1)
 			
 			elif self.controlled_by == 0:
 				campaign_day.AddRecord('Map Areas Defended', 1)
@@ -5268,6 +5269,12 @@ class Personnel:
 			self.age += libtcod.random_get_int(0, 1, 4)
 			self.rank = 2
 		
+		# give current age, set random birthday
+		year = int(campaign.today.split('.')[0].lstrip('0')) - self.age
+		month = libtcod.random_get_int(0, 1, 12)
+		day = choice(monthrange(year, month))
+		self.birthday = str(year) + '.' + str(month).zfill(2) + '.' + str(day).zfill(2)
+		
 		self.fatigue = 0				# current fatigue points
 		
 		# exposed / buttoned up status
@@ -5334,8 +5341,10 @@ class Personnel:
 			if self.nickname != '':
 				libtcod.console_print(crewman_menu_con, 39, 7, self.nickname)
 			
-			# age and rank
+			# age, birthday and rank
 			libtcod.console_print(crewman_menu_con, 39, 9, str(self.age))
+			libtcod.console_print_ex(crewman_menu_con, 59, 9, libtcod.BKGND_NONE,
+				libtcod.RIGHT, '(' + self.birthday + ')')
 			libtcod.console_print(crewman_menu_con, 39, 11, session.nations[self.nation]['rank_names'][str(self.rank)])
 			
 			
@@ -8471,6 +8480,9 @@ class Unit:
 				elif category == 'Train Car':
 					vp_amount = 3
 				
+				if campaign_day.mission == 'Fighting Withdrawl':
+					vp_amount += 1
+				
 				campaign.AwardVP(vp_amount)
 		
 		# friendly unit destroyed
@@ -8590,7 +8602,19 @@ class Scenario:
 				roll += 10.0
 				break
 		
-		# FUTURE: recce status can modify this roll
+		if self.player_unit.GetStat('recce') is not None:
+			roll += 5.0
+		
+		crew_exposed = False
+		for position in self.player_unit.positions_list:
+			if position.crewman is None: continue
+			if position.crewman.status in ['Dead', 'Unconscious']: continue
+			if position.crewman.ce:
+				crew_exposed = True
+				break
+		if not crew_exposed:
+			roll -= 25.0
+		
 		if roll <= 20.0:
 			self.ambush = True
 	

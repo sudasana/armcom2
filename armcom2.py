@@ -511,18 +511,18 @@ REGIONS = {
 			'Autumn' : {
 				'end_date' : '12.01',
 				'ground_conditions' : {
-					'Dry' : 20.0, 'Wet' : 20.0, 'Muddy' : 30.0,
-					'Snow' : 20.0, 'Deep Snow' : 10.0
+					'Dry' : 10.0, 'Wet' : 20.0, 'Muddy' : 20.0,
+					'Snow' : 40.0, 'Deep Snow' : 10.0
 				},
-				'freezing' : 50.0,
+				'freezing' : 60.0,
 				'cloud_cover' : {
 					'Clear' : 20.0, 'Scattered' : 10.0,
 					'Heavy' : 30.0, 'Overcast' : 40.0
 				},
 				'precipitation' : {
 					'None' : 15.0, 'Mist' : 10.0,
-					'Rain' : 15.0, 'Heavy Rain' : 20.0,
-					'Light Snow' : 20.0, 'Snow' : 15.0,
+					'Rain' : 15.0, 'Heavy Rain' : 10.0,
+					'Light Snow' : 25.0, 'Snow' : 20.0,
 					'Blizzard' : 5.0
 				}
 			}
@@ -3757,12 +3757,28 @@ class CampaignDay:
 				
 				for (x,y) in CHAR_LOCATIONS:
 					if libtcod.random_get_int(generator, 1, 10) <= 4: continue
-					col = libtcod.Color(0,libtcod.random_get_int(generator, 100, 170),0)
-					libtcod.console_put_char_ex(temp_con, x, y, 6, col, bg_col)
+					
+					if self.weather['Freezing']:
+						if libtcod.random_get_int(generator, 1, 2) == 1:
+							char = 24
+							if libtcod.random_get_int(generator, 1, 3) == 1: char += 100
+							col = libtcod.Color(libtcod.random_get_int(generator, 60, 100),20,20)
+						else:
+							char = 6
+							col = libtcod.Color(0,libtcod.random_get_int(generator, 100, 170),0)
+					else:
+						char = 6
+						col = libtcod.Color(0,libtcod.random_get_int(generator, 100, 170),0)
+					
+					libtcod.console_put_char_ex(temp_con, x, y, char, col, bg_col)
 				
 			elif cd_hex.terrain_type == 'Hills':
 				
-				col = libtcod.Color(70,libtcod.random_get_int(generator, 110, 150),0)
+				if self.weather['Ground'] in ['Snow', 'Deep Snow']:
+					x = libtcod.random_get_int(generator, 170, 210)
+					col = libtcod.Color(x,x,x)
+				else:
+					col = libtcod.Color(70,libtcod.random_get_int(generator, 110, 150),0)
 				x = libtcod.random_get_int(generator, 2, 3)
 				libtcod.console_put_char_ex(temp_con, x, 2, 236, col, bg_col)
 				libtcod.console_put_char_ex(temp_con, x+1, 2, 237, col, bg_col)
@@ -3781,9 +3797,16 @@ class CampaignDay:
 			elif cd_hex.terrain_type == 'Fields':
 				
 				for (x,y) in CHAR_LOCATIONS:
-					c = libtcod.random_get_int(generator, 120, 190)
-					libtcod.console_put_char_ex(temp_con, x, y, 176,
-						libtcod.Color(c,c,0), bg_col)
+					
+					if self.weather['Freezing']:
+						col = libtcod.Color(50,40,20)
+						char = 124
+					else:
+						c = libtcod.random_get_int(generator, 120, 190)
+						col = libtcod.Color(c,c,0)
+						char = 176
+					libtcod.console_put_char_ex(temp_con, x, y, char,
+						col, bg_col)
 				
 			elif cd_hex.terrain_type == 'Marsh':
 				

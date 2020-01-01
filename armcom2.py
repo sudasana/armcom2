@@ -3445,7 +3445,7 @@ class CampaignDay:
 		# see if a road is generated on this map
 		if 'dirt_road_odds' not in REGIONS[campaign.stats['region']]:
 			return
-		if GetPercentileRoll() > float(REGIONS[campaign.stats['region']]['river_odds']):
+		if GetPercentileRoll() > float(REGIONS[campaign.stats['region']]['dirt_road_odds']):
 			return
 		
 		# choose a random edge hex

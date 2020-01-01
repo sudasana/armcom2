@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.11.0'					# game version
+VERSION = '0.11.0 01-01-20b'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2140,7 +2140,7 @@ class CampaignDay:
 		self.selected_direction = None			# select direction for support, travel, etc.
 		self.abandoned_tank = False			# set to true if player abandoned their tank that day
 		self.player_withdrew = False			# set to true if player withdrew from the battle
-		self.scenario = None				# currently active scenario in progress
+		#self.scenario = None				# currently active scenario in progress
 		
 		self.air_support_level = 0.0
 		if 'air_support_level' in campaign.current_week:
@@ -2950,7 +2950,7 @@ class CampaignDay:
 					ShowMessage('Enemy forces attack your area!')
 					map_hex = self.map_hexes[self.player_unit_location]
 					scenario = Scenario(map_hex)
-					self.scenario = scenario
+					#self.scenario = scenario
 					self.AddRecord('Battles Fought', 1)
 				else:
 					# player zone not captured
@@ -4579,7 +4579,7 @@ class CampaignDay:
 		DisplayWeatherInfo(cd_weather_con)
 		DisplayTimeInfo(time_con)
 		
-		if self.scenario is not None:
+		if scenario is not None:
 			self.UpdateCDDisplay()
 		
 		# init looping animations
@@ -4622,7 +4622,7 @@ class CampaignDay:
 				# scenario is finished
 				if scenario.finished:
 					
-					self.scenario = None
+					#self.scenario = None
 					scenario = None
 					
 					# tank was immobilized, abandoned, or destroyed: campaign day is over
@@ -4964,7 +4964,7 @@ class CampaignDay:
 								ShowMessage('You encounter enemy resistance!')
 								self.AdvanceClock(0, 15)
 								scenario = Scenario(map_hex2)
-								self.scenario = scenario
+								#self.scenario = scenario
 								self.encounter_mod = 0.0
 								self.AddRecord('Battles Fought', 1)
 								continue
@@ -5695,46 +5695,17 @@ class Personnel:
 			cx += 1
 	
 	
-	# return the effective modifier for a given action, based on relevant stat and current status
-	def GetActionMod(self, action_type):
-		
-		modifier = 0.0
-		
-		if self.status in ['Dead', 'Unconscious']: return modifier
-		
-		if action_type == 'Spotting':
-			modifier = float(self.stats['Perception']) * PERCEPTION_SPOTTING_MOD
-			if not self.ce:
-				modifier = modifier * 0.25
-		elif action_type == 'Attempt HD':
-			if not self.ce:
-				modifier = modifier * 0.5
-		elif action_type == 'Direct Movement':
-			if not self.ce:
-				modifier = modifier * 0.5
-		elif action_type == 'Direct Fire':
-			if not self.ce:
-				modifier = modifier * 0.5
-		
-		# modify by current status
-		if self.status == 'Stunned':
-			modifier = modifier * 0.5
-		
-		# modify by fatigue level
-		modifier -= float(self.fatigue)
-		
-		if modifier <= 0.0: return 0.0
-		
-		modifier = round(modifier, 1)
-				
-		return modifier 
-	
-	
-	# increase a given skill modifier according to the crewman's knowledge stat
-	def GetKnowledgeSkillMod(self, modifier):
+	# return a given skill or action modifier according to the crewman's knowledge stat and status
+	def GetSkillMod(self, modifier):
+		if self.status in ['Dead', 'Unconscious']: return 0.0
 		modifier += float(self.stats['Knowledge']) * 0.1 * modifier
+		if self.status == 'Stunned':		# stunned status
+			modifier = modifier * 0.5
+		modifier -= float(self.fatigue)		# impact of fatigue
 		modifier = round(modifier, 1)
-		print('Skill mod is now: ' + str(modifier))
+		if modifier <= 0.0:
+			modifier = 0.0
+		#print('Skill mod calculated to be: ' + str(modifier))
 		return modifier
 	
 	
@@ -6389,7 +6360,7 @@ class Weapon:
 					
 					bonus = 10.0
 					if 'Fast Hands' in crewman.skills:
-						bonus = crewman.GetKnowledgeSkillMod(15.0)
+						bonus = crewman.GetSkillMod(15.0)
 					break
 		
 		# more general bonuses based on firing crewman
@@ -6401,14 +6372,14 @@ class Weapon:
 				
 				if self.GetStat('type') == 'Gun':
 					if 'Quick Trigger' in crewman.skills:
-						bonus = crewman.GetKnowledgeSkillMod(5.0)
+						bonus = crewman.GetSkillMod(5.0)
 					if self.selected_target is not None:
 						if 'Time on Target' in crewman.skills:
-							bonus = crewman.GetKnowledgeSkillMod(10.0)
+							bonus = crewman.GetSkillMod(10.0)
 				
 				elif self.GetStat('type') in MG_WEAPONS:
 					if 'Burst Fire' in crewman.skills:
-						bonus = crewman.GetKnowledgeSkillMod(10.0)
+						bonus = crewman.GetSkillMod(10.0)
 		
 		return chance + bonus
 		
@@ -7488,17 +7459,23 @@ class Unit:
 		if driver_attempt:
 			crewman = self.GetPersonnelByPosition('Driver')
 			if crewman is not None:
-				chance += crewman.GetActionMod('Attempt HD')
+				mod = crewman.GetSkillMod(6.0)
+				if not crewman.ce:
+					mod = mod * 0.5
+				chance += mod
 			
 			for position in ['Commander', 'Commander/Gunner']:
 				crewman = self.GetPersonnelByPosition(position)
 				if crewman is None: continue
 				if crewman.current_cmd == 'Direct Movement':
-					chance += crewman.GetActionMod('Direct Movement')
+					mod = crewman.GetSkillMod(6.0)
+					if not crewman.ce:
+						mod = mod * 0.5
+					chance += mod
 					
 					# check for skill modifier
 					if 'Lay of the Land' in crewman.skills:
-						chance += crewman.GetKnowledgeSkillMod(15.0)
+						chance += crewman.GetSkillMod(15.0)
 					
 				break
 		
@@ -7507,7 +7484,7 @@ class Unit:
 			crewman = self.GetPersonnelByPosition('Driver')
 			if crewman is not None:
 				if 'Eye for Cover' in crewman.skills:
-					chance += crewman.GetKnowledgeSkillMod(5.0)
+					chance += crewman.GetSkillMod(5.0)
 		
 		chance = RestrictChance(chance)
 		
@@ -7633,11 +7610,12 @@ class Unit:
 				chance += unit.GetTEM()
 				
 				# spotting crew modifier
-				chance += position.crewman.GetActionMod('Spotting')
+				mod = float(position.crewman.stats['Perception'] * PERCEPTION_SPOTTING_MOD)
+				chance += position.crewman.GetSkillMod(mod)
 				
 				# spotting crew skill
 				if 'Eagle Eyed' in position.crewman.skills and position.crewman.ce:
-					chance += crewman.GetKnowledgeSkillMod(10.0)
+					chance += crewman.GetSkillMod(10.0)
 				
 				# target is HD to spotter
 				if len(unit.hull_down) > 0:
@@ -8742,7 +8720,7 @@ class Scenario:
 			crewman = self.player_unit.GetPersonnelByPosition(position)
 			if crewman is None: continue
 			if 'Enemy Spotted!' in crewman.skills:
-				roll += crewman.GetKnowledgeSkillMod(10.0)
+				roll += crewman.GetSkillMod(10.0)
 				break
 		
 		if self.player_unit.GetStat('recce') is not None:
@@ -9086,7 +9064,7 @@ class Scenario:
 					modifier -= 20.0
 				
 				if 'Gymnast' in position.crewman.skills:
-					modifier -= position.crewman.GetKnowledgeSkillMod(10.0)
+					modifier -= position.crewman.GetSkillMod(10.0)
 				
 				roll = GetPercentileRoll()
 				
@@ -9501,7 +9479,7 @@ class Scenario:
 			if profile['crewman'] is not None:
 				if 'Knows Weak Spots' in profile['crewman'].skills:
 					if weapon_type == 'Gun' and target.GetStat('armour') is not None:
-						profile['critical_hit'] += profile['crewman'].GetKnowledgeSkillMod(2.0)
+						profile['critical_hit'] += profile['crewman'].GetSkillMod(2.0)
 			
 			# calculate base success chance
 			
@@ -9700,9 +9678,9 @@ class Scenario:
 			
 			if total_smoke > 0:
 				if total_smoke >= 2:
-					mod = round(base_chance / 2.0, 2)
+					mod = round(base_chance / 2.0, 1)
 				else:
-					mod = round(base_chance / 3.0, 2)
+					mod = round(base_chance / 3.0, 1)
 				modifier_list.append(('Smoke', 0.0 - mod))
 			
 			if not target.spotted:
@@ -9713,9 +9691,9 @@ class Scenario:
 				if weapon.acquired_target is not None:
 					(ac_target, level) = weapon.acquired_target
 					if ac_target == target:
-						mod = round(15.0 + (float(level) * 15.0), 2)
+						mod = round(15.0 + (float(level) * 15.0), 1)
 						if distance == 3:
-							mod = round(mod * 1.15, 2)
+							mod = round(mod * 1.15, 1)
 						text = 'Acquired Target'
 						if level == 1:
 							text += '+'
@@ -9723,7 +9701,7 @@ class Scenario:
 			
 				# target is infantry and moving
 				if target.moving and target.GetStat('category') == 'Infantry':
-					mod = round(base_chance / 2.0, 2)
+					mod = round(base_chance / 2.0, 1)
 					modifier_list.append(('Infantry Moving', mod))
 				else:
 					if target.GetStat('class') == 'Team':
@@ -9748,23 +9726,27 @@ class Scenario:
 			crewman = attacker.GetPersonnelByPosition(position)
 			if crewman is None: continue
 			if crewman.current_cmd == 'Direct Fire':
-				mod = crewman.GetActionMod('Direct Fire')
+				mod = 7.0
+				if not crewman.ce:
+					mod = mod * 0.5
+				mod = crewman.GetSkillMod(mod)
+				
 				if mod > 0.0:
 					modifier_list.append(('Cmdr Direction', mod))
 				
 					# check for skill modifiers
 					if 'Fire Spotter' in crewman.skills:
-						mod = crewman.GetKnowledgeSkillMod(3.0)
+						mod = crewman.GetSkillMod(3.0)
 						modifier_list.append(('Fire Spotter', mod))
 					
 					if 'MG Spotter' in crewman.skills:
 						if weapon_type in MG_WEAPONS:
-							mod = crewman.GetKnowledgeSkillMod(7.0)
+							mod = crewman.GetSkillMod(7.0)
 							modifier_list.append(('MG Spotter', mod))
 					
 					if 'Gun Spotter' in crewman.skills:
 						if weapon_type == 'Gun':
-							mod = crewman.GetKnowledgeSkillMod(7.0)
+							mod = crewman.GetSkillMod(7.0)
 							modifier_list.append(('Gun Spotter', mod))
 					
 				break
@@ -9774,13 +9756,13 @@ class Scenario:
 			
 			if weapon_type == 'Gun':
 				if 'Crack Shot' in profile['crewman'].skills:
-					mod = crewman.GetKnowledgeSkillMod(3.0)
+					mod = crewman.GetSkillMod(3.0)
 					modifier_list.append(('Crack Shot', mod))
 				if target.moving and 'Target Tracker' in profile['crewman'].skills:
-					mod = crewman.GetKnowledgeSkillMod(7.0)
+					mod = crewman.GetSkillMod(7.0)
 					modifier_list.append(('Target Tracker', mod))
 				if distance == 3 and 'Sniper' in profile['crewman'].skills:
-					mod = crewman.GetKnowledgeSkillMod(7.0)
+					mod = crewman.GetSkillMod(7.0)
 					modifier_list.append(('Sniper', mod))
 				
 				# NEW: skill for firing in precepitation
@@ -9788,7 +9770,7 @@ class Scenario:
 					for (text, mod) in modifier_list:
 						if text in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard']:
 							break
-					skill_mod = crewman.GetKnowledgeSkillMod(12.0)
+					skill_mod = crewman.GetSkillMod(12.0)
 					if skill_mod < abs(mod):
 						modifier_list.append(('Target Focus', skill_mod))
 					
@@ -10957,13 +10939,17 @@ class Scenario:
 				crewman = self.player_unit.GetPersonnelByPosition(position)
 				if crewman is None: continue
 				if crewman.current_cmd == 'Direct Movement':
-					chance += crewman.GetActionMod('Direct Movement')
+					
+					mod = 4.0
+					if not crewman.ce:
+						mod = mod * 0.5
+					chance += crewman.GetSkillMod(mod)
 					
 					# check for skill modifiers
 					if 'Driver Direction' in crewman.skills:
-						chance += crewman.GetKnowledgeSkillMod(3.0)
+						chance += crewman.GetSkillMod(3.0)
 					if forward and 'Forward!' in crewman.skills:
-						chance += crewman.GetKnowledgeSkillMod(10.0)
+						chance += crewman.GetSkillMod(10.0)
 					
 				break
 			
@@ -10971,7 +10957,7 @@ class Scenario:
 			crewman = self.player_unit.GetPersonnelByPosition('Driver')
 			if crewman is not None:
 				if 'Quick Shifter' in crewman.skills:
-					chance += crewman.GetKnowledgeSkillMod(5.0)
+					chance += crewman.GetSkillMod(5.0)
 			
 			# check for debug flag
 			if DEBUG:

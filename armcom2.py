@@ -6792,6 +6792,8 @@ class AI:
 			
 			for (hx, hy) in reversed(hex_list):
 				
+				libtcod.console_flush()
+				
 				# don't move into player's hex
 				if hx == 0 and hy == 0:
 					hex_list.remove((hx, hy))
@@ -6893,6 +6895,7 @@ class AI:
 					if unit.owning_player == self.owner.owning_player: continue
 					if GetHexDistance(0, 0, unit.hx, unit.hy) > 3: continue
 					target_list.append(unit)
+					libtcod.console_flush()
 			
 			# no possible targets
 			if len(target_list) == 0:
@@ -6929,6 +6932,7 @@ class AI:
 					if result != '':
 						continue
 					attack_list.append((weapon, target, ''))
+					libtcod.console_flush()
 			
 			# no possible attacks
 			if len(attack_list) == 0:
@@ -7007,6 +7011,8 @@ class AI:
 				
 				# add to list
 				scored_list.append((score, weapon, target, ammo_type))
+
+				libtcod.console_flush()
 			
 			# no possible attacks
 			if len(scored_list) == 0:
@@ -13905,6 +13911,9 @@ def ChangeGameSettings(key_char, main_menu=False):
 				mixer.Mix_FreeMusic(main_theme)
 			main_theme = None
 		else:
+			if not session.InitMixer():
+				print('Not able to init mixer, sounds remain disabled')
+				return False
 			config['ArmCom2']['sounds_enabled'] = 'true'
 			# load main menu theme and play if in main menu
 			session.LoadMainTheme()

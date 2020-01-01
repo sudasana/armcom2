@@ -224,8 +224,9 @@ MISSION_DESC = {
 
 # FUTURE: move these to a JSON file?
 
-# chance that a weapon will jam upon use
+# chance that a weapon will jam upon use, chance that it will be unjammed if crewman is operating it
 WEAPON_JAM_CHANCE = 0.5
+WEAPON_UNJAM_CHANCE = 75.0
 
 # chance of a direct hit during air or artillery attacks
 DIRECT_HIT_CHANCE = 8.0
@@ -4665,26 +4666,30 @@ class CampaignDay:
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 					
 					self.DoCrewCheck(campaign.player_unit)
-					self.CheckForEndOfDay()
-					self.UpdateCDDisplay()
-					libtcod.console_flush()
 					
-					self.CheckForRandomEvent()
-					self.CheckForZoneCapture(zone_just_captured=True)
-					
-					# check for automatic unbog
+					# check for automatic unbog, weapon unjamming
 					if campaign.player_unit.bogged:
 						ShowMessage('You free your tank from being bogged down.')
 						campaign.player_unit.bogged = False
 						self.UpdateCDPlayerUnitCon()
+					for weapon in campaign.player_unit.weapon_list:
+						if weapon.jammed:
+							weapon.jammed = False
+							ShowMessage(weapon.GetStat('name') + ' is no longer jammed.')
 					
 					# check for fatigue accumulation
 					for position in campaign.player_unit.positions_list:
 						if position.crewman is None: continue
 						position.crewman.DoFatigueCheck()
 					
-					# check for CD map shift
-					self.CheckForCDMapShift()
+					self.UpdateCDDisplay()
+					libtcod.console_flush()
+					
+					self.CheckForEndOfDay()
+					if not self.ended:
+						self.CheckForRandomEvent()
+						self.CheckForZoneCapture(zone_just_captured=True)
+						self.CheckForCDMapShift()
 					
 					SaveGame()
 					
@@ -6268,9 +6273,6 @@ class Weapon:
 		if self.jammed: return False
 		
 		roll = GetPercentileRoll()
-		# TEMP testing
-		roll = 0.0
-		
 		chance = WEAPON_JAM_CHANCE
 		if roll > chance: return False
 		
@@ -6278,6 +6280,36 @@ class Weapon:
 		return True
 	
 	
+	# see if this weapon becomes unjammed
+	def AttemptUnjam(self):
+		if not self.jammed: return False
+		
+		position_list = self.GetStat('fired_by')
+		if position_list is None: return False
+		
+		if self.GetStat('type') == 'Gun':
+			command_req = 'Operate Gun'
+		elif self.GetStat('type') in MG_WEAPONS:
+			command_req = 'Operate MG'
+		else:
+			return False
+		
+		crewman_found = False
+		for position in position_list:
+			crewman = self.unit.GetPersonnelByPosition(position)
+			if crewman is None: continue
+			if crewman.current_cmd != command_req: continue
+			crewman_found = True
+			break
+		if not crewman_found: return False
+		
+		roll = GetPercentileRoll()
+		if roll > WEAPON_UNJAM_CHANCE: return False
+		
+		self.jammed = False
+		return True
+		
+		
 	# move a shell into or out of Ready Rack
 	def ManageRR(self, add_num):
 		
@@ -7176,6 +7208,12 @@ class Unit:
 			if position.crewman is None: continue
 			# check for crew status recovery
 			position.crewman.DoRecoveryCheck()
+		
+		# check for weapon unjam attempts
+		if self == scenario.player_unit:
+			for weapon in self.weapon_list:
+				if weapon.AttemptUnjam():
+					ShowMessage(weapon.GetStat('name') + ' is no longer jammed.')
 
 	
 	# check for the value of a stat, return None if stat not present

@@ -8113,7 +8113,7 @@ class Unit:
 					
 					key_char = DeKey(chr(key.c).lower())
 					
-					if key.vk == libtcod.KEY_TAB:
+					if key.vk == libtcod.KEY_ENTER:
 						end_pause = True
 					
 					if self == scenario.player_unit:
@@ -10051,7 +10051,7 @@ class Scenario:
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
 		if profile['attacker'] == self.player_unit and profile['type'] != 'ap':
 			libtcod.console_print(attack_con, 6, 56, 'Bksp')
-		libtcod.console_print(attack_con, 6, 57, 'Tab')
+		libtcod.console_print(attack_con, 6, 57, 'Enter')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		if profile['attacker'] == self.player_unit and profile['type'] != 'ap':
 			libtcod.console_print(attack_con, 12, 56, 'Cancel')
@@ -10257,7 +10257,7 @@ class Scenario:
 		
 		# display prompt
 		libtcod.console_set_default_foreground(attack_con, ACTION_KEY_COL)
-		libtcod.console_print(attack_con, 6, 57, 'Tab')
+		libtcod.console_print(attack_con, 6, 57, 'Enter')
 		libtcod.console_set_default_foreground(attack_con, libtcod.white)
 		libtcod.console_print(attack_con, 12, 57, 'Continue')
 		
@@ -13042,7 +13042,7 @@ def WaitForContinue(allow_cancel=False, ignore_animations=False):
 		if key.vk == libtcod.KEY_BACKSPACE and allow_cancel:
 			end_pause = True
 			cancel = True
-		elif key.vk == libtcod.KEY_TAB:
+		elif key.vk == libtcod.KEY_ENTER:
 			end_pause = True
 	if allow_cancel and cancel:
 		return True
@@ -14413,7 +14413,7 @@ if not DEBUG:
 	libtcod.console_clear(0)
 	libtcod.console_flush()
 
-# player main them if loaded
+# playe main theme if loaded
 if main_theme is not None:
 	mixer.Mix_PlayMusic(main_theme, -1)
 

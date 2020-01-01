@@ -7949,7 +7949,16 @@ class Unit:
 		libtcod.console_set_default_background(console, libtcod.black)
 		libtcod.console_set_default_foreground(console, libtcod.lighter_blue)
 		
+		# unit id
 		libtcod.console_print(console, x, y, self.unit_id)
+		
+		# display unit type nickname if any
+		if self.nick_name != '':
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			libtcod.console_print_ex(console, x+24, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, self.nick_name)
+		
+		# unit class
 		libtcod.console_set_default_foreground(console, libtcod.light_grey)
 		libtcod.console_print(console, x, y+1, self.GetStat('class'))
 		
@@ -7962,15 +7971,10 @@ class Unit:
 		if portrait is not None:
 			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, console, x, y+2)
 		
-		# display nickname if any overtop portrait
-		libtcod.console_set_default_foreground(console, libtcod.white)
-		if self.nick_name != '':
-			libtcod.console_print(console, x, y+2, "'" + self.nick_name + "'")
-		
 		# display name if any overtop portrait
 		if self.unit_name != '':
-			libtcod.console_print_ex(console, x+24, y+2, libtcod.BKGND_NONE, libtcod.RIGHT,
-				self.unit_name)
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			libtcod.console_print(console, x, y+2, "'" + self.unit_name + "'")
 		
 		# weapons - list turret and unmounted weapons on line 1, all others on line 2
 		libtcod.console_set_default_background(console, libtcod.darkest_red)

@@ -9928,21 +9928,21 @@ class Scenario:
 				distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 				
 				if calibre <= 25:
-					if distance == 0:
+					if distance <= 1:
 						modifier_list.append(('Close Range', 18.0))
 					elif distance == 2:
 						modifier_list.append(('Medium Range', -7.0))
 					else:
 						modifier_list.append(('Long Range', -18.0))
 				elif calibre <= 57:
-					if distance == 0:
+					if distance <= 1:
 						modifier_list.append(('Close Range', 7.0))
 					elif distance == 2:
 						modifier_list.append(('Medium Range', -7.0))
 					else:
 						modifier_list.append(('Long Range', -12.0))
 				else:
-					if distance == 0:
+					if distance <= 1:
 						modifier_list.append(('Close Range', 7.0))
 					elif 2 <= distance <= 3:
 						modifier_list.append(('Long Range', -7.0))
@@ -9960,7 +9960,7 @@ class Scenario:
 					
 					# apply critical hit modifier if any
 					if profile['result'] == 'CRITICAL HIT':
-						modifier = round(modifier * 0.8, 2)
+						modifier = abs(round(modifier * 0.8, 2))
 						modifier_list.append(('Critical Hit', modifier))
 		
 		# save the list of modifiers
@@ -10631,16 +10631,18 @@ class Scenario:
 			(x, y) = self.PlotHex(map_hex.hx, map_hex.hy)
 			(x2, y2) = (x, y)
 			
+			# animation from below
 			if y2 <= 30:
 				y1 = y2 + 15
 				if y1 > 51: y1 = 51
-				# TODO: needs changing: y2 is incorrect
 				y2 += 1
 				direction = -1
+			
+			# animation from above
 			else:
 				y1 = y2 - 15
 				if y1 < 9: y1 = 9
-				y2 -= 3
+				y2 -= 1
 				direction = 1
 			
 			# create air attack animation

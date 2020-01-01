@@ -4877,5 +4877,26 @@
 		"description" : [
 			""
 		]
+	},
+	
+	"3-ton Truck" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_opel_3t_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"description" : [
+			"This design of truck was widespread during the 1930s and 1940s, ",
+			"produced by a number of different manufacturers around the world."
+		],
+		"rarity" : {
+			"1935.01.01" : "100"
+		}
 	}
 }

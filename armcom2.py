@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.11.0 01-01-20b'				# game version
+VERSION = '0.11.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -223,6 +223,18 @@ MISSION_DESC = {
 ##########################################################################################
 
 # FUTURE: move these to a JSON file?
+
+# level at which crew become eligible for promotion to the next rank
+LEVEL_RANK_LIST = {
+	'2' : 1,
+	'4' : 2,
+	'10' : 3,
+	'15' : 4,
+	'20' : 5,
+	'25' : 6
+}
+# chance that eligible crew will receive a promotion
+PROMOTION_CHANCE = 18.0
 
 # chance that a weapon will jam upon use, chance that it will be unjammed if crewman is operating it
 WEAPON_JAM_CHANCE = 0.5
@@ -1375,12 +1387,6 @@ class Campaign:
 			libtcod.console_put_char(con, 40, y1, '.')
 			libtcod.console_put_char(con, 52, y1, '.')
 		
-		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		libtcod.console_print(con, 38, 49, 'Enter')
-		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		libtcod.console_print(con, 45, 49, 'Continue')
-		
-		
 		# fade in from black
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		for i in range(100, 0, -5):
@@ -1445,6 +1451,12 @@ class Campaign:
 		# repair tank if required
 		if campaign.player_unit.immobilized:
 			campaign.player_unit.immobilized = False
+		
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print(con, 38, 49, 'Enter')
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		libtcod.console_print(con, 45, 49, 'Continue')
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
 		exit_menu = False
 		while not exit_menu:
@@ -1821,6 +1833,12 @@ class Campaign:
 						for k, v in campaign.current_week['enemy_class_odds_modifier'].items():
 							if k in campaign.stats['enemy_unit_class_odds']:
 								campaign.stats['enemy_unit_class_odds'][k] = v
+					
+					# check for promotions
+					for position in campaign.player_unit.positions_list:
+						if position.crewman is None: continue
+						position.crewman.PromotionCheck()
+					
 		
 		
 		# consoles for campaign calendar interface
@@ -1851,7 +1869,8 @@ class Campaign:
 			
 			# if we've initiated a campaign day or are resuming a saved game with a
 			# campaign day running, go into the campaign day loop now
-			if campaign_day.started and not campaign_day.ended:
+			# NEW: also check to see if we're still in a scenario within the campaign day
+			if campaign_day.started and (not campaign_day.ended or scenario is not None):
 							
 				campaign_day.DoCampaignDayLoop()
 				
@@ -5321,11 +5340,11 @@ class Personnel:
 		
 		# commanders start higher
 		if self.current_position.name in ['Commander', 'Commander/Gunner']:
-			self.level = 3
+			self.level = 4
 			self.exp = GetExpRequiredFor(self.level)
-			self.adv = 3
+			self.adv = 4
 			self.age += libtcod.random_get_int(0, 3, 8)
-			self.rank = 3
+			self.rank = 2
 		
 		# gunners a little higher
 		elif self.current_position.name in ['Gunner', 'Gunner/Loader']:
@@ -5333,7 +5352,7 @@ class Personnel:
 			self.exp = GetExpRequiredFor(self.level)
 			self.adv = 2
 			self.age += libtcod.random_get_int(0, 1, 4)
-			self.rank = 2
+			self.rank = 1
 		
 		# give current age, set random birthday
 		year = int(campaign.today.split('.')[0].lstrip('0')) - self.age
@@ -5359,6 +5378,24 @@ class Personnel:
 	# award a number of exp to this crewman
 	def AwardExp(self, exp):
 		self.exp += exp
+	
+	# check to see whether crewman is promoted, called for player crew once per week
+	def PromotionCheck(self):
+		
+		if self.rank == 6: return
+		
+		for (k, v) in LEVEL_RANK_LIST.items():
+			if int(k) <= self.level:
+				if v > self.rank:
+					if GetPercentileRoll() <= PROMOTION_CHANCE:
+						self.rank = v
+						ShowMessage('Your ' + self.current_position.name + ' has been promoted to ' +
+							session.nations[self.nation]['rank_names'][str(self.rank)] + '!')
+						self.adv += 2
+					
+					# don't check again this week
+					return
+	
 	
 	# display a menu for this crewman, used for members of player's unit
 	def ShowCrewmanMenu(self):

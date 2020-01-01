@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.11.0 01-01-20'				# game version
+VERSION = '0.11.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -223,6 +223,9 @@ MISSION_DESC = {
 ##########################################################################################
 
 # FUTURE: move these to a JSON file?
+
+# chance that a weapon will jam upon use
+WEAPON_JAM_CHANCE = 0.5
 
 # chance of a direct hit during air or artillery attacks
 DIRECT_HIT_CHANCE = 8.0
@@ -6246,7 +6249,7 @@ class Weapon:
 		self.covered_hexes = []			# map hexes that could be targeted by this weapon
 		self.fired = False
 		self.maintained_rof = False
-		
+		self.jammed = False			# weapon is jammed and cannot be fired
 		self.selected_target = None		# for player unit
 		self.acquired_target = None		# acquired target status and target unit
 	
@@ -6256,6 +6259,23 @@ class Weapon:
 		if stat_name not in self.stats:
 			return None
 		return self.stats[stat_name]
+	
+	
+	# do a jam test for this weapon
+	def JamTest(self):
+		
+		# already jammed
+		if self.jammed: return False
+		
+		roll = GetPercentileRoll()
+		# TEMP testing
+		roll = 0.0
+		
+		chance = WEAPON_JAM_CHANCE
+		if roll > chance: return False
+		
+		self.jammed = True
+		return True
 	
 	
 	# move a shell into or out of Ready Rack
@@ -6511,6 +6531,9 @@ class Weapon:
 	
 	# cycle to use next available ammo type
 	def CycleAmmo(self):
+		
+		# don't attempt if this weapon is not a gun
+		if self.GetStat('ammo_type_list') is None: return False
 		
 		# no other types possible
 		if len(self.stats['ammo_type_list']) == 1:
@@ -8019,6 +8042,13 @@ class Unit:
 		attack_finished = False
 		while not attack_finished:
 			
+			# NEW: do weapon jam test for player
+			if self == scenario.player_unit:
+				if weapon.JamTest():
+					ShowMessage(weapon.GetStat('name') + ' has jammed!')
+					attack_finished = True
+					continue
+			
 			# calculate attack profile
 			profile = scenario.CalcAttack(self, weapon, target)
 			
@@ -9327,7 +9357,9 @@ class Scenario:
 			if not crewman_found:
 				return 'No crewman operating this weapon'
 		
-		# check that weapon hasn't already fired
+		# check that weapon is not jammed and hasn't already fired
+		if weapon.jammed:
+			return 'Weapon is jammed!'
 		if weapon.fired:
 			return 'Weapon has already fired this turn'
 		
@@ -11532,6 +11564,10 @@ class Scenario:
 				libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 				libtcod.console_print_ex(context_con, 17, 0, libtcod.BKGND_NONE,
 					libtcod.RIGHT, weapon.stats['mount'])
+			
+			if weapon.jammed:
+				libtcod.console_set_default_foreground(context_con, libtcod.light_red)
+				libtcod.console_print(context_con, 0, 1, 'JAMMED')
 			
 			# display target and acquired target status if any
 			if weapon.selected_target is not None and weapon.acquired_target is not None:

@@ -2177,7 +2177,6 @@ class CampaignDay:
 		self.selected_direction = None			# select direction for support, travel, etc.
 		self.abandoned_tank = False			# set to true if player abandoned their tank that day
 		self.player_withdrew = False			# set to true if player withdrew from the battle
-		#self.scenario = None				# currently active scenario in progress
 		
 		self.air_support_level = 0.0
 		if 'air_support_level' in campaign.current_week:
@@ -2973,11 +2972,6 @@ class CampaignDay:
 				else:
 					capture_list = sample(hex_list, capture_num)
 				
-				# in FW mission, more likely that player zone is attacked
-				#if campaign_day.mission == 'Fighting Withdrawl':
-				#	if (hx, hy) != self.player_unit_location:
-				#		(hx, hy) = choice(hex_list)
-				
 				for (hx, hy) in capture_list:
 					self.map_hexes[(hx,hy)].CaptureMe(1)
 				
@@ -2987,7 +2981,6 @@ class CampaignDay:
 					ShowMessage('Enemy forces attack your area!')
 					map_hex = self.map_hexes[self.player_unit_location]
 					scenario = Scenario(map_hex)
-					#self.scenario = scenario
 					self.AddRecord('Battles Fought', 1)
 				else:
 					# player zone not captured
@@ -4659,7 +4652,6 @@ class CampaignDay:
 				# scenario is finished
 				if scenario.finished:
 					
-					#self.scenario = None
 					scenario = None
 					
 					# tank was immobilized, abandoned, or destroyed: campaign day is over
@@ -4885,7 +4877,6 @@ class CampaignDay:
 				
 				# wait/defend
 				if key_char == 'w':
-					
 					if ShowNotification('Remain in place for 15 minutes?', confirm=True):
 						ShowMessage('You remain in place, ready for possible attack.')
 						self.selected_direction = None
@@ -4935,7 +4926,6 @@ class CampaignDay:
 					
 					# ensure that travel/recon is possible
 					(hx1, hy1) = self.player_unit_location
-					#map_hex1 = self.map_hexes[(hx1,hy1)]
 					(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, self.selected_direction)
 					if (hx2, hy2) not in self.map_hexes:
 						continue
@@ -5001,7 +4991,6 @@ class CampaignDay:
 								ShowMessage('You encounter enemy resistance!')
 								self.AdvanceClock(0, 15)
 								scenario = Scenario(map_hex2)
-								#self.scenario = scenario
 								self.encounter_mod = 0.0
 								self.AddRecord('Battles Fought', 1)
 								continue
@@ -5209,8 +5198,8 @@ class CDMapHex:
 		if not no_vp:
 			
 			if self.controlled_by == 1:
+				campaign_day.AddRecord('Map Areas Captured', 1)
 				if campaign_day.mission != 'Fighting Withdrawl':
-					campaign_day.AddRecord('Map Areas Captured', 1)
 					if campaign_day.mission == 'Advance':
 						campaign.AwardVP(2)
 					else:

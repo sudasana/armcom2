@@ -105,21 +105,9 @@
 		},
 		{
 			"start_date" : "1939.12.28",
-			"day_start" : "09:25",
-			"day_end" : "15:15",
-			"combat_chance" : "50",
-			"average_resistance" : "6",
-			"week_description" : "Counterattack",
-			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "20",
-				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
-			},
-			"enemy_nation" : "Soviet Union",
-			"air_support_level" : 20.0,
-			"arty_support_level" : 80.0
-		},
+			"end_date" : "1940.01.03",
+			"refitting" : "TRUE"
+		},	
 		{
 			"start_date" : "1940.01.04",
 			"day_start" : "09:20",
@@ -173,20 +161,8 @@
 		},
 		{
 			"start_date" : "1940.01.25",
-			"day_start" : "08:50",
-			"day_end" : "16:15",
-			"combat_chance" : "50",
-			"average_resistance" : "6",
-			"week_description" : "Counterattack",
-			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "20",
-				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
-			},
-			"enemy_nation" : "Soviet Union",
-			"air_support_level" : 20.0,
-			"arty_support_level" : 80.0
+			"end_date" : "1940.01.31",
+			"refitting" : "TRUE"
 		},
 		{
 			"start_date" : "1940.02.01",

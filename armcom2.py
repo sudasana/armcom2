@@ -1090,10 +1090,18 @@ class Campaign:
 	# menu to select player tank
 	# also allows input/generation of tank name, and return both
 	# can be used when replacing a tank mid-campaign as well
-	def TankSelectionMenu(self):
+	def TankSelectionMenu(self, replacing_tank=False):
 		
 		def UpdateTankSelectionScreen(selected_unit, player_tank_name):
 			libtcod.console_clear(con)
+			
+			if replacing_tank and campaign.player_unit.alive:
+				libtcod.console_set_default_foreground(con, libtcod.white)
+				libtcod.console_print_ex(con, 13, 9, libtcod.BKGND_NONE, libtcod.CENTER,
+					'Current Tank')
+				campaign.player_unit.DisplayMyInfo(con, 1, 11, status=False)
+			
+			libtcod.console_set_default_foreground(con, libtcod.white)
 			DrawFrame(con, 26, 1, 37, 58)
 			
 			libtcod.console_set_default_background(con, libtcod.darker_blue)
@@ -1102,7 +1110,7 @@ class Campaign:
 			
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 			libtcod.console_print_ex(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Player Unit Selection')
+				'Player Tank Selection')
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			
 			libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -1127,12 +1135,16 @@ class Campaign:
 				y+=1
 			
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-			libtcod.console_print(con, 32, 53, EnKey('a').upper() + '/' + EnKey('d').upper())
-			libtcod.console_print(con, 32, 54, 'N')
+			libtcod.console_print(con, 32, 52, EnKey('a').upper() + '/' + EnKey('d').upper())
+			libtcod.console_print(con, 32, 53, 'N')
+			if replacing_tank and campaign.player_unit.alive:
+				libtcod.console_print(con, 32, 54, 'Bksp')
 			libtcod.console_print(con, 32, 55, 'Enter')
 			libtcod.console_set_default_foreground(con, libtcod.white)
-			libtcod.console_print(con, 38, 53, 'Select Unit Type')
-			libtcod.console_print(con, 38, 54, 'Set/Generate Tank Name')
+			libtcod.console_print(con, 38, 52, 'Select Unit Type')
+			libtcod.console_print(con, 38, 53, 'Set/Generate Tank Name')
+			if replacing_tank and campaign.player_unit.alive:
+				libtcod.console_print(con, 38, 54, 'Keep Current Tank')
 			libtcod.console_print(con, 38, 55, 'Proceed')
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -1179,6 +1191,10 @@ class Campaign:
 			if key.vk == libtcod.KEY_ENTER:
 				exit_loop = True
 			
+			# don't choose a new model
+			elif key.vk == libtcod.KEY_BACKSPACE and replacing_tank and campaign.player_unit.alive:
+				return (None, None)
+			
 			# unmapped keys
 			key_char = chr(key.c).lower()
 			
@@ -1217,7 +1233,11 @@ class Campaign:
 		while not exit_menu:
 			
 			# allow player to choose a new tank model
-			(unit_id, tank_name) = campaign.TankSelectionMenu()
+			(unit_id, tank_name) = campaign.TankSelectionMenu(replacing_tank=True)
+			
+			# player doesn't want to change
+			if unit_id is None:
+				return
 			
 			# determine crew transfer procedure
 			
@@ -1286,8 +1306,6 @@ class Campaign:
 					print('DEBUG: moved ' + position_name + ' to ' + new_position)
 					break
 			
-			
-		
 		# generate new crewmen if required
 		for position in new_unit.positions_list:
 			if position.crewman is None:

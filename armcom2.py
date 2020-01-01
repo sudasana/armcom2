@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.11.0'					# game version
+VERSION = '0.11.0 01-01-20c'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -9832,8 +9832,9 @@ class Scenario:
 						if text in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard']:
 							break
 					skill_mod = crewman.GetSkillMod(12.0)
-					if skill_mod < abs(mod):
-						modifier_list.append(('Target Focus', skill_mod))
+					if skill_mod > abs(mod):
+						skill_mod = abs(mod)
+					modifier_list.append(('Target Focus', skill_mod))
 					
 		
 		# save the list of modifiers

@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.11.0 01-01-20'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -1499,25 +1499,44 @@ class Campaign:
 				line)
 			y += 1
 		
-		# FUTURE: display start and end dates of player's campaign
-		
-		# FUTURE: display outcome for player character
+		# display outcome for player character
+		libtcod.console_set_default_foreground(temp_con, libtcod.white)
+		crewman = campaign.player_unit.positions_list[0].crewman
+		if crewman is not None:
+			
+			text = session.nations[crewman.nation]['rank_names'][str(crewman.rank)]
+			libtcod.console_print_ex(temp_con, 14, 7, libtcod.BKGND_NONE, libtcod.CENTER,
+				text)
+			
+			x = 14 - int(len(crewman.first_name + crewman.last_name) / 2)
+			crewman.DisplayName(temp_con, x, 8)
+			
+			if crewman.status == 'Dead':
+				text = 'KIA'
+			elif crewman.wound == 'Serious':
+				text = 'Discharged'
+			else:
+				text = 'Transferred'
+			libtcod.console_print_ex(temp_con, 14, 10, libtcod.BKGND_NONE, libtcod.CENTER,
+				text)
 		
 		# display decoration if any
 		if self.decoration != '':
+			libtcod.console_print_ex(temp_con, 14, 13, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Awarded:')
 			libtcod.console_set_default_foreground(temp_con, libtcod.yellow)
-			libtcod.console_print_ex(temp_con, 14, 6, libtcod.BKGND_NONE, libtcod.CENTER,
+			libtcod.console_print_ex(temp_con, 14, 14, libtcod.BKGND_NONE, libtcod.CENTER,
 				self.decoration)
 		
 		# total VP
 		libtcod.console_set_default_foreground(temp_con, libtcod.white)
-		libtcod.console_print_ex(temp_con, 14, 11, libtcod.BKGND_NONE, libtcod.CENTER,
+		libtcod.console_print_ex(temp_con, 14, 18, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Total VP Earned:')
-		libtcod.console_print_ex(temp_con, 14, 13, libtcod.BKGND_NONE, libtcod.CENTER,
+		libtcod.console_print_ex(temp_con, 14, 19, libtcod.BKGND_NONE, libtcod.CENTER,
 			str(self.player_vp))
 		
 		# campaign stats
-		y = 17
+		y = 23
 		for text in RECORD_LIST:
 			libtcod.console_print(temp_con, 2, y, text + ':')
 			libtcod.console_print_ex(temp_con, 26, y, libtcod.BKGND_NONE, libtcod.RIGHT,
@@ -4564,7 +4583,7 @@ class CampaignDay:
 		
 		# calculate initial time to travel to front lines
 		if not self.travel_time_spent:
-			minutes = 45 + (libtcod.random_get_int(0, 1, 9) * 15)
+			minutes = 15 + (libtcod.random_get_int(0, 1, 5) * 15)
 			self.AdvanceClock(0, minutes, skip_checks=True)
 			DisplayTimeInfo(time_con)
 			text = 'It takes you ' + str(minutes) + ' minutes to travel to the front lines.'
@@ -9693,6 +9712,16 @@ class Scenario:
 				if distance == 3 and 'Sniper' in profile['crewman'].skills:
 					mod = crewman.GetKnowledgeSkillMod(7.0)
 					modifier_list.append(('Sniper', mod))
+				
+				# NEW: skill for firing in precepitation
+				if campaign_day.weather['Precipitation'] in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard'] and 'Target Focus' in profile['crewman'].skills:
+					for (text, mod) in modifier_list:
+						if text in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard']:
+							break
+					skill_mod = crewman.GetKnowledgeSkillMod(12.0)
+					if skill_mod < abs(mod):
+						modifier_list.append(('Target Focus', skill_mod))
+					
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]

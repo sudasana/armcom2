@@ -51,12 +51,10 @@
 		"prerequisite" : "Quick Trigger"
 	},
 	
-	
 	"Burst Fire": {
 		"desc" : "Slightly increases chance of maintaining Rate of Fire when firing a Machine Gun.",
 		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader", "Assistant Driver"]
 	},
-	
 	
 	"Crack Shot": {
 		"desc" : "Slightly increases chance to hit when firing a Gun.",
@@ -75,35 +73,35 @@
 		"prerequisite" : "Crack Shot"
 	},
 	
+	"Target Focus": {
+		"desc" : "Reduces the effect of precipitation when firing a Gun.",
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"],
+		"prerequisite" : "Crack Shot"
+	},
 	
 	"Knows Weak Spots": {
 		"desc" : "Slightly increases chance of scoring a Critical Hit when firing a Gun at an armoured target.",
 		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader"]
 	},
 	
-	
 	"Fast Hands": {
 		"desc" : "Slightly increases chance of maintaining Rate of Fire when reloading a Gun.",
 		"position_list" : ["Loader"]
 	},
-	
 	
 	"Quick Shifter": {
 		"desc" : "Slightly increases chance of a successful Move Forward or Backward action.",
 		"position_list" : ["Driver"]
 	},
 	
-	
 	"Eye for Cover": {
 		"desc" : "Slightly increases chance to achieve Hull Down status after moving.",
 		"position_list" : ["Driver"]
 	},
 	
-	
 	"Eagle Eyed": {
 		"desc" : "When hatch is open, slightly increases chance to spot and identify enemy units."
 	},
-	
 	
 	"Gymnast": {
 		"desc" : "Slightly increases chance to successfully bail out."

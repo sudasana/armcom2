@@ -7936,6 +7936,7 @@ class Unit:
 			for (x_mod, y_mod) in HEX_EDGE_CELLS[i]:
 				libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, 247, col, libtcod.black)
 	
+	
 	# display info on this unit to a given console starting at x,y
 	# if status is False, don't display current status flags
 	def DisplayMyInfo(self, console, x, y, status=True):
@@ -7971,6 +7972,7 @@ class Unit:
 			libtcod.console_print(console, x, y+2, "'" + self.unit_name + "'")
 		
 		# weapons - list turret and unmounted weapons on line 1, all others on line 2
+		libtcod.console_set_default_foreground(console, libtcod.white)
 		libtcod.console_set_default_background(console, libtcod.darkest_red)
 		libtcod.console_rect(console, x, y+10, 25, 2, True, libtcod.BKGND_SET)
 		

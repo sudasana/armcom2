@@ -1982,16 +1982,10 @@ class Campaign:
 						if not self.player_unit.alive:
 							self.ReplacePlayerTank()
 						
-						# create a new campaign day
-						campaign_day = CampaignDay()
-						campaign_day.GenerateRoads()
-						campaign_day.GenerateRivers()
-						
-						# show new day starting animation
-						self.ShowStartOfDay()	
-						
 						# handle refitting weeks here
 						if 'refitting' in campaign.current_week:
+							
+							self.ShowStartOfDay()
 							
 							# allow player to change tanks
 							if ShowNotification('Your battlegroup has been recalled for refitting. Do you want to request a new tank?', confirm=True):
@@ -1999,10 +1993,14 @@ class Campaign:
 							
 							# proceed to next combat day
 							ProceedToNextDay()
-							campaign_day = CampaignDay()
-							campaign_day.GenerateRoads()
-							campaign_day.GenerateRivers()
-							self.ShowStartOfDay()
+						
+						# create a new campaign day
+						campaign_day = CampaignDay()
+						campaign_day.GenerateRoads()
+						campaign_day.GenerateRivers()
+						self.ShowStartOfDay()
+						
+						SaveGame()
 						
 						# redraw the screen
 						self.UpdateDayOutlineCon()
@@ -2466,6 +2464,11 @@ class CampaignDay:
 		else:
 			self.weather['Precipitation'] = 'None'
 		
+		# TEMP testing
+		if self.weather['Freezing']:
+			self.weather['Precipitation'] = 'Blizzard'
+		else:
+			self.weather['Precipitation'] = 'Heavy Rain'
 		
 		# if precipitation has been rolled, fix clear cloud cover
 		if self.weather['Precipitation'] != 'None' and self.weather['Cloud Cover'] == 'Clear':
@@ -9824,7 +9827,7 @@ class Scenario:
 					for (text, mod) in modifier_list:
 						if text in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard']:
 							break
-					skill_mod = crewman.GetSkillMod(12.0)
+					skill_mod = crewman.GetSkillMod(8.0)
 					if skill_mod > abs(mod):
 						skill_mod = abs(mod)
 					modifier_list.append(('Target Focus', skill_mod))

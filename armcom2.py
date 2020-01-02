@@ -7945,6 +7945,17 @@ class Unit:
 		# draw main display character
 		libtcod.console_put_char_ex(unit_con, x, y, self.GetDisplayChar(), col, libtcod.black)
 		
+		# draw smoke level if any
+		if self.smoke > 0:
+			if self.smoke == 1:
+				col = libtcod.light_grey
+			else:
+				col = libtcod.dark_grey
+			libtcod.console_put_char_ex(unit_con, x-1, y-1, 247, col, libtcod.black)
+			libtcod.console_put_char_ex(unit_con, x+1, y-1, 247, col, libtcod.black)
+			libtcod.console_put_char_ex(unit_con, x-1, y+1, 247, col, libtcod.black)
+			libtcod.console_put_char_ex(unit_con, x+1, y+1, 247, col, libtcod.black)
+		
 		# determine if we need to display a turret / gun depiction
 		draw_turret = True
 		
@@ -7964,18 +7975,6 @@ class Unit:
 			x_mod, y_mod = PLOT_DIR[facing]
 			char = TURRET_CHAR[facing]
 			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
-		
-		# draw smoke level if any
-		if self.smoke == 0: return
-		
-		if self.smoke == 1:
-			col = libtcod.light_grey
-		else:
-			col = libtcod.dark_grey
-		libtcod.console_put_char_ex(unit_con, x-1, y-1, 247, col, libtcod.black)
-		libtcod.console_put_char_ex(unit_con, x+1, y-1, 247, col, libtcod.black)
-		libtcod.console_put_char_ex(unit_con, x-1, y+1, 247, col, libtcod.black)
-		libtcod.console_put_char_ex(unit_con, x+1, y+1, 247, col, libtcod.black)
 	
 	
 	# display info on this unit to a given console starting at x,y

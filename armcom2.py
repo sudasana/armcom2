@@ -930,6 +930,7 @@ class Campaign:
 	# award VP to the player, also adds exp to active crew
 	def AwardVP(self, vp_to_add):
 		self.player_vp += vp_to_add
+		campaign_day.day_vp += vp_to_add
 		for position in self.player_unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status not in ['Dead', 'Unconscious']:
@@ -1625,7 +1626,13 @@ class Campaign:
 			libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
 				libtcod.CENTER, line)
 			y += 1
-			if y == 17: break
+			if y == 10: break
+		
+		libtcod.console_set_default_foreground(day_outline, libtcod.white)
+		libtcod.console_print_ex(day_outline, 12, 12, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Total VP:')
+		libtcod.console_print_ex(day_outline, 12, 13, libtcod.BKGND_NONE,
+			libtcod.CENTER, str(campaign.player_vp))
 		
 		libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
 		libtcod.console_print(day_outline, 1, 19, 'Start of Day:')
@@ -2078,7 +2085,7 @@ class CampaignDay:
 		self.ended = False				# day has been completed
 		self.mission = ''
 		self.GenerateMission()				# roll for type of mission today
-		
+		self.day_vp = 0					# counter of how many VP were earned today
 		self.travel_time_spent = False
 		
 		# current weather conditions, will be set by GenerateWeather
@@ -2357,23 +2364,37 @@ class CampaignDay:
 		for k, v in self.current_week['mission_odds'].items():
 			self.mission = k
 			return
-		
 	
-	# calculate required tarvel time in minutes from one zone to another
-	def CalculateTravelTime(self, hx1, hy1, hx2, hy2):
+	
+	# check to see if travel between hexes on the Campaign Day map is possible
+	def CheckTravel(self, hx1, hy1, hx2, hy2):
 		
 		# check for river block
 		direction = self.GetDirectionToAdjacentCD(hx1, hy1, hx2, hy2)
 		if direction in self.map_hexes[(hx1,hy1)].rivers:
 			if direction not in self.map_hexes[(hx1,hy1)].bridges:
-				return -1
+				return 'Cannot cross river'
 		direction2 = self.GetDirectionToAdjacentCD(hx2, hy2, hx1, hy1)
 		if direction2 in self.map_hexes[(hx2,hy2)].rivers:
 			if direction2 not in self.map_hexes[(hx2,hy2)].bridges:
-				return -1
+				return 'Cannot cross river'
+		
+		# check for missing or dead driver
+		crewman = campaign.player_unit.GetPersonnelByPosition('Driver')
+		if crewman is None:
+			return 'No Driver'
+		if crewman.status == 'Dead':
+			return 'Driver is dead'
+		
+		return ''
+		
+	
+	# calculate required tarvel time in minutes from one zone to another
+	def CalculateTravelTime(self, hx1, hy1, hx2, hy2):
+		
+		direction = self.GetDirectionToAdjacentCD(hx1, hy1, hx2, hy2)
 		
 		# check for road link
-		
 		if direction in self.map_hexes[(hx1,hy1)].dirt_roads:
 			mins = 30
 		else:
@@ -3784,9 +3805,9 @@ class CampaignDay:
 		# total VP
 		libtcod.console_set_default_foreground(temp_con, libtcod.white)
 		libtcod.console_print_ex(temp_con, 14, 11, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Total VP Earned:')
+			'VP Earned Today:')
 		libtcod.console_print_ex(temp_con, 14, 13, libtcod.BKGND_NONE, libtcod.CENTER,
-			str(campaign.player_vp))
+			str(campaign_day.day_vp))
 		
 		# day stats
 		y = 17
@@ -4229,11 +4250,14 @@ class CampaignDay:
 				libtcod.console_print_ex(cd_command_con, 13, y1+4, libtcod.BKGND_NONE, libtcod.CENTER,
 					'Select a Direction')
 			
-			# display Wait command (always available)
+			# display Abandon and Wait commands (always available)
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+			libtcod.console_print(cd_command_con, 3, 36, EnKey('i').upper())
 			libtcod.console_print(cd_command_con, 3, 37, EnKey('w').upper())
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			libtcod.console_print(cd_command_con, 10, 36, 'Abandon Tank')
 			libtcod.console_print(cd_command_con, 10, 37, 'Wait/Defend')
+			
 			
 			# check to see whether travel in selected direction is not possible
 			if self.selected_direction is None:
@@ -4264,14 +4288,12 @@ class CampaignDay:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
 			# calculate and display travel time
-			mins = self.CalculateTravelTime(hx1, hy1, hx2, hy2)
-			# travel not allowed
-			if mins == -1:
-				text = 'N/A'
-			else:
-				text = str(mins) + ' mins.'
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			libtcod.console_print(cd_command_con, 1, 20, 'Travel Time: ' + text)
+			libtcod.console_print(cd_command_con, 1, 20, 'Travel Time:')
+			text = self.CheckTravel(hx1, hy1, hx2, hy2)
+			if text == '':
+				text = str(self.CalculateTravelTime(hx1, hy1, hx2, hy2)) + ' mins.'
+			libtcod.console_print(cd_command_con, 1, 21, text)
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			libtcod.console_print(cd_command_con, 3, 39, 'Enter')
@@ -4364,12 +4386,12 @@ class CampaignDay:
 		libtcod.console_print_ex(cd_campaign_con, 11, 0, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Day Mission')
 		libtcod.console_print_ex(cd_campaign_con, 11, 3, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Total VP')
+			'VP Today')
 		libtcod.console_set_default_foreground(cd_campaign_con, libtcod.white)
 		libtcod.console_print_ex(cd_campaign_con, 11, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 			campaign_day.mission)
 		libtcod.console_print_ex(cd_campaign_con, 11, 4, libtcod.BKGND_NONE, libtcod.CENTER,
-			str(campaign.player_vp))
+			str(campaign_day.day_vp))
 	
 	
 	# generate/update the zone info console
@@ -4688,7 +4710,7 @@ class CampaignDay:
 							(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, direction)
 							if (hx2, hy2) not in self.map_hexes: continue
 							if self.map_hexes[(hx2,hy2)].controlled_by == 1: continue
-							if self.CalculateTravelTime(hx1,hy1,hx2,hy2) == -1:
+							if self.CheckTravel(hx1,hy1,hx2,hy2) != '':
 								continue
 							hex_list.append((hx2, hy2))
 						
@@ -4904,6 +4926,17 @@ class CampaignDay:
 						SaveGame()
 					continue
 				
+				# abandon tank
+				elif key_char == 'i':
+					text = "Abandon your tank? You will forfeit half of today's VP."
+					if ShowNotification(text, confirm=True):
+						campaign.player_unit.alive = False
+						campaign.player_vp -= int(campaign_day.day_vp / 2)
+						ShowMessage('You abandon your tank.')
+						self.ended = True
+						self.abandoned_tank = True
+					continue
+				
 				# toggle advancing fire
 				if key_char == 't':
 					self.advancing_fire = not self.advancing_fire
@@ -4968,8 +5001,9 @@ class CampaignDay:
 					else:
 						
 						# travel not allowed
-						if self.CalculateTravelTime(hx1,hy1,hx2,hy2) == -1:
-							ShowMessage('Route blocked by river crossing, cannot proceed.')
+						text = self.CheckTravel(hx1,hy1,hx2,hy2)
+						if text != '':
+							ShowMessage(text)
 							continue
 						
 						self.MovePlayerTo(hx2,hy2)

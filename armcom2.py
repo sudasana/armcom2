@@ -4274,7 +4274,7 @@ class CampaignDay:
 				# display recon option
 				if not map_hex.known_to_player:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-					libtcod.console_print(cd_command_con, 1, 19, 'Recon: 15 mins.')
+					libtcod.console_print(cd_command_con, 1, 18, 'Recon: 15 mins.')
 					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 					libtcod.console_print(cd_command_con, 3, 38, EnKey('r').upper())
 					
@@ -6793,7 +6793,7 @@ class AI:
 					self.disposition = 'Combat'
 		
 		# recalled units much more likely to move
-		if self.recall:
+		if self.recall and self.owner.GetStat('category') != 'Gun':
 			if self.disposition != 'Movement':
 				if GetPercentileRoll() <= 80.0:
 					self.disposition = 'Movement'
@@ -10003,7 +10003,7 @@ class Scenario:
 					
 					# apply critical hit modifier if any
 					if profile['result'] == 'CRITICAL HIT':
-						modifier = abs(round(modifier * 0.8, 2))
+						modifier = abs(round(modifier * 0.9, 2))
 						modifier_list.append(('Critical Hit', modifier))
 		
 		# save the list of modifiers

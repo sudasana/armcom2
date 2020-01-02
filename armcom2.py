@@ -206,7 +206,7 @@ MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG', 'HMG']
 # types of records to store for each combat day and for entire campaign
 # also order in which they are displayed
 RECORD_LIST = [
-	'Battles Fought', 'Map Areas Captured', 'Map Areas Defended', 'Gun Hits', 'Vehicles Destroyed',
+	'Battles Fought', 'Map Areas Captured', 'Gun Hits', 'Vehicles Destroyed',
 	'Guns Destroyed', 'Infantry Destroyed'
 ]
 
@@ -3389,59 +3389,34 @@ class CampaignDay:
 				continue
 				
 	
-	# check to see whether we need to replace crew after a scenario
+	# check to see whether crew within this unit recover from negative statuses
 	# at present this is only used for player unit, but in future could be used for AI units as well
-	def DoCrewCheck(self, unit):
+	def DoCrewRecoveryCheck(self, unit):
 		
-		# don't bother for dead tanks
-		if not unit.alive: return
+		# don't bother for dead units or if campaign is already voer
+		if not unit.alive or campaign.ended: return
 		
-		# skip if player died
-		if campaign.ended: return
-		
-		# Stunned, Unconscious, and Critical crew automatically recover
-		# FUTURE: Do a final recovery roll for Critical crew
-		replacement_needed = False
-		player_seriously_injured = False
+		# Stunned and Unconscious crew automatically recover
+		# Do a final recovery roll for Critical crew
 		for position in unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status != '':
-				if position.crewman.status == 'Dead':
-					replacement_needed = True
-					continue
-				if position.crewman.wound in ['Serious', 'Critical']:
-					if position.name in PLAYER_POSITIONS:
-						player_seriously_injured = True
-					replacement_needed = True
-					continue
+				
+				if position.crewman.wound == 'Critical':
+					roll = GetPercentileRoll() - 20.0
+					if roll <= position.crewman.stats['Grit'] * 10.0:
+						position.crewman.wound = 'Serious'
+					else:
+						position.crewman.status = 'Dead'
+						if position in PLAYER_POSITIONS:
+							text = 'You have died from your wounds.'
+						else:
+							text = 'Your ' + position.name + ' has died from his wounds.'
+						ShowMessage(text)
+						continue
+				
 				position.crewman.status = ''
-		
-		# return if no replacements needed
-		if not replacement_needed: return
-		
-		# return if player has serious wound
-		if player_seriously_injured:
-			ShowMessage('You have been seriously injured and are taken off the front lines. Your campaign is over.')
-			self.ended = True
-			campaign.ended = True
-			campaign.player_oob = True
-			return
-		
-		# spend time if campaign day has not yet ended
-		if unit == campaign.player_unit and not campaign_day.ended:
-			self.AdvanceClock(0, 30)
-			ShowMessage('You await a transport to recover bodies and provide new crew, which takes 30 mins.')
-			
-		for position in unit.positions_list:
-			if position.crewman is None: continue
-			if position.crewman.status == 'Dead' or position.crewman.wound in ['Serious', 'Critical']:
-				# FUTURE: preserve original order when replacing crewmen
-				unit.personnel_list.remove(position.crewman)
-				unit.personnel_list.append(Personnel(unit, unit.nation, position))
-				position.crewman = unit.personnel_list[-1]
-				if unit == campaign.player_unit:
-					text = 'A new crewman joins your crew in the ' + position.name + ' position.'
-					ShowMessage(text)
+	
 	
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
@@ -4337,20 +4312,26 @@ class CampaignDay:
 				libtcod.console_print(cd_command_con, 6, 3, weapon.stats['name'])
 				weapon.DisplayAmmo(cd_command_con, 6, 5)
 			
+			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+			libtcod.console_print(cd_command_con, 2, 14, EnKey('d').upper() + '/' + EnKey('a').upper())
+			libtcod.console_print(cd_command_con, 4, 15, EnKey('c').upper())
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			libtcod.console_print(cd_command_con, 6, 14, 'Add/Remove to RR')
+			libtcod.console_print(cd_command_con, 6, 15, 'Cycle Ammo Type')
+			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			libtcod.console_print_ex(cd_command_con, 12, 14, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Request resupply:')
-			libtcod.console_print_ex(cd_command_con, 12, 15, libtcod.BKGND_NONE, libtcod.CENTER,
+			libtcod.console_print_ex(cd_command_con, 12, 34, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Request resupply, ')
+			libtcod.console_print_ex(cd_command_con, 12, 35, libtcod.BKGND_NONE, libtcod.CENTER,
+				'reserve units,')
+			libtcod.console_print_ex(cd_command_con, 12, 36, libtcod.BKGND_NONE, libtcod.CENTER,
+				'and replacement crew')
+			libtcod.console_print_ex(cd_command_con, 12, 37, libtcod.BKGND_NONE, libtcod.CENTER,
 				'30 mins.')
 			
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 2, 36, EnKey('d').upper() + '/' + EnKey('a').upper())
-			libtcod.console_print(cd_command_con, 4, 37, EnKey('c').upper())
 			libtcod.console_print(cd_command_con, 4, 39, EnKey('r').upper())
-			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 6, 36, 'Add/Remove to RR')
-			libtcod.console_print(cd_command_con, 6, 37, 'Cycle Ammo Type')
 			libtcod.console_print(cd_command_con, 6, 39, 'Request Resupply')
 	
 	
@@ -4646,13 +4627,34 @@ class CampaignDay:
 				# scenario is finished
 				if scenario.finished:
 					
+					# clear scenario object
 					scenario = None
+					
+					# NEW order for following
+					
+					# check for player crew recovery
+					self.DoCrewRecoveryCheck(campaign.player_unit)
+					
+					# check for player character death or serious injury - ends campaign
+					crewman = campaign.player_unit.positions_list[0].crewman
+					
+					if crewman.status == 'Dead':
+						self.ended = True
+						campaign.ended = True
+						campaign.player_oob = True
+						continue
+					
+					if crewman.wound == 'Serious':
+						ShowMessage('You have been seriously injured and are taken off the front lines. Your campaign is over.')
+						self.ended = True
+						campaign.ended = True
+						campaign.player_oob = True
+						continue
 					
 					# tank was immobilized, abandoned, or destroyed: campaign day is over
 					if campaign.player_unit.immobilized or not campaign.player_unit.alive:
 						self.DisplayCampaignDaySummary()
 						self.ended = True
-						self.DoCrewCheck(campaign.player_unit)
 						exit_loop = True
 						continue
 					
@@ -5083,9 +5085,20 @@ class CampaignDay:
 						self.AmmoReloadMenu()
 						self.UpdateCDDisplay()
 						
+						# NEW: check for crew replacement
+						for position in campaign.player_unit.positions_list:
+							if position.crewman is None: continue
+							if position.crewman.status == 'Dead' or position.crewman.wound in ['Serious', 'Critical']:
+								# FUTURE: preserve original order when replacing crewmen
+								unit.personnel_list.remove(position.crewman)
+								unit.personnel_list.append(Personnel(unit, unit.nation, position))
+								position.crewman = unit.personnel_list[-1]
+								if unit == campaign.player_unit:
+									text = 'A new crewman joins your crew in the ' + position.name + ' position.'
+									ShowMessage(text)
+						
 						# check for player squad replenishment
 						if campaign.player_squad_num < campaign.player_squad_max:
-		
 							campaign.player_squad_num = campaign.player_squad_max
 							ShowMessage('You are joined by reserve units, bringing your squad back up to full strength.')
 						
@@ -5193,17 +5206,7 @@ class CDMapHex:
 			
 			if self.controlled_by == 1:
 				campaign_day.AddRecord('Map Areas Captured', 1)
-				if campaign_day.mission != 'Fighting Withdrawl':
-					if campaign_day.mission == 'Advance':
-						campaign.AwardVP(2)
-					else:
-						campaign.AwardVP(1)
-			
-			elif self.controlled_by == 0:
-				campaign_day.AddRecord('Map Areas Defended', 1)
-				if campaign_day.mission == 'Fighting Withdrawl':
-					campaign.AwardVP(4)
-				elif campaign_day.mission == 'Counterattack':
+				if campaign_day.mission == 'Advance':
 					campaign.AwardVP(2)
 				else:
 					campaign.AwardVP(1)
@@ -9050,7 +9053,6 @@ class Scenario:
 		Wait(120, ignore_animations=True)
 		
 		# do roll procedures
-		
 		if not skip_ko:
 		
 			# initial tank KO wound
@@ -9064,11 +9066,13 @@ class Scenario:
 				if position.crewman.status == 'Dead': continue
 				
 				# FUTURE: modify by location on tank penetrated
-				result = position.crewman.DoWoundCheck(show_messages=False)
-				
 				if DEBUG:
 					if session.debug['Player Crew Safe in Bail Out']:
 						result = None
+					else:
+						result = position.crewman.DoWoundCheck(show_messages=False)
+				else:
+					result = position.crewman.DoWoundCheck(show_messages=False)
 				
 				if result is None:
 					text = 'OK'
@@ -9118,13 +9122,13 @@ class Scenario:
 				
 				roll = GetPercentileRoll()
 				
-				if DEBUG:
-					if session.debug['Player Crew Safe in Bail Out']:
-						roll = 3.0
-				
 				# unmodified 97.0-100.0 always fail, otherwise modifier is applied
 				if roll < 97.0:
 					roll += modifier
+					
+				if DEBUG:
+					if session.debug['Player Crew Safe in Bail Out']:
+						roll = 3.0
 				
 				if roll <= 97.0:
 					position.crewman.bailed_out = True
@@ -9164,7 +9168,7 @@ class Scenario:
 				y += 4
 				if position.crewman is None: continue
 				if position.crewman.bailed_out: continue
-				
+				if position.crewman.status == 'Dead': continue
 				libtcod.console_print(con, 60, y, 'Vulnerable')
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -9180,8 +9184,8 @@ class Scenario:
 			y += 4
 			
 			if position.crewman is None: continue
-			
 			if position.crewman.bailed_out: continue
+			if position.crewman.status == 'Dead': continue
 			
 			text = 'Rescued'
 			
@@ -13266,8 +13270,6 @@ def GetHexPath(hx1, hy1, hx2, hy2, rivers_block=True, enemy_zones_block=False):
 	open_list.add(start)		# add the start node to the open list
 	
 	while open_list:
-		
-		libtcod.console_flush()
 		
 		# grab the node with the best H value from the list of open nodes
 		current = sorted(open_list, key=lambda inst:inst.f)[0]

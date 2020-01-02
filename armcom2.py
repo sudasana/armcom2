@@ -1976,6 +1976,9 @@ class Campaign:
 							exit_loop = True
 							continue
 						
+						# NEW: check for crew replacement
+						campaign_day.DoCrewReplacementCheck(campaign.player_unit)
+						
 						ProceedToNextDay()
 						
 						# if player tank was destroyed, allow player to choose a new one
@@ -3418,6 +3421,24 @@ class CampaignDay:
 				position.crewman.status = ''
 	
 	
+	# check to see whether dead or seriously injured crewmen need to be replaced in this unit
+	def DoCrewReplacementCheck(self, unit):
+		
+		# don't bother for dead units or if campaign is already voer
+		if not unit.alive or campaign.ended: return
+		
+		for position in unit.positions_list:
+			if position.crewman is None: continue
+			if position.crewman.status == 'Dead' or position.crewman.wound == 'Serious':
+				# FUTURE: preserve original order when replacing crewmen
+				unit.personnel_list.remove(position.crewman)
+				unit.personnel_list.append(Personnel(unit, unit.nation, position))
+				position.crewman = unit.personnel_list[-1]
+				if unit == campaign.player_unit:
+					text = 'A new crewman joins your crew in the ' + position.name + ' position.'
+					ShowMessage(text)
+	
+	
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
 		
@@ -4643,8 +4664,7 @@ class CampaignDay:
 						campaign.ended = True
 						campaign.player_oob = True
 						continue
-					
-					if crewman.wound == 'Serious':
+					elif crewman.wound == 'Serious':
 						ShowMessage('You have been seriously injured and are taken off the front lines. Your campaign is over.')
 						self.ended = True
 						campaign.ended = True
@@ -5086,16 +5106,7 @@ class CampaignDay:
 						self.UpdateCDDisplay()
 						
 						# NEW: check for crew replacement
-						for position in campaign.player_unit.positions_list:
-							if position.crewman is None: continue
-							if position.crewman.status == 'Dead' or position.crewman.wound in ['Serious', 'Critical']:
-								# FUTURE: preserve original order when replacing crewmen
-								unit.personnel_list.remove(position.crewman)
-								unit.personnel_list.append(Personnel(unit, unit.nation, position))
-								position.crewman = unit.personnel_list[-1]
-								if unit == campaign.player_unit:
-									text = 'A new crewman joins your crew in the ' + position.name + ' position.'
-									ShowMessage(text)
+						self.DoCrewReplacementCheck(campaign.player_unit)
 						
 						# check for player squad replenishment
 						if campaign.player_squad_num < campaign.player_squad_max:

@@ -7364,10 +7364,6 @@ class Unit:
 			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
 				roll -= 5.0
 			
-			# TEMP
-			self.smoke = 2
-			return
-			
 			if roll <= 93.0:
 				self.smoke = 0
 			elif roll <= 98.0:

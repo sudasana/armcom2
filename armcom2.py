@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.11.0'					# game version
+VERSION = '0.11.0 02-01-20'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1264,12 +1264,12 @@ class Campaign:
 						open_spot = True
 						open_position_list.pop(open_position_list.index(new_position))
 						transfer_dict[position.name] = new_position
-						print('DEBUG: found a transfer match: ' + position.name + ' -> ' + new_position)
+						#print('DEBUG: found a transfer match: ' + position.name + ' -> ' + new_position)
 						break
 				
 				if not open_spot:
 					discard_list.append(position.name)
-					print('DEBUG: must discard crewman in ' + position.name + ' position')
+					#print('DEBUG: must discard crewman in ' + position.name + ' position')
 			
 			# display this info to player and allow them to cancel and choose a different tank model
 			if len(discard_list) > 0:
@@ -1304,14 +1304,14 @@ class Campaign:
 			for position in new_unit.positions_list:
 				if position.name == new_position:
 					position.crewman = crewman
-					print('DEBUG: moved ' + position_name + ' to ' + new_position)
+					#print('DEBUG: moved ' + position_name + ' to ' + new_position)
 					break
 			
 		# generate new crewmen if required
 		for position in new_unit.positions_list:
 			if position.crewman is None:
 				position.crewman = Personnel(new_unit, new_unit.nation, position)
-				print('DEBUG: generated new crewman for ' + position.name)
+				#print('DEBUG: generated new crewman for ' + position.name)
 		
 		new_unit.ClearGunAmmo()
 		self.player_unit = new_unit
@@ -3445,15 +3445,13 @@ class CampaignDay:
 	# check to see whether dead or seriously injured crewmen need to be replaced in this unit
 	def DoCrewReplacementCheck(self, unit):
 		
-		# don't bother for dead units or if campaign is already voer
+		# don't bother for dead units or if campaign is already over
 		if not unit.alive or campaign.ended: return
 		
 		for position in unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status == 'Dead' or position.crewman.wound == 'Serious':
-				unit.personnel_list.remove(position.crewman)
-				unit.personnel_list.append(Personnel(unit, unit.nation, position))
-				position.crewman = unit.personnel_list[-1]
+				position.crewman = Personnel(unit, unit.nation, position)
 				if unit == campaign.player_unit:
 					text = 'A new crewman joins your crew in the ' + position.name + ' position.'
 					ShowMessage(text)
@@ -7147,7 +7145,6 @@ class Unit:
 		self.squad = None			# list of units in player squad
 		
 		self.positions_list = []		# list of crew/personnel positions
-		self.personnel_list = []		# list of crew/personnel
 		
 		# load unit stats from JSON file
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
@@ -7747,10 +7744,8 @@ class Unit:
 	
 	# generate new personnel sufficent to fill all personnel positions
 	def GenerateNewPersonnel(self):
-		self.personnel_list = []
 		for position in self.positions_list:
-			self.personnel_list.append(Personnel(self, self.nation, position))
-			position.crewman = self.personnel_list[-1]
+			position.crewman = Personnel(self, self.nation, position)
 	
 	
 	# spawn this unit into the given scenario map hex
@@ -10804,7 +10799,7 @@ class Scenario:
 					# direct hit modifier
 					if direct_hit:
 						chance = round(chance * 2.0, 1)
-						print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
+						#print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
 					
 					# target armour modifier
 					armour = target.GetStat('armour')
@@ -10964,7 +10959,7 @@ class Scenario:
 					# direct hit modifier
 					if direct_hit:
 						chance = round(chance * 2.0, 1)
-						print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
+						#print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
 					
 					# apply target armour modifier
 					armour = target.GetStat('armour')

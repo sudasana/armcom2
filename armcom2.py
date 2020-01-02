@@ -2464,12 +2464,6 @@ class CampaignDay:
 		else:
 			self.weather['Precipitation'] = 'None'
 		
-		# TEMP testing
-		if self.weather['Freezing']:
-			self.weather['Precipitation'] = 'Blizzard'
-		else:
-			self.weather['Precipitation'] = 'Heavy Rain'
-		
 		# if precipitation has been rolled, fix clear cloud cover
 		if self.weather['Precipitation'] != 'None' and self.weather['Cloud Cover'] == 'Clear':
 			self.weather['Cloud Cover'] = choice(['Scattered', 'Heavy', 'Overcast'])
@@ -3452,7 +3446,7 @@ class CampaignDay:
 	# generate roads linking zones; only dirt roads for now
 	def GenerateRoads(self):
 		
-		# for DEBUG - clear any existing roads
+		# clear any existing roads
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)].dirt_roads = []
 		
@@ -3589,6 +3583,9 @@ class CampaignDay:
 			if GetPercentileRoll() <= odds:
 				rivers += 1
 		
+		# TEMP
+		rivers = 2
+		
 		if rivers == 0: return
 		
 		# create the rivers
@@ -3675,7 +3672,9 @@ class CampaignDay:
 						# may have already been added by first river
 						if direction in self.map_hexes[(hx,hy)].rivers: continue
 						self.map_hexes[(hx,hy)].rivers.append(direction)
-					
+			
+			
+			
 			# create bridges in the rivers
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				if len(self.map_hexes[(hx,hy)].rivers) == 0: continue

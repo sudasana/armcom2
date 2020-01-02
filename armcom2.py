@@ -3583,9 +3583,6 @@ class CampaignDay:
 			if GetPercentileRoll() <= odds:
 				rivers += 1
 		
-		# TEMP
-		rivers = 2
-		
 		if rivers == 0: return
 		
 		# create the rivers
@@ -3671,39 +3668,34 @@ class CampaignDay:
 					for direction in path[1:]:
 						# may have already been added by first river
 						if direction in self.map_hexes[(hx,hy)].rivers: continue
+						
 						self.map_hexes[(hx,hy)].rivers.append(direction)
-			
-			
-			
-			# create bridges in the rivers
-			for (hx, hy) in CAMPAIGN_DAY_HEXES:
-				if len(self.map_hexes[(hx,hy)].rivers) == 0: continue
-			
-				for direction in self.map_hexes[(hx,hy)].rivers:
-					# road already here
-					if direction in self.map_hexes[(hx,hy)].dirt_roads:
+						
+						# add bridge if road already present
+						if direction in self.map_hexes[(hx,hy)].dirt_roads:
+							if direction not in self.map_hexes[(hx,hy)].bridges:
+								self.map_hexes[(hx,hy)].bridges.append(direction)
+							continue
+						
+						# randomly add bridges
 						if direction not in self.map_hexes[(hx,hy)].bridges:
-							self.map_hexes[(hx,hy)].bridges.append(direction)
-						continue
-					
-					# randomly add a bridge/ford here
-					if GetPercentileRoll() <= 10.0:
-						if direction not in self.map_hexes[(hx,hy)].bridges:
-							self.map_hexes[(hx,hy)].bridges.append(direction)
-		
+							if GetPercentileRoll() <= 10.0:
+								self.map_hexes[(hx,hy)].bridges.append(direction)
+			
 			# do path checking
-			path_good = False
-			(hx1, hy1) = self.player_unit_location
-			if self.mission == 'Fighting Withdrawl':
-				hx2_max = 1
-				hy2 = 8
-			else:
-				hx2_max = 5
-				hy2 = 0
-			for hx2 in range(hx2_max - 5, hx2_max):
+			path_good = True
+			STARTING_HEXES = [(-4,8), (-3,8), (-2,8), (-1,8), (0,8)]
+			ENDING_HEXES = [(4,0), (3,0), (2,0), (1,0), (0,0)]
+			
+			for i in range(5):
+				libtcod.console_flush()
+				(hx1,hy1) = STARTING_HEXES[i]
+				(hx2,hy2) = ENDING_HEXES[i]
+			
 				if len(GetHexPath(hx1, hy1, hx2, hy2)) != 0:
-					path_good = True
-					break
+					continue
+				path_good = False
+				break
 			
 			# if path is good: break rather than trying again
 			if path_good:
@@ -13273,6 +13265,8 @@ def GetHexPath(hx1, hy1, hx2, hy2, rivers_block=True, enemy_zones_block=False):
 	
 	while open_list:
 		
+		libtcod.console_flush()
+		
 		# grab the node with the best H value from the list of open nodes
 		current = sorted(open_list, key=lambda inst:inst.f)[0]
 		
@@ -13298,10 +13292,13 @@ def GetHexPath(hx1, hy1, hx2, hy2, rivers_block=True, enemy_zones_block=False):
 			# ignore nodes on closed list
 			if node in closed_list: continue
 			
-			# check for route blocking
+			# check for route blocking NEW: both ways
 			if rivers_block:
 				if direction in campaign_day.map_hexes[(current.hx, current.hy)].rivers:
 					if direction not in campaign_day.map_hexes[(current.hx, current.hy)].bridges:
+						continue
+				if ConstrainDir(direction + 3) in campaign_day.map_hexes[(hx, hy)].rivers:
+					if ConstrainDir(direction + 3) not in campaign_day.map_hexes[(hx, hy)].bridges:
 						continue
 			
 			if enemy_zones_block:

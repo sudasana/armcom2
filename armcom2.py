@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.11.0 02-01-20'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -7195,7 +7195,7 @@ class Unit:
 		self.animation_cells = []		# list of x,y unit console locations for animation
 		
 		self.spotted = False			# unit has been spotted by opposing side
-		self.smoke = [0,0,0,0,0,0]		# unit smoke level in 6 directions
+		self.smoke = 0				# unit smoke level
 		
 		self.hull_down = []			# list of directions unit in which Hull Down
 		self.moving = False
@@ -7229,27 +7229,26 @@ class Unit:
 		# check for smoke dispersal
 		if not skip_smoke:
 		
-			for i in range(6):
-				if self.smoke[i] > 0:
-					roll = GetPercentileRoll()
+			if self.smoke > 0:
+				roll = GetPercentileRoll()
+				
+				if self.moving:
+					roll -= 5.0
+				
+				if campaign_day.weather['Precipitation'] == 'Rain':
+					roll -= 5.0
+				elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+					roll -= 15.0
+				
+				if roll <= 5.0:
+					self.smoke -= 1
 					
-					if self.moving:
-						roll -= 5.0
-					
-					if campaign_day.weather['Precipitation'] == 'Rain':
-						roll -= 5.0
-					elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
-						roll -= 15.0
-					
-					if roll <= 5.0:
-						self.smoke[i] -= 1
-						
-						# show message if player
-						if self == scenario.player_unit:
-							if self.smoke[i] > 0:
-								ShowMessage('Some of the smoke nearby disperses somewhat.')
-							else:
-								ShowMessage('Some of the smoke nearby has dispersed.')
+					# show message if player
+					if self == scenario.player_unit:
+						if self.smoke > 0:
+							ShowMessage('Some of the smoke nearby disperses somewhat.')
+						else:
+							ShowMessage('Some of the smoke nearby has dispersed.')
 		
 		self.moving = False
 		self.previous_facing = self.facing
@@ -7365,12 +7364,16 @@ class Unit:
 			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
 				roll -= 5.0
 			
+			# TEMP
+			self.smoke = 2
+			return
+			
 			if roll <= 93.0:
-				self.smoke[i] = 0
+				self.smoke = 0
 			elif roll <= 98.0:
-				self.smoke[i] = 1
+				self.smoke = 1
 			else:
-				self.smoke[i] = 2
+				self.smoke = 2
 
 	
 	# returns list of crew in this unit that are vulnerable to small-arms fire
@@ -7672,19 +7675,13 @@ class Unit:
 					chance -= 10.0 * float(distance)
 				
 				# smoke concealment
-				direction = GetDirectionToward(self.hx, self.hy, unit.hx, unit.hy)
-				if self.smoke[direction] > 0:
-					if self.smoke[direction] == 1:
-						chance = chance * 0.75
-					else:
-						chance = chance * 0.5
-				
-				direction = GetDirectionToward(unit.hx, unit.hy, self.hx, self.hy)
-				if unit.smoke[direction] > 0:
-					if unit.smoke[direction] == 1:
-						chance = chance * 0.75
-					else:
-						chance = chance * 0.5
+				smoke = self.smoke + unit.smoke
+				if self.smoke == 1:
+					chance = chance * 0.75
+				elif smoke == 2:
+					chance = chance * 0.5
+				elif smoke > 2:
+					chance = chance * 0.3
 				
 				# target moving
 				if unit.moving:
@@ -7972,15 +7969,17 @@ class Unit:
 			char = TURRET_CHAR[facing]
 			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
 		
-		# draw smoke levels if any
-		for i in range(6):
-			if self.smoke[i] == 0: continue
-			if self.smoke[i] == 1:
-				col = libtcod.light_grey
-			else:
-				col = libtcod.dark_grey
-			for (x_mod, y_mod) in HEX_EDGE_CELLS[i]:
-				libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, 247, col, libtcod.black)
+		# draw smoke level if any
+		if self.smoke == 0: return
+		
+		if self.smoke == 1:
+			col = libtcod.light_grey
+		else:
+			col = libtcod.dark_grey
+		libtcod.console_put_char_ex(unit_con, x-1, y-1, 247, col, libtcod.black)
+		libtcod.console_put_char_ex(unit_con, x+1, y-1, 247, col, libtcod.black)
+		libtcod.console_put_char_ex(unit_con, x-1, y+1, 247, col, libtcod.black)
+		libtcod.console_put_char_ex(unit_con, x+1, y+1, 247, col, libtcod.black)
 	
 	
 	# display info on this unit to a given console starting at x,y
@@ -9635,12 +9634,7 @@ class Scenario:
 				modifier_list.append(('Blizzard', -20.0 * float(distance)))
 			
 			# smoke
-			total_smoke = 0
-			direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx, target.hy)
-			total_smoke += attacker.smoke[direction]
-			direction = GetDirectionToward(target.hx, target.hy, attacker.hx, attacker.hy)
-			total_smoke += target.smoke[direction]
-			
+			total_smoke = attacker.smoke + target.smoke
 			if total_smoke >= 2:
 				modifier_list.append(('Smoke', -50.0))
 			elif total_smoke == 1:
@@ -9767,12 +9761,7 @@ class Scenario:
 				modifier_list.append(('Attacker Pinned', 0.0 - mod))
 			
 			# smoke
-			total_smoke = 0
-			direction = GetDirectionToward(attacker.hx, attacker.hy, target.hx, target.hy)
-			total_smoke += attacker.smoke[direction]
-			direction = GetDirectionToward(target.hx, target.hy, attacker.hx, attacker.hy)
-			total_smoke += target.smoke[direction]
-			
+			total_smoke = attacker.smoke + target.smoke
 			if total_smoke > 0:
 				if total_smoke >= 2:
 					mod = round(base_chance / 2.0, 1)
@@ -10598,10 +10587,7 @@ class Scenario:
 			
 				modifier = 0.0
 					
-				total_smoke = 0
-				for i in range(6):
-					total_smoke += unit.smoke[i]
-				if total_smoke > 0:
+				if unit.smoke > 0:
 					modifier -= 5.0
 				
 				size_class = unit.GetStat('size_class')
@@ -10739,12 +10725,9 @@ class Scenario:
 						chance += PF_SIZE_MOD[size_class]
 				
 				# smoke modifier
-				total_smoke = 0
-				for i in range(6):
-					total_smoke += target.smoke[i]
-				if total_smoke >= 2:
+				if target.smoke >= 2:
 					chance -= 30.0
-				elif total_smoke == 1:
+				elif target.smoke == 1:
 					chance -= 15.0
 				
 				chance = RestrictChance(chance)
@@ -11228,12 +11211,6 @@ class Scenario:
 			if len(unit.hull_down) > 0:
 				for i in range(3):
 					unit.hull_down[i] = ConstrainDir(unit.hull_down[i] + f)
-			
-			# pivot unit smoke levels
-			if clockwise:
-				unit.smoke.append(unit.smoke.pop(0))
-			else:
-				unit.smoke.insert(0, unit.smoke.pop(5))
 		
 		self.UpdatePlayerInfoCon()
 		self.UpdateGuiCon()
@@ -11457,8 +11434,7 @@ class Scenario:
 				
 				# check for smoke grenade
 				if position.crewman.current_cmd == 'Smoke Grenade':
-					for i in range(6):
-						self.player_unit.smoke[i] = 2
+					self.player_unit.smoke = 1
 					PlaySoundFor(None, 'smoke')
 					ShowMessage('You throw a smoke grenade.')
 					self.UpdateUnitCon()
@@ -11467,10 +11443,7 @@ class Scenario:
 				
 				# check for smoke mortar
 				if position.crewman.current_cmd == 'Fire Smoke Mortar':
-					direction = self.player_unit.turret_facing
-					if direction is None:
-						direction = self.player_unit.facing
-					self.player_unit.smoke[direction] = 2
+					self.player_unit.smoke = 2
 					PlaySoundFor(None, 'smoke')
 					ShowMessage('The ' + position.name + ' fires off a smoke mortar round.')
 					self.UpdateUnitCon()
@@ -12132,6 +12105,11 @@ class Scenario:
 			if unit.terrain is not None:
 				libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
 				libtcod.console_print(unit_info_con, 23, 1, unit.terrain)
+			
+			# smoke if any
+			if unit.smoke > 0:
+				libtcod.console_set_default_foreground(unit_info_con, libtcod.grey)
+				libtcod.console_print(unit_info_con, 23, 2, 'Smoke lvl ' + str(unit.smoke))
 			
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_grey)
 			libtcod.console_print(unit_info_con, 20, 3, 'Right click for details')

@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.11.0 02-01-20'				# game version
+VERSION = '0.11.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2735,7 +2735,7 @@ class CampaignDay:
 			DisplayWeatherInfo(cd_weather_con)
 			if scenario is not None:
 				if scenario.init_complete:
-					scenario.UpdateScenarioInfoCon()
+					DisplayWeatherInfo(scen_weather_con)
 		
 	
 	# sets flag if we've met or exceeded the set length of the combat day
@@ -4586,7 +4586,7 @@ class CampaignDay:
 		libtcod.console_blit(cd_player_unit_con, 0, 0, 0, 0, con, 1, 1)		# player unit info		
 		libtcod.console_blit(cd_command_con, 0, 0, 0, 0, con, 1, 18)		# command menu
 		
-		libtcod.console_blit(cd_weather_con, 0, 0, 0, 0, con, 71, 3)		# weather info
+		libtcod.console_blit(cd_weather_con, 0, 0, 0, 0, con, 69, 3)		# weather info
 		libtcod.console_blit(cd_campaign_con, 0, 0, 0, 0, con, 66, 18)		# campaign info
 		libtcod.console_blit(cd_hex_info_con, 0, 0, 0, 0, con, 66, 24)		# zone info
 		
@@ -4612,7 +4612,7 @@ class CampaignDay:
 		time_con = NewConsole(21, 5, libtcod.darkest_grey, libtcod.white)
 		cd_player_unit_con = NewConsole(25, 16, libtcod.black, libtcod.white)
 		cd_command_con = NewConsole(25, 41, libtcod.black, libtcod.white)
-		cd_weather_con = NewConsole(14, 12, libtcod.black, libtcod.white)
+		cd_weather_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
 		cd_campaign_con = NewConsole(23, 5, libtcod.black, libtcod.white)
 		cd_hex_info_con = NewConsole(23, 35, libtcod.black, libtcod.white)
 		
@@ -12004,14 +12004,6 @@ class Scenario:
 					libtcod.console_put_char_ex(gui_con, x-1, y+1, 192, libtcod.red, libtcod.black)
 					libtcod.console_put_char_ex(gui_con, x+1, y+1, 217, libtcod.red, libtcod.black)
 	
-	
-	# update the scenario info console, on the top right of the screen
-	# displays current weather and terrain type
-	# 14x12
-	def UpdateScenarioInfoCon(self):
-		libtcod.console_clear(scen_info_con)
-		DisplayWeatherInfo(scen_info_con)
-	
 		
 	# update unit info console, which displays basic information about a unit under
 	# the mouse cursor
@@ -12303,7 +12295,7 @@ class Scenario:
 		# consoles around the edge of map
 		libtcod.console_blit(context_con, 0, 0, 0, 0, con, 28, 1)
 		libtcod.console_blit(time_con, 0, 0, 0, 0, con, 48, 1)
-		libtcod.console_blit(scen_info_con, 0, 0, 0, 0, con, 73, 1)
+		libtcod.console_blit(scen_weather_con, 0, 0, 0, 0, con, 71, 1)
 		libtcod.console_blit(unit_info_con, 0, 0, 0, 0, con, 28, 54)
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -12313,7 +12305,7 @@ class Scenario:
 	def DoScenarioLoop(self):
 		
 		# set up and load scenario consoles
-		global bkg_console, crew_con, cmd_menu_con, scen_info_con
+		global bkg_console, crew_con, cmd_menu_con, scen_weather_con
 		global player_info_con, context_con, time_con, hexmap_con, unit_con, gui_con
 		global anim_con, attack_con, unit_info_con
 		
@@ -12325,7 +12317,7 @@ class Scenario:
 		cmd_menu_con = NewConsole(25, 12, libtcod.black, libtcod.white)
 		context_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
 		time_con = NewConsole(21, 6, libtcod.darkest_grey, libtcod.white)
-		scen_info_con = NewConsole(14, 11, libtcod.darkest_grey, libtcod.white)
+		scen_weather_con = NewConsole(18, 12, libtcod.darkest_grey, libtcod.white)
 		unit_info_con = NewConsole(61, 5, libtcod.darkest_grey, libtcod.white)
 		hexmap_con = NewConsole(53, 43, libtcod.black, libtcod.black)
 		unit_con = NewConsole(53, 43, KEY_COLOR, libtcod.white, key_colour=True)
@@ -12391,7 +12383,7 @@ class Scenario:
 		# generate consoles and draw scenario screen for first time
 		self.UpdateContextCon()
 		DisplayTimeInfo(time_con)
-		self.UpdateScenarioInfoCon()
+		DisplayWeatherInfo(scen_weather_con)
 		self.UpdatePlayerInfoCon()
 		self.UpdateCrewInfoCon()
 		self.UpdateCmdCon()
@@ -12984,7 +12976,7 @@ def DisplayTimeInfo(console):
 	
 
 
-# display weather conditions info to a console, 14x12
+# display weather conditions info to a console, 18x12
 def DisplayWeatherInfo(console):
 	
 	libtcod.console_clear(console)
@@ -12993,7 +12985,7 @@ def DisplayWeatherInfo(console):
 	
 	# cloud conditions on first two lines
 	libtcod.console_set_default_background(console, libtcod.dark_blue)
-	libtcod.console_rect(console, 0, 0, 14, 2, False, libtcod.BKGND_SET)
+	libtcod.console_rect(console, 0, 0, 18, 2, False, libtcod.BKGND_SET)
 	
 	if campaign_day.weather['Cloud Cover'] == 'Scattered':
 		num = 4
@@ -13005,7 +12997,7 @@ def DisplayWeatherInfo(console):
 		# clear
 		num = 0
 	
-	cell_list = (sample(list(range(14)), 14) + sample(list(range(14)), 14))
+	cell_list = (sample(list(range(18)), 18) + sample(list(range(18)), 18))
 	for i in range(num):
 		libtcod.console_set_char_background(console, cell_list[i], 0, libtcod.dark_grey,
 			libtcod.BKGND_SET)
@@ -13013,7 +13005,7 @@ def DisplayWeatherInfo(console):
 		libtcod.console_set_char_background(console, cell_list[i+num], 1, libtcod.dark_grey,
 			libtcod.BKGND_SET)
 		
-	libtcod.console_print_ex(console, 7, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(console, 9, 1, libtcod.BKGND_NONE, libtcod.CENTER,
 		campaign_day.weather['Cloud Cover'])
 	
 	# precipitation
@@ -13027,7 +13019,7 @@ def DisplayWeatherInfo(console):
 		libtcod.console_set_default_background(console, libtcod.dark_grey)
 	else:
 		char = 0
-	libtcod.console_rect(console, 0, 2, 14, 7, False, libtcod.BKGND_SET)
+	libtcod.console_rect(console, 0, 2, 18, 7, False, libtcod.BKGND_SET)
 	
 	if campaign_day.weather['Precipitation'] in ['Rain', 'Light Snow']:
 		num = 15
@@ -13039,12 +13031,12 @@ def DisplayWeatherInfo(console):
 		num = 0
 	
 	for i in range(num):
-		x = libtcod.random_get_int(0, 0, 13)
+		x = libtcod.random_get_int(0, 0, 18)
 		y = libtcod.random_get_int(0, 2, 7)
 		libtcod.console_put_char(console, x, y, char)
 	
 	if campaign_day.weather['Precipitation'] != 'None':
-		libtcod.console_print_ex(console, 7, 5, libtcod.BKGND_NONE, libtcod.CENTER,
+		libtcod.console_print_ex(console, 9, 5, libtcod.BKGND_NONE, libtcod.CENTER,
 			campaign_day.weather['Precipitation'])
 	
 	# ground conditions
@@ -13057,14 +13049,14 @@ def DisplayWeatherInfo(console):
 	elif campaign_day.weather['Ground'] in ['Snow', 'Deep Snow']:
 		libtcod.console_set_default_foreground(console, libtcod.light_blue)
 		libtcod.console_set_default_background(console, libtcod.grey)
-	libtcod.console_rect(console, 0, 9, 14, 2, False, libtcod.BKGND_SET)
+	libtcod.console_rect(console, 0, 9, 18, 3, False, libtcod.BKGND_SET)
 	
-	libtcod.console_print_ex(console, 7, 9, libtcod.BKGND_NONE, libtcod.CENTER,
+	libtcod.console_print_ex(console, 9, 9, libtcod.BKGND_NONE, libtcod.CENTER,
 		campaign_day.weather['Ground'])
 	
 	# current area terrain
 	text = campaign_day.map_hexes[campaign_day.player_unit_location].terrain_type
-	libtcod.console_print_ex(console, 7, 10, libtcod.BKGND_NONE,
+	libtcod.console_print_ex(console, 9, 11, libtcod.BKGND_NONE,
 		libtcod.CENTER, text)
 
 

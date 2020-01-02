@@ -2373,18 +2373,18 @@ class CampaignDay:
 		direction = self.GetDirectionToAdjacentCD(hx1, hy1, hx2, hy2)
 		if direction in self.map_hexes[(hx1,hy1)].rivers:
 			if direction not in self.map_hexes[(hx1,hy1)].bridges:
-				return 'Cannot cross river'
+				return 'N/A: River crossing'
 		direction2 = self.GetDirectionToAdjacentCD(hx2, hy2, hx1, hy1)
 		if direction2 in self.map_hexes[(hx2,hy2)].rivers:
 			if direction2 not in self.map_hexes[(hx2,hy2)].bridges:
-				return 'Cannot cross river'
+				return 'N/A: River crossing'
 		
 		# check for missing or dead driver
 		crewman = campaign.player_unit.GetPersonnelByPosition('Driver')
 		if crewman is None:
-			return 'No Driver'
+			return 'N/A: No Driver'
 		if crewman.status == 'Dead':
-			return 'Driver is dead'
+			return 'N/A: Driver is dead'
 		
 		return ''
 		
@@ -3424,22 +3424,22 @@ class CampaignDay:
 		# Do a final recovery roll for Critical crew
 		for position in unit.positions_list:
 			if position.crewman is None: continue
-			if position.crewman.status != '':
-				
-				if position.crewman.wound == 'Critical':
-					roll = GetPercentileRoll() - 20.0
-					if roll <= position.crewman.stats['Grit'] * 10.0:
-						position.crewman.wound = 'Serious'
+			if position.crewman.status == 'Dead': continue
+			
+			if position.crewman.wound == 'Critical':
+				roll = GetPercentileRoll() - 20.0
+				if roll <= position.crewman.stats['Grit'] * 10.0:
+					position.crewman.wound = 'Serious'
+				else:
+					position.crewman.status = 'Dead'
+					if position in PLAYER_POSITIONS:
+						text = 'You have died from your wounds.'
 					else:
-						position.crewman.status = 'Dead'
-						if position in PLAYER_POSITIONS:
-							text = 'You have died from your wounds.'
-						else:
-							text = 'Your ' + position.name + ' has died from his wounds.'
-						ShowMessage(text)
-						continue
+						text = 'Your ' + position.name + ' has died from his wounds.'
+					ShowMessage(text)
+					continue
 				
-				position.crewman.status = ''
+			position.crewman.status = ''
 	
 	
 	# check to see whether dead or seriously injured crewmen need to be replaced in this unit
@@ -3451,7 +3451,6 @@ class CampaignDay:
 		for position in unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status == 'Dead' or position.crewman.wound == 'Serious':
-				# FUTURE: preserve original order when replacing crewmen
 				unit.personnel_list.remove(position.crewman)
 				unit.personnel_list.append(Personnel(unit, unit.nation, position))
 				position.crewman = unit.personnel_list[-1]
@@ -4289,11 +4288,15 @@ class CampaignDay:
 			
 			# calculate and display travel time
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			libtcod.console_print(cd_command_con, 1, 20, 'Travel Time:')
+			libtcod.console_print(cd_command_con, 1, 19, 'Travel Time:')
 			text = self.CheckTravel(hx1, hy1, hx2, hy2)
-			if text == '':
+			
+			# travel not allowed
+			if text != '':
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.light_red)
+			else:
 				text = str(self.CalculateTravelTime(hx1, hy1, hx2, hy2)) + ' mins.'
-			libtcod.console_print(cd_command_con, 1, 21, text)
+			libtcod.console_print(cd_command_con, 1, 20, text)
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			libtcod.console_print(cd_command_con, 3, 39, 'Enter')
@@ -4732,7 +4735,7 @@ class CampaignDay:
 						(hx, hy) = self.player_unit_location
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 					
-					self.DoCrewCheck(campaign.player_unit)
+					self.DoCrewRecoveryCheck(campaign.player_unit)
 					
 					# check for automatic unbog, weapon unjamming
 					if campaign.player_unit.bogged:
@@ -14178,7 +14181,7 @@ def ShowDebugMenu():
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		libtcod.console_print(con, x+2, y, 'Regenerate CD Map Roads & Rivers')
-		libtcod.console_print(con, x+2, y+2, 'Give Crewman Serious Wound')
+		libtcod.console_print(con, x+2, y+2, 'Kill Crewman')
 		libtcod.console_print(con, x+2, y+4, 'Immobilize Player')
 		libtcod.console_print(con, x+2, y+6, 'Set Time to End of Day')
 		libtcod.console_print(con, x+2, y+8, 'End Current Scenario')
@@ -14234,6 +14237,9 @@ def ShowDebugMenu():
 			DrawDebugMenu()
 			continue
 		
+		# filter out odd characters
+		if key_char == '\0': continue
+		
 		key_num = int(key_char)
 		
 		# regenerate CD map roads
@@ -14247,7 +14253,7 @@ def ShowDebugMenu():
 				exit_menu = True
 				continue
 		
-		# give crewman in selected position a serious wound
+		# kill crewman in selected position
 		elif key_num == 2:
 			if scenario is not None:
 				option_list = []
@@ -14257,7 +14263,7 @@ def ShowDebugMenu():
 				if position_name is None: return
 				crewman = scenario.player_unit.GetPersonnelByPosition(position_name)
 				if crewman is None: continue
-				crewman.DoWoundCheck(auto_serious=True)
+				crewman.DoWoundCheck(auto_kill=True)
 				exit_menu = True
 				continue
 		

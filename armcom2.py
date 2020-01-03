@@ -4323,12 +4323,13 @@ class CampaignDay:
 			if 'air_support_level' not in campaign.current_week or campaign_day.weather['Cloud Cover'] == 'Overcast':
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
 			libtcod.console_print(cd_command_con, 3, 26, 'Request Air Support')
+			
 			if self.air_support_request:
 				text = 'ON'
 			else:
 				text = 'OFF'
 			if 'air_support_level' in campaign.current_week:
-				libtcod.console_print(cd_command_con, 4, 27, '(' + text + ')')
+				libtcod.console_print(cd_command_con, 4, 27, '(' + text + ') ' + str(self.air_support_level))
 			
 			# artillery support request
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
@@ -4340,7 +4341,7 @@ class CampaignDay:
 			else:
 				text = 'OFF'
 			if 'arty_support_level' in campaign.current_week:
-				libtcod.console_print(cd_command_con, 4, 30, '(' + text + ')')
+				libtcod.console_print(cd_command_con, 4, 30, '(' + text + ') ' + str(self.arty_support_level))
 			
 		# group
 		elif self.active_menu == 4:

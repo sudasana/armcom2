@@ -2066,6 +2066,7 @@ class Campaign:
 					player_tank_name = ShowTextInputMenu('Enter a name for your tank', '', MAX_TANK_NAME_LENGTH, [])
 					if player_tank_name != '':
 						campaign.player_unit.unit_name = player_tank_name
+					self.UpdateCalendarCmdCon()
 					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 					continue
@@ -8009,7 +8010,7 @@ class Unit:
 		# display name if any overtop portrait
 		if self.unit_name != '':
 			libtcod.console_set_default_foreground(console, libtcod.white)
-			libtcod.console_print(console, x, y+2, "'" + self.unit_name + "'")
+			libtcod.console_print(console, x, y+2, self.unit_name)
 		
 		# weapons - list turret and unmounted weapons on line 1, all others on line 2
 		libtcod.console_set_default_foreground(console, libtcod.white)
@@ -9837,13 +9838,13 @@ class Scenario:
 			
 			if weapon_type == 'Gun':
 				if 'Crack Shot' in profile['crewman'].skills:
-					mod = crewman.GetSkillMod(3.0)
+					mod = profile['crewman'].GetSkillMod(3.0)
 					modifier_list.append(('Crack Shot', mod))
 				if target.moving and 'Target Tracker' in profile['crewman'].skills:
-					mod = crewman.GetSkillMod(7.0)
+					mod = profile['crewman'].GetSkillMod(7.0)
 					modifier_list.append(('Target Tracker', mod))
 				if distance == 3 and 'Sniper' in profile['crewman'].skills:
-					mod = crewman.GetSkillMod(7.0)
+					mod = profile['crewman'].GetSkillMod(7.0)
 					modifier_list.append(('Sniper', mod))
 				
 				# NEW: skill for firing in precepitation
@@ -9851,7 +9852,7 @@ class Scenario:
 					for (text, mod) in modifier_list:
 						if text in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard']:
 							break
-					skill_mod = crewman.GetSkillMod(8.0)
+					skill_mod = profile['crewman'].GetSkillMod(8.0)
 					if skill_mod > abs(mod):
 						skill_mod = abs(mod)
 					modifier_list.append(('Target Focus', skill_mod))

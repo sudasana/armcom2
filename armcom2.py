@@ -1443,6 +1443,9 @@ class Campaign:
 			# reset fatigue points if any
 			position.crewman.fatigue = 0
 			
+			# grant random additional exp
+			position.crewman.exp += libtcod.random_get_int(0, 0, 5)
+			
 			# check for level up
 			levels_up = 0
 			for level in range(position.crewman.level+1, 31):

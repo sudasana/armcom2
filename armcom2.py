@@ -8648,7 +8648,7 @@ class Unit:
 				self.ap_hits_to_resolve = []
 				return
 		
-		if self.GetStat('category') == 'Vehicle':
+		if self.GetStat('category') in ['Vehicle', 'Train Car']:
 			PlaySoundFor(self, 'vehicle_explosion')
 		
 		# set flag

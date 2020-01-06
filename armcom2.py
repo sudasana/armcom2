@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.11.0'					# game version
+VERSION = '0.12.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -182,11 +182,10 @@ CC_MENU_LIST = [
 
 # list of campaign day menus and their highlight colours
 CD_MENU_LIST = [
-	('Support', 1, libtcod.Color(128, 128, 128)),
+	('Supply', 1, libtcod.Color(128, 100, 64)),
 	('Crew', 2, libtcod.Color(140, 140, 0)),
 	('Travel', 3, libtcod.Color(70, 140, 0)),
-	('Group', 4, libtcod.Color(180, 0, 45)),
-	('Main Gun', 5, libtcod.Color(128, 100, 64))
+	('Group', 4, libtcod.Color(180, 0, 45))
 ]
 
 # directional arrows for directions on the campaign day map
@@ -1897,7 +1896,7 @@ class Campaign:
 			
 			# if we've initiated a campaign day or are resuming a saved game with a
 			# campaign day running, go into the campaign day loop now
-			# NEW: also check to see if we're still in a scenario within the campaign day
+			# also check to see if we're still in a scenario within the campaign day
 			if campaign_day.started and (not campaign_day.ended or scenario is not None):
 							
 				campaign_day.DoCampaignDayLoop()
@@ -1986,7 +1985,7 @@ class Campaign:
 							exit_loop = True
 							continue
 						
-						# NEW: check for crew replacement
+						# check for crew replacement
 						campaign_day.DoCrewReplacementCheck(campaign.player_unit)
 						
 						ProceedToNextDay()
@@ -4176,32 +4175,36 @@ class CampaignDay:
 		libtcod.console_rect(cd_command_con, x, 1, 25-x, 1, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(cd_command_con, libtcod.black)
 		
-		# support
+		# supply
 		if self.active_menu == 1:
 			
-			libtcod.console_print(cd_command_con, 1, 10, 'Current Support Levels:')
-			
-			# display current support levels
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.light_grey)
-			text = 'Air Support: '
-			if self.air_support_level == 0.0:
-				text += 'None'
-			else:
-				text += str(self.air_support_level)
-			libtcod.console_print(cd_command_con, 1, 12, text)
-			
-			text = 'Artillery Support: '
-			if self.arty_support_level == 0.0:
-				text += 'None'
-			else:
-				text += str(self.arty_support_level)
-			libtcod.console_print(cd_command_con, 1, 13, text)
+			# display current main gun ammo levels
+			weapon = campaign.player_unit.weapon_list[0]
+			if weapon.GetStat('type') == 'Gun':
+				libtcod.console_print(cd_command_con, 6, 3, weapon.stats['name'])
+				weapon.DisplayAmmo(cd_command_con, 6, 5)
 			
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 2, 38, 'R')
+			libtcod.console_print(cd_command_con, 2, 14, EnKey('d').upper() + '/' + EnKey('a').upper())
+			libtcod.console_print(cd_command_con, 4, 15, EnKey('c').upper())
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 5, 38, 'Request Additional')
-			libtcod.console_print(cd_command_con, 5, 39, 'Support (15 mins.)')
+			libtcod.console_print(cd_command_con, 6, 14, 'Add/Remove to RR')
+			libtcod.console_print(cd_command_con, 6, 15, 'Cycle Ammo Type')
+			
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			libtcod.console_print_ex(cd_command_con, 12, 34, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Request resupply, ')
+			libtcod.console_print_ex(cd_command_con, 12, 35, libtcod.BKGND_NONE, libtcod.CENTER,
+				'reserve units,')
+			libtcod.console_print_ex(cd_command_con, 12, 36, libtcod.BKGND_NONE, libtcod.CENTER,
+				'and replacement crew')
+			libtcod.console_print_ex(cd_command_con, 12, 37, libtcod.BKGND_NONE, libtcod.CENTER,
+				'30 mins.')
+			
+			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+			libtcod.console_print(cd_command_con, 4, 39, EnKey('r').upper())
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+			libtcod.console_print(cd_command_con, 6, 39, 'Request Resupply')
 		
 		# crew
 		elif self.active_menu == 2:
@@ -4305,43 +4308,44 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 			libtcod.console_print(cd_command_con, 10, 39, 'Proceed')
 			
-			# display support commands
-			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 1, 23, EnKey('t').upper())
-			libtcod.console_print(cd_command_con, 1, 26, EnKey('g').upper())
-			libtcod.console_print(cd_command_con, 1, 29, EnKey('b').upper())
-			
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 3, 23, 'Advancing Fire')
-			if self.advancing_fire:
-				text = 'ON'
-			else:
-				text = 'OFF'
-			libtcod.console_print(cd_command_con, 4, 24, '(' + text + ')')
-			
-			# air support request
-			if 'air_support_level' not in campaign.current_week or campaign_day.weather['Cloud Cover'] == 'Overcast':
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
-			libtcod.console_print(cd_command_con, 3, 26, 'Request Air Support')
-			
-			if self.air_support_request:
-				text = 'ON'
-			else:
-				text = 'OFF'
-			if 'air_support_level' in campaign.current_week:
-				libtcod.console_print(cd_command_con, 4, 27, '(' + text + ') ' + str(self.air_support_level))
-			
-			# artillery support request
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			if 'arty_support_level' not in campaign.current_week:
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
-			libtcod.console_print(cd_command_con, 3, 29, 'Request Arty Support')
-			if self.arty_support_request:
-				text = 'ON'
-			else:
-				text = 'OFF'
-			if 'arty_support_level' in campaign.current_week:
-				libtcod.console_print(cd_command_con, 4, 30, '(' + text + ') ' + str(self.arty_support_level))
+			# display support commands NEW: if moving into an enemy zone
+			if map_hex.controlled_by == 1:
+				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+				libtcod.console_print(cd_command_con, 1, 23, EnKey('t').upper())
+				libtcod.console_print(cd_command_con, 1, 26, EnKey('g').upper())
+				libtcod.console_print(cd_command_con, 1, 29, EnKey('b').upper())
+				
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+				libtcod.console_print(cd_command_con, 3, 23, 'Advancing Fire')
+				if self.advancing_fire:
+					text = 'ON'
+				else:
+					text = 'OFF'
+				libtcod.console_print(cd_command_con, 4, 24, '(' + text + ')')
+				
+				# air support request
+				if 'air_support_level' not in campaign.current_week or campaign_day.weather['Cloud Cover'] == 'Overcast':
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
+				libtcod.console_print(cd_command_con, 3, 26, 'Request Air Support')
+				
+				if self.air_support_request:
+					text = 'ON'
+				else:
+					text = 'OFF'
+				if 'air_support_level' in campaign.current_week:
+					libtcod.console_print(cd_command_con, 4, 27, '(' + text + ') ' + str(self.air_support_level))
+				
+				# artillery support request
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+				if 'arty_support_level' not in campaign.current_week:
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
+				libtcod.console_print(cd_command_con, 3, 29, 'Request Arty Support')
+				if self.arty_support_request:
+					text = 'ON'
+				else:
+					text = 'OFF'
+				if 'arty_support_level' in campaign.current_week:
+					libtcod.console_print(cd_command_con, 4, 30, '(' + text + ') ' + str(self.arty_support_level))
 			
 		# group
 		elif self.active_menu == 4:
@@ -4351,37 +4355,6 @@ class CampaignDay:
 			text = str(campaign.player_squad_num) + '/' + str(campaign.player_squad_max) + ' ' + campaign.player_unit.unit_id
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 			libtcod.console_print(cd_command_con, 1, 5, text)
-		
-		# main gun
-		elif self.active_menu == 5:
-			
-			# display current main gun ammo levels
-			weapon = campaign.player_unit.weapon_list[0]
-			if weapon.GetStat('type') == 'Gun':
-				libtcod.console_print(cd_command_con, 6, 3, weapon.stats['name'])
-				weapon.DisplayAmmo(cd_command_con, 6, 5)
-			
-			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 2, 14, EnKey('d').upper() + '/' + EnKey('a').upper())
-			libtcod.console_print(cd_command_con, 4, 15, EnKey('c').upper())
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 6, 14, 'Add/Remove to RR')
-			libtcod.console_print(cd_command_con, 6, 15, 'Cycle Ammo Type')
-			
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			libtcod.console_print_ex(cd_command_con, 12, 34, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Request resupply, ')
-			libtcod.console_print_ex(cd_command_con, 12, 35, libtcod.BKGND_NONE, libtcod.CENTER,
-				'reserve units,')
-			libtcod.console_print_ex(cd_command_con, 12, 36, libtcod.BKGND_NONE, libtcod.CENTER,
-				'and replacement crew')
-			libtcod.console_print_ex(cd_command_con, 12, 37, libtcod.BKGND_NONE, libtcod.CENTER,
-				'30 mins.')
-			
-			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 4, 39, EnKey('r').upper())
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 6, 39, 'Request Resupply')
 	
 	
 	# generate/update the campaign info console 23x5
@@ -4679,8 +4652,6 @@ class CampaignDay:
 					# clear scenario object
 					scenario = None
 					
-					# NEW order for following
-					
 					# check for player crew recovery
 					self.DoCrewRecoveryCheck(campaign.player_unit)
 					
@@ -4824,40 +4795,78 @@ class CampaignDay:
 					self.UpdateCDDisplay()
 				continue
 			
-			# support menu active
+			# supply menu active
 			if self.active_menu == 1:
 				
-				# request additional support (not keymapped)
-				if chr(key.c).lower() == 'r':
+				weapon = campaign.player_unit.weapon_list[0]
+				if weapon.GetStat('type') == 'Gun':
 					
-					# increase air support
-					if 'air_support_level' in campaign.current_week:
-						maximum = campaign.current_week['air_support_level']
-						if self.air_support_level == maximum:
-							ShowMessage('Already at maximum support level.')
-							continue
+					# cycle active ammo type
+					if key_char == 'c':
+						if weapon.CycleAmmo():
+							self.UpdateCDCommandCon()
+							self.UpdateCDDisplay()
+						continue
+				
+					# move shell to/from ready rack
+					elif key_char in ['a', 'd']:
+						if key_char == 'a':
+							add_num = -1
+						else:
+							add_num = 1
+						
+						if weapon.ManageRR(add_num):
+							self.UpdateCDCommandCon()
+							self.UpdateCDDisplay()
+						continue
 					
-					# increase artillery support
+				# request resupply
+				if key_char == 'r':
+					
+					# check for clear path to friendly edge
+					path_good = False
+					(hx1, hy1) = self.player_unit_location
+					
+					if hy1 == 8:
+						path_good = True
 					else:
-						maximum = campaign.current_week['arty_support_level']
-						if self.arty_support_level == maximum:
-							ShowMessage('Already at maximum support level.')
-							continue
+						for hx2 in range(-4, 1):
+							if len(GetHexPath(hx1, hy1, hx2, 8, enemy_zones_block=True)) != 0:
+								path_good = True
+								break
+					if not path_good:
+						ShowMessage('You are cut off from friendly forces! No resupply possible.')
+						continue
 					
-					ShowMessage('You radio in a request for additional support.')
-					self.AdvanceClock(0, 15)
-					DisplayTimeInfo(time_con)
-					
-					if 'air_support_level' in campaign.current_week:
-						self.air_support_level += float(libtcod.random_get_int(0, 1, 5)) * 5.0
-						if self.air_support_level > maximum:
-							self.air_support_level = maximum
-					else:
-						self.arty_support_level += float(libtcod.random_get_int(0, 1, 5)) * 5.0
-						if self.arty_support_level > maximum:
-							self.arty_support_level = maximum
-					
-					SaveGame()
+					if ShowNotification('Spend 30 minutes waiting for resupply?', confirm=True):
+						ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
+						
+						# spend time
+						self.AdvanceClock(0, 30)
+						DisplayTimeInfo(time_con)
+						self.UpdateCDDisplay()
+						
+						# allow player to replenish ammo
+						self.AmmoReloadMenu()
+						self.UpdateCDDisplay()
+						
+						# check for crew replacement
+						self.DoCrewReplacementCheck(campaign.player_unit)
+						
+						# NEW: crew have a chance to rest
+						for position in campaign.player_unit.positions_list:
+							if position.crewman is None: continue
+							position.crewman.Rest()
+						
+						# check for player squad replenishment
+						if campaign.player_squad_num < campaign.player_squad_max:
+							campaign.player_squad_num = campaign.player_squad_max
+							ShowMessage('You are joined by reserve units, bringing your squad back up to full strength.')
+						
+						self.UpdateCDDisplay()
+						self.CheckForZoneCapture()
+						self.CheckForRandomEvent()
+						SaveGame()
 					continue
 			
 			# crew menu active
@@ -5089,75 +5098,6 @@ class CampaignDay:
 						self.CheckForRandomEvent()
 					
 					SaveGame()
-				
-			# main gun menu active
-			elif self.active_menu == 5:
-				
-				weapon = campaign.player_unit.weapon_list[0]
-				if weapon.GetStat('type') == 'Gun':
-					
-					# cycle active ammo type
-					if key_char == 'c':
-						if weapon.CycleAmmo():
-							self.UpdateCDCommandCon()
-							self.UpdateCDDisplay()
-						continue
-				
-					# move shell to/from ready rack
-					elif key_char in ['a', 'd']:
-						if key_char == 'a':
-							add_num = -1
-						else:
-							add_num = 1
-						
-						if weapon.ManageRR(add_num):
-							self.UpdateCDCommandCon()
-							self.UpdateCDDisplay()
-						continue
-					
-				# request resupply
-				if key_char == 'r':
-					
-					# check for clear path to friendly edge
-					path_good = False
-					(hx1, hy1) = self.player_unit_location
-					
-					if hy1 == 8:
-						path_good = True
-					else:
-						for hx2 in range(-4, 1):
-							if len(GetHexPath(hx1, hy1, hx2, 8, enemy_zones_block=True)) != 0:
-								path_good = True
-								break
-					if not path_good:
-						ShowMessage('You are cut off from friendly forces! No resupply possible.')
-						continue
-					
-					if ShowNotification('Spend 30 minutes waiting for resupply?', confirm=True):
-						ShowMessage('You contact HQ for resupply, which arrives 30 minutes later.')
-						
-						# spend time
-						self.AdvanceClock(0, 30)
-						DisplayTimeInfo(time_con)
-						self.UpdateCDDisplay()
-						
-						# allow player to replenish ammo
-						self.AmmoReloadMenu()
-						self.UpdateCDDisplay()
-						
-						# NEW: check for crew replacement
-						self.DoCrewReplacementCheck(campaign.player_unit)
-						
-						# check for player squad replenishment
-						if campaign.player_squad_num < campaign.player_squad_max:
-							campaign.player_squad_num = campaign.player_squad_max
-							ShowMessage('You are joined by reserve units, bringing your squad back up to full strength.')
-						
-						self.UpdateCDDisplay()
-						self.CheckForZoneCapture()
-						self.CheckForRandomEvent()
-						SaveGame()
-					continue
 
 
 # Zone Hex: a hex on the campaign day map, each representing a map of scenario hexes
@@ -5810,7 +5750,18 @@ class Personnel:
 		if roll <= float(self.stats['Morale']) * 10.0:
 			return
 		self.fatigue += 1
-		
+	
+	
+	# NEW: crew recovers some fatigue from rest
+	def Rest(self):
+		if self.status in ['Dead', 'Unconscious']: return
+		if self.fatigue == 0: return
+		i = libtcod.random_get_int(0, 0, self.stats['Morale'])
+		print('DEBUG: ' + self.first_name + ' lost ' + str(i) + ' fatigue')
+		self.fatigue -= i
+		if self.fatigue < 0:
+			self.fatigue = 0
+	
 	
 	# check to see whether this personnel is wounded/KIA and return result if any
 	def DoWoundCheck(self, fp=0, roll_modifier=0.0, show_messages=True, auto_kill=False, auto_serious=False):
@@ -8153,7 +8104,7 @@ class Unit:
 		attack_finished = False
 		while not attack_finished:
 			
-			# NEW: do weapon jam test for player
+			# do weapon jam test for player
 			if self == scenario.player_unit:
 				if weapon.JamTest():
 					ShowMessage(weapon.GetStat('name') + ' has jammed!')
@@ -9851,7 +9802,7 @@ class Scenario:
 					mod = profile['crewman'].GetSkillMod(7.0)
 					modifier_list.append(('Sniper', mod))
 				
-				# NEW: skill for firing in precepitation
+				# skill for firing in precepitation
 				if campaign_day.weather['Precipitation'] in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard'] and 'Target Focus' in profile['crewman'].skills:
 					for (text, mod) in modifier_list:
 						if text in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard']:
@@ -12992,11 +12943,11 @@ def DisplayWeatherInfo(console):
 	libtcod.console_rect(console, 0, 0, 18, 2, False, libtcod.BKGND_SET)
 	
 	if campaign_day.weather['Cloud Cover'] == 'Scattered':
-		num = 4
-	elif campaign_day.weather['Cloud Cover'] == 'Heavy':
 		num = 8
+	elif campaign_day.weather['Cloud Cover'] == 'Heavy':
+		num = 12
 	elif campaign_day.weather['Cloud Cover'] ==  'Overcast':
-		num = 14
+		num = 18
 	else:
 		# clear
 		num = 0
@@ -13026,11 +12977,11 @@ def DisplayWeatherInfo(console):
 	libtcod.console_rect(console, 0, 2, 18, 7, False, libtcod.BKGND_SET)
 	
 	if campaign_day.weather['Precipitation'] in ['Rain', 'Light Snow']:
-		num = 15
+		num = 18
 	elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Snow']:
-		num = 25
+		num = 28
 	elif campaign_day.weather['Precipitation'] == 'Blizzard':
-		num = 30
+		num = 34
 	else:
 		num = 0
 	
@@ -13309,7 +13260,7 @@ def GetHexPath(hx1, hy1, hx2, hy2, rivers_block=True, enemy_zones_block=False):
 			# ignore nodes on closed list
 			if node in closed_list: continue
 			
-			# check for route blocking NEW: both ways
+			# check for route blocking both ways
 			if rivers_block:
 				if direction in campaign_day.map_hexes[(current.hx, current.hy)].rivers:
 					if direction not in campaign_day.map_hexes[(current.hx, current.hy)].bridges:

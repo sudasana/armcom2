@@ -10129,19 +10129,19 @@ class Scenario:
 				libtcod.console_print(attack_con, 2, y, desc[:17])
 				
 				if profile['type'] == 'ap':
-					if mod > 0:
+					if mod < 0:
 						col = libtcod.red
-						text = '+'
+						text = ''
 					else:
 						col = libtcod.green
-						text = '-'
+						text = '+'
 				else:
 					if mod > 0.0:
 						col = libtcod.green
 						text = '+'
 					else:
 						col = libtcod.red
-						text = '-'
+						text = ''
 				
 				text += str(mod)
 				

@@ -111,12 +111,6 @@ CD_HEX_EDGE_CELLS = {
 	5: [(-3,-1),(-2,-2),(-1,-3),(0,-4)]
 }
 
-# smaller hex outline for objective hex highlighting
-CD_HEX_OBJECTIVE_CELLS = [
-	(0,-3), (1,-2), (2,-1), (2,0), (2,1), (1,2), (0,3), (-1,2), (-2,1),
-	(-2,0), (-2,-1), (-1,-2)
-]
-
 # list of hexes on campaign day map
 CAMPAIGN_DAY_HEXES = [
 	(0,0),(1,0),(2,0),(3,0),(4,0),
@@ -2167,9 +2161,6 @@ class CampaignDay:
 					if (hx, hy) not in self.map_hexes: continue
 					self.map_hexes[(hx, hy)].controlled_by = 0
 		
-		# set up objectives
-		self.GenerateObjectives()
-		
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}
 		
@@ -2250,43 +2241,6 @@ class CampaignDay:
 		self.UpdateCDDisplay()
 		
 	
-	# generate new objectives for this campaign day map
-	def GenerateObjectives(self):
-		
-		hex_list = []
-		
-		# clear any existing objectives and create a local list of hex zones
-		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			self.map_hexes[(hx,hy)].objective = None
-			hex_list.append((hx, hy))
-		shuffle(hex_list)
-		
-		# create new objectives based on day mission
-		if self.mission == 'Battle':
-			
-			objective_dict = {
-				'objective_type' : 'Capture',
-				'vp_reward' : 4,
-				'time_limit' : None
-				}
-			
-			for i in range(2):
-				for (hx, hy) in hex_list:
-					if self.map_hexes[(hx,hy)].controlled_by == 0: continue
-				self.map_hexes[(hx, hy)].SetObjective(objective_dict)
-		
-		elif self.mission in ['Advance']:
-			objective_dict = {
-				'objective_type' : 'Capture',
-				'vp_reward' : 2,
-				'time_limit' : None
-				}
-			for i in range(2):
-				for (hx, hy) in hex_list:
-					if self.map_hexes[(hx,hy)].controlled_by == 0: continue
-				self.map_hexes[(hx, hy)].SetObjective(objective_dict)
-		
-	
 	# check for shift of campaign day map:
 	# shift displayed map up or down, triggered by player reaching other end of map
 	def CheckForCDMapShift(self):
@@ -2340,9 +2294,6 @@ class CampaignDay:
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 1
 			self.map_hexes[self.player_unit_location].controlled_by = 0
-		
-		# generate new map objectives
-		self.GenerateObjectives()
 		
 		# update consoles
 		self.UpdateCDMapCon()
@@ -2770,14 +2721,48 @@ class CampaignDay:
 			self.random_event_chance += 2.0
 			return
 		
-		# reset random event chance
-		self.random_event_chance = BASE_CD_RANDOM_EVENT_CHANCE
 		
 		# roll for type of event
 		roll = GetPercentileRoll()
 		
+		# new target of opportunity possibly generated
+		if roll <= 20.0:
+			targets = 0
+			for (hx, hy) in CAMPAIGN_DAY_HEXES:
+				if self.map_hexes[(hx, hy)].target_of_opportunity is not None:
+					targets += 1
+			if targets >= 2:
+				return
+			
+			# try to find a suitable hex zone
+			hex_list = []
+			highest_strength = 0
+			(player_hx, player_hy) = self.player_unit_location
+			for hy in range(0, player_hy+1):
+				for hx in range(player_hx-4, player_hx+5):
+					if (hx, hy) not in CAMPAIGN_DAY_HEXES: continue
+					if self.map_hexes[(hx, hy)].target_of_opportunity is not None: continue
+					if self.map_hexes[(hx, hy)].controlled_by == 0: continue
+					if self.map_hexes[(hx, hy)].enemy_strength > highest_strength:
+						highest_strength = self.map_hexes[(hx, hy)].enemy_strength
+					hex_list.append((self.map_hexes[(hx, hy)].enemy_strength, hx, hy))
+			
+			if len(hex_list) == 0:
+				print('DEBUG: no suitable hexes found for TOO')
+				return
+			
+			for (strength, hx, hy) in reversed(hex_list):
+				if strength < highest_strength:
+					hex_list.remove((strength, hx, hy))
+			
+			# choose from reminaing hex zones
+			(strength, hx, hy) = choice(hex_list) 
+			
+			self.map_hexes[(hx, hy)].target_of_opportunity = 10
+			ShowMessage('We have received word of a new target of opportunity, capture zone if possible')
+		
 		# enemy strength increases
-		if roll <= 15.0:
+		elif roll <= 30.0:
 			hex_list = []
 			for (hx, hy) in self.map_hexes:
 				if self.map_hexes[(hx,hy)].controlled_by == 0: continue
@@ -2800,7 +2785,7 @@ class CampaignDay:
 			# FUTURE: highlight hex momentarily
 		
 		# reveal enemy strength
-		elif roll <= 35.0:
+		elif roll <= 40.0:
 			
 			hex_list = []
 			for (hx, hy) in self.map_hexes:
@@ -2815,15 +2800,9 @@ class CampaignDay:
 			self.map_hexes[(hx,hy)].known_to_player = True
 			
 			ShowMessage('We have received information about expected enemy strength in an area.')
-			# FUTURE: highlight hex momentarily
-		
-		# free resupply
-		elif roll <= 40.0:
-			ShowMessage('You happen to encounter a supply truck, and can restock your gun ammo.')
-			self.AmmoReloadMenu()
 		
 		# loss of recon knowledge and possible change in strength
-		elif roll <= 70.0:
+		elif roll <= 60.0:
 			
 			hex_list = []
 			for (hx, hy) in self.map_hexes:
@@ -2882,9 +2861,10 @@ class CampaignDay:
 				
 		# no other random events for now
 		else:
-			pass
+			return
 		
-		# random event finished, update consoles and screen
+		# random event finished: reset random event chance, update consoles and screen
+		self.random_event_chance = BASE_CD_RANDOM_EVENT_CHANCE
 		self.UpdateCDUnitCon()
 		self.UpdateCDControlCon()
 		self.UpdateCDGUICon()
@@ -4105,15 +4085,14 @@ class CampaignDay:
 					libtcod.console_put_char_ex(cd_control_con, x+xm,
 						y+ym, chr(249), libtcod.red, libtcod.black)
 		
-		# highlight objective hexes
+		# highlight any target of opportunity hexes
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			if self.map_hexes[(hx,hy)].objective is None: continue
+			if self.map_hexes[(hx,hy)].target_of_opportunity is None: continue
 			
 			(x,y) = self.PlotCDHex(hx, hy)
-			for (xm,ym) in CD_HEX_OBJECTIVE_CELLS:
-				libtcod.console_put_char_ex(cd_control_con, x+xm,
-					y+ym, chr(250), ACTION_KEY_COL, libtcod.black)
-	
+			libtcod.console_put_char_ex(cd_control_con, x, y, chr(4),
+				libtcod.yellow, libtcod.black)
+			
 	
 	# generate/update the GUI console
 	def UpdateCDGUICon(self):
@@ -4424,11 +4403,11 @@ class CampaignDay:
 				text = 'Unknown'
 			libtcod.console_print(cd_hex_info_con, 10, 6, text)
 				
-		# objective
-		if cd_hex.objective is not None:
-			libtcod.console_set_default_foreground(cd_hex_info_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 8, 'Objective: ' + cd_hex.objective['objective_type'])
-			libtcod.console_print(cd_hex_info_con, 0, 9, 'VP: ' + str(cd_hex.objective['vp_reward']))
+		# target of opportunity
+		if cd_hex.target_of_opportunity is not None:
+			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.yellow)
+			libtcod.console_print(cd_hex_info_con, 0, 8, 'Target of Opportunity')
+			libtcod.console_print(cd_hex_info_con, 0, 9, 'VP Bonus: ' + str(cd_hex.target_of_opportunity))
 		
 		# roads
 		if len(cd_hex.dirt_roads) > 0:
@@ -5117,7 +5096,8 @@ class CDMapHex:
 		self.controlled_by = 1		# which player side currently controls this zone
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
 		
-		self.objective = None		# player objective for this zone
+		self.target_of_opportunity = None	# zone has been marked as a Target of Opportunity
+		
 		
 		# Pathfinding stuff
 		self.parent = None
@@ -5175,12 +5155,7 @@ class CDMapHex:
 				self.terrain_type = terrain_type
 				return
 			roll -= odds
-	
-	
-	# set up a new objective in this CD hex or clear it
-	def SetObjective(self, objective_dict):
-		self.objective = objective_dict
-	
+		
 	
 	# set control of this hex by the given player
 	# also handles successful defense of a friendly zone
@@ -5202,22 +5177,16 @@ class CDMapHex:
 				else:
 					campaign.AwardVP(1)
 		
-			# check for objective reward
-			if self.objective is not None:
-				
-				if self.controlled_by == 0 and self.objective['objective_type'] == 'Defend':
-					campaign.AwardVP(2)
-					ShowMessage('You have defended an objective!')
-				
-				elif self.controlled_by == 1 and self.objective['objective_type'] == 'Capture':
-					campaign.AwardVP(2)
-					ShowMessage('You have captured an objective!')
+			# check for TOO reward
+			if self.target_of_opportunity is not None:
+				campaign.AwardVP(self.target_of_opportunity)
+				ShowMessage('You have captured a Target of Opportunity!')
+		
+		# clear any TOO
+		self.target_of_opportunity = None
 		
 		# set new zone control
 		self.controlled_by = player_num
-		
-		# clear the objective if any
-		self.objective = None
 
 
 

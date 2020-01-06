@@ -635,40 +635,11 @@ RESOLVE_FP_CHANCE_MOD = 1.05	# additional firepower modifier increased by this m
 
 MORALE_CHECK_BASE_CHANCE = 70.0	# base chance of passing a morale check
 
-
-# base success chances for armour penetration
-AP_BASE_CHANCE = {
-	'MG' : 16.7,
-	'AT Rifle' : 28.0,
-	'20L' : 28.0,
-	'37S' : 58.4,
-	'37' : 72.0,
-	'37L' : 83.0,
-	'47S' : 72.0,
-	'45L' : 91.7,
-	'50L' : 120.0,
-	'75S' : 91.7,
-	'75' : 120.0,		# not sure if this and below are accurate, FUTURE: check balance
-	'75L' : 160.0,
-	'75LL' : 250.0,
-	'76S' : 83.0,
-	'76L' : 160.0,
-	'76LL' : 300.0,
-	'88L' : 200.0,
-	'88LL' : 380.0,
-	'105' : 420.0
-}
-
 # effective FP of an HE hit from different weapon calibres
 HE_FP_EFFECT = [
 	(200, 36),(183, 34),(170, 32),(160, 31),(150, 30),(140, 28),(128, 26),(120, 24),
 	(107, 22),(105, 22),(100, 20),(95, 19),(88, 18),(85, 17),(80, 16),(75, 14),
 	(70, 12),(65, 10),(60, 8),(57, 7),(50, 6),(45, 5),(37, 4),(30, 2),(25, 2),(20, 1)
-]
-
-# penetration chance on armour of HE hits
-HE_AP_CHANCE = [
-	(150, 110.0),(120, 100.0),(100, 91.7),(80, 72.2),(70, 58.4),(50, 41.7),(40, 27.8),(30, 16.7)
 ]
 
 # odds of unarmoured vehicle destruction when resolving FP
@@ -6603,20 +6574,6 @@ class Weapon:
 		
 		print('ERROR: Could not find effective FP for: ' + self.stats['name'])
 		return 1
-	
-	
-	# return the base penetration chance of an HE hit from this gun
-	def GetBaseHEPenetrationChance(self):
-		if self.GetStat('type') != 'Gun':
-			print('ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate HE AP chance')
-			return 0.0
-		
-		for (calibre, chance) in HE_AP_CHANCE:
-			if calibre <= int(self.GetStat('calibre')):
-				return chance
-		
-		print('ERROR: Could not find HE AP chance for: ' + self.stats['name'])
-		return 0.0
 
 
 
@@ -9834,6 +9791,7 @@ class Scenario:
 	
 	
 	# takes an attack profile and generates a profile for an armour penetration attempt
+	# uses a slightly different system from to-hit
 	def CalcAP(self, profile):
 		
 		profile['type'] = 'ap'
@@ -9871,95 +9829,195 @@ class Scenario:
 		else:
 			profile['location_desc'] += facing
 		
-		# calculate base chance of penetration
-		if weapon.GetStat('name') == 'AT Rifle':
-			base_chance = AP_BASE_CHANCE['AT Rifle']
-		elif weapon.GetStat('type') in MG_WEAPONS:
-			base_chance = AP_BASE_CHANCE['MG']
-		else:
-			gun_rating = weapon.GetStat('calibre')
-			
-			# HE hits have a much lower base chance
-			if profile['ammo_type'] == 'HE':
-				base_chance = weapon.GetBaseHEPenetrationChance()
-			else:
-				if weapon.GetStat('long_range') is not None:
-					gun_rating += weapon.GetStat('long_range')
-				if gun_rating not in AP_BASE_CHANCE:
-					print('ERROR: No AP base chance found for: ' + gun_rating)
-					return None
-				base_chance = AP_BASE_CHANCE[gun_rating]
-		
-		profile['base_chance'] = base_chance
-		
-		# calculate modifiers
-		
-		# unarmoured targets use flat modifiers
-		# FUTURE: check for unarmoured locations on otherwise armoured targets
+		# check for armour rating in hit location
 		armour = target.GetStat('armour')
-		if armour is None:
-			
-			if profile['result'] == 'CRITICAL HIT':
-				modifier_list.append(('Critical Hit', 55.0))
-			
-		else:
-		
-			# calibre/range modifier - not applicable to HE and MG attacks
-			if profile['ammo_type'] == 'AP' and weapon.GetStat('calibre') is not None:
-				calibre = int(weapon.GetStat('calibre'))
-				distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
-				
-				if calibre <= 25:
-					if distance <= 1:
-						modifier_list.append(('Close Range', 18.0))
-					elif distance == 2:
-						modifier_list.append(('Medium Range', -7.0))
-					else:
-						modifier_list.append(('Long Range', -18.0))
-				elif calibre <= 57:
-					if distance <= 1:
-						modifier_list.append(('Close Range', 7.0))
-					elif distance == 2:
-						modifier_list.append(('Medium Range', -7.0))
-					else:
-						modifier_list.append(('Long Range', -12.0))
-				else:
-					if distance <= 1:
-						modifier_list.append(('Close Range', 7.0))
-					elif 2 <= distance <= 3:
-						modifier_list.append(('Long Range', -7.0))
-		
-			# hit location is armoured
+		unarmoured_location = True
+		if armour is not None:
 			if armour[hit_location] != '-':
-				target_armour = int(armour[hit_location])
-				if target_armour >= 0:
-					modifier = target_armour * -12.0
-					modifier_list.append(('Target Armour', modifier))
-					
-					# apply rear facing modifier if any
-					if rear_facing:
-						modifier_list.append(('Rear Facing', 15.0))
-					
-					# apply critical hit modifier if any
-					if profile['result'] == 'CRITICAL HIT':
-						modifier = abs(round(modifier * 0.9, 2))
-						modifier_list.append(('Critical Hit', modifier))
+				unarmoured_location = False
 		
+		# NEW: look up base AP score required
+		if weapon.GetStat('type') in MG_WEAPONS:
+			base_score = 4
+		elif weapon.GetStat('name') == 'AT Rifle':
+			if attacker.nation in ['Soviet Union', 'Finland', 'Japan']:
+				base_score = 6
+			else:
+				base_score = 5
+		else:
+			calibre = weapon.GetStat('calibre')
+			
+			# AP hit
+			if profile['ammo_type'] == 'AP':
+				
+				# unarmoured location
+				if unarmoured_location:
+					calibre = int(calibre)
+					if weapon.GetStat('name') == 'AT Rifle':
+						base_score = 7
+					elif calibre <= 28:
+						base_score = 7
+					elif calibre <= 57:
+						base_score = 8
+					elif calibre <= 77:
+						base_score = 9
+					elif calibre <= 95:
+						base_score = 10
+					else:
+						base_score = 11
+				
+				# armoured location
+				else:
+				
+					if weapon.GetStat('long_range') is not None:
+						calibre += weapon.GetStat('long_range')
+					
+					if calibre in ['15']:
+						base_score = 5
+					elif calibre in ['20L']:
+						base_score = 6
+					elif calibre in ['20LL', '25LL', '37S']:
+						base_score = 7
+					elif calibre in ['37', '47S', '57S', '70S']:
+						base_score = 8
+					elif calibre in ['37L', '57', '65S', '76S']:
+						base_score = 9
+					elif calibre in ['40L', '45L', '47', '75S']:
+						base_score = 10
+					elif calibre in ['37LL', '45LL', '47L', '50']:
+						base_score = 11
+					elif calibre in ['76', '84S']:
+						base_score = 12
+					elif calibre in ['50L', '120S']:
+						base_score = 13
+					elif calibre in ['75', '105']:
+						base_score = 14
+					elif calibre in ['57L', '57LL']:
+						base_score = 15
+					elif calibre in ['75L', '76L', '85L', '150S', '152S']:
+						base_score = 17
+					elif calibre in ['77L', '200L']:
+						base_score = 19
+					elif calibre in ['88L']:
+						base_score = 20
+					elif calibre in ['90L', '105L', '150', '152', '155']:
+						base_score = 21
+					elif calibre in ['75LL', '76LL']:
+						base_score = 23
+					elif calibre in ['122L']:
+						base_score = 25
+					elif calibre in ['88LL', '100L', '120L']:
+						base_score = 27
+					else:
+						print('ERROR: not able to find AP score for ' + calibre)
+						base_score = 2
+			
+			# HE hit
+			elif profile['ammo_type'] == 'HE':
+				
+				calibre = int(calibre)
+				
+				if unarmoured_location:
+					if calibre <= 20:
+						base_score = 6
+					elif calibre <= 30:
+						base_score = 8
+					elif calibre <= 40:
+						base_score = 9
+					elif calibre <= 50:
+						base_score = 10
+					elif calibre <= 70:
+						base_score = 12
+					elif calibre <= 80:
+						base_score = 14
+					elif calibre <= 100:
+						base_score = 16
+					elif calibre <= 120:
+						base_score = 18
+					else:
+						base_score = 20
+				
+				# armoured location
+				else:
+					if calibre <= 20:
+						base_score = 3
+					elif calibre <= 30:
+						base_score = 4
+					elif calibre <= 40:
+						base_score = 5
+					elif calibre <= 50:
+						base_score = 6
+					elif calibre <= 70:
+						base_score = 7
+					elif calibre <= 80:
+						base_score = 8
+					elif calibre <= 100:
+						base_score = 10
+					elif calibre <= 120:
+						base_score = 12
+					else:
+						base_score = 16
+		
+		profile['base_chance'] = base_score
+		
+		# rear facing and critical hit modifiers
+		if rear_facing:
+			modifier_list.append(('Rear Facing', 1))
+		if profile['result'] == 'CRITICAL HIT':
+			modifier_list.append(('Critical Hit', base_score))
+		
+		# range/calibre modifier
+		if profile['ammo_type'] == 'AP' and weapon.GetStat('calibre') is not None and not unarmoured_location:
+			
+			calibre = int(weapon.GetStat('calibre'))
+			distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+			
+			if calibre <= 25:
+				if distance <= 1:
+					modifier_list.append(('Close Range', 2))
+				elif distance == 2:
+					modifier_list.append(('Medium Range', -1))
+				else:
+					modifier_list.append(('Long Range', -2))
+			elif calibre <= 57:
+				if distance <= 1:
+					modifier_list.append(('Close Range', 1))
+				elif distance == 2:
+					modifier_list.append(('Medium Range', -1))
+				else:
+					modifier_list.append(('Long Range', -2))
+			else:
+				if distance <= 1:
+					modifier_list.append(('Close Range', 1))
+				elif 2 <= distance <= 3:
+					modifier_list.append(('Long Range', -1))
+		
+		# armoured location modifier
+		if not unarmoured_location:	
+			target_armour = int(armour[hit_location])
+			if target_armour >= 0:
+				modifier_list.append(('Armour', 0 - target_armour))
+					
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
 		
 		# calculate total modifer
-		total_modifier = 0.0
+		total_modifier = 0
 		for (desc, mod) in modifier_list:
 			total_modifier += mod
 		
 		# calculate final chance of success
 		# possible to be impossible or for penetration to be automatic
-		profile['final_chance'] = round(profile['base_chance'] + total_modifier, 2)
-		if profile['final_chance'] < 0.0:
+		final_score = base_score + total_modifier
+		
+		profile['final_score'] = final_score
+		
+		if final_score < 2:
 			profile['final_chance'] = 0.0
-		elif profile['final_chance'] > 100.0:
+		elif final_score >= 12:
 			profile['final_chance'] = 100.0
+		else:
+			profile['final_chance'] = Get2D6Odds(final_score)
 		
 		return profile
 	
@@ -10041,15 +10099,17 @@ class Scenario:
 				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 13)
 		
 		# base chance
-		text = 'Base Chance '
+		text = 'Base '
 		if profile['type'] == 'ap':
-			text += 'to Penetrate'
+			text += 'Score to Penetrate'
 		elif profile['type'] == 'Area Fire':
-			text += 'of Effect'
+			text += 'Chance of Effect'
 		else:
-			text += 'to Hit'
+			text += 'Chance to Hit'
 		libtcod.console_print_ex(attack_con, 13, 23, libtcod.BKGND_NONE, libtcod.CENTER, text)
-		text = str(profile['base_chance']) + '%%'
+		text = str(profile['base_chance'])
+		if profile['type'] != 'ap':
+			text += '%%'
 		libtcod.console_print_ex(attack_con, 13, 24, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
 		# list of modifiers
@@ -10068,12 +10128,20 @@ class Scenario:
 				# max displayable length is 17 chars
 				libtcod.console_print(attack_con, 2, y, desc[:17])
 				
-				if mod > 0.0:
-					col = libtcod.green
-					text = '+'
+				if profile['type'] == 'ap':
+					if mod > 0:
+						col = libtcod.red
+						text = '+'
+					else:
+						col = libtcod.green
+						text = '-'
 				else:
-					col = libtcod.red
-					text = ''
+					if mod > 0.0:
+						col = libtcod.green
+						text = '+'
+					else:
+						col = libtcod.red
+						text = '-'
 				
 				text += str(mod)
 				
@@ -10083,6 +10151,13 @@ class Scenario:
 				libtcod.console_set_default_foreground(attack_con, libtcod.white)
 				
 				y += 1
+		
+		# final score required for AP rolls
+		if profile['type'] == 'ap':
+			libtcod.console_print_ex(attack_con, 14, 40, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Score required')
+			libtcod.console_print_ex(attack_con, 14, 41, libtcod.BKGND_NONE, libtcod.CENTER,
+				str(profile['final_score']))
 		
 		# display final chance
 		libtcod.console_set_default_background(attack_con, libtcod.darker_blue)
@@ -10142,15 +10217,16 @@ class Scenario:
 			libtcod.console_set_default_background(attack_con, libtcod.green)
 			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
 			
-			# critical hit band
-			libtcod.console_set_default_foreground(attack_con, libtcod.blue)
-			for y in range(46, 49):
-				libtcod.console_put_char(attack_con, 1, y, 221)
-			
-			# critical miss band
-			libtcod.console_set_default_foreground(attack_con, libtcod.dark_grey)
-			for y in range(46, 49):
-				libtcod.console_put_char(attack_con, 25, y, 222)
+			if profile['type'] != 'ap':
+				# critical hit band
+				libtcod.console_set_default_foreground(attack_con, libtcod.blue)
+				for y in range(46, 49):
+					libtcod.console_put_char(attack_con, 1, y, 221)
+				
+				# critical miss band
+				libtcod.console_set_default_foreground(attack_con, libtcod.dark_grey)
+				for y in range(46, 49):
+					libtcod.console_put_char(attack_con, 25, y, 222)
 		
 			libtcod.console_set_default_foreground(attack_con, libtcod.white)
 			libtcod.console_set_default_background(attack_con, libtcod.black)
@@ -13536,6 +13612,30 @@ def GetFacing(attacker, target, turret_facing=False):
 # return a random float between 0.0 and 100.0
 def GetPercentileRoll():
 	return float(libtcod.random_get_int(0, 0, 1000)) / 10.0
+
+
+# return a percentage chance based on a given 2d6 score
+def Get2D6Odds(score):
+	if score == 2:
+		return 2.77
+	elif score == 3:
+		return 8.33
+	elif score == 4:
+		return 16.66
+	elif score == 5:
+		return 27.77
+	elif score == 6:
+		return 41.66
+	elif score == 7:
+		return 58.33
+	elif score == 8:
+		return 72.22
+	elif score == 9:
+		return 83.33
+	elif score == 10:
+		return 91.66
+	else:
+		return 97.22
 
 
 # round and restrict odds to between 3.0 and 97.0

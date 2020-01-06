@@ -10152,11 +10152,11 @@ class Scenario:
 				
 				y += 1
 		
-		# final score required for AP rolls
+		# display final score required for AP rolls
 		if profile['type'] == 'ap':
-			libtcod.console_print_ex(attack_con, 14, 40, libtcod.BKGND_NONE, libtcod.CENTER,
+			libtcod.console_print_ex(attack_con, 13, 40, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Score required')
-			libtcod.console_print_ex(attack_con, 14, 41, libtcod.BKGND_NONE, libtcod.CENTER,
+			libtcod.console_print_ex(attack_con, 13, 41, libtcod.BKGND_NONE, libtcod.CENTER,
 				str(profile['final_score']))
 		
 		# display final chance
@@ -13617,25 +13617,25 @@ def GetPercentileRoll():
 # return a percentage chance based on a given 2d6 score
 def Get2D6Odds(score):
 	if score == 2:
-		return 2.77
+		return 2.
 	elif score == 3:
-		return 8.33
+		return 8.3
 	elif score == 4:
-		return 16.66
+		return 16.7
 	elif score == 5:
-		return 27.77
+		return 27.8
 	elif score == 6:
-		return 41.66
+		return 41.8
 	elif score == 7:
-		return 58.33
+		return 58.3
 	elif score == 8:
-		return 72.22
+		return 72.2
 	elif score == 9:
-		return 83.33
+		return 83.3
 	elif score == 10:
-		return 91.66
+		return 91.7
 	else:
-		return 97.22
+		return 97.2
 
 
 # round and restrict odds to between 3.0 and 97.0

@@ -82,7 +82,6 @@ KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak', 'Custom']	# list of possibl
 MAX_TANK_NAME_LENGTH = 20				# maximum length of tank names
 MAX_NICKNAME_LENGTH = 10				# " for crew nicknames
 
-
 ##### Hex geometry definitions #####
 
 # directional and positional constants
@@ -191,7 +190,13 @@ CD_TRAVEL_CMDS = [
 ]
 
 # order to display ammo types
-AMMO_TYPES = ['HE', 'AP']
+AMMO_TYPES = ['HE', 'AP', 'Smoke']
+# display colours for ammo types (FUTURE: text descriptions too)
+AMMO_TYPE = {
+	'HE' : libtcod.lighter_grey,
+	'AP' : libtcod.yellow,
+	'Smoke' : libtcod.darker_grey
+}
 
 # list of MG-type weapons
 MG_WEAPONS = ['Co-ax MG', 'Turret MG', 'Hull MG', 'AA MG', 'HMG']
@@ -936,6 +941,20 @@ class Campaign:
 		# update screen with info about the currently selected campaign
 		def UpdateCampaignSelectionScreen(selected_campaign):
 			libtcod.console_clear(con)
+			
+			# list of campaigns
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_set_default_background(con, libtcod.dark_blue)
+			y = 25
+			for camp in campaign_list:
+				if camp == selected_campaign:
+					libtcod.console_rect(con, 2, y, 23, 1, True, libtcod.BKGND_SET)
+				libtcod.console_print(con, 2, y, camp['name'][:23])
+				y += 1
+			
+			libtcod.console_set_default_background(con, libtcod.black)
+			
+			# selected campaign info
 			DrawFrame(con, 26, 1, 37, 58)
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 			libtcod.console_print_ex(con, 45, 3, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -988,14 +1007,14 @@ class Campaign:
 				y+=1
 				
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-			libtcod.console_print(con, 32, 53, EnKey('a').upper() + '/' + EnKey('d').upper())
-			libtcod.console_print(con, 32, 54, 'R')
-			libtcod.console_print(con, 32, 55, 'Enter')
+			libtcod.console_print(con, 32, 53, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(con, 32, 54, 'Enter')
+			libtcod.console_print(con, 32, 55, 'R')
 			libtcod.console_print(con, 32, 56, 'Esc')
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print(con, 38, 53, 'Select Campaign')
-			libtcod.console_print(con, 38, 54, 'Select Random')
-			libtcod.console_print(con, 38, 55, 'Proceed')
+			libtcod.console_print(con, 38, 54, 'Proceed')
+			libtcod.console_print(con, 38, 55, 'Proceed with Random')
 			libtcod.console_print(con, 38, 56, 'Return to Main Menu')
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -1045,11 +1064,11 @@ class Campaign:
 			key_char = DeKey(chr(key.c).lower())
 			
 			# change selected campaign
-			if key_char in ['a', 'd']:
+			if key_char in ['w', 's']:
 				
 				i = campaign_list.index(selected_campaign)
 				
-				if key_char == 'd':
+				if key_char == 's':
 					if i == len(campaign_list) - 1:
 						selected_campaign = campaign_list[0]
 					else:
@@ -2782,7 +2801,6 @@ class CampaignDay:
 			if not map_hex.known_to_player: return
 			
 			ShowMessage('We have reports of an increase of enemy strength in a zone!')
-			# FUTURE: highlight hex momentarily
 		
 		# reveal enemy strength
 		elif roll <= 40.0:
@@ -3105,6 +3123,14 @@ class CampaignDay:
 					libtcod.console_print(con, x, y+3, 'targets.')
 					
 					y += 6
+				
+				elif ammo_type == 'Smoke':
+					libtcod.console_print(con, x, y, 'Smoke')
+					libtcod.console_set_default_foreground(con, libtcod.light_grey)
+					libtcod.console_print(con, x, y+2, 'Used to blind targets.')
+					
+					y += 5
+					
 			
 			# visual depicition of main stores and ready rack
 			x = 33
@@ -3138,12 +3164,7 @@ class CampaignDay:
 				if ammo_type in ammo_count:
 					for i in range(ammo_count[ammo_type]):
 						
-						# determine colour to use
-						if ammo_type == 'HE':
-							col = libtcod.grey
-						elif ammo_type == 'AP':
-							col = libtcod.yellow
-						
+						col = AMMO_TYPE[ammo_type]
 						libtcod.console_put_char_ex(con, x+xm, y+ym, 7, col, libtcod.black)
 						
 						if xm == 8:
@@ -3174,12 +3195,7 @@ class CampaignDay:
 				if ammo_type in rr_count:
 					for i in range(rr_count[ammo_type]):
 						
-						# determine colour to use
-						if ammo_type == 'HE':
-							col = libtcod.grey
-						elif ammo_type == 'AP':
-							col = libtcod.yellow
-						
+						col = AMMO_TYPE[ammo_type]
 						libtcod.console_put_char_ex(con, x+xm, y+ym, 7, col, libtcod.black)
 						
 						if xm == 8:
@@ -3207,7 +3223,7 @@ class CampaignDay:
 			y = 25
 			
 			libtcod.console_set_default_foreground(con, libtcod.white)
-			libtcod.console_print_ex(con, x+11, y, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(con, x+12, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, 'RR')
 			y += 1
 			for ammo_type in AMMO_TYPES:
@@ -3215,33 +3231,28 @@ class CampaignDay:
 					
 					if selected_ammo_type == ammo_type:
 						libtcod.console_set_default_background(con, libtcod.dark_blue)
-						libtcod.console_rect(con, x, y, 12, 1, True, libtcod.BKGND_SET)
+						libtcod.console_rect(con, x+2, y, 11, 1, True, libtcod.BKGND_SET)
 						libtcod.console_set_default_background(con, libtcod.black)
 					
-					if ammo_type == 'HE':
-						col = libtcod.grey
-					elif ammo_type == 'AP':
-						col = libtcod.yellow
+					col = AMMO_TYPE[ammo_type]
 					libtcod.console_put_char_ex(con, x, y, 7, col, libtcod.black)
 					
 					libtcod.console_set_default_foreground(con, libtcod.white)
 					libtcod.console_print(con, x+2, y, ammo_type)
 					libtcod.console_set_default_foreground(con, libtcod.light_grey)
-					libtcod.console_print_ex(con, x+8, y, libtcod.BKGND_NONE,
+					libtcod.console_print_ex(con, x+9, y, libtcod.BKGND_NONE,
 						libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
-					libtcod.console_print_ex(con, x+11, y, libtcod.BKGND_NONE,
+					libtcod.console_print_ex(con, x+12, y, libtcod.BKGND_NONE,
 						libtcod.RIGHT, str(weapon.ready_rack[ammo_type]))
-					
-					
 					
 					y += 1
 			y += 1
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print(con, x+2, y, 'Max')
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
-			libtcod.console_print_ex(con, x+8, y, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(con, x+9, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, weapon.stats['max_ammo'])
-			libtcod.console_print_ex(con, x+11, y, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(con, x+12, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(weapon.rr_size))
 			
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
@@ -3380,7 +3391,15 @@ class CampaignDay:
 				elif 'AP' in weapon.ammo_stores and 'HE' not in weapon.ammo_stores:
 					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo'])
 					weapon.ready_rack['AP'] = weapon.rr_size
-		
+				
+				# HE, AP, and Smoke
+				elif 'AP' in weapon.ammo_stores and 'HE' in weapon.ammo_stores and 'Smoke' in weapon.ammo_stores:
+					weapon.ammo_stores['HE'] = int(float(weapon.stats['max_ammo']) * 0.65)
+					weapon.ammo_stores['Smoke'] = int(float(weapon.stats['max_ammo']) * 0.10)
+					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo']) - weapon.ammo_stores['HE'] - weapon.ammo_stores['Smoke']
+					weapon.ready_rack['HE'] = int(float(weapon.rr_size * 0.75))
+					weapon.ready_rack['AP'] = weapon.rr_size - weapon.ready_rack['HE']
+				
 				# HE and AP
 				else:
 					weapon.ammo_stores['HE'] = int(float(weapon.stats['max_ammo']) * 0.75)
@@ -6529,6 +6548,13 @@ class Weapon:
 			self.ammo_stores[ammo_type] = max_ammo
 			self.ammo_type = ammo_type
 		
+		#HE, AP, and Smoke: 60&, 30%, and 110%
+		elif self.stats['ammo_type_list'] == ['HE', 'AP', 'Smoke']:
+			self.ammo_stores['HE'] = int(max_ammo * 0.6)
+			self.ammo_stores['Smoke'] = int(max_ammo * 0.1)
+			self.ammo_stores['AP'] = max_ammo - self.ammo_stores['HE'] - self.ammo_stores['Smoke']
+			self.ammo_type = 'AP'
+		
 		# HE and AP: 70% and 30%
 		else:
 			if self.stats['ammo_type_list'] == ['HE', 'AP']:
@@ -8228,8 +8254,12 @@ class Unit:
 				if self == scenario.player_unit:
 					campaign_day.AddRecord('Gun Hits', 1)
 				
+				# smoke round
+				if profile['ammo_type'] == 'Smoke':
+					target.smoke = 2
+				
 				# infantry, gun, or unarmoured target
-				if target.GetStat('category') in ['Infantry', 'Gun']:
+				elif target.GetStat('category') in ['Infantry', 'Gun']:
 					
 					# if HE hit, apply effective FP
 					if profile['ammo_type'] == 'HE':

@@ -5332,7 +5332,8 @@ class Personnel:
 	# award a number of exp to this crewman
 	def AwardExp(self, exp):
 		self.exp += exp
-	
+
+
 	# check to see whether crewman is promoted, called for player crew once per week
 	def PromotionCheck(self):
 		
@@ -14376,8 +14377,14 @@ def DisplayCrew(unit, console, x, y, highlight):
 			# display current status if any
 			if position.crewman.status != '':
 				libtcod.console_set_default_foreground(console, libtcod.red)
-				libtcod.console_print_ex(console, x+23, y+3, libtcod.BKGND_NONE, libtcod.RIGHT, 
+				libtcod.console_print_ex(console, x+23, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
 					position.crewman.status)
+			
+			# display fatigue if any
+			if position.crewman.fatigue > 0:
+				libtcod.console_set_default_foreground(console, libtcod.red)
+				libtcod.console_print_ex(console, x+23, y+3, libtcod.BKGND_NONE, libtcod.RIGHT, 
+					'Fatigued')
 			
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		y += 5

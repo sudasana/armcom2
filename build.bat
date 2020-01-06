@@ -5,3 +5,4 @@ copy /y .\data\*.xp .\dist\data
 copy /y .\data\*.png .\dist\data
 copy /y .\sounds\*.ogg .\dist\sounds
 del .\dist\data\armcom2.cfg
+del .\dist\data\debug.json

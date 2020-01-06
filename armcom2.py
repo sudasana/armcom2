@@ -1443,6 +1443,9 @@ class Campaign:
 			# reset fatigue points if any
 			position.crewman.fatigue = 0
 			
+			# grant random additional exp
+			position.crewman.exp += libtcod.random_get_int(0, 0, 5)
+			
 			# check for level up
 			levels_up = 0
 			for level in range(position.crewman.level+1, 31):
@@ -2066,6 +2069,7 @@ class Campaign:
 					player_tank_name = ShowTextInputMenu('Enter a name for your tank', '', MAX_TANK_NAME_LENGTH, [])
 					if player_tank_name != '':
 						campaign.player_unit.unit_name = player_tank_name
+					self.UpdateCalendarCmdCon()
 					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 					continue
@@ -4319,12 +4323,13 @@ class CampaignDay:
 			if 'air_support_level' not in campaign.current_week or campaign_day.weather['Cloud Cover'] == 'Overcast':
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
 			libtcod.console_print(cd_command_con, 3, 26, 'Request Air Support')
+			
 			if self.air_support_request:
 				text = 'ON'
 			else:
 				text = 'OFF'
 			if 'air_support_level' in campaign.current_week:
-				libtcod.console_print(cd_command_con, 4, 27, '(' + text + ')')
+				libtcod.console_print(cd_command_con, 4, 27, '(' + text + ') ' + str(self.air_support_level))
 			
 			# artillery support request
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
@@ -4336,7 +4341,7 @@ class CampaignDay:
 			else:
 				text = 'OFF'
 			if 'arty_support_level' in campaign.current_week:
-				libtcod.console_print(cd_command_con, 4, 30, '(' + text + ')')
+				libtcod.console_print(cd_command_con, 4, 30, '(' + text + ') ' + str(self.arty_support_level))
 			
 		# group
 		elif self.active_menu == 4:
@@ -7700,7 +7705,7 @@ class Unit:
 				
 				# spotting crew skill
 				if 'Eagle Eyed' in position.crewman.skills and position.crewman.ce:
-					chance += crewman.GetSkillMod(10.0)
+					chance += position.crewman.GetSkillMod(10.0)
 				
 				# target is HD to spotter
 				if len(unit.hull_down) > 0:
@@ -8009,7 +8014,7 @@ class Unit:
 		# display name if any overtop portrait
 		if self.unit_name != '':
 			libtcod.console_set_default_foreground(console, libtcod.white)
-			libtcod.console_print(console, x, y+2, "'" + self.unit_name + "'")
+			libtcod.console_print(console, x, y+2, self.unit_name)
 		
 		# weapons - list turret and unmounted weapons on line 1, all others on line 2
 		libtcod.console_set_default_foreground(console, libtcod.white)
@@ -8643,7 +8648,7 @@ class Unit:
 				self.ap_hits_to_resolve = []
 				return
 		
-		if self.GetStat('category') == 'Vehicle':
+		if self.GetStat('category') in ['Vehicle', 'Train Car']:
 			PlaySoundFor(self, 'vehicle_explosion')
 		
 		# set flag
@@ -9837,13 +9842,13 @@ class Scenario:
 			
 			if weapon_type == 'Gun':
 				if 'Crack Shot' in profile['crewman'].skills:
-					mod = crewman.GetSkillMod(3.0)
+					mod = profile['crewman'].GetSkillMod(3.0)
 					modifier_list.append(('Crack Shot', mod))
 				if target.moving and 'Target Tracker' in profile['crewman'].skills:
-					mod = crewman.GetSkillMod(7.0)
+					mod = profile['crewman'].GetSkillMod(7.0)
 					modifier_list.append(('Target Tracker', mod))
 				if distance == 3 and 'Sniper' in profile['crewman'].skills:
-					mod = crewman.GetSkillMod(7.0)
+					mod = profile['crewman'].GetSkillMod(7.0)
 					modifier_list.append(('Sniper', mod))
 				
 				# NEW: skill for firing in precepitation
@@ -9851,7 +9856,7 @@ class Scenario:
 					for (text, mod) in modifier_list:
 						if text in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard']:
 							break
-					skill_mod = crewman.GetSkillMod(8.0)
+					skill_mod = profile['crewman'].GetSkillMod(8.0)
 					if skill_mod > abs(mod):
 						skill_mod = abs(mod)
 					modifier_list.append(('Target Focus', skill_mod))

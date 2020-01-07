@@ -135,6 +135,7 @@ ENEMY_UNIT_COL = libtcod.Color(255, 20, 20)		# known "
 ALLIED_UNIT_COL = libtcod.Color(120, 120, 255)		# allied unit display colour
 GOLD_COL = libtcod.Color(255, 255, 100)			# golden colour for awards
 DIRT_ROAD_COL = libtcod.Color(80, 50, 20)		# dirt roads on campaign day map
+STONE_ROAD_COL = libtcod.Color(110, 110, 110)		# stone "
 RIVER_COL = libtcod.Color(0, 0, 140)			# rivers "
 BRIDGE_COL = libtcod.Color(40, 20, 10)			# bridges/fords "
 
@@ -260,8 +261,11 @@ REGIONS = {
 			'Villages' : 10.0
 		},
 		
-		# odds of 1 dirt road bring present on the map
-		'dirt_road_odds' : 50.0,
+		# odds of dirt road network being present on the map
+		'dirt_road_odds' : 40.0,
+		
+		# odds of stone/improved road "
+		'stone_road_odds' : 10.0,
 		
 		# odds of 1+ rivers being spawned (with crossing points)
 		'river_odds' : 50.0,
@@ -365,6 +369,7 @@ REGIONS = {
 		},
 		
 		'dirt_road_odds' : 80.0,
+		'stone_road_odds' : 50.0,
 		'river_odds' : 20.0,
 
 		'season_weather_odds' : {
@@ -2339,8 +2344,13 @@ class CampaignDay:
 		direction = self.GetDirectionToAdjacentCD(hx1, hy1, hx2, hy2)
 		
 		# check for road link
-		if direction in self.map_hexes[(hx1,hy1)].dirt_roads:
-			mins = 30
+		if self.map_hexes[(hx1,hy1)].road_links[direction] is not None:
+			# dirt road
+			if self.map_hexes[(hx1,hy1)].road_links[direction] is False:
+				mins = 30
+			# stone road
+			else:
+				mins = 20
 		else:
 			if self.map_hexes[(hx2,hy2)].terrain_type == 'Forest':
 				mins = 60
@@ -2717,6 +2727,11 @@ class CampaignDay:
 		
 		# new target of opportunity possibly generated
 		if roll <= 20.0:
+			
+			# doesn't fit this mission
+			if self.mission == 'Fighting Withdrawl':
+				return
+			
 			targets = 0
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				if self.map_hexes[(hx, hy)].target_of_opportunity is not None:
@@ -3435,13 +3450,24 @@ class CampaignDay:
 		
 		# clear any existing roads
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
-			self.map_hexes[(hx,hy)].dirt_roads = []
+			for direction in range(6):
+				self.map_hexes[(hx,hy)].road_links[direction] = None
 		
-		# see if a road is generated on this map
-		if 'dirt_road_odds' not in REGIONS[campaign.stats['region']]:
-			return
-		if GetPercentileRoll() > float(REGIONS[campaign.stats['region']]['dirt_road_odds']):
-			return
+		# see if a road network is generated on this map
+		dirt_road = False
+		stone_road = False
+		
+		if GetPercentileRoll() <= float(REGIONS[campaign.stats['region']]['stone_road_odds']):
+			stone_road = True
+		if GetPercentileRoll() <= float(REGIONS[campaign.stats['region']]['dirt_road_odds']):
+			dirt_road = True
+		
+		# TEMP
+		stone_road = True
+		
+		# no roads generated
+		if not dirt_road and not stone_road: return
+		
 		
 		# choose a random edge hex
 		edge_list = []
@@ -3468,9 +3494,6 @@ class CampaignDay:
 			distance = GetHexDistance(hx, hy, hx2, hy2)
 			for d in range(6):
 				
-				# already a road link here
-				if d in self.map_hexes[(hx,hy)].dirt_roads:
-					continue
 				(hx_p, hy_p) = self.GetAdjacentCDHex(hx, hy, d)
 				
 				# target hex not on map
@@ -3489,23 +3512,28 @@ class CampaignDay:
 			
 			# choose one and make a link to it
 			d = choice(path_choices)
-			self.map_hexes[(hx,hy)].dirt_roads.append(d)
 			(hx_p,hy_p) = self.GetAdjacentCDHex(hx, hy, d)
-			self.map_hexes[(hx_p,hy_p)].dirt_roads.append(ConstrainDir(d + 3))
+			
+			if stone_road:
+				self.map_hexes[(hx,hy)].road_links[d] = True
+				self.map_hexes[(hx_p,hy_p)].road_links[ConstrainDir(d + 3)] = True
+			else:
+				self.map_hexes[(hx,hy)].road_links[d] = False
+				self.map_hexes[(hx_p,hy_p)].road_links[ConstrainDir(d + 3)] = False
 			
 			# move current hex to the one just linked
 			hx, hy = hx_p, hy_p
 		
-		# link all settled hexes to a road branch
+		# link all settled hexes to a road branch - using dirt roads only
 		
 		# build a list of all settled hexes
 		hex_list = []
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			if self.map_hexes[(hx,hy)].terrain_type in ['Villages']:
 				
-				# already on road
-				if len(self.map_hexes[(hx,hy)].dirt_roads) > 0: continue
-				
+				# already on a road
+				if self.map_hexes[(hx,hy)].road_links != [None,None,None,None,None,None]: continue
+							
 				hex_list.append((hx, hy))
 		
 		if len(hex_list) > 0:
@@ -3519,8 +3547,8 @@ class CampaignDay:
 					if hx2 == hx1 and hy2 == hy1: continue
 					
 					# no roads there
-					if len(self.map_hexes[(hx2,hy2)].dirt_roads) == 0: continue
-					
+					if self.map_hexes[(hx2,hy2)].road_links == [None,None,None,None,None,None]: continue
+										
 					# get the distance to the possible link
 					d = GetHexDistance(hx1, hy1, hx2, hy2)
 					
@@ -3546,8 +3574,8 @@ class CampaignDay:
 					
 					# create the road links
 					d = self.GetDirectionToAdjacentCD(hx, hy, hx_p, hy_p)
-					self.map_hexes[(hx,hy)].dirt_roads.append(d)
-					self.map_hexes[(hx_p,hy_p)].dirt_roads.append(ConstrainDir(d+3))
+					self.map_hexes[(hx,hy)].road_links[d] = False
+					self.map_hexes[(hx_p,hy_p)].road_links[ConstrainDir(d + 3)] = False
 	
 	
 	# generate rivers and bridges along hex zone edges
@@ -3659,7 +3687,7 @@ class CampaignDay:
 						self.map_hexes[(hx,hy)].rivers.append(direction)
 						
 						# add bridge if road already present
-						if direction in self.map_hexes[(hx,hy)].dirt_roads:
+						if self.map_hexes[(hx,hy)].road_links[direction] is not None:
 							if direction not in self.map_hexes[(hx,hy)].bridges:
 								self.map_hexes[(hx,hy)].bridges.append(direction)
 							continue
@@ -3938,37 +3966,49 @@ class CampaignDay:
 			
 		del temp_con, dayhex
 		
-		# draw dirt roads overtop
+		# draw stone and dirt roads overtop
 		for (hx, hy), map_hex in self.map_hexes.items():
-			if len(map_hex.dirt_roads) == 0: continue
+			if map_hex.road_links == [None,None,None,None,None,None]: continue
+			
+			road_num = 0
 			
 			(x1, y1) = self.PlotCDHex(hx, hy)
 			
-			for direction in map_hex.dirt_roads:
-				# only draw if in direction 0-2
+			for direction in range(6):
+				
+				# TEMP?
 				if direction > 2: continue
+				
+				if map_hex.road_links[direction] is None: continue
+				
 				# get the other zone linked by road
 				(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
 				if (hx2, hy2) not in self.map_hexes: continue
 				
+				road_num += 1
+				
 				# paint road
+				if map_hex.road_links[direction] is False:
+					col = DIRT_ROAD_COL
+				else:
+					col = STONE_ROAD_COL
 				(x2, y2) = self.PlotCDHex(hx2, hy2)
 				line = GetLine(x1, y1, x2, y2)
 				for (x, y) in line:
 				
-					# don't paint over outside of map area
+					# don't paint outside of map area
 					if libtcod.console_get_char_background(cd_map_con, x, y) == libtcod.black:
 						continue
 					
 					libtcod.console_set_char_background(cd_map_con, x, y,
-						DIRT_ROAD_COL, libtcod.BKGND_SET)
+						col, libtcod.BKGND_SET)
 					
 					# if character is not blank or hex edge, remove it
 					if libtcod.console_get_char(cd_map_con, x, y) not in [0, 249, 250]:
 						libtcod.console_set_char(cd_map_con, x, y, 0)
 			
-			# if map hex is on edge and has 1 dirt road connection, draw a road leading off the edge of the map
-			if len(map_hex.dirt_roads) > 1: continue
+			# if map hex is on edge and has 1 road connection, draw a road leading off the edge of the map
+			if road_num > 1: continue
 			off_map_hexes = []
 			for direction in range(6):
 				(hx2, hy2) = self.GetAdjacentCDHex(hx, hy, direction)
@@ -3984,7 +4024,7 @@ class CampaignDay:
 					break
 					
 				libtcod.console_set_char_background(cd_map_con, x, y,
-					DIRT_ROAD_COL, libtcod.BKGND_SET)
+					col, libtcod.BKGND_SET)
 					
 				# if character is not blank or hex edge, remove it
 				if libtcod.console_get_char(cd_map_con, x, y) not in [0, 249, 250]:
@@ -4400,10 +4440,12 @@ class CampaignDay:
 			libtcod.console_print(cd_hex_info_con, 0, 9, 'VP Bonus: ' + str(cd_hex.target_of_opportunity))
 		
 		# roads
-		if len(cd_hex.dirt_roads) > 0:
+		if False in cd_hex.road_links:
 			libtcod.console_set_default_foreground(cd_hex_info_con, DIRT_ROAD_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 11, 'Dirt roads')
-	
+			libtcod.console_print(cd_hex_info_con, 0, 11, 'Dirt road')
+		if True in cd_hex.road_links:
+			libtcod.console_set_default_foreground(cd_hex_info_con, STONE_ROAD_COL)
+			libtcod.console_print(cd_hex_info_con, 0, 12, 'Stone road')
 	
 	# starts or re-starts looping animations based on weather conditions
 	def InitAnimations(self):
@@ -5078,8 +5120,8 @@ class CDMapHex:
 		self.terrain_type = ''		# placeholder for terrain type in this zone
 		self.console_seed = libtcod.random_get_int(0, 1, 128)	# seed for console image generation
 		
-		self.dirt_roads = []		# directions linked by a dirt road
-		self.stone_roads = []		# " stone road
+		# road links in 6 directions: false if dirt road, true if stone
+		self.road_links = [None,None,None,None,None,None]
 		self.rivers = []		# river edges
 		self.bridges = []		# bridged edges
 		
@@ -6009,6 +6051,22 @@ class Personnel:
 						break
 				if not enemies_far_away: continue
 			
+			# assaults need mobility and at least one known target in forward hex
+			elif k == 'Close Assault':
+				if self.unit.immobilized: continue
+				if self.unit.bogged: continue
+				
+				unit_list = scenario.hex_dict[(0,-1)].unit_stack
+				if len(unit_list) == 0: continue
+				found_target = False
+				for unit in unit_list:
+					if unit.owning_player != 1: continue
+					if not unit.spotted: continue
+					if unit.GetStat('category') not in ['Infantry', 'Gun']: continue
+					found_target = True
+					break
+				if not found_target: continue
+			
 			# check that a mortar is attached and is fired by this position
 			elif k == 'Fire Smoke Mortar':
 				position_name = self.unit.GetStat('smoke_mortar')
@@ -6462,7 +6520,6 @@ class Weapon:
 					# make sure hex is on map
 					if (hx, hy) in scenario.hex_dict:
 						self.covered_hexes.append((hx, hy))
-			
 		
 		self.covered_hexes = []
 		
@@ -7262,23 +7319,20 @@ class Unit:
 	# set a random smoke level for this unit, upon spawn or after move
 	def SetSmokeLevel(self):
 		
-		# roll once for each direction
-		for i in range(6):
+		roll = GetPercentileRoll()
 		
-			roll = GetPercentileRoll()
-			
-			# account for effects of rain
-			if campaign_day.weather['Precipitation'] == 'Rain':
-				roll -= 3.0
-			elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
-				roll -= 5.0
-			
-			if roll <= 93.0:
-				self.smoke = 0
-			elif roll <= 98.0:
-				self.smoke = 1
-			else:
-				self.smoke = 2
+		# account for effects of rain
+		if campaign_day.weather['Precipitation'] == 'Rain':
+			roll -= 3.0
+		elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
+			roll -= 5.0
+		
+		if roll <= 93.0:
+			self.smoke = 0
+		elif roll <= 98.0:
+			self.smoke = 1
+		else:
+			self.smoke = 2
 
 	
 	# returns list of crew in this unit that are vulnerable to small-arms fire
@@ -7768,6 +7822,12 @@ class Unit:
 		else:
 			(x,y) = scenario.PlotHex(self.hx, self.hy)
 		
+		# determine normal background colour to us
+		if campaign_day.weather['Ground'] in ['Snow', 'Heavy Snow']:
+			bg_col = libtcod.Color(158,158,158)
+		else:
+			bg_col = libtcod.Color(0,64,0)
+		
 		# draw terrain greebles
 		if self.terrain is not None and not (self.owning_player == 1 and not self.spotted):
 			generator = libtcod.random_new_from_seed(self.terrain_seed)
@@ -7779,7 +7839,7 @@ class Unit:
 					if libtcod.random_get_int(generator, 1, 9) <= 2: continue
 					c_mod = libtcod.random_get_int(generator, 0, 20)
 					col = libtcod.Color(30+c_mod, 90+c_mod, 20+c_mod)
-					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 46, col, libtcod.black)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 46, col, bg_col)
 				
 			elif self.terrain == 'Broken Ground':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
@@ -7790,7 +7850,7 @@ class Unit:
 						char = 247
 					else:
 						char = 240
-					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, char, col, libtcod.black)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, char, col, bg_col)
 
 			elif self.terrain == 'Brush':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
@@ -7800,26 +7860,26 @@ class Unit:
 						char = 15
 					else:
 						char = 37
-					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, char, col, libtcod.black)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, char, col, bg_col)
 				
 			elif self.terrain == 'Woods':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
 					if libtcod.random_get_int(generator, 1, 9) == 1: continue
 					col = libtcod.Color(0,libtcod.random_get_int(generator, 100, 170),0)
-					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 6, col, libtcod.black)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 6, col, bg_col)
 					
 			elif self.terrain == 'Wooden Buildings':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
 					c_mod = libtcod.random_get_int(generator, 10, 40)
 					col = libtcod.Color(70+c_mod, 60+c_mod, 40+c_mod)
-					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 249, col, libtcod.black)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 249, col, bg_col)
 			
 			elif self.terrain == 'Hills':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
 					if libtcod.random_get_int(generator, 1, 9) <= 3: continue
 					c_mod = libtcod.random_get_int(generator, 10, 40)
 					col = libtcod.Color(20+c_mod, 110+c_mod, 20+c_mod)
-					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 220, col, libtcod.black)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 220, col, bg_col)
 				
 			elif self.terrain == 'Fields':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
@@ -7827,13 +7887,13 @@ class Unit:
 					c = libtcod.random_get_int(generator, 120, 190)
 					col = libtcod.Color(c, c, 0)
 					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod,
-						176, col, libtcod.black)
+						176, col, bg_col)
 			
 			elif self.terrain == 'Marsh':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
 					if libtcod.random_get_int(generator, 1, 9) == 1: continue
 					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 176,
-						libtcod.Color(45,0,180), libtcod.black)
+						libtcod.Color(45,0,180), bg_col)
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
@@ -7847,29 +7907,32 @@ class Unit:
 		# armoured trains have more display characters
 		if self.GetStat('class') == 'Armoured Train Car' and not (self.owning_player == 1 and not self.spotted):
 			for x1 in range(x-4, x+5):
-				libtcod.console_put_char_ex(unit_con, x1, y, 35, libtcod.dark_grey, libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x1, y, 35, libtcod.dark_grey, bg_col)
 			for x1 in range(x-1, x+2):
-				libtcod.console_put_char_ex(unit_con, x1, y, 219, libtcod.grey, libtcod.black)
+				libtcod.console_put_char_ex(unit_con, x1, y, 219, libtcod.grey, bg_col)
 			
 		# draw main display character
-		libtcod.console_put_char_ex(unit_con, x, y, self.GetDisplayChar(), col, libtcod.black)
+		libtcod.console_put_char_ex(unit_con, x, y, self.GetDisplayChar(), col, bg_col)
 		
-		# draw smoke level if any
+		# draw smoke if any
 		if self.smoke > 0:
 			if self.smoke == 1:
-				col = libtcod.light_grey
+				smoke_col = libtcod.dark_grey
 			else:
-				col = libtcod.dark_grey
-			libtcod.console_put_char_ex(unit_con, x-1, y-1, 247, col, libtcod.black)
-			libtcod.console_put_char_ex(unit_con, x+1, y-1, 247, col, libtcod.black)
-			libtcod.console_put_char_ex(unit_con, x-1, y+1, 247, col, libtcod.black)
-			libtcod.console_put_char_ex(unit_con, x+1, y+1, 247, col, libtcod.black)
+				smoke_col = libtcod.darker_grey
+			
+			libtcod.console_put_char_ex(unit_con, x-1, y-1, 247, libtcod.light_grey, smoke_col)
+			libtcod.console_put_char_ex(unit_con, x+1, y-1, 247, libtcod.light_grey, smoke_col)
+			libtcod.console_put_char_ex(unit_con, x-1, y+1, 247, libtcod.light_grey, smoke_col)
+			libtcod.console_put_char_ex(unit_con, x+1, y+1, 247, libtcod.light_grey, smoke_col)
+		
+		# don't draw anything else for unspotted enemy units
+		if self.owning_player == 1 and not self.spotted: return
 		
 		# determine if we need to display a turret / gun depiction
 		draw_turret = True
 		
 		if self.GetStat('category') == 'Infantry': draw_turret = False
-		if self.owning_player == 1 and not self.spotted: draw_turret = False
 		if self.GetStat('category') == 'Gun' and not self.deployed: draw_turret = False
 		if len(self.weapon_list) == 0: draw_turret = False
 		
@@ -7883,7 +7946,7 @@ class Unit:
 			# determine location to draw turret/gun character
 			x_mod, y_mod = PLOT_DIR[facing]
 			char = TURRET_CHAR[facing]
-			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, libtcod.black)
+			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, bg_col)
 	
 	
 	# display info on this unit to a given console starting at x,y
@@ -8644,7 +8707,7 @@ class MapHex:
 	def __init__(self, hx, hy):
 		self.hx = hx
 		self.hy = hy
-		self.unit_stack = []					# list of units present in this map hex
+		self.unit_stack = []				# list of units present in this map hex
 
 
 
@@ -9180,7 +9243,6 @@ class Scenario:
 	
 	# spawn enemy units on the hex map
 	# can be overidden to spawn a specific number of units
-	# FUTURE: will pull more data from the campaign day and campaign objects
 	def SpawnEnemyUnits(self, num_units=None):
 		
 		# pointer to unit type list from campaign object
@@ -11498,8 +11560,19 @@ class Scenario:
 				if crewman.current_cmd != 'Drive':
 					self.advance_phase = True
 			
+			# if we're not doing the phase, player squad might still be assaulting
+			if self.advance_phase:
+				if crewman.current_cmd == 'Close Assault':
+					PlaySoundFor(self.player_unit, 'movement')
+					ShowMessage('Your squad advances forward')
+					self.player_unit.moving = True
+					self.player_unit.ClearAcquiredTargets()
+					for unit in scenario.player_unit.squad:
+						unit.moving = True
+						unit.ClearAcquiredTargets()
+			
 			# if we're doing the phase, calculate move chances for player unit
-			if not self.advance_phase:
+			else:
 				scenario.player_unit.CalculateMoveChances()
 		
 		# shooting phase
@@ -11966,6 +12039,7 @@ class Scenario:
 	# update unit layer console
 	def UpdateUnitCon(self):
 		
+		libtcod.console_set_default_background(unit_con, KEY_COLOR)
 		libtcod.console_clear(unit_con)
 		for map_hex in self.map_hexes:
 			
@@ -11980,6 +12054,11 @@ class Scenario:
 			
 			# draw stack number indicator if any
 			if len(map_hex.unit_stack) == 1: continue
+			
+			if campaign_day.weather['Ground'] in ['Snow', 'Heavy Snow']:
+				bg_col = libtcod.Color(158,158,158)
+			else:
+				bg_col = libtcod.Color(0,64,0)
 			if map_hex.unit_stack[0].turret_facing is not None:
 				facing = map_hex.unit_stack[0].turret_facing
 			else:
@@ -11991,7 +12070,7 @@ class Scenario:
 			(x,y) = scenario.PlotHex(map_hex.unit_stack[0].hx, map_hex.unit_stack[0].hy)
 			text = str(len(map_hex.unit_stack))
 			libtcod.console_set_default_foreground(unit_con, libtcod.grey)
-			libtcod.console_set_default_background(unit_con, libtcod.black)
+			libtcod.console_set_default_background(unit_con, bg_col)
 			libtcod.console_print_ex(unit_con, x, y+y_mod, libtcod.BKGND_SET, libtcod.CENTER,
 				text)
 		
@@ -12072,6 +12151,11 @@ class Scenario:
 		# display unit info
 		unit = map_hex.unit_stack[0]
 		
+		# smoke if any
+		if unit.smoke > 0:
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.grey)
+			libtcod.console_print(unit_info_con, 23, 2, 'Smoke lvl ' + str(unit.smoke))
+		
 		if unit.owning_player == 1 and not unit.spotted:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
 			libtcod.console_print(unit_info_con, 0, 0, 'Unspotted Enemy')
@@ -12124,11 +12208,6 @@ class Scenario:
 			if unit.terrain is not None:
 				libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
 				libtcod.console_print(unit_info_con, 23, 1, unit.terrain)
-			
-			# smoke if any
-			if unit.smoke > 0:
-				libtcod.console_set_default_foreground(unit_info_con, libtcod.grey)
-				libtcod.console_print(unit_info_con, 23, 2, 'Smoke lvl ' + str(unit.smoke))
 			
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_grey)
 			libtcod.console_print(unit_info_con, 20, 3, 'Right click for details')
@@ -12319,7 +12398,7 @@ class Scenario:
 		
 		# main map display
 		libtcod.console_blit(hexmap_con, 0, 0, 0, 0, con, 32, 9)
-		libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
+		libtcod.console_blit(unit_con, 0, 0, 0, 0, con, 32, 9, 1.0, 1.0)
 		libtcod.console_blit(gui_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
 		libtcod.console_blit(anim_con, 0, 0, 0, 0, con, 32, 9, 1.0, 0.0)
 		

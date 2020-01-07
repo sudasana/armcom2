@@ -243,13 +243,12 @@ ASSAULT_FP = {
 
 # odds to destroy an opposing unit in close combat, by firepower ratios
 CC_TK = {
-	400.0 : 97.0,
-	150.0 : 80.0,
-	100.0 : 50.0,
-	50.0 : 30.0,
-	20.0 : 5.0,
+	4.0 : 97.0,
+	1.5 : 80.0,
+	1.0 : 50.0,
+	0.5 : 30.0,
+	0.2 : 5.0,
 	0.0 : 0.0
-	
 }
 
 # level at which crew become eligible for promotion to the next rank
@@ -11713,6 +11712,8 @@ class Scenario:
 			if unit.GetStat('category') not in ['Infantry', 'Gun']: continue
 			defending_units.append(unit)
 		
+		# TODO: defending units get a chance for defensive fire
+		
 		
 		# start combat rounds
 		combat_over = False
@@ -11743,12 +11744,15 @@ class Scenario:
 			print('DEBUG: total attack fp: ' + str(attack_fp))
 			print('DEBUG: total defend fp: ' + str(defend_fp))
 			
-			attack_odds = round(float(attack_fp) / float(defend_fp), 1)
-			defend_odds = round(float(defend_fp) / float(attack_fp), 1)
+			attack_ratio = round(float(attack_fp) / float(defend_fp), 1)
+			defend_ratio = round(float(defend_fp) / float(attack_fp), 1)
+			
+			print('DEBUG: attack ratio: ' + str(attack_ratio))
+			print('DEBUG: defend ratio: ' + str(defend_ratio))
 			
 			# determine odds to destroy an opposing unit based on firepower ratio
-			for odds, chance in CC_TK.items():
-				if odds <= attack_odds:
+			for ratio, chance in CC_TK.items():
+				if ratio <= attack_ratio:
 					break
 			
 			if chance > 0.0:
@@ -11764,10 +11768,10 @@ class Scenario:
 					unit.DestroyMe()
 					if unit == self.player_unit:
 						return
-					defending_units.del(unit)
+					defending_units.remove(unit)
 			
-			for odds, chance in CC_TK.items():
-				if odds <= defend_odds:
+			for ratio, chance in CC_TK.items():
+				if ratio <= defend_ratio:
 					break
 			
 			if chance > 0.0:
@@ -11783,7 +11787,7 @@ class Scenario:
 					unit.DestroyMe()
 					if unit == self.player_unit:
 						return
-					attacking_units.del(unit)
+					attacking_units.remove(unit)
 			
 			# no units left
 			if len(attacking_units) == 0:
@@ -11794,6 +11798,11 @@ class Scenario:
 				ShowMessage('No defenders remain, ending close combat.')
 				combat_over = True
 				continue
+			
+			self.UpdateUnitCon()
+			self.UpdateUnitInfoCon()
+			self.UpdateScenarioDisplay()
+			libtcod.console_flush()
 			
 			combat_round += 1
 	

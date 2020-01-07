@@ -6910,7 +6910,7 @@ class AI:
 		
 		elif self.disposition in ['Combat', 'Attack Player', 'Harass Player']:
 			
-			# determine target
+			# determine target list
 			target_list = []
 			
 			if self.disposition in ['Attack Player', 'Harass Player']:
@@ -6928,198 +6928,203 @@ class AI:
 				#print ('AI DEBUG: No possible targets for ' + self.owner.unit_id)
 				return
 			
-			# score possible weapon-target combinations
-			attack_list = []
+			self.DoBestAttack(target_list)
 			
-			for target in target_list:
-				for weapon in self.owner.weapon_list:
-					
-					# since we're ignoring our current hull/turret facing, make sure that target is in range
-					if GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > weapon.max_range:
-						continue
-					
-					# if Harassing player, only use MGs and small arms
-					if self.disposition == 'Harass Player' and weapon.GetStat('type') == 'Gun': continue
-					
-					# gun weapons need to check multiple ammo type combinations
-					if weapon.GetStat('type') == 'Gun':
-						ammo_list = weapon.stats['ammo_type_list']
-						for ammo_type in ammo_list:
-							
-							weapon.ammo_type = ammo_type
-							result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
-							# attack not possible
-							if result != '':
-								continue
-							attack_list.append((weapon, target, ammo_type))
-						continue
-					
-					result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
-					if result != '':
-						continue
-					attack_list.append((weapon, target, ''))
-					libtcod.console_flush()
-			
-			# no possible attacks
-			if len(attack_list) == 0:
-				#print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
-				return
-			
-			# score each possible weapon-ammo-target combination
-			scored_list = []
-			for (weapon, target, ammo_type) in attack_list:
+	# choose best attack against a given list and do it
+	def DoBestAttack(self, target_list):
+		
+		# score possible weapon-target combinations
+		attack_list = []
+		
+		for target in target_list:
+			for weapon in self.owner.weapon_list:
 				
-				# skip small arms attacks on targets that have no chance of effect
-				if self.disposition != 'Harass Player' and target.GetStat('category') == 'Vehicle':
-					if weapon.GetStat('type') != 'Gun' and weapon.GetStat('type') not in MG_WEAPONS:
-						continue
-				
-				# determine if a pivot or turret rotation would be required
-				pivot_req = False
-				turret_rotate_req = False
-				mount = weapon.GetStat('mount')
-				if mount is not None:
-					if mount == 'Turret' and self.owner.turret_facing is not None:
-						if (target.hx, target.hy) not in weapon.covered_hexes:
-							turret_rotate_req = True
-					else:
-						if (target.hx, target.hy) not in weapon.covered_hexes:
-							pivot_req = True
-				
-				# special: player squad cannot pivot
-				if pivot_req and self.owner in scenario.player_unit.squad:
+				# since we're ignoring our current hull/turret facing, make sure that target is in range
+				if GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > weapon.max_range:
 					continue
 				
-				# set ammo type if required
-				if ammo_type != '':
-					weapon.ammo_type = ammo_type
+				# if Harassing player, only use MGs and small arms
+				if self.disposition == 'Harass Player' and weapon.GetStat('type') == 'Gun': continue
 				
-				# calculate odds of attack, taking into account if the attack
-				# would require a pivot or turret rotation
-				profile = scenario.CalcAttack(self.owner, weapon, target,
-					pivot=pivot_req, turret_rotate=turret_rotate_req)
+				# gun weapons need to check multiple ammo type combinations
+				if weapon.GetStat('type') == 'Gun':
+					ammo_list = weapon.stats['ammo_type_list']
+					for ammo_type in ammo_list:
+						
+						weapon.ammo_type = ammo_type
+						result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
+						# attack not possible
+						if result != '':
+							continue
+						attack_list.append((weapon, target, ammo_type))
+					continue
 				
-				# attack not possible
-				if profile is None: continue
-				
-				score = profile['final_chance']
-				
-				# apply score modifiers
-				
-				# FUTURE: can factor armour penetration chance into score
-				
-				# try to avoid using HE on infantry in case MG is available too
-				if target.GetStat('category') == 'Infantry' and ammo_type == 'HE':
-					score -= 20.0
-				
-				# avoid small arms on armoured targets and MG attacks unless within AP range
-				if self.disposition != 'Harass Player':
-					if weapon.GetStat('type') != 'Gun' and target.GetStat('armour') is not None:
-						if weapon.GetStat('type') not in MG_WEAPONS:
-							score -= 40.0
-						elif GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > MG_AP_RANGE:
-							score -= 40.0
-				
-				if target.GetStat('category') == 'Vehicle':
-				
-					# avoid HE attacks on armoured targets
-					if weapon.GetStat('type') == 'Gun' and target.GetStat('armour') is not None:
-						if ammo_type == 'HE':
-							score -= 20.0
-					
-					# avoid AP attacks on unarmoured vehicles
-					if weapon.GetStat('type') == 'Gun' and target.GetStat('armour') is None:
-						if ammo_type == 'AP':
-							score -= 20.0
-				
-				# not sure if this is required, but seems to work
-				score = round(score, 2)
-				
-				# add to list
-				scored_list.append((score, weapon, target, ammo_type))
-
+				result = scenario.CheckAttack(self.owner, weapon, target, ignore_facing=True)
+				if result != '':
+					continue
+				attack_list.append((weapon, target, ''))
 				libtcod.console_flush()
+		
+		# no possible attacks
+		if len(attack_list) == 0:
+			#print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
+			return None
+		
+		# score each possible weapon-ammo-target combination
+		scored_list = []
+		for (weapon, target, ammo_type) in attack_list:
 			
-			# no possible attacks
-			if len(scored_list) == 0:
-				#print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
-				return
+			# skip small arms attacks on targets that have no chance of effect
+			if self.disposition != 'Harass Player' and target.GetStat('category') == 'Vehicle':
+				if weapon.GetStat('type') != 'Gun' and weapon.GetStat('type') not in MG_WEAPONS:
+					continue
 			
-			# sort list by score
-			scored_list.sort(key=lambda x:x[0], reverse=True)
-			
-			# DEBUG: list scored attacks
-			#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-			#n = 1
-			#for (score, weapon, target, ammo_type) in scored_list:
-			#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-			#	if ammo_type != '':
-			#		text += '(' + ammo_type + ')'
-			#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-			#	print (text)
-			#	n += 1
-			
-			# select best attack
-			(score, weapon, target, ammo_type) = scored_list[0]
-			
-			# no good attacks
-			if score <= 3.0:
-				#print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
-				return
-			
-			# proceed with best attack
-			
-			# set ammo type if any
-			if ammo_type != '': weapon.current_ammo = ammo_type
-			
-			# pivot or rotate turret if required
+			# determine if a pivot or turret rotation would be required
+			pivot_req = False
+			turret_rotate_req = False
 			mount = weapon.GetStat('mount')
-			if mount is not None and (target.hx, target.hy) not in weapon.covered_hexes:
-				
-				direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx, target.hy)
-				
-				if mount == 'Turret' and self.owner.turret_facing is not None:
-					self.owner.turret_facing = direction
-					#print('AI DEBUG: AI unit rotated turret to fire')
-				
-				elif mount == 'Hull' and self.owner.facing is not None:
-					self.owner.facing = direction
-					if self.owner.turret_facing is not None:
-						self.owner.turret_facing = direction
-					self.owner.ClearAcquiredTargets(no_enemy=True)
-					#print('AI DEBUG: AI unit pivoted hull to fire')
-				
-				scenario.UpdateUnitCon()
-				scenario.UpdateScenarioDisplay()
-				for weapon in self.owner.weapon_list:
-					weapon.UpdateCoveredHexes()
-			
-			# check for need for hull pivot due to blocked firing direction
 			if mount is not None:
-				if mount == 'Turret':
-					blocked_dirs = weapon.GetStat('blocked_hull_dirs')
-					if blocked_dirs is not None:
-						direction = ConstrainDir(self.owner.turret_facing - self.owner.facing)
-						if str(direction) in blocked_dirs:
-							self.owner.facing = ConstrainDir(self.owner.facing + 3)
-							self.owner.ClearAcquiredTargets(no_enemy=True)
-							for weapon in self.owner.weapon_list:
-								weapon.UpdateCoveredHexes()
-							#print('DEBUG: AI unit pivoted to fire with turret')
+				if mount == 'Turret' and self.owner.turret_facing is not None:
+					if (target.hx, target.hy) not in weapon.covered_hexes:
+						turret_rotate_req = True
+				else:
+					if (target.hx, target.hy) not in weapon.covered_hexes:
+						pivot_req = True
 			
-			#text = 'AI DEBUG: ' + self.owner.unit_id + ' attacking with ' + weapon.stats['name']
-			#if ammo_type != '':
-			#	text += '(' + ammo_type + ')'
-			#text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-			#print(text)
+			# special: player squad cannot pivot
+			if pivot_req and self.owner in scenario.player_unit.squad:
+				continue
 			
-			# move target to top of hex stack
-			target.MoveToTopOfStack()
+			# set ammo type if required
+			if ammo_type != '':
+				weapon.ammo_type = ammo_type
+			
+			# calculate odds of attack, taking into account if the attack
+			# would require a pivot or turret rotation
+			profile = scenario.CalcAttack(self.owner, weapon, target,
+				pivot=pivot_req, turret_rotate=turret_rotate_req)
+			
+			# attack not possible
+			if profile is None: continue
+			
+			score = profile['final_chance']
+			
+			# apply score modifiers
+			
+			# FUTURE: can factor armour penetration chance into score
+			
+			# try to avoid using HE on infantry in case MG is available too
+			if target.GetStat('category') == 'Infantry' and ammo_type == 'HE':
+				score -= 20.0
+			
+			# avoid small arms on armoured targets and MG attacks unless within AP range
+			if self.disposition != 'Harass Player':
+				if weapon.GetStat('type') != 'Gun' and target.GetStat('armour') is not None:
+					if weapon.GetStat('type') not in MG_WEAPONS:
+						score -= 40.0
+					elif GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > MG_AP_RANGE:
+						score -= 40.0
+			
+			if target.GetStat('category') == 'Vehicle':
+			
+				# avoid HE attacks on armoured targets
+				if weapon.GetStat('type') == 'Gun' and target.GetStat('armour') is not None:
+					if ammo_type == 'HE':
+						score -= 20.0
+				
+				# avoid AP attacks on unarmoured vehicles
+				if weapon.GetStat('type') == 'Gun' and target.GetStat('armour') is None:
+					if ammo_type == 'AP':
+						score -= 20.0
+			
+			# not sure if this is required, but seems to work
+			score = round(score, 2)
+			
+			# add to list
+			scored_list.append((score, weapon, target, ammo_type))
+
+			libtcod.console_flush()
+		
+		# no possible attacks
+		if len(scored_list) == 0:
+			#print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
+			return None
+		
+		# sort list by score
+		scored_list.sort(key=lambda x:x[0], reverse=True)
+		
+		# DEBUG: list scored attacks
+		#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+		#n = 1
+		#for (score, weapon, target, ammo_type) in scored_list:
+		#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+		#	if ammo_type != '':
+		#		text += '(' + ammo_type + ')'
+		#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+		#	print (text)
+		#	n += 1
+		
+		# select best attack
+		(score, weapon, target, ammo_type) = scored_list[0]
+		
+		# no good attacks
+		if score <= 3.0:
+			#print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
+			return None
+		
+		# proceed with best attack
+		
+		# set ammo type if any
+		if ammo_type != '': weapon.current_ammo = ammo_type
+		
+		# pivot or rotate turret if required
+		mount = weapon.GetStat('mount')
+		if mount is not None and (target.hx, target.hy) not in weapon.covered_hexes:
+			
+			direction = GetDirectionToward(self.owner.hx, self.owner.hy, target.hx, target.hy)
+			
+			if mount == 'Turret' and self.owner.turret_facing is not None:
+				self.owner.turret_facing = direction
+				#print('AI DEBUG: AI unit rotated turret to fire')
+			
+			elif mount == 'Hull' and self.owner.facing is not None:
+				self.owner.facing = direction
+				if self.owner.turret_facing is not None:
+					self.owner.turret_facing = direction
+				self.owner.ClearAcquiredTargets(no_enemy=True)
+				#print('AI DEBUG: AI unit pivoted hull to fire')
+			
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
-			libtcod.console_flush()
-			
-			result = self.owner.Attack(weapon, target)
+			for weapon in self.owner.weapon_list:
+				weapon.UpdateCoveredHexes()
+		
+		# check for need for hull pivot due to blocked firing direction
+		if mount is not None:
+			if mount == 'Turret':
+				blocked_dirs = weapon.GetStat('blocked_hull_dirs')
+				if blocked_dirs is not None:
+					direction = ConstrainDir(self.owner.turret_facing - self.owner.facing)
+					if str(direction) in blocked_dirs:
+						self.owner.facing = ConstrainDir(self.owner.facing + 3)
+						self.owner.ClearAcquiredTargets(no_enemy=True)
+						for weapon in self.owner.weapon_list:
+							weapon.UpdateCoveredHexes()
+						#print('DEBUG: AI unit pivoted to fire with turret')
+		
+		#text = 'AI DEBUG: ' + self.owner.unit_id + ' attacking with ' + weapon.stats['name']
+		#if ammo_type != '':
+		#	text += '(' + ammo_type + ')'
+		#text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+		#print(text)
+		
+		# move target to top of hex stack
+		target.MoveToTopOfStack()
+		scenario.UpdateUnitCon()
+		scenario.UpdateScenarioDisplay()
+		libtcod.console_flush()
+		
+		return self.owner.Attack(weapon, target)
 
 
 
@@ -11702,7 +11707,7 @@ class Scenario:
 	# resolve a close combat attack between 1+ units and a target hex
 	def ResolveCC(self, attacking_units, hx, hy):
 		
-		# FUTURE: pinned units can't attack in CC
+		# FUTURE: make sure that pinned units are not attacking in CC
 		
 		print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
 		
@@ -11712,8 +11717,12 @@ class Scenario:
 			if unit.GetStat('category') not in ['Infantry', 'Gun']: continue
 			defending_units.append(unit)
 		
-		# TODO: defending units get a chance for defensive fire
-		
+		# defending units get a chance for defensive fire
+		ShowMessage('Defending units engage in defensive fire')
+		for unit in defending_units:
+			if unit.ai is None: return
+			unit.ai.disposition = 'Combat'
+			unit.ai.DoBestAttack(attacking_units)
 		
 		# start combat rounds
 		combat_over = False
@@ -11726,6 +11735,9 @@ class Scenario:
 			attack_fp, defend_fp = 0,0
 			
 			for unit in attacking_units:
+				# may have been destroyed or pinned during defensive fire
+				if not unit.alive: continue
+				if unit.pinned: continue
 				if unit.GetStat('assault_firepower') is not None:
 					attack_fp += unit.GetStat('assault_firepower')
 					continue

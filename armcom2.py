@@ -223,6 +223,35 @@ MISSION_DESC = {
 
 # FUTURE: move these to a JSON file?
 
+# base firepower ratings for units participating in close combat
+ASSAULT_FP = {
+	'Infantry Squad' : (4, 6),
+	'MG Team' : (4, 8),
+	'Tankette' : (4, 8),
+	'Light Tank' : (6, 10),
+	'Medium Tank' : (10, 14),
+	'Heavy Tank' : (11, 15),
+	'Assault Gun' : (16, 20),
+	'Tank Destroyer' : (4, 8),
+	'Armoured Car' : (6, 10),
+	'Anti-Tank Gun' : (0, 4),
+	'Field Gun' : (0, 8),
+	'Anti-Aircraft Gun' : (0, 8),
+	'Truck' : (0, 0),
+	'Armoured Train Car' : (0, 8)
+}
+
+# odds to destroy an opposing unit in close combat, by firepower ratios
+CC_TK = {
+	400.0 : 97.0,
+	150.0 : 80.0,
+	100.0 : 50.0,
+	50.0 : 30.0,
+	20.0 : 5.0,
+	0.0 : 0.0
+	
+}
+
 # level at which crew become eligible for promotion to the next rank
 LEVEL_RANK_LIST = {
 	'2' : 1,
@@ -8833,10 +8862,6 @@ class Scenario:
 		
 		# check for end of campaign day, but don't end the scenario
 		campaign_day.CheckForEndOfDay()
-		#if campaign_day.ended:
-		#	ShowMessage('The campaign day is over.')
-		#	self.finished = True
-		#	return
 	
 	
 	# check for triggering of a random event in a scenario
@@ -11552,7 +11577,7 @@ class Scenario:
 			self.player_pivot = 0
 			
 			# skip phase if driver not on move command
-			crewman = scenario.player_unit.GetPersonnelByPosition('Driver')
+			crewman = self.player_unit.GetPersonnelByPosition('Driver')
 			if crewman is None:
 				self.advance_phase = True
 			else:
@@ -11595,7 +11620,18 @@ class Scenario:
 		# close combat phase
 		elif self.phase == PHASE_CC:
 			
-			# FUTURE: add in events for this phase
+			# if player is assaulting, resolve the attack
+			crewman = self.player_unit.GetPersonnelByPosition('Driver')
+			if crewman.current_cmd == 'Close Assault':
+				self.ResolveCC([self.player_unit] + self.player_unit.squad, 0, -1)
+			
+			# player unit was destroyed during close combat
+			if not self.player_unit.alive:
+				self.PlayerBailOut()
+				campaign_day.ended = True
+				self.finished = True
+				return
+			
 			self.advance_phase = True
 		
 		# allied action
@@ -11662,7 +11698,104 @@ class Scenario:
 		self.UpdateGuiCon()
 		self.UpdateScenarioDisplay()
 		libtcod.console_flush()
+	
+	
+	# resolve a close combat attack between 1+ units and a target hex
+	def ResolveCC(self, attacking_units, hx, hy):
+		
+		# FUTURE: pinned units can't attack in CC
+		
+		print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
+		
+		# build list of defending units
+		defending_units = []
+		for unit in self.hex_dict[(hx,hy)].unit_stack:
+			if unit.GetStat('category') not in ['Infantry', 'Gun']: continue
+			defending_units.append(unit)
+		
+		
+		# start combat rounds
+		combat_over = False
+		combat_round = 1
+		while not combat_over:
 			
+			ShowMessage('Starting close combat, round #' + str(combat_round) + '.')
+			
+			# calculate total firepower rating for attackers and defenders
+			attack_fp, defend_fp = 0,0
+			
+			for unit in attacking_units:
+				if unit.GetStat('assault_firepower') is not None:
+					attack_fp += unit.GetStat('assault_firepower')
+					continue
+				(a_fp, d_fp) = ASSAULT_FP[unit.GetStat('class')]
+				attack_fp += a_fp
+			
+			for unit in defending_units:
+				if unit.GetStat('assault_firepower') is not None:
+					defend_fp += unit.GetStat('assault_firepower')
+					continue
+				(a_fp, d_fp) = ASSAULT_FP[unit.GetStat('class')]
+				if unit.pinned:
+					d_fp = int(d_fp / 2)
+				defend_fp += d_fp
+			
+			print('DEBUG: total attack fp: ' + str(attack_fp))
+			print('DEBUG: total defend fp: ' + str(defend_fp))
+			
+			attack_odds = round(float(attack_fp) / float(defend_fp), 1)
+			defend_odds = round(float(defend_fp) / float(attack_fp), 1)
+			
+			# determine odds to destroy an opposing unit based on firepower ratio
+			for odds, chance in CC_TK.items():
+				if odds <= attack_odds:
+					break
+			
+			if chance > 0.0:
+				roll = GetPercentileRoll()
+				if roll <= chance:
+					unit = choice(defending_units)
+					
+					if unit == self.player_unit:
+						text = 'Your tank was destroyed in close combat!'
+					else:
+						text = 'A defending ' + unit.unit_id + ' was destroyed in close combat'
+					ShowMessage(text)
+					unit.DestroyMe()
+					if unit == self.player_unit:
+						return
+					defending_units.del(unit)
+			
+			for odds, chance in CC_TK.items():
+				if odds <= defend_odds:
+					break
+			
+			if chance > 0.0:
+				roll = GetPercentileRoll()
+				if roll <= chance:
+					unit = choice(attacking_units)
+					
+					if unit == self.player_unit:
+						text = 'Your tank was destroyed in close combat!'
+					else:
+						text = 'An attacking ' + unit.unit_id + ' was destroyed in close combat'
+					ShowMessage(text)
+					unit.DestroyMe()
+					if unit == self.player_unit:
+						return
+					attacking_units.del(unit)
+			
+			# no units left
+			if len(attacking_units) == 0:
+				ShowMessage('No attackers remain, ending close combat.')
+				combat_over = True
+				continue
+			if len(defending_units) == 0:
+				ShowMessage('No defenders remain, ending close combat.')
+				combat_over = True
+				continue
+			
+			combat_round += 1
 	
 	# update contextual info console
 	# 18x12

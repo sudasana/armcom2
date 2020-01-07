@@ -3490,12 +3490,8 @@ class CampaignDay:
 		if GetPercentileRoll() <= float(REGIONS[campaign.stats['region']]['dirt_road_odds']):
 			dirt_road = True
 		
-		# TEMP
-		stone_road = True
-		
 		# no roads generated
 		if not dirt_road and not stone_road: return
-		
 		
 		# choose a random edge hex
 		edge_list = []

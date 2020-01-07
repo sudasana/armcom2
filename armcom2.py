@@ -8374,6 +8374,7 @@ class Unit:
 	
 	# resolve all unresolved AP hits on this unit
 	def ResolveAPHits(self):
+		if not self.alive: return
 		
 		# no hits to resolve! doing fine!
 		if len(self.ap_hits_to_resolve) == 0: return
@@ -8524,6 +8525,7 @@ class Unit:
 	
 	# resolve FP on this unit if any
 	def ResolveFP(self):
+		if not self.alive: return
 		if self.fp_to_resolve == 0: return
 		
 		# move to top of hex stack
@@ -11709,7 +11711,7 @@ class Scenario:
 		
 		# FUTURE: make sure that pinned units are not attacking in CC
 		
-		print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
+		#print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
 		
 		# build list of defending units
 		defending_units = []
@@ -11723,6 +11725,11 @@ class Scenario:
 			if unit.ai is None: return
 			unit.ai.disposition = 'Combat'
 			unit.ai.DoBestAttack(attacking_units)
+		
+		# resolve any hits
+		for unit in attacking_units:
+			unit.ResolveFP()
+			unit.ResolveAPHits()
 		
 		# start combat rounds
 		combat_over = False
@@ -11753,8 +11760,8 @@ class Scenario:
 					d_fp = int(d_fp / 2)
 				defend_fp += d_fp
 			
-			print('DEBUG: total attack fp: ' + str(attack_fp))
-			print('DEBUG: total defend fp: ' + str(defend_fp))
+			#print('DEBUG: total attack fp: ' + str(attack_fp))
+			#print('DEBUG: total defend fp: ' + str(defend_fp))
 			
 			attack_ratio = round(float(attack_fp) / float(defend_fp), 1)
 			defend_ratio = round(float(defend_fp) / float(attack_fp), 1)

@@ -11760,9 +11760,6 @@ class Scenario:
 					d_fp = int(d_fp / 2)
 				defend_fp += d_fp
 			
-			#print('DEBUG: total attack fp: ' + str(attack_fp))
-			#print('DEBUG: total defend fp: ' + str(defend_fp))
-			
 			attack_ratio = round(float(attack_fp) / float(defend_fp), 1)
 			defend_ratio = round(float(defend_fp) / float(attack_fp), 1)
 			
@@ -11778,6 +11775,9 @@ class Scenario:
 				roll = GetPercentileRoll()
 				if roll <= chance:
 					unit = choice(defending_units)
+					
+					# TODO: check for possible armour save here
+					
 					
 					if unit == self.player_unit:
 						text = 'Your tank was destroyed in close combat!'

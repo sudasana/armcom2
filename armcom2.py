@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.12.0'					# game version
+VERSION = '0.12.0 09-01-20'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -11763,8 +11763,8 @@ class Scenario:
 			attack_ratio = round(float(attack_fp) / float(defend_fp), 1)
 			defend_ratio = round(float(defend_fp) / float(attack_fp), 1)
 			
-			print('DEBUG: attack ratio: ' + str(attack_ratio))
-			print('DEBUG: defend ratio: ' + str(defend_ratio))
+			#print('DEBUG: attack ratio: ' + str(attack_ratio))
+			#print('DEBUG: defend ratio: ' + str(defend_ratio))
 			
 			# determine odds to destroy an opposing unit based on firepower ratio
 			for ratio, chance in CC_TK.items():

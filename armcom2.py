@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.12.0 11-01-20'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -4003,9 +4003,6 @@ class CampaignDay:
 			(x1, y1) = self.PlotCDHex(hx, hy)
 			
 			for direction in range(3):
-				
-				# TEMP?
-				#if direction > 2: continue
 				
 				if map_hex.road_links[direction] is None: continue
 				
@@ -8875,21 +8872,12 @@ class Scenario:
 		
 		roll = GetPercentileRoll()
 		
-		# TEMP
-		roll = 1.0
-		
 		if roll > self.random_event_chance:
 			self.random_event_chance += 1.5
 			return
 		
 		# roll for type of event
 		roll = GetPercentileRoll()
-		
-		# TEMP
-		if roll <= 50.0:
-			roll = 10.0
-		else:
-			roll = 20.0
 		
 		# friendly air attack
 		if roll <= 10.0:
@@ -10785,6 +10773,7 @@ class Scenario:
 		for (calibre, effective_fp) in HE_FP_EFFECT:
 			if calibre <= bomb_calibre:
 				break
+		effective_fp = int(effective_fp / 2)
 		
 		# do one attack animation per target hex
 		for map_hex in target_hex_list:
@@ -10863,7 +10852,7 @@ class Scenario:
 				elif target.smoke == 1:
 					chance -= 15.0
 				
-				chance = RestrictChance(chance)
+				chance = RestrictChance(int(chance / 2))
 				roll = GetPercentileRoll()
 				
 				if roll > chance: continue
@@ -10889,10 +10878,13 @@ class Scenario:
 						target.DestroyMe()
 						continue
 					
+					target.fp_to_resolve += effective_fp
 					if not target.spotted:
 						target.hit_by_fp = True
 					
 					ShowMessage(target.GetName() + ' was hit by air attack')
+				
+					target.ResolveFP()
 				
 				# vehicle hit
 				elif target.GetStat('category') == 'Vehicle':
@@ -10926,7 +10918,6 @@ class Scenario:
 						if profile['final_chance'] > 100.0:
 							profile['final_chance'] = 100.0
 						print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
-					
 					
 					# do AP roll
 					roll = GetPercentileRoll()
@@ -10994,6 +10985,7 @@ class Scenario:
 		for (calibre, effective_fp) in HE_FP_EFFECT:
 			if calibre <= gun_calibre:
 				break
+		effective_fp = int(effective_fp / 2)
 		
 		# roll for possible hit against each enemy unit in each target hex
 		results = False
@@ -11014,7 +11006,7 @@ class Scenario:
 				
 				# FUTURE: apply further modifiers here
 				
-				chance = round(chance, 2)
+				chance = RestrictChance(int(chance / 2))
 				roll = GetPercentileRoll()
 				
 				# no effect
@@ -11041,6 +11033,7 @@ class Scenario:
 						target.DestroyMe()
 						continue
 					
+					target.fp_to_resolve += effective_fp
 					if not target.spotted:
 						target.hit_by_fp = True
 					

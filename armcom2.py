@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.12.0 09-01-20'					# game version
+VERSION = '0.12.0 11-01-20'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -4002,10 +4002,10 @@ class CampaignDay:
 			
 			(x1, y1) = self.PlotCDHex(hx, hy)
 			
-			for direction in range(6):
+			for direction in range(3):
 				
 				# TEMP?
-				if direction > 2: continue
+				#if direction > 2: continue
 				
 				if map_hex.road_links[direction] is None: continue
 				
@@ -8875,12 +8875,21 @@ class Scenario:
 		
 		roll = GetPercentileRoll()
 		
+		# TEMP
+		roll = 1.0
+		
 		if roll > self.random_event_chance:
 			self.random_event_chance += 1.5
 			return
 		
 		# roll for type of event
 		roll = GetPercentileRoll()
+		
+		# TEMP
+		if roll <= 50.0:
+			roll = 10.0
+		else:
+			roll = 20.0
 		
 		# friendly air attack
 		if roll <= 10.0:
@@ -9886,7 +9895,7 @@ class Scenario:
 	
 	# takes an attack profile and generates a profile for an armour penetration attempt
 	# uses a slightly different system from to-hit
-	def CalcAP(self, profile):
+	def CalcAP(self, profile, air_attack=False, arty_attack=False):
 		
 		profile['type'] = 'ap'
 		modifier_list = []
@@ -9904,7 +9913,10 @@ class Scenario:
 		else:
 			turret_facing = True
 		
-		facing = GetFacing(attacker, target, turret_facing=turret_facing)
+		if air_attack:
+			facing = 'Side'
+		else:
+			facing = GetFacing(attacker, target, turret_facing=turret_facing)
 		
 		# set rear facing flag if applicable
 		rear_facing = False
@@ -10727,7 +10739,8 @@ class Scenario:
 				modifier += unit.GetTEM()
 				
 				# not spotted
-				if GetPercentileRoll() > RestrictChance(chance + round(modifier * 0.25, 2)):
+				roll = GetPercentileRoll()
+				if roll > RestrictChance(chance + round(modifier * 0.25, 2)):
 					continue
 				
 				# spotted, add this hex to targets and don't check any other units present
@@ -10858,6 +10871,10 @@ class Scenario:
 				# hit
 				results = True
 				
+				# set plane location on map
+				unit.hx = target.hx
+				unit.hy = target.hy - direction
+				
 				# roll for direct hit / near miss
 				direct_hit = False
 				if GetPercentileRoll() <= DIRECT_HIT_CHANCE:
@@ -10887,44 +10904,35 @@ class Scenario:
 							target.DestroyMe()
 							continue
 					
-					# determine location hit - use side locations and modify later
-					# for aerial attack
+					# create an attack profile for the AP calculation
+					profile = {}
+					profile['attacker'] = plane_unit_list[0]
+					profile['weapon'] = weapon
+					profile['ammo_type'] = 'HE'
+					profile['target'] = target
+					profile['result'] = ''
+					
+					# determine location hit
 					if GetPercentileRoll() <= 50.0:
-						hit_location = 'hull_side'
+						profile['location'] = 'Hull'
 					else:
-						hit_location = 'turret_side'
+						profile['location'] = 'Turret'
 					
-					# determine base penetration chance
-					for (calibre, chance) in HE_AP_CHANCE:
-						if calibre <= bomb_calibre:
-							break
+					profile = self.CalcAP(profile, air_attack=True)
 					
-					# direct hit modifier
+					# apply direct hit modifier
 					if direct_hit:
-						chance = round(chance * 2.0, 1)
-						#print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
+						profile['final_chance'] = round(profile['final_chance'] * 2.0, 1)
+						if profile['final_chance'] > 100.0:
+							profile['final_chance'] = 100.0
+						print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
 					
-					# target armour modifier
-					armour = target.GetStat('armour')
-					if armour is not None:
-						if armour[hit_location] != '-':
-							target_armour = int(armour[hit_location])
-							if target_armour >= 0:
-							
-								modifier = -9.0
-								for i in range(target_armour - 1):
-									modifier = modifier * 1.8
-								
-								chance += modifier
-					
-					# calculate final chance
-					chance = RestrictChance(chance)
 					
 					# do AP roll
 					roll = GetPercentileRoll()
 					
 					# no penetration
-					if roll > chance:
+					if roll > profile['final_chance']:
 						ShowMessage(target.GetName() + ' was unaffected by air attack')
 						continue
 					
@@ -10982,11 +10990,8 @@ class Scenario:
 		gun_unit = Unit(unit_id)
 		gun_calibre = int(gun_unit.weapon_list[0].GetStat('calibre'))
 		
-		# determine effective fp and base AP chance for gun
+		# determine effective fp for gun
 		for (calibre, effective_fp) in HE_FP_EFFECT:
-			if calibre <= gun_calibre:
-				break
-		for (calibre, ap_chance) in HE_AP_CHANCE:
 			if calibre <= gun_calibre:
 				break
 		
@@ -11017,6 +11022,10 @@ class Scenario:
 					continue
 				
 				results = True
+				
+				# set artillery location on map
+				gun_unit.hx = target.hx
+				gun_unit.hy = target.hy+4
 				
 				# roll for direct hit / near miss
 				direct_hit = False
@@ -11049,40 +11058,35 @@ class Scenario:
 							target.DestroyMe()
 							continue
 					
-					# determine location hit - use side locations and modify later
-					# for aerial attack
+					# create an attack profile for the AP calculation
+					profile = {}
+					profile['attacker'] = gun_unit
+					profile['weapon'] = gun_unit.weapon_list[0]
+					profile['ammo_type'] = 'HE'
+					profile['target'] = target
+					profile['result'] = ''
+					
+					# determine location hit
 					if GetPercentileRoll() <= 50.0:
-						hit_location = 'hull_side'
+						profile['location'] = 'Hull'
 					else:
-						hit_location = 'turret_side'
+						profile['location'] = 'Turret'
 					
-					# start with base AP chance
-					chance = ap_chance
+					profile = self.CalcAP(profile, arty_attack=True)
 					
-					# direct hit modifier
+					# apply direct hit modifier
 					if direct_hit:
-						chance = round(chance * 2.0, 1)
-						#print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
+						profile['final_chance'] = round(profile['final_chance'] * 2.0, 1)
+						if profile['final_chance'] > 100.0:
+							profile['final_chance'] = 100.0
+						print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
 					
-					# apply target armour modifier
-					armour = target.GetStat('armour')
-					if armour is not None:
-						if armour[hit_location] != '-':
-							target_armour = int(armour[hit_location])
-							if target_armour >= 0:
-							
-								modifier = -9.0
-								for i in range(target_armour - 1):
-									modifier = modifier * 1.8
 								
-								chance += modifier
-								
-					# calculate final chance of AP and do roll
-					chance = RestrictChance(chance)
+					# do AP roll
 					roll = GetPercentileRoll()
 					
 					# no penetration
-					if roll > chance:
+					if roll > profile['final_chance']:
 						ShowMessage(target.GetName() + ' was hit by artillery attack but is unharmed.')
 						if not target.spotted:
 							target.hit_by_fp = True

@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.12.0 11-01-20'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -6783,6 +6783,14 @@ class AI:
 				if GetPercentileRoll() <= 80.0:
 					self.disposition = 'Combat'
 		
+		# dug-in and entrenched units much less likely to move
+		if self.owner.dug_in and self.disposition == 'Movement':
+			if GetPercentileRoll() <= 80.0:
+				self.disposition = 'Combat'
+		if self.owner.entrenched and self.disposition == 'Movement':
+			if GetPercentileRoll() <= 97.0:
+				self.disposition = 'Combat'
+		
 		# recalled units much more likely to move
 		if self.recall and self.owner.GetStat('category') != 'Gun':
 			if self.disposition != 'Movement':
@@ -6803,6 +6811,10 @@ class AI:
 		
 		# immobilized units can't move
 		if self.owner.immobilized and self.disposition == 'Movement':
+			self.disposition = 'Combat'
+		
+		# fortified units won't move
+		if self.owner.fortified and self.disposition == 'Movement':
 			self.disposition = 'Combat'
 		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
@@ -6870,6 +6882,8 @@ class AI:
 			
 			# set statuses
 			self.owner.moving = True
+			self.owner.dug_in = False
+			self.owner.entrenched = False
 			self.owner.ClearAcquiredTargets()
 			
 			# do movement roll
@@ -7207,6 +7221,10 @@ class Unit:
 		self.pinned = False
 		self.deployed = False
 		self.fatigue = 0			# fatigue points
+		
+		self.dug_in = False			# unit is dug-in
+		self.entrenched = False			# " entrenched
+		self.fortified = False			# " fortified
 		
 		self.forward_move_chance = 0.0		# set by CalculateMoveChances()
 		self.reverse_move_chance = 0.0
@@ -8323,8 +8341,14 @@ class Unit:
 						
 						# apply ground conditions modifier
 						if campaign_day.weather['Ground'] == 'Deep Snow':
-							effective_fp = int(float(effective_fp) * 0.25)
+							effective_fp = int(float(effective_fp) * 0.5)
 						elif campaign_day.weather['Ground'] in ['Muddy', 'Snow']:
+							effective_fp = int(float(effective_fp) * 0.75)
+						
+						# apply entrenched or dug-in modifier
+						if target.entrenched:
+							effective_fp = int(float(effective_fp) * 0.25)
+						elif target.dug_in:
 							effective_fp = int(float(effective_fp) * 0.5)
 						
 						target.fp_to_resolve += effective_fp
@@ -9293,11 +9317,14 @@ class Scenario:
 			if libtcod.console_is_window_closed(): sys.exit()
 		
 			# choose a random unit class
-			unit_class = None
-			while unit_class is None:
-				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
-				if GetPercentileRoll() <= float(value):
-					unit_class = k
+			#unit_class = None
+			#while unit_class is None:
+			#	k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
+			#	if GetPercentileRoll() <= float(value):
+			#		unit_class = k
+			
+			# TEMP - testing
+			unit_class = 'Infantry Squad'
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
@@ -9316,13 +9343,17 @@ class Scenario:
 					type_list.append(unit_id)
 				
 				# no units of the correct class found
-				if len(type_list) == 0: continue
+				if len(type_list) == 0:
+					print('DEBUG: No units of the correct class found')
+					continue
 				
 				# select unit type: run through shuffled list and roll against rarity if any
 				shuffle(type_list)
 				
 				selected_unit_id = None
 				for unit_id in type_list:
+					
+					if libtcod.console_is_window_closed(): sys.exit()
 				
 					# if no rarity factor given, select automatically
 					if 'rarity' not in unit_types[unit_id]:
@@ -9413,6 +9444,19 @@ class Scenario:
 			direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)
 			if unit.GetStat('category') != 'Infantry':
 				unit.facing = direction
+			
+			# some units can be spawned dug-in, entrenched, or fortified
+			if unit.GetStat('category') in ['Infantry', 'Gun']:
+				
+				roll = GetPercentileRoll()
+				
+				# TEMP testing
+				roll = 1.0
+				
+				if roll <= 5.0:
+					unit.dug_in = True
+				
+				pass
 			
 			# turreted vehicle
 			if 'turret' in unit.stats:
@@ -9537,8 +9581,7 @@ class Scenario:
 		profile['ammo_type'] = weapon.ammo_type
 		profile['target'] = target
 		profile['result'] = ''		# placeholder for text rescription of result
-		
-		
+				
 		# determine attack type
 		weapon_type = weapon.GetStat('type')
 		if weapon_type == 'Gun':
@@ -9803,6 +9846,12 @@ class Scenario:
 				if target.GetStat('gun_shield') is not None:
 					if GetFacing(attacker, target) == 'Front':
 						modifier_list.append(('Gun Shield', -15.0))
+				
+				# dug-in or entrenched
+				if target.entrenched:
+					modifier_list.append(('Target Entrenched', -30.0))
+				elif target.dug_in:
+					modifier_list.append(('Target Dug-in', -15.0))
 				
 		# check for Commander directing fire
 		# FUTURE: may be possible for other positions as well (Commander/Driver?)
@@ -12361,6 +12410,22 @@ class Scenario:
 				libtcod.console_put_char_ex(unit_info_con, 28, 0,
 					GetDirectionalArrow(unit.hull_down[0]), libtcod.sepia,
 					libtcod.darkest_grey)
+			
+			# dug-in, entrenched, or fortified status
+			else:
+				
+				text = ''
+				if unit.dug_in:
+					libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
+					text = 'Dug-in'
+				elif unit.entrenched:
+					libtcod.console_set_default_foreground(unit_info_con, libtcod.light_sepia)
+					text = 'Entrenched'
+				elif unit.fortified:
+					libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
+					text = 'Fortified'
+				if text != '':
+					libtcod.console_print(unit_info_con, 26, 0, text)
 			
 			# current terrain
 			if unit.terrain is not None:

@@ -9328,6 +9328,7 @@ class Scenario:
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
+				
 				enemy_unit_list.append(selected_unit_id)
 			
 			else:

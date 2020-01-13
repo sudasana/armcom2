@@ -9328,11 +9328,10 @@ class Scenario:
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
-				
-				selected_unit_id = self.class_type_dict[unit_class]
+				enemy_unit_list.append(selected_unit_id)
 			
 			else:
-			
+				
 				# choose a random unit type
 				type_list = []
 				for unit_id in unit_type_list:
@@ -9344,7 +9343,6 @@ class Scenario:
 				
 				# no units of the correct class found
 				if len(type_list) == 0:
-					print('DEBUG: No units of the correct class found')
 					continue
 				
 				# select unit type: run through shuffled list and roll against rarity if any
@@ -9395,7 +9393,6 @@ class Scenario:
 					
 					# also record in unit class dictionary
 					self.class_type_dict[unit_class] = selected_unit_id
-		
 		
 		# spawn one unit per unit id in the list
 		for unit_id in enemy_unit_list:

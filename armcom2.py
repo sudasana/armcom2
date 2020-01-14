@@ -171,7 +171,6 @@ SCEN_PHASE_COL = [
 CC_MENU_LIST = [
 	('Proceed', 1, libtcod.Color(70, 140, 0)),
 	('Crew and Tank', 2, libtcod.Color(140, 140, 0))
-#	('Group', 3, libtcod.Color(180, 0, 45))
 ]
 
 # list of campaign day menus and their highlight colours
@@ -6936,7 +6935,13 @@ class AI:
 			
 			# no possible targets
 			if len(target_list) == 0:
-				#print ('AI DEBUG: No possible targets for ' + self.owner.unit_id)
+				
+				# infantry and guns attempt to dig-in instead
+				if self.owner.GetStat('category') in ['Infantry', 'Gun'] and not self.owner.dug_in:
+					if self.owner.AttemptDigIn():
+						if self.owner.owning_player == 0 or (self.owner.owning_player == 1 and self.owner.spotted):
+							ShowMessage(self.owner.unit_id + ' is now dug in.')
+				
 				return
 			
 			self.DoBestAttack(target_list)
@@ -7308,6 +7313,33 @@ class Unit:
 					weapon.ammo_stores[ammo_type] = 0
 	
 	
+	# attempt to dig-in; infantry and guns only
+	def AttemptDigIn(self):
+		if self.GetStat('category') not in ['Infantry', 'Gun']: return False
+		if self.dug_in: return False
+		if self.terrain == 'Marsh': return False
+		
+		# determine chance of success
+		if self.terrain in ['Wooden Buildings', 'Woods']:
+			chance = 50.0
+		elif self.terrain in ['Brush', 'Broken Ground']:
+			chance = 30.0
+			if campaign_day.weather['Freezing'] is True:
+				chance = 10.0
+		else:
+			chance = 15.0
+			if campaign_day.weather['Freezing'] is True:
+				chance = 3.0
+		
+		# do roll and apply result
+		roll = GetPercentileRoll()
+		
+		if roll <= chance:
+			self.dug_in = True
+			return True
+		return False
+	
+	
 	# do a bog check
 	def DoBogCheck(self, forward, pivot=False, reposition=False):
 		
@@ -7371,13 +7403,13 @@ class Unit:
 		
 		# account for effects of rain
 		if campaign_day.weather['Precipitation'] == 'Rain':
-			roll -= 3.0
+			roll -= 2.5
 		elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
-			roll -= 5.0
+			roll -= 4.0
 		
-		if roll <= 93.0:
+		if roll <= 95.0:
 			self.smoke = 0
-		elif roll <= 98.0:
+		elif roll <= 98.5:
 			self.smoke = 1
 		else:
 			self.smoke = 2
@@ -8623,12 +8655,20 @@ class Unit:
 		self.fatigue += 1
 	
 	
-	# do a morale check for this unit to recover from Broken or Pinned status
+	# do a morale check for this unit to recover from Pinned status
 	def MoraleCheck(self, modifier):
 		
 		chance = MORALE_CHECK_BASE_CHANCE + modifier
 		
-		# FUTURE: apply terrain modifiers
+		# apply modifiers
+		if self.fortified:
+			chance += 50.0
+		elif self.entrenched:
+			chance += 30.0
+		elif self.dug_in:
+			chance += 20.0
+		elif self.terrain in ['Wooden Buildings', 'Woods']:
+			chance += 15.0
 		
 		chance = RestrictChance(chance)
 		
@@ -8641,7 +8681,21 @@ class Unit:
 	# do a pin test on this unit
 	def PinTest(self, fp, no_msg=False):
 		if self.pinned: return
-		chance = RestrictChance(float(fp) * 5.0)
+		
+		chance = float(fp) * 5.0
+		
+		# apply modifiers
+		if self.fortified:
+			chance -= 50.0
+		elif self.entrenched:
+			chance -= 30.0
+		elif self.dug_in:
+			chance -= 20.0
+		elif self.terrain in ['Wooden Buildings', 'Woods']:
+			chance -= 15.0
+		
+		chance = RestrictChance(chance)
+		
 		roll = GetPercentileRoll()
 		if roll <= chance:
 			self.PinMe(no_msg)
@@ -9444,17 +9498,25 @@ class Scenario:
 				unit.facing = direction
 			
 			# some units can be spawned dug-in, entrenched, or fortified
-			if unit.GetStat('category') in ['Infantry', 'Gun']:
+			if unit.GetStat('category') in ['Infantry', 'Gun'] and campaign_day.mission != 'Fighting Withdrawl':
+				
+				if campaign_day.mission in ['Battle', 'Counterattack']:
+					chance1 = 5.0
+					chance2 = 15.0
+					chance3 = 25.0
+				else:
+					chance1 = 2.0
+					chance2 = 10.0
+					chance3 = 15.0
 				
 				roll = GetPercentileRoll()
 				
-				# TEMP testing
-				roll = 1.0
-				
-				if roll <= 5.0:
+				if roll <= chance1:
+					unit.fortified = True
+				elif roll <= chance2:
+					unit.entrenched = True
+				elif roll <= chance3:	
 					unit.dug_in = True
-				
-				pass
 			
 			# turreted vehicle
 			if 'turret' in unit.stats:

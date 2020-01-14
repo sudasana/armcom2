@@ -695,14 +695,16 @@ SCENARIO_TERRAIN_ODDS = {
 		'Broken Ground' : 20.0,
 		'Brush' : 10.0,
 		'Woods' : 5.0,
-		'Wooden Buildings' : 5.0
+		'Wooden Buildings' : 4.0,
+		'Rubble' : 1.0
 	},
 	'Forest' : {
 		'Open Ground' : 10.0,
 		'Broken Ground' : 15.0,
 		'Brush' : 25.0,
 		'Woods' : 45.0,
-		'Wooden Buildings' : 5.0
+		'Wooden Buildings' : 4.0,
+		'Rubble' : 1.0
 	},
 	'Hills' : {
 		'Open Ground' : 15.0,
@@ -710,7 +712,8 @@ SCENARIO_TERRAIN_ODDS = {
 		'Brush' : 5.0,
 		'Woods' : 5.0,
 		'Hills' : 50.0,
-		'Wooden Buildings' : 5.0
+		'Wooden Buildings' : 4.0,
+		'Rubble' : 1.0
 	},
 	'Fields' : {
 		'Open Ground' : 20.0,
@@ -718,23 +721,26 @@ SCENARIO_TERRAIN_ODDS = {
 		'Brush' : 5.0,
 		'Woods' : 5.0,
 		'Fields' : 50.0,
-		'Wooden Buildings' : 5.0
+		'Wooden Buildings' : 4.0,
+		'Rubble' : 1.0
 	},
 	'Marsh' : {
 		'Open Ground' : 10.0,
 		'Broken Ground' : 5.0,
 		'Brush' : 5.0,
-		'Woods' : 5.0,
+		'Woods' : 4.0,
 		'Marsh' : 60.0,
-		'Wooden Buildings' : 5.0
+		'Wooden Buildings' : 5.0,
+		'Rubble' : 1.0
 	},
 	'Villages' : {
-		'Open Ground' : 10.0,
+		'Open Ground' : 5.0,
 		'Broken Ground' : 10.0,
 		'Brush' : 10.0,
 		'Woods' : 5.0,
 		'Fields' : 15.0,
-		'Wooden Buildings' : 50.0
+		'Wooden Buildings' : 50.0,
+		'Rubble' : 5.0
 	}
 }
 
@@ -802,6 +808,16 @@ SCENARIO_TERRAIN_EFFECTS = {
 		},
 		'HD Chance' : 15.0,
 		'Movement Mod' : -30.0,
+		'Bog Mod' : 10.0,
+		'Double Bog Check' : True
+	},
+	'Rubble': {
+		'TEM' : {
+			'Infantry' : -30.0,
+			'Deployed Gun' : -30.0
+		},
+		'HD Chance' : 30.0,
+		'Hidden Mod' : 20.0,
 		'Bog Mod' : 10.0,
 		'Double Bog Check' : True
 	}
@@ -4341,7 +4357,7 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 			libtcod.console_print(cd_command_con, 10, 39, 'Proceed')
 			
-			# display support commands NEW: if moving into an enemy zone
+			# display support commands if moving into an enemy zone
 			if map_hex.controlled_by == 1:
 				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 				libtcod.console_print(cd_command_con, 1, 23, EnKey('t').upper())
@@ -4888,7 +4904,7 @@ class CampaignDay:
 						# check for crew replacement
 						self.DoCrewReplacementCheck(campaign.player_unit)
 						
-						# NEW: crew have a chance to rest
+						# crew have a chance to rest
 						for position in campaign.player_unit.positions_list:
 							if position.crewman is None: continue
 							position.crewman.Rest()
@@ -5778,7 +5794,7 @@ class Personnel:
 		self.fatigue += 1
 	
 	
-	# NEW: crew recovers some fatigue from rest
+	# crew recovers some fatigue from rest
 	def Rest(self):
 		if self.status in ['Dead', 'Unconscious']: return
 		if self.fatigue == 0: return
@@ -6445,7 +6461,7 @@ class Weapon:
 					
 					bonus = 10.0
 					if 'Fast Hands' in crewman.skills:
-						bonus = crewman.GetSkillMod(15.0)
+						bonus += crewman.GetSkillMod(15.0)
 					break
 		
 		# more general bonuses based on firing crewman
@@ -6457,14 +6473,14 @@ class Weapon:
 				
 				if self.GetStat('type') == 'Gun':
 					if 'Quick Trigger' in crewman.skills:
-						bonus = crewman.GetSkillMod(5.0)
+						bonus += crewman.GetSkillMod(5.0)
 					if self.selected_target is not None:
 						if 'Time on Target' in crewman.skills:
-							bonus = crewman.GetSkillMod(10.0)
+							bonus += crewman.GetSkillMod(10.0)
 				
 				elif self.GetStat('type') in MG_WEAPONS:
 					if 'Burst Fire' in crewman.skills:
-						bonus = crewman.GetSkillMod(10.0)
+						bonus += crewman.GetSkillMod(10.0)
 		
 		return chance + bonus
 		
@@ -7320,7 +7336,7 @@ class Unit:
 		if self.terrain == 'Marsh': return False
 		
 		# determine chance of success
-		if self.terrain in ['Wooden Buildings', 'Woods']:
+		if self.terrain in ['Wooden Buildings', 'Woods', 'Rubble']:
 			chance = 50.0
 		elif self.terrain in ['Brush', 'Broken Ground']:
 			chance = 30.0
@@ -7974,6 +7990,18 @@ class Unit:
 					if libtcod.random_get_int(generator, 1, 9) == 1: continue
 					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, 176,
 						libtcod.Color(45,0,180), bg_col)
+			
+			elif self.terrain == 'Rubble':
+				for (xmod, ymod) in GREEBLE_LOCATIONS:
+					if libtcod.random_get_int(generator, 1, 9) <= 2: continue
+					if libtcod.random_get_int(generator, 1, 3) == 1:
+						char = 249
+					else:
+						char = 250
+					c = libtcod.random_get_int(generator, 120, 190)
+					col = libtcod.Color(c, c, c)
+					libtcod.console_put_char_ex(unit_con, x+xmod, y+ymod, char,
+						col, bg_col)
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
@@ -8377,8 +8405,20 @@ class Unit:
 						elif campaign_day.weather['Ground'] in ['Muddy', 'Snow']:
 							effective_fp = int(float(effective_fp) * 0.75)
 						
-						# apply entrenched or dug-in modifier
-						if target.entrenched:
+						# apply fortified, entrenched, or dug-in modifier
+						if target.fortified:
+							
+							# possible that fortifications are destroyed by impact
+							roll = GetPercentileRoll()
+							if roll <= float(effective_fp):
+								target.fortified = False
+								target.terrain = 'Rubble'
+								if target.owning_player == 0 or (target.owning_player == 1 and target.spotted):
+									ShowMessage(target.unit_id + "'s fortification has been destroyed.")
+								effective_fp = effective_fp * 4
+							else:
+								effective_fp = int(float(effective_fp) * 0.1)
+						elif target.entrenched:
 							effective_fp = int(float(effective_fp) * 0.25)
 						elif target.dug_in:
 							effective_fp = int(float(effective_fp) * 0.5)
@@ -9033,7 +9073,7 @@ class Scenario:
 				ShowMessage("The ricochet from a sniper's bullet rings out, narrowly missing your " + crew_target.current_position.name)
 			else:
 				PlaySoundFor(None, 'sniper_hit')
-				ShowMessage('Your ' + crew_target.position.name + ' has been hit by a sniper.')
+				ShowMessage('Your ' + crew_target.current_position.name + ' has been hit by a sniper.')
 				crew_target.DoWoundCheck(roll_modifier = 45.0)
 		
 		# random enemy tank is immobilized
@@ -9371,14 +9411,11 @@ class Scenario:
 			if libtcod.console_is_window_closed(): sys.exit()
 		
 			# choose a random unit class
-			#unit_class = None
-			#while unit_class is None:
-			#	k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
-			#	if GetPercentileRoll() <= float(value):
-			#		unit_class = k
-			
-			# TEMP - testing
-			unit_class = 'Infantry Squad'
+			unit_class = None
+			while unit_class is None:
+				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
+				if GetPercentileRoll() <= float(value):
+					unit_class = k
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
@@ -9489,13 +9526,17 @@ class Scenario:
 			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			unit.SpawnAt(hx, hy)
+			
+			# deploy if gun
 			if unit.GetStat('category') == 'Gun':
 				unit.deployed = True
 			
-			# set facing if any toward player
-			direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)
+			# if required, set facing toward player
 			if unit.GetStat('category') != 'Infantry':
+				direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)
 				unit.facing = direction
+				if 'turret' in unit.stats:
+					unit.turret_facing = direction
 			
 			# some units can be spawned dug-in, entrenched, or fortified
 			if unit.GetStat('category') in ['Infantry', 'Gun'] and campaign_day.mission != 'Fighting Withdrawl':
@@ -9517,10 +9558,6 @@ class Scenario:
 					unit.entrenched = True
 				elif roll <= chance3:	
 					unit.dug_in = True
-			
-			# turreted vehicle
-			if 'turret' in unit.stats:
-				unit.turret_facing = direction
 			
 			# special: some units are spawned with non-combat companion units
 			if unit_id == 'Light Artillery Car':
@@ -9828,7 +9865,7 @@ class Scenario:
 				base_chance = INF_FP_BASE_CHANCE
 			for i in range(2, fp + 1):
 				base_chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
-			profile['base_chance'] = round(base_chance, 2)
+			profile['base_chance'] = round(base_chance, 1)
 			
 			# store the rounded base chance so we can use it later for modifiers
 			base_chance = profile['base_chance']
@@ -9837,28 +9874,28 @@ class Scenario:
 			
 			# attacker moving
 			if attacker.moving:
-				mod = round(base_chance / 2.0, 2)
+				mod = round(base_chance / 2.0, 1)
 				modifier_list.append(('Attacker Moving', 0.0 - mod))
 			
 			# attacker pivoted
 			elif attacker.facing != attacker.previous_facing:
-				mod = round(base_chance / 3.0, 2)
+				mod = round(base_chance / 3.0, 1)
 				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
 
 			# player attacker pivoted
 			elif attacker == scenario.player_unit and self.player_pivot != 0:
-				mod = round(base_chance / 3.0, 2)
+				mod = round(base_chance / 3.0, 1)
 				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
 
 			# weapon turret rotated
 			elif weapon.GetStat('mount') == 'Turret':
 				if attacker.turret_facing != attacker.previous_turret_facing:
-					mod = round(base_chance / 4.0, 2)
+					mod = round(base_chance / 4.0, 1)
 					modifier_list.append(('Turret Rotated', 0.0 - mod))
 			
 			# attacker pinned
 			if attacker.pinned:
-				mod = round(base_chance / 2.0, 2)
+				mod = round(base_chance / 2.0, 1)
 				modifier_list.append(('Attacker Pinned', 0.0 - mod))
 			
 			# smoke
@@ -9871,7 +9908,7 @@ class Scenario:
 				modifier_list.append(('Smoke', 0.0 - mod))
 			
 			if not target.spotted:
-				modifier_list.append(('Unspotted Target', -10.0))
+				modifier_list.append(('Unspotted Target', -20.0))
 			else:
 				
 				# check to see if MG has acquired target
@@ -9907,11 +9944,13 @@ class Scenario:
 					if GetFacing(attacker, target) == 'Front':
 						modifier_list.append(('Gun Shield', -15.0))
 				
-				# dug-in or entrenched
-				if target.entrenched:
-					modifier_list.append(('Target Entrenched', -30.0))
-				elif target.dug_in:
-					modifier_list.append(('Target Dug-in', -15.0))
+			# fortified, entrenched, or dug-in
+			if target.fortified:
+				modifier_list.append(('Target Fortified', -50.0))
+			elif target.entrenched:
+				modifier_list.append(('Target Entrenched', -30.0))
+			elif target.dug_in:
+				modifier_list.append(('Target Dug-in', -15.0))
 				
 		# check for Commander directing fire
 		# FUTURE: may be possible for other positions as well (Commander/Driver?)
@@ -10039,7 +10078,7 @@ class Scenario:
 			if armour[hit_location] != '-':
 				unarmoured_location = False
 		
-		# NEW: look up base AP score required
+		# look up base AP score required
 		if weapon.GetStat('type') in MG_WEAPONS:
 			base_score = 4
 		elif weapon.GetStat('name') == 'AT Rifle':
@@ -12423,9 +12462,24 @@ class Scenario:
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.grey)
 			libtcod.console_print(unit_info_con, 23, 2, 'Smoke lvl ' + str(unit.smoke))
 		
+		# dug-in, entrenched, or fortified status
+		text = ''
+		if unit.dug_in:
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
+			text = 'Dug-in'
+		elif unit.entrenched:
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_sepia)
+			text = 'Entrenched'
+		elif unit.fortified:
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
+			text = 'Fortified'
+		if text != '':
+			libtcod.console_print(unit_info_con, 26, 0, text)
+		
 		if unit.owning_player == 1 and not unit.spotted:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
 			libtcod.console_print(unit_info_con, 0, 0, 'Unspotted Enemy')
+			
 		else:
 			if unit == scenario.player_unit:
 				col = libtcod.white
@@ -12470,22 +12524,6 @@ class Scenario:
 				libtcod.console_put_char_ex(unit_info_con, 28, 0,
 					GetDirectionalArrow(unit.hull_down[0]), libtcod.sepia,
 					libtcod.darkest_grey)
-			
-			# dug-in, entrenched, or fortified status
-			else:
-				
-				text = ''
-				if unit.dug_in:
-					libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
-					text = 'Dug-in'
-				elif unit.entrenched:
-					libtcod.console_set_default_foreground(unit_info_con, libtcod.light_sepia)
-					text = 'Entrenched'
-				elif unit.fortified:
-					libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
-					text = 'Fortified'
-				if text != '':
-					libtcod.console_print(unit_info_con, 26, 0, text)
 			
 			# current terrain
 			if unit.terrain is not None:

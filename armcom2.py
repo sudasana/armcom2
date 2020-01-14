@@ -11880,8 +11880,8 @@ class Scenario:
 			
 			unit = choice(unit_list)
 				
-			# check for fortification save
-			if unit.fortified:
+			# check for armour or fortification save
+			if unit.GetStat('armour') is not None or unit.fortified:
 				roll = GetPercentileRoll()
 				if roll > chance:
 					return

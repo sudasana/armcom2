@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.12.0 14-01-20'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -6091,22 +6091,6 @@ class Personnel:
 						break
 				if not enemies_far_away: continue
 			
-			# assaults need mobility and at least one known target in forward hex
-			elif k == 'Close Assault':
-				if self.unit.immobilized: continue
-				if self.unit.bogged: continue
-				
-				unit_list = scenario.hex_dict[(0,-1)].unit_stack
-				if len(unit_list) == 0: continue
-				found_target = False
-				for unit in unit_list:
-					if unit.owning_player != 1: continue
-					if not unit.spotted: continue
-					if unit.GetStat('category') not in ['Infantry', 'Gun']: continue
-					found_target = True
-					break
-				if not found_target: continue
-			
 			# check that a mortar is attached and is fired by this position
 			elif k == 'Fire Smoke Mortar':
 				position_name = self.unit.GetStat('smoke_mortar')
@@ -9067,13 +9051,28 @@ class Scenario:
 			# do attack roll
 			roll = GetPercentileRoll()
 			
+			# NEW: player hit but saved by fate point
+			if roll <= chance and campaign_day.fate_points > 0 and crew_target.current_position in PLAYER_POSITIONS:
+				campaign_day.fate_points -= 1
+				roll = 100.0
+			
 			# miss
 			if roll > chance:
 				PlaySoundFor(None, 'ricochet')
-				ShowMessage("The ricochet from a sniper's bullet rings out, narrowly missing your " + crew_target.current_position.name)
+				text = "The ricochet from a sniper's bullet rings out, narrowly missing "
+				if crew_target.current_position in PLAYER_POSITIONS:
+					text += 'you!'
+				else:
+					text += 'your ' + crew_target.current_position.name + '!'
+				ShowMessage(text)
 			else:
 				PlaySoundFor(None, 'sniper_hit')
-				ShowMessage('Your ' + crew_target.current_position.name + ' has been hit by a sniper.')
+				if crew_target.current_position in PLAYER_POSITIONS:
+					text = 'You have'
+				else:
+					text = 'Your ' + crew_target.current_position.name + ' has'
+				text += ' been hit by a sniper!'
+				ShowMessage(text)
 				crew_target.DoWoundCheck(roll_modifier = 45.0)
 		
 		# random enemy tank is immobilized
@@ -9416,6 +9415,9 @@ class Scenario:
 				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
+			
+			# TEMP testing
+			unit_class = 'Infantry Squad'
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
@@ -10095,9 +10097,7 @@ class Scenario:
 				# unarmoured location
 				if unarmoured_location:
 					calibre = int(calibre)
-					if weapon.GetStat('name') == 'AT Rifle':
-						base_score = 7
-					elif calibre <= 28:
+					if calibre <= 28:
 						base_score = 7
 					elif calibre <= 57:
 						base_score = 8
@@ -10114,7 +10114,9 @@ class Scenario:
 					if weapon.GetStat('long_range') is not None:
 						calibre += weapon.GetStat('long_range')
 					
-					if calibre in ['15']:
+					if weapon.GetStat('name') == 'AT Rifle':
+						base_score = 5
+					elif calibre in ['15']:
 						base_score = 5
 					elif calibre in ['20L']:
 						base_score = 6
@@ -10209,10 +10211,16 @@ class Scenario:
 			modifier_list.append(('Critical Hit', base_score))
 		
 		# range/calibre modifier
-		if profile['ammo_type'] == 'AP' and weapon.GetStat('calibre') is not None and not unarmoured_location:
+		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
+		if weapon.GetStat('name') == 'AT Rifle':
+			if distance <= 1:
+				modifier_list.append(('Close Range', 2))
+			else:
+				modifier_list.append(('Long Range', -2))
+		
+		elif profile['ammo_type'] == 'AP' and weapon.GetStat('calibre') is not None and not unarmoured_location:
 			
 			calibre = int(weapon.GetStat('calibre'))
-			distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
 			
 			if calibre <= 25:
 				if distance <= 1:
@@ -11771,19 +11779,29 @@ class Scenario:
 		# close combat phase
 		elif self.phase == PHASE_CC:
 			
-			# if player is assaulting, resolve the attack
+			self.advance_phase = False
+			
+			# driver not on correct order
 			crewman = self.player_unit.GetPersonnelByPosition('Driver')
-			if crewman.current_cmd == 'Close Assault':
-				self.ResolveCC([self.player_unit] + self.player_unit.squad, 0, -1)
+			if crewman is None:
+				self.advance_phase = True
+			else:
+				# driver not on Drive command
+				if crewman.current_cmd != 'Drive':
+					self.advance_phase = True
 			
-			# player unit was destroyed during close combat
-			if not self.player_unit.alive:
-				self.PlayerBailOut()
-				campaign_day.ended = True
-				self.finished = True
-				return
+			# check to see possible to assault target ahead
+			unit_list = scenario.hex_dict[(0,-1)].unit_stack
+			found_target = False
+			for unit in unit_list:
+				if unit.owning_player != 1: continue
+				if not unit.spotted: continue
+				if unit.GetStat('category') not in ['Infantry', 'Gun']: continue
+				found_target = True
+				break
 			
-			self.advance_phase = True
+			if not found_target:
+				self.advance_phase = True
 		
 		# allied action
 		elif self.phase == PHASE_ALLIED_ACTION:
@@ -11854,6 +11872,35 @@ class Scenario:
 	# resolve a close combat attack between 1+ units and a target hex
 	def ResolveCC(self, attacking_units, hx, hy):
 		
+		def CheckForKO(chance, unit_list, attackers_fight):
+			
+			if chance <= 0.0: return
+			roll = GetPercentileRoll()
+			if roll > chance: return
+			
+			unit = choice(unit_list)
+				
+			# check for fortification save
+			if unit.fortified:
+				roll = GetPercentileRoll()
+				if roll > chance:
+					return
+			
+			if unit == scenario.player_unit:
+				text = 'Your tank was destroyed in close combat!'
+			else:
+				if attackers_fight:
+					text = 'A defending'
+				else:
+					text = 'An attacking'
+				
+				text += ' ' + unit.unit_id + ' was destroyed in close combat'
+			PlaySoundFor(None, 'cc_combat')
+			ShowMessage(text)
+			unit.DestroyMe()
+			unit_list.remove(unit)
+			
+		
 		# FUTURE: make sure that pinned units are not attacking in CC
 		
 		#print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
@@ -11867,7 +11914,7 @@ class Scenario:
 		# defending units get a chance for defensive fire
 		ShowMessage('Defending units engage in defensive fire')
 		for unit in defending_units:
-			if unit.ai is None: return
+			if unit.ai is None: continue
 			unit.ai.disposition = 'Combat'
 			unit.ai.DoBestAttack(attacking_units)
 		
@@ -11881,7 +11928,7 @@ class Scenario:
 		combat_round = 1
 		while not combat_over:
 			
-			ShowMessage('Starting close combat, round #' + str(combat_round) + '.')
+			#ShowMessage('Starting close combat, round #' + str(combat_round) + '.')
 			
 			# calculate total firepower rating for attackers and defenders
 			attack_fp, defend_fp = 0,0
@@ -11902,7 +11949,10 @@ class Scenario:
 					continue
 				(a_fp, d_fp) = ASSAULT_FP[unit.GetStat('class')]
 				if unit.pinned:
-					d_fp = int(d_fp / 2)
+					d_fp = int(float(d_fp) * 0.5)	
+				if unit.entrenched or unit.dug_in:
+					d_fp = int(float(d_fp) * 1.5)
+					
 				defend_fp += d_fp
 			
 			attack_ratio = round(float(attack_fp) / float(defend_fp), 1)
@@ -11911,47 +11961,20 @@ class Scenario:
 			#print('DEBUG: attack ratio: ' + str(attack_ratio))
 			#print('DEBUG: defend ratio: ' + str(defend_ratio))
 			
-			# determine odds to destroy an opposing unit based on firepower ratio
+			# attackers fight
 			for ratio, chance in CC_TK.items():
 				if ratio <= attack_ratio:
 					break
+			CheckForKO(chance, defending_units, True)
+			if not self.player_unit.alive: return
 			
-			if chance > 0.0:
-				roll = GetPercentileRoll()
-				if roll <= chance:
-					unit = choice(defending_units)
-					
-					# TODO: check for possible armour save here
-					
-					
-					if unit == self.player_unit:
-						text = 'Your tank was destroyed in close combat!'
-					else:
-						text = 'A defending ' + unit.unit_id + ' was destroyed in close combat'
-					ShowMessage(text)
-					unit.DestroyMe()
-					if unit == self.player_unit:
-						return
-					defending_units.remove(unit)
-			
+			# defenders fight
+			PlaySoundFor(None, 'cc_combat')
 			for ratio, chance in CC_TK.items():
 				if ratio <= defend_ratio:
 					break
-			
-			if chance > 0.0:
-				roll = GetPercentileRoll()
-				if roll <= chance:
-					unit = choice(attacking_units)
-					
-					if unit == self.player_unit:
-						text = 'Your tank was destroyed in close combat!'
-					else:
-						text = 'An attacking ' + unit.unit_id + ' was destroyed in close combat'
-					ShowMessage(text)
-					unit.DestroyMe()
-					if unit == self.player_unit:
-						return
-					attacking_units.remove(unit)
+			CheckForKO(chance, attacking_units, False)
+			if not self.player_unit.alive: return
 			
 			# no units left
 			if len(attacking_units) == 0:
@@ -12293,6 +12316,14 @@ class Scenario:
 			libtcod.console_print(cmd_menu_con, 8, 5, 'Toggle RR Use')
 			libtcod.console_print(cmd_menu_con, 8, 6, 'Fire at Target')
 
+		# Close Combat phase
+		elif self.phase == PHASE_CC:
+			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
+			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper())
+			
+			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
+			libtcod.console_print(cmd_menu_con, 8, 1, 'Begin Assault')
+	
 	
 	# plot the center of a given in-game hex on the scenario hex map console
 	# 0,0 appears in centre of console
@@ -13132,6 +13163,25 @@ class Scenario:
 						self.UpdateScenarioDisplay()
 					continue
 
+			# close combat phase
+			elif scenario.phase == PHASE_CC:
+				
+				# init assault
+				if key_char == 'w':
+					
+					self.ResolveCC([self.player_unit] + self.player_unit.squad, 0, -1)
+					
+					# player did not survive
+					if not self.player_unit.alive:
+						self.PlayerBailOut()
+						campaign_day.ended = True
+						self.finished = True
+						return
+					
+					self.advance_phase = True
+					continue
+					
+					
 
 
 ##########################################################################################
@@ -14018,7 +14068,7 @@ def GetPercentileRoll():
 # return a percentage chance based on a given 2d6 score
 def Get2D6Odds(score):
 	if score == 2:
-		return 2.
+		return 2.7
 	elif score == 3:
 		return 8.3
 	elif score == 4:
@@ -14882,6 +14932,12 @@ def PlaySoundFor(obj, action):
 	
 	elif action == 'vehicle_explosion':
 		PlaySound('vehicle_explosion_00')
+		return
+	
+	elif action == 'cc_combat':
+		PlaySound('rifle_fire_0' + str(libtcod.random_get_int(0, 0, 1)))
+		PlaySound('rifle_fire_0' + str(libtcod.random_get_int(0, 2, 3)))
+		PlaySound('37mm_he_explosion_0' + str(libtcod.random_get_int(0, 0, 1)))
 		return
 	
 	elif action == 'movement':

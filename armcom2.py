@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.12.0 14-01-20'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -9415,9 +9415,6 @@ class Scenario:
 				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
-			
-			# TEMP testing
-			unit_class = 'Infantry Squad'
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:

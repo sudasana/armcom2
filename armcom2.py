@@ -7546,6 +7546,14 @@ class Unit:
 			self.reverse_move_chance += mod
 			self.bog_chance += bog_mod
 		
+		# NEW: ground pressure modifier
+		gp = self.GetStat('ground_pressure')
+		if gp is not None:
+			if gp == 'Light':
+				self.bog_chance = round(self.bog_chance * 0.8, 1)
+			elif gp == 'Heavy':
+				self.bog_chance = round(self.bog_chance * 1.2, 1)
+		
 		# add bonuses from previous moves
 		self.forward_move_chance += self.forward_move_bonus
 		self.reverse_move_chance += self.reverse_move_bonus
@@ -8128,7 +8136,14 @@ class Unit:
 			text = 'Bogged Down'
 		else:
 			libtcod.console_set_default_foreground(console, libtcod.light_green)
-			text = self.GetStat('movement_class')
+			text = ''
+			gp = self.GetStat('ground_pressure')
+			if gp is not None:
+				if gp == 'Light':
+					text = chr(24)
+				elif gp == 'Heavy':
+					text = chr(25)
+			text += self.GetStat('movement_class')
 			if self.GetStat('powerful_engine') is not None:
 				text += '+'
 		libtcod.console_print_ex(console, x+24, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,

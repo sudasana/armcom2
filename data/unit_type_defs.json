@@ -4885,6 +4885,33 @@
 		}
 	},
 	
+	"Motorcycle MG Team": {
+		"category" : "Infantry",
+		"class" : "Motorcycle Team",
+		"portrait" : "unit_motorcycle_mg.xp",
+		"movement_class" : "Wheeled",
+		"weapon_list" : [
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Gunner"},
+			{"name" : "Driver"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1935.01.01" : "100"
+		}
+	},
+	
 	"3-ton Truck" : {
 		"category" : "Vehicle",
 		"class" : "Truck",

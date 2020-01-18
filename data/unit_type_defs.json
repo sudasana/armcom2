@@ -4834,6 +4834,44 @@
 		}
 	},
 	
+	"76 K/02" : {
+		"category" : "Gun",
+		"class" : "Field Gun",
+		"portrait" : "unit_76mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "70"
+		}
+	},
+	
 	"Fokker CX": {
 		"category" : "Airplane",
 		"class" : "Light Bomber",

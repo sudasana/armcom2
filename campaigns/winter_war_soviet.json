@@ -1,44 +1,46 @@
 {
-	"name" : "The Winter War (FIN)",
+	"name" : "The Winter War (SOV)",
 	"start_date" : "1939.11.30",
 	"end_date" : "1940.03.12",
-	"player_nation" : "Finland",
-	"enemy_nations" : ["Soviet Union"],
+	"player_nation" : "Soviet Union",
+	"enemy_nations" : ["Finland"],
 	"region" : "Nordic",
-	"desc" : "Command one of the few tanks in the Finnish armed forces, and help defend your homeland against the Soviet invaders. (UNFINISHED)",
+	"desc" : "Join the forces of the Soviet Union as they invade Finland (UNFINISHED)",
 	"player_unit_list" : [
-		"Vickers 6-Ton Mark E", "T-26 M33", "BT-5 M34", "BT-7 M37", "T-28 M34"
+		"T-26 M33", "BT-5 M34", "BT-7 M37", "T-28 M34"
 	],
 	"player_air_support": [
-		"Fokker CX"
-	],
-	"enemy_air_support": [
 		"I-153 Chaika"
 	],
-	"enemy_arty_support": [
+	"player_arty_support": [
 		"76.2mm obr. 00/02P"
 	],
-	"player_arty_support": [
-		"105 K/13"
+	"enemy_air_support": [
+		"Fokker CX"
+	],
+	"enemy_arty_support": [
+		"105 K/13", "76 K/02"
 	],
 	"enemy_unit_list" : [
-		"T-26 M33", "BT-5 M34", "BT-7 M37", "BT-7A", "T-28 M34", "BA-20", "BA-6",
-		"SU-12", "45mm obr. 1932", "76.2mm obr. 00/02P", "Riflemen", "HMG Team"
+		"Vickers 6-Ton Mark E", "T-26 M33", "BT-5 M34", "BT-7 M37", "TT-28 M34",
+		"PaK 35/36", "45mm obr. 1932", "105 K/13", "76 K/02", "Riflemen", "HMG Team",
+		"3-ton Truck"
 	],
 	"enemy_unit_class_odds" : {
-		"Light Tank" : "25",
+		"Light Tank" : "15",
 		"Medium Tank" : "10",
-		"Assault Gun" : "50",
-		"Armoured Car" : "80",
-		"Anti-Tank Gun" : "15",
-		"Field Gun" : "5",
+		"Anti-Tank Gun" : "65",
+		"Artillery Gun" : "45",
+		"Field Gun" : "45",
 		"Truck" : "80",
 		"Infantry Squad" : "100",
 		"MG Team" : "80"
 	},
 	"decorations_list" : {
-		"1000" : "Order of the White Rose of Finland",
-		"1500" : "Order of the Cross of Liberty"
+		"350" : "Medal for Battle Merit",
+		"500" : "Order of the Red Star",
+		"600" : "Order of the Red Banner",
+		"700" : "Order of Lenin"
 	},
 	"calendar_weeks": [
 		{
@@ -46,15 +48,15 @@
 			"day_start" : "08:55",
 			"day_end" : "15:20",
 			"combat_chance" : "80",
-			"average_resistance" : "7",
+			"average_resistance" : "2",
 			"week_description" : "The Tide Breaks",
 			"mission_odds" : {
-				"Advance" : "0",
-				"Battle" : "0",
-				"Counterattack" : "20",
-				"Fighting Withdrawl" : "80"
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -63,15 +65,15 @@
 			"day_start" : "09:05",
 			"day_end" : "15:15",
 			"combat_chance" : "80",
-			"average_resistance" : "7",
+			"average_resistance" : "3",
 			"week_description" : "Invasion",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "0",
-				"Counterattack" : "30",
-				"Fighting Withdrawl" : "60"
+				"Advance" : "80",
+				"Battle" : "20",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -80,15 +82,15 @@
 			"day_start" : "09:15",
 			"day_end" : "15:15",
 			"combat_chance" : "65",
-			"average_resistance" : "7",
+			"average_resistance" : "4",
 			"week_description" : "Invasion",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "0",
-				"Counterattack" : "30",
-				"Fighting Withdrawl" : "60"
+				"Advance" : "40",
+				"Battle" : "60",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -97,15 +99,15 @@
 			"day_start" : "09:25",
 			"day_end" : "15:15",
 			"combat_chance" : "50",
-			"average_resistance" : "7",
+			"average_resistance" : "4",
 			"week_description" : "Invasion",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "0",
-				"Counterattack" : "30",
-				"Fighting Withdrawl" : "60"
+				"Advance" : "20",
+				"Battle" : "80",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -122,12 +124,12 @@
 			"average_resistance" : "6",
 			"week_description" : "Counterattack",
 			"mission_odds" : {
-				"Advance" : "10",
+				"Advance" : "0",
 				"Battle" : "20",
-				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "80"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -139,12 +141,12 @@
 			"average_resistance" : "6",
 			"week_description" : "Counterattack",
 			"mission_odds" : {
-				"Advance" : "10",
+				"Advance" : "0",
 				"Battle" : "20",
-				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "80"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -156,12 +158,12 @@
 			"average_resistance" : "6",
 			"week_description" : "Counterattack",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "20",
-				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Advance" : "0",
+				"Battle" : "40",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "60"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -178,12 +180,12 @@
 			"average_resistance" : "9",
 			"week_description" : "Soviet Offensive",
 			"mission_odds" : {
-				"Advance" : "0",
-				"Battle" : "20",
-				"Counterattack" : "0",
-				"Fighting Withdrawl" : "80"
+				"Advance" : "10",
+				"Battle" : "0",
+				"Counterattack" : "90",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 10.0,
 			"arty_support_level" : 80.0
 		},
@@ -192,15 +194,15 @@
 			"day_start" : "08:15",
 			"day_end" : "16:50",
 			"combat_chance" : "80",
-			"average_resistance" : "10",
+			"average_resistance" : "8",
 			"week_description" : "Soviet Offensive Continues",
 			"mission_odds" : {
-				"Advance" : "0",
-				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawl" : "90"
+				"Advance" : "50",
+				"Battle" : "0",
+				"Counterattack" : "50",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -209,15 +211,15 @@
 			"day_start" : "08:00",
 			"day_end" : "17:05",
 			"combat_chance" : "50",
-			"average_resistance" : "6",
+			"average_resistance" : "5",
 			"week_description" : "Desparation",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "20",
-				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -226,15 +228,15 @@
 			"day_start" : "07:40",
 			"day_end" : "17:25",
 			"combat_chance" : "50",
-			"average_resistance" : "6",
+			"average_resistance" : "3",
 			"week_description" : "Counterattack",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "20",
-				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -243,15 +245,15 @@
 			"day_start" : "07:25",
 			"day_end" : "17:45",
 			"combat_chance" : "50",
-			"average_resistance" : "6",
+			"average_resistance" : "3",
 			"week_description" : "Counterattack",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "20",
-				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Advance" : "90",
+				"Battle" : "10",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -260,15 +262,15 @@
 			"day_start" : "07:00",
 			"day_end" : "18:00",
 			"combat_chance" : "50",
-			"average_resistance" : "6",
+			"average_resistance" : "3",
 			"week_description" : "Counterattack",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "20",
-				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Advance" : "100",
+				"Battle" : "0",
+				"Counterattack" : "0",
+				"Fighting Withdrawl" : "0"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		}

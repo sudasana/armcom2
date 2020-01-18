@@ -5987,13 +5987,13 @@ class Personnel:
 			self.wound = ''
 			
 			if show_messages:
-				if self.current_position.name in PLAYER_POSITIONS:
-					ShowMessage('You have been killed. Your campaign is over.')
+				if campaign.options['permadeath'] and self.current_position.name in PLAYER_POSITIONS:
+					ShowMessage('You have been killed. Your campaign is over.')	
 				else:
 					ShowMessage('Your ' + self.current_position.name + ' has been killed.')
 			
 			# check for commander death
-			if self.current_position.name in PLAYER_POSITIONS:
+			if campaign.options['permadeath'] and self.current_position.name in PLAYER_POSITIONS:
 				scenario.finished = True
 				campaign_day.ended = True
 				campaign.ended = True

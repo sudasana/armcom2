@@ -3619,7 +3619,8 @@
 		"category" : "Vehicle",
 		"class" : "Light Tank",
 		"size_class" : "Small",
-		"movement_class" : "Tank",
+		"movement_class" : "Slow Tank",
+		"unreliable" : true,
 		"turret" : "TRUE",
 		"armour" : {
 			"turret_front" : "6",
@@ -3673,6 +3674,191 @@
 		"rarity" : {
 			"1940.05.01" : "80",
 			"1940.06.01" : "70"
+		}
+	},
+	
+	"H35 (Late)": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"unreliable" : true,
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "4",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed in 1933 as a light infantry support tank, the Hotchkiss H35 ",
+			"was eventually adopted by the French cavalry as a light reconnaisance tank. ",
+			"This later variant has been upgunned from the earlier model."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.06.01" : "60"
+		}
+	},
+	
+	"SOMUA S35": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "6",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "47",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Intended to be the standard medium tank for French forces, the ",
+			"S35 balanced a good gun, good armour, and speed."
+		],
+		"rarity" : {
+			"1940.05.01" : "80",
+			"1940.06.01" : "70"
+		}
+	},
+	
+	"R35 (Late)": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "4",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed as a light infantry tank, the R35 is well-protected ",
+			"but lacks armour penetration power, so later models such as ",
+			"this have been fitted with a longer 37mm main gun."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.06.01" : "60"
 		}
 	},
 	

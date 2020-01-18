@@ -108,20 +108,34 @@ Objectives are indicated by a ring of light blue dots; capturing these hexes is 
 If you reach the top hex row (or the bottom one in Fighting Withdrawl mission), a new hex map will be generated.
 
 Five menu tabs are available in the command menu:
-* Support
-  * Provides information on current air and artillery support levels. Here you can spend 15 minutes requesting additional support
+* Supply
+  * Here you can view the stats of your tank's main gun, and manage the contents of the Ready Rack. From here you can also **Request Resupply** which, if granted, allows you to replenish main gun ammo, will replace dead or seriously injured crewmen, and will also bring your tank squadron up to full strength.
 * Crew
-  * Displays a list of current crewmen in your tank. From here you can open the crew menu for any of them.
+  * Displays a list of current crewmen in your tank. From here you can open the crew menu for any of them, and open/close their hatch if they have one.
 * Travel
   * In this menu you can select a direction from your current location, and either request reconnaissance information about an adjacent enemy-held hex, or travel to an adjacent hex. When moving, you can toggle advancing fire and air and artillery support requests on and off. Advancing fire uses up HE ammo but if a battle encounter is triggered, it has the chance of pinning enemy units before combat begins. You can also Wait in place, but there's a possibility that enemy forces may attack your hex.
 * Group
   * Lists the current members of your tank squadron.
-* Main Gun
-  * Here you can view the stats of your tank's main gun, and manage the contents of the Ready Rack. From here you can also **Request Resupply** which, if granted, allows you to replenish main gun ammo, and willalso bring your tank squadron up to full strength.
 
 The campaign day ends when you abandon your tank, your character is killed or seriously wounded, or you reach sunset as indicated by the background of the time display in the top centre of the screen.
 
 ### 7.1 Strategy on the Campaign Day Layer
 
+* Always recon enemy-held zones so that you know what you're getting into
+* Pay close attention to the time required to travel to a new zone, which varies depending on terrain, weather, and presence of a road connection
+* Rivers can only be crossed by the player at bridges, so plan your route ahead of time
+* Use advancing fire and air/artillery support, especially when moving into heavy resistance
+* If you are cut off from the friendly map edge, you will not be able to call for resupply
+
 ## 8. The Scenario Layer
+
+![Scenario image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_scenario.png "Scenario Layer")
+
+Once you encounter enemy resistance on the Campaign Day map, or if you wait in place and are attacked, play shifts to the Scenario layer where battles take place.
+
+On the right of the scenario interface is the Scenario Map, made up of 36 hexes arranged in 3 rings surrounding a central hex. The map represents, in an abstract way, all terrain in a 1,440 meter radius around the player. Your tank, represented in traditional roguelike fashion by the @ character, is located in the centre of the map. All other units on the map are represented from your point of view, so if you pivot your tank counter-clockwise, units will appear to rotate clockwise around the map. Likewise, if you move into a new hex, all other units will shift around you. Hovering your mouse cursor over any hex will display its info at the bottom of the map; scrolling with the mouse wheel will shift the order of any unit stacks in the hex.
+
+Above and to the left of the scenario map is the contextual console, which displays different information depending on the current phase. Above and to the right is the Environmental Conditions console, which displays information about current weather conditions.
+
+Play on the Scenario Layer proceeds though a series of Phases, each one of which either allows the player to perform certain actions, or allows allied and enemy AI units to act. Each set of phases takes 2 minutes of in-game time to resolve.
 

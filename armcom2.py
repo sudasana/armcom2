@@ -8989,18 +8989,12 @@ class Scenario:
 		
 		roll = GetPercentileRoll()
 		
-		# TEMP
-		roll = 1.0
-		
 		if roll > self.random_event_chance:
 			self.random_event_chance += 1.5
 			return
 		
 		# roll for type of event
 		roll = GetPercentileRoll()
-		
-		# TEMP testing
-		roll = 80.0
 		
 		# friendly air attack
 		if roll <= 10.0:
@@ -9131,10 +9125,8 @@ class Scenario:
 		
 		# enemy air attack on player
 		elif roll <= 80.0:
-			
-			if 'enemy_air_support' not in campaign.current_week: return
-			# TEMP
-			#if campaign_day.weather['Cloud Cover'] == 'Overcast': return
+			if 'enemy_air_support' not in campaign.stats: return
+			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
 			ShowMessage('Enemy air forces launch an attack!')
 			self.DoAirAttack(player_target=True)
 		

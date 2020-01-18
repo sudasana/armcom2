@@ -12,6 +12,9 @@
 	"player_air_support": [
 		"Fokker CX"
 	],
+	"enemy_air_support": [
+		"I-153 Chaika"
+	],
 	"player_arty_support": [
 		"105 K/13"
 	],

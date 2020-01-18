@@ -3586,6 +3586,32 @@
 		}
 	},
 	
+	"I-153 Chaika": {
+		"category" : "Airplane",
+		"class" : "Fighter",
+		"movement_class" : "Airplane",
+		"weapon_list" : [
+			{
+				"type" : "Ordinance",
+				"name" : "Bombs",
+				"calibre" : "120",
+				"max_range" : "1",
+				"max_ammo" : "1"
+			},
+			{
+				"type" : "MG",
+				"fp" : "6",
+				"rof" : "17.0"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Pilot"}
+		],
+		"description" : [
+			""
+		]
+	},
+	
 	
 	"French Forces" : {},
 		

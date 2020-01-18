@@ -8989,12 +8989,18 @@ class Scenario:
 		
 		roll = GetPercentileRoll()
 		
+		# TEMP
+		roll = 1.0
+		
 		if roll > self.random_event_chance:
 			self.random_event_chance += 1.5
 			return
 		
 		# roll for type of event
 		roll = GetPercentileRoll()
+		
+		# TEMP testing
+		roll = 80.0
 		
 		# friendly air attack
 		if roll <= 10.0:
@@ -9122,6 +9128,15 @@ class Scenario:
 			unit.SpotMe()
 			text = unit.GetName() + ' spotted!'
 			ShowMessage(text, portrait=unit.GetStat('portrait'))
+		
+		# enemy air attack on player
+		elif roll <= 80.0:
+			
+			if 'enemy_air_support' not in campaign.current_week: return
+			# TEMP
+			#if campaign_day.weather['Cloud Cover'] == 'Overcast': return
+			ShowMessage('Enemy air forces launch an attack!')
+			self.DoAirAttack(player_target=True)
 		
 		# FUTURE: add more event types
 		else:
@@ -10847,8 +10862,14 @@ class Scenario:
 		campaign_day.arty_support_request = False
 	
 	
-	# resolve an air support attack against enemy units
-	def DoAirAttack(self):
+	# resolve an air support attack
+	# if player_target is true, the player squad is the target of an enemy attack
+	def DoAirAttack(self, player_target=False):
+		
+		if player_target:
+			friendly_player = 1
+		else:
+			friendly_player = 0
 		
 		ShowMessage('Air support attack inbound! Trying to spot targets.')
 		
@@ -10864,11 +10885,11 @@ class Scenario:
 		elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Blizzard']:
 			chance -= 25.0
 		
-		# check each hex with 1+ enemy units present
+		# check each hex with 1+ target units present
 		target_hex_list = []
 		for map_hex in self.map_hexes:
 			if len(map_hex.unit_stack) == 0: continue
-			if map_hex.unit_stack[0].owning_player == 0: continue
+			if map_hex.unit_stack[0].owning_player == friendly_player: continue
 			
 			# roll to spot each enemy unit in hex
 			for unit in map_hex.unit_stack:
@@ -10918,7 +10939,10 @@ class Scenario:
 			num_planes = 3
 		
 		# determine type of plane
-		plane_id = choice(campaign.stats['player_air_support'])
+		if player_target:
+			plane_id = choice(campaign.stats['enemy_air_support'])
+		else:
+			plane_id = choice(campaign.stats['player_air_support'])
 		
 		# display message
 		text = str(num_planes) + ' ' + plane_id + ' arrive'
@@ -11042,7 +11066,12 @@ class Scenario:
 					
 					# direct hit: destroyed
 					if direct_hit:
-						ShowMessage(target.GetName() + ' was destroyed by a direct hit from the air attack.')
+						if target == scenario.player_unit:
+							text = 'You were'
+						else:
+							text = target.GetName() + ' was'
+						text += ' destroyed by a direct hit from the air attack!'
+						ShowMessage(text)
 						target.DestroyMe()
 						continue
 					
@@ -11050,7 +11079,12 @@ class Scenario:
 					if not target.spotted:
 						target.hit_by_fp = True
 					
-					ShowMessage(target.GetName() + ' was hit by air attack')
+					if target == scenario.player_unit:
+						text = 'You were'
+					else:
+						text = target.GetName() + ' was'
+					text += ' hit by the air attack.'
+					ShowMessage(text)
 				
 					target.ResolveFP()
 				
@@ -11060,7 +11094,13 @@ class Scenario:
 					# direct hit - unarmoured and open topped vehicles destroyed
 					if direct_hit:
 						if target.GetStat('armour') is None or target.GetStat('open_topped') is not None:
-							ShowMessage(target.GetName() + ' was destroyed by a direct hit from the air attack.')
+							
+							if target == scenario.player_unit:
+								text = 'You were'
+							else:
+								text = target.GetName() + ' was'
+							text += ' destroyed by a direct hit from the air attack.'
+							ShowMessage(text)
 							target.DestroyMe()
 							continue
 					
@@ -11085,19 +11125,28 @@ class Scenario:
 						profile['final_chance'] = round(profile['final_chance'] * 2.0, 1)
 						if profile['final_chance'] > 100.0:
 							profile['final_chance'] = 100.0
-						print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
 					
 					# do AP roll
 					roll = GetPercentileRoll()
 					
 					# no penetration
 					if roll > profile['final_chance']:
-						ShowMessage(target.GetName() + ' was unaffected by air attack')
+						if target == scenario.player_unit:
+							text = 'You were'
+						else:
+							text = target.GetName() + ' was'
+						text += ' unaffected by the air attack'
+						ShowMessage(text)
 						continue
 					
 					# penetrated
 					target.DestroyMe()
-					ShowMessage(target.GetName() + ' was destroyed by air attack')
+					if target == scenario.player_unit:
+						text = 'You were'
+					else:
+						text = target.GetName() + ' was'
+					text += ' destroyed by the air attack.'
+					ShowMessage(text)
 				
 		if not results:
 			ShowMessage('Air attack had no effect.')
@@ -11611,6 +11660,11 @@ class Scenario:
 			
 			# check for random event
 			self.CheckForRandomEvent()
+			
+			# player did not survive random event
+			if not self.player_unit.alive:
+				campaign_day.ended = True
+				return
 			
 			self.active_player = 0
 			self.phase = PHASE_COMMAND
@@ -13185,9 +13239,7 @@ class Scenario:
 					
 					# player did not survive
 					if not self.player_unit.alive:
-						self.PlayerBailOut()
 						campaign_day.ended = True
-						self.finished = True
 						return
 					
 					self.advance_phase = True

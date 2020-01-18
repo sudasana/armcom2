@@ -13,6 +13,9 @@
 	"player_arty_support": [
 		"75mm wz. 02/26", "105mm wz. 29"
 	],
+	"enemy_air_support": [
+		"Ju 87B Stuka"
+	],
 	"enemy_unit_list" : [
 		"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", 
 		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",

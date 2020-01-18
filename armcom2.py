@@ -852,6 +852,11 @@ BASE_WEATHER_UPDATE_CLOCK = 30
 class Campaign:
 	def __init__(self):
 		
+		self.options = {
+			'permadeath' : True,
+			'fate_points' : True
+		}
+		
 		# load skills from JSON file - they won't change over the course of a campaign
 		with open(DATAPATH + 'skill_defs.json', encoding='utf8') as data_file:
 			self.skills = json.load(data_file)
@@ -1028,7 +1033,36 @@ class Campaign:
 			for line in lines[:10]:
 				libtcod.console_print(con, 28, y, line)
 				y+=1
-				
+			
+			# campaign options
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_print(con, 69, 3, 'Campaign Options')
+			
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print(con, 64, 6, '1')
+			libtcod.console_print(con, 64, 13, '2')
+			
+			if self.options['permadeath']:
+				libtcod.console_set_default_foreground(con, libtcod.white)
+			else:
+				libtcod.console_set_default_foreground(con, libtcod.darker_grey)
+			libtcod.console_print(con, 66, 6, 'Permadeath')
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_print(con, 64, 8, 'If your commander is')
+			libtcod.console_print(con, 64, 9, 'killed/seriously injured,')
+			libtcod.console_print(con, 64, 10, 'your campaign ends.')
+			
+			if self.options['fate_points']:
+				libtcod.console_set_default_foreground(con, libtcod.white)
+			else:
+				libtcod.console_set_default_foreground(con, libtcod.darker_grey)
+			libtcod.console_print(con, 66, 13, 'Fate Points')
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_print(con, 64, 15, 'You are protected by')
+			libtcod.console_print(con, 64, 16, 'fate, negating a few')
+			libtcod.console_print(con, 64, 17, 'incoming attacks per day.')
+			
+			# key commands
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 			libtcod.console_print(con, 32, 53, EnKey('w').upper() + '/' + EnKey('s').upper())
 			libtcod.console_print(con, 32, 54, 'Enter')
@@ -1085,6 +1119,16 @@ class Campaign:
 				exit_menu = True
 			
 			key_char = DeKey(chr(key.c).lower())
+			
+			# toggle campaign options
+			if key_char in ['1', '2']:
+				
+				if key_char == '1':
+					self.options['permadeath'] = not self.options['permadeath']
+				elif key_char == '2':
+					self.options['fate_points'] = not self.options['fate_points']
+				UpdateCampaignSelectionScreen(selected_campaign)
+				continue
 			
 			# change selected campaign
 			if key_char in ['w', 's']:
@@ -2138,7 +2182,10 @@ class CampaignDay:
 		self.weather_update_clock = 0		# number of minutes until next weather update
 		self.GenerateWeather()
 		
-		self.fate_points = libtcod.random_get_int(0, 1, 2)	# fate points protecting the player
+		if campaign.options['fate_points']:
+			self.fate_points = libtcod.random_get_int(0, 1, 2)	# fate points protecting the player
+		else:
+			self.fate_points = 0
 		
 		# set max number of units in player squad
 		player_unit_class = campaign.player_unit.GetStat('class')

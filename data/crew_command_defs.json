@@ -77,6 +77,11 @@
 		"spotting_allowed" : false
 	},
 	
+	"First Aid" : {
+		"desc" : "Adds recovery bonus to any crewman that is Stunned, Unconscious, or has a Critical wound",
+		"spotting_allowed" : false
+	},
+	
 	"Fire Smoke Mortar" : {
 		"desc" : "Fire the smoke mortar, creating concealing smoke in front of the turret",
 		"spotting_allowed" : false

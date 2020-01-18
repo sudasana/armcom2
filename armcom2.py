@@ -5980,12 +5980,11 @@ class Personnel:
 		self.status = 'Unconscious'
 
 
-	# check for recovery from any current status
+	# check for recovery from any critical wound, stunned or unconscious status
 	def DoRecoveryCheck(self):
-		if self.status in ['', 'Dead']: return
+		if self.wound != 'Critical' and self.status in ['', 'Dead']: return
 		
 		roll = GetPercentileRoll()
-		if self.status == 'Unconscious': roll += 15.0
 		
 		if self.status == 'Critical':
 			if roll > 97.0:
@@ -5993,11 +5992,26 @@ class Personnel:
 				self.wound = ''
 				if self.unit == scenario.player_unit:
 					ShowMessage('Your ' + self.current_position.name + ' has died from his wounds.')
-			return
+				return
 		
-		if roll <= self.stats['Grit'] * 15.0:
+		# NEW: check for fellow crewmen on First Aid command
+		for position in self.unit.positions_list:
+			if position.crewman is None: continue
+			if position.crewman == self: continue
+			if position.crewman.current_cmd == 'First Aid':
+				roll -= 15.0
+				print('DEBUG: Added First Aid bonus')
+		
+		if self.status == 'Unconscious': roll += 15.0
+		
+		if roll <= self.stats['Grit'] * 9.0:
 			
-			if self.status == 'Stunned':
+			if self.wound == 'Critical':
+				self.wound = 'Serious'
+				if self.unit == scenario.player_unit:
+					ShowMessage('Your ' + self.current_position.name + "'s wound has stabilized.")
+			
+			elif self.status == 'Stunned':
 				self.status = ''
 				if self.unit == scenario.player_unit:
 					ShowMessage('Your ' + self.current_position.name + ' recovers from being Stunned.')

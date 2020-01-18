@@ -2074,6 +2074,12 @@ class Campaign:
 						# if player tank was destroyed, allow player to choose a new one
 						if not self.player_unit.alive:
 							self.ReplacePlayerTank()
+						else:
+							# fix any broken weapons on player tank
+							for weapon in self.player_unit.weapon_list:
+								if weapon.broken:
+									ShowMessage('Your ' + weapon.GetStat('name') + ' is repaired.')
+									weapon.broken = False
 						
 						# handle refitting weeks here
 						if 'refitting' in campaign.current_week:
@@ -4359,7 +4365,6 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 10, 36, 'Abandon Tank')
 			libtcod.console_print(cd_command_con, 10, 37, 'Wait/Defend')
 			
-			
 			# check to see whether travel in selected direction is not possible
 			if self.selected_direction is None:
 				return
@@ -6373,6 +6378,7 @@ class Weapon:
 		self.fired = False
 		self.maintained_rof = False
 		self.jammed = False			# weapon is jammed and cannot be fired
+		self.broken = False			# weapon has broken and cannot be used
 		self.selected_target = None		# for player unit
 		self.acquired_target = None		# acquired target status and target unit
 	
@@ -6426,8 +6432,24 @@ class Weapon:
 		
 		self.jammed = False
 		return True
+	
+	
+	# do a breakdown test for this weapon, taken after firing
+	def BreakdownTest(self):
 		
+		# determine chance of breaking down
+		chance = 0.3
 		
+		if self.GetStat('unreliable') is not None:
+			chance = 1.0
+		
+		roll = GetPercentileRoll()
+		if roll > chance: return False
+		
+		self.broken = True
+		return True
+	
+	
 	# move a shell into or out of Ready Rack
 	def ManageRR(self, add_num):
 		
@@ -6572,6 +6594,7 @@ class Weapon:
 			libtcod.RIGHT, self.stats['max_ammo'])
 		libtcod.console_print_ex(console, x+10, y, libtcod.BKGND_NONE,
 			libtcod.RIGHT, str(self.rr_size))
+	
 	
 	# add a target as the current acquired target, or add one level
 	def AddAcquiredTarget(self, target):
@@ -8394,6 +8417,13 @@ class Unit:
 			if weapon.GetStat('type') == 'Gun' or weapon.GetStat('type') in MG_WEAPONS:
 				weapon.AddAcquiredTarget(target)
 			
+			# breakdown check for player weapons
+			if self == scenario.player_unit:
+				if weapon.BreakdownTest():
+					ShowMessage(weapon.GetStat('name') + ' has broken down! It may not be used again for the rest of the day.')
+					attack_finished = True
+					weapon.maintained_rof = False
+			
 			# wait for the player if they are involved
 			# if RoF is maintained, may choose to attack again
 			attack_finished = True
@@ -9694,7 +9724,9 @@ class Scenario:
 			if not crewman_found:
 				return 'No crewman operating this weapon'
 		
-		# check that weapon is not jammed and hasn't already fired
+		# check that weapon isn't broken, isn't jammed, and hasn't already fired
+		if weapon.broken:
+			return 'Weapon is broken!'
 		if weapon.jammed:
 			return 'Weapon is jammed!'
 		if weapon.fired:
@@ -12245,9 +12277,14 @@ class Scenario:
 				libtcod.console_print_ex(context_con, 17, 0, libtcod.BKGND_NONE,
 					libtcod.RIGHT, weapon.stats['mount'])
 			
-			if weapon.jammed:
+			if weapon.broken:
+				libtcod.console_set_default_foreground(context_con, libtcod.light_red)
+				libtcod.console_print(context_con, 0, 1, 'BROKEN')
+				return
+			elif weapon.jammed:
 				libtcod.console_set_default_foreground(context_con, libtcod.light_red)
 				libtcod.console_print(context_con, 0, 1, 'JAMMED')
+				return
 			
 			# display target and acquired target status if any
 			if weapon.selected_target is not None and weapon.acquired_target is not None:

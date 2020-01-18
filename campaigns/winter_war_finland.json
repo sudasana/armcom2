@@ -15,6 +15,9 @@
 	"enemy_air_support": [
 		"I-153 Chaika"
 	],
+	"enemy_arty_support": [
+		"76.2mm obr. 00/02P"
+	],
 	"player_arty_support": [
 		"105 K/13"
 	],

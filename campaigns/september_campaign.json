@@ -16,6 +16,9 @@
 	"enemy_air_support": [
 		"Ju 87B Stuka"
 	],
+	"enemy_arty_support": [
+		"7.5cm leIG 18"
+	],
 	"enemy_unit_list" : [
 		"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", 
 		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",

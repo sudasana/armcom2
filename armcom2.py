@@ -8990,7 +8990,7 @@ class Scenario:
 		roll = GetPercentileRoll()
 		
 		if roll > self.random_event_chance:
-			self.random_event_chance += 1.5
+			self.random_event_chance += 1.0
 			return
 		
 		# roll for type of event
@@ -8998,7 +8998,6 @@ class Scenario:
 		
 		# friendly air attack
 		if roll <= 10.0:
-			
 			if 'air_support_level' not in campaign.current_week: return
 			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
 			ShowMessage('Friendly air forces launch an attack!')
@@ -9006,7 +9005,6 @@ class Scenario:
 			
 		# friendly arty attack
 		elif roll <= 20.0:
-			
 			if 'arty_support_level' not in campaign.current_week: return
 			ShowMessage('Friendly artillery forces fire a bombardment!')
 			self.DoArtilleryAttack()
@@ -9110,7 +9108,6 @@ class Scenario:
 		
 		# random unspotted enemy unit is revealed
 		elif roll <= 70.0:
-			
 			unit_list = []
 			for unit in self.units:
 				if unit.owning_player == 0: continue
@@ -9124,11 +9121,17 @@ class Scenario:
 			ShowMessage(text, portrait=unit.GetStat('portrait'))
 		
 		# enemy air attack on player
-		elif roll <= 80.0:
+		elif roll <= 75.0:
 			if 'enemy_air_support' not in campaign.stats: return
 			if campaign_day.weather['Cloud Cover'] == 'Overcast': return
 			ShowMessage('Enemy air forces launch an attack!')
 			self.DoAirAttack(player_target=True)
+		
+		# enemy artillery attack on player
+		elif roll <= 80.0:
+			if 'enemy_arty_support' not in campaign.stats: return
+			ShowMessage('Enemy artillery forces fire a bombardment!')
+			self.DoArtilleryAttack(player_target=True)
 		
 		# FUTURE: add more event types
 		else:
@@ -11132,13 +11135,13 @@ class Scenario:
 						continue
 					
 					# penetrated
-					target.DestroyMe()
 					if target == scenario.player_unit:
 						text = 'You were'
 					else:
 						text = target.GetName() + ' was'
 					text += ' destroyed by the air attack.'
 					ShowMessage(text)
+					target.DestroyMe()
 				
 		if not results:
 			ShowMessage('Air attack had no effect.')
@@ -11148,8 +11151,14 @@ class Scenario:
 		libtcod.console_flush()
 	
 	
-	# do an artillery attack against enemy units
-	def DoArtilleryAttack(self):
+	# resolve an artillery attack
+	# if player_target is true, the player squad is the target of an enemy attack
+	def DoArtilleryAttack(self, player_target=False):
+		
+		if player_target:
+			friendly_player = 1
+		else:
+			friendly_player = 0
 		
 		ShowMessage('Artillery support attack inbound! Trying to spot targets.')
 		
@@ -11157,7 +11166,7 @@ class Scenario:
 		target_hex_list = []
 		for map_hex in self.map_hexes:
 			if len(map_hex.unit_stack) == 0: continue
-			if map_hex.unit_stack[0].owning_player == 0: continue
+			if map_hex.unit_stack[0].owning_player == friendly_player: continue
 			target_hex_list.append(map_hex)
 		
 		# no possible targets
@@ -11186,7 +11195,10 @@ class Scenario:
 					CheckForAnimationUpdate()
 		
 		# spawn gun unit and determine effective FP
-		unit_id = choice(campaign.stats['player_arty_support'])
+		if player_target:
+			unit_id = choice(campaign.stats['enemy_arty_support'])
+		else:
+			unit_id = choice(campaign.stats['player_arty_support'])
 		gun_unit = Unit(unit_id)
 		gun_calibre = int(gun_unit.weapon_list[0].GetStat('calibre'))
 		
@@ -11196,7 +11208,7 @@ class Scenario:
 				break
 		effective_fp = int(effective_fp / 2)
 		
-		# roll for possible hit against each enemy unit in each target hex
+		# roll for possible hit against each unit in each target hex
 		results = False
 		for map_hex in target_hex_list:
 		
@@ -11238,7 +11250,12 @@ class Scenario:
 					
 					# direct hit: destroyed
 					if direct_hit:
-						ShowMessage(target.GetName() + ' was destroyed by a direct hit from the artillery attack.')
+						if target == scenario.player_unit:
+							text = 'You were'
+						else:
+							text = target.GetName() + ' was'
+						text += ' destroyed by a direct hit from the artillery attack.'
+						ShowMessage(text)
 						target.DestroyMe()
 						continue
 					
@@ -11246,7 +11263,12 @@ class Scenario:
 					if not target.spotted:
 						target.hit_by_fp = True
 					
-					ShowMessage(target.GetName() + ' was hit by artillery attack.')
+					if target == scenario.player_unit:
+						text = 'You were'
+					else:
+						text = target.GetName() + ' was'
+					text += ' hit by artillery attack.'
+					ShowMessage(text)
 					
 					target.ResolveFP()
 				
@@ -11256,7 +11278,12 @@ class Scenario:
 					# direct hit - unarmoured and open topped vehicles destroyed
 					if direct_hit:
 						if target.GetStat('armour') is None or target.GetStat('open_topped') is not None:
-							ShowMessage(target.GetName() + ' was destroyed by a direct hit from the artillery attack.')
+							if target == scenario.player_unit:
+								text = 'You were'
+							else:
+								text = target.GetName() + ' was'
+							text += ' destroyed by a direct hit from the artillery attack.'
+							ShowMessage(text)
 							target.DestroyMe()
 							continue
 					
@@ -11281,22 +11308,29 @@ class Scenario:
 						profile['final_chance'] = round(profile['final_chance'] * 2.0, 1)
 						if profile['final_chance'] > 100.0:
 							profile['final_chance'] = 100.0
-						print('DEBUG: Applied direct hit modifier, chance now ' + str(chance))
 					
-								
 					# do AP roll
 					roll = GetPercentileRoll()
 					
 					# no penetration
 					if roll > profile['final_chance']:
-						ShowMessage(target.GetName() + ' was hit by artillery attack but is unharmed.')
+						if target == scenario.player_unit:
+							text = 'You were hit by the artillery attack but remain unharmed.'
+						else:
+							text = target.GetName() + ' was hit by the artillery attack but remains unharmed.'
+						ShowMessage(text)
 						if not target.spotted:
 							target.hit_by_fp = True
 						continue
 					
 					# penetrated
+					if target == scenario.player_unit:
+						text = 'You were'
+					else:
+						text = target.GetName() + ' was'
+					text += ' destroyed by artillery attack'
+					ShowMessage(text)
 					target.DestroyMe()
-					ShowMessage(target.GetName() + ' was destroyed by artillery attack')
 		
 		if not results:
 			ShowMessage('Artillery attack had no effect.')

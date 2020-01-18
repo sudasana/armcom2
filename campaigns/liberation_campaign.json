@@ -12,6 +12,9 @@
 	"player_arty_support": [
 		"76.2mm obr. 00/02P"
 	],
+	"enemy_arty_support": [
+		"75mm wz. 02/26", "105mm wz. 29"
+	],
 	"enemy_unit_list" : [
 		"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Renault FT (MG)", "Vickers 6-Ton Mark E", "7TP",
 		"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",

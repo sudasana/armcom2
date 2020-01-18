@@ -1,5 +1,5 @@
 # Armoured Commander II
-### Game Manual for Alpha 10.0
+### Game Manual for Alpha 12.0
 
 ## 1. General Principles
 
@@ -140,4 +140,29 @@ On the right of the scenario interface is the Scenario Map, made up of 36 hexes 
 Above and to the left of the scenario map is the contextual console, which displays different information depending on the current phase. Above and to the right is the Environmental Conditions console, which displays information about current weather conditions.
 
 Play on the Scenario Layer proceeds though a series of Phases, each one of which either allows the player to perform certain actions, or allows allied and enemy AI units to act. Each set of phases takes 2 minutes of in-game time to resolve.
+
+### 8.1 Scenario Phases
+
+* Command Phase
+
+In this phase you can open and close the hatch for each crewman that has one, and you can assign one command to each of your tank crew that is neither unconscious nor dead. Each command will allow the crewman to do different types of tasks in the remainder of the turn. The sight radius of your crewman is highlighted on the scenario map in blue; different hatch statuses and commands will result in different areas of the map where your crewman can spot in the following phase. Descriptions for each command are displayed in the Contextual Console.
+
+Note that some commands will only become available when certain conditions are met; for example, you can only abandon your tank if it is immobilized or if you have 1+ crewmen who have been seriously injured.
+
+* Spotting Phase
+
+Dureing this phase no input is required from the player; any crewman who can do so will automatically try to spot any hidden enemy unit in his line of sight. If an enemy unit is spotted, its identity will be displayed in a pop-up message.
+
+* Crew Action Phase
+
+Certain crew commands require additional input or will result in automatic actions during this phase. For example, a Gunner can manage his Ready Rack, moving shells into or out of it, or the Commander might throw a smoke grenade, providing some concealment for the player tank.
+
+* Movement Phase
+
+If the Driver has been given the "Drive" command, then the player can move the tank in this phase.
+
+* Shooting Phase
+* Close Combat Phase
+* Allied Action Phase
+* Enemy Action Phase
 

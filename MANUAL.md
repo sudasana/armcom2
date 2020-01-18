@@ -24,6 +24,8 @@ Several campaigns are included with the game. Each one takes place over a fixed 
 
 From this screen you can select a campaign to start, or have the game select one randomly.
 
+You can also set your **Campaign Options** in this menu. "Permadeath" means that your Commander represents you, and if he is killed or seriously injured, your campaign ends immediately. "Fate Points" are replenished at the start of each Campaign Day, and eash one silently saves you from an incoming attack that would have otherwise destroyed your tank.
+
 ## 4. Tank and Crew Selection
 
 ![Tank selection image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_tank_selection.png "Tank Selection")

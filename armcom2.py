@@ -6935,11 +6935,11 @@ class AI:
 					continue
 				
 				# if destination is on map, check if 1+ enemy units present
-				if (hx, hy) in scenario.hex_dict:
-					for unit in scenario.hex_dict[(hx,hy)].unit_stack:
-						if unit.owning_player != self.owner.owning_player:
-							hex_list.remove((hx, hy))
-							continue
+				#if (hx, hy) in scenario.hex_dict:
+				#	for unit in scenario.hex_dict[(hx,hy)].unit_stack:
+				#		if unit.owning_player != self.owner.owning_player:
+				#			hex_list.remove((hx, hy))
+				#			continue
 				
 				# get distance to new location
 				dist = GetHexDistance(0, 0, hx, hy)
@@ -6951,7 +6951,7 @@ class AI:
 						continue
 				
 				# if unit is being recalled, can only move further away
-				if self.recall:
+				elif self.recall:
 					if dist < current_range:
 						hex_list.remove((hx, hy))
 						continue
@@ -6995,22 +6995,21 @@ class AI:
 			self.owner.ClearAcquiredTargets()
 			
 			# do movement roll
-			chance = self.owner.forward_move_chance
+			chance = self.owner.forward_move_chance + self.owner.forward_move_bonus
 			roll = GetPercentileRoll()
 			
 			# move was not successful
 			if roll > chance:
-				self.owner.forward_move_chance += BASE_MOVE_BONUS
+				self.owner.forward_move_bonus += BASE_MOVE_BONUS
 				return
 			
 			# move was successful but may be cancelled by a breakdown
 			if self.owner.BreakdownCheck():
 				return
 			
-			#print('DEBUG: ' + self.owner.unit_id + ' is moving')
-			
 			# clear any bonus and move into new hex
 			self.owner.forward_move_chance = BASE_FORWARD_MOVE_CHANCE
+			self.owner.forward_move_bonus = 0.0
 			scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
 			self.owner.hx = hx
 			self.owner.hy = hy
@@ -9593,7 +9592,7 @@ class Scenario:
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
 				
-				enemy_unit_list.append(selected_unit_id)
+				enemy_unit_list.append(self.class_type_dict[unit_class])
 			
 			else:
 				

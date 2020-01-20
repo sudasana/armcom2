@@ -8956,7 +8956,11 @@ class Unit:
 				elif category == 'Train Car':
 					vp_amount = 3
 				
-				if self.cargo is not None:
+				if self.transport is not None:
+					vp_amount += 1
+					ShowMessage(self.GetStat('class') + ' was transporting a ' + self.transport + ', now destroyed.')
+				
+				elif self.cargo is not None:
 					if self.cargo == 'Ammo':
 						vp_amount += 2
 					elif self.cargo == 'Supplies':

@@ -6787,8 +6787,26 @@ class AI:
 		if len(scenario.player_unit.VulnerableCrew()) > 0:
 			player_crew_vulnerable = True
 		
+		# check current distance from player
+		current_range = GetHexDistance(0, 0, self.owner.hx, self.owner.hy)
+		
 		# Step 1: roll for unit action
-		if self.owner.GetStat('category') == 'Infantry':
+		
+		# clear any previous disposition
+		self.disposition = 'None'
+		
+		# Transports have their own procedures depending on whether they are carrying passengers or cargo
+		if self.owner.transport is not None:
+			
+			# if 2+ hexes from player, try to move closer
+			if current_range >= 2:
+				self.disposition = 'Movement'
+			
+			# if already within 1 hex of the player, try to unload passengers
+			else:
+				self.disposition = 'Unload Passengers'
+		
+		elif self.owner.GetStat('category') == 'Infantry':
 			
 			if roll <= 25.0:
 				if player_crew_vulnerable and roll <= 20.0:
@@ -6848,8 +6866,6 @@ class AI:
 				self.disposition = 'Movement'
 			else:
 				self.disposition = 'None'
-		
-		current_range = GetHexDistance(0, 0, self.owner.hx, self.owner.hy)
 		
 		# no combat if unit is off-map
 		if current_range > 3:
@@ -6925,8 +6941,16 @@ class AI:
 							hex_list.remove((hx, hy))
 							continue
 				
-				# if unit is being recalled, can only move further away
+				# get distance to new location
 				dist = GetHexDistance(0, 0, hx, hy)
+				
+				# if unit has passengers, try to move closer
+				if self.owner.transport is not None:
+					if dist >= current_range:
+						hex_list.remove((hx, hy))
+						continue
+				
+				# if unit is being recalled, can only move further away
 				if self.recall:
 					if dist < current_range:
 						hex_list.remove((hx, hy))
@@ -6983,6 +7007,8 @@ class AI:
 			if self.owner.BreakdownCheck():
 				return
 			
+			#print('DEBUG: ' + self.owner.unit_id + ' is moving')
+			
 			# clear any bonus and move into new hex
 			self.owner.forward_move_chance = BASE_FORWARD_MOVE_CHANCE
 			scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
@@ -7001,8 +7027,28 @@ class AI:
 			# if new location is in ring 4, remove from game
 			if GetHexDistance(0, 0, hx, hy) == 4:
 				self.owner.RemoveFromPlay()
-				
 		
+		# transports attempt to unload passengers
+		elif self.disposition == 'Unload Passengers':
+			
+			roll = GetPercentileRoll()
+			if roll > 80.0:
+				return
+			
+			# spawn passenger unit
+			unit = Unit(self.owner.transport)
+			unit.owning_player = 1
+			unit.nation = campaign.current_week['enemy_nation']
+			unit.ai = AI(unit)
+			unit.GenerateNewPersonnel()
+			unit.SpawnAt(self.owner.hx, self.owner.hy)
+			
+			if self.owner.spotted:
+				unit.spotted = True
+				ShowMessage(self.owner.GetName() + ' has unloaded a ' + unit.GetName() + '!')
+			self.owner.transport = None
+		
+		# combat dispositions
 		elif self.disposition in ['Combat', 'Attack Player', 'Harass Player']:
 			
 			# determine target list
@@ -7279,6 +7325,10 @@ class Unit:
 			
 			# clear this stat since we don't need it any more
 			self.stats['weapon_list'] = None
+		
+		# placeholders for transport/cargo
+		self.transport = None
+		self.cargo = None
 		
 		# set up initial scenario statuses
 		self.ResetMe()
@@ -8907,6 +8957,13 @@ class Unit:
 				elif category == 'Train Car':
 					vp_amount = 3
 				
+				if self.cargo is not None:
+					if self.cargo == 'Ammo':
+						vp_amount += 2
+					elif self.cargo == 'Supplies':
+						vp_amount += 1
+					ShowMessage(self.GetStat('class') + ' was transporting ' + self.cargo + ', now destroyed.')
+				
 				if campaign_day.mission == 'Fighting Withdrawl':
 					vp_amount += 1
 				
@@ -9684,6 +9741,14 @@ class Scenario:
 				unit.GenerateNewPersonnel()
 				unit.SpawnAt(hx, hy)
 				unit.facing = GetDirectionToward(unit.hx, unit.hy, 0, 0)
+			
+			# NEW: set up transported unit or cargo
+			if unit.GetStat('transport') is not None:
+				roll = GetPercentileRoll()
+				if roll <= 60.0:
+					unit.transport = choice(unit.GetStat('transport'))
+				else:
+					unit.cargo = choice(['Ammo', 'Food', 'Supplies'])
 			
 			# if player used advancing fire, test for pin
 			if campaign_day.advancing_fire:

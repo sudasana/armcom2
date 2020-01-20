@@ -673,6 +673,9 @@
 				"location" : "Hull"
 			}
 		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
 		"description" : [
 			"Produced under license from the Italian Fiat company, the 621 ",
 			"serves as the workhorse of the Polish military, transporting ",
@@ -2871,6 +2874,9 @@
 				"location" : "Hull"
 			}
 		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
 		"description" : [
 			"The Blitz truck, produced by the General Motors subsidiary ",
 			"company Opel, provides the motorized transport backbone for ",
@@ -2893,6 +2899,9 @@
 				"name" : "Driver",
 				"location" : "Hull"
 			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
 		],
 		"description" : [
 			"This 4.5-ton truck is the workhorse of the German armed forces. ",
@@ -3577,6 +3586,9 @@
 				"name" : "Driver",
 				"location" : "Hull"
 			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
 		],
 		"description" : [
 			"This 4.5-ton truck is the workhorse of the Soviet armed forces."
@@ -5191,6 +5203,9 @@
 				"name" : "Driver",
 				"location" : "Hull"
 			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
 		],
 		"description" : [
 			"This design of truck was widespread during the 1930s and 1940s, ",

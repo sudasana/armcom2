@@ -224,7 +224,7 @@ MISSION_DESC = {
 
 # base firepower ratings for units participating in close combat
 ASSAULT_FP = {
-	'Infantry Squad' : (4, 6),
+	'Infantry Squad' : (6, 6),
 	'MG Team' : (4, 8),
 	'Tankette' : (4, 8),
 	'Light Tank' : (6, 10),
@@ -9288,6 +9288,24 @@ class Scenario:
 			ShowMessage('Enemy artillery forces fire a bombardment!')
 			self.DoArtilleryAttack(player_target=True)
 		
+		# enemy infantry assault on player
+		elif roll <= 90.0:
+			# check to see if 1+ rifle squads within 1 hex
+			unit_list = []
+			for unit in self.units:
+				if unit.owning_player == 0: continue
+				if unit.unit_id != 'Riflemen': continue
+				if unit.pinned: continue
+				if GetHexDistance(unit.hx, unit.hy, 0, 0) > 1: continue
+				unit_list.append(unit)
+			
+			# no unit within range and able to attack
+			if len(unit_list) == 0:
+				print('DEBUG: No infantry squad in range and able to assault player')
+				return
+			
+			self.ResolveCC([choice(unit_list)], 0, 0)
+		
 		# FUTURE: add more event types
 		else:
 			return
@@ -12160,22 +12178,31 @@ class Scenario:
 		
 		# FUTURE: make sure that pinned units are not attacking in CC
 		
-		#print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
+		print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
 		
 		# build list of defending units
 		defending_units = []
 		for unit in self.hex_dict[(hx,hy)].unit_stack:
-			if unit.GetStat('category') not in ['Infantry', 'Gun']: continue
 			defending_units.append(unit)
 		
-		# defending units get a chance for defensive fire
-		ShowMessage('Defending units engage in defensive fire')
-		for unit in defending_units:
-			if unit.ai is None: continue
-			unit.ai.disposition = 'Combat'
-			unit.ai.DoBestAttack(attacking_units)
+		# no units to defend!
+		if len(defending_units) == 0:
+			print('DEBUG: No units to defend!')
+			return
 		
-		# resolve any hits
+		# if player is defending, let them know
+		if defending_units[0].owning_player == 0:
+			ShowMessage('You are being assaulted in close combat!')
+		
+		# defending AI units get a chance for defensive fire
+		else:
+			ShowMessage('Defending units engage in defensive fire')
+			for unit in defending_units:
+				if unit.ai is None: continue
+				unit.ai.disposition = 'Combat'
+				unit.ai.DoBestAttack(attacking_units)
+		
+		# resolve any hits on attacking units
 		for unit in attacking_units:
 			unit.ResolveFP()
 			unit.ResolveAPHits()
@@ -12185,7 +12212,7 @@ class Scenario:
 		combat_round = 1
 		while not combat_over:
 			
-			#ShowMessage('Starting close combat, round #' + str(combat_round) + '.')
+			print('DEBUG: Starting close combat, round #' + str(combat_round) + '.')
 			
 			# calculate total firepower rating for attackers and defenders
 			attack_fp, defend_fp = 0,0

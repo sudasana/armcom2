@@ -2298,7 +2298,8 @@ class CampaignDay:
 			'rain_active' : False,
 			'rain_drops' : [],
 			'snow_active' : False,
-			'snowflakes' : []
+			'snowflakes' : [],
+			'hex_highlight' : False
 		}
 	
 	
@@ -2865,7 +2866,8 @@ class CampaignDay:
 			(strength, hx, hy) = choice(hex_list) 
 			
 			self.map_hexes[(hx, hy)].target_of_opportunity = 10
-			ShowMessage('We have received word of a new target of opportunity, capture zone if possible')
+			ShowMessage('We have received word of a new target of opportunity, capture this zone if possible.',
+				cd_highlight=(hx,hy))
 		
 		# enemy strength increases
 		elif roll <= 30.0:
@@ -2887,7 +2889,7 @@ class CampaignDay:
 			# don't show anything if zone not known to player
 			if not map_hex.known_to_player: return
 			
-			ShowMessage('We have reports of an increase of enemy strength in a zone!')
+			ShowMessage('We have reports of an increase of enemy strength in a zone!', cd_highlight=(hx,hy))
 		
 		# reveal enemy strength
 		elif roll <= 40.0:
@@ -2904,7 +2906,7 @@ class CampaignDay:
 			(hx, hy) = choice(hex_list)
 			self.map_hexes[(hx,hy)].known_to_player = True
 			
-			ShowMessage('We have received information about expected enemy strength in an area.')
+			ShowMessage('We have received information about expected enemy strength in an area.', cd_highlight=(hx,hy))
 		
 		# loss of recon knowledge and possible change in strength
 		elif roll <= 60.0:
@@ -2918,12 +2920,13 @@ class CampaignDay:
 			if len(hex_list) == 0:
 				return
 			
-			ShowMessage('Enemy movement reported in a map zone, estimated strength no longer certain.')
-			
 			(hx, hy) = choice(hex_list)
 			map_hex = self.map_hexes[(hx,hy)]
 			
 			map_hex.known_to_player = False
+			
+			ShowMessage('Enemy movement reported in a map zone, estimated strength no longer certain.', cd_highlight=(hx,hy))
+			
 			map_hex.enemy_strength -= 3
 			map_hex.enemy_strength += libtcod.random_get_int(0, 0, 6)
 			
@@ -3037,10 +3040,9 @@ class CampaignDay:
 			
 			# 1+ possible hexes to capture
 			if len(hex_list) > 0:
-				ShowMessage('Allied forces have captured an enemy-held zone!') 
 				(hx, hy) = choice(hex_list)
+				ShowMessage('Allied forces have captured an enemy-held zone!', cd_highlight=(hx,hy)) 
 				self.map_hexes[(hx,hy)].CaptureMe(0, no_vp=True)
-		
 		
 		roll = GetPercentileRoll()
 		
@@ -3087,7 +3089,7 @@ class CampaignDay:
 				# player zone was captured
 				if self.player_unit_location in capture_list:
 					# player is present, trigger a scenario
-					ShowMessage('Enemy forces attack your area!')
+					ShowMessage('Enemy forces attack your zone!')
 					map_hex = self.map_hexes[self.player_unit_location]
 					scenario = Scenario(map_hex)
 					self.AddRecord('Battles Fought', 1)
@@ -3096,7 +3098,8 @@ class CampaignDay:
 					if len(capture_list) > 1:
 						ShowMessage('Enemy forces have captured allied-held zones!')
 					else:
-						ShowMessage('Enemy forces have captured an allied-held zone!')
+						(hx, hy) = capture_list[0]
+						ShowMessage('Enemy forces have captured an allied-held zone!', cd_highlight=(hx,hy))
 	
 		# update consoles and screen
 		self.UpdateCDUnitCon()
@@ -4548,6 +4551,8 @@ class CampaignDay:
 		self.animation['rain_drops'] = []
 		self.animation['snow_active'] = False
 		self.animation['snowflakes'] = []
+		self.animation['hex_highlight'] = False
+		self.animation['hex_flash'] = 0
 		
 		# check for rain or snow animation
 		if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
@@ -4646,6 +4651,26 @@ class CampaignDay:
 				
 				libtcod.console_put_char_ex(cd_anim_con, x, y, 249, libtcod.white,
 					libtcod.black)
+		
+		# show hex highlight
+		if self.animation['hex_highlight']:
+			
+			(hx, hy) = self.animation['hex_highlight']
+			(x,y) = self.PlotCDHex(hx, hy)
+			x += 1
+			y -= 1
+			
+			if self.animation['hex_flash'] == 1:
+				char = 250
+				self.animation['hex_flash'] = 0
+			else:
+				char = 249
+				self.animation['hex_flash'] = 1
+			
+			for direction in range(6):
+				for (xm,ym) in CD_HEX_EDGE_CELLS[direction]:
+					libtcod.console_put_char_ex(cd_anim_con, x+xm, y+ym,
+						char, libtcod.light_blue, libtcod.black)
 		
 		# reset update timer
 		session.anim_timer  = time.time()
@@ -5107,7 +5132,7 @@ class CampaignDay:
 						if map_hex2.controlled_by == 0: continue
 						map_hex2.known_to_player = True
 						text = 'Estimated enemy strength in zone: ' + str(map_hex2.enemy_strength)
-						ShowMessage(text)
+						ShowMessage(text, cd_highlight=(hx2,hy2))
 						campaign_day.AdvanceClock(0, 15)
 						DisplayTimeInfo(time_con)
 						self.UpdateCDUnitCon()
@@ -5305,7 +5330,7 @@ class CDMapHex:
 			# check for TOO reward
 			if self.target_of_opportunity is not None:
 				campaign.AwardVP(self.target_of_opportunity)
-				ShowMessage('You have captured a Target of Opportunity!')
+				ShowMessage('You have captured a Target of Opportunity!', cd_highlight=(self.hx, self.hy))
 		
 		# clear any TOO
 		self.target_of_opportunity = None
@@ -6772,7 +6797,7 @@ class AI:
 		# if recalled, chance that unit simply disappears
 		if self.recall:
 			if GetPercentileRoll() <= 10.0:
-				ShowMessage(self.owner.GetName() + ' withdraws from the battlefield.')
+				ShowMessage(self.owner.GetName() + ' withdraws from the battlefield.', scenario_highlight(self.owner.hx, self.owner.hy))
 				self.owner.DestroyMe(no_vp=True)
 				return
 		
@@ -7044,7 +7069,7 @@ class AI:
 			
 			if self.owner.spotted:
 				unit.spotted = True
-				ShowMessage(self.owner.GetName() + ' has unloaded a ' + unit.GetName() + '!')
+				ShowMessage(self.owner.GetName() + ' has unloaded a ' + unit.GetName() + '!', scenario_highlight=(self.owner.hx, self.owner.hy))
 			self.owner.transport = None
 		
 		# combat dispositions
@@ -7070,7 +7095,8 @@ class AI:
 				if self.owner.GetStat('category') in ['Infantry', 'Gun'] and not self.owner.dug_in:
 					if self.owner.AttemptDigIn():
 						if self.owner.owning_player == 0 or (self.owner.owning_player == 1 and self.owner.spotted):
-							ShowMessage(self.owner.unit_id + ' is now dug in.')
+							ShowMessage(self.owner.unit_id + ' is now dug in.',
+								scenario_highlight=(self.owner.hx, self.owner.hy))
 				
 				return
 			
@@ -7909,7 +7935,8 @@ class Unit:
 					# display message
 					if self.owning_player == 0:
 						text = unit.GetName() + ' spotted!'
-						ShowMessage(text, portrait=unit.GetStat('portrait'))
+						ShowMessage(text, portrait=unit.GetStat('portrait'),
+							scenario_highlight=(unit.hx, unit.hy))
 						
 					elif unit == scenario.player_unit:
 						ShowMessage('You have been spotted!')
@@ -8358,7 +8385,7 @@ class Unit:
 		# display message if player is the target
 		if target == scenario.player_unit:
 			text = self.GetName() + ' fires at you with ' + weapon.stats['name']
-			ShowMessage(text)
+			ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 		
 		# attack loop, possible to maintain RoF and do multiple attacks within this loop
 		attack_finished = False
@@ -8557,7 +8584,7 @@ class Unit:
 								target.fortified = False
 								target.terrain = 'Rubble'
 								if target.owning_player == 0 or (target.owning_player == 1 and target.spotted):
-									ShowMessage(target.unit_id + "'s fortification has been destroyed.")
+									ShowMessage(target.unit_id + "'s fortification has been destroyed.", scenario_highlight=(target.hx, target.hy))
 								effective_fp = effective_fp * 4
 							else:
 								effective_fp = int(float(effective_fp) * 0.1)
@@ -8658,7 +8685,7 @@ class Unit:
 			
 			# shock test
 			roll = GetPercentileRoll()
-			if roll > profile['final_chance']:
+			if roll > profile['final_chance'] * 1.5:
 				for weapon in self.weapon_list:
 					weapon.acquired_target = None
 				
@@ -8779,14 +8806,14 @@ class Unit:
 				
 				text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + '. '
 				text += str(score) + '%% chance to destroy.'
-				ShowMessage(text)
+				ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 				
 				if GetPercentileRoll() <= score:
 					text = self.GetName() + ' was destroyed.'
-					ShowMessage(text)
+					ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 					self.DestroyMe()
 				else:
-					ShowMessage('No effect.')
+					ShowMessage('No effect.', scenario_highlight=(self.hx, self.hy))
 				return
 			
 			# FUTURE: chance of minor damage to vehicle
@@ -8816,23 +8843,23 @@ class Unit:
 		
 		text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + '. '
 		text += str(base_chance) + '%% chance to destroy.'
-		ShowMessage(text)
+		ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 		
 		# roll for effect
 		roll = GetPercentileRoll()
 		
 		if roll <= base_chance:
 			text = self.GetName() + ' was destroyed.'
-			ShowMessage(text)
+			ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 			self.DestroyMe()
 		else:
 			# pin test if not already pinned
 			if self.pinned:
-				ShowMessage('No effect.')
+				ShowMessage('No effect.', scenario_highlight=(self.hx, self.hy))
 			else:
 				self.PinTest(self.fp_to_resolve)
 				if not self.pinned:
-					ShowMessage('No effect.')
+					ShowMessage('No effect.', scenario_highlight=(self.hx, self.hy))
 		
 		self.fp_to_resolve = 0
 		self.fatigue += 1
@@ -8891,7 +8918,7 @@ class Unit:
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
 		if not no_msg:
-			ShowMessage(self.GetName() + ' is now Pinned.')
+			ShowMessage(self.GetName() + ' is now Pinned.', scenario_highlight=(self.hx, self.hy))
 
 
 	# immobilize this unit
@@ -8961,14 +8988,14 @@ class Unit:
 				
 				if self.transport is not None:
 					vp_amount += 1
-					ShowMessage(self.GetStat('class') + ' was transporting a ' + self.transport + ', now destroyed.')
+					ShowMessage(self.GetStat('class') + ' was transporting a ' + self.transport + ', now destroyed.', scenario_highlight=(self.hx, self.hy))
 				
 				elif self.cargo is not None:
 					if self.cargo == 'Ammo':
 						vp_amount += 2
 					elif self.cargo == 'Supplies':
 						vp_amount += 1
-					ShowMessage(self.GetStat('class') + ' was transporting ' + self.cargo + ', now destroyed.')
+					ShowMessage(self.GetStat('class') + ' was transporting ' + self.cargo + ', now destroyed.', scenario_highlight=(self.hx, self.hy))
 				
 				if campaign_day.mission == 'Fighting Withdrawl':
 					vp_amount += 1
@@ -9002,7 +9029,7 @@ class Unit:
 		self.pinned = False
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
-		ShowMessage(self.GetName() + ' is no longer Pinned.')
+		ShowMessage(self.GetName() + ' is no longer Pinned.', scenario_highlight=(self.hx, self.hy))
 
 
 
@@ -9039,7 +9066,9 @@ class Scenario:
 			'air_attack' : None,
 			'air_attack_line' : [],
 			'bomb_effect' : None,
-			'bomb_effect_lifetime' : 0
+			'bomb_effect_lifetime' : 0,
+			'hex_highlight' : False,
+			'hex_flash' : 0
 		}
 		
 		# current odds of a random event being triggered
@@ -9188,7 +9217,8 @@ class Scenario:
 			unit = choice(unit_list)
 			unit.ai.recall = True
 			if unit.spotted:
-				ShowMessage(unit.GetName() + ' is being recalled from the battle.')
+				ShowMessage(unit.GetName() + ' is being recalled from the battle.',
+					scenario_highlight=(unit.hx, unit.hy))
 		
 		# sniper attack on player
 		elif roll <= 50.0:
@@ -9259,7 +9289,8 @@ class Scenario:
 			unit = choice(unit_list)
 			unit.ImmobilizeMe()
 			if unit.spotted:
-				ShowMessage(unit.GetName() + ' has been immobilized!')
+				ShowMessage(unit.GetName() + ' has been immobilized!',
+					scenario_highlight=(unit.hx, unit.hy))
 		
 		# random unspotted enemy unit is revealed
 		elif roll <= 70.0:
@@ -9273,7 +9304,8 @@ class Scenario:
 			unit = choice(unit_list)
 			unit.SpotMe()
 			text = unit.GetName() + ' spotted!'
-			ShowMessage(text, portrait=unit.GetStat('portrait'))
+			ShowMessage(text, portrait=unit.GetStat('portrait'),
+				scenario_highlight=(unit.hx, unit.hy))
 		
 		# enemy air attack on player
 		elif roll <= 75.0:
@@ -9301,7 +9333,6 @@ class Scenario:
 			
 			# no unit within range and able to attack
 			if len(unit_list) == 0:
-				print('DEBUG: No infantry squad in range and able to assault player')
 				return
 			
 			self.ResolveCC([choice(unit_list)], 0, 0)
@@ -11249,7 +11280,7 @@ class Scenario:
 						else:
 							text = target.GetName() + ' was'
 						text += ' destroyed by a direct hit from the air attack!'
-						ShowMessage(text)
+						ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 						target.DestroyMe()
 						continue
 					
@@ -11262,7 +11293,7 @@ class Scenario:
 					else:
 						text = target.GetName() + ' was'
 					text += ' hit by the air attack.'
-					ShowMessage(text)
+					ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 				
 					target.ResolveFP()
 				
@@ -11278,7 +11309,7 @@ class Scenario:
 							else:
 								text = target.GetName() + ' was'
 							text += ' destroyed by a direct hit from the air attack.'
-							ShowMessage(text)
+							ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 							target.DestroyMe()
 							continue
 					
@@ -11314,7 +11345,7 @@ class Scenario:
 						else:
 							text = target.GetName() + ' was'
 						text += ' unaffected by the air attack'
-						ShowMessage(text)
+						ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 						continue
 					
 					# penetrated
@@ -11323,7 +11354,7 @@ class Scenario:
 					else:
 						text = target.GetName() + ' was'
 					text += ' destroyed by the air attack.'
-					ShowMessage(text)
+					ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 					target.DestroyMe()
 				
 		if not results:
@@ -11438,7 +11469,7 @@ class Scenario:
 						else:
 							text = target.GetName() + ' was'
 						text += ' destroyed by a direct hit from the artillery attack.'
-						ShowMessage(text)
+						ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 						target.DestroyMe()
 						continue
 					
@@ -11451,7 +11482,7 @@ class Scenario:
 					else:
 						text = target.GetName() + ' was'
 					text += ' hit by artillery attack.'
-					ShowMessage(text)
+					ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 					
 					target.ResolveFP()
 				
@@ -11466,7 +11497,7 @@ class Scenario:
 							else:
 								text = target.GetName() + ' was'
 							text += ' destroyed by a direct hit from the artillery attack.'
-							ShowMessage(text)
+							ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 							target.DestroyMe()
 							continue
 					
@@ -11501,7 +11532,7 @@ class Scenario:
 							text = 'You were hit by the artillery attack but remain unharmed.'
 						else:
 							text = target.GetName() + ' was hit by the artillery attack but remains unharmed.'
-						ShowMessage(text)
+						ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 						if not target.spotted:
 							target.hit_by_fp = True
 						continue
@@ -11512,7 +11543,7 @@ class Scenario:
 					else:
 						text = target.GetName() + ' was'
 					text += ' destroyed by artillery attack'
-					ShowMessage(text)
+					ShowMessage(text, scenario_highlight=(target.hx, target.hy))
 					target.DestroyMe()
 		
 		if not results:
@@ -12770,6 +12801,13 @@ class Scenario:
 		libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
 		libtcod.console_print_ex(unit_info_con, 60, 0, libtcod.BKGND_NONE,
 			libtcod.RIGHT, 'Range: ' + text)
+		
+		if DEBUG:
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.yellow)
+			libtcod.console_print_ex(unit_info_con, 60, 1, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(map_hex.hx) + ',' + str(map_hex.hy))
+			libtcod.console_print_ex(unit_info_con, 60, 2, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(x) + ',' + str(y))
 	
 		# no units in hex
 		if len(map_hex.unit_stack) == 0: return
@@ -12863,6 +12901,8 @@ class Scenario:
 		self.animation['rain_drops'] = []
 		self.animation['snow_active'] = False
 		self.animation['snowflakes'] = []
+		self.animation['hex_highlight'] = False
+		self.animation['hex_flash'] = 0
 		
 		# check for rain animation
 		if campaign_day.weather['Precipitation'] in ['Rain', 'Heavy Rain']:
@@ -12962,7 +13002,6 @@ class Scenario:
 				libtcod.console_put_char_ex(anim_con, x, y, 249, libtcod.white,
 					libtcod.black)
 		
-		
 		# update airplane animation if any
 		if self.animation['air_attack'] is not None:
 			
@@ -13019,6 +13058,24 @@ class Scenario:
 				
 				libtcod.console_put_char_ex(anim_con, x, y, 42, col,
 					libtcod.black)
+		
+		# update hex highlight if any
+		if self.animation['hex_highlight']:
+			
+			(hx, hy) = self.animation['hex_highlight']
+			(x,y) = self.PlotHex(hx, hy)
+			
+			if self.animation['hex_flash'] == 1:
+				char = 250
+				self.animation['hex_flash'] = 0
+			else:
+				char = 249
+				self.animation['hex_flash'] = 1
+			
+			for direction in range(6):
+				for (xm,ym) in HEX_EDGE_CELLS[direction]:
+					libtcod.console_put_char_ex(anim_con, x+xm, y+ym,
+						char, libtcod.light_blue, libtcod.black)
 		
 		# reset update timer
 		session.anim_timer = time.time()
@@ -13843,8 +13900,7 @@ def DrawFrame(console, x, y, w, h):
 
 
 # display a message window on the screen, pause, and then clear message from screen
-# FUTURE: possible to highlight a CD/scenario hex, and have message appear near highlighed hex
-# but not covering it
+# possible to highlight a CD/scenario hex, and have message appear near highlighed hex but not covering it
 # FUTURE: game options may override this and display the message in the center of the map regardless
 def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None):
 	
@@ -13860,13 +13916,40 @@ def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None)
 	height += len(lines)
 	
 	# determine display location of console on screen
-	x = WINDOW_XM + 1 - int(width / 2)
 	
-	if scenario is not None:
-		if not scenario.finished:
-			x += 12
+	# if we are highlighting a hex, position the console close to but not obscuring the hex
+	if cd_highlight is not None:
+		(hx, hy) = cd_highlight
+		(x,y) = campaign_day.PlotCDHex(hx, hy)
+		
+		x += 29 - int(width/2)
+		if hy <= 4:
+			y += 11
+		else:
+			y -= (height - 2)
 	
-	y = WINDOW_YM - int(height / 2)
+	elif scenario_highlight is not None:
+		(hx, hy) = scenario_highlight
+		(x,y) = scenario.PlotHex(hx, hy)
+		
+		x += 32 - int(width/2)
+		if y >= 24:
+			y -= (height - 6)
+		else:
+			y += 13
+	
+	else:
+		
+		# generic location in centre of map
+		x = WINDOW_XM + 1 - int(width / 2)
+		
+		if scenario is not None:
+			if not scenario.finished:
+				x += 12
+		
+		y = WINDOW_YM - int(height / 2)
+	
+	# set the console display location
 	session.msg_location = (x, y)
 	
 	# create message console
@@ -13881,7 +13964,7 @@ def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None)
 		libtcod.console_set_default_background(session.msg_con, libtcod.black)
 	
 	# display message
-	# try to center message vertically in window
+	# try to center message vertically within console
 	x = int(width / 2)
 	y = int(height / 2) - int(len(lines) / 2)
 	if portrait is not None:
@@ -13892,8 +13975,22 @@ def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None)
 		if y == height-1: break
 		y += 1
 	
-	# allow the message to be viewed by player
+	# start hex highlight if any
+	if cd_highlight is not None:
+		campaign_day.animation['hex_highlight'] = (hx, hy)
+		campaign_day.animation['hex_flash'] = 1
+	elif scenario_highlight is not None:
+		scenario.animation['hex_highlight'] = (hx, hy)
+		scenario.animation['hex_flash'] = 1
+	
+	# allow the message (and animation) to be viewed by player
 	Wait(100 + (40 * config['ArmCom2'].getint('message_pause')))
+	
+	# stop highlight if any
+	if cd_highlight is not None:
+		campaign_day.animation['hex_highlight'] = False
+	elif scenario_highlight is not None:
+		scenario.animation['hex_highlight'] = False
 	
 	# erase console and re-draw screen
 	session.msg_con = None

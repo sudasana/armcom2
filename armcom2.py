@@ -8217,30 +8217,33 @@ class Unit:
 			libtcod.console_set_default_foreground(console, libtcod.white)
 			libtcod.console_print(console, x, y+2, self.unit_name)
 		
-		# weapons - list turret and unmounted weapons on line 1, all others on line 2
-		libtcod.console_set_default_foreground(console, libtcod.white)
+		# weapons: display guns on line 2, all others on line 2
+		# keep track of x location and display in red if jammed, dark grey if broken
 		libtcod.console_set_default_background(console, libtcod.darkest_red)
 		libtcod.console_rect(console, x, y+10, 25, 2, True, libtcod.BKGND_SET)
 		
-		text1 = ''
-		text2 = ''
+		x1 = x
+		x2 = x
+		
 		for weapon in self.weapon_list:
-			line1 = True
-			if weapon.GetStat('mount') is not None:
-				if weapon.GetStat('mount') != 'Turret':
-					line1 = False
 			
-			if line1:
-				if text1 != '': text1 += ', '
-				text1 += weapon.stats['name']
+			# set display colour
+			libtcod.console_set_default_foreground(console, libtcod.white)
+			if weapon.broken:
+				libtcod.console_set_default_foreground(console, libtcod.darkest_grey)
+			elif weapon.jammed:
+				libtcod.console_set_default_foreground(console, libtcod.light_red)
+			
+			text = weapon.stats['name']
+			if weapon.GetStat('type') == 'Gun':
+				libtcod.console_print(console, x1, y+10, text)
+				x1 += len(text) + 1
 			else:
-				if text2 != '': text2 += ', '
-				text2 += weapon.stats['name']
-			
-		libtcod.console_print(console, x, y+10, text1)
-		libtcod.console_print(console, x, y+11, text2)
+				libtcod.console_print(console, x2, y+11, text)
+				x2 += len(text) + 1
 		
 		# armour
+		libtcod.console_set_default_foreground(console, libtcod.white)
 		armour = self.GetStat('armour')
 		if armour is None:
 			libtcod.console_print(console, x, y+12, 'Unarmoured')

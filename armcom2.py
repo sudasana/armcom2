@@ -13986,11 +13986,13 @@ def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None)
 	# allow the message (and animation) to be viewed by player
 	Wait(100 + (40 * config['ArmCom2'].getint('message_pause')))
 	
-	# stop highlight if any
+	# clear hex highlight if any
 	if cd_highlight is not None:
 		campaign_day.animation['hex_highlight'] = False
+		campaign_day.UpdateAnimCon()
 	elif scenario_highlight is not None:
 		scenario.animation['hex_highlight'] = False
+		scenario.UpdateAnimCon()
 	
 	# erase console and re-draw screen
 	session.msg_con = None

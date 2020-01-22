@@ -2862,6 +2862,60 @@
 		}
 	},
 	
+	"SPW 251/1" : {
+		"category" : "Vehicle",
+		"class" : "Armoured Personnel Carrier",
+		"portrait" : "unit_SPW_251_1.xp",
+		"size_class" : "Small",
+		"movement_class" : "Half-Tracked",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "AA MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Hull",
+				"open_top" : "TRUE",
+				"bu_visible" : ["0", "1", "2", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"open_top" : "TRUE",
+				"bu_visible" : ["0", "1", "2", "4", "5"]
+			}
+		],
+		"transport" : [
+			"Riflemen"
+		],
+		"description" : [
+			"This halftrack armoured transport is designed to carry infantry ",
+			"from armoured divisions quickly over terrain."
+		],
+		"rarity" : {
+			"1939.01.01" : "40",
+			"1940.01.01" : "50",
+			"1941.01.01" : "60",
+			"1942.01.01" : "70",
+			"1943.01.01" : "80",
+			"1944.01.01" : "90",
+			"1945.01.01" : "100"
+		}
+	},
+	
 	"Opel Blitz 3-ton" : {
 		"category" : "Vehicle",
 		"class" : "Truck",

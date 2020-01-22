@@ -7684,6 +7684,9 @@ class Unit:
 			self.bog_chance += 2.0
 		elif movement_class == 'Fast Tank':
 			self.forward_move_chance += 10.0
+		elif movement_class == 'Half-Tracked':
+			self.forward_move_chance += 5.0
+			self.bog_chance -= 0.5
 		elif movement_class == 'Wheeled':
 			self.forward_move_chance += 5.0
 			self.bog_chance += 4.0
@@ -7714,6 +7717,9 @@ class Unit:
 				if movement_class == 'Wheeled':
 					mod = -65.0
 					bog_mod = 4.0
+				elif movement_class == 'Half-Tracked':
+					mod = -40.0
+					bog_mod = 1.0
 				else:
 					mod = -50.0
 					bog_mod = 2.0
@@ -7721,6 +7727,9 @@ class Unit:
 				if movement_class == 'Wheeled':
 					mod = -45.0
 					bog_mod = 2.0
+				elif movement_class == 'Half-Tracked':
+					mod = -20.0
+					bog_mod = 0.5
 				else:
 					mod = -30.0
 					bog_mod = 1.0
@@ -7728,7 +7737,7 @@ class Unit:
 			self.reverse_move_chance += mod
 			self.bog_chance += bog_mod
 		
-		# NEW: ground pressure modifier
+		# ground pressure modifier
 		gp = self.GetStat('ground_pressure')
 		if gp is not None:
 			if gp == 'Light':
@@ -15341,7 +15350,7 @@ def PlaySoundFor(obj, action):
 			PlaySound('wheeled_moving_0' + str(libtcod.random_get_int(0, 0, 2)))
 			return
 		
-		elif obj.GetStat('class') in ['Tankette', 'Light Tank', 'Medium Tank']:
+		elif obj.GetStat('class') in ['Tankette', 'Light Tank', 'Medium Tank', 'Half-Tracked']:
 			PlaySound('light_tank_moving_0' + str(libtcod.random_get_int(0, 0, 2)))
 			return
 	

@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.12.0'					# game version
+VERSION = '0.12.0 22-01-2020'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -191,7 +191,8 @@ CD_TRAVEL_CMDS = [
 
 # order to display ammo types
 AMMO_TYPES = ['HE', 'AP', 'Smoke']
-# display colours for ammo types (FUTURE: text descriptions too)
+
+# display colours for ammo types (FUTURE: record text descriptions here too)
 AMMO_TYPE = {
 	'HE' : libtcod.lighter_grey,
 	'AP' : libtcod.yellow,
@@ -7684,7 +7685,6 @@ class Unit:
 		elif movement_class == 'Fast Tank':
 			self.forward_move_chance += 10.0
 		elif movement_class == 'Wheeled':
-			# FUTURE: additional modifier here if using road movement
 			self.forward_move_chance += 5.0
 			self.bog_chance += 4.0
 		
@@ -8102,8 +8102,6 @@ class Unit:
 		# draw terrain greebles
 		if self.terrain is not None and not (self.owning_player == 1 and not self.spotted):
 			generator = libtcod.random_new_from_seed(self.terrain_seed)
-			
-			# FUTURE: Snow and Deep Snow need their own colours for greebles
 			
 			if self.terrain == 'Open Ground':
 				for (xmod, ymod) in GREEBLE_LOCATIONS:
@@ -8717,22 +8715,13 @@ class Unit:
 			# apply result
 			if profile['result'] == 'NO PENETRATION':
 				
-				# check for stun test
-				difference = profile['final_chance'] - profile['roll']
-				
-				if 0.0 < difference <= AP_STUN_MARGIN:
-					
-					# player was target
-					if self == scenario.player_unit:
-						
+				# check for stun test if player was target
+				if self == scenario.player_unit:
+					difference = profile['final_chance'] - profile['roll']
+					if 0.0 < difference <= AP_STUN_MARGIN:
 						for position in self.positions_list:
 							if position.crewman is None: continue
 							position.crewman.DoStunCheck(AP_STUN_MARGIN - difference)
-					
-					# FUTURE: target was AI unit
-					else:
-						
-						pass
 					
 			elif profile['result'] == 'PENETRATED':
 				

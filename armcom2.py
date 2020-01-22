@@ -213,7 +213,7 @@ MISSION_DESC = {
 	'Advance' : 'Enemy resistance is scattered and we are pushing forward. Advance into enemy territory, destroy any resistance, and capture territory.',
 	'Battle' : 'Your group has been posted to the front line where there is heavy resistance. Break through the enemy defenses, destroy enemy units, and capture territory.',
 	'Counterattack' : 'After being on the defensive, your battlegroup has been ordered to attack the enemy advance.',
-	'Fighting Withdrawl' : 'The enemy is mounting a strong attack against our lines. Destroy enemy units but withdraw into friendly territory if necessary.'
+	'Fighting Withdrawal' : 'The enemy is mounting a strong attack against our lines. Destroy enemy units but withdraw into friendly territory if necessary.'
 }
 
 ##########################################################################################
@@ -2237,7 +2237,7 @@ class CampaignDay:
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
 		
 		# set up initial zone control based on day mission
-		if self.mission == 'Fighting Withdrawl':
+		if self.mission == 'Fighting Withdrawal':
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 0
 		elif self.mission == 'Counterattack':
@@ -2261,7 +2261,7 @@ class CampaignDay:
 		self.cd_map_index = {}
 		
 		# set up initial player location
-		if self.mission == 'Fighting Withdrawl':
+		if self.mission == 'Fighting Withdrawal':
 			self.player_unit_location = (2, 0)	# top center of map
 		elif self.mission == 'Battle':
 			self.player_unit_location = (-1, 6)	# lower center of map
@@ -2344,7 +2344,7 @@ class CampaignDay:
 		
 		(player_hx, player_hy) = self.player_unit_location
 		
-		if self.mission in ['Fighting Withdrawl', 'Counterattack']:
+		if self.mission in ['Fighting Withdrawal', 'Counterattack']:
 			if player_hy != 8: return
 		else:
 			if player_hy != 0: return
@@ -2384,7 +2384,7 @@ class CampaignDay:
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
 	
 		# set up zone control
-		if self.mission == 'Fighting Withdrawl':
+		if self.mission == 'Fighting Withdrawal':
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 0
 		else:
@@ -2831,7 +2831,7 @@ class CampaignDay:
 		if roll <= 20.0:
 			
 			# doesn't fit this mission
-			if self.mission == 'Fighting Withdrawl':
+			if self.mission == 'Fighting Withdrawal':
 				return
 			
 			targets = 0
@@ -3002,7 +3002,7 @@ class CampaignDay:
 			friendly_capture_odds = 20.0
 			enemy_capture_odds = 20.0
 			enemy_max_capture = 2
-		elif campaign_day.mission == 'Fighting Withdrawl':
+		elif campaign_day.mission == 'Fighting Withdrawal':
 			friendly_capture_odds = 3.0
 			enemy_capture_odds = 85.0
 			enemy_max_capture = 4
@@ -3524,6 +3524,7 @@ class CampaignDay:
 					position.crewman.wound = 'Serious'
 				else:
 					position.crewman.status = 'Dead'
+					position.crewman.fatigue = 0
 					if position in PLAYER_POSITIONS:
 						text = 'You have died from your wounds.'
 					else:
@@ -5264,7 +5265,7 @@ class CDMapHex:
 		# apply mission modifiers
 		if mission == 'Advance':
 			avg_strength -= 1
-		elif mission in ['Battle', 'Fighting Withdrawl']:
+		elif mission in ['Battle', 'Fighting Withdrawal']:
 			avg_strength += 2
 		elif mission == 'Counterattack':
 			avg_strength += 1
@@ -6016,6 +6017,7 @@ class Personnel:
 			# killed
 			self.status = 'Dead'
 			self.wound = ''
+			self.fatigue = 0
 			
 			if show_messages:
 				if campaign.options['permadeath'] and self.current_position.name in PLAYER_POSITIONS:
@@ -6068,6 +6070,7 @@ class Personnel:
 			if roll > 97.0:
 				self.status = 'Dead'
 				self.wound = ''
+				self.fatigue = 0
 				if self.unit == scenario.player_unit:
 					ShowMessage('Your ' + self.current_position.name + ' has died from his wounds.')
 				return
@@ -8997,7 +9000,7 @@ class Unit:
 						vp_amount += 1
 					ShowMessage(self.GetStat('class') + ' was transporting ' + self.cargo + ', now destroyed.', scenario_highlight=(self.hx, self.hy))
 				
-				if campaign_day.mission == 'Fighting Withdrawl':
+				if campaign_day.mission == 'Fighting Withdrawal':
 					vp_amount += 1
 				
 				campaign.AwardVP(vp_amount)
@@ -9767,7 +9770,7 @@ class Scenario:
 					unit.turret_facing = direction
 			
 			# some units can be spawned dug-in, entrenched, or fortified
-			if unit.GetStat('category') in ['Infantry', 'Gun'] and campaign_day.mission != 'Fighting Withdrawl':
+			if unit.GetStat('category') in ['Infantry', 'Gun'] and campaign_day.mission != 'Fighting Withdrawal':
 				
 				if campaign_day.mission in ['Battle', 'Counterattack']:
 					chance1 = 5.0

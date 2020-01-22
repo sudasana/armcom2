@@ -52,7 +52,7 @@
 				"Advance" : "0",
 				"Battle" : "0",
 				"Counterattack" : "20",
-				"Fighting Withdrawl" : "80"
+				"Fighting Withdrawal" : "80"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -69,7 +69,7 @@
 				"Advance" : "10",
 				"Battle" : "0",
 				"Counterattack" : "30",
-				"Fighting Withdrawl" : "60"
+				"Fighting Withdrawal" : "60"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -86,7 +86,7 @@
 				"Advance" : "10",
 				"Battle" : "0",
 				"Counterattack" : "30",
-				"Fighting Withdrawl" : "60"
+				"Fighting Withdrawal" : "60"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -103,7 +103,7 @@
 				"Advance" : "10",
 				"Battle" : "0",
 				"Counterattack" : "30",
-				"Fighting Withdrawl" : "60"
+				"Fighting Withdrawal" : "60"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -125,7 +125,7 @@
 				"Advance" : "10",
 				"Battle" : "20",
 				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -142,7 +142,7 @@
 				"Advance" : "10",
 				"Battle" : "20",
 				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -159,7 +159,7 @@
 				"Advance" : "10",
 				"Battle" : "20",
 				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -181,7 +181,7 @@
 				"Advance" : "0",
 				"Battle" : "20",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "80"
+				"Fighting Withdrawal" : "80"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 10.0,
@@ -198,7 +198,7 @@
 				"Advance" : "0",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "90"
+				"Fighting Withdrawal" : "90"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -215,7 +215,7 @@
 				"Advance" : "10",
 				"Battle" : "20",
 				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -232,7 +232,7 @@
 				"Advance" : "10",
 				"Battle" : "20",
 				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -249,7 +249,7 @@
 				"Advance" : "10",
 				"Battle" : "20",
 				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,
@@ -266,7 +266,7 @@
 				"Advance" : "10",
 				"Battle" : "20",
 				"Counterattack" : "60",
-				"Fighting Withdrawl" : "10"
+				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Soviet Union",
 			"air_support_level" : 20.0,

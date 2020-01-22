@@ -52,7 +52,7 @@
 				"Advance" : "10",
 				"Battle" : "75",
 				"Counterattack" : "15",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 80.0
@@ -67,7 +67,7 @@
 				"Advance" : "65",
 				"Battle" : "25",
 				"Counterattack" : "10",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -82,7 +82,7 @@
 				"Advance" : "5",
 				"Battle" : "85",
 				"Counterattack" : "10",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -98,7 +98,7 @@
 				"Advance" : "100",
 				"Battle" : "0",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -118,7 +118,7 @@
 				"Advance" : "50",
 				"Battle" : "50",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -133,7 +133,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -148,7 +148,7 @@
 				"Advance" : "70",
 				"Battle" : "30",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -164,7 +164,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -184,7 +184,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -199,7 +199,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -214,7 +214,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -229,7 +229,7 @@
 				"Advance" : "50",
 				"Battle" : "50",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -244,7 +244,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -260,7 +260,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -281,7 +281,7 @@
 				"Advance" : "10",
 				"Battle" : "90",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -302,7 +302,7 @@
 				"Advance" : "10",
 				"Battle" : "90",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -323,7 +323,7 @@
 				"Advance" : "10",
 				"Battle" : "90",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -343,7 +343,7 @@
 				"Advance" : "50",
 				"Battle" : "50",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -358,7 +358,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -373,7 +373,7 @@
 				"Advance" : "60",
 				"Battle" : "20",
 				"Counterattack" : "20",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -388,7 +388,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -404,7 +404,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0

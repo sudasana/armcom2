@@ -49,7 +49,7 @@
 				"Advance" : "85",
 				"Battle" : "15",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Poland",
 			"arty_support_level" : 80.0
@@ -65,7 +65,7 @@
 				"Advance" : "75",
 				"Battle" : "15",
 				"Counterattack" : "10",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Poland",
 			"arty_support_level" : 80.0,
@@ -85,7 +85,7 @@
 				"Advance" : "85",
 				"Battle" : "5",
 				"Counterattack" : "10",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Poland",
 			"arty_support_level" : 80.0

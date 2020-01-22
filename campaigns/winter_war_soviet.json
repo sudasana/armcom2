@@ -54,7 +54,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -71,7 +71,7 @@
 				"Advance" : "80",
 				"Battle" : "20",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -88,7 +88,7 @@
 				"Advance" : "40",
 				"Battle" : "60",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -105,7 +105,7 @@
 				"Advance" : "20",
 				"Battle" : "80",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -127,7 +127,7 @@
 				"Advance" : "0",
 				"Battle" : "20",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "80"
+				"Fighting Withdrawal" : "80"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -144,7 +144,7 @@
 				"Advance" : "0",
 				"Battle" : "20",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "80"
+				"Fighting Withdrawal" : "80"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -161,7 +161,7 @@
 				"Advance" : "0",
 				"Battle" : "40",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "60"
+				"Fighting Withdrawal" : "60"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -183,7 +183,7 @@
 				"Advance" : "10",
 				"Battle" : "0",
 				"Counterattack" : "90",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 10.0,
@@ -200,7 +200,7 @@
 				"Advance" : "50",
 				"Battle" : "0",
 				"Counterattack" : "50",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -217,7 +217,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -234,7 +234,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -251,7 +251,7 @@
 				"Advance" : "90",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,
@@ -268,7 +268,7 @@
 				"Advance" : "100",
 				"Battle" : "0",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Finland",
 			"air_support_level" : 20.0,

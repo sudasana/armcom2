@@ -54,7 +54,7 @@
 				"Advance" : "25",
 				"Battle" : "75",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 80.0,
@@ -71,7 +71,7 @@
 				"Advance" : "25",
 				"Battle" : "75",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
@@ -91,7 +91,7 @@
 				"Advance" : "50",
 				"Battle" : "40",
 				"Counterattack" : "10",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
@@ -111,7 +111,7 @@
 				"Advance" : "70",
 				"Battle" : "15",
 				"Counterattack" : "15",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
@@ -128,7 +128,7 @@
 				"Advance" : "90",
 				"Battle" : "5",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,

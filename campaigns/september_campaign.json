@@ -55,7 +55,7 @@
 				"Advance" : "5",
 				"Battle" : "10",
 				"Counterattack" : "15",
-				"Fighting Withdrawl" : "70"
+				"Fighting Withdrawal" : "70"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 90.0
@@ -71,7 +71,7 @@
 				"Advance" : "0",
 				"Battle" : "10",
 				"Counterattack" : "20",
-				"Fighting Withdrawl" : "70"
+				"Fighting Withdrawal" : "70"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 80.0,
@@ -90,7 +90,7 @@
 				"Advance" : "10",
 				"Battle" : "70",
 				"Counterattack" : "10",
-				"Fighting Withdrawl" : "10"
+				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 70.0,
@@ -109,7 +109,7 @@
 				"Advance" : "0",
 				"Battle" : "10",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "90"
+				"Fighting Withdrawal" : "90"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 50.0,
@@ -128,7 +128,7 @@
 				"Advance" : "50",
 				"Battle" : "50",
 				"Counterattack" : "0",
-				"Fighting Withdrawl" : "0"
+				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 40.0

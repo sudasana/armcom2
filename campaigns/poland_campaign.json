@@ -10,6 +10,9 @@
 		"Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", "Panzer III D",
 		"Panzer III F"
 	],
+	"player_squad_list" : {
+		"Panzer 38(t) A" : ["Panzer II A", "Panzer 38(t) A"]
+	},
 	"player_air_support": [
 		"Ju 87B Stuka"
 	],

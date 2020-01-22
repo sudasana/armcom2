@@ -864,8 +864,7 @@ class Campaign:
 		
 		self.logs = {}			# dictionary of campaign logs for each combat day
 		self.player_unit = None		# placeholder for player unit
-		self.player_squad_max = 0	# maximum units in player squad
-		self.player_squad_num = 0	# current units in player squad
+		self.player_squad_max = 0	# maximum units in player squad in addition to player
 		self.player_vp = 0		# total player victory points
 		self.stats = {}			# local copy of campaign stats
 		self.combat_calendar = []	# list of combat days, created by GenerateCalendar
@@ -2204,7 +2203,10 @@ class CampaignDay:
 			campaign.player_squad_max = 2
 		elif player_unit_class == 'Heavy Tank':
 			campaign.player_squad_max = 1
-		campaign.player_squad_num = campaign.player_squad_max
+		
+		# NEW: spawn player squad units
+		self.player_squad = []
+		self.SpawnPlayerSquad()
 		
 		# current hour, and minute: set initial time from campaign info
 		self.day_clock = {}
@@ -2302,6 +2304,21 @@ class CampaignDay:
 			'hex_highlight' : False
 		}
 	
+	# NEW: spawn squad members to bring player squad up to full strength
+	def SpawnPlayerSquad(self):
+		for i in range(campaign.player_squad_max - len(self.player_squad)):
+			
+			# determine unit type
+			if 'player_squad_list' in campaign.stats:
+				unit_id = choice(campaign.stats['player_squad_list'][campaign.player_unit.unit_id])
+			else:
+				unit_id = campaign.player_unit.unit_id
+			unit = Unit(unit_id)
+			unit.nation = campaign.player_unit.nation
+			unit.ai = AI(unit)
+			unit.GenerateNewPersonnel()
+			self.player_squad.append(unit)
+			print('DEBUG: Added one ' + unit_id + ' to player squad')
 	
 	# move the player from current position to a new position on the map
 	def MovePlayerTo(self, hx2, hy2):
@@ -4458,9 +4475,11 @@ class CampaignDay:
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			libtcod.console_print(cd_command_con, 1, 3, 'Squad')
-			text = str(campaign.player_squad_num) + '/' + str(campaign.player_squad_max) + ' ' + campaign.player_unit.unit_id
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 1, 5, text)
+			y = 5
+			for unit in self.player_squad:
+				libtcod.console_print(cd_command_con, 1, y, unit.unit_id)
+				y += 1
 	
 	
 	# generate/update the campaign info console 23x5
@@ -4917,7 +4936,7 @@ class CampaignDay:
 			key_char = DeKey(chr(key.c).lower())
 			
 			# switch active menu
-			if key_char in ['1', '2', '3', '4', '5']:
+			if key_char in ['1', '2', '3', '4']:
 				if self.active_menu != int(key_char):
 					self.active_menu = int(key_char)
 					self.UpdateCDGUICon()
@@ -4989,8 +5008,8 @@ class CampaignDay:
 							position.crewman.Rest()
 						
 						# check for player squad replenishment
-						if campaign.player_squad_num < campaign.player_squad_max:
-							campaign.player_squad_num = campaign.player_squad_max
+						if len(self.player_squad) < campaign.player_squad_max:
+							self.SpawnPlayerSquad()
 							ShowMessage('You are joined by reserve units, bringing your squad back up to full strength.')
 						
 						self.UpdateCDDisplay()
@@ -9016,10 +9035,6 @@ class Unit:
 			
 				# do bail-out procedure
 				scenario.PlayerBailOut()
-			
-			# player squad member has been destroyed
-			elif self in scenario.player_unit.squad:
-				campaign.player_squad_num -= 1
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
@@ -11761,7 +11776,6 @@ class Scenario:
 		for unit in self.units:
 			if unit == self.player_unit: continue
 			if unit in self.player_unit.squad: continue
-			
 			(new_hx, new_hy) = RotateHex(unit.hx, unit.hy, r)
 			# set destination hex
 			unit.dest_hex = (new_hx, new_hy)
@@ -13141,6 +13155,7 @@ class Scenario:
 		
 			# set up player unit
 			self.player_unit = campaign.player_unit
+			self.player_unit.ResetMe()
 			self.player_unit.facing = 0
 			self.player_unit.turret_facing = 0
 			self.player_unit.squad = []
@@ -13152,12 +13167,9 @@ class Scenario:
 				if position.crewman is None: continue
 				position.crewman.current_cmd = 'Spot'
 			
-			# spawn rest of player squad
-			for i in range(campaign.player_squad_num):
-				unit = Unit(self.player_unit.unit_id)
-				unit.nation = self.player_unit.nation
-				unit.ai = AI(unit)
-				unit.GenerateNewPersonnel()
+			# copy over rest of player squad
+			for unit in campaign_day.player_squad:
+				unit.ResetMe()
 				unit.facing = 0
 				unit.turret_facing = 0
 				unit.spotted = True
@@ -13167,7 +13179,7 @@ class Scenario:
 			# generate enemy units (also checks for pins from advancing fire)
 			self.SpawnEnemyUnits()
 			
-			# set up player unit for first activation
+			# set up player unit and squad for first activation
 			self.player_unit.BuildCmdLists()
 			self.player_unit.ResetForNewTurn(skip_smoke=True)
 			for unit in self.player_unit.squad:
@@ -13228,6 +13240,11 @@ class Scenario:
 			if self.finished:
 				# copy the scenario unit over to the campaign version
 				campaign.player_unit = self.player_unit
+				# copy the squad over too
+				campaign_day.player_squad = []
+				for unit in self.player_unit.squad:
+					campaign_day.player_squad.append(unit)
+					print('DEBUG: Copied over one ' + unit.unit_id + ' to player squad')
 				return
 			
 			if libtcod.console_is_window_closed(): sys.exit()
@@ -15624,7 +15641,7 @@ while not exit_game:
 				
 				result = CheckSavedGameVersion() 
 				if result != '':
-					text = 'Saved game was saved with an older version of the program (' + result + '), cannot continue.'
+					text = 'Saved game was saved with a different version of the program (' + result + '), cannot continue.'
 					ShowNotification(text)
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 					continue

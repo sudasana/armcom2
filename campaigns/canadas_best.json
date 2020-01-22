@@ -9,6 +9,11 @@
 	"player_unit_list" : [
 		"Sherman II", "Sherman V", "Sherman VC"
 	],
+	"player_squad_list" : {
+		"Sherman II" : ["Sherman II", "Sherman V"],
+		"Sherman V" : ["Sherman II", "Sherman V"],
+		"Sherman VC" : ["Sherman II", "Sherman V"]
+	},
 	"player_air_support": [
 		"Typhoon"
 	],

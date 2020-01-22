@@ -3630,6 +3630,7 @@
 	"H35": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
+		"portrait" : "unit_H35.xp",
 		"size_class" : "Small",
 		"movement_class" : "Slow Tank",
 		"unreliable" : true,
@@ -3692,6 +3693,7 @@
 	"H35 (Late)": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
+		"portrait" : "unit_H35_late.xp",
 		"size_class" : "Small",
 		"movement_class" : "Slow Tank",
 		"unreliable" : true,

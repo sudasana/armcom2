@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.12.0 22-01-2020'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -2305,6 +2305,7 @@ class CampaignDay:
 			'hex_highlight' : False
 		}
 	
+	
 	# NEW: spawn squad members to bring player squad up to full strength
 	def SpawnPlayerSquad(self):
 		for i in range(campaign.player_squad_max - len(self.player_squad)):
@@ -2319,7 +2320,7 @@ class CampaignDay:
 			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			self.player_squad.append(unit)
-			print('DEBUG: Added one ' + unit_id + ' to player squad')
+	
 	
 	# move the player from current position to a new position on the map
 	def MovePlayerTo(self, hx2, hy2):
@@ -6915,7 +6916,7 @@ class AI:
 			else:
 				self.disposition = 'None'
 		
-		# no combat if unit is off-map
+		# no combat if unit is in row 4
 		if current_range > 3:
 			if self.disposition == 'Combat':
 				self.disposition = 'None'
@@ -6964,6 +6965,12 @@ class AI:
 		# fortified units won't move
 		if self.owner.fortified and self.disposition == 'Movement':
 			self.disposition = 'Combat'
+		
+		# TEMP testing
+		if self.owner.GetStat('category') == 'Gun' or self.owner in scenario.player_unit.squad:
+			self.disposition = 'None'
+		else:
+			self.disposition = 'Movement'
 		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 				
@@ -7070,10 +7077,6 @@ class AI:
 			self.owner.SetSmokeLevel()
 			scenario.UpdateUnitCon()
 			scenario.UpdateScenarioDisplay()
-			
-			# if new location is in ring 4, remove from game
-			if GetHexDistance(0, 0, hx, hy) == 4:
-				self.owner.RemoveFromPlay()
 		
 		# transports attempt to unload passengers
 		elif self.disposition == 'Unload Passengers':

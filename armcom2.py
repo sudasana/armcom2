@@ -62,7 +62,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.12.0 22-01-2020'					# game version
+VERSION = '0.12.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -6811,6 +6811,9 @@ class AI:
 		# no action if it's not alive
 		if not self.owner.alive: return
 		
+		# TEMP testing
+		if self.owner in scenario.player_unit.squad: return
+		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
 		# check for being recalled because campaign day is over
@@ -6966,13 +6969,7 @@ class AI:
 		if self.owner.fortified and self.disposition == 'Movement':
 			self.disposition = 'Combat'
 		
-		# TEMP testing
-		if self.owner.GetStat('category') == 'Gun' or self.owner in scenario.player_unit.squad:
-			self.disposition = 'None'
-		else:
-			self.disposition = 'Movement'
-		
-		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
+		print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 				
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
@@ -13245,7 +13242,6 @@ class Scenario:
 				campaign_day.player_squad = []
 				for unit in self.player_unit.squad:
 					campaign_day.player_squad.append(unit)
-					print('DEBUG: Copied over one ' + unit.unit_id + ' to player squad')
 				return
 			
 			if libtcod.console_is_window_closed(): sys.exit()

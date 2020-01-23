@@ -1,5 +1,5 @@
 {
- "Suspend Save": false,
+ "Suspend Save": true,
  "Fast Mode": false,
  "Player Immortality": false,
  "Support Requests Always Granted": false,
@@ -10,9 +10,9 @@
  "Player Always Moves": false,
  "Player Always HD": false,
  "No AI Actions": false,
- "AI Hates Player": false,
- "Player Always Penetrated": false,
- "Player Crew Hapless": false,
+ "AI Hates Player": true,
+ "Player Always Penetrated": true,
+ "Player Crew Hapless": true,
  "Free Crew Advances": false,
  "Player Crew Safe in Bail Out": false
 }

@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.12.0'					# game version
+VERSION = '0.12.0 RC 1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2893,7 +2893,7 @@ class CampaignDay:
 					hex_list.append((self.map_hexes[(hx, hy)].enemy_strength, hx, hy))
 			
 			if len(hex_list) == 0:
-				print('DEBUG: no suitable hexes found for TOO')
+				#print('DEBUG: no suitable hexes found for TOO')
 				return
 			
 			for (strength, hx, hy) in reversed(hex_list):
@@ -5920,7 +5920,7 @@ class Personnel:
 		if self.status in ['Dead', 'Unconscious']: return
 		if self.fatigue == 0: return
 		i = libtcod.random_get_int(0, 0, self.stats['Morale'])
-		print('DEBUG: ' + self.first_name + ' lost ' + str(i) + ' fatigue')
+		#print('DEBUG: ' + self.first_name + ' lost ' + str(i) + ' fatigue')
 		self.fatigue -= i
 		if self.fatigue < 0:
 			self.fatigue = 0
@@ -6123,7 +6123,7 @@ class Personnel:
 			if position.crewman == self: continue
 			if position.crewman.current_cmd == 'First Aid':
 				roll -= 15.0
-				print('DEBUG: Added First Aid bonus')
+				#print('DEBUG: Added First Aid bonus')
 		
 		if self.status == 'Unconscious': roll += 15.0
 		
@@ -6831,9 +6831,6 @@ class AI:
 		
 		# no action if it's not alive
 		if not self.owner.alive: return
-		
-		# TEMP testing
-		if self.owner in scenario.player_unit.squad: return
 		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
@@ -8549,7 +8546,7 @@ class Unit:
 			# breakdown check for player weapons
 			if self == scenario.player_unit:
 				if weapon.BreakdownTest():
-					ShowMessage(weapon.GetStat('name') + ' has broken down! It may not be used again for the rest of the day.')
+					ShowMessage(weapon.GetStat('name') + ' has broken down! It may not be used again for the rest of the day.', longer_pause=True)
 					attack_finished = True
 					weapon.maintained_rof = False
 			
@@ -9299,7 +9296,7 @@ class Scenario:
 					text += 'you!'
 				else:
 					text += 'your ' + crew_target.current_position.name + '!'
-				ShowMessage(text)
+				ShowMessage(text, longer_pause=True)
 			else:
 				PlaySoundFor(None, 'sniper_hit')
 				if crew_target.current_position in PLAYER_POSITIONS:
@@ -9307,7 +9304,7 @@ class Scenario:
 				else:
 					text = 'Your ' + crew_target.current_position.name + ' has'
 				text += ' been hit by a sniper!'
-				ShowMessage(text)
+				ShowMessage(text, longer_pause=True)
 				crew_target.DoWoundCheck(roll_modifier = 45.0)
 		
 		# random enemy tank is immobilized
@@ -12246,7 +12243,7 @@ class Scenario:
 		
 		# FUTURE: make sure that pinned units are not attacking in CC
 		
-		print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
+		#print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
 		
 		# build list of defending units
 		defending_units = []
@@ -12255,7 +12252,7 @@ class Scenario:
 		
 		# no units to defend!
 		if len(defending_units) == 0:
-			print('DEBUG: No units to defend!')
+			#print('DEBUG: No units to defend!')
 			return
 		
 		# if player is defending, let them know
@@ -12280,7 +12277,7 @@ class Scenario:
 		combat_round = 1
 		while not combat_over:
 			
-			print('DEBUG: Starting close combat, round #' + str(combat_round) + '.')
+			#print('DEBUG: Starting close combat, round #' + str(combat_round) + '.')
 			
 			# calculate total firepower rating for attackers and defenders
 			attack_fp, defend_fp = 0,0
@@ -13260,7 +13257,7 @@ class Scenario:
 			if self.finished:
 				# copy the scenario unit over to the campaign version
 				campaign.player_unit = self.player_unit
-				print('DEBUG: Copied over the player unit to the campaign object')
+				#print('DEBUG: Copied over the player unit to the campaign object')
 				
 				# copy the squad over too
 				campaign_day.player_squad = []
@@ -13943,7 +13940,7 @@ def DrawFrame(console, x, y, w, h):
 # display a message window on the screen, pause, and then clear message from screen
 # possible to highlight a CD/scenario hex, and have message appear near highlighed hex but not covering it
 # FUTURE: game options may override this and display the message in the center of the map regardless
-def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None):
+def ShowMessage(text, longer_pause=False, portrait=None, cd_highlight=None, scenario_highlight=None):
 	
 	# determine size of console
 	if portrait is not None:
@@ -14025,7 +14022,11 @@ def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None)
 		scenario.animation['hex_flash'] = 1
 	
 	# allow the message (and animation) to be viewed by player
-	Wait(130 + (40 * config['ArmCom2'].getint('message_pause')))
+	if longer_pause:
+		wait_time = 200
+	else:
+		wait_time = 130
+	Wait(wait_time + (40 * config['ArmCom2'].getint('message_pause')))
 	
 	# clear hex highlight if any
 	if cd_highlight is not None:

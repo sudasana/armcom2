@@ -6987,7 +6987,7 @@ class AI:
 		if self.owner.fortified and self.disposition == 'Movement':
 			self.disposition = 'Combat'
 		
-		print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
+		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 				
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':

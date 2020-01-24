@@ -272,7 +272,7 @@ WEAPON_JAM_CHANCE = 0.5
 WEAPON_UNJAM_CHANCE = 75.0
 
 # chance of a direct hit during air or artillery attacks
-DIRECT_HIT_CHANCE = 8.0
+DIRECT_HIT_CHANCE = 4.0
 
 # base crew experience point and level system
 BASE_EXP_REQUIRED = 10.0
@@ -8718,7 +8718,7 @@ class Unit:
 				for weapon in self.weapon_list:
 					weapon.acquired_target = None
 				
-				if self == scenario.player_unit:
+				if self == scenario.player_unit and scenario.player_unit.alive:
 					ShowMessage('The impact has knocked your weapons off target. All acquired targets lost.')
 			
 			# apply result
@@ -13238,6 +13238,8 @@ class Scenario:
 			if self.finished:
 				# copy the scenario unit over to the campaign version
 				campaign.player_unit = self.player_unit
+				print('DEBUG: Copied over the player unit to the campaign object')
+				
 				# copy the squad over too
 				campaign_day.player_squad = []
 				for unit in self.player_unit.squad:
@@ -14001,7 +14003,7 @@ def ShowMessage(text, portrait=None, cd_highlight=None, scenario_highlight=None)
 		scenario.animation['hex_flash'] = 1
 	
 	# allow the message (and animation) to be viewed by player
-	Wait(100 + (40 * config['ArmCom2'].getint('message_pause')))
+	Wait(130 + (40 * config['ArmCom2'].getint('message_pause')))
 	
 	# clear hex highlight if any
 	if cd_highlight is not None:

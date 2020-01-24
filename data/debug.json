@@ -1,6 +1,6 @@
 {
- "Suspend Save": false,
- "Fast Mode": false,
+ "Suspend Save": true,
+ "Fast Mode": true,
  "Player Immortality": false,
  "Support Requests Always Granted": false,
  "Always Scenario": true,

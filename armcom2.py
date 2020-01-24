@@ -1310,15 +1310,17 @@ class Campaign:
 	# allow player to choose a new tank after losing one or during a refit period
 	def ReplacePlayerTank(self):
 		
+		# NEW: clear any dead crewmen from old positions
+		for position in campaign.player_unit.positions_list:
+			if position.crewman is None: continue
+			if position.crewman.status == 'Dead':
+				position.crewman = None
+		
 		exit_menu = False
 		while not exit_menu:
 			
 			# allow player to choose a new tank model
 			(unit_id, tank_name) = campaign.TankSelectionMenu(replacing_tank=True)
-			
-			# player doesn't want to change
-			if unit_id is None:
-				return
 			
 			# determine crew transfer procedure
 			
@@ -1331,10 +1333,12 @@ class Campaign:
 			
 			# run through every position in current tank, try to place crew into a position in the new one
 			# if any crew cannot be fit into new position, put them into a list
+			all_dead = True
 			transfer_dict = {}
 			discard_list = []
 			for position in campaign.player_unit.positions_list:
 				if position.crewman is None: continue
+				all_dead = False
 				
 				# try to find an open position in the new unit that fits
 				open_spot = False
@@ -1356,6 +1360,8 @@ class Campaign:
 				text = 'Crewmen in the following positions will leave your tank and be reassigned: '
 				for position_name in discard_list:
 					text += position_name + ' '
+			elif all_dead:
+				text = 'Choose this tank model?'
 			else:
 				text = 'All current crew can be assigned to this new tank.'
 			
@@ -1498,7 +1504,10 @@ class Campaign:
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
 			
-			if position.crewman.wound == '':
+			if position.crewman.status == 'Dead':
+				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
+				libtcod.console_print(con, 43, y+1, 'Dead')
+			elif position.crewman.wound == '':
 				libtcod.console_set_default_foreground(con, libtcod.light_grey)
 				libtcod.console_print(con, 43, y+1, 'None')
 			elif position.crewman.wound == 'Critical':
@@ -1520,31 +1529,38 @@ class Campaign:
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(30, ignore_animations=True)
 			
-			# reset fatigue points if any
-			position.crewman.fatigue = 0
+			if position.crewman.status == 'Dead':
+				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
+				libtcod.console_print(con, 55, y+1, 'N/A')
 			
-			# grant random additional exp
-			position.crewman.exp += libtcod.random_get_int(0, 0, 5)
-			
-			# check for level up
-			levels_up = 0
-			for level in range(position.crewman.level+1, 31):
-				if position.crewman.exp >= GetExpRequiredFor(level):
-					levels_up += 1
-				else:
-					break
-			
-			if levels_up == 0:
-				libtcod.console_set_default_foreground(con, libtcod.light_grey)
-				libtcod.console_print(con, 55, y+1, 'None')
 			else:
-				position.crewman.level += levels_up
-				position.crewman.adv += levels_up
-				libtcod.console_set_default_foreground(con, libtcod.white)
-				libtcod.console_print(con, 55, y+1, '+' + str(levels_up))
 			
-			# crewmen recover too
-			position.crewman.status = ''
+				# reset fatigue points if any
+				position.crewman.fatigue = 0
+				
+				# grant random additional exp
+				position.crewman.exp += libtcod.random_get_int(0, 0, 5)
+				
+				# check for level up
+				levels_up = 0
+				for level in range(position.crewman.level+1, 31):
+					if position.crewman.exp >= GetExpRequiredFor(level):
+						levels_up += 1
+					else:
+						break
+				
+				if levels_up == 0:
+					libtcod.console_set_default_foreground(con, libtcod.light_grey)
+					libtcod.console_print(con, 55, y+1, 'None')
+				else:
+					position.crewman.level += levels_up
+					position.crewman.adv += levels_up
+					libtcod.console_set_default_foreground(con, libtcod.white)
+					libtcod.console_print(con, 55, y+1, '+' + str(levels_up))
+			
+			# crewmen recover from any negative status (except for death)
+			if position.crewman.status != 'Dead': 
+				position.crewman.status = ''
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(30, ignore_animations=True)
@@ -2312,7 +2328,10 @@ class CampaignDay:
 			
 			# determine unit type
 			if 'player_squad_list' in campaign.stats:
-				unit_id = choice(campaign.stats['player_squad_list'][campaign.player_unit.unit_id])
+				if campaign.player_unit.unit_id in campaign.stats['player_squad_list']:
+					unit_id = choice(campaign.stats['player_squad_list'][campaign.player_unit.unit_id])
+				else:
+					unit_id = campaign.player_unit.unit_id
 			else:
 				unit_id = campaign.player_unit.unit_id
 			unit = Unit(unit_id)
@@ -4807,19 +4826,21 @@ class CampaignDay:
 					self.DoCrewRecoveryCheck(campaign.player_unit)
 					
 					# check for player character death or serious injury - ends campaign
-					crewman = campaign.player_unit.positions_list[0].crewman
+					if campaign.options['permadeath']:
 					
-					if crewman.status == 'Dead':
-						self.ended = True
-						campaign.ended = True
-						campaign.player_oob = True
-						continue
-					elif crewman.wound == 'Serious':
-						ShowMessage('You have been seriously injured and are taken off the front lines. Your campaign is over.')
-						self.ended = True
-						campaign.ended = True
-						campaign.player_oob = True
-						continue
+						crewman = campaign.player_unit.positions_list[0].crewman
+						
+						if crewman.status == 'Dead':
+							self.ended = True
+							campaign.ended = True
+							campaign.player_oob = True
+							continue
+						elif crewman.wound == 'Serious':
+							ShowMessage('You have been seriously injured and are taken off the front lines. Your campaign is over.')
+							self.ended = True
+							campaign.ended = True
+							campaign.player_oob = True
+							continue
 					
 					# tank was immobilized, abandoned, or destroyed: campaign day is over
 					if campaign.player_unit.immobilized or not campaign.player_unit.alive:
@@ -8713,13 +8734,13 @@ class Unit:
 			scenario.UpdateScenarioDisplay()
 			
 			# shock test
-			roll = GetPercentileRoll()
-			if roll > profile['final_chance'] * 1.5:
-				for weapon in self.weapon_list:
-					weapon.acquired_target = None
-				
-				if self == scenario.player_unit and scenario.player_unit.alive:
-					ShowMessage('The impact has knocked your weapons off target. All acquired targets lost.')
+			if profile['result'] == 'NO PENETRATION':
+				roll = GetPercentileRoll()
+				if roll > profile['final_chance'] * 1.75:
+					for weapon in self.weapon_list:
+						weapon.acquired_target = None
+					if self == scenario.player_unit:
+						ShowMessage('The impact has knocked your weapons off target. All acquired targets lost.')
 			
 			# apply result
 			if profile['result'] == 'NO PENETRATION':
@@ -9504,8 +9525,9 @@ class Scenario:
 			
 			if position.crewman.status in ['Unconscious', 'Dead']:
 				text = 'N/A'
+				pause = 10
 			else:
-			
+				pause = 100
 				modifier = 0.0
 				if position.crewman.status == 'Stunned':
 					modifier += 5.0
@@ -9542,7 +9564,7 @@ class Scenario:
 			libtcod.console_print(con, 49, y, text)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			libtcod.console_flush()
-			Wait(100, ignore_animations=True)
+			Wait(pause, ignore_animations=True)
 		
 		# tank burn up roll
 		chance = 80.0

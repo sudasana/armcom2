@@ -62,7 +62,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.12.0'					# game version
+VERSION = '0.12.1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -6942,11 +6942,6 @@ class AI:
 			if self.disposition == 'Combat':
 				self.disposition = 'None'
 		
-		# player squad doesn't move on its own and doesn't harass or attack the player
-		if self.owner in scenario.player_unit.squad:
-			if self.disposition in ['Harass Player', 'Attack Player', 'Movement']:
-				self.disposition = 'Combat'
-		
 		# MG teams less likely to move
 		if self.owner.GetStat('class') == 'MG Team':
 			if self.disposition == 'Movement':
@@ -6978,6 +6973,11 @@ class AI:
 				self.disposition = 'Harass Player'
 			else:
 				self.disposition = 'None'
+		
+		# player squad doesn't move on its own and doesn't harass or attack the player
+		if self.owner in scenario.player_unit.squad:
+			if self.disposition not in ['None', 'Combat']:
+				self.disposition = 'Combat'
 		
 		# immobilized units can't move
 		if self.owner.immobilized and self.disposition == 'Movement':

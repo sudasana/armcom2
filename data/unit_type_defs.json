@@ -3809,6 +3809,7 @@
 	"SOMUA S35": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
+		"portrait" : "unit_S35.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",

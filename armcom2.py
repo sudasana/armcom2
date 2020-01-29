@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.12.1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -4191,9 +4191,15 @@ class CampaignDay:
 			# draw any bridges
 			for direction in map_hex.bridges:
 				for (xm, ym) in CD_HEX_EDGE_CELLS[direction][1:-1]:
-					libtcod.console_put_char_ex(cd_map_con, x+xm, y+ym, 240,
-						libtcod.darkest_sepia, DIRT_ROAD_COL)
-			
+					bg_col = libtcod.console_get_char_background(cd_map_con, x+xm, y+ym)
+					if direction in [0, 3]:
+						char = 47
+					elif direction in [2, 5]:
+						char = 92
+					else:
+						char = 45
+					libtcod.console_put_char_ex(cd_map_con, x+xm, y+ym, char,
+						libtcod.dark_sepia, bg_col)
 		
 		# draw hex row guides
 		for i in range(0, 9):

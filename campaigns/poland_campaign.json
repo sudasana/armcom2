@@ -55,9 +55,8 @@
 			"week_description" : "Over the Polish Border",
 			"mission_odds" : {
 				"Advance" : "25",
-				"Battle" : "75",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Battle" : "5",
+				"Spearhead" : "70"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 80.0,

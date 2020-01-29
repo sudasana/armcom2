@@ -214,7 +214,8 @@ MISSION_DESC = {
 	'Advance' : 'Enemy resistance is scattered and we are pushing forward. Advance into enemy territory, destroy any resistance, and capture territory.',
 	'Battle' : 'Your group has been posted to the front line where there is heavy resistance. Break through the enemy defenses, destroy enemy units, and capture territory.',
 	'Counterattack' : 'After being on the defensive, your battlegroup has been ordered to attack the enemy advance.',
-	'Fighting Withdrawal' : 'The enemy is mounting a strong attack against our lines. Destroy enemy units but withdraw into friendly territory if necessary.'
+	'Fighting Withdrawal' : 'The enemy is mounting a strong attack against our lines. Destroy enemy units but withdraw into friendly territory if necessary.',
+	'Spearhead' : 'You must pierce the enemy lines, driving forward as far as possible before the end of the day.'
 }
 
 ##########################################################################################
@@ -222,6 +223,9 @@ MISSION_DESC = {
 ##########################################################################################
 
 # FUTURE: move these to a JSON file?
+
+# Spearhead mission zone capture VP values: adds one per this many hexrows reached
+SPEARHEAD_HEXROW_LEVELS = 2
 
 # base firepower ratings for units participating in close combat
 ASSAULT_FP = {
@@ -2111,6 +2115,8 @@ class Campaign:
 						
 						# create a new campaign day
 						campaign_day = CampaignDay()
+						for (hx, hy) in CAMPAIGN_DAY_HEXES:
+							campaign_day.map_hexes[(hx,hy)].CalcCaptureVP()
 						campaign_day.GenerateRoads()
 						campaign_day.GenerateRivers()
 						self.ShowStartOfDay()
@@ -2189,6 +2195,7 @@ class CampaignDay:
 		
 		self.started = False				# day is in progress
 		self.ended = False				# day has been completed
+		self.maps_traversed = 0				# how many map scrolls have taken place
 		self.mission = ''
 		self.GenerateMission()				# roll for type of mission today
 		self.day_vp = 0					# counter of how many VP were earned today
@@ -2253,7 +2260,6 @@ class CampaignDay:
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy, self.mission)
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
-			self.map_hexes[(hx,hy)].CalcCaptureVP(self.mission)
 		
 		# set up initial zone control based on day mission
 		if self.mission == 'Fighting Withdrawal':
@@ -2390,7 +2396,6 @@ class CampaignDay:
 		ShowMessage('You enter a new map region.')
 		
 		# determine direction to shift map based on current player location
-		
 		if player_hy == 8:
 			shift_down = False
 		elif player_hy == 0:
@@ -2401,9 +2406,11 @@ class CampaignDay:
 		if shift_down:
 			new_hy = 8
 			hx_mod = -4
+			self.maps_traversed += 1
 		else:
 			new_hy = 0
 			hx_mod = +4
+			self.maps_traversed -= 1
 		
 		# copy terrain for current player row to new row
 		for hx in range(player_hx-4, player_hx+5):
@@ -2429,6 +2436,9 @@ class CampaignDay:
 			for (hx, hy) in CAMPAIGN_DAY_HEXES:
 				self.map_hexes[(hx, hy)].controlled_by = 1
 			self.map_hexes[self.player_unit_location].controlled_by = 0
+		
+		# record shift
+		
 		
 		# update consoles
 		self.UpdateCDMapCon()
@@ -4910,6 +4920,9 @@ class CampaignDay:
 					if not self.ended:
 						self.CheckForRandomEvent()
 						self.CheckForZoneCapture(zone_just_captured=True)
+						# NEW: recalculate capture VPs
+						for (hx, hy), cd_hex in self.map_hexes.items():
+							cd_hex.CalcCaptureVP(self.mission)
 						self.CheckForCDMapShift()
 					
 					SaveGame()
@@ -5260,7 +5273,9 @@ class CampaignDay:
 						else:
 							ShowMessage('You enter the allied-held zone.')
 						
-						# no battle triggered, check for map shift
+						# no battle triggered, recalculate VP values and check for map shift
+						for (hx, hy), cd_hex in self.map_hexes.items():
+							cd_hex.CalcCaptureVP(self.mission)
 						self.CheckForCDMapShift()
 						
 						# update consoles
@@ -5335,17 +5350,27 @@ class CDMapHex:
 	# reset zone stats
 	def Reset(self):
 		self.coordinate = (chr(self.hy+65) + str(5 + int(self.hx - (self.hy - self.hy&1) / 2)))
-	
+
 	
 	# NEW: (re)calculate VP value if captured by player
-	def CalcCaptureVP(self, mission):
+	def CalcCaptureVP(self):
+		
+		(hx, hy) = campaign_day.player_unit_location
+		
+		if campaign_day.mission == 'Spearhead':
+			if hy <= self.hy:
+				self.vp_value = 0
+				return
+			
+			self.vp_value = int(((9 - self.hy) + (campaign_day.maps_traversed * 8)) / SPEARHEAD_HEXROW_LEVELS)
+			return
 		
 		if self.terrain_type in ['Forest', 'Hills', 'Villages']:
 			self.vp_value = 2
 		else:
 			self.vp_value = 1
 		
-		if mission == 'Advance':
+		if campaign_day.mission == 'Advance':
 			self.vp_value += 1
 	
 	
@@ -15759,6 +15784,8 @@ while not exit_game:
 				
 				# create a new campaign day
 				campaign_day = CampaignDay()
+				for (hx, hy) in CAMPAIGN_DAY_HEXES:
+					campaign_day.map_hexes[(hx,hy)].CalcCaptureVP()
 				campaign_day.GenerateRoads()
 				campaign_day.GenerateRivers()
 				

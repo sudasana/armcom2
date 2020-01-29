@@ -2252,8 +2252,8 @@ class CampaignDay:
 		self.map_hexes = {}
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy, self.mission)
-			# set zone terrain type
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
+			self.map_hexes[(hx,hy)].CalcCaptureVP(self.mission)
 		
 		# set up initial zone control based on day mission
 		if self.mission == 'Fighting Withdrawal':
@@ -4569,20 +4569,25 @@ class CampaignDay:
 			else:
 				text = 'Unknown'
 			libtcod.console_print(cd_hex_info_con, 10, 6, text)
-				
+			
+		# NEW: VP value if captured
+		if cd_hex.controlled_by == 1:
+			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_blue)
+			libtcod.console_print(cd_hex_info_con, 0, 8, 'Capture VP Value: ' + str(cd_hex.vp_value))
+		
 		# target of opportunity
 		if cd_hex.target_of_opportunity is not None:
 			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.yellow)
-			libtcod.console_print(cd_hex_info_con, 0, 8, 'Target of Opportunity')
-			libtcod.console_print(cd_hex_info_con, 0, 9, 'VP Bonus: ' + str(cd_hex.target_of_opportunity))
+			libtcod.console_print(cd_hex_info_con, 0, 11, 'Target of Opportunity')
+			libtcod.console_print(cd_hex_info_con, 0, 12, 'VP Bonus: ' + str(cd_hex.target_of_opportunity))
 		
 		# roads
 		if False in cd_hex.road_links:
 			libtcod.console_set_default_foreground(cd_hex_info_con, DIRT_ROAD_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 11, 'Dirt road')
+			libtcod.console_print(cd_hex_info_con, 0, 14, 'Dirt road')
 		if True in cd_hex.road_links:
 			libtcod.console_set_default_foreground(cd_hex_info_con, STONE_ROAD_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 12, 'Stone road')
+			libtcod.console_print(cd_hex_info_con, 0, 15, 'Stone road')
 	
 	# starts or re-starts looping animations based on weather conditions
 	def InitAnimations(self):
@@ -5288,9 +5293,10 @@ class CDMapHex:
 		
 		self.controlled_by = 1		# which player side currently controls this zone
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
-		
 		self.target_of_opportunity = None	# zone has been marked as a Target of Opportunity
 		
+		# NEW: VP value if captured by player
+		self.vp_value = 0
 		
 		# Pathfinding stuff
 		self.parent = None
@@ -5331,6 +5337,18 @@ class CDMapHex:
 		self.coordinate = (chr(self.hy+65) + str(5 + int(self.hx - (self.hy - self.hy&1) / 2)))
 	
 	
+	# NEW: (re)calculate VP value if captured by player
+	def CalcCaptureVP(self, mission):
+		
+		if self.terrain_type in ['Forest', 'Hills', 'Villages']:
+			self.vp_value = 2
+		else:
+			self.vp_value = 1
+		
+		if mission == 'Advance':
+			self.vp_value += 1
+	
+	
 	# reset pathfinding info for this zone
 	def ClearPathInfo(self):
 		self.parent = None
@@ -5365,11 +5383,9 @@ class CDMapHex:
 			
 			if self.controlled_by == 1:
 				campaign_day.AddRecord('Map Areas Captured', 1)
-				if campaign_day.mission == 'Advance':
-					campaign.AwardVP(2)
-				else:
-					campaign.AwardVP(1)
-		
+				# NEW: award zone VP value
+				campaign.AwardVP(self.vp_value)
+				
 			# check for TOO reward
 			if self.target_of_opportunity is not None:
 				campaign.AwardVP(self.target_of_opportunity)
@@ -5445,7 +5461,6 @@ class Session:
 		self.cd_x_offset = 0
 		self.cd_y_offset = 0
 		
-	
 	# try to initialize SDL2 mixer
 	def InitMixer(self):
 		mixer.Mix_Init(mixer.MIX_INIT_OGG)

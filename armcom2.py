@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.12.1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -1310,7 +1310,7 @@ class Campaign:
 	# allow player to choose a new tank after losing one or during a refit period
 	def ReplacePlayerTank(self):
 		
-		# NEW: clear any dead crewmen from old positions
+		# clear any dead crewmen from old positions
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.status == 'Dead':
@@ -2221,7 +2221,7 @@ class CampaignDay:
 		elif player_unit_class == 'Heavy Tank':
 			campaign.player_squad_max = 1
 		
-		# NEW: spawn player squad units
+		# spawn player squad units
 		self.player_squad = []
 		self.SpawnPlayerSquad()
 		
@@ -2322,7 +2322,7 @@ class CampaignDay:
 		}
 	
 	
-	# NEW: spawn squad members to bring player squad up to full strength
+	# spawn squad members to bring player squad up to full strength
 	def SpawnPlayerSquad(self):
 		for i in range(campaign.player_squad_max - len(self.player_squad)):
 			
@@ -5453,14 +5453,18 @@ class Session:
 			print('ERROR in Mix_OpenAudio: ' + mixer.Mix_GetError())
 			return False
 		mixer.Mix_AllocateChannels(16)
+		self.SetMasterVolume(config['ArmCom2'].getint('master_volume'))
 		return True
 	
 	# load the main theme music
 	def LoadMainTheme(self):
 		global main_theme
 		main_theme = mixer.Mix_LoadMUS((SOUNDPATH + 'armcom2_theme.ogg').encode('ascii'))
-		mixer.Mix_VolumeMusic(80)
 
+	# set the master volume for sound effects (1-10)
+	def SetMasterVolume(self, new_volume):
+		mixer.Mix_Volume(-1, new_volume * 12)
+		mixer.Mix_VolumeMusic(new_volume * 12)
 
 
 # Personnel Class: represents an individual person within a unit 
@@ -6117,7 +6121,7 @@ class Personnel:
 					ShowMessage('Your ' + self.current_position.name + ' has died from his wounds.')
 				return
 		
-		# NEW: check for fellow crewmen on First Aid command
+		# check for fellow crewmen on First Aid command
 		for position in self.unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman == self: continue
@@ -8346,15 +8350,17 @@ class Unit:
 			libtcod.console_set_default_foreground(console, libtcod.light_red)
 			text = 'Bogged Down'
 		else:
-			libtcod.console_set_default_foreground(console, libtcod.light_green)
-			text = ''
+			# NEW: select shade of green based on ground pressure
 			gp = self.GetStat('ground_pressure')
 			if gp is not None:
 				if gp == 'Light':
-					text = chr(24)
+					libtcod.console_set_default_foreground(console, libtcod.lighter_green)
 				elif gp == 'Heavy':
-					text = chr(25)
-			text += self.GetStat('movement_class')
+					libtcod.console_set_default_foreground(console, libtcod.darker_green)
+			else:
+				libtcod.console_set_default_foreground(console, libtcod.green)
+			
+			text = self.GetStat('movement_class')
 			if self.GetStat('powerful_engine') is not None:
 				text += '+'
 		libtcod.console_print_ex(console, x+24, y+12, libtcod.BKGND_NONE, libtcod.RIGHT,
@@ -9283,7 +9289,7 @@ class Scenario:
 			# do attack roll
 			roll = GetPercentileRoll()
 			
-			# NEW: player hit but saved by fate point
+			# player hit but saved by fate point
 			if roll <= chance and campaign_day.fate_points > 0 and crew_target.current_position in PLAYER_POSITIONS:
 				campaign_day.fate_points -= 1
 				roll = 100.0
@@ -9832,7 +9838,7 @@ class Scenario:
 				unit.SpawnAt(hx, hy)
 				unit.facing = GetDirectionToward(unit.hx, unit.hy, 0, 0)
 			
-			# NEW: set up transported unit or cargo
+			# set up transported unit or cargo
 			if unit.GetStat('transport') is not None:
 				roll = GetPercentileRoll()
 				if roll <= 60.0:
@@ -11939,6 +11945,10 @@ class Scenario:
 			if not self.player_unit.alive:
 				campaign_day.ended = True
 				return
+			
+			# NEW: check for all enemies dead as result of random event
+			self.CheckForEnd()
+			if self.finished: return
 			
 			self.active_player = 0
 			self.phase = PHASE_COMMAND
@@ -14588,6 +14598,7 @@ def LoadCFG():
 		config['ArmCom2'] = {
 			'large_display_font' : 'true',
 			'sounds_enabled' : 'true',
+			'master_volume' : 10,
 			'animation_speed' : 1,			# not used yet
 			'message_pause' : 1,
 			'keyboard' : '0'
@@ -14774,7 +14785,7 @@ def ShowGameMenu():
 
 # display a list of game options and current settings
 def DisplayGameOptions(console, x, y, skip_esc=False):
-	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('P', 'Message Pause'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
+	for (char, text) in [('F', 'Font Size'), ('S', 'Sound Effects'), ('V', 'Master Volume'), ('P', 'Message Pause'), ('K', 'Keyboard'), ('Esc', 'Return to Main Menu')]:
 		
 		if char == 'Esc' and skip_esc: continue
 		
@@ -14806,6 +14817,11 @@ def DisplayGameOptions(console, x, y, skip_esc=False):
 				text = 'OFF'
 			libtcod.console_print(console, x+20, y, text)
 		
+		# Master Volume
+		elif char == 'V':
+			text = str(config['ArmCom2'].getint('master_volume'))
+			libtcod.console_print(console, x+20, y, text)
+		
 		# message pause length
 		elif char == 'P':
 			text = ['Short', 'Normal', 'Long'][config['ArmCom2'].getint('message_pause')]
@@ -14823,7 +14839,7 @@ def ChangeGameSettings(key_char, main_menu=False):
 	
 	global main_theme
 
-	if key_char not in ['f', 's', 'p', 'k']:
+	if key_char not in ['f', 's', 'v', 'p', 'k']:
 		return False
 	
 	# switch font size
@@ -14858,6 +14874,16 @@ def ChangeGameSettings(key_char, main_menu=False):
 			session.LoadMainTheme()
 			if main_menu:
 				mixer.Mix_PlayMusic(main_theme, -1)
+	
+	# cycle master volume level
+	elif key_char == 'v':
+		i = config['ArmCom2'].getint('master_volume')
+		if i == 10:
+			i = 1
+		else:
+			i += 1
+		config['ArmCom2']['master_volume'] = str(i)
+		session.SetMasterVolume(i)
 	
 	# switch message pause length
 	elif key_char == 'p':

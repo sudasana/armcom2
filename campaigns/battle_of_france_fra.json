@@ -1,0 +1,68 @@
+{
+	"name" : "Battle of France (FRA)",
+	"start_date" : "1940.05.10",
+	"end_date" : "1940.06.25",
+	"player_nation" : "France",
+	"enemy_nations" : ["Germany"],
+	"region" : "Northwestern Europe",
+	"desc" : "After months of a 'Drole de guerre', Germany has attacked through the Low Countries. Help defend France from this attempted invasion.",
+	"player_unit_list" : [
+		"H35", "H35 (Late)", "SOMUA S35", "R35 (Late)"
+	],
+	"player_squad_list" : {
+		"H35" : ["H35", "H35 (Late)"],
+		"H35 (Late)" : ["H35", "H35 (Late)"]
+	},
+	"player_arty_support": [
+		"75mm mle 1928"
+	],
+	"enemy_air_support": [
+		"Ju 87B Stuka"
+	],
+	"enemy_arty_support": [
+		"7.5cm leIG 18"
+	],
+	"enemy_unit_list" : [
+		"Panzer I B", "Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", 
+		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C",
+		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
+		"PSW 231 (8 rad)", "PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
+		"SPW 251/1", "Riflemen", "Motorcycle MG Team", "HMG Team"
+	],
+	"enemy_unit_class_odds" : {
+		"Light Tank" : "90",
+		"Medium Tank" : "80",
+		"Armoured Car" : "80",
+		"Anti-Tank Gun" : "30",
+		"Field Gun" : "5",
+		"Anti-Aircraft Gun" : "5",
+		"Armoured Personnel Carrier" : "25",
+		"Truck" : "80",
+		"Infantry Squad" : "100",
+		"MG Team" : "80",
+		"Motorcycle Team" : "85"
+	},
+	"decorations_list" : {
+		"600" : "Iron Cross Second Class",
+		"800" : "Iron Cross First Class",
+		"1000" : "Knight's Cross",
+		"1200" : "Knight's Cross with Oak Leaves"
+	},
+	"calendar_weeks": [
+		{
+			"start_date" : "1940.05.10",
+			"day_start" : "05:30",
+			"day_end" : "18:15",
+			"combat_chance" : "80",
+			"average_resistance" : "7",
+			"week_description" : "",
+			"mission_odds" : {
+				"Advance" : "25",
+				"Battle" : "5",
+				"Spearhead" : "70"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 80.0
+		}
+	]
+}

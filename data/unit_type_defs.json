@@ -3874,6 +3874,7 @@
 	"R35 (Late)": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
+		"portrait" : "unit_R35_late.xp",
 		"size_class" : "Small",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",
@@ -3931,6 +3932,43 @@
 		}
 	},
 	
+	"75mm mle 1928": {
+		"category" : "Gun",
+		"class" : "Field Gun",
+		"portrait" : "unit_75mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1940.05.01" : "50"
+		}
+	},
 	
 	"American Forces" : {},
 	

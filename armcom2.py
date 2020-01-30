@@ -4928,7 +4928,7 @@ class CampaignDay:
 						self.CheckForZoneCapture(zone_just_captured=True)
 						# NEW: recalculate capture VPs
 						for (hx, hy), cd_hex in self.map_hexes.items():
-							cd_hex.CalcCaptureVP(self.mission)
+							cd_hex.CalcCaptureVP()
 						self.CheckForCDMapShift()
 					
 					SaveGame()
@@ -5281,7 +5281,7 @@ class CampaignDay:
 						
 						# no battle triggered, recalculate VP values and check for map shift
 						for (hx, hy), cd_hex in self.map_hexes.items():
-							cd_hex.CalcCaptureVP(self.mission)
+							cd_hex.CalcCaptureVP()
 						self.CheckForCDMapShift()
 						
 						# update consoles

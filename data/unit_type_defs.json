@@ -787,7 +787,8 @@
 				"rof" : "17.0",
 				"mount" : "Turret",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : 0
+				"firing_group" : 0,
+				"unreliable" : true
 			}
 		],
 		"crew_positions" : [
@@ -842,7 +843,8 @@
 				"reloaded_by" : ["Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -912,7 +914,8 @@
 				"reloaded_by" : ["Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -1143,7 +1146,8 @@
 				"reloaded_by" : ["Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "66"
+				"max_ammo" : "66",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -1230,7 +1234,8 @@
 				"reloaded_by" : ["Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "66"
+				"max_ammo" : "66",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -1319,7 +1324,8 @@
 				"reloaded_by" : ["Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "87"
+				"max_ammo" : "87",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -1405,7 +1411,8 @@
 				"reloaded_by" : ["Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP", "Smoke"],
-				"max_ammo" : "87"
+				"max_ammo" : "87",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",

@@ -46,10 +46,8 @@
 		"Motorcycle Team" : "85"
 	},
 	"decorations_list" : {
-		"600" : "",
-		"800" : "",
-		"1000" : "",
-		"1200" : ""
+		"1000" : "Croix de Guerre",
+		"1200" : "Medaille militaire"
 	},
 	"calendar_weeks": [
 		{
@@ -57,12 +55,12 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "80",
-			"average_resistance" : "7",
+			"average_resistance" : "8",
 			"week_description" : "",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "5",
-				"Spearhead" : "70"
+				"Counterattack" : "70"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 80.0

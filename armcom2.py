@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.13.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -8357,6 +8357,8 @@ class Unit:
 				libtcod.console_set_default_foreground(console, libtcod.darkest_grey)
 			elif weapon.jammed:
 				libtcod.console_set_default_foreground(console, libtcod.light_red)
+			elif weapon.GetStat('unreliable') is not None:
+				libtcod.console_set_default_foreground(console, libtcod.light_grey)
 			
 			text = weapon.stats['name']
 			if weapon.GetStat('type') == 'Gun':

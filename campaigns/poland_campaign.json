@@ -71,9 +71,8 @@
 			"week_description" : "Further Into Poland",
 			"mission_odds" : {
 				"Advance" : "25",
-				"Battle" : "75",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Battle" : "15",
+				"Spearhead" : "60"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
@@ -90,10 +89,9 @@
 			"average_resistance" : "4",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
-				"Advance" : "50",
-				"Battle" : "40",
-				"Counterattack" : "10",
-				"Fighting Withdrawal" : "0"
+				"Advance" : "25",
+				"Battle" : "35",
+				"Spearhead" : "40"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
@@ -110,10 +108,10 @@
 			"average_resistance" : "4",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
-				"Advance" : "70",
-				"Battle" : "15",
-				"Counterattack" : "15",
-				"Fighting Withdrawal" : "0"
+				"Advance" : "30",
+				"Battle" : "20",
+				"Counterattack" : "10",
+				"Spearhead" : "40"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,
@@ -127,10 +125,8 @@
 			"average_resistance" : "3",
 			"week_description" : "Into Poland",
 			"mission_odds" : {
-				"Advance" : "90",
-				"Battle" : "5",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Advance" : "80",
+				"Spearhead" : "20"
 			},
 			"enemy_nation" : "Poland",
 			"air_support_level" : 70.0,

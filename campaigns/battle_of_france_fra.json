@@ -25,6 +25,7 @@
 	"enemy_unit_list" : [
 		"Panzer I B", "Panzer II A", "Panzer II F", "Panzer 35(t)", "Panzer 38(t) A", 
 		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C", "Panzer IV D",
+		"StuG III B",
 		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
 		"PSW 231 (8 rad)", "PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
 		"SPW 251/1", "Riflemen", "Motorcycle MG Team", "HMG Team"
@@ -32,21 +33,22 @@
 	"enemy_unit_class_odds" : {
 		"Light Tank" : "90",
 		"Medium Tank" : "80",
+		"Assault Gun" : "70",
 		"Armoured Car" : "80",
 		"Anti-Tank Gun" : "30",
 		"Field Gun" : "5",
 		"Anti-Aircraft Gun" : "5",
-		"Armoured Personnel Carrier" : "25",
+		"Armoured Personnel Carrier" : "75",
 		"Truck" : "80",
 		"Infantry Squad" : "100",
 		"MG Team" : "80",
 		"Motorcycle Team" : "85"
 	},
 	"decorations_list" : {
-		"600" : "Iron Cross Second Class",
-		"800" : "Iron Cross First Class",
-		"1000" : "Knight's Cross",
-		"1200" : "Knight's Cross with Oak Leaves"
+		"600" : "",
+		"800" : "",
+		"1000" : "",
+		"1200" : ""
 	},
 	"calendar_weeks": [
 		{

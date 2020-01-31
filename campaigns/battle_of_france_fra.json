@@ -25,7 +25,7 @@
 	"enemy_unit_list" : [
 		"Panzer I B", "Panzer II A", "Panzer II F", "Panzer 35(t)", "Panzer 38(t) A", 
 		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C", "Panzer IV D",
-		"StuG III B",
+		"StuG III B", "Panzerjager I",
 		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
 		"PSW 231 (8 rad)", "PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
 		"SPW 251/1", "Riflemen", "Motorcycle MG Team", "HMG Team"
@@ -34,6 +34,7 @@
 		"Light Tank" : "90",
 		"Medium Tank" : "80",
 		"Assault Gun" : "70",
+		"Tank Destroyer" : "50",
 		"Armoured Car" : "80",
 		"Anti-Tank Gun" : "30",
 		"Field Gun" : "5",

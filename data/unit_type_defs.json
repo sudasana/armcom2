@@ -2297,6 +2297,66 @@
 		
 	},
 	
+	"Panzerjager I": {
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_pzjg_i.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"open_topped" : "TRUE",
+		"open_rear_turret" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "47",
+				"long_range" : "L",
+				"rof" : "8.4",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "55"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Built upon a Panzer I chassis, this self-propelled AT gun mounts ",
+			"a 4.7cm anti-tank gun."
+		],
+		"rarity" : {
+			"1940.05.01" : "60",
+			"1944.01.01" : "0"
+		}
+	},
+	
 	"Jagdpanzer IV": {
 		"category" : "Vehicle",
 		"class" : "Tank Destroyer",
@@ -2469,7 +2529,6 @@
 			{
 				"name" : "Commander/Gunner",
 				"location" : "Turret",
-				"hatch" : "TRUE",
 				"open_top" : "TRUE",
 				"crew_always_exposed" : "TRUE",
 				"ce_visible" : ["0", "1", "2", "3", "4", "5"]

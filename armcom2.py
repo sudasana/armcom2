@@ -10400,8 +10400,12 @@ class Scenario:
 		armour = target.GetStat('armour')
 		unarmoured_location = True
 		if armour is not None:
-			if armour[hit_location] != '-':
-				unarmoured_location = False
+			# NEW
+			if target.GetStat('open_rear_turret') is not None and hit_location == 'turret_rear':
+				unarmoured_location = True
+			else:
+				if armour[hit_location] != '-':
+					unarmoured_location = False
 		
 		# look up base AP score required
 		if weapon.GetStat('type') in MG_WEAPONS:

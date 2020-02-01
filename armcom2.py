@@ -2285,6 +2285,9 @@ class CampaignDay:
 		# dictionary of screen display locations on the display console
 		self.cd_map_index = {}
 		
+		# list of screen display locations that contain a bridge
+		self.cd_map_bridge_locations = []
+		
 		# set up initial player location
 		if self.mission == 'Fighting Withdrawal':
 			self.player_unit_location = (2, 0)	# top center of map
@@ -3760,6 +3763,7 @@ class CampaignDay:
 		for (hx, hy) in CAMPAIGN_DAY_HEXES:
 			self.map_hexes[(hx,hy)].rivers = []
 			self.map_hexes[(hx,hy)].bridges = []
+		self.cd_map_bridge_locations = []
 		
 		rivers = 0
 		odds = float(REGIONS[campaign.stats['region']]['river_odds'])
@@ -4222,6 +4226,8 @@ class CampaignDay:
 						char = 45
 					libtcod.console_put_char_ex(cd_map_con, x+xm, y+ym, char,
 						libtcod.dark_sepia, bg_col)
+					# NEW: also record location
+					self.cd_map_bridge_locations.append((x+xm, y+ym))
 		
 		# draw hex row guides
 		for i in range(0, 9):
@@ -4567,6 +4573,12 @@ class CampaignDay:
 		
 		x = mouse.cx - 29
 		y = mouse.cy - 6
+		
+		# bridge location
+		if (x,y) in self.cd_map_bridge_locations:
+			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.dark_sepia)
+			libtcod.console_print(cd_hex_info_con, 2, 2, 'Bridge')
+			return
 		
 		# no zone here or mouse cursor outside of map area
 		if (x,y) not in self.cd_map_index or x < 2 or x > 30:

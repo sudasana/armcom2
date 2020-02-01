@@ -122,5 +122,5 @@
 		"desc" : "Assault guns and artillery batteries coordinate to concentrate fire on targets. Artillery attacks are more effective and more likely to be granted.",
 		"position_list" : ["Commander", "Commander/Gunner"],
 		"national_skill" : true
-	},
+	}
 }

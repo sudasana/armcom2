@@ -5566,10 +5566,18 @@ class Personnel:
 		self.skills = []				# list of skills
 		
 		# NEW: check for national skills
-		if self.unit == campaign.player_unit and self.current_position.name in PLAYER_POSITIONS:
+		if self.unit == campaign.player_unit:
 			if 'national_skills' in campaign.stats:
 				for skill in campaign.stats['national_skills']:
+					if 'position_list' in campaign.skills[skill]:
+						if self.current_position.name not in campaign.skills[skill]['position_list']:
+							continue
 					self.skills.append(skill)
+		
+		# NEW: check for skill effects on stats
+		for skill in self.skills:
+			if skill == 'Defend the Motherland':
+				self.stats['Morale'] += 3
 		
 		# current level, exp, and advance points
 		self.level = 1

@@ -10,6 +10,9 @@
 	"player_unit_list" : [
 		"TKS (20mm)", "Vickers 6-Ton Mark E", "7TP"
 	],
+	"national_skills" : [
+		"Defend the Motherland"
+	],
 	"player_arty_support": [
 		"75mm wz. 02/26", "105mm wz. 29"
 	],

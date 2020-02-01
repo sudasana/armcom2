@@ -109,6 +109,12 @@
 	
 	"Blitzkrieg": {
 		"desc" : "Modern warfare relies on shock attacks from fast-moving armoured and motorized units. Travel time on the Campaign Day map is reduced.",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"national_skill" : true
+	},
+	
+	"Defend the Motherland": {
+		"desc" : "The very future of your nation is at stake. Crew start with a higher morale stat.",
 		"national_skill" : true
 	}
 }

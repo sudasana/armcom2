@@ -9,6 +9,9 @@
 	"player_unit_list" : [
 		"T-26 M33", "BT-5 M34", "BT-7 M37", "T-28 M34"
 	],
+	"national_skills" : [
+		"Centralized Fire"
+	],
 	"player_arty_support": [
 		"76.2mm obr. 00/02P"
 	],

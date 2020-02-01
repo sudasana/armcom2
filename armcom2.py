@@ -11159,8 +11159,6 @@ class Scenario:
 	# roll to see if air and/or arty support requests were granted, and trigger attacks if so
 	def ResolveSupportRequests(self):
 		
-		# FUTURE: calculate any skill effects for the roll(s) here
-		
 		# check for air attack first
 		if campaign_day.air_support_request:
 			roll = GetPercentileRoll()
@@ -11187,6 +11185,15 @@ class Scenario:
 		# check for artillery attack
 		if campaign_day.arty_support_request:
 			roll = GetPercentileRoll()
+			
+			# NEW: determine national skill modifier if any
+			for position in campaign.player_unit.positions_list:
+				if position.crewman is None: continue
+				if position.name in PLAYER_POSITIONS:
+					if 'Centralized Fire' in position.crewman.skills:
+						roll -= 10.0
+					break
+			
 			granted = False
 			if DEBUG:
 				if session.debug['Support Requests Always Granted']:
@@ -11558,6 +11565,15 @@ class Scenario:
 				break
 		effective_fp = int(effective_fp / 2)
 		
+		# NEW: determine national skill modifier if any
+		skill_mod = 0
+		for position in campaign.player_unit.positions_list:
+			if position.crewman is None: continue
+			if position.name in PLAYER_POSITIONS:
+				if 'Centralized Fire' in position.crewman.skills:
+					skill_mod = -15.0
+				break
+		
 		# roll for possible hit against each unit in each target hex
 		results = False
 		for map_hex in target_hex_list:
@@ -11575,10 +11591,13 @@ class Scenario:
 				for i in range(2, effective_fp + 1):
 					chance += FP_CHANCE_STEP * (FP_CHANCE_STEP_MOD ** (i-1)) 
 				
-				# FUTURE: apply further modifiers here
+				# FUTURE: apply any further modifiers here
 				
 				chance = RestrictChance(int(chance / 2))
 				roll = GetPercentileRoll()
+				
+				# apply national skill modifier if any
+				roll += skill_mod
 				
 				# no effect
 				if roll > chance:

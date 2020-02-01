@@ -108,7 +108,7 @@
 	},
 	
 	"Blitzkrieg": {
-		"desc" : "The invasion of Poland relies on shock attacks from fast-moving armoured units. Travel time on the Campaign Day map is reduced.",
+		"desc" : "Modern warfare relies on shock attacks from fast-moving armoured and motorized units. Travel time on the Campaign Day map is reduced.",
 		"national_skill" : true
 	}
 }

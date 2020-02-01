@@ -2437,9 +2437,6 @@ class CampaignDay:
 				self.map_hexes[(hx, hy)].controlled_by = 1
 			self.map_hexes[self.player_unit_location].controlled_by = 0
 		
-		# record shift
-		
-		
 		# update consoles
 		self.UpdateCDMapCon()
 		self.UpdateCDGUICon()
@@ -2521,6 +2518,16 @@ class CampaignDay:
 				mins += 15
 			if self.air_support_request:
 				mins += 10
+		
+		# check for national skill
+		for position in campaign.player_unit.positions_list:
+			if position.crewman is None: continue
+			if position.name in PLAYER_POSITIONS:
+				if 'Blitzkrieg' in position.crewman.skills:
+					mins -= 10
+					if mins < 10:
+						mins = 10
+				break
 		
 		return mins
 		
@@ -5558,6 +5565,12 @@ class Personnel:
 		
 		self.skills = []				# list of skills
 		
+		# NEW: check for national skills
+		if self.unit == campaign.player_unit and self.current_position.name in PLAYER_POSITIONS:
+			if 'national_skills' in campaign.stats:
+				for skill in campaign.stats['national_skills']:
+					self.skills.append(skill)
+		
 		# current level, exp, and advance points
 		self.level = 1
 		self.exp = 0
@@ -5733,6 +5746,10 @@ class Personnel:
 			else:
 				# grab skill description from campaign.skills dictionary
 				text = campaign.skills[self.skills[selected_skill]]['desc']
+				
+				if 'national_skill' in campaign.skills[self.skills[selected_skill]]:
+					text += ' (National Skill)'
+				
 			for line in wrap(text, 18):
 				libtcod.console_print(crewman_menu_con, 62, y, line)
 				y+=1	
@@ -13717,6 +13734,9 @@ def ShowSkillMenu(crewman):
 	# build list of skills that can be added
 	skill_list = []
 	for k, value in campaign.skills.items():
+		
+		# NEW: national skill
+		if 'national_skill' in value: continue
 		
 		# crewman already has this skill
 		if k in crewman.skills: continue

@@ -105,5 +105,10 @@
 	
 	"Gymnast": {
 		"desc" : "Slightly increases chance to successfully bail out."
+	},
+	
+	"Blitzkrieg": {
+		"desc" : "The invasion of Poland relies on shock attacks from fast-moving armoured units. Travel time on the Campaign Day map is reduced.",
+		"national_skill" : true
 	}
 }

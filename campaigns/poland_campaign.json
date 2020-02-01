@@ -13,6 +13,9 @@
 	"player_squad_list" : {
 		"Panzer 38(t) A" : ["Panzer II A", "Panzer 38(t) A"]
 	},
+	"national_skills" : [
+		"Blitzkrieg"
+	],
 	"player_air_support": [
 		"Ju 87B Stuka"
 	],

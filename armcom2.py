@@ -2910,12 +2910,27 @@ class CampaignDay:
 				if strength < highest_strength:
 					hex_list.remove((strength, hx, hy))
 			
-			# choose from reminaing hex zones
+			# choose from remaining hex zones
 			(strength, hx, hy) = choice(hex_list) 
 			
 			self.map_hexes[(hx, hy)].target_of_opportunity = 10
-			ShowMessage('We have received word of a new target of opportunity, capture this zone if possible.',
-				cd_highlight=(hx,hy))
+			
+			# NEW: set flavour text
+			roll = GetPercentileRoll()
+			if roll <= 20.0:
+				text = 'Ammo Depot'
+			elif roll <= 40.0:
+				text = 'Supply Line'
+			elif roll <= 60.0:
+				text = 'Communications Centre'
+			elif roll <= 80.0:
+				text = 'Enemy Intel'
+			else:
+				text = 'Fuel Dump'
+			self.map_hexes[(hx, hy)].too_text = text
+			
+			ShowMessage('We have received word of a new target of opportunity (' + text +
+				'), capture this zone if possible.', cd_highlight=(hx,hy))
 		
 		# enemy strength increases
 		elif roll <= 30.0:
@@ -4595,15 +4610,17 @@ class CampaignDay:
 		if cd_hex.target_of_opportunity is not None:
 			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.yellow)
 			libtcod.console_print(cd_hex_info_con, 0, 11, 'Target of Opportunity')
-			libtcod.console_print(cd_hex_info_con, 0, 12, 'VP Bonus: ' + str(cd_hex.target_of_opportunity))
+			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_grey)
+			libtcod.console_print(cd_hex_info_con, 0, 12, cd_hex.too_text)
+			libtcod.console_print(cd_hex_info_con, 0, 13, 'VP Bonus: ' + str(cd_hex.target_of_opportunity))
 		
 		# roads
 		if False in cd_hex.road_links:
 			libtcod.console_set_default_foreground(cd_hex_info_con, DIRT_ROAD_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 14, 'Dirt road')
+			libtcod.console_print(cd_hex_info_con, 0, 15, 'Dirt road')
 		if True in cd_hex.road_links:
 			libtcod.console_set_default_foreground(cd_hex_info_con, STONE_ROAD_COL)
-			libtcod.console_print(cd_hex_info_con, 0, 15, 'Stone road')
+			libtcod.console_print(cd_hex_info_con, 0, 16, 'Stone road')
 	
 	# starts or re-starts looping animations based on weather conditions
 	def InitAnimations(self):
@@ -5315,6 +5332,7 @@ class CDMapHex:
 		self.controlled_by = 1		# which player side currently controls this zone
 		self.known_to_player = False	# player knows enemy strength and organization in this zone
 		self.target_of_opportunity = None	# zone has been marked as a Target of Opportunity
+		self.too_text = ''		# flavour text for ToO
 		
 		# NEW: VP value if captured by player
 		self.vp_value = 0

@@ -7574,6 +7574,7 @@ class Unit:
 							ShowMessage('Some of the smoke nearby disperses somewhat.')
 						else:
 							ShowMessage('Some of the smoke nearby has dispersed.')
+						scenario.UpdatePlayerInfoCon()
 		
 		self.moving = False
 		self.previous_facing = self.facing
@@ -8517,6 +8518,16 @@ class Unit:
 			libtcod.console_print(console, x, y+ys+1, text)
 			
 			ys = 17
+
+			# NEW: terrain and smoke status
+			if self.terrain is not None:
+				libtcod.console_set_default_foreground(console, libtcod.green)
+				libtcod.console_print(console, x, y+ys, self.terrain)
+			
+			if self.smoke > 0:
+				libtcod.console_set_default_foreground(console, libtcod.grey)
+				libtcod.console_print_ex(console, x+24, y+ys, libtcod.BKGND_NONE,
+					libtcod.RIGHT, 'Smoke ' + str(self.smoke))
 
 		libtcod.console_set_default_background(console, libtcod.black)
 	
@@ -12186,6 +12197,7 @@ class Scenario:
 					self.player_unit.smoke = 1
 					PlaySoundFor(None, 'smoke')
 					ShowMessage('You throw a smoke grenade.')
+					self.UpdatePlayerInfoCon()
 					self.UpdateUnitCon()
 					self.UpdateScenarioDisplay()
 					libtcod.console_flush()
@@ -12195,6 +12207,7 @@ class Scenario:
 					self.player_unit.smoke = 2
 					PlaySoundFor(None, 'smoke')
 					ShowMessage('The ' + position.name + ' fires off a smoke mortar round.')
+					self.UpdatePlayerInfoCon()
 					self.UpdateUnitCon()
 					self.UpdateScenarioDisplay()
 					libtcod.console_flush()
@@ -12638,7 +12651,6 @@ class Scenario:
 						y += 1
 						if y == 12: break
 				
-	
 	
 	# update player unit info console
 	def UpdatePlayerInfoCon(self):

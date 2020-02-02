@@ -8520,6 +8520,9 @@ class Unit:
 			ys = 17
 
 			# NEW: terrain and smoke status
+			libtcod.console_set_default_background(console, libtcod.darker_sepia)
+			libtcod.console_rect(console, x, y+ys, 25, 2, True, libtcod.BKGND_SET)
+			
 			if self.terrain is not None:
 				libtcod.console_set_default_foreground(console, libtcod.green)
 				libtcod.console_print(console, x, y+ys, self.terrain)

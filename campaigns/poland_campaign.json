@@ -71,7 +71,7 @@
 			"day_end" : "18:15",
 			"combat_chance" : "70",
 			"average_resistance" : "5",
-			"week_description" : "Further Into Poland",
+			"week_description" : "Into Western Poland",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "15",
@@ -90,7 +90,7 @@
 			"day_end" : "18:15",
 			"combat_chance" : "60",
 			"average_resistance" : "4",
-			"week_description" : "Into Poland",
+			"week_description" : "Breaking Resistance",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "35",
@@ -109,7 +109,7 @@
 			"day_end" : "18:15",
 			"combat_chance" : "50",
 			"average_resistance" : "4",
-			"week_description" : "Into Poland",
+			"week_description" : "Mopping Up",
 			"mission_odds" : {
 				"Advance" : "30",
 				"Battle" : "20",
@@ -126,7 +126,7 @@
 			"day_end" : "17:15",
 			"combat_chance" : "50",
 			"average_resistance" : "3",
-			"week_description" : "Into Poland",
+			"week_description" : "Taking the Capital",
 			"mission_odds" : {
 				"Advance" : "80",
 				"Spearhead" : "20"

@@ -231,6 +231,7 @@ SPEARHEAD_HEXROW_LEVELS = 2
 ASSAULT_FP = {
 	'Infantry Squad' : (6, 6),
 	'MG Team' : (4, 8),
+	'Motorcycle Team' : (8, 8),
 	'Tankette' : (4, 8),
 	'Light Tank' : (6, 10),
 	'Medium Tank' : (10, 14),
@@ -12440,9 +12441,6 @@ class Scenario:
 				# may have been destroyed or pinned during defensive fire
 				if not unit.alive: continue
 				if unit.pinned: continue
-				if unit.GetStat('assault_firepower') is not None:
-					attack_fp += unit.GetStat('assault_firepower')
-					continue
 				(a_fp, d_fp) = ASSAULT_FP[unit.GetStat('class')]
 				attack_fp += a_fp
 			

@@ -23,7 +23,8 @@
 				"mount" : "Hull",
 				"fired_by" : ["Commander/Gunner"],
 				"reloaded_by" : ["Commander/Gunner"],
-				"firing_group" : 0
+				"firing_group" : 0,
+				"unreliable" : true
 			}
 		],
 		"crew_positions" : [
@@ -77,7 +78,8 @@
 				"rof" : "17.0",
 				"mount" : "Hull",
 				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : 0
+				"firing_group" : 0,
+				"unreliable" : true
 			}
 		],
 		"crew_positions" : [
@@ -134,7 +136,8 @@
 				"reloaded_by" : ["Commander/Gunner"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			}
 		],
 		"crew_positions" : [
@@ -423,13 +426,12 @@
 		"movement_class" : "Wheeled",
 		"weapon_list" : [
 			{
-				"type" : "HMG",
-				"name" : "HMG",
+				"type" : "AA MG",
+				"fp" : "6",
 				"rof" : "25.0",
 				"blocked_hull_dirs" : ["5, "0", "1"],
 				"fired_by" : ["Gunner"],
 				"reloaded_by" : ["Gunner"],
-				"fp" : "6",
 				"max_range" : "3"
 			}
 		],
@@ -614,7 +616,8 @@
 				"reloaded_by" : ["Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			}
 		],
 		"crew_positions" : [
@@ -3422,7 +3425,8 @@
 				"reloaded_by" : ["Gunner/Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -3490,7 +3494,8 @@
 				"reloaded_by" : ["Gunner/Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -3562,7 +3567,8 @@
 				"reloaded_by" : ["Gunner/Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -3630,7 +3636,8 @@
 				"reloaded_by" : ["Gunner/Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -3901,7 +3908,8 @@
 				"reloaded_by" : ["Gunner/Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			},
 			{
 				"type" : "Co-ax MG",
@@ -4010,7 +4018,8 @@
 				"reloaded_by" : ["Loader"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "180"
+				"max_ammo" : "180",
+				"unreliable" : true
 			}
 		],
 		"crew_positions" : [

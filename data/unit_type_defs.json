@@ -415,6 +415,54 @@
 		}
 	},
 	
+	"Fiat 508 Taczanka" : {
+		"category" : "Vehicle",
+		"class" : "HMG Team",
+		"portrait" : "unit_508_taczanka.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"weapon_list" : [
+			{
+				"type" : "HMG",
+				"name" : "HMG",
+				"rof" : "25.0",
+				"blocked_hull_dirs" : ["5, "0", "1"],
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Gunner"],
+				"fp" : "6",
+				"max_range" : "3"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Hull",
+				"bu_visible" : ["0", "1", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Hull",
+				"crew_always_exposed" : "TRUE",
+				"bu_visible" : ["2", "3", "4"]
+			},
+			{
+				"name" : "Ammo Handler",
+				"location" : "Hull",
+				"crew_always_exposed" : "TRUE",
+				"bu_visible" : ["2", "3", "4"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0", "1", "5"]
+			}
+		],
+		"description" : [
+			"The Taczanka was developed as a mobile machine gun. This version ",
+			"has a heavy machien gun mounted on the back of a Fiat 508 truck."
+		]
+	},
+	
 	"wz. 34 (MG)": {
 		"category" : "Vehicle",
 		"class" : "Armoured Car",

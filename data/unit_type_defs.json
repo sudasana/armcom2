@@ -429,7 +429,7 @@
 				"type" : "AA MG",
 				"fp" : "6",
 				"rof" : "25.0",
-				"blocked_hull_dirs" : ["5, "0", "1"],
+				"blocked_hull_dirs" : ["5", "0", "1"],
 				"fired_by" : ["Gunner"],
 				"reloaded_by" : ["Gunner"],
 				"max_range" : "3"
@@ -2351,7 +2351,7 @@
 	"Panzerjager I": {
 		"category" : "Vehicle",
 		"class" : "Tank Destroyer",
-		"portrait" : "unit_pzjg_i.xp",
+		"portrait" : "unit_pz_jg_i.xp",
 		"size_class" : "Small",
 		"movement_class" : "Tank",
 		"armour" : {

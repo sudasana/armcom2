@@ -5517,10 +5517,12 @@ class Session:
 		self.tank_portrait = None
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
 			unit_types = json.load(data_file)
+		
 		for tries in range(300):
 			unit_id = choice(list(unit_types.keys()))
 			if 'portrait' not in unit_types[unit_id]: continue
 			if unit_types[unit_id]['class'] not in ['Light Tank', 'Medium Tank', 'Heavy Tank', 'Tank Destroyer']: continue
+			if not os.path.exists(DATAPATH + unit_types[unit_id]['portrait']): continue
 			self.tank_portrait = LoadXP(unit_types[unit_id]['portrait'])
 			break
 		del unit_types

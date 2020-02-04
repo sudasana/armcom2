@@ -1,7 +1,7 @@
 {
 	"name" : "Battle of France (FRA)",
 	"start_date" : "1940.05.10",
-	"end_date" : "1940.06.25",
+	"end_date" : "1940.06.16",
 	"player_nation" : "France",
 	"enemy_nations" : ["Germany"],
 	"region" : "Northwestern Europe",
@@ -55,8 +55,8 @@
 	"calendar_weeks": [
 		{
 			"start_date" : "1940.05.10",
-			"day_start" : "05:30",
-			"day_end" : "18:15",
+			"day_start" : "06:15",
+			"day_end" : "21:15",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
 			"week_description" : "Counterattack",
@@ -67,6 +67,70 @@
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 80.0
+		},
+		{
+			"start_date" : "1940.05.17",
+			"day_start" : "06:00",
+			"day_end" : "21:30",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Stalemate",
+			"mission_odds" : {
+				"Advance" : "5",
+				"Battle" : "70",
+				"Counterattack" : "25"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 60.0
+		},
+		{
+			"start_date" : "1940.05.24",
+			"end_date" : "1944.05.30",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1940.05.31",
+			"day_start" : "06:00",
+			"day_end" : "21:45",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Second Offensive",
+			"mission_odds" : {
+				"Advance" : "5",
+				"Battle" : "70",
+				"Counterattack" : "25"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 40.0
+		},
+		{
+			"start_date" : "1940.06.07",
+			"day_start" : "05:45",
+			"day_end" : "21:45",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Fall of the Maginot Line",
+			"mission_odds" : {
+				"Advance" : "5",
+				"Battle" : "70",
+				"Counterattack" : "25"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 30.0
+		},
+		{
+			"start_date" : "1940.06.14",
+			"day_start" : "05:45",
+			"day_end" : "21:45",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Collapse",
+			"mission_odds" : {
+				"Battle" : "70",
+				"Counterattack" : "30"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 20.0
 		}
 	]
 }

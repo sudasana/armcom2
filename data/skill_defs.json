@@ -127,5 +127,11 @@
 		"desc" : "Finnish troops know the terrain very well, and concentrate on isolating pockets of enemy forces. Finnish forces cannot be ambushed, and tanks are less likely to bog in snowy terrain.",
 		"position_list" : ["Commander", "Commander/Gunner"],
 		"national_skill" : true
+	},
+	
+	"Defensive Strategy": {
+		"desc" : "The French command has been planning for years for a defensive, Great War style conflict. Destroying enemy units is worth 1 extra VP, but capturing hex zones 1 less VP.",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"national_skill" : true
 	}
 }

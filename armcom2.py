@@ -5422,6 +5422,12 @@ class CDMapHex:
 		
 		if campaign_day.mission == 'Advance':
 			self.vp_value += 1
+		
+		if campaign.CheckForNationalSkill('Defensive Strategy'):
+			self.vp_value -= 1
+		
+		if self.vp_value < 0:
+			self.vp_value = 0
 	
 	
 	# reset pathfinding info for this zone
@@ -9173,6 +9179,9 @@ class Unit:
 					ShowMessage(self.GetStat('class') + ' was transporting ' + self.cargo + ', now destroyed.', scenario_highlight=(self.hx, self.hy))
 				
 				if campaign_day.mission == 'Fighting Withdrawal':
+					vp_amount += 1
+				
+				if campaign.CheckForNationalSkill('Defensive Strategy'):
 					vp_amount += 1
 				
 				campaign.AwardVP(vp_amount)

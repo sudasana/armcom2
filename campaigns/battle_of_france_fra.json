@@ -13,6 +13,9 @@
 		"H35" : ["H35", "H35 (Late)"],
 		"H35 (Late)" : ["H35", "H35 (Late)"]
 	},
+	"national_skills" : [
+		"Defensive Strategy"
+	],
 	"player_arty_support": [
 		"75mm mle 1928"
 	],

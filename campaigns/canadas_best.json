@@ -14,6 +14,9 @@
 		"Sherman V" : ["Sherman II", "Sherman V"],
 		"Sherman VC" : ["Sherman II", "Sherman V"]
 	},
+	"national_skills" : [
+		"To Victory!"
+	],
 	"player_air_support": [
 		"Typhoon"
 	],

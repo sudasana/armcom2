@@ -5605,6 +5605,8 @@ class Personnel:
 		for skill in self.skills:
 			if skill == 'Defend the Motherland':
 				self.stats['Morale'] += 3
+			elif skill == 'To Victory!':
+				self.stats['Grit'] += 3
 		
 		# current level, exp, and advance points
 		self.level = 1

@@ -133,5 +133,10 @@
 		"desc" : "The French command has been planning for years for a defensive, Great War style conflict. Destroying enemy units is worth 1 extra VP, but capturing hex zones 1 less VP.",
 		"position_list" : ["Commander", "Commander/Gunner"],
 		"national_skill" : true
+	},
+	
+	"To Victory!": {
+		"desc" : "Canadian troops are all volunteers, and are highly trained and motivated, quickly gaining a reputation as assault troops. Crewmen start with a higher Grit stat.",
+		"national_skill" : true
 	}
 }

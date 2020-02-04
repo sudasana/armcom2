@@ -897,6 +897,16 @@ class Campaign:
 		EraseGame()
 	
 	
+	# check to see whether player character has the give national skill
+	def CheckForNationalSkill(self, skill):
+		for position in self.player_unit.positions_list:
+			if position.crewman is None: continue
+			if position.name in PLAYER_POSITIONS:
+				if skill in position.crewman.skills:
+					return True
+		return False
+		
+	
 	# randomly generate a list of combat days for this campaign
 	def GenerateCombatCalendar(self):
 		
@@ -2524,14 +2534,10 @@ class CampaignDay:
 				mins += 10
 		
 		# check for national skill
-		for position in campaign.player_unit.positions_list:
-			if position.crewman is None: continue
-			if position.name in PLAYER_POSITIONS:
-				if 'Blitzkrieg' in position.crewman.skills:
-					mins -= 10
-					if mins < 10:
-						mins = 10
-				break
+		if campaign.CheckForNationalSkill('Blitzkrieg'):
+			mins -= 10
+			if mins < 10:
+				mins = 10
 		
 		return mins
 		
@@ -7860,6 +7866,11 @@ class Unit:
 				else:
 					mod = -30.0
 					bog_mod = 1.0
+			
+			if campaign_day.weather['Ground'] in ['Snow', 'Deep Snow']:
+				if campaign.CheckForNationalSkill('Motti'):
+					bog_mod = round(bog_mod * 0.5, 1)
+			
 			self.forward_move_chance += mod
 			self.reverse_move_chance += mod
 			self.bog_chance += bog_mod
@@ -9273,6 +9284,11 @@ class Scenario:
 	
 	# roll at start of scenario to see whether player has been ambushed
 	def DoAmbushRoll(self):
+		
+		# no ambush if player has Motti national skill
+		if campaign.CheckForNationalSkill('Motti'):
+			return
+		
 		roll = GetPercentileRoll()
 		
 		for position in ['Commander', 'Commander/Gunner']:
@@ -11216,12 +11232,8 @@ class Scenario:
 			roll = GetPercentileRoll()
 			
 			# NEW: determine national skill modifier if any
-			for position in campaign.player_unit.positions_list:
-				if position.crewman is None: continue
-				if position.name in PLAYER_POSITIONS:
-					if 'Centralized Fire' in position.crewman.skills:
-						roll -= 10.0
-					break
+			if campaign.CheckForNationalSkill('Centralized Fire'):
+				roll -= 10.0
 			
 			granted = False
 			if DEBUG:

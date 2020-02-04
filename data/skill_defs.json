@@ -138,5 +138,11 @@
 	"To Victory!": {
 		"desc" : "Canadian troops are all volunteers, and are highly trained and motivated, quickly gaining a reputation as assault troops. Crewmen start with a higher Grit stat.",
 		"national_skill" : true
+	},
+	
+	"Superior Firepower": {
+		"desc" : "American forces are well-supplied with ammunition, and are not afraid to use it. Rate of Fire chance for all machine gun weapons is increased.",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"national_skill" : true
 	}
 }

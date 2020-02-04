@@ -11,6 +11,9 @@
 		"M4A3E2(75)W Sherman", "M4A3E2(76)W Sherman",
 		"M4A1(76)W Sherman", "M4A3(76)W Sherman"
 	],
+	"national_skills" : [
+		"Superior Firepower"
+	],
 	"player_air_support": [
 		"P-47 Thunderbolt"
 	],

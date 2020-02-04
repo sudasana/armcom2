@@ -6742,6 +6742,11 @@ class Weapon:
 					if 'Burst Fire' in crewman.skills:
 						bonus += crewman.GetSkillMod(10.0)
 		
+		# national skill bonus
+		if self.unit == scenario.player_unit and self.GetStat('type') in MG_WEAPONS:
+			if campaign.CheckForNationalSkill('Superior Firepower'):
+				bonus += 25.0
+		
 		return chance + bonus
 		
 	

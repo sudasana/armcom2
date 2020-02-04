@@ -92,9 +92,10 @@
 			"week_description" : "Pincer Movement",
 			"mission_odds" : {
 				"Advance" : "10",
-				"Battle" : "70",
+				"Battle" : "40",
 				"Counterattack" : "10",
-				"Fighting Withdrawal" : "10"
+				"Fighting Withdrawal" : "10",
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 70.0,
@@ -110,9 +111,7 @@
 			"average_resistance" : "7",
 			"week_description" : "Retreat",
 			"mission_odds" : {
-				"Advance" : "0",
 				"Battle" : "10",
-				"Counterattack" : "0",
 				"Fighting Withdrawal" : "90"
 			},
 			"enemy_nation" : "Germany",
@@ -126,13 +125,12 @@
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "60",
-			"average_resistance" : "3",
+			"average_resistance" : "8",
 			"week_description" : "Break Out",
 			"mission_odds" : {
-				"Advance" : "50",
-				"Battle" : "50",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Advance" : "10",
+				"Battle" : "20",
+				"Spearhead" : "70"
 			},
 			"enemy_nation" : "Germany",
 			"arty_support_level" : 40.0

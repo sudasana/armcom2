@@ -55,9 +55,9 @@
 			"week_description" : "Cintheaux",
 			"mission_odds" : {
 				"Advance" : "10",
-				"Battle" : "75",
+				"Battle" : "45",
 				"Counterattack" : "15",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 80.0
@@ -69,10 +69,10 @@
 			"combat_chance" : "80",
 			"week_description" : "Laison Valley",
 			"mission_odds" : {
-				"Advance" : "65",
+				"Advance" : "35",
 				"Battle" : "25",
 				"Counterattack" : "10",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -86,8 +86,7 @@
 			"mission_odds" : {
 				"Advance" : "5",
 				"Battle" : "85",
-				"Counterattack" : "10",
-				"Fighting Withdrawal" : "0"
+				"Counterattack" : "10"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -100,10 +99,8 @@
 			"combat_chance" : "60",
 			"week_description" : "Elbeuf-Seine Crossing",
 			"mission_odds" : {
-				"Advance" : "100",
-				"Battle" : "0",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Advance" : "80",
+				"Spearhead" : "20"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -121,9 +118,7 @@
 			"week_description" : "Ghent Canal and Molentje",
 			"mission_odds" : {
 				"Advance" : "50",
-				"Battle" : "50",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Battle" : "50"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -135,10 +130,9 @@
 			"combat_chance" : "40",
 			"week_description" : "Braakman Inlet",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "70",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -150,10 +144,9 @@
 			"combat_chance" : "50",
 			"week_description" : "Leopold Canal",
 			"mission_odds" : {
-				"Advance" : "70",
+				"Advance" : "40",
 				"Battle" : "30",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -167,9 +160,7 @@
 			"week_description" : "Regroup and Mop Up",
 			"mission_odds" : {
 				"Advance" : "90",
-				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Battle" : "10"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -186,10 +177,9 @@
 			"combat_chance" : "40",
 			"week_description" : "Brecht and Stroolburg",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "40",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "50"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -201,10 +191,9 @@
 			"combat_chance" : "60",
 			"week_description" : "Esschen",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "50",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "40"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -216,10 +205,9 @@
 			"combat_chance" : "50",
 			"week_description" : "Beveland Canal and Bergen op Zoom",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "60",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -231,10 +219,9 @@
 			"combat_chance" : "70",
 			"week_description" : "Steebergen",
 			"mission_odds" : {
-				"Advance" : "50",
+				"Advance" : "40",
 				"Battle" : "50",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "10"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -246,10 +233,9 @@
 			"combat_chance" : "30",
 			"week_description" : "Zijpe",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "60",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -263,9 +249,7 @@
 			"week_description" : "Clearing Zone of Responsibility",
 			"mission_odds" : {
 				"Advance" : "90",
-				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Battle" : "10"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -283,10 +267,8 @@
 			"combat_chance" : "70",
 			"week_description" : "Operation Elephant",
 			"mission_odds" : {
-				"Advance" : "10",
-				"Battle" : "90",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Advance" : "5",
+				"Battle" : "95",
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -306,8 +288,6 @@
 			"mission_odds" : {
 				"Advance" : "10",
 				"Battle" : "90",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -327,8 +307,6 @@
 			"mission_odds" : {
 				"Advance" : "10",
 				"Battle" : "90",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -345,10 +323,9 @@
 			"combat_chance" : "50",
 			"week_description" : "Eiten, Twente, Almedo, Meppen",
 			"mission_odds" : {
-				"Advance" : "50",
+				"Advance" : "40",
 				"Battle" : "50",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "10"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -360,10 +337,9 @@
 			"combat_chance" : "40",
 			"week_description" : "Sogel",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "60",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -375,10 +351,10 @@
 			"combat_chance" : "60",
 			"week_description" : "Edewechterdamm",
 			"mission_odds" : {
-				"Advance" : "60",
+				"Advance" : "50",
 				"Battle" : "20",
 				"Counterattack" : "20",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "10"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -390,10 +366,9 @@
 			"combat_chance" : "50",
 			"week_description" : "Edewecht and Querenstede",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "50",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "40"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -406,10 +381,9 @@
 			"combat_chance" : "50",
 			"week_description" : "Bad Zwischerwahn and Oldenburg",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "30",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "60"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0

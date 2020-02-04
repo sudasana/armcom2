@@ -50,10 +50,10 @@
 			"combat_chance" : "80",
 			"week_description" : "Cobra Breakout",
 			"mission_odds" : {
-				"Advance" : "65",
+				"Advance" : "45",
 				"Battle" : "15",
 				"Counterattack" : "20",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "20"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 80.0
@@ -65,14 +65,12 @@
 			"combat_chance" : "80",
 			"week_description" : "Advance Through Brittany",
 			"mission_odds" : {
-				"Advance" : "95",
+				"Advance" : "55",
 				"Battle" : "5",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "40"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 80.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 80.0
 		},
 		{
 			"start_date" : "1944.08.10",
@@ -81,14 +79,13 @@
 			"combat_chance" : "60",
 			"week_description" : "Liberating Nantes and Orleans",
 			"mission_odds" : {
-				"Advance" : "85",
+				"Advance" : "65",
 				"Battle" : "5",
 				"Counterattack" : "10",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "20"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 80.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 80.0
 		},
 		{
 			"start_date" : "1944.08.17",
@@ -97,14 +94,13 @@
 			"combat_chance" : "60",
 			"week_description" : "Across Northern France",
 			"mission_odds" : {
-				"Advance" : "75",
+				"Advance" : "35",
 				"Battle" : "5",
 				"Counterattack" : "20",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "40"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 80.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 80.0
 		},
 		{
 			"start_date" : "1944.08.24",
@@ -113,14 +109,13 @@
 			"combat_chance" : "60",
 			"week_description" : "Into North-eastern France",
 			"mission_odds" : {
-				"Advance" : "75",
+				"Advance" : "55",
 				"Battle" : "5",
 				"Counterattack" : "20",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "20"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 80.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 80.0
 		},
 		{
 			"start_date" : "1944.08.31",
@@ -132,12 +127,10 @@
 			"mission_odds" : {
 				"Advance" : "65",
 				"Battle" : "25",
-				"Counterattack" : "10",
-				"Fighting Withdrawal" : "0"
+				"Counterattack" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1944.09.02",
@@ -151,14 +144,13 @@
 			"combat_chance" : "80",
 			"week_description" : "Moselle Crossing",
 			"mission_odds" : {
-				"Advance" : "55",
+				"Advance" : "45",
 				"Battle" : "25",
 				"Counterattack" : "20",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1944.09.18",
@@ -168,14 +160,12 @@
 			"combat_chance" : "40",
 			"week_description" : "Arracourt",
 			"mission_odds" : {
-				"Advance" : "55",
+				"Advance" : "45",
 				"Battle" : "45",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1944.09.25",
@@ -186,12 +176,10 @@
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "5",
-				"Counterattack" : "45",
-				"Fighting Withdrawal" : "0"
+				"Counterattack" : "45"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1944.10.02",
@@ -200,14 +188,11 @@
 			"combat_chance" : "80",
 			"week_description" : "Return to Arracourt",
 			"mission_odds" : {
-				"Advance" : "0",
 				"Battle" : "15",
-				"Counterattack" : "85",
-				"Fighting Withdrawal" : "0"
+				"Counterattack" : "85"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1944.10.09",
@@ -221,14 +206,12 @@
 			"combat_chance" : "30",
 			"week_description" : "Fonteny",
 			"mission_odds" : {
-				"Advance" : "40",
-				"Battle" : "0",
+				"Advance" : "30",
 				"Counterattack" : "60",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1944.11.16",
@@ -237,14 +220,12 @@
 			"combat_chance" : "30",
 			"week_description" : "Dieuze and Rodalbe",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "50",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "40"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1944.11.22",
@@ -254,13 +235,10 @@
 			"week_description" : "Crossing the Saare",
 			"mission_odds" : {
 				"Advance" : "90",
-				"Battle" : "0",
-				"Counterattack" : "10",
-				"Fighting Withdrawal" : "0"
+				"Counterattack" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1944.11.28",
@@ -269,14 +247,12 @@
 			"combat_chance" : "40",
 			"week_description" : "Attacking Saare Union",
 			"mission_odds" : {
-				"Advance" : "80",
+				"Advance" : "60",
 				"Battle" : "20",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "20"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 90.0
 		},
 		{
 			"start_date" : "1944.12.04",
@@ -290,14 +266,13 @@
 			"combat_chance" : "80",
 			"week_description" : "Martelange and Chaumont",
 			"mission_odds" : {
-				"Advance" : "60",
+				"Advance" : "50",
 				"Battle" : "30",
 				"Counterattack" : "10",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1944.12.29",
@@ -308,13 +283,10 @@
 			"week_description" : "Defense of Bastogne Corridor",
 			"mission_odds" : {
 				"Advance" : "20",
-				"Battle" : "0",
-				"Counterattack" : "80",
-				"Fighting Withdrawal" : "0"
+				"Counterattack" : "80"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 80.0
 		},
 		{
 			"start_date" : "1945.01.03",
@@ -328,14 +300,11 @@
 			"combat_chance" : "30",
 			"week_description" : "Defensive Positions",
 			"mission_odds" : {
-				"Advance" : "0",
-				"Battle" : "0",
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 60.0
 		},
 		{
 			"start_date" : "1945.01.16",
@@ -344,14 +313,11 @@
 			"combat_chance" : "30",
 			"week_description" : "Defensive Positions",
 			"mission_odds" : {
-				"Advance" : "0",
-				"Battle" : "0",
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 70.0
 		},
 		{
 			"start_date" : "1945.01.23",
@@ -360,14 +326,11 @@
 			"combat_chance" : "30",
 			"week_description" : "Defensive Positions",
 			"mission_odds" : {
-				"Advance" : "0",
-				"Battle" : "0",
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 70.0
 		},
 		{
 			"start_date" : "1945.01.30",
@@ -377,14 +340,11 @@
 			"combat_chance" : "30",
 			"week_description" : "Defensive Positions",
 			"mission_odds" : {
-				"Advance" : "0",
-				"Battle" : "0",
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 70.0,
 		},
 		{
 			"start_date" : "1945.02.03",
@@ -398,14 +358,12 @@
 			"combat_chance" : "80",
 			"week_description" : "Rittersdorf and Bitburg",
 			"mission_odds" : {
-				"Advance" : "20",
+				"Advance" : "15",
 				"Battle" : "80",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "5"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1945.03.01",
@@ -419,14 +377,12 @@
 			"combat_chance" : "20",
 			"week_description" : "To the Rhine",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "40",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "50"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1945.03.12",
@@ -440,14 +396,12 @@
 			"combat_chance" : "60",
 			"week_description" : "Bad Kreuznauch",
 			"mission_odds" : {
-				"Advance" : "70",
+				"Advance" : "30",
 				"Battle" : "30",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1945.03.21",
@@ -463,12 +417,9 @@
 			"mission_odds" : {
 				"Advance" : "70",
 				"Battle" : "30",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1945.03.31",
@@ -477,14 +428,12 @@
 			"combat_chance" : "40",
 			"week_description" : "Creuzburg and Gotha",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "40",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "50"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 50.0
 		},
 		{
 			"start_date" : "1945.04.06",
@@ -493,14 +442,12 @@
 			"combat_chance" : "40",
 			"week_description" : "Toward the Saale River",
 			"mission_odds" : {
-				"Advance" : "90",
+				"Advance" : "60",
 				"Battle" : "10",
-				"Counterattack" : "0",
-				"Fighting Withdrawal" : "0"
+				"Spearhead" : "30"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 60.0
 		},
 		{
 			"start_date" : "1945.04.12",
@@ -509,14 +456,11 @@
 			"combat_chance" : "20",
 			"week_description" : "Holding Wolkenburg",
 			"mission_odds" : {
-				"Advance" : "0",
 				"Battle" : "10",
-				"Counterattack" : "90",
-				"Fighting Withdrawal" : "0"
+				"Counterattack" : "90"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 50.0,
-			"air_support_step" : 10.0
+			"air_support_level" : 70.0
 		}
 	]
 }

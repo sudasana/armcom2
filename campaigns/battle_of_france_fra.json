@@ -56,7 +56,7 @@
 			"day_end" : "18:15",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "",
+			"week_description" : "Counterattack",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "5",

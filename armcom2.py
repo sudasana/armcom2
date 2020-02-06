@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '0.13.0 04-02-20'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -15727,14 +15727,12 @@ if session.tank_portrait is not None:
 
 # display version number and program info
 libtcod.console_set_default_foreground(main_title, libtcod.light_grey)
-libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-6, libtcod.BKGND_NONE,
+libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-5, libtcod.BKGND_NONE,
 	libtcod.CENTER, VERSION)
-libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-4,
-	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2020')
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-3,
-	libtcod.BKGND_NONE, libtcod.CENTER, 'Free Software under the GNU GPL')
+	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2016-2020')
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-2,
-	libtcod.BKGND_NONE, libtcod.CENTER, 'www.armouredcommander.com')
+	libtcod.BKGND_NONE, libtcod.CENTER, 'Open Source under the GNU GPL')
 
 libtcod.console_blit(LoadXP('poppy.xp'), 0, 0, 0, 0, main_title, 1, WINDOW_HEIGHT-8)
 

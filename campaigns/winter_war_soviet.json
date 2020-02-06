@@ -1,11 +1,11 @@
 {
-	"name" : "The Winter War (SOV)",
+	"name" : "The Winter War (Soviet Union)",
 	"start_date" : "1939.11.30",
 	"end_date" : "1940.03.12",
 	"player_nation" : "Soviet Union",
 	"enemy_nations" : ["Finland"],
 	"region" : "Nordic",
-	"desc" : "Join the forces of the Soviet Union as they invade Finland (UNFINISHED)",
+	"desc" : "Join the forces of the Soviet Union as they invade Finland",
 	"player_unit_list" : [
 		"T-26 M33", "BT-5 M34", "BT-7 M37", "T-28 M34"
 	],

@@ -989,12 +989,21 @@ class Campaign:
 			# list of campaigns
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			libtcod.console_set_default_background(con, libtcod.dark_blue)
-			y = 25
+			y = 5
 			for camp in campaign_list:
 				if camp == selected_campaign:
-					libtcod.console_rect(con, 2, y, 23, 1, True, libtcod.BKGND_SET)
-				libtcod.console_print(con, 2, y, camp['name'][:23])
-				y += 1
+					libtcod.console_rect(con, 2, y, 23, 2, True, libtcod.BKGND_SET)
+				lines = wrap(camp['name'], 23)
+				y1 = 0
+				for line in lines[:2]:
+					libtcod.console_print(con, 2, y+y1, line)
+					y1 += 1
+				
+				y += 3
+				libtcod.console_set_default_foreground(con, libtcod.darkest_grey)
+				for x in range(2, 24):
+					libtcod.console_put_char(con, x, y-1, '-')
+				libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			
 			libtcod.console_set_default_background(con, libtcod.black)
 			
@@ -1051,7 +1060,7 @@ class Campaign:
 				y+=1
 			
 			# campaign options
-			libtcod.console_set_default_foreground(con, libtcod.white)
+			libtcod.console_set_default_foreground(con, libtcod.light_green)
 			libtcod.console_print(con, 69, 3, 'Campaign Options')
 			
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)

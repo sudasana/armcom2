@@ -15712,7 +15712,7 @@ if not DEBUG:
 	libtcod.console_clear(0)
 	libtcod.console_blit(LoadXP('cats.xp'), 0, 0, 0, 0, 0, WINDOW_XM-15, WINDOW_YM-19)
 	libtcod.console_flush()
-	Wait(120, ignore_animations=True)
+	Wait(100, ignore_animations=True)
 	libtcod.console_clear(0)
 	libtcod.console_flush()
 
@@ -15746,7 +15746,7 @@ GRADIENT = [
 
 # set up gradient animation timing
 time_click = time.time()
-gradient_x = WINDOW_WIDTH + 10
+gradient_x = WINDOW_WIDTH + 5
 
 # draw the main title to the screen and display menu options
 # if options_menu_active, draw the options menu instead

@@ -1743,40 +1743,49 @@ class Campaign:
 	def UpdateDayOutlineCon(self):
 		libtcod.console_clear(day_outline)
 		
+		# campaign name, max 2 lines
 		libtcod.console_set_default_foreground(day_outline, PORTRAIT_BG_COL)
 		lines = wrap(campaign.stats['name'], 20)
 		y = 1
-		for line in lines[:2]:
+		for line in lines[:3]:
 			libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
 				libtcod.CENTER, line)
 			y += 1
 		
+		libtcod.console_set_default_foreground(day_outline, libtcod.dark_grey)
+		for x in range(24):
+			libtcod.console_put_char(day_outline, x, 5, '-')
+		
+		# current date
 		libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
-		libtcod.console_print_ex(day_outline, 11, 4, libtcod.BKGND_NONE, libtcod.CENTER,
+		libtcod.console_print_ex(day_outline, 11, 7, libtcod.BKGND_NONE, libtcod.CENTER,
 			GetDateText(campaign.today))
 		
+		# week description, max 3 lines
+		libtcod.console_set_default_foreground(day_outline, libtcod.white)
 		lines = wrap(campaign.current_week['week_description'], 20)
-		y = 6
-		for line in lines:
+		y = 9
+		for line in lines[:4]:
 			libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
 				libtcod.CENTER, line)
 			y += 1
-			if y == 10: break
+		
+		# FUTURE: additional descriptive text can be displayed here
 		
 		libtcod.console_set_default_foreground(day_outline, libtcod.white)
-		libtcod.console_print_ex(day_outline, 12, 12, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Total VP:')
-		libtcod.console_print_ex(day_outline, 12, 13, libtcod.BKGND_NONE,
+		libtcod.console_print_ex(day_outline, 12, 28, libtcod.BKGND_NONE,
+			libtcod.CENTER, 'Current Campaign VP:')
+		libtcod.console_print_ex(day_outline, 12, 29, libtcod.BKGND_NONE,
 			libtcod.CENTER, str(campaign.player_vp))
 		
 		libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
-		libtcod.console_print(day_outline, 1, 19, 'Start of Day:')
-		libtcod.console_print(day_outline, 3, 20, 'End of Day:')
+		libtcod.console_print(day_outline, 1, 32, 'Start of Day:')
+		libtcod.console_print(day_outline, 3, 33, 'End of Day:')
 		
 		libtcod.console_set_default_foreground(day_outline, libtcod.white)
-		libtcod.console_print_ex(day_outline, 19, 19, libtcod.BKGND_NONE, libtcod.RIGHT,
+		libtcod.console_print_ex(day_outline, 19, 32, libtcod.BKGND_NONE, libtcod.RIGHT,
 			campaign.current_week['day_start'])
-		libtcod.console_print_ex(day_outline, 19, 20, libtcod.BKGND_NONE, libtcod.RIGHT,
+		libtcod.console_print_ex(day_outline, 19, 33, libtcod.BKGND_NONE, libtcod.RIGHT,
 			campaign.current_week['day_end'])
 	
 	
@@ -1872,94 +1881,96 @@ class Campaign:
 				return
 			
 			x = 15
-			y = 1
-			
-			# display outline
-			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
+			y = 10
 			
 			# mission type and description
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
 			libtcod.console_print_ex(calendar_main_panel, x+15, y, libtcod.BKGND_NONE,
 				libtcod.CENTER,	"Today's Mission")
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_yellow)
+			libtcod.console_print_ex(calendar_main_panel, x+15, y+1, libtcod.BKGND_NONE,
+				libtcod.CENTER,	'---------------')
+			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_blue)
-			libtcod.console_print_ex(calendar_main_panel, x+15, y+2, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(calendar_main_panel, x+15, y+4, libtcod.BKGND_NONE,
 				libtcod.CENTER,	campaign_day.mission)
 			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
 			lines = wrap(MISSION_DESC[campaign_day.mission], 30)
-			y1 = y+4
+			y1 = y+6
 			for line in lines:
 				libtcod.console_print(calendar_main_panel, x, y1, line)
 				y1+=1
-				if y1 == y+13: break
+				if y1 == y+15: break
 			
 			# player support
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
-			libtcod.console_print(calendar_main_panel, x, y+15, 'Air Support:')
-			libtcod.console_print(calendar_main_panel, x, y+16, 'Artillery Support:')
+			libtcod.console_print(calendar_main_panel, x, y+18, 'Air Support:')
+			libtcod.console_print(calendar_main_panel, x, y+19, 'Artillery Support:')
 			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
 			if 'air_support_level' not in campaign.current_week:
 				text = 'None'
 			else:
 				text = str(campaign.current_week['air_support_level'])
-			libtcod.console_print(calendar_main_panel, x+19, y+15, text)
+			libtcod.console_print(calendar_main_panel, x+19, y+18, text)
 			if 'arty_support_level' not in campaign.current_week:
 				text = 'None'
 			else:
 				text = str(campaign.current_week['arty_support_level'])
-			libtcod.console_print(calendar_main_panel, x+19, y+16, text)
+			libtcod.console_print(calendar_main_panel, x+19, y+19, text)
 			
 			# expected enemy forces
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
-			libtcod.console_print_ex(calendar_main_panel, x+10, y+19, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(calendar_main_panel, x+10, y+23, libtcod.BKGND_NONE,
 				libtcod.CENTER,	'Expected Enemy Forces')
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
 			
 			text = session.nations[campaign.current_week['enemy_nation']]['adjective']
 			text += ' infantry, guns, and AFVs'
 			lines = wrap(text, 30)
-			y1 = y+21
+			y1 = y+25
 			for line in lines:
 				libtcod.console_print(calendar_main_panel, x, y1, line)
 				y1+=1
-				if y1 == y+24: break
+				if y1 == y+28: break
 		
 		# crew and tank menu
 		elif self.active_calendar_menu == 2:
 			
 			# show list of crewmen
 			libtcod.console_set_default_foreground(calendar_main_panel, TITLE_COL)
-			libtcod.console_print(calendar_main_panel, 3, 5, 'Tank Positions and Crewmen')
-			libtcod.console_print(calendar_main_panel, 41, 5, 'Player Tank')
+			libtcod.console_print(calendar_main_panel, 3, 10, 'Tank Positions and Crewmen')
+			libtcod.console_print(calendar_main_panel, 41, 10, 'Player Tank')
 			
-			DisplayCrew(campaign.player_unit, calendar_main_panel, 4, 8, selected_position)
+			DisplayCrew(campaign.player_unit, calendar_main_panel, 4, 13, selected_position)
 			
 			# show info on player tank if still alive
 			if campaign.player_unit.alive:
-				campaign.player_unit.DisplayMyInfo(calendar_main_panel, 34, 8, status=False)
+				campaign.player_unit.DisplayMyInfo(calendar_main_panel, 34, 13, status=False)
 				
 				# description of tank
 				text = ''
 				for t in campaign.player_unit.GetStat('description'):
 					text += t
 				lines = wrap(text, 27)
-				y = 24
+				y = 29
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
 				for line in lines[:20]:
 					libtcod.console_print(calendar_main_panel, 33, y, line)
 					y+=1
 			
 			else:
-				libtcod.console_print(calendar_main_panel, 41, 8, 'None')
+				libtcod.console_print(calendar_main_panel, 41, 13, 'None')
 	
 	
 	# update the display of the campaign calendar interface
 	def UpdateCCDisplay(self):
 		
 		libtcod.console_blit(calendar_bkg, 0, 0, 0, 0, con, 0, 0)		# background frame
-		libtcod.console_blit(day_outline, 0, 0, 0, 0, con, 1, 15)		# summary of current day
+		libtcod.console_blit(day_outline, 0, 0, 0, 0, con, 1, 1)		# summary of current day
 		libtcod.console_blit(calendar_cmd_con, 0, 0, 0, 0, con, 1, 38)		# command menu
-		libtcod.console_blit(calendar_main_panel, 0, 0, 0, 0, con, 26, 15)	# main panel
+		libtcod.console_blit(calendar_main_panel, 0, 0, 0, 0, con, 26, 1)	# main panel
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
 	
@@ -2010,9 +2021,9 @@ class Campaign:
 		
 		# create consoles
 		calendar_bkg = LoadXP('calendar_bkg.xp')
-		day_outline = NewConsole(24, 22, libtcod.black, libtcod.white)
+		day_outline = NewConsole(24, 36, libtcod.black, libtcod.white)
 		calendar_cmd_con = NewConsole(24, 21, libtcod.black, libtcod.white)
-		calendar_main_panel = NewConsole(63, 44, libtcod.black, libtcod.white)
+		calendar_main_panel = NewConsole(63, 58, libtcod.black, libtcod.white)
 		
 		# generate consoles for the first time
 		self.UpdateDayOutlineCon()

@@ -1197,14 +1197,14 @@ class Campaign:
 	# can be used when replacing a tank mid-campaign as well
 	def TankSelectionMenu(self, replacing_tank=False):
 		
-		def UpdateTankSelectionScreen(selected_unit, player_tank_name):
+		def UpdateTankSelectionScreen(selected_unit, unit_list, player_tank_name):
 			libtcod.console_clear(con)
 			
 			if replacing_tank and campaign.player_unit.alive:
 				libtcod.console_set_default_foreground(con, libtcod.white)
-				libtcod.console_print_ex(con, 13, 9, libtcod.BKGND_NONE, libtcod.CENTER,
+				libtcod.console_print_ex(con, 77, 9, libtcod.BKGND_NONE, libtcod.CENTER,
 					'Current Tank')
-				campaign.player_unit.DisplayMyInfo(con, 1, 11, status=False)
+				campaign.player_unit.DisplayMyInfo(con, 64, 11, status=False)
 			
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			DrawFrame(con, 26, 1, 37, 58)
@@ -1220,6 +1220,18 @@ class Campaign:
 			
 			libtcod.console_print_ex(con, 45, 6, libtcod.BKGND_NONE, libtcod.CENTER,
 				'Select a tank type to command')
+			
+			# list of tank types
+			y = 15
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			for unit_type in unit_list:
+				
+				if unit_type == selected_unit:
+					libtcod.console_set_default_background(con, libtcod.darker_blue)
+					libtcod.console_rect(con, 2, y, 22, 1, False, libtcod.BKGND_SET)
+					libtcod.console_set_default_background(con, libtcod.black)
+				libtcod.console_print(con, 2, y, unit_type.unit_id)
+				y += 2
 			
 			DrawFrame(con, 32, 10, 27, 18)
 			selected_unit.DisplayMyInfo(con, 33, 11, status=False)
@@ -1240,7 +1252,7 @@ class Campaign:
 				y+=1
 			
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-			libtcod.console_print(con, 32, 52, EnKey('a').upper() + '/' + EnKey('d').upper())
+			libtcod.console_print(con, 32, 52, EnKey('w').upper() + '/' + EnKey('s').upper())
 			libtcod.console_print(con, 32, 53, 'N')
 			if replacing_tank and campaign.player_unit.alive:
 				libtcod.console_print(con, 32, 54, 'Bksp')
@@ -1281,7 +1293,7 @@ class Campaign:
 		player_tank_name = ''
 		
 		# draw menu screen for first time
-		UpdateTankSelectionScreen(selected_unit, player_tank_name)
+		UpdateTankSelectionScreen(selected_unit, unit_list, player_tank_name)
 		
 		exit_loop = False
 		while not exit_loop:
@@ -1306,17 +1318,17 @@ class Campaign:
 			# change/generate player tank name
 			if key_char == 'n':				
 				player_tank_name = ShowTextInputMenu('Enter a name for your tank', player_tank_name, MAX_TANK_NAME_LENGTH, [])
-				UpdateTankSelectionScreen(selected_unit, player_tank_name)
+				UpdateTankSelectionScreen(selected_unit, unit_list, player_tank_name)
 			
 			# mapped keys
 			key_char = DeKey(chr(key.c).lower())
 			
 			# change selected tank
-			if key_char in ['a', 'd']:
+			if key_char in ['w', 's']:
 				
 				i = unit_list.index(selected_unit)
 				
-				if key_char == 'd':
+				if key_char == 's':
 					if i == len(unit_list) - 1:
 						selected_unit = unit_list[0]
 					else:
@@ -1326,7 +1338,7 @@ class Campaign:
 						selected_unit = unit_list[-1]
 					else:
 						selected_unit = unit_list[i-1]
-				UpdateTankSelectionScreen(selected_unit, player_tank_name)
+				UpdateTankSelectionScreen(selected_unit, unit_list, player_tank_name)
 			
 		return (selected_unit.unit_id, player_tank_name)
 	

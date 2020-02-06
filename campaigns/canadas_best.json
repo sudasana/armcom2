@@ -271,7 +271,7 @@
 			"week_description" : "Operation Elephant",
 			"mission_odds" : {
 				"Advance" : "5",
-				"Battle" : "95",
+				"Battle" : "95"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -290,7 +290,7 @@
 			"week_description" : "Hochwald Gap",
 			"mission_odds" : {
 				"Advance" : "10",
-				"Battle" : "90",
+				"Battle" : "90"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0
@@ -309,7 +309,7 @@
 			"week_description" : "Veen",
 			"mission_odds" : {
 				"Advance" : "10",
-				"Battle" : "90",
+				"Battle" : "90"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0

@@ -347,7 +347,7 @@
 				"Fighting Withdrawal" : "10"
 			},
 			"enemy_nation" : "Germany",
-			"air_support_level" : 70.0,
+			"air_support_level" : 70.0
 		},
 		{
 			"start_date" : "1945.02.03",
@@ -419,7 +419,7 @@
 			"week_description" : "Across the Rhine and Main",
 			"mission_odds" : {
 				"Advance" : "70",
-				"Battle" : "30",
+				"Battle" : "30"
 			},
 			"enemy_nation" : "Germany",
 			"air_support_level" : 50.0

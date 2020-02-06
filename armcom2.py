@@ -15939,7 +15939,4 @@ while not exit_game:
 			UpdateMainTitleCon(options_menu_active)
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 
-print(NAME + ' shutting down')
-
 # END #
-

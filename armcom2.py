@@ -3261,7 +3261,7 @@ class CampaignDay:
 			y = 35
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 			libtcod.console_print(con, x, y, EnKey('q').upper())
-			libtcod.console_print(con, x, y+1, EnKey('e').upper())
+			libtcod.console_print(con, x, y+1, EnKey('c').upper())
 			libtcod.console_print(con, x, y+2, EnKey('r').upper())
 			
 			libtcod.console_print(con, x, y+4, EnKey('d').upper())
@@ -3271,7 +3271,7 @@ class CampaignDay:
 			
 			libtcod.console_print(con, x, y+9, EnKey('x').upper())
 			
-			libtcod.console_print(con, x, y+11, 'Enter')
+			libtcod.console_print(con, x, y+12, 'Enter')
 			
 			
 			libtcod.console_set_default_foreground(con, libtcod.white)
@@ -3286,7 +3286,7 @@ class CampaignDay:
 			
 			libtcod.console_print(con, x+2, y+9, 'Default Load')
 			
-			libtcod.console_print(con, x+6, y+11, 'Accept and Continue')
+			libtcod.console_print(con, x+6, y+12, 'Accept and Continue')
 			
 			
 			# possible but not likely
@@ -3499,7 +3499,7 @@ class CampaignDay:
 			key_char = DeKey(chr(key.c).lower())
 			
 			# cycle selected ammo type
-			if key_char == 'e':
+			if key_char == 'c':
 				i = weapon.stats['ammo_type_list'].index(selected_ammo_type)
 				
 				if i == len(weapon.stats['ammo_type_list']) - 1:

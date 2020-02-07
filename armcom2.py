@@ -5714,27 +5714,33 @@ class Personnel:
 			
 			# frame and section dividers
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.grey)
-			DrawFrame(crewman_menu_con, 8, 2, 73, 56)
+			DrawFrame(crewman_menu_con, 8, 2, 74, 56)
 			DrawFrame(crewman_menu_con, 29, 2, 32, 56)
-			libtcod.console_hline(crewman_menu_con, 30, 5, 30)
+			libtcod.console_hline(crewman_menu_con, 30, 6, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 8, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 10, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 12, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 15, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 20, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 22, 30)
+			libtcod.console_hline(crewman_menu_con, 61, 22, 20)
 			libtcod.console_hline(crewman_menu_con, 30, 49, 30)
 			
-			# main title
+			# main title and decorations
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.darker_blue)
-			libtcod.console_rect(crewman_menu_con, 30, 3, 30, 2, False, libtcod.BKGND_SET)
+			libtcod.console_rect(crewman_menu_con, 30, 3, 30, 3, False, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.lightest_blue)
-			libtcod.console_print(crewman_menu_con, 38, 3, 'Crewman Report')
+			libtcod.console_print(crewman_menu_con, 38, 4, 'Crewman Report')
+			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.yellow)
+			for y in range(3, 6):
+				for x in [31, 32]:
+					libtcod.console_put_char(crewman_menu_con, x, y, 174)
+					libtcod.console_put_char(crewman_menu_con, x+26, y, 175)
 			
 			# section titles
 			libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
-			libtcod.console_print(crewman_menu_con, 30, 6, 'Name')
+			libtcod.console_print(crewman_menu_con, 30, 7, 'Name')
 			libtcod.console_print(crewman_menu_con, 30, 9, 'Age')
 			libtcod.console_print(crewman_menu_con, 30, 11, 'Rank')
 			libtcod.console_print(crewman_menu_con, 30, 13, 'Current')
@@ -5746,11 +5752,9 @@ class Personnel:
 			libtcod.console_print(crewman_menu_con, 30, 51, 'Wounds')
 			
 			
-			# info
+			# name
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
-			self.DisplayName(crewman_menu_con, 39, 6)
-			if self.nickname != '':
-				libtcod.console_print(crewman_menu_con, 39, 7, self.nickname)
+			self.DisplayName(crewman_menu_con, 39, 7)
 			
 			# age, birthday and rank
 			libtcod.console_print(crewman_menu_con, 39, 9, str(self.age))
@@ -5806,10 +5810,10 @@ class Personnel:
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
 			
 			# display info about selected skill or info about adding a new skill
-			libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
-			libtcod.console_print(crewman_menu_con, 67, 23, 'Info')
+			#libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
+			#libtcod.console_print(crewman_menu_con, 67, 23, 'Info')
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
-			y = 25
+			y = 24
 			if selected_skill == number_of_skills:
 				text = 'Select this option to spend an advance point and add a new skill'
 			else:

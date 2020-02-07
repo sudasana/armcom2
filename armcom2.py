@@ -3263,14 +3263,10 @@ class CampaignDay:
 			libtcod.console_print(con, x, y, EnKey('q').upper())
 			libtcod.console_print(con, x, y+1, EnKey('c').upper())
 			libtcod.console_print(con, x, y+2, EnKey('r').upper())
-			
 			libtcod.console_print(con, x, y+4, EnKey('d').upper())
 			libtcod.console_print(con, x, y+5, EnKey('a').upper())
-			
 			libtcod.console_print(con, x, y+7, EnKey('z').upper())
-			
 			libtcod.console_print(con, x, y+9, EnKey('x').upper())
-			
 			libtcod.console_print(con, x, y+12, 'Enter')
 			
 			
@@ -3278,14 +3274,10 @@ class CampaignDay:
 			libtcod.console_print(con, x+2, y, 'Cycle Selected Gun')
 			libtcod.console_print(con, x+2, y+1, 'Cycle Selected Ammo Type')
 			libtcod.console_print(con, x+2, y+2, 'Toggle Ready Rack')
-			
 			libtcod.console_print(con, x+2, y+4, 'Load ' + str(add_num))
 			libtcod.console_print(con, x+2, y+5, 'Unload ' + str(add_num))
-			
 			libtcod.console_print(con, x+2, y+7, 'Toggle 1/10')
-			
 			libtcod.console_print(con, x+2, y+9, 'Default Load')
-			
 			libtcod.console_print(con, x+6, y+12, 'Accept and Continue')
 			
 			
@@ -4496,27 +4488,6 @@ class CampaignDay:
 			(hx1, hy1) = self.player_unit_location
 			(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, self.selected_direction)
 			if (hx2, hy2) not in self.map_hexes: return
-				
-			# display enemy strength/organization if any and chance of encounter
-			map_hex = self.map_hexes[(hx2,hy2)]
-			if map_hex.controlled_by == 1:
-				
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
-				libtcod.console_print(cd_command_con, 3, 12, 'Destination is')
-				libtcod.console_print(cd_command_con, 3, 13, 'Enemy Controlled')
-				
-				# display recon option
-				if not map_hex.known_to_player:
-					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-					libtcod.console_print(cd_command_con, 1, 18, 'Recon: 15 mins.')
-					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-					libtcod.console_print(cd_command_con, 3, 38, EnKey('r').upper())
-					
-					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-					libtcod.console_print(cd_command_con, 10, 38, 'Recon')
-				else:
-					libtcod.console_print(cd_command_con, 3, 15, 'Strength: ' + str(map_hex.enemy_strength))
-					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
 			# calculate and display travel time
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -4529,6 +4500,33 @@ class CampaignDay:
 			else:
 				text = str(self.CalculateTravelTime(hx1, hy1, hx2, hy2)) + ' mins.'
 			libtcod.console_print(cd_command_con, 1, 20, text)
+			
+			# display enemy strength/organization if any and chance of encounter
+			map_hex = self.map_hexes[(hx2,hy2)]
+			if map_hex.controlled_by == 1:
+				
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
+				libtcod.console_print(cd_command_con, 3, 12, 'Destination is')
+				libtcod.console_print(cd_command_con, 3, 13, 'Enemy Controlled')
+				
+				# display recon option if strength is unknown travel is possible
+				if not map_hex.known_to_player and 'N/A' not in text:
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+					libtcod.console_print(cd_command_con, 1, 17, 'Recon: 15 mins.')
+					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+					libtcod.console_print(cd_command_con, 3, 38, EnKey('r').upper())
+					
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+					libtcod.console_print(cd_command_con, 10, 38, 'Recon')
+				
+				# display strength if known
+				elif map_hex.known_to_player:
+					libtcod.console_print(cd_command_con, 3, 15, 'Strength: ' + str(map_hex.enemy_strength))
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			
+			# NEW: don't display anything further if travel is N/A
+			if 'N/A' in text:
+				return
 		
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 			libtcod.console_print(cd_command_con, 3, 39, 'Enter')
@@ -5223,8 +5221,19 @@ class CampaignDay:
 						self.abandoned_tank = True
 					continue
 				
+				# NEW: If travel is not possible, no more commands available
+				(hx1, hy1) = self.player_unit_location
+				(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, self.selected_direction)
+				if (hx2, hy2) not in self.map_hexes:
+					continue
+				map_hex2 = self.map_hexes[(hx2,hy2)]
+				if self.CheckTravel(hx1,hy1,hx2,hy2) != '':
+					continue
+				
 				# toggle advancing fire
 				if key_char == 't':
+					# destination not enemy-controlled
+					if map_hex2.controlled_by == 0: continue
 					self.advancing_fire = not self.advancing_fire
 					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
@@ -5233,6 +5242,7 @@ class CampaignDay:
 				
 				# toggle air support request
 				if key_char == 'g':
+					if map_hex2.controlled_by == 0: continue
 					if 'air_support_level' not in campaign.current_week:
 						continue
 					if self.weather['Cloud Cover'] == 'Overcast':
@@ -5245,6 +5255,7 @@ class CampaignDay:
 				
 				# toggle artillery support request
 				if key_char == 'b':
+					if map_hex2.controlled_by == 0: continue
 					if 'arty_support_level' not in campaign.current_week:
 						continue
 					self.arty_support_request = not self.arty_support_request
@@ -5258,13 +5269,6 @@ class CampaignDay:
 					
 					# no direction set
 					if self.selected_direction is None: continue
-					
-					# ensure that travel/recon is possible
-					(hx1, hy1) = self.player_unit_location
-					(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, self.selected_direction)
-					if (hx2, hy2) not in self.map_hexes:
-						continue
-					map_hex2 = self.map_hexes[(hx2,hy2)]
 					
 					# recon
 					if key_char == 'r':
@@ -5286,13 +5290,9 @@ class CampaignDay:
 					# travel
 					else:
 						
-						# travel not allowed
-						text = self.CheckTravel(hx1,hy1,hx2,hy2)
-						if text != '':
-							ShowMessage(text)
-							continue
-						
 						self.MovePlayerTo(hx2,hy2)
+						self.UpdateCDCommandCon()
+						self.UpdateCDDisplay()
 						
 						# roll to trigger battle encounter if enemy-controlled
 						if map_hex2.controlled_by == 1:

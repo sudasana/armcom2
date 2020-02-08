@@ -62,7 +62,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.13.0 04-02-20'					# game version
+VERSION = '0.13.0 09-02-20'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1572,7 +1572,7 @@ class Campaign:
 			else:
 			
 				# reset fatigue points if any
-				position.crewman.fatigue = 0
+				position.crewman.fatigue = -5
 				
 				# grant random additional exp
 				position.crewman.exp += libtcod.random_get_int(0, 0, 5)
@@ -3075,8 +3075,8 @@ class CampaignDay:
 				if position.crewman is None: continue
 				if position.crewman.status in ['Dead', 'Unconscious']: continue 
 				position.crewman.fatigue -= position.crewman.stats['Morale']
-				if position.crewman.fatigue < 0:
-					position.crewman.fatigue = 0
+				if position.crewman.fatigue < -5:
+					position.crewman.fatigue = -5
 			ShowMessage('Your crew feel a little less fatigued than before.')
 				
 		# no other random events for now
@@ -5667,7 +5667,7 @@ class Personnel:
 		day = choice(monthrange(year, month))
 		self.birthday = str(year) + '.' + str(month).zfill(2) + '.' + str(day).zfill(2)
 		
-		self.fatigue = 0				# current fatigue points
+		self.fatigue = -5				# current crew fatigue points
 		
 		# exposed / buttoned up status
 		self.ce = False					# crewman is exposed in a vehicle
@@ -5845,8 +5845,8 @@ class Personnel:
 			libtcod.console_print_ex(crewman_menu_con, 50, 48, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(self.adv))
 			
-			# fatigue level
-			if self.fatigue == 0:
+			# crew fatigue level
+			if self.fatigue <= 0:
 				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
 				text = '-'
 			else:
@@ -6054,7 +6054,8 @@ class Personnel:
 		modifier += float(self.stats['Knowledge']) * 0.1 * modifier
 		if self.status == 'Stunned':		# stunned status
 			modifier = modifier * 0.5
-		modifier -= float(self.fatigue)		# impact of fatigue
+		if self.fatigue > 0:
+			modifier -= float(self.fatigue)		# impact of crew fatigue
 		modifier = round(modifier, 1)
 		if modifier <= 0.0:
 			modifier = 0.0
@@ -6076,12 +6077,11 @@ class Personnel:
 	# crew recovers some fatigue from rest
 	def Rest(self):
 		if self.status in ['Dead', 'Unconscious']: return
-		if self.fatigue == 0: return
+		if self.fatigue == -5: return
 		i = libtcod.random_get_int(0, 0, self.stats['Morale'])
-		#print('DEBUG: ' + self.first_name + ' lost ' + str(i) + ' fatigue')
 		self.fatigue -= i
-		if self.fatigue < 0:
-			self.fatigue = 0
+		if self.fatigue < -5:
+			self.fatigue = -5
 	
 	
 	# check to see whether this personnel is wounded/KIA and return result if any
@@ -7589,7 +7589,7 @@ class Unit:
 		
 		self.pinned = False
 		self.deployed = False
-		self.fatigue = 0			# fatigue points
+		self.unit_fatigue = 0			# unit fatigue points
 		
 		self.dug_in = False			# unit is dug-in
 		self.entrenched = False			# " entrenched
@@ -8481,11 +8481,15 @@ class Unit:
 			
 			text = weapon.stats['name']
 			if weapon.GetStat('type') == 'Gun':
+				if x1 != x:
+					text = ', ' + text
 				libtcod.console_print(console, x1, y+10, text)
-				x1 += len(text) + 1
+				x1 += len(text)
 			else:
+				if x2 != x:
+					text = ', ' + text
 				libtcod.console_print(console, x2, y+11, text)
-				x2 += len(text) + 1
+				x2 += len(text)
 		
 		# armour
 		libtcod.console_set_default_foreground(console, libtcod.white)
@@ -9059,8 +9063,8 @@ class Unit:
 			base_chance += RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
 		
 		# apply any modifiers
-		if self.fatigue > 0:
-			base_chance += float(self.fatigue) * 15.0
+		if self.unit_fatigue > 0:
+			base_chance += float(self.unit_fatigue) * 15.0
 		
 		# restrict final chance
 		base_chance = RestrictChance(base_chance)
@@ -9086,7 +9090,7 @@ class Unit:
 					ShowMessage('No effect.', scenario_highlight=(self.hx, self.hy))
 		
 		self.fp_to_resolve = 0
-		self.fatigue += 1
+		self.unit_fatigue += 1
 	
 	
 	# do a morale check for this unit to recover from Pinned status
@@ -15496,7 +15500,7 @@ def DisplayCrew(unit, console, x, y, highlight):
 			if position.crewman.fatigue > 0:
 				libtcod.console_set_default_foreground(console, libtcod.red)
 				libtcod.console_print_ex(console, x+23, y+3, libtcod.BKGND_NONE, libtcod.RIGHT, 
-					'Fatigued')
+					'Fatigued ' + str(position.crewman.fatigue) + '%%')
 			
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		y += 5

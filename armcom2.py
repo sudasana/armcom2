@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.13.0 09-02-20'					# game version
+VERSION = '0.13.0'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -6173,9 +6173,14 @@ class Personnel:
 			if show_messages:
 				ShowMessage('Your ' + self.current_position.name + ' has received a Light Wound.')
 			return 'Light Wound'
-				
+		
+		# everything from here on would be a serious, critical wound, or KIA
+		# NEW: player saved by fate point
+		if campaign_day.fate_points > 0 and self.current_position in PLAYER_POSITIONS:
+			campaign_day.fate_points -= 1
+			return None
 			
-		elif roll <= 85.0:
+		if roll <= 85.0:
 			
 			if self.wound == 'Critical': return None
 			

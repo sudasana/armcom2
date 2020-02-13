@@ -5221,6 +5221,9 @@ class CampaignDay:
 						self.abandoned_tank = True
 					continue
 				
+				# NEW no direction selected
+				if self.selected_direction is None: continue
+				
 				# NEW: If travel is not possible, no more commands available
 				(hx1, hy1) = self.player_unit_location
 				(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, self.selected_direction)

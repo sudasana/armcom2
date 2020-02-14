@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.13.0'					# game version
+VERSION = '0.13.0 09-02-20'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -241,6 +241,7 @@ ASSAULT_FP = {
 	'Armoured Car' : (6, 10),
 	'Anti-Tank Gun' : (0, 4),
 	'Field Gun' : (0, 8),
+	'Artillery Gun' : (0, 8),
 	'Anti-Aircraft Gun' : (0, 8),
 	'Truck' : (0, 0),
 	'Armoured Train Car' : (0, 8)

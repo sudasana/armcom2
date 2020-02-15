@@ -62,7 +62,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '0.13.0 09-02-20'					# game version
+VERSION = '1.0.0-beta'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -14784,16 +14784,16 @@ def CheckSavedGameVersion():
 	saved_version = save['version']
 	save.close()
 	
-	# if either is development version, must match exactly
+	# if either is a development version, must match exactly
 	if '-' in saved_version or '-' in VERSION:
 		if saved_version != VERSION:
 			return saved_version
 	
-	# only allow loading the saved game if the first two components of the version numbers match
+	# NEW: only allow loading the saved game if the first component of the version numbers match
 	version_list = saved_version.split('.')
-	major_saved_version = version_list[0] + version_list[1]
+	major_saved_version = version_list[0]
 	version_list = VERSION.split('.')
-	major_current_version = version_list[0] + version_list[1]
+	major_current_version = version_list[0]
 	if major_saved_version == major_current_version:
 		return ''
 	return saved_version

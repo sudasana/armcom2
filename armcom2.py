@@ -62,7 +62,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '1.0.0-beta'					# game version
+VERSION = '1.0.0-beta-rc1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -192,7 +192,7 @@ CD_TRAVEL_CMDS = [
 # order to display ammo types
 AMMO_TYPES = ['HE', 'AP', 'Smoke']
 
-# display colours for ammo types (FUTURE: record text descriptions here too)
+# display colours for ammo types (FUTURE: store text descriptions here too)
 AMMO_TYPE = {
 	'HE' : libtcod.lighter_grey,
 	'AP' : libtcod.yellow,
@@ -221,8 +221,6 @@ MISSION_DESC = {
 ##########################################################################################
 #                                Game Engine Definitions                                 #
 ##########################################################################################
-
-# FUTURE: move these to a JSON file?
 
 # Spearhead mission zone capture VP values: adds one per this many hexrows reached
 SPEARHEAD_HEXROW_LEVELS = 2

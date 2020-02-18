@@ -8443,6 +8443,9 @@ class Unit:
 			x_mod, y_mod = PLOT_DIR[facing]
 			char = TURRET_CHAR[facing]
 			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, bg_col)
+		
+		# TODO: draw depiction of dug-in, entrenched, or fortified here
+		if not self.dug_in and not self.entrenched and not self.fortified: return
 	
 	
 	# display info on this unit to a given console starting at x,y
@@ -13094,25 +13097,26 @@ class Scenario:
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.grey)
 			libtcod.console_print(unit_info_con, 23, 2, 'Smoke lvl ' + str(unit.smoke))
 		
-		# dug-in, entrenched, or fortified status
-		text = ''
-		if unit.dug_in:
-			libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
-			text = 'Dug-in'
-		elif unit.entrenched:
-			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_sepia)
-			text = 'Entrenched'
-		elif unit.fortified:
-			libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
-			text = 'Fortified'
-		if text != '':
-			libtcod.console_print(unit_info_con, 26, 0, text)
-		
 		if unit.owning_player == 1 and not unit.spotted:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
 			libtcod.console_print(unit_info_con, 0, 0, 'Unspotted Enemy')
 			
 		else:
+			
+			# dug-in, entrenched, or fortified status
+			text = ''
+			if unit.dug_in:
+				libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
+				text = 'Dug-in'
+			elif unit.entrenched:
+				libtcod.console_set_default_foreground(unit_info_con, libtcod.light_sepia)
+				text = 'Entrenched'
+			elif unit.fortified:
+				libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
+				text = 'Fortified'
+			if text != '':
+				libtcod.console_print(unit_info_con, 26, 0, text)
+			
 			if unit == scenario.player_unit:
 				col = libtcod.white
 			elif unit.owning_player == 0:

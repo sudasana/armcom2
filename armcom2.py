@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '1.0.0-beta'					# game version
+VERSION = '1.0.0-beta-rc1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -9125,6 +9125,11 @@ class Unit:
 	
 	# do a pin test on this unit
 	def PinTest(self, fp, no_msg=False):
+		
+		# NEW: only infantry and guns are subject to pinning
+		if self.GetStat('category') not in ['Infantry', 'Gun']:
+			continue
+		
 		if self.pinned: return
 		
 		chance = float(fp) * 5.0
@@ -10047,8 +10052,6 @@ class Scenario:
 			
 			# if player used advancing fire, test for pin
 			if campaign_day.advancing_fire:
-				if unit.GetStat('category') not in ['Infantry', 'Gun']:
-					continue
 				unit.PinTest(10.0, no_msg=True)
 	
 	

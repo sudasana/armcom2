@@ -9128,7 +9128,7 @@ class Unit:
 		
 		# NEW: only infantry and guns are subject to pinning
 		if self.GetStat('category') not in ['Infantry', 'Gun']:
-			continue
+			return
 		
 		if self.pinned: return
 		

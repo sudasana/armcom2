@@ -1760,14 +1760,20 @@ class Campaign:
 		libtcod.console_print_ex(day_outline, 11, 7, libtcod.BKGND_NONE, libtcod.CENTER,
 			GetDateText(campaign.today))
 		
-		# week description, max 3 lines
-		libtcod.console_set_default_foreground(day_outline, libtcod.white)
-		lines = wrap(campaign.current_week['week_description'], 20)
-		y = 9
-		for line in lines[:4]:
+		# refitting week
+		if 'refitting' in campaign.current_week:
 			libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
-				libtcod.CENTER, line)
-			y += 1
+				libtcod.CENTER, 'Refitting')
+		else:
+		
+			# week description, max 3 lines
+			libtcod.console_set_default_foreground(day_outline, libtcod.white)
+			lines = wrap(campaign.current_week['week_description'], 20)
+			y = 9
+			for line in lines[:4]:
+				libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
+					libtcod.CENTER, line)
+				y += 1
 		
 		# FUTURE: additional descriptive text can be displayed here
 		
@@ -1776,6 +1782,9 @@ class Campaign:
 			libtcod.CENTER, 'Current Campaign VP:')
 		libtcod.console_print_ex(day_outline, 12, 29, libtcod.BKGND_NONE,
 			libtcod.CENTER, str(campaign.player_vp))
+		
+		if 'refitting' in campaign.current_week:
+			return
 		
 		libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
 		libtcod.console_print(day_outline, 1, 32, 'Start of Day:')
@@ -2155,13 +2164,16 @@ class Campaign:
 							# proceed to next combat day
 							ProceedToNextDay()
 						
-						# create a new campaign day
-						campaign_day = CampaignDay()
-						for (hx, hy) in CAMPAIGN_DAY_HEXES:
-							campaign_day.map_hexes[(hx,hy)].CalcCaptureVP()
-						campaign_day.GenerateRoads()
-						campaign_day.GenerateRivers()
-						self.ShowStartOfDay()
+						# NEW
+						else:
+						
+							# create a new campaign day
+							campaign_day = CampaignDay()
+							for (hx, hy) in CAMPAIGN_DAY_HEXES:
+								campaign_day.map_hexes[(hx,hy)].CalcCaptureVP()
+							campaign_day.GenerateRoads()
+							campaign_day.GenerateRivers()
+							self.ShowStartOfDay()
 						
 						SaveGame()
 						
@@ -2963,7 +2975,7 @@ class CampaignDay:
 			
 			self.map_hexes[(hx, hy)].target_of_opportunity = 10
 			
-			# NEW: set flavour text
+			# set flavour text
 			roll = GetPercentileRoll()
 			if roll <= 20.0:
 				text = 'Ammo Depot'
@@ -4256,7 +4268,7 @@ class CampaignDay:
 						char = 45
 					libtcod.console_put_char_ex(cd_map_con, x+xm, y+ym, char,
 						libtcod.dark_sepia, bg_col)
-					# NEW: also record location
+					# also record location
 					self.cd_map_bridge_locations.append((x+xm, y+ym))
 		
 		# draw hex row guides
@@ -4523,7 +4535,7 @@ class CampaignDay:
 					libtcod.console_print(cd_command_con, 3, 15, 'Strength: ' + str(map_hex.enemy_strength))
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			
-			# NEW: don't display anything further if travel is N/A
+			# don't display anything further if travel is N/A
 			if 'N/A' in text:
 				return
 		
@@ -4656,7 +4668,7 @@ class CampaignDay:
 				text = 'Unknown'
 			libtcod.console_print(cd_hex_info_con, 10, 6, text)
 			
-		# NEW: VP value if captured
+		# VP value if captured
 		if cd_hex.controlled_by == 1:
 			libtcod.console_set_default_foreground(cd_hex_info_con, libtcod.light_blue)
 			libtcod.console_print(cd_hex_info_con, 0, 8, 'Capture VP Value: ' + str(cd_hex.vp_value))
@@ -4998,7 +5010,7 @@ class CampaignDay:
 					if not self.ended:
 						self.CheckForRandomEvent()
 						self.CheckForZoneCapture(zone_just_captured=True)
-						# NEW: recalculate capture VPs
+						# recalculate capture VPs
 						for (hx, hy), cd_hex in self.map_hexes.items():
 							cd_hex.CalcCaptureVP()
 						self.CheckForCDMapShift()
@@ -5220,10 +5232,10 @@ class CampaignDay:
 						self.abandoned_tank = True
 					continue
 				
-				# NEW no direction selected
+				# no direction selected
 				if self.selected_direction is None: continue
 				
-				# NEW: If travel is not possible, no more commands available
+				# if travel is not possible, no more commands available
 				(hx1, hy1) = self.player_unit_location
 				(hx2, hy2) = self.GetAdjacentCDHex(hx1, hy1, self.selected_direction)
 				if (hx2, hy2) not in self.map_hexes:
@@ -5394,7 +5406,7 @@ class CDMapHex:
 		self.target_of_opportunity = None	# zone has been marked as a Target of Opportunity
 		self.too_text = ''		# flavour text for ToO
 		
-		# NEW: VP value if captured by player
+		# VP value if captured by player
 		self.vp_value = 0
 		
 		# Pathfinding stuff
@@ -5436,7 +5448,7 @@ class CDMapHex:
 		self.coordinate = (chr(self.hy+65) + str(5 + int(self.hx - (self.hy - self.hy&1) / 2)))
 
 	
-	# NEW: (re)calculate VP value if captured by player
+	# (re)calculate VP value if captured by player
 	def CalcCaptureVP(self):
 		
 		(hx, hy) = campaign_day.player_unit_location
@@ -5498,7 +5510,7 @@ class CDMapHex:
 			
 			if self.controlled_by == 1:
 				campaign_day.AddRecord('Map Areas Captured', 1)
-				# NEW: award zone VP value
+				# award zone VP value
 				campaign.AwardVP(self.vp_value)
 				
 			# check for TOO reward
@@ -5626,7 +5638,7 @@ class Personnel:
 		
 		self.skills = []				# list of skills
 		
-		# NEW: check for national skills
+		# check for national skills
 		if self.unit == campaign.player_unit:
 			if 'national_skills' in campaign.stats:
 				for skill in campaign.stats['national_skills']:
@@ -5635,7 +5647,7 @@ class Personnel:
 							continue
 					self.skills.append(skill)
 		
-		# NEW: check for skill effects on stats
+		# check for skill effects on stats
 		for skill in self.skills:
 			if skill == 'Defend the Motherland':
 				self.stats['Morale'] += 3
@@ -6177,7 +6189,7 @@ class Personnel:
 			return 'Light Wound'
 		
 		# everything from here on would be a serious, critical wound, or KIA
-		# NEW: player saved by fate point
+		# player saved by fate point
 		if campaign_day.fate_points > 0 and self.current_position in PLAYER_POSITIONS:
 			campaign_day.fate_points -= 1
 			return None
@@ -8528,7 +8540,7 @@ class Unit:
 			libtcod.console_set_default_foreground(console, libtcod.light_red)
 			text = 'Bogged Down'
 		else:
-			# NEW: select shade of green based on ground pressure
+			# select shade of green based on ground pressure
 			gp = self.GetStat('ground_pressure')
 			if gp is not None:
 				if gp == 'Light':
@@ -8593,7 +8605,7 @@ class Unit:
 			
 			ys = 17
 
-			# NEW: terrain and smoke status
+			# terrain and smoke status
 			libtcod.console_set_default_background(console, libtcod.darker_sepia)
 			libtcod.console_rect(console, x, y+ys, 25, 2, True, libtcod.BKGND_SET)
 			
@@ -10556,7 +10568,6 @@ class Scenario:
 		armour = target.GetStat('armour')
 		unarmoured_location = True
 		if armour is not None:
-			# NEW
 			if target.GetStat('open_rear_turret') is not None and hit_location == 'turret_rear':
 				unarmoured_location = True
 			else:
@@ -11297,7 +11308,7 @@ class Scenario:
 		if campaign_day.arty_support_request:
 			roll = GetPercentileRoll()
 			
-			# NEW: determine national skill modifier if any
+			# determine national skill modifier if any
 			if campaign.CheckForNationalSkill('Centralized Fire'):
 				roll -= 10.0
 			
@@ -11672,7 +11683,7 @@ class Scenario:
 				break
 		effective_fp = int(effective_fp / 2)
 		
-		# NEW: determine national skill modifier if any
+		# determine national skill modifier if any
 		skill_mod = 0
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
@@ -12167,7 +12178,7 @@ class Scenario:
 				campaign_day.ended = True
 				return
 			
-			# NEW: check for all enemies dead as result of random event
+			# check for all enemies dead as result of random event
 			self.CheckForEnd()
 			if self.finished: return
 			
@@ -13867,7 +13878,7 @@ def ShowSkillMenu(crewman):
 	skill_list = []
 	for k, value in campaign.skills.items():
 		
-		# NEW: national skill
+		# national skill
 		if 'national_skill' in value: continue
 		
 		# crewman already has this skill

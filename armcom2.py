@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '1.0.0-beta-rc1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -8444,8 +8444,19 @@ class Unit:
 			char = TURRET_CHAR[facing]
 			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, bg_col)
 		
-		# TODO: draw depiction of dug-in, entrenched, or fortified here
+		# NEW: draw depiction of dug-in, entrenched, or fortified here
 		if not self.dug_in and not self.entrenched and not self.fortified: return
+		
+		if self.dug_in:
+			libtcod.console_put_char_ex(unit_con, x-1, y, 174, libtcod.dark_sepia, bg_col)
+			libtcod.console_put_char_ex(unit_con, x+1, y, 175, libtcod.dark_sepia, bg_col)
+		elif self.entrenched:
+			libtcod.console_put_char_ex(unit_con, x-1, y, 91, libtcod.dark_sepia, bg_col)
+			libtcod.console_put_char_ex(unit_con, x+1, y, 93, libtcod.dark_sepia, bg_col)
+		else:
+			libtcod.console_put_char_ex(unit_con, x-1, y, 249, libtcod.grey, bg_col)
+			libtcod.console_put_char_ex(unit_con, x+1, y, 249, libtcod.grey, bg_col)
+			
 	
 	
 	# display info on this unit to a given console starting at x,y

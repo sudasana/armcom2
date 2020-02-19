@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '1.0.0-beta-rc1'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -170,7 +170,8 @@ SCEN_PHASE_COL = [
 # list of campaign calendar menus and their highlight colours
 CC_MENU_LIST = [
 	('Proceed', 1, libtcod.Color(70, 140, 0)),
-	('Crew and Tank', 2, libtcod.Color(140, 140, 0))
+	('Crew and Tank', 2, libtcod.Color(140, 140, 0)),
+	('Combat Log', 3, libtcod.Color(140, 0, 0))
 ]
 
 # list of campaign day menus and their highlight colours
@@ -868,6 +869,7 @@ class Campaign:
 			self.skills = json.load(data_file)
 		
 		self.logs = {}			# dictionary of campaign logs for each combat day
+		self.journal = {}		# dictionary of events for each combat day
 		self.player_unit = None		# placeholder for player unit
 		self.player_squad_max = 0	# maximum units in player squad in addition to player
 		self.player_vp = 0		# total player victory points
@@ -877,6 +879,7 @@ class Campaign:
 		self.current_week = None	# " week
 		self.enemy_class_odds = {}	# placeholder for enemy unit spawn odds, set by campaign days
 		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
+		self.active_journal_day = None	# currently displayed journal day
 		self.ended = False		# campaign has ended due to player serious injury or death
 		self.player_oob = False		# player was seriously injured or killed
 		
@@ -886,6 +889,16 @@ class Campaign:
 		self.records = {}
 		for text in RECORD_LIST:
 			self.records[text] = 0
+	
+	
+	# add an entry to the journal
+	def AddJournal(self, text):
+		if campaign_day is None: return
+		time = str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
+		# create a new day entry if none exists already
+		if self.today not in self.journal:
+			self.journal[self.today] = []
+		self.journal[self.today].append((time, text))
 	
 	
 	# end the campaign
@@ -1868,14 +1881,16 @@ class Campaign:
 				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
 				libtcod.console_print(calendar_cmd_con, 5, 7, 'Tank Name')
 		
-		# tank
+		# day log
 		elif self.active_calendar_menu == 3:
-			pass
-		
-		# group - not yet implemented
-		elif self.active_calendar_menu == 4:
-			pass
-	
+			
+			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+			libtcod.console_print(calendar_cmd_con, 4, 9, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(calendar_cmd_con, 4, 10, EnKey('a').upper() + '/' + EnKey('d').upper())
+			
+			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+			libtcod.console_print(calendar_cmd_con, 10, 9, 'Scroll Log')
+			libtcod.console_print(calendar_cmd_con, 10, 10, 'Select Day')
 	
 	# update the main calendar display panel
 	def UpdateCCMainPanel(self, selected_position):
@@ -1970,6 +1985,31 @@ class Campaign:
 			
 			else:
 				libtcod.console_print(calendar_main_panel, 41, 13, 'None')
+		
+		# journal menu
+		elif self.active_calendar_menu == 3:
+			
+			# if no day selected yet, select the first one
+			if self.active_journal_day is None:
+				for (k, v) in self.journal.items():
+					self.active_journal_day = k
+					break
+			
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
+			libtcod.console_print_ex(calendar_main_panel, 20, 2, libtcod.BKGND_NONE,
+				libtcod.CENTER, GetDateText(self.active_journal_day))
+			
+			# TODO: set up vertical scrolling, wrapping of text lines for entries
+			
+			y = 6
+			for (time, text) in self.journal[self.active_journal_day]:
+				
+				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
+				libtcod.console_print(calendar_main_panel, 5, y, time)
+				
+				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
+				libtcod.console_print(calendar_main_panel, 13, y, text)
+
 	
 	
 	# update the display of the campaign calendar interface
@@ -2174,6 +2214,8 @@ class Campaign:
 							campaign_day.GenerateRoads()
 							campaign_day.GenerateRivers()
 							self.ShowStartOfDay()
+							# add journal entry for start of day
+							campaign.AddJournal('Start of day')
 						
 						SaveGame()
 						
@@ -2235,6 +2277,15 @@ class Campaign:
 					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 					continue
+			
+			# journal menu active
+			elif self.active_calendar_menu == 3:
+				
+				# TODO: cycle active journal day displayed
+				if key_char in ['a', 'd']:
+					pass
+				
+				
 
 
 # Campaign Day: represents one calendar day in a campaign with a 5x7 map of terrain hexes, each of
@@ -2542,7 +2593,7 @@ class CampaignDay:
 		return ''
 		
 	
-	# calculate required tarvel time in minutes from one zone to another
+	# calculate required travel time in minutes from one zone to another
 	def CalculateTravelTime(self, hx1, hy1, hx2, hy2):
 		
 		direction = self.GetDirectionToAdjacentCD(hx1, hy1, hx2, hy2)
@@ -15994,6 +16045,8 @@ while not exit_game:
 					campaign_day.map_hexes[(hx,hy)].CalcCaptureVP()
 				campaign_day.GenerateRoads()
 				campaign_day.GenerateRivers()
+				# add journal entry for start of day
+				campaign.AddJournal('Start of day')
 				
 				# placeholder for the currently active scenario
 				scenario = None

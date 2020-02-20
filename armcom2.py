@@ -12779,6 +12779,14 @@ class Scenario:
 				weapon = self.selected_weapon
 				if weapon is None: return
 				
+				libtcod.console_set_default_foreground(context_con, libtcod.white)
+				libtcod.console_set_default_background(context_con, libtcod.darkest_red)
+				libtcod.console_rect(context_con, 0, 0, 18, 1, True, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(context_con, libtcod.black)
+				libtcod.console_print(context_con, 0, 0, weapon.stats['name'])
+				
+				if weapon.GetStat('type') != 'Gun': return
+				
 				weapon.DisplayAmmo(context_con, 0, 1)
 			
 		# Shooting Phase
@@ -12987,12 +12995,14 @@ class Scenario:
 			if position.crewman.current_cmd == 'Manage Ready Rack':
 				
 				libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-				libtcod.console_print(cmd_menu_con, 1, 1, EnKey('d').upper() + '/' + EnKey('a').upper())
-				libtcod.console_print(cmd_menu_con, 1, 2, EnKey('c').upper())
+				libtcod.console_print(cmd_menu_con, 1, 1, EnKey('q').upper() + '/' + EnKey('e').upper())
+				libtcod.console_print(cmd_menu_con, 1, 2, EnKey('d').upper() + '/' + EnKey('a').upper())
+				libtcod.console_print(cmd_menu_con, 1, 3, EnKey('c').upper())
 				
 				libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-				libtcod.console_print(cmd_menu_con, 8, 1, 'Add/Remove Shell')
-				libtcod.console_print(cmd_menu_con, 8, 2, 'Cycle Ammo Type')
+				libtcod.console_print(cmd_menu_con, 8, 1, 'Select Weapon')
+				libtcod.console_print(cmd_menu_con, 8, 2, 'Add/Remove Shell')
+				libtcod.console_print(cmd_menu_con, 8, 3, 'Cycle Ammo Type')
 		
 			
 		# Movement phase
@@ -13784,8 +13794,20 @@ class Scenario:
 				# ready rack commands
 				if position.crewman.current_cmd == 'Manage Ready Rack':
 					
+					# select player weapon
+					if key_char in ['q', 'e']:
+						self.SelectWeapon(key_char == 'e')
+						self.UpdateGuiCon()
+						self.UpdateContextCon()
+						self.UpdateScenarioDisplay()
+						continue
+					
+					# only allow for guns
+					if scenario.selected_weapon.GetStat('type') != 'Gun': continue
+					
 					# cycle active ammo type
 					if key_char == 'c':
+						
 						if scenario.selected_weapon.CycleAmmo():
 							self.UpdateContextCon()
 							self.UpdateScenarioDisplay()

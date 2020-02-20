@@ -62,7 +62,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '1.0.0-beta-rc1'				# game version
+VERSION = '1.0.0-beta-rc2'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -171,7 +171,7 @@ SCEN_PHASE_COL = [
 CC_MENU_LIST = [
 	('Proceed', 1, libtcod.Color(70, 140, 0)),
 	('Crew and Tank', 2, libtcod.Color(140, 140, 0)),
-	('Combat Log', 3, libtcod.Color(140, 0, 0))
+	('Journal', 3, libtcod.Color(140, 0, 0))
 ]
 
 # list of campaign day menus and their highlight colours
@@ -880,6 +880,7 @@ class Campaign:
 		self.enemy_class_odds = {}	# placeholder for enemy unit spawn odds, set by campaign days
 		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
 		self.active_journal_day = None	# currently displayed journal day
+		self.journal_scroll_line = 0	# current level of scroll on the journal display
 		self.ended = False		# campaign has ended due to player serious injury or death
 		self.player_oob = False		# player was seriously injured or killed
 		
@@ -1892,7 +1893,7 @@ class Campaign:
 			libtcod.console_print(calendar_cmd_con, 10, 9, 'Scroll Log')
 			libtcod.console_print(calendar_cmd_con, 10, 10, 'Select Day')
 	
-	# update the main calendar display panel
+	# update the main calendar display panel 63x58
 	def UpdateCCMainPanel(self, selected_position):
 		libtcod.console_clear(calendar_main_panel)
 		
@@ -1996,19 +1997,34 @@ class Campaign:
 					break
 			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
-			libtcod.console_print_ex(calendar_main_panel, 20, 2, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(calendar_main_panel, 31, 2, libtcod.BKGND_NONE,
 				libtcod.CENTER, GetDateText(self.active_journal_day))
 			
-			# TODO: set up vertical scrolling, wrapping of text lines for entries
-			
+			# display journal entries from current scroll position
+			n = 0
 			y = 6
 			for (time, text) in self.journal[self.active_journal_day]:
+				
+				# skip this entry if we're not yet at the current scroll location
+				if self.journal_scroll_line > n:
+					n += 1
+					continue
+				
+				# stop displaying if we're near the bottom of the console
+				if y >= 50:
+					break
 				
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
 				libtcod.console_print(calendar_main_panel, 5, y, time)
 				
+				# TODO: determine if journal text needs to be wrapped
+				
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
 				libtcod.console_print(calendar_main_panel, 13, y, text)
+				
+				y += 1
+				
+				
 
 	
 	
@@ -2285,6 +2301,25 @@ class Campaign:
 				if key_char in ['a', 'd']:
 					pass
 				
+				# shift display scroll
+				elif key_char in ['w', 's']:
+					
+					if key_char == 'w':
+						self.journal_scroll_line += 1
+					else:
+						self.journal_scroll_line -= 1
+					
+					if self.journal_scroll_line < 0:
+						self.journal_scroll_line = 0
+					else:
+						journal_length = len(self.journal[self.active_journal_day])
+					
+						if self.journal_scroll_line > journal_length - 44:
+							self.journal_scroll_line = journal_length - 44
+					
+					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCDisplay()
+					continue
 				
 
 
@@ -15984,8 +16019,7 @@ while not exit_game:
 				if not os.path.exists('savegame.dat'):
 					continue
 				
-				result = CheckSavedGameVersion() 
-				if result != '':
+				if CheckSavedGameVersion()  != '':
 					text = 'Saved game was saved with a different version of the program (' + result + '), cannot continue.'
 					ShowNotification(text)
 					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -16007,9 +16041,8 @@ while not exit_game:
 				# confirm savegame overwrite
 				if os.path.exists('savegame.dat'):
 					text = 'Starting a new campaign will PERMANTLY ERASE the existing saved campaign.'
-					result = ShowNotification(text, confirm=True)
 					# cancel and return to main menu
-					if not result:
+					if not ShowNotification(text, confirm=True):
 						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 						continue
 			        
@@ -16017,10 +16050,7 @@ while not exit_game:
 			        
 			        # create a new campaign object and allow player to select a campaign
 				campaign = Campaign()
-				result = campaign.CampaignSelectionMenu()
-				
-				# player canceled new campaign start
-				if not result:
+				if not campaign.CampaignSelectionMenu():
 					campaign = None
 					UpdateMainTitleCon(options_menu_active)
 					continue

@@ -900,6 +900,7 @@ class Campaign:
 		if self.today not in self.journal:
 			self.journal[self.today] = []
 		self.journal[self.today].append((time, text))
+		print('DEBUG: Added journal entry: ' + time + ': ' + text)
 	
 	
 	# end the campaign
@@ -2023,9 +2024,6 @@ class Campaign:
 				libtcod.console_print(calendar_main_panel, 13, y, text)
 				
 				y += 1
-				
-				
-
 	
 	
 	# update the display of the campaign calendar interface
@@ -2242,7 +2240,6 @@ class Campaign:
 						self.UpdateCCDisplay()
 						continue
 					
-			
 			# crew menu active
 			elif self.active_calendar_menu == 2:
 				
@@ -2537,6 +2534,7 @@ class CampaignDay:
 			if player_hy != 0: return
 		
 		ShowMessage('You enter a new map region.')
+		campaign.AddJournal('Entered a new map region')
 		
 		# determine direction to shift map based on current player location
 		if player_hy == 8:
@@ -3299,6 +3297,7 @@ class CampaignDay:
 				if self.player_unit_location in capture_list:
 					# player is present, trigger a scenario
 					ShowMessage('Enemy forces attack your zone!')
+					campaign.AddJournal('Enemy forces attacked our zone')
 					map_hex = self.map_hexes[self.player_unit_location]
 					scenario = Scenario(map_hex)
 					self.AddRecord('Battles Fought', 1)
@@ -4980,6 +4979,7 @@ class CampaignDay:
 			DisplayTimeInfo(time_con)
 			text = 'It takes you ' + str(minutes) + ' minutes to travel to the front lines.'
 			ShowMessage(text)
+			campaign.AddJournal('Arrived at front lines')
 			self.travel_time_spent = True
 		
 		# record mouse cursor position to check when it has moved
@@ -5114,6 +5114,7 @@ class CampaignDay:
 			# check for end of campaign day
 			if self.ended:
 				ShowMessage('Your combat day has ended.')
+				campaign.AddJournal('End of day')
 				self.DisplayCampaignDaySummary()
 				exit_loop = True
 				continue
@@ -5211,6 +5212,8 @@ class CampaignDay:
 						self.AdvanceClock(0, 30)
 						DisplayTimeInfo(time_con)
 						self.UpdateCDDisplay()
+						
+						campaign.AddJournal('We are resupplied')
 						
 						# allow player to replenish ammo
 						self.AmmoReloadMenu()
@@ -5314,6 +5317,7 @@ class CampaignDay:
 						campaign.player_unit.alive = False
 						campaign.player_vp -= int(campaign_day.day_vp / 2)
 						ShowMessage('You abandon your tank.')
+						campaign.AddJournal('Abandoned tank')
 						self.ended = True
 						self.abandoned_tank = True
 					continue
@@ -5412,7 +5416,7 @@ class CampaignDay:
 								# Don't allow advancing fire?
 								
 							ShowMessage(text + '.')
-							
+														
 							# roll for scenario trigger
 							roll = GetPercentileRoll()
 							roll -= campaign_day.encounter_mod
@@ -5429,9 +5433,11 @@ class CampaignDay:
 								scenario = Scenario(map_hex2)
 								self.encounter_mod = 0.0
 								self.AddRecord('Battles Fought', 1)
+								campaign.AddJournal('Entered an enemy-held zone, encountered resistance')
 								continue
 							
 							ShowMessage('You find no resistance and gain control of the area.')
+							campaign.AddJournal('Entered an enemy-held zone, no resistance')
 							self.map_hexes[(hx2,hy2)].CaptureMe(0)
 							self.encounter_mod += 30.0
 							
@@ -5596,6 +5602,7 @@ class CDMapHex:
 			
 			if self.controlled_by == 1:
 				campaign_day.AddRecord('Map Areas Captured', 1)
+				campaign.AddJournal('Captured an enemy-held zone')
 				# award zone VP value
 				campaign.AwardVP(self.vp_value)
 				
@@ -5603,6 +5610,7 @@ class CDMapHex:
 			if self.target_of_opportunity is not None:
 				campaign.AwardVP(self.target_of_opportunity)
 				ShowMessage('You have captured a Target of Opportunity!', cd_highlight=(self.hx, self.hy))
+				campaign.AddJournal('Captured a Target of Opportunity')
 		
 		# clear any TOO
 		self.target_of_opportunity = None
@@ -6329,6 +6337,7 @@ class Personnel:
 					ShowMessage('You have been killed. Your campaign is over.')	
 				else:
 					ShowMessage('Your ' + self.current_position.name + ' has been killed.')
+					campaign.AddJournal(self.current_position.name + ' was killed')
 			
 			# check for commander death
 			if campaign.options['permadeath'] and self.current_position.name in PLAYER_POSITIONS:
@@ -6378,6 +6387,7 @@ class Personnel:
 				self.fatigue = 0
 				if self.unit == scenario.player_unit:
 					ShowMessage('Your ' + self.current_position.name + ' has died from his wounds.')
+					campaign.AddJournal(self.current_position.name + ' died from his wounds')
 				return
 		
 		# check for fellow crewmen on First Aid command
@@ -9088,6 +9098,7 @@ class Unit:
 							ShowMessage('Your tank suffers minor damage but is otherwise unharmed.')
 						else:
 							ShowMessage('The hit damages the engine and drivetrain, immobilizing your tank.')
+							campaign.AddJournal('Tank was immobilized')
 							scenario.player_unit.ImmobilizeMe()
 							scenario.UpdatePlayerInfoCon()
 						continue
@@ -9096,6 +9107,7 @@ class Unit:
 					elif roll <= 45.0:
 						text = 'The hit shatters the armour plate, sending shards of hot metal into the ' + profile['location']
 						ShowMessage(text)
+						campaign.AddJournal('Suffered spalling from a hit')
 						for position in scenario.player_unit.positions_list:
 							
 							if position.crewman is None: continue
@@ -9125,6 +9137,9 @@ class Unit:
 				else:
 					text += profile['attacker'].GetName() + '.'
 				ShowMessage(text)
+				
+				if profile['attacker'] == scenario.player_unit:
+					campaign.AddJournal('Destroyed a ' + self.GetName())
 				
 				# don't resolve any further hits
 				break
@@ -9158,6 +9173,7 @@ class Unit:
 				if GetPercentileRoll() <= score:
 					text = self.GetName() + ' was destroyed.'
 					ShowMessage(text, scenario_highlight=(self.hx, self.hy))
+					campaign.AddJournal(self.GetName() + ' was destroyed.')
 					self.DestroyMe()
 				else:
 					ShowMessage('No effect.', scenario_highlight=(self.hx, self.hy))
@@ -9198,6 +9214,7 @@ class Unit:
 		if roll <= base_chance:
 			text = self.GetName() + ' was destroyed.'
 			ShowMessage(text, scenario_highlight=(self.hx, self.hy))
+			campaign.AddJournal(self.GetName() + ' was destroyed')
 			self.DestroyMe()
 		else:
 			# pin test if not already pinned
@@ -12364,6 +12381,7 @@ class Scenario:
 				if position.crewman.current_cmd == 'Abandon Tank':
 					campaign.player_unit.alive = False
 					ShowMessage('You abandon your tank.')
+					campaign.AddJournal('Abandoned tank')
 					self.PlayerBailOut(skip_ko=True)
 					campaign_day.ended = True
 					campaign_day.abandoned_tank = True

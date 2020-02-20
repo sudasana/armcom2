@@ -2016,12 +2016,12 @@ class Campaign:
 					break
 				
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
-				libtcod.console_print(calendar_main_panel, 5, y, time)
+				libtcod.console_print(calendar_main_panel, 2, y, time)
 				
 				# TODO: determine if journal text needs to be wrapped
 				
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
-				libtcod.console_print(calendar_main_panel, 13, y, text)
+				libtcod.console_print(calendar_main_panel, 10, y, text)
 				
 				y += 1
 	
@@ -2071,7 +2071,6 @@ class Campaign:
 					for position in campaign.player_unit.positions_list:
 						if position.crewman is None: continue
 						position.crewman.PromotionCheck()
-					
 		
 		
 		# consoles for campaign calendar interface
@@ -2230,6 +2229,9 @@ class Campaign:
 							self.ShowStartOfDay()
 							# add journal entry for start of day
 							campaign.AddJournal('Start of day')
+							
+							# set currently displayed journal entry to the new day
+							self.active_journal_day = self.today
 						
 						SaveGame()
 						
@@ -2294,9 +2296,27 @@ class Campaign:
 			# journal menu active
 			elif self.active_calendar_menu == 3:
 				
-				# TODO: cycle active journal day displayed
+				# cycle active journal day displayed
 				if key_char in ['a', 'd']:
-					pass
+					
+					keys_list = list(self.journal.keys())
+					i = keys_list.index(self.active_journal_day)
+					
+					if key_char == 'a':
+						if i == 0:
+							i = len(keys_list) - 1
+						else:
+							i -= 1
+					else:
+						if i == len(keys_list) - 1:
+							i = 0
+						else:
+							i += 1
+					self.active_journal_day = keys_list[i]
+					
+					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCDisplay()
+					continue
 				
 				# shift display scroll
 				elif key_char in ['w', 's']:

@@ -900,7 +900,6 @@ class Campaign:
 		if self.today not in self.journal:
 			self.journal[self.today] = []
 		self.journal[self.today].append((time, text))
-		print('DEBUG: Added journal entry: ' + time + ': ' + text)
 	
 	
 	# end the campaign

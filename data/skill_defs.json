@@ -52,7 +52,8 @@
 	
 	"Burst Fire": {
 		"desc" : "Slightly increases chance of maintaining Rate of Fire when firing a Machine Gun.",
-		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader", "Assistant Driver"]
+		"position_list" : ["Commander/Gunner", "Gunner", "Gunner/Loader", "Assistant Driver",
+		"Port MG Gunner", "Starboard MG Gunner", "MG Gunner"]
 	},
 	
 	"Crack Shot": {

@@ -5215,7 +5215,7 @@
 	
 	"British and Commonwealth Forces" : {},
 	
-	"Light Tank Mk VI C" : {
+	"Mk VI C" : {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
 		"portrait" : "unit_lt_mk_6c.xp",
@@ -5383,7 +5383,93 @@
 		}
 	},
 	
-	
+	"A10 Cruiser Mk II" : {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_a10_mk2.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Slow Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "3",
+			"hull_front" : "3",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "40",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["MG Gunner"],
+				"firing_group" : 1
+			}
+		],
+		
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "MG Gunner",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The A10 was initially intended to be an infantry support tank, ",
+			"but its light armour meant that it was pressed into a cruiser role."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.07.01" : "0"
+		}
+	},
 	
 	
 	"Sherman II": {

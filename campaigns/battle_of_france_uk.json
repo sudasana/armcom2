@@ -7,7 +7,7 @@
 	"region" : "Northwestern Europe",
 	"desc" : "After months of a 'Phoney War', Germany has attacked through the Low Countries. Help defend France from this attempted invasion.",
 	"player_unit_list" : [
-		"Mk VI C", "A9 Cruiser Mk I"
+		"Mk VI C", "A9 Cruiser Mk I", "A10 Cruiser Mk II"
 	],
 	"enemy_air_support": [
 		"Ju 87B Stuka"

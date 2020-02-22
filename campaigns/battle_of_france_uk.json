@@ -5,9 +5,9 @@
 	"player_nation" : "United Kingdom",
 	"enemy_nations" : ["Germany"],
 	"region" : "Northwestern Europe",
-	"desc" : "After months of a 'Drole de guerre', Germany has attacked through the Low Countries. Help defend France from this attempted invasion.",
+	"desc" : "After months of a 'Phoney War', Germany has attacked through the Low Countries. Help defend France from this attempted invasion.",
 	"player_unit_list" : [
-		"Light Tank Mk VI C"
+		"Mk VI C", "A9 Cruiser Mk I"
 	],
 	"enemy_air_support": [
 		"Ju 87B Stuka"

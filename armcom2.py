@@ -8615,7 +8615,7 @@ class Unit:
 			libtcod.console_set_default_foreground(console, libtcod.white)
 			libtcod.console_print(console, x, y+2, self.unit_name)
 		
-		# weapons: display guns on line 2, all others on line 2
+		# weapons: display turret mounts on line 1, all others on line 2
 		# keep track of x location and display in red if jammed, dark grey if broken
 		libtcod.console_set_default_background(console, libtcod.darkest_red)
 		libtcod.console_rect(console, x, y+10, 25, 2, True, libtcod.BKGND_SET)
@@ -8635,7 +8635,7 @@ class Unit:
 				libtcod.console_set_default_foreground(console, libtcod.light_grey)
 			
 			text = weapon.stats['name']
-			if weapon.GetStat('type') == 'Gun':
+			if weapon.GetStat('mount') == 'Turret':
 				if x1 != x:
 					text = ', ' + text
 				libtcod.console_print(console, x1, y+10, text)

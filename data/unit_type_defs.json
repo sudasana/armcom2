@@ -5221,6 +5221,7 @@
 		"portrait" : "unit_lt_mk_6c.xp",
 		"size_class" : "Small",
 		"movement_class" : "Tank",
+		"turret" : "TRUE",
 		"armour" : {
 			"turret_front" : "1",
 			"turret_side" : "1",
@@ -5278,6 +5279,112 @@
 			"1940.07.01" : "0"
 		}
 	},
+	
+	"A9 Cruiser Mk I" : {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_a9_mk1.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "40",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "6",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Port MG Gunner"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Starboard MG Gunner"],
+				"firing_group" : 2
+			}
+		],
+		
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Port MG Gunner",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Starboard MG Gunner",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The A9 was the first of a series of tanks designed for mobility and ",
+			"for engaging with enemy tanks."
+		],
+		"rarity" : {
+			"1940.05.01" : "90",
+			"1940.07.01" : "0"
+		}
+	},
+	
+	
+	
 	
 	"Sherman II": {
 		"category" : "Vehicle",

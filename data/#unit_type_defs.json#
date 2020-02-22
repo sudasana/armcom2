@@ -1,0 +1,5895 @@
+{
+	"Polish Forces" : {},
+	
+	"TK-3" : {
+		"category" : "Vehicle",
+		"class" : "Tankette",
+		"portrait" : "unit_TK3.xp",
+		"size_class" : "Very Small",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "0",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Turret MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"unreliable" : true
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The TK-3 tankette comprises most of the Polish armoured ", 
+			"forces in 1939. Originally developed in 1930, it is far ",
+			"outclassed by most modern tanks but in the defense of Poland ",
+			"it is being widely deployed as part of infantry and cavalry ",
+			"companies."
+		],
+		"rarity" : {
+			"1939.09.01" : "90"
+		}
+	},
+	
+	"TKS" : {
+		"category" : "Vehicle",
+		"class" : "Tankette",
+		"portrait" : "unit_TKS.xp",
+		"size_class" : "Very Small",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "0",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Turret MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"unreliable" : true
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The TKS tankette is an advanced version of the TK-3 designed in ",
+			"1933, with an improved hull, suspention, and a Polish-built Fiat ",
+			"engine."
+		],
+		"rarity" : {
+			"1939.09.01" : "90"
+		}
+	},
+	
+	"TKS (20mm)" : {
+		"category" : "Vehicle",
+		"class" : "Tankette",
+		"portrait" : "unit_TKS_20mm.xp",
+		"size_class" : "Very Small",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "20",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"hatch_group" : "0",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The TKS tankette is an advanced version of the TK-3 designed in ",
+			"1933, with an improved hull, suspention, and a Polish-built Fiat ",
+			"engine. This version is rare variant armed with a 20mm gun."
+		],
+		"rarity" : {
+			"1939.09.01" : "50"
+		}
+	},
+	
+	"Renault FT": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_FT-17C.xp",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "S",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "233"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First developed during the Great War, the Renault FT was the world's",
+			"first modern tank. By the outbreak of the Second World War several ",
+			"thousand were still in use throughout the world. This model has a ",
+			"short-barreled 37mm main gun."
+		],
+		"rarity" : {
+			"1939.09.01" : "80"
+		}
+	},
+	
+	"Renault FT (MG)": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_FT-17M.xp",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Turret MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First developed during the Great War, the Renault FT was the world's",
+			"first modern tank. By the outbreak of the Second World War several ",
+			"thousand were still in use throughout the world. This model is armed ",
+			"only with a turret-mounted machine gun."
+		],
+		"rarity" : {
+			"1939.09.01" : "80"
+		}
+	},
+	
+	"Vickers 6-Ton Mark E": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_vickers_ejw.xp",
+		"size_class" : "Small",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "47",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "6",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First built in 1928, the Vickers Mark E was designed in Britain ",
+			"but all production models were licensed and built abroad. This is ",
+			"a Type B model, with a single turret mounting a short-barreled ",
+			"47mm gun."
+		],
+		"rarity" : {
+			"1939.09.01" : "50"
+		}
+	},
+	
+	"7TP": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_7TP.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The design of the 7TP (7-tonne Polish) tank was based upon the ",
+			"the British Vickers Mark E, but this design is more advanced and ",
+			"better armed. It is, however, still a light tank, and is vulnerable ",
+			"to anti-tank fire."
+		],
+		"rarity" : {
+			"1939.09.01" : "60"
+		}
+	},
+	
+	"Fiat 508 Taczanka" : {
+		"category" : "Vehicle",
+		"class" : "HMG Team",
+		"portrait" : "unit_508_taczanka.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"weapon_list" : [
+			{
+				"type" : "AA MG",
+				"fp" : "6",
+				"rof" : "25.0",
+				"blocked_hull_dirs" : ["5", "0", "1"],
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Gunner"],
+				"max_range" : "3"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Hull",
+				"bu_visible" : ["0", "1", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Hull",
+				"crew_always_exposed" : "TRUE",
+				"bu_visible" : ["2", "3", "4"]
+			},
+			{
+				"name" : "Ammo Handler",
+				"location" : "Hull",
+				"crew_always_exposed" : "TRUE",
+				"bu_visible" : ["2", "3", "4"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0", "1", "5"]
+			}
+		],
+		"description" : [
+			"The Taczanka was developed as a mobile machine gun. This version ",
+			"has a heavy machien gun mounted on the back of a Fiat 508 truck."
+		]
+	},
+	
+	"wz. 34 (MG)": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_wz_34_MG.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "80"
+		}
+	},
+	
+	"wz. 34 (37mm)": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_wz_34_37.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "90"
+		}
+	},
+	
+	"37mm wz. 36": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_37mm_gun.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander/Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "100"
+		}
+	},
+	
+	"75mm wz. 02/26": {
+		"category" : "Gun",
+		"class" : "Field Gun",
+		"portrait" : "unit_75mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "70"
+		}
+	},
+	
+	"75mm wz. 97/25": {
+		"category" : "Gun",
+		"class" : "Anti-Aircraft Gun",
+		"portrait" : "unit_75mm_aa_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "40"
+		}
+	},
+	
+	"105mm wz. 29": {
+		"category" : "Gun",
+		"class" : "Artillery Gun",
+		"portrait" : "unit_105mm_gun.xp",
+		"size_class" : "Large",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "105",
+				"long_range" : "",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP", "HE"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "60"
+		}
+	},
+	
+	"Polski Fiat 621" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_621_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
+		"description" : [
+			"Produced under license from the Italian Fiat company, the 621 ",
+			"serves as the workhorse of the Polish military, transporting ",
+			"soldiers, supplies, and even light tanks around the country."
+		]
+	},
+	
+	"Locomotive": {
+		"category" : "Train Car",
+		"class" : "Armoured Train Car",
+		"portrait" : "unit_locomotive.xp",
+		"size_class" : "Very Large",
+		"movement_class" : "Train",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "3",
+			"hull_front" : "3",
+			"hull_side" : "3"
+		},
+		"crew_positions" : [
+			{"name" : "Engineer"},
+			{"name" : "Fireman"}
+		],
+		"description" : [
+			"An armoured steam locomotive, designed to move an armoured train."
+		],
+		"rarity" : {
+			"1939.09.01" : "100"
+		}
+	},
+	
+	"Light Artillery Car": {
+		"category" : "Train Car",
+		"class" : "Armoured Train Car",
+		"portrait" : "unit_light_arty_car.xp",
+		"size_class" : "Very Large",
+		"movement_class" : "Train",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "3",
+			"hull_front" : "3",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "",
+				"rof" : "42.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "500"
+			},
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "",
+				"rof" : "42.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 1,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "500"
+			}
+		],
+		
+		"crew_positions" : [
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"}
+		],
+		"description" : [
+			"This armoured railroad car mounts two 75mm guns, each in a separate ",
+			"turret. Although it is limited to travel on rails, it is well-protected ",
+			"and armed."
+		],
+		"rarity" : {
+			"1939.09.01" : "15"
+		}
+	},
+	
+	
+	"German Forces" : {},
+
+	"Panzer I B": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_pz_I_B.xp",
+		"size_class" : "Small",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Co-ax MG",
+				"fp" : "6",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"unreliable" : true
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "80",
+			"1940.01.01" : "70",
+			"1941.01.01" : "60",
+			"1942.01.01" : "0"
+		}
+	},
+	
+	"Panzer II A": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_pz_II.xp",
+		"size_class" : "Small",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "20",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First designed in 1934, the Panzer II was always intended to be ",
+			"a stop-gap solution until other planned models of medium tank could ",
+			"be designed and built. Even so, it has proved to be a highly capable ",
+			"light tank. This version entered production in 1937 and carries a ",
+			"20mm gun as its main armament."
+		],
+		"rarity" : {
+			"1937.01.01" : "100",
+			"1941.01.01" : "0"
+		}
+	},
+	
+	"Panzer II F": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_pz_II.xp",
+		"size_class" : "Small",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "3",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "20",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Panzer II F represents a later version of the Panzer II with ",
+			"heavier front armour, or a Panzer II A that has had additional ",
+			"armour added to the hull front."
+		],
+		"rarity" : {
+			"1940.01.01" : "80",
+			"1944.01.01" : "0"
+		}
+	},
+	
+	"Panzer 35(t)": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_pz_35t.xp",
+		"size_class" : "Small",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "1",
+			"hull_front" : "3",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner", "Loader"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Driver", "Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The LT-35 was originally built in Czechoslovakia, but over 200 vehicles ",
+			"were seized by Germany in March 1939 and it entered German service ",
+			"as the Panzerkampfwagen 35(t). Compared to most other light tanks ",
+			"of 1939 it is well-armoured and carries a powerful 37mm main gun."
+		],
+		"rarity" : {
+			"1939.09.01" : "70"
+		}
+	},
+	
+	"Panzer 38(t) A": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_pz_38t_a.xp",
+		"size_class" : "Small",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "1",
+			"hull_front" : "3",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner", "Loader"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver", "Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The LT-38 was designed in Czechoslovakia, and after Germany occupied ",
+			"the country in March 1939 it entered production as the ",
+			"Panzerkampfwagen 38(t). This model A of the light tank is armed ",
+			"with a long-barreled 37mm main gun."
+		],
+		"rarity" : {
+			"1939.09.01" : "90"
+		}
+	},
+	
+	"Panzer III D": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_pz_III_D.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "2",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "8",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First designed in 1934, the Panzer III was intended to be the main ",
+			"battle tank of the German armoured forces. The D model is a prototype ",
+			"model and only a very small number ever entered service."
+		],
+		"rarity" : {
+			"1939.09.01" : "60"
+		}
+	},
+	
+	"Panzer III F": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_pz_III_F.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "4",
+			"hull_front" : "3",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "8",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The model F of the Panzer III is the first model to enter mass ",
+			"production. It is intended to serve the main battle tank of the ",
+			"German armoured forces in 1939 but supplies remain limited."
+		],
+		"rarity" : {
+			"1939.09.01" : "40",
+			"1940.01.01" : "90"
+		}
+	},
+	
+	"Panzer IV A": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_pz_IV_A.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"ground_pressure" : "Light",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "2",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "S",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "87",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "3",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "70",
+			"1940.01.01" : "90"
+		}
+	},
+	
+	"Panzer IV C": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_pz_IV_C.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "2",
+			"hull_front" : "3",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "S",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "87",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.01.01" : "70",
+			"1940.01.01" : "60",
+			"1941.01.01" : "50",
+			"1942.01.01" : "50",
+			"1943.01.01" : "0"
+		}
+	},
+	
+	"Panzer IV D": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_pz_IV_D.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "3",
+			"hull_front" : "3",
+			"hull_side" : "2"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "S",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "87"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "3",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1940.01.01" : "60",
+			"1941.01.01" : "50",
+			"1942.01.01" : "50",
+			"1943.01.01" : "50",
+			"1944.01.01" : "0"
+		}
+	},
+	
+	"Panzer IV H": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_pz_IV_H.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "11",
+			"turret_side" : "1",
+			"hull_front" : "8",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "87"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1942.08.01" : "50",
+			"1943.01.01" : "70",
+			"1943.07.01" : "110"
+		}
+	},
+	
+	"Panzer VG": {
+		"nick_name" : "Panther",
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_pz_VG.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "6",
+			"hull_front" : "18",
+			"hull_side" : "6"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "LL",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "79"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "5",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Radio Operator"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 0
+			}
+			
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Panther was introduced in 1943 to replace the Panzer III and IV, but ended ",
+			"up serving alongside them, and its heavier cousin the Tiger, until the end of ",
+			"the war. Although technically a medium tank, its total weight is quite high and ",
+			"is compensated for by a powerful V-12 engine."
+		],
+		"rarity" : {
+			"1943.10.01" : "70",
+			"1944.01.01" : "80",
+			"1945.01.01" : "90"
+		}
+	},
+	
+	"Panzer VIe": {
+		"nick_name" : "Tiger",
+		"category" : "Vehicle",
+		"class" : "Heavy Tank",
+		"portrait" : "unit_pz_VI_e.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "8",
+			"hull_front" : "11",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"long_range" : "L",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "92"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "5",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Radio Operator"],
+				"firing_group" : 1
+			}
+			
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Panzer VIe, also known as the Tiger I, was developed in the wake ",
+			"of the 1941 invasion of the USSR. The first tank to mount the 88mm gun, ",
+			"its firepower and heavy armour were achieved at the cost of a high weight, ",
+			"and an unreliable drivetrain."
+		],
+		"rarity" : {
+			"1943.01.01" : "50",
+			"1945.01.01" : "0"
+		}
+	},
+	
+	"Panzer VIe (Late)": {
+		"nick_name" : "Tiger",
+		"category" : "Vehicle",
+		"class" : "Heavy Tank",
+		"portrait" : "unit_pz_VI_e.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "8",
+			"hull_front" : "11",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"long_range" : "L",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "92"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "5",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 0
+			}
+			
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Panzer VIe, also known as the Tiger I, was developed in the wake ",
+			"of the 1941 invasion of the USSR. The first tank to mount the 88mm gun, ",
+			"its firepower and heavy armour were achieved at the cost of a high weight, ",
+			"and an unreliable drivetrain. This represents a later version of the model, ",
+			"with increased reliability."
+		],
+		"rarity" : {
+			"1944.01.01" : "70"
+		}
+	},
+	
+	"Panzer VIb": {
+		"nick_name" : "King Tiger",
+		"category" : "Vehicle",
+		"class" : "Heavy Tank",
+		"portrait" : "unit_pz_VI_b.xp",
+		"size_class" : "Very Large",
+		"ground_pressure" : "Heavy",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "18",
+			"turret_side" : "11",
+			"hull_front" : "26",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"long_range" : "LL",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "92"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "5",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Radio Operator"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 0
+			}
+			
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Panzer VIb, also known as the King Tiger, was intended to be a ",
+			"successor to the Tiger I, but its thick armour and powerful main gun ",
+			"were comprimised by a lack of mobility and an unreliable engine."
+		],
+		"rarity" : {
+			"1944.06.01" : "60"
+		}
+	},
+	
+	"StuG III B": {
+		"category" : "Vehicle",
+		"class" : "Assault Gun",
+		"portrait" : "unit_stug_iiib.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "3",
+			"hull_front" : "6",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "S",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "79"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"hatch" : "TRUE",
+				"location" : "Hull",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The StuG III is an assault gun built upon a Panzer III chassis. ",
+			"Originally intended as infantry support, it has been adapted for ",
+			"anti-tank combat as well."
+		],
+		"rarity" : {
+			"1940.01.01" : "40",
+			"1941.01.01" : "70",
+			"1943.01.01" : "60",
+			"1944.01.01" : "0"
+		}
+		
+	},
+	
+	"StuG III G": {
+		"category" : "Vehicle",
+		"class" : "Assault Gun",
+		"portrait" : "unit_stug_iiig.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "3",
+			"hull_front" : "8",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "79"
+			},
+			{
+				"type" : "AA MG",
+				"front_only" : "TRUE",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Loader"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"hatch" : "TRUE",
+				"location" : "Hull",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The StuG III is an assault gun built upon a Panzer III chassis. ",
+			"Originally intended as infantry support, it has been adapted for ",
+			"anti-tank combat as well."
+		],
+		"rarity" : {
+			"1942.06.01" : "70",
+			"1943.01.01" : "100",
+			"1944.01.01" : "110"
+		}
+		
+	},
+	
+	"Marder II": {
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_marder_II.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "4",
+			"turret_side" : "2",
+			"hull_front" : "3",
+			"hull_side" : "1"
+		},
+		"open_topped" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "79"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Built upon a Panzer II chassis, the Marder was developed as a ",
+			"makeshift tank destroyer, initially for countering Soviet tanks.",
+			"This variant has light armour but a powerful 75mm main gun."
+		],
+		"rarity" : {
+			"1942.05.01" : "80"
+		}
+		
+	},
+	
+	"Marder III M": {
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_marder_III_m.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"ground_pressure" : "Light",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "2",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"open_topped" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "27"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Built upon a Panzer 38(t) chassis, the Marder was developed as a ",
+			"makeshift tank destroyer, initially for countering Soviet tanks.",
+			"This variant has light armour but a powerful 75mm main gun."
+		],
+		"rarity" : {
+			"1943.05.01" : "90"
+		}
+		
+	},
+	
+	"Panzerjager I": {
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_pz_jg_i.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"open_topped" : "TRUE",
+		"open_rear_turret" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "47",
+				"long_range" : "L",
+				"rof" : "8.4",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "55"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Built upon a Panzer I chassis, this self-propelled AT gun mounts ",
+			"a 4.7cm anti-tank gun."
+		],
+		"rarity" : {
+			"1940.05.01" : "60",
+			"1944.01.01" : "0"
+		}
+	},
+	
+	"Jagdpanzer IV": {
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_jgdpz_iv.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "4",
+			"hull_front" : "14",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "55"
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "1",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Intended as a replacement for the StuG, the JgdPz IV is a Tank ",
+			"Destroyer developed in late 1943. It is built upon a Panzer IV chassis."
+		],
+		"rarity" : {
+			"1944.06.01" : "70"
+		}
+	},
+	
+	"Jagdpanzer 38(t)": {
+		"nick_name" : "Hetzer",
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_jgdpz_38t.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "3",
+			"hull_front" : "14",
+			"hull_side" : "3"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rr_size" : "6",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "55"
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "1",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Built upon a Panzer 38(t) chassis, this Tank Destroyer, commonly ",
+			"known as the Hetzer, was intended to replace the ad-hoc Tank ",
+			"Destroyers of earlier years."
+		],
+		"rarity" : {
+			"1944.08.01" : "90"
+		}
+	},
+	
+	"SPW 251/10" : {
+		"category" : "Vehicle",
+		"class" : "Tank Destroyer",
+		"portrait" : "unit_SPW_251_10.xp",
+		"size_class" : "Small",
+		"movement_class" : "Half-Tracked",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0", "1", "5"]
+			}
+		],
+		"description" : [
+			"This halftrack armoured transport has been fitted with a PaK 36 ",
+			"anti-tank gun."
+		],
+		"rarity" : {
+			"1940.01.01" : "40",
+			"1941.01.01" : "50",
+			"1942.01.01" : "60",
+			"1943.01.01" : "70",
+			"1944.01.01" : "80"
+		}
+	},
+	
+	"Sd. Kfz. 13": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_sd_kfz_13.xp",
+		"size_class" : "Very Small",
+		"movement_class" : "Wheeled",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "1",
+			"hull_front" : "0",
+			"hull_side" : "0"
+		},
+		"open_topped" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Hull",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			}
+		],
+		"description" : [
+			"The Kfz 13 was converted from an Adler touring car in 1935. Although ",
+			"lightly armoured, the vehicle is completely open on its top."
+		],
+		"rarity" : {
+			"1939.09.01" : "50"
+		}
+	},
+	
+	"PSW 221": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_psw_221.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"open_topped" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ce_to_fire" : "TRUE"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Sd.Kfz.221 was designed in secret as an all-terrain armoured ",
+			"car, to replace the more limited Kfz.13. Although it is fast and ",
+			"has an excellent operational range, its off-road capabilities are ",
+			"fairly limited."
+		],
+		"rarity" : {
+			"1939.09.01" : "70"
+		}
+	},
+	
+	"PSW 222": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_psw_222.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"open_topped" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "20",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_topped" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_topped" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "80",
+			"1943.01.01" : "70"
+		}
+	},
+	
+	"PSW 231 (6 rad)": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_psw_231_6rad.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"reverse_driver" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "1",
+			"hull_front" : "0",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "20",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Co-Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["2", "1", "3"],
+				"bu_visible" : ["2"]
+			}
+		],
+		"description" : [
+			"The Sd.Kfz. 231 was initially designed in the early 1930s, intended ",
+			"for scouting operations. Based on a civilian truck chassis, the ",
+			"heavy armoured car proved excellent on dry ground but lacked true ",
+			"off-road capability. Although production ended in 1937, units continue ",
+			"to be deployed in reconnaissance roles."
+		],
+		"rarity" : {
+			"1939.09.01" : "60"
+		}
+	},
+	
+	"PSW 231 (8 rad)": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_psw_231_8rad.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Wheeled",
+		"ground_pressure" : "Light",
+		"off_road" : "TRUE",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"reverse_driver" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "20",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Co-Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["2", "1", "3"],
+				"bu_visible" : ["2"]
+			}
+		],
+		"description" : [
+			"The poor off-road performance of the 6-wheeled Sd.Kfz. 231 ",
+			"prompted the development of this model, which placed the engine ",
+			"at the rear and gave the driver better visability. Production ",
+			"began in 1937 but 6-wheeled units continue to be deployed in ",
+			"reconnaissance roles."
+		],
+		"rarity" : {
+			"1939.09.01" : "70",
+			"1943.01.01" : "60"
+		}
+	},
+	
+	"PSW 234/2": {
+		"nick_name" : "Puma",
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_psw_234_2.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Wheeled",
+		"off_road" : "TRUE",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "4",
+			"turret_side" : "1",
+			"hull_front" : "4",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "50",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "66"
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "5",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Co-Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["2", "1", "3"],
+				"bu_visible" : ["2"]
+			}
+		],
+		"description" : [
+			"The Puma was a development of the earlier PSW 231 (8 rad) design, ",
+			"with improved armour and a more powerful engine."
+		],
+		"rarity" : {
+			"1933.10.01" : "50"
+		}
+	},
+	
+	"PaK 35/36": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_pak_35-36.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "100"
+		}
+	},
+	
+	"PaK 38": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_pak_38.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "50",
+				"long_range" : "L",
+				"rof" : "42.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1941.01.01" : "70",
+			"1941.07.01" : "80",
+			"1942.01.01" : "90",
+			"1942.07.01" : "100"
+		}
+	},
+	
+	"PaK 40": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_pak_40.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1942.01.01" : "50",
+			"1942.04.01" : "60",
+			"1942.08.01" : "70",
+			"1942.12.01" : "80",
+			"1943.04.01" : "90"
+		}
+	},
+	
+	"PaK 43": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_pak_43.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"turntable" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"long_range" : "LL",
+				"rof" : "28.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1944.01.01" : "70"
+		}
+	},
+	
+	"8.8cm FlaK 18 o. 36": {
+		"category" : "Gun",
+		"class" : "Anti-Aircraft Gun",
+		"portrait" : "unit_flak_36.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			"Initially designed as a heavy anti-aircraft gun, the '88' ",
+			"was quicky pressed into service as an anti-tank gun, a role ",
+			"in which it excelled."
+		],
+		"rarity" : {
+			"1939.09.01" : "80"
+		}
+	},
+	
+	"7.5cm leIG 18": {
+		"category" : "Gun",
+		"class" : "Infantry Gun",
+		"portrait" : "unit_75mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "S",
+				"rof" : "22.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1932.01.01" : "100"
+		}
+	},
+	
+	"SPW 251/1" : {
+		"category" : "Vehicle",
+		"class" : "Armoured Personnel Carrier",
+		"portrait" : "unit_SPW_251_1.xp",
+		"size_class" : "Small",
+		"movement_class" : "Half-Tracked",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "AA MG",
+				"fp" : "3",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Hull",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0", "1", "5"]
+			}
+		],
+		"transport" : [
+			"Riflemen"
+		],
+		"description" : [
+			"This halftrack armoured transport is designed to carry infantry ",
+			"from armoured divisions quickly over terrain."
+		],
+		"rarity" : {
+			"1939.01.01" : "40",
+			"1940.01.01" : "50",
+			"1941.01.01" : "60",
+			"1942.01.01" : "70",
+			"1943.01.01" : "80",
+			"1944.01.01" : "90",
+			"1945.01.01" : "100"
+		}
+	},
+	
+	"Opel Blitz 3-ton" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_opel_3t_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
+		"description" : [
+			"The Blitz truck, produced by the General Motors subsidiary ",
+			"company Opel, provides the motorized transport backbone for ",
+			"the German army. The 3-ton variant is the most common variant ",
+			"in use."
+		],
+		"rarity" : {
+			"1939.09.01" : "100"
+		}
+	},
+	
+	"Buessing-NAG 4500 Truck" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_buessing_nag_4500_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
+		"description" : [
+			"This 4.5-ton truck is the workhorse of the German armed forces. ",
+			"It combines a reliable diesel engine with good rough terrain performance."
+		],
+		"rarity" : {
+			"1939.09.01" : "70"
+		}
+	},
+	
+	"Ju 87B Stuka": {
+		"category" : "Airplane",
+		"class" : "Dive Bomber",
+		"movement_class" : "Airplane",
+		"weapon_list" : [
+			{
+				"type" : "Ordinance",
+				"name" : "Bombs",
+				"calibre" : "200",
+				"max_range" : "1",
+				"max_ammo" : "1"
+			},
+			{
+				"type" : "MG",
+				"fp" : "5",
+				"rof" : "17.0"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Pilot"},
+			{"name" : "Radio Operator"}
+		],
+		"description" : [
+			""
+		]
+	},
+
+	
+	"Soviet Forces" : {},
+	
+	"T-26 M33" : {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_t26_m39.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Slow Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "45",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The T-26 tank was developed based on the British Vickers 6-ton ",
+			"design, and are by far the most numerous tank in Soviet forces."
+		],
+		"rarity" : {
+			"1939.09.01" : "110"
+		}
+	},
+	
+	"BT-5 M34" : {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_bt5_m34.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "45",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The BT-5 tank was designed to move quickly, in order to exploit ",
+			"holes in enemy defensive lines."
+		],
+		"rarity" : {
+			"1939.09.01" : "90",
+			"1941.08.01" : "80",
+			"1941.09.01" : "70",
+			"1941.10.01" : "60",
+			"1941.11.01" : "50",
+			"1941.12.01" : "40"
+		}
+	},
+	
+	"BT-7 M37" : {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_bt7_m37.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "2",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "45",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The BT-7 tank was based on the design of the BT-5, with better front ",
+			"armour, and a new engine and drive train."
+		],
+		"rarity" : {
+			"1939.09.01" : "100"
+		}
+	},
+	
+	"BT-7A" : {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_bt7a.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The BT-7A artillery tank was intended to provide support for platoons ",
+			"of BT fast tanks."
+		],
+		"rarity" : {
+			"1938.01.01" : "60",
+			"1942.01.01" : "0"
+		}
+	},
+
+	"T-28 M34" : {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_t28_m34.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "3",
+			"hull_front" : "3",
+			"hull_side" : "2"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "S",
+				"rr_size" : "12",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "70"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Turret MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+			
+		],
+		"description" : [
+			"The T-28 was the first of a series of 'land battleship' tanks, ",
+			"intended as an infantry support tank and to break through enemy ",
+			"defenses."
+		],
+		"rarity" : {
+			"1939.09.01" : "60"
+		}
+	},
+	
+	"BA-20": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_ba-20.xp",
+		"size_class" : "Small",
+		"movement_class" : "Wheeled",
+		"ground_pressure" : "Heavy",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "0",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"This armoured car was designed upon a Ford model A chassis and uses ",
+			"a modified Model T engine."
+		],
+		"rarity" : {
+			"1936.01.01" : "70",
+			"1942.01.01" : "0"
+		}
+	},
+	
+	"SU-12" : {
+		"category" : "Vehicle",
+		"class" : "Assault Gun",
+		"portrait" : "unit_su-12.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "S",
+				"rof" : "14.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"blocked_hull_dirs" : ["0"],
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "79"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"crew_always_exposed" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0", "1", "2", "4", "5"]
+			}
+		],
+		"description" : [
+			"The SU-12 was the first self-propelled gun developed in the " ,
+			"Soviet Union. A 76mm gun is fixed to a turret on the back of a ",
+			"standard truck."
+		],
+		"rarity" : {
+			"1933.06.01" : "70",
+			"1943.01.01" : "0"
+		}
+		
+	},
+	
+	"BA-6": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_BA-6.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "45",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Front Gunner"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Front Gunner",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"This heavy armoured car is armed with a 45mm gun."
+		],
+		"rarity" : {
+			"1935.01.01" : "80",
+			"1944.01.01" : "0"
+		}
+	},
+	
+	"45mm obr. 1932": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_45mm_gun.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "45",
+				"long_range" : "L",
+				"rof" : "45.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1942.01.01" : "90"
+		}
+	},
+	
+	"76.2mm obr. 00/02P": {
+		"category" : "Gun",
+		"class" : "Field Gun",
+		"portrait" : "unit_76mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "70"
+		}
+	},
+	
+	"ZIS-5 Truck" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_ZIS-5.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
+		"description" : [
+			"This 4.5-ton truck is the workhorse of the Soviet armed forces."
+		],
+		"rarity" : {
+			"1933.01.01" : "60"
+		}
+	},
+	
+	"I-153 Chaika": {
+		"category" : "Airplane",
+		"class" : "Fighter",
+		"movement_class" : "Airplane",
+		"weapon_list" : [
+			{
+				"type" : "Ordinance",
+				"name" : "Bombs",
+				"calibre" : "120",
+				"max_range" : "1",
+				"max_ammo" : "1"
+			},
+			{
+				"type" : "MG",
+				"fp" : "6",
+				"rof" : "17.0"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Pilot"}
+		],
+		"description" : [
+			""
+		]
+	},
+	
+	
+	"French Forces" : {},
+		
+	"H35": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_H35.xp",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"unreliable" : true,
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "4",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "S",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed in 1933 as a light infantry support tank, the Hotchkiss H35 ",
+			"was eventually adopted by the French cavalry as a light reconnaisance tank. ",
+			"This early variant has a short main gun and an underpowered engine."
+		],
+		"rarity" : {
+			"1940.05.01" : "80",
+			"1940.06.01" : "70"
+		}
+	},
+	
+	"H35 (Late)": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_H35_late.xp",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"unreliable" : true,
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "4",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed in 1933 as a light infantry support tank, the Hotchkiss H35 ",
+			"was eventually adopted by the French cavalry as a light reconnaisance tank. ",
+			"This later variant has been upgunned from the earlier model."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.06.01" : "60"
+		}
+	},
+	
+	"SOMUA S35": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_S35.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "6",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "47",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Intended to be the standard medium tank for French forces, the ",
+			"S35 balanced a good gun, good armour, and speed."
+		],
+		"rarity" : {
+			"1940.05.01" : "80",
+			"1940.06.01" : "70"
+		}
+	},
+	
+	"R35 (Late)": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_R35_late.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "4",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed as a light infantry tank, the R35 is well-protected ",
+			"but lacks armour penetration power, so later models such as ",
+			"this have been fitted with a longer 37mm main gun."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.06.01" : "60"
+		}
+	},
+	
+	"75mm mle 1928": {
+		"category" : "Gun",
+		"class" : "Field Gun",
+		"portrait" : "unit_75mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1940.05.01" : "50"
+		}
+	},
+
+	
+	"American Forces" : {},
+	
+	"M4 Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "8",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First designed in 1940, the M4 'Sherman' tank entered production ",
+			"in 1942 and became the main battle tank for Allied forces in the ",
+			"war. This is the welded hull design with a vision cupola for the ",
+			"commander."
+		],
+		"rarity" : {
+			"1943.07.01" : "100"
+		}
+	},
+	
+	"M4A1 Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4a1.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "11",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The M4A1 was the second version of the M4 design, but it ended up ",
+			"entering production first in February 1942. It has a rounded, cast ",
+			"hull, giving it extra protection on the front. This version has a ",
+			"vision cupola for the commander."
+		],
+		"rarity" : {
+			"1942.12.01" : "60",
+			"1943.01.01" : "70",
+			"1943.02.01" : "80",
+			"1943.06.01" : "110"
+		}
+	},
+	
+	"M4A3 Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"powerful_engine" : "TRUE",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "8",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The M4A3 has a welded hull and carries a powerful Ford GAA V8 engine. ",
+			"It ended up being the most commonly used model in the American forces. ",
+			"This version has a vision cupola for the commander."
+		],
+		"rarity" : {
+			"1943.07.01" : "70"
+		}
+	},
+	
+	"M4A3(75)W Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"powerful_engine" : "TRUE",
+		"HVSS" : "50",
+		"wet_stowage" : "TRUE",
+		"turret" : "Fast",
+		"smoke_mortar" : "Loader",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "11",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"This is a later variant of the M4A3 with glacis front hull armour ",
+			"and wet stowage for main gun rounds, reducing the chance of fire ",
+			"from a ruptured shell casing. Some are built with Horizontal Volute ",
+			"Spring Suspension, offering better traction. A Smoke Mortar is mounted ",
+			"on the turret, fired by the Loader."
+		],
+		"rarity" : {
+			"1944.06.01" : "90"
+		}
+	},
+	
+	"M4A3E2(75)W Sherman": {
+		"nick_name" : "Jumbo",
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"powerful_engine" : "TRUE",
+		"HVSS" : "83",
+		"wet_stowage" : "TRUE",
+		"turret" : "Fast",
+		"smoke_mortar" : "Loader",
+		"armour" : {
+			"turret_front" : "18",
+			"turret_side" : "6",
+			"hull_front" : "18",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed to fulfill the role of a heavily armoured assault tank, ",
+			"this is an up-armoured version of the M4A3 with a new turret. ",
+			"A Smoke Mortar is mounted on the turret, fired by the Loader."
+		],
+		"rarity" : {
+			"1944.09.01" : "50"
+		}
+	},
+	
+	"M4A3E2(76)W Sherman": {
+		"nick_name" : "Jumbo",
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4a3_76.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"powerful_engine" : "TRUE",
+		"HVSS" : "83",
+		"wet_stowage" : "TRUE",
+		"turret" : "Fast",
+		"smoke_mortar" : "Loader",
+		"armour" : {
+			"turret_front" : "18",
+			"turret_side" : "6",
+			"hull_front" : "18",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed to fulfill the role of a heavily armoured assault tank, ",
+			"this is an up-armoured version of the M4A3 with a new turret. This ",
+			"is a conversion of the standard 75mm gun to a 76mm gun. ",
+			"A Smoke Mortar is mounted on the turret, fired by the Loader."
+		],
+		"rarity" : {
+			"1944.10.01" : "40",
+			"1945.04.01" : "50"
+		}
+	},
+	
+	"M4A1(76)W Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4a1_76.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"HVSS" : "83",
+		"wet_stowage" : "TRUE",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "3",
+			"hull_front" : "11",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Loader"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"By 1942 it was clear that the 75mm gun on the Sherman was not ",
+			"sufficient to penetrate newer, heavy tanks. By 1944 some models of ",
+			"M4A1 were fitted with the 76mm gun, and these were rushed to France  ",
+			"soon after the Normandy landings."
+		],
+		"rarity" : {
+			"1944.07.01" : "80",
+			"1945.01.01" : "90"
+		}
+	},
+	
+	"M4A3(76)W Sherman": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4a3_76.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"powerful_engine" : "TRUE",
+		"HVSS" : "83",
+		"wet_stowage" : "TRUE",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "14",
+			"turret_side" : "3",
+			"hull_front" : "11",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "L",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "AA MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Loader"],
+				"firing_group" : 2
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"This is a later variant of the M4A3, with a 76mm main gun and ",
+			"and wet stowage for main gun rounds."
+		],
+		"rarity" : {
+			"1944.07.01" : "90",
+			"1944.11.01" : "100",
+			"1945.03.01" : "110"
+		}
+	},
+	
+	"P-47 Thunderbolt": {
+		"category" : "Airplane",
+		"class" : "Fighter-Bomber",
+		"movement_class" : "Airplane",
+		"weapon_list" : [
+			{
+				"type" : "Ordinance",
+				"name" : "Bombs",
+				"calibre" : "120",
+				"max_range" : "1",
+				"max_ammo" : "1"
+			},
+			{
+				"type" : "MG",
+				"fp" : "12",
+				"rof" : "17.0"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Pilot"}
+		],
+		"description" : [
+			""
+		]
+	},
+	
+	
+	"British and Commonwealth Forces" : {},
+	
+	"Mk VI C" : {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_lt_mk_6c.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Turret MG",
+				"fp" : "8",
+				"calibre" : "15",
+				"rof" : "8.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0,
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Officially designated 'Tank, Light, Mk VI' this was the latest model ",
+			"of light tank developed by Vickers-Armstrongs in in 1936. This later ",
+			"variant has a 15mm Besa machine gun as its main armament."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.07.01" : "0"
+		}
+	},
+	
+	"A9 Cruiser Mk I" : {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_a9_mk1.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "40",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "6",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Port MG Gunner"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Starboard MG Gunner"],
+				"firing_group" : 2
+			}
+		],
+		
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Port MG Gunner",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Starboard MG Gunner",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The A9 was the first of a series of tanks designed for mobility and ",
+			"for engaging with enemy tanks."
+		],
+		"rarity" : {
+			"1940.05.01" : "90",
+			"1940.07.01" : "0"
+		}
+	},
+	
+	
+	
+	
+	"Sherman II": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "11",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Sherman II was the British and Commonwealth designation for the ",
+			"M4A1. Units in Commonwealth service did not have a loader hatch or ",
+			"a vision cupola for the commander."
+		],
+		"rarity" : {
+			"1942.10.01" : "100",
+			"1943.09.01" : "90",
+			"1944.01.01" : "80",
+			"1944.08.01" : "70"
+		}
+	},
+	
+	"Sherman V": {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_m4.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "8",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP", "Smoke"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Sherman V was the British and Commonwealth designation for the ",
+			"M4A4. Units in Commonwealth service did not have a loader hatch or ",
+			"a vision cupola for the commander."
+		],
+		"rarity" : {
+			"1943.07.01" : "90",
+			"1943.09.01" : "100",
+			"1944.05.01" : "110"
+		}
+	},
+	
+	"Sherman VC": {
+		"nick_name" : "Firefly",
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_firefly.xp",
+		"size_class" : "Large",
+		"movement_class" : "Tank",
+		"turret" : "Fast",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "6",
+			"hull_front" : "8",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "LL",
+				"rof" : "17.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "90"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Sherman VC 'Firefly' was a standard M4A4 tank converted to carry ",
+			"a 17pdr main gun, with far superior armour penetration power compared ",
+			"to standard 75mm guns. Because of the large size of the main gun ammo, ",
+			"the assistant driver position and its MG has been removed."
+		],
+		"rarity" : {
+			"1944.06.01" : "80",
+			"1945.01.01" : "90"
+		}
+	},
+	
+	"Typhoon": {
+		"category" : "Airplane",
+		"class" : "Fighter-Bomber",
+		"movement_class" : "Airplane",
+		"weapon_list" : [
+			{
+				"type" : "Ordinance",
+				"name" : "Bombs",
+				"calibre" : "120",
+				"max_range" : "1",
+				"max_ammo" : "1"
+			},
+			{
+				"type" : "MG",
+				"fp" : "12",
+				"rof" : "17.0"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Pilot"}
+		],
+		"description" : [
+			""
+		]
+	},
+	
+	
+	"Finnish Forces" : {},
+	
+	"105 K/13": {
+		"category" : "Gun",
+		"class" : "Artillery Gun",
+		"portrait" : "unit_105mm_gun.xp",
+		"size_class" : "Large",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "105",
+				"long_range" : "",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP", "HE"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			"Originally built by the French, this 105mm gun has been adapted ",
+			"by many armed forces around the world."
+		],
+		"rarity" : {
+			"1939.09.01" : "60"
+		}
+	},
+	
+	"76 K/02" : {
+		"category" : "Gun",
+		"class" : "Field Gun",
+		"portrait" : "unit_76mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "76",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1939.09.01" : "70"
+		}
+	},
+	
+	"Fokker CX": {
+		"category" : "Airplane",
+		"class" : "Light Bomber",
+		"movement_class" : "Airplane",
+		"weapon_list" : [
+			{
+				"type" : "Ordinance",
+				"name" : "Bombs",
+				"calibre" : "120",
+				"max_range" : "1",
+				"max_ammo" : "1"
+			},
+			{
+				"type" : "MG",
+				"fp" : "6",
+				"rof" : "17.0"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Pilot",
+			"name" : "Observer"}
+		],
+		"description" : [
+			""
+		]
+	},
+	
+	
+	"Generic Forces" : {},
+	
+	"Riflemen": {
+		"category" : "Infantry",
+		"class" : "Infantry Squad",
+		"portrait" : "unit_riflemen.xp",
+		"movement_class" : "Infantry",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"name" : "AT Rifle",
+				"max_range" : "1",
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "40"
+			},
+			{
+				"type" : "Small Arms",
+				"name" : "Rifles",
+				"fp" : "4",
+				"max_range" : "1"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "NCO"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"},
+			{"name" : "Rifleman"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1935.01.01" : "100"
+		}
+	},
+	
+	"HMG Team": {
+		"category" : "Infantry",
+		"class" : "MG Team",
+		"portrait" : "unit_hmg.xp",
+		"movement_class" : "Infantry",
+		"weapon_list" : [
+			{
+				"type" : "HMG",
+				"name" : "HMG",
+				"fp" : "6",
+				"max_range" : "3"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Gunner"},
+			{"name" : "Spotter"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1935.01.01" : "100"
+		}
+	},
+	
+	"Motorcycle MG Team": {
+		"category" : "Infantry",
+		"class" : "Motorcycle Team",
+		"portrait" : "unit_motorcycle_mg.xp",
+		"movement_class" : "Wheeled",
+		"weapon_list" : [
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 1
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Gunner"},
+			{"name" : "Driver"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1935.01.01" : "100"
+		}
+	},
+	
+	"3-ton Truck" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_opel_3t_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
+		"description" : [
+			"This design of truck was widespread during the 1930s and 1940s, ",
+			"produced by a number of different manufacturers around the world."
+		],
+		"rarity" : {
+			"1935.01.01" : "100"
+		}
+	}
+}

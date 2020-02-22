@@ -5471,6 +5471,81 @@
 		}
 	},
 	
+	"A13 Cruiser Mk II" : {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_a13_mk2.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Tank",
+		"unreliable" : true,
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "3",
+			"hull_front" : "3",
+			"hull_side" : "2"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "40",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The A13 was inspired by the Russian BT tank and based on the design ",
+			"of the American Christie tank. The Mk II has additional armour protection ",
+			"but suffers from an unreliable engine."
+		],
+		"rarity" : {
+			"1940.05.01" : "80",
+			"1940.07.01" : "0"
+		}
+	},
+	
 	
 	"Sherman II": {
 		"category" : "Vehicle",

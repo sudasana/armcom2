@@ -5218,7 +5218,7 @@
 	"Mk VI C" : {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
-		"portrait" : "unit_lt_mk_6c.xp",
+		"portrait" : "unit_mk_6.xp",
 		"size_class" : "Small",
 		"movement_class" : "Tank",
 		"turret" : "TRUE",
@@ -5620,7 +5620,6 @@
 			"1940.06.01" : "0"
 		}
 	},
-	
 	
 	"Sherman II": {
 		"category" : "Vehicle",

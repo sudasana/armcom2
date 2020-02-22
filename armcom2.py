@@ -9071,12 +9071,21 @@ class Unit:
 			
 			# shock test
 			if profile['result'] == 'NO PENETRATION':
-				roll = GetPercentileRoll()
-				if roll > profile['final_chance'] * 1.75:
-					for weapon in self.weapon_list:
-						weapon.acquired_target = None
-					if self == scenario.player_unit:
-						ShowMessage('The impact has knocked your weapons off target. All acquired targets lost.')
+				
+				# NEW: check to see if unit had any acquired targets to begin with
+				had_acquired_target = False
+				for weapon in self.weapon_list:
+					if weapon.acquired_target is not None:
+						had_acquired_target = True
+						break
+				
+				if had_acquired_target:
+					roll = GetPercentileRoll()
+					if roll > profile['final_chance'] * 1.75:
+						for weapon in self.weapon_list:
+							weapon.acquired_target = None
+						if self == scenario.player_unit:
+							ShowMessage('The impact has knocked your weapons off target. All acquired targets lost.')
 			
 			# apply result
 			if profile['result'] == 'NO PENETRATION':

@@ -586,5 +586,47 @@
 			"Wallo", "Wiita", "Wiitala", "Wirkkala", "Wirta", "Wirtanen",
 			"Wuollet", "Wuori", "Ylitalo"
 		]
+	},
+	
+	"United Kingdom": {
+		"short_code" : "UK",
+		"adjective" : "British",
+		"flag_image" : "flag_UK.xp",
+		"rank_names" : {
+			"0" : "Private",
+			"1" : "Private (Trained)",
+			"2" : "Corporal",
+			"3" : "Sergeant",
+			"4" : "Second Lieutenant",
+			"5" : "Lieutenant",
+			"6" : "Captain"
+		},
+		"first_names" : [
+			"John", "David", "Michael", "Peter", "Robert", "Anthony", "Brian",
+			"Alan", "William", "James", "Richard", "Kenneth", "Roger", "Keith",
+			"Colin", "Christopher", "Raymond", "Terence", "Thomas", "Barry",
+			"George", "Graham", "Ian", "Malcolm", "Geoffrey", "Ronald", "Derek",
+			"Paul", "Edward", "Roy", "Patrick", "Philip", "Trevor", "Dennis",
+			"Leslie", "Joseph", "Bernard", "Charles", "Eric", "Stephen", "Martin",
+			"Frederick", "Norman", "Gordan", "Andrew", "Frank", "Arthur", "Rodney",
+			"Gerald", "Clive", "Jeffrey", "Douglas", "Donald", "Francis", "Stuart",
+			"Victor", "Robin", "Allan", "Leonard", "Stanley", "Albert", "Maurice",
+			"Henry", "Howard", "Harry", "Alexander", "Kevin", "Clifford", "Nigel",
+			"Barrie", "Reginald", "Ernest", "Alfred", "Adrian", "Harold", "Nicholas",
+			"Timothy", "Melvyn", "Bryan", "Neil", "Jack", "Daniel", "Lawrence",
+			"Hugh", "Denis", "Walter", "Terry", "Edwin", "Ralph", "Ivan", "Bruce",
+			"Phillip", "Vincent", "Gary", "Tony", "Samuel", "Cyril", "Sidney",
+			"Royston"
+		],
+		"surnames" : [
+			"Smith", "Brown", "Jones", "Taylor", "Williams", "White", "Clark",
+			"Davis", "Harris", "Wright", "Johnson", "Green", "King", "Wilson",
+			"Baker", "Turner", "Edwards", "Martin", "Cooper", "Wood", "Hall",
+			"Hill", "Evans", "Walker", "Allen", "Cook", "Robinson", "Thomas",
+			"Moore", "Webb", "Roberts", "Thompson", "Ward", "Collins", "Carter",
+			"Cox", "Phillips", "Clarke", "Lewis", "Jackson", "Morris", "Young",
+			"Parker", "Hunt", "Stevens", "Scott", "James", "Adams", "Chapman",
+			"Lee"
+		]
 	}
 }

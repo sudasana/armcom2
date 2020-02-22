@@ -4379,6 +4379,7 @@
 			"1940.05.01" : "50"
 		}
 	},
+
 	
 	"American Forces" : {},
 	
@@ -5213,6 +5214,70 @@
 	
 	
 	"British and Commonwealth Forces" : {},
+	
+	"Light Tank Mk VI C" : {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_lt_mk_6c.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Turret MG",
+				"fp" : "8",
+				"calibre" : "15",
+				"rof" : "8.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0,
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Officially designated 'Tank, Light, Mk VI' this was the latest model ",
+			"of light tank developed by Vickers-Armstrongs in in 1936. This later ",
+			"variant has a 15mm Besa machine gun as its main armament."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.07.01" : "0"
+		}
+	},
 	
 	"Sherman II": {
 		"category" : "Vehicle",

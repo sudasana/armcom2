@@ -1,0 +1,128 @@
+{
+	"name" : "Battle of France (UK)",
+	"start_date" : "1940.05.10",
+	"end_date" : "1940.06.16",
+	"player_nation" : "United Kingdom",
+	"enemy_nations" : ["Germany"],
+	"region" : "Northwestern Europe",
+	"desc" : "After months of a 'Drole de guerre', Germany has attacked through the Low Countries. Help defend France from this attempted invasion.",
+	"player_unit_list" : [
+		"Light Tank Mk VI C"
+	],
+	"enemy_air_support": [
+		"Ju 87B Stuka"
+	],
+	"enemy_arty_support": [
+		"7.5cm leIG 18"
+	],
+	"enemy_unit_list" : [
+		"Panzer I B", "Panzer II A", "Panzer II F", "Panzer 35(t)", "Panzer 38(t) A", 
+		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C", "Panzer IV D",
+		"StuG III B", "Panzerjager I", "SPW 251/10",
+		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
+		"PSW 231 (8 rad)", "PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
+		"SPW 251/1", "Riflemen", "Motorcycle MG Team", "HMG Team"
+	],
+	"enemy_unit_class_odds" : {
+		"Light Tank" : "90",
+		"Medium Tank" : "80",
+		"Assault Gun" : "70",
+		"Tank Destroyer" : "50",
+		"Armoured Car" : "80",
+		"Anti-Tank Gun" : "30",
+		"Field Gun" : "5",
+		"Anti-Aircraft Gun" : "5",
+		"Armoured Personnel Carrier" : "75",
+		"Truck" : "80",
+		"Infantry Squad" : "100",
+		"MG Team" : "80",
+		"Motorcycle Team" : "85"
+	},
+	"decorations_list" : {
+		"500" : "Military Medal",
+		"600" : "Military Crossr",
+		"800" : "Distinguished Service Order",
+		"1000" : "Victoria Cross"
+	},
+	"calendar_weeks": [
+		{
+			"start_date" : "1940.05.10",
+			"day_start" : "06:15",
+			"day_end" : "21:15",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Counterattack",
+			"mission_odds" : {
+				"Advance" : "25",
+				"Battle" : "5",
+				"Counterattack" : "70"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 80.0
+		},
+		{
+			"start_date" : "1940.05.17",
+			"day_start" : "06:00",
+			"day_end" : "21:30",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Stalemate",
+			"mission_odds" : {
+				"Advance" : "5",
+				"Battle" : "70",
+				"Counterattack" : "25"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 60.0
+		},
+		{
+			"start_date" : "1940.05.24",
+			"end_date" : "1944.05.30",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1940.05.31",
+			"day_start" : "06:00",
+			"day_end" : "21:45",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Second Offensive",
+			"mission_odds" : {
+				"Advance" : "5",
+				"Battle" : "70",
+				"Counterattack" : "25"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 40.0
+		},
+		{
+			"start_date" : "1940.06.07",
+			"day_start" : "05:45",
+			"day_end" : "21:45",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Fall of the Maginot Line",
+			"mission_odds" : {
+				"Advance" : "5",
+				"Battle" : "70",
+				"Counterattack" : "25"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 30.0
+		},
+		{
+			"start_date" : "1940.06.14",
+			"day_start" : "05:45",
+			"day_end" : "21:45",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Collapse",
+			"mission_odds" : {
+				"Battle" : "70",
+				"Counterattack" : "30"
+			},
+			"enemy_nation" : "Germany",
+			"arty_support_level" : 20.0
+		}
+	]
+}

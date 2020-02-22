@@ -60,9 +60,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '1.0.0-beta-rc2'				# game version
+VERSION = '1.0.0-beta-rc3'				# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -6705,6 +6705,12 @@ class Weapon:
 				if self.GetStat('long_range') is not None:
 					text += '(' + self.GetStat('long_range') + ')'
 				self.stats['name'] = text
+			
+			# NEW: high calibre MG
+			elif self.GetStat('type') in MG_WEAPONS and self.GetStat('calibre') is not None:
+				text = self.GetStat('calibre') + 'mm MG'
+				self.stats['name'] = text
+			
 			else:
 				self.stats['name'] = self.GetStat('type')
 		
@@ -10722,7 +10728,15 @@ class Scenario:
 		
 		# look up base AP score required
 		if weapon.GetStat('type') in MG_WEAPONS:
-			base_score = 4
+			
+			calibre = weapon.GetStat('calibre')
+			if calibre is None:
+				base_score = 4
+			elif calibre == '15':
+				base_score = 5
+			else:
+				base_score = 4
+			
 		elif weapon.GetStat('name') == 'AT Rifle':
 			if attacker.nation in ['Soviet Union', 'Finland', 'Japan']:
 				base_score = 6

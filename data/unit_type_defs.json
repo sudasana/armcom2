@@ -5546,6 +5546,81 @@
 		}
 	},
 	
+	"A12 Matilda II" : {
+		"category" : "Vehicle",
+		"class" : "Heavy Tank",
+		"portrait" : "unit_matilda_ii.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Slow Tank",
+		"unreliable" : true,
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "8",
+			"turret_side" : "8",
+			"hull_front" : "11",
+			"hull_side" : "8"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "40",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "93"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Matilda was developed as an infantry support tank, and the Mark II ",
+			"variant was larger and more heavily armoured. Though well-protected, it ",
+			"is rather slow and still mounts the OQF 2 pdr gun."
+		],
+		"rarity" : {
+			"1940.05.01" : "60",
+			"1940.06.01" : "0"
+		}
+	},
+	
 	
 	"Sherman II": {
 		"category" : "Vehicle",

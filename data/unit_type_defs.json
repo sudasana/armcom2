@@ -5878,6 +5878,46 @@
 		}
 	},
 	
+	"OQF 18-Pounder" : {
+		"category" : "Gun",
+		"class" : "Artillery Gun",
+		"portrait" : "unit_18_pdr_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "84",
+				"long_range" : "S",
+				"rof" : "8.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP", "HE", "Smoke"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1940.05.01" : "60",
+			"1940.07.01" : "0"
+		}
+	},
+	
+	
 	"Typhoon": {
 		"category" : "Airplane",
 		"class" : "Fighter-Bomber",

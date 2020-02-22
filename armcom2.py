@@ -2489,6 +2489,7 @@ class CampaignDay:
 	
 	# spawn squad members to bring player squad up to full strength
 	def SpawnPlayerSquad(self):
+		
 		for i in range(campaign.player_squad_max - len(self.player_squad)):
 			
 			# determine unit type

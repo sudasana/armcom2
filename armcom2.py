@@ -9358,6 +9358,10 @@ class Unit:
 		if self in scenario.units:
 			scenario.units.remove(self)
 		
+		# NEW: squad member was destroyed, remove from list
+		if self in campaign_day.player_squad:
+			campaign_day.player_squad.remove(self)
+		
 		# remove as selected target from all player weapons, and remove from target list
 		for weapon in scenario.player_unit.weapon_list:
 			if weapon.selected_target == self:

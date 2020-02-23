@@ -10,6 +10,10 @@
 		"Mk VI C", "A9 Cruiser Mk I", "A10 Cruiser Mk II", "A13 Cruiser Mk II",
 		"A12 Matilda II"
 	],
+	"player_squad_list" : {
+		"A13 Cruiser Mk II" : ["Mk VI C", "A13 Cruiser Mk II"],
+		"A12 Matilda II" : ["Mk VI C", "A12 Matilda II"]
+	},
 	"national_skills" : [
 		"Combined Bombardment"
 	],

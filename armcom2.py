@@ -7146,7 +7146,7 @@ class AI:
 		# if recalled, chance that unit simply disappears
 		if self.recall:
 			if GetPercentileRoll() <= 10.0:
-				ShowMessage(self.owner.GetName() + ' withdraws from the battlefield.', scenario_highlight(self.owner.hx, self.owner.hy))
+				ShowMessage(self.owner.GetName() + ' withdraws from the battlefield.', scenario_highlight=(self.owner.hx, self.owner.hy))
 				self.owner.DestroyMe(no_vp=True)
 				return
 		
@@ -9516,6 +9516,14 @@ class Scenario:
 	
 	# roll at start of scenario to see whether player has been ambushed
 	def DoAmbushRoll(self):
+		
+		# NEW: skip if no enemy units remaining
+		all_enemies_dead = True
+		for unit in self.units:
+			if unit.owning_player == 1 and unit.alive:
+				all_enemies_dead = False
+				break
+		if all_enemies_dead: return
 		
 		# no ambush if player has Motti national skill
 		if campaign.CheckForNationalSkill('Motti'):

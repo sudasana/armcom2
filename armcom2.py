@@ -15907,7 +15907,7 @@ else:
 # set up custom font and root console
 libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
         16, 18)
-libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
+root_console = libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
 	fullscreen = False, renderer = RENDERER, vsync=True)
 
 libtcod.sys_set_fps(LIMIT_FPS)

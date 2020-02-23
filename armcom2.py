@@ -9361,7 +9361,6 @@ class Unit:
 		# NEW: squad member was destroyed, remove from list
 		if self in scenario.player_unit.squad:
 			scenario.player_unit.squad.remove(self)
-			print('DEBUG: Removed a squad member from the list')
 		
 		# remove as selected target from all player weapons, and remove from target list
 		for weapon in scenario.player_unit.weapon_list:

@@ -69,7 +69,7 @@ if sys.platform == 'darwin':
 elif os.name == 'posix':				# linux (and OS X?) has to use SDL for some reason
 	RENDERER = libtcod.RENDERER_SDL
 else:
-	RENDERER = libtcod.RENDERER_GLSL
+	RENDERER = libtcod.RENDERER_OPENGL2
 
 LIMIT_FPS = 50						# maximum screen refreshes per second
 ANIM_UPDATE_TIMER = 0.15				# number of seconds between animation frame checks
@@ -15908,7 +15908,7 @@ else:
 libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
         16, 18)
 libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
-	fullscreen = False, renderer = RENDERER)
+	fullscreen = False, renderer = RENDERER, vsync=True)
 
 libtcod.sys_set_fps(LIMIT_FPS)
 libtcod.console_set_default_background(0, libtcod.black)

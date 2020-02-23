@@ -9359,8 +9359,9 @@ class Unit:
 			scenario.units.remove(self)
 		
 		# NEW: squad member was destroyed, remove from list
-		if self in campaign_day.player_squad:
-			campaign_day.player_squad.remove(self)
+		if self in scenario.player_unit.squad:
+			scenario.player_unit.squad.remove(self)
+			print('DEBUG: Removed a squad member from the list')
 		
 		# remove as selected target from all player weapons, and remove from target list
 		for weapon in scenario.player_unit.weapon_list:
@@ -13686,7 +13687,6 @@ class Scenario:
 			if self.finished:
 				# copy the scenario unit over to the campaign version
 				campaign.player_unit = self.player_unit
-				#print('DEBUG: Copied over the player unit to the campaign object')
 				
 				# copy the squad over too
 				campaign_day.player_squad = []

@@ -6,7 +6,8 @@ if platform == 'darwin':
 elif platform == 'linux':
 	import libtcodpy_local as libtcod
 else:
-	import libtcodpy as libtcod
+	import tcod as libtcod
+	#import libtcodpy as libtcod
 import binascii
 
 ##################################

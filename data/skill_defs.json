@@ -136,6 +136,12 @@
 		"national_skill" : true
 	},
 	
+	"Combined Bombardment": {
+		"desc" : "British experience in the Great War led to the tactic of massed bombardments to pin down enemy infantry and guns. Artillery bombardments are more effective against these targets.",
+		"position_list" : ["Commander", "Commander/Gunner"],
+		"national_skill" : true
+	},
+	
 	"To Victory!": {
 		"desc" : "Canadian troops are all volunteers, and are highly trained and motivated, quickly gaining a reputation as assault troops. Crewmen start with a higher Grit stat.",
 		"national_skill" : true

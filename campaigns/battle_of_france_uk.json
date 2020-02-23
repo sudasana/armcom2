@@ -10,6 +10,9 @@
 		"Mk VI C", "A9 Cruiser Mk I", "A10 Cruiser Mk II", "A13 Cruiser Mk II",
 		"A12 Matilda II"
 	],
+	"national_skills" : [
+		"Combined Bombardment"
+	],
 	"player_arty_support": [
 		"OQF 18-Pounder"
 	],

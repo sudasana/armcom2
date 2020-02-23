@@ -11845,11 +11845,14 @@ class Scenario:
 		
 		# determine national skill modifier if any
 		skill_mod = 0
+		soft_target_mod = 0
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
 			if position.name in PLAYER_POSITIONS:
 				if 'Centralized Fire' in position.crewman.skills:
 					skill_mod = -15.0
+				if 'Combined Bombardment' in position.crewman.skills:
+					soft_target_mod = -25.0
 				break
 		
 		# roll for possible hit against each unit in each target hex
@@ -11874,8 +11877,10 @@ class Scenario:
 				chance = RestrictChance(int(chance / 2))
 				roll = GetPercentileRoll()
 				
-				# apply national skill modifier if any
+				# apply national skill modifiers if any
 				roll += skill_mod
+				if target.GetStat('category') in ['Infantry', 'Gun']:
+					roll += soft_target_mod
 				
 				# no effect
 				if roll > chance:

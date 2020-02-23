@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
-# Python 3.8.1
-# tcod 11.9.0
+# Python 3.6.6 x64
+# Libtcod 1.6.4 x64
 ##########################################################################################
 #                                                                                        #
 #                                Armoured Commander II                                   #
@@ -36,10 +36,13 @@
 
 ##### Libraries #####
 import os, sys						# OS-related stuff
-if os.name == 'posix':					
-	import libtcodpy_local as libtcod		# linux
-else:
-	import tcod as libtcod				# OSX or windows
+if sys.platform == 'darwin':				# OSX
+	import tcod as libtcod
+elif os.name == 'posix':				# linux
+	import libtcodpy_local as libtcod
+else:							# windows
+	import libtcodpy as libtcod
+	os.environ['PYSDL2_DLL_PATH'] = os.getcwd() + '/lib'.replace('/', os.sep)	# set sdl2 dll path
 from configparser import ConfigParser			# saving and loading configuration settings
 from random import choice, shuffle, sample		# for the illusion of randomness
 from math import floor, cos, sin, sqrt, degrees, atan2, ceil	# math and heading calculations

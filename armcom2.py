@@ -13216,12 +13216,6 @@ class Scenario:
 				libtcod.console_blit(session.scen_hex_fov, 0, 0, 0, 0, gui_con,
 					x-5, y-3)
 		
-		# crew action phase
-		elif self.phase == PHASE_CREW_ACTION:
-			
-			pass
-			
-		
 		# shooting phase
 		elif self.phase == PHASE_SHOOTING:
 			

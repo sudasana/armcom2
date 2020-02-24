@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '1.0.0-beta'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -13236,10 +13236,10 @@ class Scenario:
 				if self.selected_weapon.selected_target is not None:
 					(x,y) = self.PlotHex(self.selected_weapon.selected_target.hx, self.selected_weapon.selected_target.hy)
 					
-					libtcod.console_put_char_ex(gui_con, x-1, y-1, 218, libtcod.red, libtcod.black)
-					libtcod.console_put_char_ex(gui_con, x+1, y-1, 191, libtcod.red, libtcod.black)
-					libtcod.console_put_char_ex(gui_con, x-1, y+1, 192, libtcod.red, libtcod.black)
-					libtcod.console_put_char_ex(gui_con, x+1, y+1, 217, libtcod.red, libtcod.black)
+					libtcod.console_put_char_ex(gui_con, x-2, y-2, 218, libtcod.red, libtcod.black)
+					libtcod.console_put_char_ex(gui_con, x+2, y-2, 191, libtcod.red, libtcod.black)
+					libtcod.console_put_char_ex(gui_con, x-2, y+2, 192, libtcod.red, libtcod.black)
+					libtcod.console_put_char_ex(gui_con, x+2, y+2, 217, libtcod.red, libtcod.black)
 	
 		
 	# update unit info console, which displays basic information about a unit under

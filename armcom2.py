@@ -15974,7 +15974,7 @@ if not DEBUG:
 	libtcod.console_clear(0)
 	libtcod.console_blit(LoadXP('cats.xp'), 0, 0, 0, 0, 0, WINDOW_XM-15, WINDOW_YM-19)
 	libtcod.console_flush()
-	Wait(100, ignore_animations=True)
+	Wait(80, ignore_animations=True)
 	libtcod.console_clear(0)
 	libtcod.console_flush()
 

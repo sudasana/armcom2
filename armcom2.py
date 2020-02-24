@@ -961,7 +961,7 @@ class Campaign:
 				
 				possible_days.append(day_text)
 			
-			# for each possible day, roll to see if it's added to the combat calendar
+			# for each possible day in this campaign week, roll to see if it's added to the combat calendar
 			chance = float(week['combat_chance'])
 			for day_text in possible_days:
 				# if day is past end of calendar week, stop
@@ -969,10 +969,14 @@ class Campaign:
 					if day_text > week['end_date']:
 						continue
 				
-				if GetPercentileRoll() <= chance:
+				roll = GetPercentileRoll()
+				# trying to get a good number of combat days in a campaign
+				roll += 15.0
+				
+				if roll <= chance:
 					self.combat_calendar.append(day_text)
 		
-		#print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
+		print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
 		#for day_text in self.combat_calendar:
 		#	print(day_text)
 	
@@ -1000,7 +1004,7 @@ class Campaign:
 			libtcod.console_clear(con)
 			
 			# list of campaigns
-			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_set_default_background(con, libtcod.dark_blue)
 			y = 5
 			for camp in campaign_list:
@@ -1016,7 +1020,7 @@ class Campaign:
 				libtcod.console_set_default_foreground(con, libtcod.darkest_grey)
 				for x in range(2, 24):
 					libtcod.console_put_char(con, x, y-1, '-')
-				libtcod.console_set_default_foreground(con, libtcod.light_grey)
+				libtcod.console_set_default_foreground(con, libtcod.white)
 			
 			libtcod.console_set_default_background(con, libtcod.black)
 			
@@ -2655,23 +2659,23 @@ class CampaignDay:
 		if self.map_hexes[(hx1,hy1)].road_links[direction] is not None:
 			# dirt road
 			if self.map_hexes[(hx1,hy1)].road_links[direction] is False:
-				mins = 30
+				mins = 15
 			# stone road
 			else:
-				mins = 20
+				mins = 10
 		else:
 			if self.map_hexes[(hx2,hy2)].terrain_type == 'Forest':
-				mins = 60
-			else:
 				mins = 45
+			else:
+				mins = 30
 		
 		# check ground conditions
 		if self.weather['Ground'] == 'Deep Snow':
-			mins += 25
+			mins += 20
 		elif self.weather['Ground'] in ['Muddy', 'Snow']:
-			mins += 15
-		elif self.weather['Precipitation'] != 'None':
 			mins += 10
+		elif self.weather['Precipitation'] != 'None':
+			mins += 5
 		
 		# check for active support request flag(s) when moving into enemy zone
 		if self.map_hexes[(hx2,hy2)].controlled_by == 1:
@@ -4994,7 +4998,7 @@ class CampaignDay:
 		
 		# calculate initial time to travel to front lines
 		if not self.travel_time_spent:
-			minutes = 15 + (libtcod.random_get_int(0, 1, 5) * 15)
+			minutes = 5 + (libtcod.random_get_int(0, 1, 3) * 10)
 			self.AdvanceClock(0, minutes, skip_checks=True)
 			DisplayTimeInfo(time_con)
 			text = 'It takes you ' + str(minutes) + ' minutes to travel to the front lines.'

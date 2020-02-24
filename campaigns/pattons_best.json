@@ -40,10 +40,10 @@
 		"MG Team" : "100"
 	},
 	"decorations_list" : {
-		"500" : "Bronze Star",
-		"600" : "Silver Star",
-		"800" : "Distinguished Service Cross",
-		"1000" : "Congressional Medal of Honor"
+		"3800" : "Bronze Star",
+		"4000" : "Silver Star",
+		"4200" : "Distinguished Service Cross",
+		"4500" : "Congressional Medal of Honor"
 	},
 	"calendar_weeks": [
 		{

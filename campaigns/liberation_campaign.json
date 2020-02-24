@@ -35,10 +35,10 @@
 		"MG Team" : "80"
 	},
 	"decorations_list" : {
-		"350" : "Medal for Battle Merit",
-		"500" : "Order of the Red Star",
-		"600" : "Order of the Red Banner",
-		"700" : "Order of Lenin"
+		"400" : "Medal for Battle Merit",
+		"600" : "Order of the Red Star",
+		"700" : "Order of the Red Banner",
+		"800" : "Order of Lenin"
 	},
 	"calendar_weeks": [
 		{

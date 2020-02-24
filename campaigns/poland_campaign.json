@@ -43,10 +43,10 @@
 		"Armoured Train Car" : "10"
 	},
 	"decorations_list" : {
-		"600" : "Iron Cross Second Class",
-		"800" : "Iron Cross First Class",
+		"700" : "Iron Cross Second Class",
+		"900" : "Iron Cross First Class",
 		"1000" : "Knight's Cross",
-		"1200" : "Knight's Cross with Oak Leaves"
+		"1100" : "Knight's Cross with Oak Leaves"
 	},
 	"calendar_weeks": [
 		{

@@ -42,10 +42,10 @@
 		"Motorcycle Team" : "85"
 	},
 	"decorations_list" : {
-		"600" : "Cross of Valour",
-		"800" : "Order of Polonia Restituta Fifth Class",
+		"700" : "Cross of Valour",
+		"900" : "Order of Polonia Restituta Fifth Class",
 		"1000" : "Order of Polonia Restituta Fourth Class",
-		"1200" : "Cross of Independance"
+		"1100" : "Cross of Independance"
 	},
 	"calendar_weeks": [
 		{

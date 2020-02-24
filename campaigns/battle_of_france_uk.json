@@ -50,10 +50,10 @@
 		"Motorcycle Team" : "85"
 	},
 	"decorations_list" : {
-		"500" : "Military Medal",
-		"600" : "Military Cross",
-		"800" : "Distinguished Service Order",
-		"1000" : "Victoria Cross"
+		"800" : "Military Medal",
+		"1000" : "Military Cross",
+		"1200" : "Distinguished Service Order",
+		"1300" : "Victoria Cross"
 	},
 	"calendar_weeks": [
 		{

@@ -874,7 +874,7 @@ class Campaign:
 		self.player_squad_max = 0	# maximum units in player squad in addition to player
 		self.player_vp = 0		# total player victory points
 		self.stats = {}			# local copy of campaign stats
-		self.combat_calendar = []	# list of combat days, created by GenerateCalendar
+		self.combat_calendar = []	# list of combat days
 		self.today = None		# pointer to current day in calendar
 		self.current_week = None	# " week
 		self.enemy_class_odds = {}	# placeholder for enemy unit spawn odds, set by campaign days
@@ -972,7 +972,7 @@ class Campaign:
 				if GetPercentileRoll() <= chance:
 					self.combat_calendar.append(day_text)
 		
-		#print('DEBUG: Added ' + str(len(self.combat_calendar)) + ' days to combat calendar')
+		print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
 		#for day_text in self.combat_calendar:
 		#	print(day_text)
 	
@@ -5423,17 +5423,24 @@ class CampaignDay:
 							
 							text = 'You enter the enemy-held zone'
 							if self.advancing_fire:
-								text += ', firing at anything suspicious'
 								
-								# try to use ammo for main gun
+								# NEW: check for ability to do advancing fire
+								adv_fire_done = False
+								
 								weapon = campaign.player_unit.weapon_list[0]
 								if weapon.GetStat('type') == 'Gun':
 									if 'HE' in weapon.ammo_stores:
-										weapon.ammo_stores['HE'] -= libtcod.random_get_int(0, 4, 10)
-										if weapon.ammo_stores['HE'] < 0:
-											weapon.ammo_stores['HE'] = 0
-								# FUTURE: how to handle tanks where main weapon is MG or similar, or no HE?
-								# Don't allow advancing fire?
+										if weapon.ammo_stores['HE'] > 0 :
+											weapon.ammo_stores['HE'] -= libtcod.random_get_int(0, 4, 10)
+											if weapon.ammo_stores['HE'] < 0:
+												weapon.ammo_stores['HE'] = 0
+											adv_fire_done = True
+										break
+								
+								if adv_fire_done:
+									text += ', firing at anything suspicious'
+								else:
+									self.advancing_fire = False
 								
 							ShowMessage(text + '.')
 														
@@ -5528,6 +5535,21 @@ class CDMapHex:
 		self.f = 0
 		
 		# set enemy strength level
+		self.SetEnemyStrength(mission)
+		
+		self.Reset()
+	
+	
+	# reset zone stats
+	def Reset(self):
+		self.coordinate = (chr(self.hy+65) + str(5 + int(self.hx - (self.hy - self.hy&1) / 2)))
+
+
+	# set or reset the enemy strength level and set level to unknown
+	def SetEnemyStrength(self, mission):
+		
+		self.known_to_player = False
+		
 		if 'average_resistance' in campaign.current_week:
 			avg_strength = int(campaign.current_week['average_resistance'])
 		else:
@@ -5551,13 +5573,6 @@ class CDMapHex:
 			self.enemy_strength = 1
 		elif self.enemy_strength > 10:
 			self.enemy_strength = 10
-		
-		self.Reset()
-	
-	
-	# reset zone stats
-	def Reset(self):
-		self.coordinate = (chr(self.hy+65) + str(5 + int(self.hx - (self.hy - self.hy&1) / 2)))
 
 	
 	# (re)calculate VP value if captured by player
@@ -5634,6 +5649,9 @@ class CDMapHex:
 		
 		# clear any TOO
 		self.target_of_opportunity = None
+		
+		# NEW: reset enemy strength level in case it gets recaptured
+		self.SetEnemyStrength(campaign_day.mission)
 		
 		# set new zone control
 		self.controlled_by = player_num
@@ -5979,7 +5997,7 @@ class Personnel:
 				text = '-'
 			else:
 				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_red)
-				text = '-' + str(self.fatigue) + '%%'
+				text = '-' + str(self.fatigue) + '%'
 			libtcod.console_print(crewman_menu_con, 39, 50, text)
 			
 			# wounds if any
@@ -9202,7 +9220,7 @@ class Unit:
 						break
 				
 				text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + '. '
-				text += str(score) + '%% chance to destroy.'
+				text += str(score) + '% chance to destroy.'
 				ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 				
 				if GetPercentileRoll() <= score:
@@ -9240,7 +9258,7 @@ class Unit:
 		base_chance = RestrictChance(base_chance)
 		
 		text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + '. '
-		text += str(base_chance) + '%% chance to destroy.'
+		text += str(base_chance) + '% chance to destroy.'
 		ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 		
 		# roll for effect
@@ -9361,6 +9379,7 @@ class Unit:
 		# NEW: squad member was destroyed, remove from list
 		if self in scenario.player_unit.squad:
 			scenario.player_unit.squad.remove(self)
+			campaign.AddJournal('A ' + self.unit_id + ' tank from our squad was knocked out')
 		
 		# remove as selected target from all player weapons, and remove from target list
 		for weapon in scenario.player_unit.weapon_list:
@@ -9418,6 +9437,8 @@ class Unit:
 		
 			# player unit has been destroyed
 			if self == scenario.player_unit:
+				
+				campaign.AddJournal('Our ' + self.unit_id + ' tank was knocked out')
 				
 				# set end-scenario flag
 				scenario.finished = True
@@ -11025,7 +11046,7 @@ class Scenario:
 		libtcod.console_print_ex(attack_con, 13, 23, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		text = str(profile['base_chance'])
 		if profile['type'] != 'ap':
-			text += '%%'
+			text += '%'
 		libtcod.console_print_ex(attack_con, 13, 24, libtcod.BKGND_NONE, libtcod.CENTER, text)
 		
 		# list of modifiers
@@ -11098,7 +11119,7 @@ class Scenario:
 			if profile['final_chance'] > profile['full_effect']:
 				libtcod.console_print_ex(attack_con, 24, 46, libtcod.BKGND_NONE,
 					libtcod.RIGHT, 'PART')
-				text = str(profile['final_chance']) + '%%'
+				text = str(profile['final_chance']) + '%'
 				libtcod.console_print_ex(attack_con, 24, 47, libtcod.BKGND_NONE,
 					libtcod.RIGHT, text)
 			
@@ -11110,7 +11131,7 @@ class Scenario:
 			if profile['full_effect'] > profile['critical_effect']:
 				libtcod.console_print_ex(attack_con, 13, 46, libtcod.BKGND_NONE,
 					libtcod.CENTER, 'FULL')
-				text = str(profile['full_effect']) + '%%'
+				text = str(profile['full_effect']) + '%'
 				libtcod.console_print_ex(attack_con, 13, 47, libtcod.BKGND_NONE,
 					libtcod.CENTER, text)
 			
@@ -11119,7 +11140,7 @@ class Scenario:
 			x = int(ceil(25.0 * profile['critical_effect'] / 100.0))
 			libtcod.console_rect(attack_con, 1, 46, x, 3, False, libtcod.BKGND_SET)
 			libtcod.console_print(attack_con, 2, 46, 'CRIT')
-			text = str(profile['critical_effect']) + '%%'
+			text = str(profile['critical_effect']) + '%'
 			libtcod.console_print(attack_con, 2, 47, text)
 			
 		else:
@@ -11147,7 +11168,7 @@ class Scenario:
 			libtcod.console_set_default_foreground(attack_con, libtcod.white)
 			libtcod.console_set_default_background(attack_con, libtcod.black)
 			
-			text = str(profile['final_chance']) + '%%'
+			text = str(profile['final_chance']) + '%'
 			# AP checks may be automatic or impossible
 			if profile['type'] == 'ap':
 				if profile['final_chance'] == 0.0:
@@ -11243,7 +11264,7 @@ class Scenario:
 					libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
 						libtcod.CENTER, '      ')
 					
-					text = str(roll) + '%%'
+					text = str(roll) + '%'
 					libtcod.console_print_ex(attack_con, 13, 49, libtcod.BKGND_NONE,
 						libtcod.CENTER, text)
 					
@@ -12797,39 +12818,27 @@ class Scenario:
 			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 			
 			# forward move
-			text = str(scenario.player_unit.forward_move_chance) + '%%'
+			text = str(scenario.player_unit.forward_move_chance) + '%'
 			libtcod.console_print_ex(context_con, 10, 2, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
-			text = str(scenario.player_unit.bog_chance) + '%%'
+			text = str(scenario.player_unit.bog_chance) + '%'
 			libtcod.console_print_ex(context_con, 16, 2, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
 			
 			# reverse move
-			text = str(scenario.player_unit.reverse_move_chance) + '%%'
+			text = str(scenario.player_unit.reverse_move_chance) + '%'
 			libtcod.console_print_ex(context_con, 10, 4, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
-			text = str(round(scenario.player_unit.bog_chance * 1.5, 1)) + '%%'
+			text = str(round(scenario.player_unit.bog_chance * 1.5, 1)) + '%'
 			libtcod.console_print_ex(context_con, 16, 4, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
 			
 			# pivot
 			libtcod.console_print_ex(context_con, 10, 6, libtcod.BKGND_NONE,
-				libtcod.RIGHT, '100%%')
-			text = str(round(scenario.player_unit.bog_chance * 0.25, 1)) + '%%'
+				libtcod.RIGHT, '100%')
+			text = str(round(scenario.player_unit.bog_chance * 0.25, 1)) + '%'
 			libtcod.console_print_ex(context_con, 16, 6, libtcod.BKGND_NONE,
 				libtcod.RIGHT, text)
-			
-			# reposition
-			#libtcod.console_print_ex(context_con, 10, 8, libtcod.BKGND_NONE,
-			#	libtcod.RIGHT, '75%%')
-			#libtcod.console_print_ex(context_con, 16, 8, libtcod.BKGND_NONE,
-			#	libtcod.RIGHT, '4%%')
-			
-			# hull down
-			#libtcod.console_print_ex(context_con, 10, 10, libtcod.BKGND_NONE,
-			#	libtcod.RIGHT, '70%%')
-			#libtcod.console_print_ex(context_con, 16, 10, libtcod.BKGND_NONE,
-			#	libtcod.RIGHT, '2%%')
 		
 		elif self.phase == PHASE_CREW_ACTION:
 			position = scenario.player_unit.positions_list[self.selected_position]
@@ -12904,7 +12913,7 @@ class Scenario:
 			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
 			chance = weapon.GetRoFChance()
 			if chance > 0.0:
-				text = str(chance) + '%%'
+				text = str(chance) + '%'
 			else:
 				text = 'N/A'
 			libtcod.console_print_ex(context_con, 17, 2, libtcod.BKGND_NONE,
@@ -15721,7 +15730,7 @@ def DisplayCrew(unit, console, x, y, highlight):
 			if position.crewman.fatigue > 0:
 				libtcod.console_set_default_foreground(console, libtcod.red)
 				libtcod.console_print_ex(console, x+23, y+3, libtcod.BKGND_NONE, libtcod.RIGHT, 
-					'Fatigued ' + str(position.crewman.fatigue) + '%%')
+					'Fatigued ' + str(position.crewman.fatigue) + '%')
 			
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		y += 5

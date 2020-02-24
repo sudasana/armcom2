@@ -60,7 +60,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '1.0.0-beta'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -5435,7 +5435,6 @@ class CampaignDay:
 											if weapon.ammo_stores['HE'] < 0:
 												weapon.ammo_stores['HE'] = 0
 											adv_fire_done = True
-										break
 								
 								if adv_fire_done:
 									text += ', firing at anything suspicious'

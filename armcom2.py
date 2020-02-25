@@ -4635,7 +4635,7 @@ class CampaignDay:
 				# display recon option if strength is unknown travel is possible
 				if not map_hex.known_to_player and 'N/A' not in text:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-					libtcod.console_print(cd_command_con, 1, 17, 'Recon: 15 mins.')
+					libtcod.console_print(cd_command_con, 1, 17, 'Recon: 10 mins.')
 					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 					libtcod.console_print(cd_command_con, 3, 38, EnKey('r').upper())
 					
@@ -5410,7 +5410,7 @@ class CampaignDay:
 						map_hex2.known_to_player = True
 						text = 'Estimated enemy strength in zone: ' + str(map_hex2.enemy_strength)
 						ShowMessage(text, cd_highlight=(hx2,hy2))
-						campaign_day.AdvanceClock(0, 15)
+						campaign_day.AdvanceClock(0, 10)
 						DisplayTimeInfo(time_con)
 						self.UpdateCDUnitCon()
 						self.UpdateCDCommandCon()

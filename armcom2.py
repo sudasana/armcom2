@@ -31,6 +31,9 @@
 #    xp_loader.py is covered under a MIT License (MIT) and is Copyright (c) 2015
 #    Sean Hagar; see XpLoader_LICENSE.txt for more info.
 #
+#    Some sound samples from the C64 sample pack by Odo:
+#    <https://howtomakeelectronicmusic.com/270mb-of-free-c64-samples-made-by-odo/>
+#
 ##########################################################################################
 
 

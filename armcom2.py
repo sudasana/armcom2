@@ -979,7 +979,7 @@ class Campaign:
 				if roll <= chance:
 					self.combat_calendar.append(day_text)
 		
-		print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
+		#print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
 		#for day_text in self.combat_calendar:
 		#	print(day_text)
 	

@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '1.0.0-beta'					# game version
+VERSION = '1.0.1-beta'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -246,7 +246,8 @@ ASSAULT_FP = {
 	'Artillery Gun' : (0, 8),
 	'Anti-Aircraft Gun' : (0, 8),
 	'Truck' : (0, 0),
-	'Armoured Train Car' : (0, 8)
+	'Armoured Train Car' : (0, 8),
+	'Armoured Personnel Carrier' : (4, 4)
 }
 
 # odds to destroy an opposing unit in close combat, by firepower ratios
@@ -3577,10 +3578,14 @@ class CampaignDay:
 			# FUTURE: visual depicition of extra ammo
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			
-			
+		
 		# select first weapon by default, and first ammo type
 		weapon = campaign.player_unit.weapon_list[0]
+		
+		# NEW: skip if main weapon is not a gun
+		if 'ammo_type_list' not in weapon.stats:
+			return
+		
 		selected_ammo_type = weapon.stats['ammo_type_list'][0]
 		
 		# record initial loaded number of ammo

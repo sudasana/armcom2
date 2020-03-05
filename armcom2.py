@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '1.0.2-beta'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -1405,12 +1405,10 @@ class Campaign:
 						open_spot = True
 						open_position_list.pop(open_position_list.index(new_position))
 						transfer_dict[position.name] = new_position
-						#print('DEBUG: found a transfer match: ' + position.name + ' -> ' + new_position)
 						break
 				
 				if not open_spot:
 					discard_list.append(position.name)
-					#print('DEBUG: must discard crewman in ' + position.name + ' position')
 			
 			# display this info to player and allow them to cancel and choose a different tank model
 			if len(discard_list) > 0:
@@ -3076,7 +3074,6 @@ class CampaignDay:
 					hex_list.append((self.map_hexes[(hx, hy)].enemy_strength, hx, hy))
 			
 			if len(hex_list) == 0:
-				#print('DEBUG: no suitable hexes found for TOO')
 				return
 			
 			for (strength, hx, hy) in reversed(hex_list):
@@ -6446,7 +6443,6 @@ class Personnel:
 			if position.crewman == self: continue
 			if position.crewman.current_cmd == 'First Aid':
 				roll -= 15.0
-				#print('DEBUG: Added First Aid bonus')
 		
 		if self.status == 'Unconscious': roll += 15.0
 		
@@ -6595,7 +6591,6 @@ class Personnel:
 		if self.status in ['Dead', 'Unconscious']: return False
 		
 		self.current_position.hatch_open = not self.current_position.hatch_open
-		print('DEBUG: hatch open set to: ' + str(self.current_position.hatch_open))
 		
 		# set CE status based on new hatch status
 		self.SetCEStatus()
@@ -6618,21 +6613,16 @@ class Personnel:
 	
 	# set crewman BU/CE status based on position status
 	def SetCEStatus(self):
-		
 		if not self.current_position.hatch:
 			self.ce = False
 			return
-		
 		if self.current_position.open_top or self.current_position.crew_always_ce:
 			self.ce = True
 			return
-		
 		if self.current_position.hatch_open:
 			self.ce = True
 		else:
 			self.ce = False
-		
-		print('DEBUG: Set CE status to: ' + str(self.ce))
 
 		
 	
@@ -7664,7 +7654,6 @@ class AI:
 						self.owner.ClearAcquiredTargets(no_enemy=True)
 						for weapon in self.owner.weapon_list:
 							weapon.UpdateCoveredHexes()
-						#print('DEBUG: AI unit pivoted to fire with turret')
 		
 		#text = 'AI DEBUG: ' + self.owner.unit_id + ' attacking with ' + weapon.stats['name']
 		#if ammo_type != '':

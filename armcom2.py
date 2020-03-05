@@ -63,9 +63,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '1.0.1-beta'					# game version
+VERSION = '1.0.2-beta'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -1447,14 +1447,16 @@ class Campaign:
 			for position in new_unit.positions_list:
 				if position.name == new_position:
 					position.crewman = crewman
-					#print('DEBUG: moved ' + position_name + ' to ' + new_position)
+					
+					# NEW - should fix bug with weird hatch/visibility statuses
+					crewman.current_position = position
+					crewman.unit = new_unit
 					break
 			
 		# generate new crewmen if required
 		for position in new_unit.positions_list:
 			if position.crewman is None:
 				position.crewman = Personnel(new_unit, new_unit.nation, position)
-				#print('DEBUG: generated new crewman for ' + position.name)
 		
 		new_unit.ClearGunAmmo()
 		self.player_unit = new_unit
@@ -2224,7 +2226,6 @@ class Campaign:
 							# proceed to next combat day
 							ProceedToNextDay()
 						
-						# NEW
 						else:
 						
 							# create a new campaign day
@@ -5436,7 +5437,7 @@ class CampaignDay:
 							text = 'You enter the enemy-held zone'
 							if self.advancing_fire:
 								
-								# NEW: check for ability to do advancing fire
+								# check for ability to do advancing fire
 								adv_fire_done = False
 								
 								weapon = campaign.player_unit.weapon_list[0]
@@ -5661,7 +5662,7 @@ class CDMapHex:
 		# clear any TOO
 		self.target_of_opportunity = None
 		
-		# NEW: reset enemy strength level in case it gets recaptured
+		# reset enemy strength level in case it gets recaptured
 		self.SetEnemyStrength(campaign_day.mission)
 		
 		# set new zone control
@@ -6583,6 +6584,8 @@ class Personnel:
 	# attempt to toggle current hatch status
 	def ToggleHatch(self):
 		
+		print('DEBUG: Current position is in unit: ' + str(id(self.current_position.unit)))
+		
 		# no hatch in position
 		if not self.current_position.hatch: return False
 		if self.current_position.open_top: return False
@@ -6592,6 +6595,7 @@ class Personnel:
 		if self.status in ['Dead', 'Unconscious']: return False
 		
 		self.current_position.hatch_open = not self.current_position.hatch_open
+		print('DEBUG: hatch open set to: ' + str(self.current_position.hatch_open))
 		
 		# set CE status based on new hatch status
 		self.SetCEStatus()
@@ -6627,6 +6631,8 @@ class Personnel:
 			self.ce = True
 		else:
 			self.ce = False
+		
+		print('DEBUG: Set CE status to: ' + str(self.ce))
 
 		
 	
@@ -6680,6 +6686,8 @@ class Position:
 	
 	# update the list of hexes currently visible from this position
 	def UpdateVisibleHexes(self):
+		
+		print('DEBUG: Updating hexes for position in unit: ' + str(id(self.unit)))
 		
 		self.visible_hexes = []
 		
@@ -6735,7 +6743,7 @@ class Weapon:
 					text += '(' + self.GetStat('long_range') + ')'
 				self.stats['name'] = text
 			
-			# NEW: high calibre MG
+			# high calibre MG
 			elif self.GetStat('type') in MG_WEAPONS and self.GetStat('calibre') is not None:
 				text = self.GetStat('calibre') + 'mm MG'
 				self.stats['name'] = text
@@ -8595,7 +8603,7 @@ class Unit:
 			char = TURRET_CHAR[facing]
 			libtcod.console_put_char_ex(unit_con, x+x_mod, y+y_mod, char, col, bg_col)
 		
-		# NEW: draw depiction of dug-in, entrenched, or fortified here
+		# draw depiction of dug-in, entrenched, or fortified here
 		if not self.dug_in and not self.entrenched and not self.fortified: return
 		
 		if self.dug_in:
@@ -9107,7 +9115,7 @@ class Unit:
 			# shock test
 			if profile['result'] == 'NO PENETRATION':
 				
-				# NEW: check to see if unit had any acquired targets to begin with
+				# check to see if unit had any acquired targets to begin with
 				had_acquired_target = False
 				for weapon in self.weapon_list:
 					if weapon.acquired_target is not None:
@@ -9319,7 +9327,7 @@ class Unit:
 	# do a pin test on this unit
 	def PinTest(self, fp, no_msg=False):
 		
-		# NEW: only infantry and guns are subject to pinning
+		# only infantry and guns are subject to pinning
 		if self.GetStat('category') not in ['Infantry', 'Gun']:
 			return
 		
@@ -9387,7 +9395,7 @@ class Unit:
 		if self in scenario.units:
 			scenario.units.remove(self)
 		
-		# NEW: squad member was destroyed, remove from list
+		# squad member was destroyed, remove from list
 		if self in scenario.player_unit.squad:
 			scenario.player_unit.squad.remove(self)
 			campaign.AddJournal('A ' + self.unit_id + ' tank from our squad was knocked out')
@@ -9553,7 +9561,7 @@ class Scenario:
 	# roll at start of scenario to see whether player has been ambushed
 	def DoAmbushRoll(self):
 		
-		# NEW: skip if no enemy units remaining
+		# skip if no enemy units remaining
 		all_enemies_dead = True
 		for unit in self.units:
 			if unit.owning_player == 1 and unit.alive:

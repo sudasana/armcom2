@@ -6580,7 +6580,7 @@ class Personnel:
 	# attempt to toggle current hatch status
 	def ToggleHatch(self):
 		
-		print('DEBUG: Current position is in unit: ' + str(id(self.current_position.unit)))
+		#print('DEBUG: Current position is in unit: ' + str(id(self.current_position.unit)))
 		
 		# no hatch in position
 		if not self.current_position.hatch: return False
@@ -6677,7 +6677,7 @@ class Position:
 	# update the list of hexes currently visible from this position
 	def UpdateVisibleHexes(self):
 		
-		print('DEBUG: Updating hexes for position in unit: ' + str(id(self.unit)))
+		#print('DEBUG: Updating hexes for position in unit: ' + str(id(self.unit)))
 		
 		self.visible_hexes = []
 		

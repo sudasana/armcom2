@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '1.0.3-beta'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -7836,6 +7836,14 @@ class Unit:
 		return self.stats[stat_name]
 	
 	
+	# NEW: return the pair of assault firepower ratings for this unit
+	def GetAssaultFP(self):
+		if self.stats['class'] in ASSAULT_FP:
+			return ASSAULT_FP[self.stats['class']]
+		print('ERROR: Assault fp for class not found: ' + self.stats['class'])
+		return (1,1)
+	
+	
 	# clear all ammo loads for all guns in this unit
 	def ClearGunAmmo(self):
 		for weapon in self.weapon_list:
@@ -12737,14 +12745,14 @@ class Scenario:
 				# may have been destroyed or pinned during defensive fire
 				if not unit.alive: continue
 				if unit.pinned: continue
-				(a_fp, d_fp) = ASSAULT_FP[unit.GetStat('class')]
+				(a_fp, d_fp) = unit.GetAssaultFP()
 				attack_fp += a_fp
 			
 			for unit in defending_units:
 				if unit.GetStat('assault_firepower') is not None:
 					defend_fp += unit.GetStat('assault_firepower')
 					continue
-				(a_fp, d_fp) = ASSAULT_FP[unit.GetStat('class')]
+				(a_fp, d_fp) = unit.GetAssaultFP()
 				if unit.pinned:
 					d_fp = int(float(d_fp) * 0.5)	
 				if unit.entrenched or unit.dug_in:

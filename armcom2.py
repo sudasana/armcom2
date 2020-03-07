@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '1.0.3-beta'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files

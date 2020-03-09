@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '1.0.3-beta'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -611,8 +611,11 @@ POSITION_TRANSFER_LIST = {
 	"Gunner/Loader" : ["Gunner/Loader", "Gunner"],
 	"Loader" : ["Loader", "Gunner/Loader"],
 	"Driver" : ["Driver"],
-	"Assistant Driver" : ["Assistant Driver", "Radio Operator"],
-	"Radio Operator" : ["Radio Operator", "Assistant Driver"]
+	"Assistant Driver" : ["Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Port MG Gunner" : ["Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Assistant Driver", "Radio Operator"],
+	"Starboard MG Gunner" : ["Starboard MG Gunner", "Port MG Gunner", "MG Gunner", "Assistant Driver", "Radio Operator"],
+	"MG Gunner" : ["MG Gunner", "Port MG Gunner", "Starboard MG Gunner", "Assistant Driver", "Radio Operator"],
+	"Radio Operator" : ["Radio Operator", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Assistant Driver"]
 }
 
 # length of scenario turn in minutes

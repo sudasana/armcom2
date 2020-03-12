@@ -7,7 +7,7 @@
  "Never Scenario": false,
  "Always CD Random Event": false,
  "Player Always Hits": false,
- "Player Always Moves": false,
+ "Player Always Moves": true,
  "Player Always HD": false,
  "No AI Actions": true,
  "AI Hates Player": false,

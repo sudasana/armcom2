@@ -42,17 +42,18 @@ Virtually everything you need to know about a unit is included in its unit infor
 * Medium Tank: This is the unit's class, indicating generally what type of unit it is
 * Portrait: A rough approximation of this unit as viewed from the side
 * 75mm, etc. (dark red background): A list of weapon systems on this unit, starting with its main armament
-  * Guns may be short (S) or long (L) barreled
+  * Guns may be short (S), long (L), or very long (LL) barreled
   * Co-ax weapons are mounted on the turret alongside (or as) the main gun
   * Anti-Aircraft (AA) machine guns (MG) can fire in any direction, but must often be fired from outside of the tank
   * Bow MGs are fixed to the front of the hull
+  * If a weapon is displayed in a light grey colour, it means that it is unrealiable and has a greater chance of breaking down
 * Armoured or Unarmoured vehicles have their armour values listed here
   * The T line refers to turret armour, but if there is no rotatable turret it will appear as U (Upper Structure) instead; if the turret has a fast traverse, this will be noted by (fast)
   * H refers to hull armour
   * The two armour values x/x refer to front and side armour respectively for that area
   * Rear armour values for any location are one level lower than its side level
 * The movement class of the unit is shown in green in the lower right
-  * If a vehicle has light ground pressure this will be displayed in a light shade of green, if heaver ground pressure, a darker shade. Ground pressure affects the change of bogging down.
+  * If a vehicle has light ground pressure this will be displayed in a light shade of green, if heavy ground pressure, a darker shade. Ground pressure affects the chance of bogging down.
   * If a vehicle has an especially powerful engine, a plus sign will appear next to the movement class
 * Any special vehicle features will appear below the movement class:
   * HVSS stands for Horizontal Volute Spring Suspension; vehicles with this upgrade are slightly faster and less likely to bog

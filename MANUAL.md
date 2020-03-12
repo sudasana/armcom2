@@ -1,5 +1,5 @@
 # Armoured Commander II
-### Game Manual for Alpha 12.0
+### Game Manual for Beta 1
 
 ## 1. General Principles
 
@@ -24,7 +24,7 @@ Several campaigns are included with the game. Each one takes place over a fixed 
 
 From this screen you can select a campaign to start, or have the game select one randomly.
 
-You can also set your **Campaign Options** in this menu. "Permadeath" means that your Commander represents you, and if he is killed or seriously injured, your campaign ends immediately. "Fate Points" are replenished at the start of each Campaign Day, and eash one silently saves you from an incoming attack that would have otherwise destroyed your tank.
+You can also set your **Campaign Options** in this menu. "Permadeath" means that your Commander represents you, and if he is killed or seriously injured, your campaign ends immediately. Otherwise you can continue your campaign with a newly assigned Commander. "Fate Points" are replenished at the start of each Campaign Day, and each one silently saves you from an incoming attack that would have otherwise destroyed your tank.
 
 ## 4. Tank and Crew Selection
 
@@ -157,7 +157,7 @@ Note that some commands will only become available when certain conditions are m
 
 * Spotting Phase
 
-Dureing this phase no input is required from the player; any crewman who can do so will automatically try to spot any hidden enemy unit in his line of sight. If an enemy unit is spotted, its identity will be displayed in a pop-up message.
+During this phase no input is required from the player; any crewman who can do so will automatically try to spot any hidden enemy unit in his line of sight. If an enemy unit is spotted, its identity will be displayed in a pop-up message.
 
 * Crew Action Phase
 
@@ -214,6 +214,8 @@ Armoured targets hit with AP will undergo an Armour Penetration check immediatel
 The chance of the hit penetrating the target armour depends on the gun calibre, barrel length, distance from target, and thickness of target armour on the location hit. Especially powerful guns will automatically penetrate all but he thickest armour, as shown here. Enemy armoured targets that are penetrated are destroyed.
 
 * Close Combat Phase
+
+If there is an enemy infantry or gun unit directly in front of your tank during this phase, and if the Driver is on a 'Drive' command, you have the option of assaulting into the hex in front of you, engaging enemies there in close-range combat.
 
 * Allied Action Phase
 

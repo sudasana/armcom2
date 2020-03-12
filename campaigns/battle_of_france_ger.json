@@ -1,0 +1,134 @@
+{
+	"name" : "Battle of France (Germany)",
+	"start_date" : "1940.05.10",
+	"end_date" : "1940.06.16",
+	"player_nation" : "Germany",
+	"enemy_nations" : ["France", "United Kingdom"],
+	"region" : "Northwestern Europe",
+	"desc" : "After months of a 'Phoney War', Germany has attacked through the Low Countries. Lead your battlegroup over the border.",
+	"player_unit_list" : [
+		"Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", "Panzer III D",
+		"Panzer III F", "Panzer IV A", "Panzer IV C", "Panzer IV D",
+		"StuG III B", "Panzerjager I"
+	],
+	"player_squad_list" : {
+		"Panzer 38(t) A" : ["Panzer II A", "Panzer 38(t) A"]
+	},
+	"national_skills" : [
+		"Blitzkrieg"
+	],
+	"player_air_support": [
+		"Ju 87B Stuka"
+	],
+	"player_arty_support": [
+		"7.5cm leIG 18"
+	],
+	"enemy_unit_list" : [
+		"Riflemen", "Motorcycle MG Team", "HMG Team"
+	],
+	"enemy_unit_class_odds" : {
+		"Light Tank" : "90",
+		"Medium Tank" : "80",
+		"Assault Gun" : "70",
+		"Tank Destroyer" : "50",
+		"Armoured Car" : "80",
+		"Anti-Tank Gun" : "30",
+		"Field Gun" : "5",
+		"Anti-Aircraft Gun" : "5",
+		"Armoured Personnel Carrier" : "75",
+		"Truck" : "80",
+		"Infantry Squad" : "100",
+		"MG Team" : "80",
+		"Motorcycle Team" : "85"
+	},
+	"decorations_list" : {
+		"700" : "Iron Cross Second Class",
+		"900" : "Iron Cross First Class",
+		"1000" : "Knight's Cross",
+		"1100" : "Knight's Cross with Oak Leaves"
+	},
+	"calendar_weeks": [
+		{
+			"start_date" : "1940.05.10",
+			"day_start" : "06:15",
+			"day_end" : "21:15",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Fall Gelb",
+			"mission_odds" : {
+				"Advance" : "25",
+				"Spearhead" : "75"
+			},
+			"enemy_nation" : "France",
+			"air_support_level" : 80.0,
+			"arty_support_level" : 80.0
+		},
+		{
+			"start_date" : "1940.05.17",
+			"day_start" : "06:00",
+			"day_end" : "21:30",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Stalemate",
+			"mission_odds" : {
+				"Advance" : "25",
+				"Battle" : "10",
+				"Spearhead" : "65"
+			},
+			"enemy_nation" : "France",
+			"air_support_level" : 80.0,
+			"arty_support_level" : 60.0
+		},
+		{
+			"start_date" : "1940.05.24",
+			"end_date" : "1944.05.30",
+			"refitting" : "TRUE"
+		},
+		{
+			"start_date" : "1940.05.31",
+			"day_start" : "06:00",
+			"day_end" : "21:45",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Second Offensive",
+			"mission_odds" : {
+				"Advance" : "50",
+				"Battle" : "50"
+			},
+			"enemy_nation" : "United Kingdom",
+			"air_support_level" : 80.0,
+			"arty_support_level" : 80.0
+		},
+		{
+			"start_date" : "1940.06.07",
+			"day_start" : "05:45",
+			"day_end" : "21:45",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Fall Rot",
+			"mission_odds" : {
+				"Advance" : "95",
+				"Battle" : "5"
+			},
+			"enemy_nation" : "United Kingdom",
+			"air_support_level" : 80.0,
+			"arty_support_level" : 80.0
+		},
+		{
+			"start_date" : "1940.06.14",
+			"day_start" : "05:45",
+			"day_end" : "21:45",
+			"combat_chance" : "80",
+			"average_resistance" : "8",
+			"week_description" : "Fall of France",
+			"mission_odds" : {
+				"Advance" : "70",
+				"Battle" : "10",
+				"Spearhead" : "30"
+			},
+			"enemy_nation" : "France",
+			"air_support_level" : 80.0,
+			"arty_support_level" : 80.0
+		}
+	]
+}

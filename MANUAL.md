@@ -161,14 +161,37 @@ Dureing this phase no input is required from the player; any crewman who can do 
 
 * Crew Action Phase
 
-Certain crew commands require additional input or will result in automatic actions during this phase. For example, a Gunner can manage his Ready Rack, moving shells into or out of it, or the Commander might throw a smoke grenade, providing some concealment for the player tank.
+Certain crew commands require additional input or will result in automatic actions during this phase. For example, a Gunner can manage his Ready Rack, moving shells into or out of it, or the Commander might throw a smoke grenade, providing some concealment for the player tank. You will need to select a crewman in order to see possible actions associated with his current command.
 
 * Movement Phase
 
-If the Driver has been given the "Drive" command, then the player can move the tank in this phase.
+If the Driver has been given the "Drive" command, then the player can attempt to move the tank in this phase. The Driver can attempt to drive the tank forward or backward, pivot the hull, or attempt to move into a Hull Down position.
+
+**Pivot Hull**
+
+The driver is free to pivot the tank hull to face any direction, without ending the Movement Phase. As you pivot, your facing on the map remains the same; instead, all other units on the map are rotated relative to your direction of pivot.
+
+**Forward and Backward Movement**
+  
+Since the battlefield is represented in a very abstract way, doing a move action will sometimes be successful, other times not. The odds of your tank moving far enough to shift the relative position of enemy units is displayed in the upper left console. Each failed attempt will increase the chance of a successful move in subsequent Movement Phases. If a move action is successful, your tank will appear in the same place, but every other unit on the Scenario Map will shift position.
+
+![Scenario Movement image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_movement.png "Player Movement")
+
+For example, in the image above, if the player completes a successful Move Forward action, then the enemy tank, unknown unit, and infantry unit will all shift downward one hex. The exception is if there is a unit directly in front of the player, in which case they leapfrog over the player and end up behind (the player moves past them and keeps going.) Reverse move actions would have the opposite effect. If an enemy unit would normally be pushed off the scenario map by a player move, they will stay in relative place instead. Enemy units can only move off the scenario map of their own accord.
+
+**Hull Down**
+
+When starting a scenario and after a move action, the player may find themselves in a Hull Down position in one direction. This means that a hill or other large solid object is covering their hull from that direction. Any incoming attacks that would have affected the Hull coming from that direction will instead have no effect. The Driver can try to get the tank into a HD position in the forward firection with the Attempt HD action.
+
+**Bogging Down**
+
+If the player's tank becomes bogged down, then the Driver must successfully unbog the tank in a subsequent Movemeng Phase before the tank can move again. Surviving player tanks are automatically unbogged at the end of a scenario.
 
 * Shooting Phase
+
 * Close Combat Phase
+
 * Allied Action Phase
+
 * Enemy Action Phase
 

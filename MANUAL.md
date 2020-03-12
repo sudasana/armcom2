@@ -1,5 +1,5 @@
 # Armoured Commander II
-### Game Manual for Alpha 12.0
+### Game Manual for Beta 1
 
 ## 1. General Principles
 
@@ -24,7 +24,7 @@ Several campaigns are included with the game. Each one takes place over a fixed 
 
 From this screen you can select a campaign to start, or have the game select one randomly.
 
-You can also set your **Campaign Options** in this menu. "Permadeath" means that your Commander represents you, and if he is killed or seriously injured, your campaign ends immediately. "Fate Points" are replenished at the start of each Campaign Day, and eash one silently saves you from an incoming attack that would have otherwise destroyed your tank.
+You can also set your **Campaign Options** in this menu. "Permadeath" means that your Commander represents you, and if he is killed or seriously injured, your campaign ends immediately. Otherwise you can continue your campaign with a newly assigned Commander. "Fate Points" are replenished at the start of each Campaign Day, and each one silently saves you from an incoming attack that would have otherwise destroyed your tank.
 
 ## 4. Tank and Crew Selection
 
@@ -42,17 +42,18 @@ Virtually everything you need to know about a unit is included in its unit infor
 * Medium Tank: This is the unit's class, indicating generally what type of unit it is
 * Portrait: A rough approximation of this unit as viewed from the side
 * 75mm, etc. (dark red background): A list of weapon systems on this unit, starting with its main armament
-  * Guns may be short (S) or long (L) barreled
+  * Guns may be short (S), long (L), or very long (LL) barreled
   * Co-ax weapons are mounted on the turret alongside (or as) the main gun
   * Anti-Aircraft (AA) machine guns (MG) can fire in any direction, but must often be fired from outside of the tank
   * Bow MGs are fixed to the front of the hull
+  * If a weapon is displayed in a light grey colour, it means that it is unrealiable and has a greater chance of breaking down
 * Armoured or Unarmoured vehicles have their armour values listed here
   * The T line refers to turret armour, but if there is no rotatable turret it will appear as U (Upper Structure) instead; if the turret has a fast traverse, this will be noted by (fast)
   * H refers to hull armour
   * The two armour values x/x refer to front and side armour respectively for that area
   * Rear armour values for any location are one level lower than its side level
 * The movement class of the unit is shown in green in the lower right
-  * If a vehicle has light ground pressure this will be displayed in a light shade of green, if heaver ground pressure, a darker shade. Ground pressure affects the change of bogging down.
+  * If a vehicle has light ground pressure this will be displayed in a light shade of green, if heavy ground pressure, a darker shade. Ground pressure affects the chance of bogging down.
   * If a vehicle has an especially powerful engine, a plus sign will appear next to the movement class
 * Any special vehicle features will appear below the movement class:
   * HVSS stands for Horizontal Volute Spring Suspension; vehicles with this upgrade are slightly faster and less likely to bog
@@ -149,29 +150,29 @@ Play on the Scenario Layer proceeds though a series of Phases, each one of which
 
 ### 8.1 Scenario Phases
 
-* Command Phase
+#### 8.11 Command Phase
 
 In this phase you can open and close the hatch for each crewman that has one, and you can assign one command to each of your tank crew that is neither unconscious nor dead. Each command will allow the crewman to do different types of tasks in the remainder of the turn. The sight radius of your crewman is highlighted on the scenario map in blue; different hatch statuses and commands will result in different areas of the map where your crewman can spot in the following phase. Descriptions for each command are displayed in the Contextual Console.
 
 Note that some commands will only become available when certain conditions are met; for example, you can only abandon your tank if it is immobilized or if you have 1+ crewmen who have been seriously injured.
 
-* Spotting Phase
+#### 8.12 Spotting Phase
 
-Dureing this phase no input is required from the player; any crewman who can do so will automatically try to spot any hidden enemy unit in his line of sight. If an enemy unit is spotted, its identity will be displayed in a pop-up message.
+During this phase no input is required from the player; any crewman who can do so will automatically try to spot any hidden enemy unit in his line of sight. If an enemy unit is spotted, its identity will be displayed in a pop-up message.
 
-* Crew Action Phase
+#### 8.13 Crew Action Phase
 
 Certain crew commands require additional input or will result in automatic actions during this phase. For example, a Gunner can manage his Ready Rack, moving shells into or out of it, or the Commander might throw a smoke grenade, providing some concealment for the player tank. You will need to select a crewman in order to see possible actions associated with his current command.
 
-* Movement Phase
+#### 8.14 Movement Phase
 
 If the Driver has been given the "Drive" command, then the player can attempt to move the tank in this phase. The Driver can attempt to drive the tank forward or backward, pivot the hull, or attempt to move into a Hull Down position.
 
-**Pivot Hull**
+##### Pivot Hull
 
 The driver is free to pivot the tank hull to face any direction, without ending the Movement Phase. As you pivot, your facing on the map remains the same; instead, all other units on the map are rotated relative to your direction of pivot.
 
-**Forward and Backward Movement**
+##### Forward and Backward Movement
   
 Since the battlefield is represented in a very abstract way, doing a move action will sometimes be successful, other times not. The odds of your tank moving far enough to shift the relative position of enemy units is displayed in the upper left console. Each failed attempt will increase the chance of a successful move in subsequent Movement Phases. If a move action is successful, your tank will appear in the same place, but every other unit on the Scenario Map will shift position.
 
@@ -179,19 +180,19 @@ Since the battlefield is represented in a very abstract way, doing a move action
 
 For example, in the image above, if the player completes a successful Move Forward action, then the enemy tank, unknown unit, and infantry unit will all shift downward one hex. The exception is if there is a unit directly in front of the player, in which case they leapfrog over the player and end up behind (the player moves past them and keeps going.) Reverse move actions would have the opposite effect. If an enemy unit would normally be pushed off the scenario map by a player move, they will stay in relative place instead. Enemy units can only move off the scenario map of their own accord.
 
-**Hull Down**
+##### Hull Down
 
 When starting a scenario and after a move action, the player may find themselves in a Hull Down position in one direction. This means that a hill or other large solid object is covering their hull from that direction. Any incoming attacks that would have affected the Hull coming from that direction will instead have no effect. The Driver can try to get the tank into a HD position in the forward firection with the Attempt HD action.
 
-**Bogging Down**
+##### Bogging Down
 
 If the player's tank becomes bogged down, then the Driver must successfully unbog the tank in a subsequent Movemeng Phase before the tank can move again. Surviving player tanks are automatically unbogged at the end of a scenario.
 
-* Shooting Phase
+#### 8.15 Shooting Phase
 
 During the Command Phase, one or more crewmen can be commanded to operate one of the tank's weapons. Most player tanks will have a gun as its main weapon, which can usually fire High Explosive (HE) rounds, Armour-Piercing (AP) rounds, and later in the war, Smoke rounds.
 
-**Gun Stats**
+##### Gun Stats
 
 Guns are defined by their calibre, with larger-calibre guns producing more of an effect on both soft and armoured targets, and usually better at long range as well. Guns can be short, long, or very long-barreled, indicated by an 'S', 'L', or 'LL' following their calibre in millimeters. The loader for each gun normally has access to a Ready Rack of ammo nearby, use of which makes it faster to reload the gun. Guns will also normally have an innate Rate of Fire chance, which indicates the odds of reloading the gun fast enough to allow two or even more shots per shooting phase. Use of the Ready Rack, as well as crew skills, can greatly increase these odds.
 
@@ -199,11 +200,11 @@ Guns are defined by their calibre, with larger-calibre guns producing more of an
 * AP is only effective against vehicles, and is best used against armoured targets
 * Smoke will produce concealing smoke upon impact, making it more difficult for enemy units to fire at you and your allies
 
-**Machine Guns**
+##### Machine Guns
 
 Most player tanks and many other vehicles have one or more machine gun (MG) weapons. Note that coaxial MGs, mounted next to a gun barrel, cannot fire in the same phase as the gun fires, and vice-versa. MGs are only effective against soft targets and unarmoured vehicles; at present (Beta 1) they have no effect on armoured enemy targets. MGs have chance to maintain RoF for additional attacks in the same phase.
 
-**Effect on Enemy Targets**
+##### Effect on Enemy Targets
 
 Enemy targets hit with HE or machine guns will have Firepower applied to them; an abstract measure of incoming fire. Firepower stacks from different attacks and is resolved at the end of each phase, so a unit hit by a bomb from an HE shell as well as MG fire will have a large amount of firepower to resolve at the end of the opposing side's phase. Higher total firepower values increase the chance that the unit will be destroyed, its soldiers killed, wounded, or routed from the battlefield.
 
@@ -213,9 +214,14 @@ Armoured targets hit with AP will undergo an Armour Penetration check immediatel
 
 The chance of the hit penetrating the target armour depends on the gun calibre, barrel length, distance from target, and thickness of target armour on the location hit. Especially powerful guns will automatically penetrate all but he thickest armour, as shown here. Enemy armoured targets that are penetrated are destroyed.
 
-* Close Combat Phase
+#### 8.16 Close Combat Phase
 
-* Allied Action Phase
+If there is an enemy infantry or gun unit directly in front of your tank during this phase, and if the Driver is on a 'Drive' command, you have the option of assaulting into the hex in front of you, engaging enemies there in close-range combat.
 
-* Enemy Action Phase
+#### 8.17 Allied Action Phase
 
+During this phase any other tanks in your squad will attack enemy targets automatically.
+
+#### 8.18 Enemy Action Phase
+
+During this phase enemy units will move around the map, and may attack you or your squadmates.

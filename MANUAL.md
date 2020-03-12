@@ -14,7 +14,7 @@ To **Continue** a campaign, it must have been saved with a compatible version of
 
 If you start a **New Campaign**, any current saved campaign will be erased. You can only have one saved campaign at any one time.
 
-**Game Options** can be accessed here and from the in-game menu as well. Changing the **Font Size** will change the total window size. **Sound Effects**, including the main menu theme, can be toggled here. **Message Pause** changes the length of time that pop-up messages are displayed before disappearing. Several **Keyboard** layouts are supported, and you can set your own keyboard mapping by editing the "custom" dictionary in the keyboard_mapping.json file in the data folder, and selecting it here.
+**Game Options** can be accessed here and from the in-game menu as well. Changing the **Font Size** will change the total window size. **Sound Effects**, including the main menu theme, can be toggled here. Changing the **Master Volume** will change the volume of the theme music and all sound effects. **Message Pause** changes the length of time that pop-up messages are displayed before disappearing. Several **Keyboard** layouts are supported, and you can set your own keyboard mapping by editing the "custom" dictionary in the keyboard_mapping.json file in the data folder, and selecting it here.
 
 ## 3. Campaign Selection
 

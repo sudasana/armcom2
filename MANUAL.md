@@ -52,6 +52,12 @@ Virtually everything you need to know about a unit is included in its unit infor
   * The two armour values x/x refer to front and side armour respectively for that area
   * Rear armour values for any location are one level lower than its side level
 * The movement class of the unit is shown in green in the lower right
+  * If a vehicle has light ground pressure this will be displayed in a light shade of green, if heaver ground pressure, a darker shade. Ground pressure affects the change of bogging down.
+  * If a vehicle has an especially powerful engine, a plus sign will appear next to the movement class
+* Any special vehicle features will appear below the movement class:
+  * HVSS stands for Horizontal Volute Spring Suspension; vehicles with this upgrade are slightly faster and less likely to bog
+  * Recce is short for reconnaissance, and means that the vehicle is less likely to be ambushed at the start of a scenario
+  * ATV means that this is an All-terrain Vehicle (no effect yet)
 * The size class of the unit appears below that. Larger targets are easiser to spot and hit
 * Finally, the normal number of crew for this unit
 

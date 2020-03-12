@@ -189,6 +189,30 @@ If the player's tank becomes bogged down, then the Driver must successfully unbo
 
 * Shooting Phase
 
+During the Command Phase, one or more crewmen can be commanded to operate one of the tank's weapons. Most player tanks will have a gun as its main weapon, which can usually fire High Explosive (HE) rounds, Armour-Piercing (AP) rounds, and later in the war, Smoke rounds.
+
+** Gun Stats **
+
+Guns are defined by their calibre, with larger-calibre guns producing more of an effect on both soft and armoured targets, and usually better at long range as well. Guns can be short, long, or very long-barreled, indicated by an 'S', 'L', or 'LL' following their calibre in millimeters. The loader for each gun normally has access to a Ready Rack of ammo nearby, use of which makes it faster to reload the gun. Guns will also normally have an innate Rate of Fire chance, which indicates the odds of reloading the gun fast enough to allow two or even more shots per shooting phase. Use of the Ready Rack, as well as crew skills, can greatly increase these odds.
+
+* HE produces an explosion upon impact, and is more effective against infantry, guns, and unarmoured vehicles
+* AP is only effective against vehicles, and is best used against armoured targets
+* Smoke will produce concealing smoke upon impact, making it more difficult for enemy units to fire at you and your allies
+
+** Machine Guns **
+
+Most player tanks and many other vehicles have one or more machine gun (MG) weapons. Note that coaxial MGs, mounted next to a gun barrel, cannot fire in the same phase as the gun fires, and vice-versa. MGs are only effective against soft targets and unarmoured vehicles; at present (Beta 1) they have no effect on armoured enemy targets.
+
+** Effect on Enemy Targets **
+
+Enemy targets hit with HE or machine guns will have Firepower applied to them; an abstract measure of incoming fire. Firepower stacks from different attacks and is resolved at the end of each phase, so a unit hit by a bomb from an HE shell as well as MG fire will have a large amount of firepower to resolve at the end of the opposing side's phase. Higher total firepower values increase the chance that the unit will be destroyed, its soldiers killed, wounded, or routed from the battlefield.
+
+Armoured targets hit with AP will undergo an Armour Penetration check immediately after each hit.
+
+![AP Roll image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_ap_roll.png "AP Roll")
+
+The chance of the hit penetrating the target armour depends on the gun calibre, barrel length, distance from target, and thickness of target armour on the location hit. Especially powerful guns will automatically penetrate all but he thickest armour, as shown here. Enemy armoured targets that are penetrated are destroyed.
+
 * Close Combat Phase
 
 * Allied Action Phase

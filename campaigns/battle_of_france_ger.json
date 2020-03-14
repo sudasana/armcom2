@@ -5,7 +5,7 @@
 	"player_nation" : "Germany",
 	"enemy_nations" : ["France", "United Kingdom"],
 	"region" : "Northwestern Europe",
-	"desc" : "After months of a 'Phoney War', Germany has attacked through the Low Countries. Lead your battlegroup over the border.",
+	"desc" : "After months of a 'Phoney War', Germany has attacked through the Low Countries. Lead your battlegroup over the border. (INCOMPLETE)",
 	"player_unit_list" : [
 		"Panzer II A", "Panzer 35(t)", "Panzer 38(t) A", "Panzer III D",
 		"Panzer III F", "Panzer IV A", "Panzer IV C", "Panzer IV D",

@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.0-dev-1'					# game version
+VERSION = '1.0.5'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -12742,7 +12742,7 @@ class Scenario:
 			#print('DEBUG: Starting close combat, round #' + str(combat_round) + '.')
 			
 			# calculate total firepower rating for attackers and defenders
-			attack_fp, defend_fp = 0,0
+			attack_fp, defend_fp = 1,1
 			
 			for unit in attacking_units:
 				# may have been destroyed or pinned during defensive fire

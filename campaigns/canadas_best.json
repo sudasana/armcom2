@@ -202,7 +202,7 @@
 			"air_support_level" : 50.0
 		},
 		{
-			"start_date" : "1944.10.22",
+			"start_date" : "1944.10.23",
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "50",
@@ -216,7 +216,7 @@
 			"air_support_level" : 50.0
 		},
 		{
-			"start_date" : "1944.10.29",
+			"start_date" : "1944.10.30",
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "70",
@@ -230,7 +230,7 @@
 			"air_support_level" : 50.0
 		},
 		{
-			"start_date" : "1944.11.05",
+			"start_date" : "1944.11.06",
 			"day_start" : "07:15",
 			"day_end" : "16:15",
 			"combat_chance" : "30",
@@ -244,7 +244,7 @@
 			"air_support_level" : 50.0
 		},
 		{
-			"start_date" : "1944.11.12",
+			"start_date" : "1944.11.13",
 			"end_date" : "1944.11.16",
 			"day_start" : "07:15",
 			"day_end" : "16:15",
@@ -258,7 +258,7 @@
 			"air_support_level" : 50.0
 		},
 		{
-			"start_date" : "1944.11.17",
+			"start_date" : "1944.11.20",
 			"end_date" : "1945.01.25",
 			"refitting" : "TRUE"
 		},

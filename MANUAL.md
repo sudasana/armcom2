@@ -3,7 +3,12 @@
 
 ## 1. General Principles
 
-In *Armoured Commander II*, you play the role of a tank commander in World War II, leading your crew through a campaign in one of the major conflicts of the war.
+In *Armoured Commander II*, you play the role of a tank commander in World War II, leading your crew through a campaign in one of the major conflicts of the war. It is (I would argue) a "[roguelike](http://www.roguebasin.com/index.php?title=Main_Page)" style of game, which in general means that it:
+* emphasizes gameplay over graphics, using an extended [Petscii](https://en.wikipedia.org/wiki/PETSCII) character set rather than bitmap graphics;
+* is turn-based and allows the player to stop and resume at virtually any point; and
+* rewards mastery of the game mechanics and encourages multiple playthroughs.
+
+The [original Armoured Commander](https://www.armouredcommander.com/blog/armoured-commander-i/) was very closely modelled upon and inspired by the [1987 board game Patton's Best](https://www.boardgamegeek.com/boardgame/4556/pattons-best), but ArmCom2 is an attempt to go beyond that model while maintaining the basic format of the player being in control of a single tank.
 
 ## 2. Main Menu
 

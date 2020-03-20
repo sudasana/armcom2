@@ -1,5 +1,5 @@
 # Armoured Commander II
-### Game Manual for Beta 1
+### Game Manual
 
 ## 1. General Principles
 

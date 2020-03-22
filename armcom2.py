@@ -3629,6 +3629,9 @@ class CampaignDay:
 					if ShowNotification(text, confirm=True):
 						exit_menu = True
 						continue
+				else:
+					exit_menu = True
+					continue
 			
 			# mapped key commands
 			key_char = DeKey(chr(key.c).lower())

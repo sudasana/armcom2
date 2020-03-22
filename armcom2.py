@@ -63,9 +63,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '1.0.5'					# game version
+VERSION = '1.0.6'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -948,7 +948,7 @@ class Campaign:
 				# last day of month
 				if int(day) == monthrange(int(year), int(month))[1]:
 					
-					# last day of year
+					# also last day of year
 					if int(month) == 12:
 						year = str(int(year) + 1)
 						month = '01'

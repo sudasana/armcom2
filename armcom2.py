@@ -3583,8 +3583,17 @@ class CampaignDay:
 		# select first weapon by default, and first ammo type
 		weapon = campaign.player_unit.weapon_list[0]
 		
-		# NEW: skip if main weapon is not a gun
+		# skip if main weapon is not a gun
 		if 'ammo_type_list' not in weapon.stats:
+			return
+		
+		# NEW: auto load and skip if only one ammo type choice for main gun
+		if len(weapon.stats['ammo_type_list']) == 1:
+			ammo_type = weapon.stats['ammo_type_list'][0]
+			weapon.ammo_stores[ammo_type] = int(weapon.stats['max_ammo'])
+			weapon.ready_rack[ammo_type] = weapon.rr_size
+			text = 'Your main gun has been fully loaded with ' + ammo_type + ' ammo.'
+			ShowMessage(text)
 			return
 		
 		selected_ammo_type = weapon.stats['ammo_type_list'][0]
@@ -3613,8 +3622,13 @@ class CampaignDay:
 			if not keypress: continue
 			
 			if key.vk == libtcod.KEY_ENTER:
-				exit_menu = True
-				continue
+				
+				# NEW: check to see if player might have skipped this step by mistake
+				if ammo_num == 0 and rr_num == 0:
+					text = 'No ammo loaded! Are you sure you want to proceed?'
+					if ShowNotification(text, confirm=True):
+						exit_menu = True
+						continue
 			
 			# mapped key commands
 			key_char = DeKey(chr(key.c).lower())

@@ -223,6 +223,10 @@ The chance of the hit penetrating the target armour depends on the gun calibre, 
 
 If there is an enemy infantry or gun unit directly in front of your tank during this phase, and if the Driver is on a 'Drive' command, you have the option of assaulting into the hex in front of you, engaging enemies there in close-range combat.
 
+Close Combat is effective but risky, especially for armoured vehicles. The current system is a placeholder until a future, better system can de designed. Each class of unit has a base firepower rating for when it is attacking or defending in close combat. If Close Combat is initiated, the defending unit gets a chance to engage in defensive fire, after which the attacking side has a chance to destroy one defending unit. The ratio between the total effective close combat firepower for each side determines the chance of destroying an opposing unit during each close combat round. Rounds continue until there are no units remaining on one side.
+
+Assaulting enemy units is likely best saved for when you have overwhelming firepower, and ideally when your target has already been Pinned.
+
 #### 8.17 Allied Action Phase
 
 During this phase any other tanks in your squad will attack enemy targets automatically.

@@ -3707,6 +3707,7 @@
 				"type" : "Gun",
 				"calibre" : "76",
 				"long_range" : "S",
+				"rof" : "1.0",
 				"rr_size" : "12",
 				"mount" : "Turret",
 				"fired_by" : ["Gunner"],

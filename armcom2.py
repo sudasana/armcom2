@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '1.0.6'					# game version
+VERSION = '1.0.7'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
@@ -2598,6 +2598,10 @@ class CampaignDay:
 			if hy == new_hy: continue
 			self.map_hexes[(hx,hy)] = CDMapHex(hx, hy, self.mission)
 			self.map_hexes[(hx,hy)].GenerateTerrainType()
+		
+		# NEW: calculate capture VP
+		for (hx, hy) in CAMPAIGN_DAY_HEXES:
+			self.map_hexes[(hx,hy)].CalcCaptureVP()
 	
 		# set up zone control
 		if self.mission == 'Fighting Withdrawal':

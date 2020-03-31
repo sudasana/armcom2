@@ -5277,9 +5277,6 @@ class CampaignDay:
 						self.AmmoReloadMenu()
 						self.UpdateCDDisplay()
 						
-						# check for crew replacement
-						self.DoCrewReplacementCheck(campaign.player_unit)
-						
 						# crew have a chance to rest
 						for position in campaign.player_unit.positions_list:
 							if position.crewman is None: continue
@@ -5787,18 +5784,32 @@ class Personnel:
 		self.nation = nation				# nationality of person
 		self.current_position = position		# pointer to current position in a unit
 		
+		# core data
+		self.alive = True				# is crewman alive or not
+		self.bailed_out = False				# has bailed out of an AFV
+		self.fatigue = -5				# current crew fatigue points
+		self.condition = 'Good Order'			# current mental and physical condition (replaces status)
+		self.injury = {					# injuries to different body system (replaces wound)
+			'Head and Neck' : None,
+			'Torso and Groin' : None,
+			'Right Arm and Hand' : None,
+			'Left Arm and Hand' : None,
+			'Right Leg and Foot' : None,
+			'Left Leg and Foot' : None
+		}
+		
 		self.first_name = ''				# placeholders for first and last name
 		self.last_name = ''				#   set by GenerateName()
 		self.GenerateName()				# generate random first and last name
 		self.nickname = ''				# player-set nickname
-		self.age = 21					# age in years
+		self.age = 20					# age in years
 		self.rank = 0					# rank level
 		
 		self.stats = {					# default stat values
-			'Perception' : 1,
-			'Grit' : 1,
-			'Knowledge' : 1,
-			'Morale' : 1
+			'Perception' : 1,			# used for spotting enemy units
+			'Grit' : 1,				# reduced chance of injury or condition getting worse
+			'Knowledge' : 1,			# applies a small bonus to all skills
+			'Morale' : 1				# resist fatigue and recover from negative condition
 		}
 		
 		# randomly increase two stats to 3
@@ -5833,7 +5844,7 @@ class Personnel:
 			self.level = 4
 			self.exp = GetExpRequiredFor(self.level)
 			self.adv = 4
-			self.age += libtcod.random_get_int(0, 3, 8)
+			self.age += libtcod.random_get_int(0, 3, 9)
 			self.rank = 2
 		
 		# gunners a little higher
@@ -5841,7 +5852,7 @@ class Personnel:
 			self.level = 2
 			self.exp = GetExpRequiredFor(self.level)
 			self.adv = 2
-			self.age += libtcod.random_get_int(0, 1, 4)
+			self.age += libtcod.random_get_int(0, 2, 5)
 			self.rank = 1
 		
 		# give current age, set random birthday
@@ -5850,8 +5861,6 @@ class Personnel:
 		day = choice(monthrange(year, month))
 		self.birthday = str(year) + '.' + str(month).zfill(2) + '.' + str(day).zfill(2)
 		
-		self.fatigue = -5				# current crew fatigue points
-		
 		# exposed / buttoned up status
 		self.ce = False					# crewman is exposed in a vehicle
 		self.SetCEStatus()				# set CE status
@@ -5859,10 +5868,6 @@ class Personnel:
 		self.cmd_list = []				# list of possible commands
 		self.current_cmd = 'Spot'			# currently assigned command in scenario
 		
-		self.status = ''				# current status: Stunned, Unconscious, or Dead
-		self.wound = ''					# current wound: Light, Serious, or Critical
-		
-		self.bailed_out = False				# has bailed out of an AFV
 	
 	
 	# award a number of exp to this crewman

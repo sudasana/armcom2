@@ -67,6 +67,7 @@ DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2.0.0-alpha'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
+SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
 CAMPAIGNPATH = 'campaigns/'.replace('/', os.sep)	# path to campaign files
 
@@ -866,6 +867,8 @@ BASE_WEATHER_UPDATE_CLOCK = 30
 class Campaign:
 	def __init__(self):
 		
+		self.filename = ''		# record filename of campaign definitions
+		
 		self.options = {
 			'permadeath' : True,
 			'fate_points' : True
@@ -1204,6 +1207,7 @@ class Campaign:
 		
 		# create a local copy of selected campaign stats
 		with open(CAMPAIGNPATH + selected_campaign['filename'], encoding='utf8') as data_file:
+			self.filename = selected_campaign['filename'].rsplit('.', 1)[0]
 			self.stats = json.load(data_file)
 		
 		# generate list of combat days
@@ -15011,22 +15015,27 @@ def RestrictChance(chance):
 	return chance
 
 
-# save the current game in progress
+# save the current campaign in progress
 def SaveGame():
 	if DEBUG:
 		if session.debug['Suspend Save']: return
-	save = shelve.open('savegame', 'n')
+	path = SAVEPATH + campaign.filename + os.sep
+	if not os.path.isdir(path): os.mkdir(path)
+	save = shelve.open(path + 'savegame', 'n')
 	save['campaign'] = campaign
 	save['campaign_day'] = campaign_day
 	save['scenario'] = scenario
 	save['version'] = VERSION
+	save['datetime'] = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
 	save.close()
 
 
 # load a saved game
-def LoadGame():
+def LoadGame(directory):
 	global campaign, campaign_day, scenario
-	save = shelve.open('savegame')
+	
+	path = SAVEPATH + directory + os.sep
+	save = shelve.open(path + 'savegame')
 	campaign = save['campaign']
 	campaign_day = save['campaign_day']
 	scenario = save['scenario']
@@ -15771,9 +15780,7 @@ def DisplayCrew(unit, console, x, y, highlight):
 
 # generate keyboard encoding and decoding dictionaries
 def GenerateKeyboards():
-	
 	global keyboard_decode, keyboard_encode
-
 	keyboard_decode = {}
 	keyboard_encode = {}
 	with open(DATAPATH + 'keyboard_mapping.json', encoding='utf8') as data_file:
@@ -15787,18 +15794,66 @@ def GenerateKeyboards():
 
 # turn an inputted key into a standard key input
 def DeKey(key_char):
-	if key_char in keyboard_decode:
-		return keyboard_decode[key_char]
+	if key_char in keyboard_decode: return keyboard_decode[key_char]
 	return key_char
 
 
 
 # turn a standard key into the one for the current keyboard layout
 def EnKey(key_char):
-	if key_char in keyboard_encode:
-		return keyboard_encode[key_char]
+	if key_char in keyboard_encode: return keyboard_encode[key_char]
 	return key_char
+
+
+
+# load campaign menu
+def LoadCampaignMenu(continue_most_recent):
 	
+	# generate a list of all saved campaigns
+	saved_game_list = []
+	for directory in os.listdir(SAVEPATH):
+		if not os.path.isdir(SAVEPATH + directory): continue
+		
+		game_info = {}
+		
+		with shelve.open(SAVEPATH + directory + os.sep + 'savegame') as save:
+			
+			# TODO: check for saved game version compatibility
+			
+			game_info['directory'] = directory
+			game_info['version'] = save['version']
+			game_info['datetime'] = save['datetime']
+			game_info['campaign_name'] = save['campaign'].stats['name']
+		
+		saved_game_list.append(game_info)
+	
+	# make sure there's at least one saved game
+	if len(saved_game_list) == 0:
+		return False
+	
+	print('DEBUG: found ' + str(len(saved_game_list)) + ' saved campaigns')
+	
+	
+	# sort by most recently saved
+	saved_game_list = sorted(saved_game_list, key=lambda k: k['datetime'], reverse=True)
+	
+	
+	# if we're continuing, load the most recently saved and return
+	if continue_most_recent:
+		
+		# TODO: check for saved game version compatibility
+		
+		LoadGame(saved_game_list[0]['directory'])
+		return True
+	
+	
+	
+	# otherwise, show menu and get player input
+
+	
+	# TEMP
+	return False
+
 
 
 ##########################################################################################
@@ -16054,6 +16109,10 @@ gradient_x = WINDOW_WIDTH + 5
 # draw the main title to the screen and display menu options
 # if options_menu_active, draw the options menu instead
 def UpdateMainTitleCon(options_menu_active):
+	
+	# TODO: set flag to say whether 1+ saved campaigns are available
+	
+	
 	libtcod.console_blit(main_title, 0, 0, 0, 0, con, 0, 0)
 	
 	y = 38
@@ -16064,23 +16123,24 @@ def UpdateMainTitleCon(options_menu_active):
 		
 	else:
 		
-		for (char, text) in [('C', 'Continue'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]:
-			# grey-out continue game option if no saved game present
+		for (char, text) in [('C', 'Continue'), ('L', 'Load Campaign'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]:
+			# grey-out option if not possible
 			disabled = False
-			if char == 'C' and not os.path.exists('savegame.dat'):
-				disabled = True
+			
+			#if char == 'C' and not os.path.exists('savegame.dat'):
+			#	disabled = True
 			
 			if disabled:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
 			else:
 				libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-			libtcod.console_print(con, WINDOW_XM-5, y, char)
+			libtcod.console_print(con, WINDOW_XM-6, y, char)
 			
 			if disabled:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
 			else:
 				libtcod.console_set_default_foreground(con, libtcod.lighter_grey)
-			libtcod.console_print(con, WINDOW_XM-3, y, text)	
+			libtcod.console_print(con, WINDOW_XM-4, y, text)	
 			
 			y += 1
 	
@@ -16152,53 +16212,28 @@ while not exit_game:
 			UpdateMainTitleCon(options_menu_active)
 			continue
 		
-		# start or continue a campaign
-		elif key_char in ['n', 'c']:
+		# start a new campaign, or load a saved campaign
+		elif key_char in ['n', 'c', 'l']:
 			
-			# check/confirm menu option
-			if key_char == 'c':
-				if not os.path.exists('savegame.dat'):
+			# continue most recently saved campaign, or load a saved campaign
+			if key_char in ['c', 'l']:
+				
+				# pop into load campaign menu
+				if not LoadCampaignMenu(key_char == 'c'):
+					campaign = None
+					UpdateMainTitleCon(options_menu_active)
 					continue
-				
-				if CheckSavedGameVersion()  != '':
-					text = 'Saved game was saved with a different version of the program (' + result + '), cannot continue.'
-					ShowNotification(text)
-					libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-					continue
-				
-				libtcod.console_clear(0)
-				libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
-					'Loading...')
-				libtcod.console_flush()
-				
-				# load the saved game
-				LoadGame()
-				
-				# pause main theme if loaded
-				if main_theme is not None:
-					mixer.Mix_PauseMusic()
 			
+			# start a new campaign
+			# TODO: new campaign menu will warn if this will overwrite a saved game
 			else:
-				# confirm savegame overwrite
-				if os.path.exists('savegame.dat'):
-					text = 'Starting a new campaign will PERMANTLY ERASE the existing saved campaign.'
-					# cancel and return to main menu
-					if not ShowNotification(text, confirm=True):
-						libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-						continue
-			        
-			        ### Start a New Campaign ###
-			        
-			        # create a new campaign object and allow player to select a campaign
+				
+				# create a new campaign object and allow player to select a campaign
 				campaign = Campaign()
 				if not campaign.CampaignSelectionMenu():
 					campaign = None
 					UpdateMainTitleCon(options_menu_active)
 					continue
-				
-				# pause main theme if loaded
-				if main_theme is not None:
-					mixer.Mix_PauseMusic()
 				
 				# allow player to select their tank and tank name
 				(unit_id, tank_name) = campaign.TankSelectionMenu()
@@ -16216,12 +16251,15 @@ while not exit_game:
 					campaign_day.map_hexes[(hx,hy)].CalcCaptureVP()
 				campaign_day.GenerateRoads()
 				campaign_day.GenerateRivers()
-				# add journal entry for start of day
 				campaign.AddJournal('Start of day')
 				
 				# placeholder for the currently active scenario
 				scenario = None
 				
+			# pause main theme if loaded
+			if main_theme is not None:
+				mixer.Mix_PauseMusic()
+			
 			# go to campaign calendar loop
 			campaign.DoCampaignCalendarLoop()
 			
@@ -16237,6 +16275,5 @@ while not exit_game:
 					mixer.Mix_PlayMusic(main_theme, -1)
 			
 			UpdateMainTitleCon(options_menu_active)
-			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 
 # END #

@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.0-alpha'					# game version
+VERSION = '2.0.0-dev'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
@@ -917,7 +917,7 @@ class Campaign:
 		self.AwardDecorations()
 		self.DisplayCampaignSummary()
 		ExportLog()
-		EraseGame()
+		EraseGame(campaign.filename)
 	
 	
 	# check to see whether player character has the give national skill
@@ -15034,8 +15034,7 @@ def SaveGame():
 def LoadGame(directory):
 	global campaign, campaign_day, scenario
 	
-	path = SAVEPATH + directory + os.sep
-	save = shelve.open(path + 'savegame')
+	save = shelve.open(SAVEPATH + directory + os.sep + 'savegame')
 	campaign = save['campaign']
 	campaign_day = save['campaign_day']
 	scenario = save['scenario']
@@ -15043,12 +15042,9 @@ def LoadGame(directory):
 
 
 # check the saved game to see if it is compatible with the current game version
-def CheckSavedGameVersion():
-	save = shelve.open('savegame')
-	saved_version = save['version']
-	save.close()
-	
-	# if either is a development version, must match exactly
+def CheckSavedGameVersion(saved_version):
+
+	# if either is a development version, versions must match exactly
 	if 'dev' in saved_version or 'dev' in VERSION:
 		if saved_version != VERSION:
 			return saved_version
@@ -15063,10 +15059,10 @@ def CheckSavedGameVersion():
 
 
 # remove a saved game
-def EraseGame():
-	os.remove('savegame.dat')
-	os.remove('savegame.dir')
-	os.remove('savegame.bak')
+def EraseGame(directory):
+	os.remove(SAVEPATH + directory + os.sep + 'savegame.dat')
+	os.remove(SAVEPATH + directory + os.sep + 'savegame.dir')
+	os.remove(SAVEPATH + directory + os.sep + 'savegame.bak')
 
 
 # try to load game settings from config file
@@ -15818,7 +15814,9 @@ def LoadCampaignMenu(continue_most_recent):
 		
 		with shelve.open(SAVEPATH + directory + os.sep + 'savegame') as save:
 			
-			# TODO: check for saved game version compatibility
+			# check for saved game version compatibility
+			if CheckSavedGameVersion(save['version']) != '':
+				continue
 			
 			game_info['directory'] = directory
 			game_info['version'] = save['version']
@@ -15833,22 +15831,15 @@ def LoadCampaignMenu(continue_most_recent):
 	
 	print('DEBUG: found ' + str(len(saved_game_list)) + ' saved campaigns')
 	
-	
 	# sort by most recently saved
 	saved_game_list = sorted(saved_game_list, key=lambda k: k['datetime'], reverse=True)
 	
-	
 	# if we're continuing, load the most recently saved and return
 	if continue_most_recent:
-		
-		# TODO: check for saved game version compatibility
-		
 		LoadGame(saved_game_list[0]['directory'])
 		return True
 	
-	
-	
-	# otherwise, show menu and get player input
+	# TODO: otherwise, show menu and get player input
 
 	
 	# TEMP

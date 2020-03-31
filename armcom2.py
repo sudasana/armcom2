@@ -15805,6 +15805,39 @@ def EnKey(key_char):
 # load campaign menu
 def LoadCampaignMenu(continue_most_recent):
 	
+	def UpdateLoadCampaignScreen(selected_save):
+		libtcod.console_clear(con)
+		
+		libtcod.console_set_default_foreground(con, libtcod.light_blue)
+		libtcod.console_print_ex(con, 45, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Load Saved Campaign')
+		
+		# list saved campaigns
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_set_default_background(con, libtcod.darker_blue)
+		y = 5
+		
+		for save in saved_game_list:
+			if save == selected_save:
+				libtcod.console_rect(con, 2, y, 23, 2, True, libtcod.BKGND_SET)
+			libtcod.console_print(con, 2, y, save['campaign_name'])
+			y += 2
+		
+		# TODO: display details about selected saved campaign
+		
+		# display key commands
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print(con, 32, 54, EnKey('w').upper() + '/' + EnKey('s').upper())
+		libtcod.console_print(con, 32, 55, 'Enter')
+		libtcod.console_print(con, 32, 56, 'Esc')
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print(con, 38, 54, 'Select Saved Campaign')
+		libtcod.console_print(con, 38, 55, 'Load and Continue Campaign')
+		libtcod.console_print(con, 38, 56, 'Return to Main Menu')
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+			
+	
 	# generate a list of all saved campaigns
 	saved_game_list = []
 	for directory in os.listdir(SAVEPATH):
@@ -15816,10 +15849,10 @@ def LoadCampaignMenu(continue_most_recent):
 			
 			# check for saved game version compatibility
 			if CheckSavedGameVersion(save['version']) != '':
+				print('DEBUG: discarded a saved campaign from an earlier game version')
 				continue
 			
 			game_info['directory'] = directory
-			game_info['version'] = save['version']
 			game_info['datetime'] = save['datetime']
 			game_info['campaign_name'] = save['campaign'].stats['name']
 		
@@ -15839,11 +15872,38 @@ def LoadCampaignMenu(continue_most_recent):
 		LoadGame(saved_game_list[0]['directory'])
 		return True
 	
-	# TODO: otherwise, show menu and get player input
-
+	# otherwise, show menu and get player input
 	
-	# TEMP
-	return False
+	# select first campaign by default
+	selected_save = saved_game_list[0]
+		
+	# draw menu screen for first time
+	UpdateLoadCampaignScreen(selected_save)
+		
+	exit_menu = False
+	while not exit_menu:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		if not GetInputEvent(): continue
+		
+		# return to main menu without loading a game
+		if key.vk == libtcod.KEY_ESCAPE:
+			return False
+		
+		# proceed with loading selected campaign
+		elif key.vk == libtcod.KEY_ENTER:
+			exit_menu = True
+		
+		key_char = DeKey(chr(key.c).lower())
+		
+		# TODO: change selected campaign
+		if key_char in ['w', 's']:
+			pass
+	
+	# load the game and return
+	LoadGame(selected_save['directory'])
+	return True
+
 
 
 

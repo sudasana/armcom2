@@ -17,15 +17,18 @@
 	"player_air_support": [
 		"P-47 Thunderbolt"
 	],
-	"enemy_unit_list" : [
-		"Panzer IV A", "Panzer IV C", "Panzer IV H", "Panzer VG", "Panzer VIe",
-		"Panzer VIe (Late)",
-		"StuG III G", "Marder II", "Marder III M", "Jagdpanzer IV", "Jagdpanzer 38(t)",
-		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
-		"PSW 231 (8 rad)", "PSW 234/2",
-		"PaK 38", "PaK 40", "PaK 43", "Opel Blitz 3-ton",
-		"Riflemen", "HMG Team"
-	],
+	"enemy_unit_list" : {
+		"Germany" : [
+			"Panzer IV A", "Panzer IV C", "Panzer IV H", "Panzer VG", "Panzer VIe",
+			"Panzer VIe (Late)",
+			"StuG III G", "Marder II", "Marder III M", "Jagdpanzer IV",
+			"Jagdpanzer 38(t)",
+			"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
+			"PSW 231 (8 rad)", "PSW 234/2",
+			"PaK 38", "PaK 40", "PaK 43", "Opel Blitz 3-ton",
+			"Riflemen", "HMG Team"
+		]
+	},
 	"enemy_unit_class_odds" : {
 		"Light Tank" : "70",
 		"Assault Gun" : "80",
@@ -58,7 +61,7 @@
 				"Counterattack" : "20",
 				"Spearhead" : "20"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 80.0
 		},
 		{
@@ -72,7 +75,7 @@
 				"Battle" : "5",
 				"Spearhead" : "40"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 80.0
 		},
 		{
@@ -87,7 +90,7 @@
 				"Counterattack" : "10",
 				"Spearhead" : "20"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 80.0
 		},
 		{
@@ -102,7 +105,7 @@
 				"Counterattack" : "20",
 				"Spearhead" : "40"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 80.0
 		},
 		{
@@ -117,7 +120,7 @@
 				"Counterattack" : "20",
 				"Spearhead" : "20"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 80.0
 		},
 		{
@@ -132,7 +135,7 @@
 				"Battle" : "25",
 				"Counterattack" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -152,7 +155,7 @@
 				"Counterattack" : "20",
 				"Spearhead" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -167,7 +170,7 @@
 				"Battle" : "45",
 				"Spearhead" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -181,7 +184,7 @@
 				"Battle" : "5",
 				"Counterattack" : "45"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -194,7 +197,7 @@
 				"Battle" : "15",
 				"Counterattack" : "85"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -213,7 +216,7 @@
 				"Counterattack" : "60",
 				"Spearhead" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -227,7 +230,7 @@
 				"Battle" : "10",
 				"Spearhead" : "40"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -240,7 +243,7 @@
 				"Advance" : "90",
 				"Counterattack" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -254,7 +257,7 @@
 				"Battle" : "20",
 				"Spearhead" : "20"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 90.0
 		},
 		{
@@ -274,7 +277,7 @@
 				"Counterattack" : "10",
 				"Spearhead" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -288,7 +291,7 @@
 				"Advance" : "20",
 				"Counterattack" : "80"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 80.0
 		},
 		{
@@ -306,7 +309,7 @@
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 60.0
 		},
 		{
@@ -319,7 +322,7 @@
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 70.0
 		},
 		{
@@ -332,7 +335,7 @@
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 70.0
 		},
 		{
@@ -346,7 +349,7 @@
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 70.0
 		},
 		{
@@ -365,7 +368,7 @@
 				"Battle" : "80",
 				"Spearhead" : "5"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -384,7 +387,7 @@
 				"Battle" : "10",
 				"Spearhead" : "50"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -403,7 +406,7 @@
 				"Battle" : "30",
 				"Spearhead" : "30"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -421,7 +424,7 @@
 				"Advance" : "70",
 				"Battle" : "30"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -435,7 +438,7 @@
 				"Battle" : "10",
 				"Spearhead" : "50"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 50.0
 		},
 		{
@@ -449,7 +452,7 @@
 				"Battle" : "10",
 				"Spearhead" : "30"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 60.0
 		},
 		{
@@ -462,7 +465,7 @@
 				"Battle" : "10",
 				"Counterattack" : "90"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"air_support_level" : 70.0
 		}
 	]

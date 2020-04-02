@@ -1964,13 +1964,13 @@ class Campaign:
 			libtcod.console_print(calendar_main_panel, x+19, y+19, text)
 			
 			# expected enemy forces
+			# TODO: Is this still needed?
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
 			libtcod.console_print_ex(calendar_main_panel, x+10, y+23, libtcod.BKGND_NONE,
 				libtcod.CENTER,	'Expected Enemy Forces')
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
 			
-			text = session.nations[campaign.current_week['enemy_nation']]['adjective']
-			text += ' infantry, guns, and AFVs'
+			text = 'Infantry, guns, and AFVs'
 			lines = wrap(text, 30)
 			y1 = y+25
 			for line in lines:
@@ -9736,6 +9736,7 @@ class Scenario:
 		self.cd_map_hex = cd_map_hex			# Campaign Day map hex where this scenario is taking place
 		self.ambush = False				# enemy units activate first, greater chance of spawning behind player
 		self.finished = False				# Scenario has ended, returning to Campaign Day map
+		self.enemy_nation = None			# enemy nation for this scenario
 		self.class_type_dict = {}			# dictionary of unit types for each class; once set, further units will be of the same type
 		
 		# animation object; keeps track of active animations on the animation console
@@ -10324,8 +10325,12 @@ class Scenario:
 	# can be overidden to spawn a specific number of units
 	def SpawnEnemyUnits(self, num_units=None):
 		
+		# if not enemy nation set yet, set it now
+		if self.enemy_nation == None:
+			self.enemy_nation = choice(campaign.current_week['enemy_nations'])
+		
 		# pointer to unit type list from campaign object
-		unit_type_list = campaign.stats['enemy_unit_list']
+		unit_type_list = campaign.stats['enemy_unit_list'][self.enemy_nation]
 		
 		# load unit stats for reference from JSON file
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
@@ -10352,7 +10357,6 @@ class Scenario:
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
-				
 				enemy_unit_list.append(self.class_type_dict[unit_class])
 			
 			else:
@@ -10455,7 +10459,7 @@ class Scenario:
 			# create the unit
 			unit = Unit(unit_id)
 			unit.owning_player = 1
-			unit.nation = campaign.current_week['enemy_nation']
+			unit.nation = self.enemy_nation
 			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			unit.SpawnAt(hx, hy)

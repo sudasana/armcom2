@@ -25,14 +25,16 @@
 	"enemy_arty_support": [
 		"7.5cm leIG 18"
 	],
-	"enemy_unit_list" : [
-		"Panzer I B", "Panzer II A", "Panzer II F", "Panzer 35(t)", "Panzer 38(t) A", 
-		"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C", "Panzer IV D",
-		"StuG III B", "Panzerjager I", "SPW 251/10",
-		"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
-		"PSW 231 (8 rad)", "PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
-		"SPW 251/1", "Riflemen", "Motorcycle MG Team", "HMG Team"
-	],
+	"enemy_unit_list" : {
+		"Germany" : [
+			"Panzer I B", "Panzer II A", "Panzer II F", "Panzer 35(t)", "Panzer 38(t) A", 
+			"Panzer III D", "Panzer III F", "Panzer IV A", "Panzer IV C", "Panzer IV D",
+			"StuG III B", "Panzerjager I", "SPW 251/10",
+			"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
+			"PSW 231 (8 rad)", "PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
+			"SPW 251/1", "Riflemen", "Motorcycle MG Team", "HMG Team"
+		]
+	},
 	"enemy_unit_class_odds" : {
 		"Light Tank" : "90",
 		"Medium Tank" : "80",
@@ -65,7 +67,7 @@
 				"Battle" : "5",
 				"Counterattack" : "70"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"arty_support_level" : 80.0
 		},
 		{
@@ -80,7 +82,7 @@
 				"Battle" : "70",
 				"Counterattack" : "25"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"arty_support_level" : 60.0
 		},
 		{
@@ -100,7 +102,7 @@
 				"Battle" : "70",
 				"Counterattack" : "25"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"arty_support_level" : 40.0
 		},
 		{
@@ -115,7 +117,7 @@
 				"Battle" : "70",
 				"Counterattack" : "25"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"arty_support_level" : 30.0
 		},
 		{
@@ -129,7 +131,7 @@
 				"Battle" : "70",
 				"Counterattack" : "30"
 			},
-			"enemy_nation" : "Germany",
+			"enemy_nations" : ["Germany"],
 			"arty_support_level" : 20.0
 		}
 	]

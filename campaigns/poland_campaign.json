@@ -25,11 +25,15 @@
 	"enemy_arty_support": [
 		"75mm wz. 02/26", "105mm wz. 29"
 	],
-	"enemy_unit_list" : [
-		"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Renault FT (MG)", "Vickers 6-Ton Mark E", "7TP",
-		"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
-		"75mm wz. 97/25", "Polski Fiat 621", "Riflemen", "HMG Team", "Light Artillery Car"
-	],
+	"enemy_unit_list" : {
+		"Poland" : [
+			"TK-3", "TKS", "TKS (20mm)", "Renault FT", "Renault FT (MG)",
+			"Vickers 6-Ton Mark E", "7TP",
+			"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
+			"75mm wz. 97/25", "Polski Fiat 621", "Riflemen", "HMG Team",
+			"Light Artillery Car"
+		]
+	},
 	"enemy_unit_class_odds" : {
 		"Tankette" : "40",
 		"Light Tank" : "25",
@@ -61,7 +65,7 @@
 				"Battle" : "5",
 				"Spearhead" : "70"
 			},
-			"enemy_nation" : "Poland",
+			"enemy_nations" : ["Poland"],
 			"air_support_level" : 80.0,
 			"arty_support_level" : 50.0
 		},
@@ -77,7 +81,7 @@
 				"Battle" : "15",
 				"Spearhead" : "60"
 			},
-			"enemy_nation" : "Poland",
+			"enemy_nations" : ["Poland"],
 			"air_support_level" : 70.0,
 			"arty_support_level" : 50.0,
 			"enemy_class_odds_modifier" : {
@@ -96,7 +100,7 @@
 				"Battle" : "35",
 				"Spearhead" : "40"
 			},
-			"enemy_nation" : "Poland",
+			"enemy_nations" : ["Poland"],
 			"air_support_level" : 70.0,
 			"arty_support_level" : 30.0,
 			"enemy_class_odds_modifier" : {
@@ -116,7 +120,7 @@
 				"Counterattack" : "10",
 				"Spearhead" : "40"
 			},
-			"enemy_nation" : "Poland",
+			"enemy_nations" : ["Poland"],
 			"air_support_level" : 70.0,
 			"arty_support_level" : 50.0
 		},
@@ -131,7 +135,7 @@
 				"Advance" : "80",
 				"Spearhead" : "20"
 			},
-			"enemy_nation" : "Poland",
+			"enemy_nations" : ["Poland"],
 			"air_support_level" : 70.0,
 			"arty_support_level" : 60.0
 		}

@@ -24,10 +24,13 @@
 	"player_arty_support": [
 		"105 K/13"
 	],
-	"enemy_unit_list" : [
-		"T-26 M33", "BT-5 M34", "BT-7 M37", "BT-7A", "T-28 M34", "BA-20", "BA-6",
-		"SU-12", "45mm obr. 1932", "76.2mm obr. 00/02P", "Riflemen", "HMG Team"
-	],
+	"enemy_unit_list" : {
+		"Soviet Union" : [
+			"T-26 M33", "BT-5 M34", "BT-7 M37", "BT-7A", "T-28 M34", "BA-20",
+			"BA-6", "SU-12", "45mm obr. 1932", "76.2mm obr. 00/02P",
+			"Riflemen", "HMG Team"
+		]
+	},
 	"enemy_unit_class_odds" : {
 		"Light Tank" : "25",
 		"Medium Tank" : "10",
@@ -57,7 +60,7 @@
 				"Counterattack" : "20",
 				"Fighting Withdrawal" : "80"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -74,7 +77,7 @@
 				"Counterattack" : "30",
 				"Fighting Withdrawal" : "60"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -91,7 +94,7 @@
 				"Counterattack" : "30",
 				"Fighting Withdrawal" : "60"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -108,7 +111,7 @@
 				"Counterattack" : "30",
 				"Fighting Withdrawal" : "60"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -130,7 +133,7 @@
 				"Counterattack" : "60",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -147,7 +150,7 @@
 				"Counterattack" : "60",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -164,7 +167,7 @@
 				"Counterattack" : "60",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -186,7 +189,7 @@
 				"Counterattack" : "0",
 				"Fighting Withdrawal" : "80"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 10.0,
 			"arty_support_level" : 80.0
 		},
@@ -203,7 +206,7 @@
 				"Counterattack" : "0",
 				"Fighting Withdrawal" : "90"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -220,7 +223,7 @@
 				"Counterattack" : "60",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -237,7 +240,7 @@
 				"Counterattack" : "60",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -254,7 +257,7 @@
 				"Counterattack" : "60",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		},
@@ -271,7 +274,7 @@
 				"Counterattack" : "60",
 				"Fighting Withdrawal" : "10"
 			},
-			"enemy_nation" : "Soviet Union",
+			"enemy_nations" : ["Soviet Union"],
 			"air_support_level" : 20.0,
 			"arty_support_level" : 80.0
 		}

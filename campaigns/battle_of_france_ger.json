@@ -23,8 +23,13 @@
 	"player_arty_support": [
 		"7.5cm leIG 18"
 	],
-	"enemy_unit_list" : [
-		"Riflemen", "Motorcycle MG Team", "HMG Team"
+	"enemy_unit_list" : {
+		"France" : [
+			"Riflemen", "Motorcycle MG Team", "HMG Team"
+		],
+		"United Kingdom" : [
+			"Riflemen", "Motorcycle MG Team", "HMG Team"
+		]
 	],
 	"enemy_unit_class_odds" : {
 		"Light Tank" : "90",
@@ -59,7 +64,7 @@
 				"Advance" : "25",
 				"Spearhead" : "75"
 			},
-			"enemy_nation" : "France",
+			"enemy_nations" : ["France", "United Kingdom"],
 			"air_support_level" : 80.0,
 			"arty_support_level" : 80.0
 		},
@@ -75,7 +80,7 @@
 				"Battle" : "10",
 				"Spearhead" : "65"
 			},
-			"enemy_nation" : "France",
+			"enemy_nations" : ["France", "United Kingdom"],
 			"air_support_level" : 80.0,
 			"arty_support_level" : 60.0
 		},
@@ -95,7 +100,7 @@
 				"Advance" : "50",
 				"Battle" : "50"
 			},
-			"enemy_nation" : "United Kingdom",
+			"enemy_nations" : ["France", "United Kingdom"],
 			"air_support_level" : 80.0,
 			"arty_support_level" : 80.0
 		},
@@ -110,7 +115,7 @@
 				"Advance" : "95",
 				"Battle" : "5"
 			},
-			"enemy_nation" : "United Kingdom",
+			"enemy_nations" : ["France", "United Kingdom"],
 			"air_support_level" : 80.0,
 			"arty_support_level" : 80.0
 		},
@@ -126,7 +131,7 @@
 				"Battle" : "10",
 				"Spearhead" : "30"
 			},
-			"enemy_nation" : "France",
+			"enemy_nations" : ["France", "United Kingdom"],
 			"air_support_level" : 80.0,
 			"arty_support_level" : 80.0
 		}

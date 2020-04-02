@@ -1002,7 +1002,7 @@ class Campaign:
 		campaign_day.day_vp += vp_to_add
 		for position in self.player_unit.positions_list:
 			if position.crewman is None: continue
-			if position.crewman.status not in ['Dead', 'Unconscious']:
+			if position.crewman.alive:
 				position.crewman.AwardExp(vp_to_add)
 	
 	
@@ -1101,8 +1101,8 @@ class Campaign:
 			libtcod.console_print(con, 66, 6, 'Permadeath')
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			libtcod.console_print(con, 64, 8, 'If your commander is')
-			libtcod.console_print(con, 64, 9, 'killed/seriously injured,')
-			libtcod.console_print(con, 64, 10, 'your campaign ends.')
+			libtcod.console_print(con, 64, 9, 'killed, your campaign')
+			libtcod.console_print(con, 64, 10, 'ends.')
 			
 			if self.options['fate_points']:
 				libtcod.console_set_default_foreground(con, libtcod.white)
@@ -1377,7 +1377,7 @@ class Campaign:
 		# clear any dead crewmen from old positions
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
-			if position.crewman.status == 'Dead':
+			if not position.crewman.alive:
 				position.crewman = None
 		
 		exit_menu = False
@@ -1568,32 +1568,29 @@ class Campaign:
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
 			
-			if position.crewman.status == 'Dead':
+			if not position.crewman.alive:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
 				libtcod.console_print(con, 43, y+1, 'Dead')
-			elif position.crewman.wound == '':
+			
+			# clear all minor wounds, display if 1+ serious injuries
+			serious_injury = False
+			for (k, v) in position.crewman.injury.items():
+				if v == 'Serious':
+					serious_injury = True
+				else:
+					position.crewman.injury[k] = None
+			
+			if serious_injury:
+				libtcod.console_set_default_foreground(con, libtcod.dark_red)
+				libtcod.console_print(con, 43, y+1, 'Serious')
+			else:
 				libtcod.console_set_default_foreground(con, libtcod.light_grey)
 				libtcod.console_print(con, 43, y+1, 'None')
-			elif position.crewman.wound == 'Critical':
-				position.crewman.wound = 'Serious'
-				libtcod.console_set_default_foreground(con, libtcod.dark_red)
-				libtcod.console_print(con, 43, y+1, position.crewman.wound)
-			else:
-				# roll for wound recovery
-				roll = GetPercentileRoll()
-				
-				if roll <= position.crewman.stats['Grit'] * 8.0:
-					position.crewman.wound = ''
-					libtcod.console_set_default_foreground(con, libtcod.dark_blue)
-					libtcod.console_print(con, 43, y+1, 'Recovered')
-				else:
-					libtcod.console_set_default_foreground(con, libtcod.dark_red)
-					libtcod.console_print(con, 43, y+1, position.crewman.wound)
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(30, ignore_animations=True)
 			
-			if position.crewman.status == 'Dead':
+			if not position.crewman.alive:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
 				libtcod.console_print(con, 55, y+1, 'N/A')
 			
@@ -1622,9 +1619,9 @@ class Campaign:
 					libtcod.console_set_default_foreground(con, libtcod.white)
 					libtcod.console_print(con, 55, y+1, '+' + str(levels_up))
 			
-			# crewmen recover from any negative status (except for death)
-			if position.crewman.status != 'Dead': 
-				position.crewman.status = ''
+			# crewmen recover from any negative condition (except for death)
+			if position.crewman.alive: 
+				position.crewman.condition = 'Good Order'
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(30, ignore_animations=True)
@@ -1709,12 +1706,19 @@ class Campaign:
 			x = 14 - int(len(crewman.first_name + crewman.last_name) / 2)
 			crewman.DisplayName(temp_con, x, 8)
 			
-			if crewman.status == 'Dead':
+			if not crewman.alive:
 				text = 'KIA'
-			elif crewman.wound == 'Serious':
-				text = 'Discharged'
 			else:
-				text = 'Transferred'
+				# check for 1+ serious wounds
+				serious_wound = False
+				for (k, v) in crewman.injury.items():
+					if v == 'Serious':
+						serious_wound = True
+						break
+				if serious_wound:
+					text = 'Discharged'
+				else:
+					text = 'Transferred'
 			libtcod.console_print_ex(temp_con, 14, 10, libtcod.BKGND_NONE, libtcod.CENTER,
 				text)
 		
@@ -2658,7 +2662,7 @@ class CampaignDay:
 		crewman = campaign.player_unit.GetPersonnelByPosition('Driver')
 		if crewman is None:
 			return 'N/A: No Driver'
-		if crewman.status == 'Dead':
+		if not crewman.alive:
 			return 'N/A: Driver is dead'
 		
 		return ''
@@ -3205,7 +3209,7 @@ class CampaignDay:
 		elif roll <= 80.0:
 			for position in campaign.player_unit.positions_list:
 				if position.crewman is None: continue
-				if position.crewman.status in ['Dead', 'Unconscious']: continue 
+				if not position.crewman.alive: continue
 				position.crewman.fatigue -= position.crewman.stats['Morale']
 				if position.crewman.fatigue < -5:
 					position.crewman.fatigue = -5
@@ -3764,34 +3768,39 @@ class CampaignDay:
 				
 	
 	# check to see whether crew within this unit recover from negative statuses
+	# called after a scenario is finished
 	# at present this is only used for player unit, but in future could be used for AI units as well
 	def DoCrewRecoveryCheck(self, unit):
 		
-		# don't bother for dead units or if campaign is already voer
+		# don't bother for dead units or if campaign is already over
 		if not unit.alive or campaign.ended: return
 		
-		# Stunned and Unconscious crew automatically recover
-		# Do a final recovery roll for Critical crew
+		print('DEBUG: Doing post-scenario crew check')
+		
 		for position in unit.positions_list:
 			if position.crewman is None: continue
-			if position.crewman.status == 'Dead': continue
+			if not position.crewman.alive: continue
+		
+			# Shaken, Stunned, and Unconscious crew automatically recover
+			self.condition = 'Good Order'
 			
-			if position.crewman.wound == 'Critical':
+			# do a final check for each critical wound improving or getting worse
+			for (k, v) in position.crewman.injury.items():
+				if v != 'Critical': continue
 				roll = GetPercentileRoll() - 20.0
 				if roll <= position.crewman.stats['Grit'] * 10.0:
-					position.crewman.wound = 'Serious'
-				else:
-					position.crewman.status = 'Dead'
-					position.crewman.fatigue = 0
-					if position in PLAYER_POSITIONS:
-						text = 'You have died from your wounds.'
-					else:
-						text = 'Your ' + position.name + ' has died from his wounds.'
-					ShowMessage(text)
+					position.crewman.injury[k] = 'Serious'
 					continue
+				else:
+					position.crewman.KIA()
+					if campaign.options['permadeath'] and position.name in PLAYER_POSITIONS:
+						text = 'You succumb to your ' + location + ' injury and die. Your campaign is over.'
+					else:
+						text = 'Your ' + position.name + ' succumbed to their ' + location + ' injury and has died.'
+					ShowMessage(text)
+					campaign.AddJournal(text)
+					break
 				
-			position.crewman.status = ''
-	
 	
 	# check to see whether dead or seriously injured crewmen need to be replaced in this unit
 	def DoCrewReplacementCheck(self, unit):
@@ -3801,11 +3810,13 @@ class CampaignDay:
 		
 		for position in unit.positions_list:
 			if position.crewman is None: continue
-			if position.crewman.status == 'Dead' or position.crewman.wound == 'Serious':
+			if not position.crewman.alive:
 				position.crewman = Personnel(unit, unit.nation, position)
 				if unit == campaign.player_unit:
 					text = 'A new crewman joins your crew in the ' + position.name + ' position.'
 					ShowMessage(text)
+			
+			# TODO: send crewmen with serious wounds to recover in hospital
 	
 	
 	# generate roads linking zones; only dirt roads for now
@@ -5079,13 +5090,7 @@ class CampaignDay:
 					
 						crewman = campaign.player_unit.positions_list[0].crewman
 						
-						if crewman.status == 'Dead':
-							self.ended = True
-							campaign.ended = True
-							campaign.player_oob = True
-							continue
-						elif crewman.wound == 'Serious':
-							ShowMessage('You have been seriously injured and are taken off the front lines. Your campaign is over.')
+						if not crewman.alive:
 							self.ended = True
 							campaign.ended = True
 							campaign.player_oob = True
@@ -5130,7 +5135,7 @@ class CampaignDay:
 						(hx, hy) = self.player_unit_location
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 					
-					self.DoCrewRecoveryCheck(campaign.player_unit)
+					#self.DoCrewRecoveryCheck(campaign.player_unit)
 					
 					# check for automatic unbog, weapon unjamming
 					if campaign.player_unit.bogged:
@@ -5790,12 +5795,12 @@ class Personnel:
 		self.fatigue = -5				# current crew fatigue points
 		self.condition = 'Good Order'			# current mental and physical condition (replaces status)
 		self.injury = {					# injuries to different body system (replaces wound)
-			'Head and Neck' : None,
-			'Torso and Groin' : None,
-			'Right Arm and Hand' : None,
-			'Left Arm and Hand' : None,
-			'Right Leg and Foot' : None,
-			'Left Leg and Foot' : None
+			'Head & Neck' : None,
+			'Torso & Groin' : None,
+			'Right Arm & Hand' : None,
+			'Left Arm & Hand' : None,
+			'Right Leg & Foot' : None,
+			'Left Leg & Foot' : None
 		}
 		
 		self.first_name = ''				# placeholders for first and last name
@@ -5867,7 +5872,420 @@ class Personnel:
 		
 		self.cmd_list = []				# list of possible commands
 		self.current_cmd = 'Spot'			# currently assigned command in scenario
+	
+	
+	# resolve an incoming attack on this personnel
+	# returns true if there was a change in injury or status
+	def ResolveAttack(self, attack_profile, show_messages=True):
 		
+		# randomly determine body location hit
+		def GetHitLocation(attack_profile):
+			
+			roll = GetPercentileRoll()
+			
+			# sniper attack has greater chance of hitting head or torso
+			if 'sniper' in attack_profile:
+				roll -= 20.0
+			
+			if roll <= 15.0:
+				return 'Head & Neck'
+			elif roll <= 50.0:
+				return 'Torso & Groin'
+			elif roll <= 65.0:
+				return 'Right Arm & Hand'
+			elif roll <= 80.0:
+				return 'Left Arm & Hand'
+			elif roll <= 90.0:
+				return 'Right Leg & Foot'
+			return 'Left Leg & Foot'
+			
+		
+		# crewman is already dead, can't get worse
+		if not self.alive:
+			print('DEBUG: Crewman already dead')
+			return False
+		
+		# don't show messages if this is not the player unit
+		if self.unit != scenario.player_unit:
+			show_messages = False
+		
+		# final injury roll modifier
+		modifier = 0
+		
+		# exposed to a firepower attack
+		if 'firepower' in attack_profile:
+			
+			# currently in an armoured vehicle
+			if self.unit.GetStat('armour') is not None:
+				
+				# not exposed
+				if not self.ce:
+					print('DEBUG: Crewman not exposed')
+					return False
+				
+				# unconscious and critical crewman are assumed to be slumped down and are protected
+				if self.condition in ['Unconscious', 'Critical']:
+					print('DEBUG: Crewman slumped down, not exposed')
+					return False
+			
+			# determine chance of injury based on total incoming firepower
+			fp = attack_profile['firepower']
+			
+			if fp <= 2:
+				modifier -= 25.0
+			elif fp <= 4:
+				modifier -= 15.0
+			elif fp <= 6:
+				modifier -= 5.0
+			elif fp <= 8:
+				modifier += 5.0
+			elif fp <= 10:
+				modifier += 15.0
+			elif fp <= 12:
+				modifier += 25.0
+			else:
+				modifier += 40.0
+		
+		# random event: sniper, landmine, etc.
+		elif 'random_event' in attack_profile:
+			pass
+		
+		# spalling
+		elif 'spalling' in attack_profile:
+			modifier -= (libtcod.random_get_int(0, 1, 40) * 1.0)
+		
+		# initial KO hit on vehicle
+		elif 'ko_hit' in attack_profile:
+			pass
+		
+		# part of bail-out - caught in burning vehicle
+		elif 'burn_up' in attack_profile:
+			pass
+		
+		# crewman grit modifier
+		modifier -= self.stats['Grit'] * 3.0
+		
+		# shaken modifier
+		if self.condition == 'Shaken':
+			modifier += 15.0
+		
+		print('DEBUG: Total injury modifier for ' + self.first_name + ' ' + self.last_name + ' is: ' + str(modifier))
+		
+		# do injury roll
+		roll = GetPercentileRoll()
+		
+		# unmodified 99.0-100.0 always counts as KIA, otherwise modifier is applied
+		if roll < 99.0: roll += modifier
+		
+		print('DEBUG: Modified injury roll was: ' + str(roll))
+		
+		# determine location
+		location = GetHitLocation(attack_profile)
+		
+		# if crewman is exposed in an AFV and leg/foot location is rolled, no effect
+		if 'firepower' in attack_profile and location in ['Right Leg & Foot', 'Left Leg & Foot']:
+			return False
+		
+		print('DEBUG: Location roll was: ' + location)
+		
+		# determine effect
+		
+		# miss - no effect
+		if roll < 35.0:
+			return False
+		
+		# near miss - possible change in condition
+		elif roll <= 45.0:
+			if self.condition != 'Good Order': return False
+			if self.DoMoraleCheck(0.0): return False
+			self.condition = 'Shaken'
+			if show_messages:
+				if self.current_position.name in PLAYER_POSITIONS:
+					ShowMessage('You had a near miss and are now Shaken.')
+				else:
+					ShowMessage('Your ' + self.current_position.name + ' had a near miss and is now Shaken.')
+				return True
+		
+		# grazing hit, no injury but possible stun
+		elif roll <= 65.0:
+			if self.condition != ['Good Order', 'Stunned']:
+				if show_messages:
+					if self.current_position.name in PLAYER_POSITIONS:
+						ShowMessage('You suffer a grazing hit but are no worse for wear.')
+					else:
+						ShowMessage('Your ' + self.current_position.name + ' suffers a grazing hit but is no worse for wear.')
+				return False
+			if self.DoMoraleCheck(0.0):
+				self.condition = 'Shaken'
+				self.DoFatigueCheck()
+				if show_messages:
+					if self.current_position.name in PLAYER_POSITIONS:
+						ShowMessage('You suffer a grazing hit and are now Shaken.')
+					else:
+						ShowMessage('Your ' + self.current_position.name + ' suffers a grazing hit and is now Shaken.')
+			else:
+				self.condition = 'Stunned'
+				self.DoFatigueCheck()
+				if show_messages:
+					if self.current_position.name in PLAYER_POSITIONS:
+						ShowMessage('You suffer a grazing hit and are now Stunned.')
+					else:
+						ShowMessage('Your ' + self.current_position.name + ' suffers a grazing hit and is now Stunned.')
+			return True
+		
+		# hit in a non-critical location
+		elif roll <= 80.0:
+			injury_roll = GetPercentileRoll()
+			if injury_roll <= 50.0:
+				injury = 'Light'
+			elif injury_roll <= 80.0:
+				injury = 'Heavy'
+			else:
+				injury = 'Serious'
+			
+		# hit in a possibly critical location
+		elif roll <= 90.0:
+			injury_roll = GetPercentileRoll()
+			if injury_roll <= 40.0:
+				injury = 'Light'
+			elif injury_roll <= 60.0:
+				injury = 'Heavy'
+			elif injury_roll <= 85.0:
+				injury = 'Serious'
+			else:
+				injury = 'Critical'
+		
+		# critical injury
+		elif roll <= 98.9:
+			injury = 'Critical'
+		
+		# KIA
+		else:
+			
+			# check for fate point use
+			if self.current_position.name in PLAYER_POSITIONS and campaign_day.fate_points > 0:
+				campaign_day.fate_points -= 1
+				print('DEBUG: Player saved from death by fate point')
+				return False
+			
+			self.KIA()
+			
+			if campaign.options['permadeath'] and self.current_position.name in PLAYER_POSITIONS:
+				text = 'You have been hit in the ' + location + ' and killed. Your campaign is over.'	
+			else:
+				text = 'Your ' + self.current_position.name + ' has been hit in the ' + location + ' and killed.'
+			if show_messages:
+				ShowMessage(text)
+			campaign.AddJournal(text)
+			
+			return True
+		
+		# apply injury
+		
+		# check for fate point use
+		if injury in ['Serious', 'Critical'] and self.current_position.name in PLAYER_POSITIONS and campaign_day.fate_points > 0:
+			campaign_day.fate_points -= 1
+			print('DEBUG: Player saved from ' + injury + ' injury by fate point')
+			return False
+		
+		injury_change = False
+		# no previous injury in this location
+		if self.injury[location] is None:
+			self.injury[location] = injury
+			injury_change = True
+		else:
+			# light injury: chance of worsening to Heavy
+			if injury == 'Light':
+				if self.injury[location] == 'Light':
+					if GetPercentileRoll() <= 50.0:
+						self.injury[location] = 'Heavy'
+						injury_change = True
+			
+			# heavy injury: chance of worsening to Serious
+			elif injury == 'Heavy':
+				if self.injury[location] == 'Light':
+					self.injury[location] = 'Heavy'
+					injury_change = True
+				elif self.injury[location] == 'Heavy':
+					if GetPercentileRoll() <= 50.0:
+						self.injury[location] = 'Serious'
+						injury_change = True
+			
+			# serious injury
+			elif injury == 'Serious':
+				if self.injury[location] in ['Light', 'Heavy']:
+					self.injury[location] = 'Serious'
+					injury_change = True
+				elif self.injury[location] == 'Serious':
+					if GetPercentileRoll() <= 50.0:
+						self.injury[location] = 'Critical'
+						injury_change = True
+			
+			# critical injury
+			elif injury == 'Critical':
+				if self.injury[location] != 'Critical':
+					self.injury[location] = 'Critical'
+					injury_change = True
+		
+		if injury_change:
+			self.DoFatigueCheck()
+			if self.current_position.name in PLAYER_POSITIONS:
+				text = 'You were hit in the ' + location + ' and suffer a ' + injury + ' injury.'
+			else:
+				text = 'Your ' + self.current_position.name + ' was hit in the ' + location + ' and suffers a ' + injury + ' injury.'
+		else:
+			if self.current_position.name in PLAYER_POSITIONS:
+				text = 'You were hit in the ' + location + ' but suffer no further injury.'
+			else:
+				text = 'Your ' + self.current_position.name + ' was hit in the ' + location + ' but suffers no further injury.'
+		if show_messages:
+			ShowMessage(text)
+		campaign.AddJournal(text)
+		
+		if not injury_change: return
+		
+		# check for condition change (to Shaken, Stunned, or Unconscious) as a result of injury
+		condition_change = None
+		if location == 'Head & Neck':
+			if not self.DoGritCheck(20.0):
+				condition_change = 'Stunned'
+			elif not self.DoGritCheck(0.0):
+				condition_change = 'Unconscious'
+			else:
+				condition_change = 'Shaken'
+		
+		elif location == 'Torso & Groin':
+			if not self.DoGritCheck(15.0):
+				condition_change = 'Stunned'
+			elif not self.DoGritCheck(-10.0):
+				condition_change = 'Unconscious'
+		
+		if condition_change is None: return
+		
+		if condition_change == 'Shaken' and self.condition != 'Good Order': return
+		if condition_change == 'Stunned' and self.condition in ['Stunned', 'Unconscious']: return
+		if condition_change == 'Unconscious' and self.condition == 'Unconscious': return
+		
+		self.condition = condition_change
+		
+		if self.current_position.name in PLAYER_POSITIONS:
+			text = 'As a result of your injury, you are now ' + condition_change + '.'
+		else:
+			text = 'As a result of the injury, your ' + self.current_position.name + ' is now ' + condition_change + '.'
+		if show_messages:
+			ShowMessage(text)
+		campaign.AddJournal(text)
+	
+	
+	# do a grit test for this crewman
+	def DoGritCheck(self, modifier):
+		if GetPercentileRoll() + modifier <= self.stats['Grit'] * 9.0: return True
+		return False
+		
+	
+	# do a morale check for this crewman
+	def DoMoraleCheck(self, modifier):
+		if GetPercentileRoll() + modifier <= self.stats['Morale'] * 9.0: return True
+		return False
+	
+	
+	# do a stun check for this crewman
+	def DoStunCheck(self, modifier):
+		if self.condition not in ['Good Order', 'Shaken']: return True
+		if GetPercentileRoll() + modifier <= self.stats['Grit'] * 9.0: return True
+		return False
+	
+	
+	# check for change in condition or injury status, called at start of turn
+	def DoInjuryCheck(self):
+		
+		# no need to check
+		if not self.alive: return
+		
+		# check for critical injuries either stabilizing or causing death
+		for (k, v) in self.injury.items():
+			if v != 'Critical': continue
+			
+			print('DEBUG: Checking for change in critical injury to ' + k)
+			
+			roll = GetPercentileRoll()
+			
+			# injury worsens and causes death
+			if roll > 97.0:
+				
+				self.KIA()
+				if campaign.options['permadeath'] and self.current_position.name in PLAYER_POSITIONS:
+					text = 'You succumb to your ' + location + ' injury and die. Your campaign is over.'
+				else:
+					text = 'Your ' + self.current_position.name + ' succumbed to their ' + location + ' injury and has died.'
+				ShowMessage(text)
+				campaign.AddJournal(text)
+				return
+			
+			# injury may improve
+			# check for fellow crewmen on First Aid command
+			for position in self.unit.positions_list:
+				if position.crewman is None: continue
+				if position.crewman == self: continue
+				if position.crewman.current_cmd == 'First Aid':
+					roll -= 15.0
+			
+			if self.condition == 'Unconscious': roll += 15.0
+			
+			if roll <= self.stats['Grit'] * 9.0:
+				self.injury[k] = 'Serious'
+				if self.current_position.name in PLAYER_POSITIONS:
+					text = 'Your ' + location + ' injury has stabilized and is now Serious.'
+				else:
+					text = 'Your ' + self.current_position.name + "'s " + location + ' injury has stabilized and is now Serious.'
+				ShowMessage(text)
+				campaign.AddJournal(text)
+			
+		# check for recovery from negative conditions
+		if self.condition == 'Good Order': return
+		
+		if self.condition == 'Shaken':
+			if self.DoMoraleCheck(0.0):
+				self.condition = 'Good Order'
+				if self.current_position.name in PLAYER_POSITIONS:
+					text = 'You recover from being Shaken.'
+				else:
+					text = 'Your ' + self.current_position.name + ' recovers from being Shaken.'
+				ShowMessage(text)
+			return
+		
+		if self.condition == 'Stunned':
+			if self.DoMoraleCheck(15.0):
+				self.condition = 'Good Order'
+				if self.current_position.name in PLAYER_POSITIONS:
+					text = 'You recover from being Stunned.'
+				else:
+					text = 'Your ' + self.current_position.name + ' recovers from being Stunned.'
+				ShowMessage(text)
+			return
+		
+		if self.condition == 'Unconscious':
+			if self.DoGritCheck(25.0):
+				self.condition = 'Stunned'
+				if self.current_position.name in PLAYER_POSITIONS:
+					text = 'You regain consciousness and are now Stunned.'
+				else:
+					text = 'Your ' + self.current_position.name + ' regains consciousness and is now Stunned.'
+				ShowMessage(text)
+			return
+		
+	
+	# crewman dies
+	def KIA(self):
+		self.alive = False
+		self.condition = 'Dead'
+		self.fatigue = 0
+		# check for commander death
+		if campaign.options['permadeath'] and self.current_position.name in PLAYER_POSITIONS:
+			scenario.finished = True
+			campaign_day.ended = True
+			campaign.ended = True
+			campaign.player_oob = True
 	
 	
 	# award a number of exp to this crewman
@@ -5902,17 +6320,18 @@ class Personnel:
 			
 			# frame and section dividers
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.grey)
+			libtcod.console_hline(crewman_menu_con, 8, 48, 74)
 			DrawFrame(crewman_menu_con, 8, 2, 74, 56)
-			DrawFrame(crewman_menu_con, 29, 2, 32, 56)
+			DrawFrame(crewman_menu_con, 29, 2, 32, 47)
 			libtcod.console_hline(crewman_menu_con, 30, 6, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 8, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 10, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 12, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 15, 30)
 			libtcod.console_hline(crewman_menu_con, 30, 20, 30)
-			libtcod.console_hline(crewman_menu_con, 30, 22, 30)
-			libtcod.console_hline(crewman_menu_con, 61, 22, 20)
-			libtcod.console_hline(crewman_menu_con, 30, 49, 30)
+			libtcod.console_hline(crewman_menu_con, 30, 23, 30)
+			libtcod.console_hline(crewman_menu_con, 61, 23, 20)
+			
 			
 			# main title and decorations
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.darker_blue)
@@ -5935,10 +6354,8 @@ class Personnel:
 			libtcod.console_print(crewman_menu_con, 30, 14, 'Position')
 			libtcod.console_print(crewman_menu_con, 30, 16, 'Stats')
 			libtcod.console_print(crewman_menu_con, 30, 21, 'Status')
-			libtcod.console_print(crewman_menu_con, 30, 23, 'Skills')
-			libtcod.console_print(crewman_menu_con, 30, 50, 'Fatigue')
-			libtcod.console_print(crewman_menu_con, 30, 51, 'Wounds')
-			
+			libtcod.console_print(crewman_menu_con, 30, 22, 'Fatigue')
+			libtcod.console_print(crewman_menu_con, 30, 24, 'Skills')
 			
 			# name
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
@@ -5975,34 +6392,39 @@ class Personnel:
 			libtcod.console_rect(crewman_menu_con, 39, 19, 15, 1, False, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
 			
-			# status
-			if self.status == '':
-				text = 'Good Order'
+			# current condition and fatigue level
+			libtcod.console_print(crewman_menu_con, 39, 21, self.condition)
+			if self.fatigue <= 0:
+				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
+				text = '-'
 			else:
-				text = self.status
-			libtcod.console_print(crewman_menu_con, 39, 21, text)
+				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_red)
+				text = '-' + str(self.fatigue) + '%'
+			libtcod.console_print(crewman_menu_con, 39, 22, text)
 			
 			# list of crew skills
-			y = 23
+			y = 24
 			number_of_skills = 0
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
 			for skill in self.skills:
 				libtcod.console_print(crewman_menu_con, 39, y, skill)
 				y += 1
 				number_of_skills += 1
-			libtcod.console_print(crewman_menu_con, 39, y, '[Add New Skill]')
+			if self.alive:
+				libtcod.console_print(crewman_menu_con, 39, y, '[Add New Skill]')
 			
 			# highlight selected skill
-			libtcod.console_set_default_background(crewman_menu_con, HIGHLIGHT_MENU_COL)
-			libtcod.console_rect(crewman_menu_con, 39, 23 + selected_skill, 21, 1, False, libtcod.BKGND_SET)
-			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
+			if self.alive:
+				libtcod.console_set_default_background(crewman_menu_con, HIGHLIGHT_MENU_COL)
+				libtcod.console_rect(crewman_menu_con, 39, 24 + selected_skill, 21, 1, False, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
 			
 			# display info about selected skill or info about adding a new skill
-			#libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
-			#libtcod.console_print(crewman_menu_con, 67, 23, 'Info')
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
 			y = 24
-			if selected_skill == number_of_skills:
+			if not self.alive:
+				text = ''
+			elif selected_skill == number_of_skills:
 				text = 'Select this option to spend an advance point and add a new skill'
 			else:
 				# grab skill description from campaign.skills dictionary
@@ -6017,68 +6439,73 @@ class Personnel:
 			
 			# current level, exp, points
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.darkest_grey)
-			libtcod.console_rect(crewman_menu_con, 30, 46, 21, 3, False, libtcod.BKGND_SET)
+			libtcod.console_rect(crewman_menu_con, 35, 45, 21, 3, False, libtcod.BKGND_SET)
 			libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
 			
 			libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
-			libtcod.console_print(crewman_menu_con, 30, 46, 'Level')
-			libtcod.console_print(crewman_menu_con, 30, 47, 'Exp')
-			libtcod.console_print(crewman_menu_con, 30, 48, 'Advance Points')
+			libtcod.console_print(crewman_menu_con, 35, 45, 'Level')
+			libtcod.console_print(crewman_menu_con, 35, 46, 'Exp')
+			libtcod.console_print(crewman_menu_con, 35, 47, 'Advance Points')
 			
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
-			libtcod.console_print_ex(crewman_menu_con, 50, 46, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(crewman_menu_con, 55, 45, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(self.level))
-			libtcod.console_print_ex(crewman_menu_con, 50, 47, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(crewman_menu_con, 55, 46, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(self.exp))
-			libtcod.console_print_ex(crewman_menu_con, 50, 48, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(crewman_menu_con, 55, 47, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(self.adv))
 			
-			# crew fatigue level
-			if self.fatigue <= 0:
-				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
-				text = '-'
-			else:
-				libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_red)
-				text = '-' + str(self.fatigue) + '%'
-			libtcod.console_print(crewman_menu_con, 39, 50, text)
-			
-			# wounds if any
-			if self.wound == '':
-				text = 'None'
-				col = libtcod.light_grey
-			else:
-				text = self.wound
-				col = libtcod.red
-			libtcod.console_set_default_foreground(crewman_menu_con, col)
-			libtcod.console_print(crewman_menu_con, 39, 51, text)
-			
+			# injuries if any
+			if self.alive:
+				libtcod.console_set_default_background(crewman_menu_con, libtcod.darker_blue)
+				libtcod.console_rect(crewman_menu_con, 9, 49, 72, 1, False, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
+				libtcod.console_set_default_foreground(crewman_menu_con, TITLE_COL)
+				libtcod.console_print_ex(crewman_menu_con, WINDOW_XM, 49, libtcod.BKGND_NONE,
+					libtcod.CENTER, 'Injuries')
+				
+				x = 9
+				y = 51
+				for (k, v) in self.injury.items():
+					libtcod.console_set_default_foreground(crewman_menu_con, libtcod.white)
+					libtcod.console_print(crewman_menu_con, x, y, k)
+					
+					if v is not None:
+						libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_red)
+						libtcod.console_print(crewman_menu_con, x, y+1, v)
+					
+					if y == 51:
+						y = 55
+					else:
+						y = 51
+						x += 24
 			
 			# player commands
 			libtcod.console_set_default_foreground(crewman_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(crewman_menu_con, 10, 28, '1')
-			libtcod.console_print(crewman_menu_con, 10, 29, '2')
-			libtcod.console_print(crewman_menu_con, 10, 30, '3')
-			libtcod.console_print(crewman_menu_con, 10, 31, '4')
-			
-			libtcod.console_print(crewman_menu_con, 10, 33, EnKey('w').upper() + '/' + EnKey('s').upper())
-			if selected_skill == number_of_skills:
-				libtcod.console_print(crewman_menu_con, 10, 34, EnKey('f').upper())
-			libtcod.console_print(crewman_menu_con, 10, 35, 'Esc')
+			if self.alive:
+				libtcod.console_print(crewman_menu_con, 10, 22, '1')
+				libtcod.console_print(crewman_menu_con, 10, 23, '2')
+				libtcod.console_print(crewman_menu_con, 10, 24, '3')
+				libtcod.console_print(crewman_menu_con, 10, 25, '4')
+				libtcod.console_print(crewman_menu_con, 10, 27, EnKey('w').upper() + '/' + EnKey('s').upper())
+				if selected_skill == number_of_skills:
+					libtcod.console_print(crewman_menu_con, 10, 28, EnKey('f').upper())
+			libtcod.console_print(crewman_menu_con, 10, 29, 'Esc')
 			
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
-			libtcod.console_print(crewman_menu_con, 14, 28, 'Increase')
-			libtcod.console_print(crewman_menu_con, 14, 29, 'Increase')
-			libtcod.console_print(crewman_menu_con, 14, 30, 'Increase')
-			libtcod.console_print(crewman_menu_con, 14, 31, 'Increase')
-			libtcod.console_put_char_ex(crewman_menu_con, 23, 28, chr(4), libtcod.yellow, libtcod.black)
-			libtcod.console_put_char_ex(crewman_menu_con, 23, 29, chr(3), libtcod.red, libtcod.black)
-			libtcod.console_put_char_ex(crewman_menu_con, 23, 30, chr(5), libtcod.blue, libtcod.black)
-			libtcod.console_put_char_ex(crewman_menu_con, 23, 31, chr(6), libtcod.green, libtcod.black)
-			
-			libtcod.console_print(crewman_menu_con, 14, 33, 'Select Skill')
-			if selected_skill == number_of_skills:
-				libtcod.console_print(crewman_menu_con, 14, 34, 'Add New Skill')	
-			libtcod.console_print(crewman_menu_con, 14, 35, 'Exit Menu')
+			if self.alive:
+				libtcod.console_print(crewman_menu_con, 14, 22, 'Increase')
+				libtcod.console_print(crewman_menu_con, 14, 23, 'Increase')
+				libtcod.console_print(crewman_menu_con, 14, 24, 'Increase')
+				libtcod.console_print(crewman_menu_con, 14, 25, 'Increase')
+				libtcod.console_put_char_ex(crewman_menu_con, 23, 22, chr(4), libtcod.yellow, libtcod.black)
+				libtcod.console_put_char_ex(crewman_menu_con, 23, 23, chr(3), libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(crewman_menu_con, 23, 24, chr(5), libtcod.blue, libtcod.black)
+				libtcod.console_put_char_ex(crewman_menu_con, 23, 25, chr(6), libtcod.green, libtcod.black)
+				libtcod.console_print(crewman_menu_con, 14, 27, 'Select Skill')
+				if selected_skill == number_of_skills:
+					libtcod.console_print(crewman_menu_con, 14, 28, 'Add New Skill')	
+			libtcod.console_print(crewman_menu_con, 14, 29, 'Exit Menu')
 			
 			libtcod.console_blit(crewman_menu_con, 0, 0, 0, 0, 0, 0, 0)
 			
@@ -6107,6 +6534,9 @@ class Personnel:
 			if key.vk == libtcod.KEY_ESCAPE:
 				exit_menu = True
 				continue
+			
+			# limited options if crewman is dead
+			if not self.alive: continue
 			
 			key_char = DeKey(chr(key.c).lower())
 			
@@ -6238,9 +6668,9 @@ class Personnel:
 	
 	# return a given skill or action modifier according to the crewman's knowledge stat and status
 	def GetSkillMod(self, modifier):
-		if self.status in ['Dead', 'Unconscious']: return 0.0
+		if not self.alive or self.condition in ['Unconscious', 'Critcal']: return 0.0
 		modifier += float(self.stats['Knowledge']) * 0.1 * modifier
-		if self.status == 'Stunned':		# stunned status
+		if self.condition == 'Stunned':		# stunned status
 			modifier = modifier * 0.5
 		if self.fatigue > 0:
 			modifier -= float(self.fatigue)		# impact of crew fatigue
@@ -6253,7 +6683,8 @@ class Personnel:
 	
 	# check to see whether this crewman gains a fatigue point
 	def DoFatigueCheck(self):
-		if self.status in ['Dead', 'Unconscious']: return
+		if not self.alive or self.condition in ['Unconscious', 'Critcal']: return
+		if self.fatigue == 10: return
 		roll = GetPercentileRoll()
 		if roll <= 50.0: return
 		roll = GetPercentileRoll()
@@ -6264,7 +6695,7 @@ class Personnel:
 	
 	# crew recovers some fatigue from rest
 	def Rest(self):
-		if self.status in ['Dead', 'Unconscious']: return
+		if not self.alive: return
 		if self.fatigue == -5: return
 		i = libtcod.random_get_int(0, 0, self.stats['Morale'])
 		self.fatigue -= i
@@ -6272,238 +6703,12 @@ class Personnel:
 			self.fatigue = -5
 	
 	
-	# check to see whether this personnel is wounded/KIA and return result if any
-	def DoWoundCheck(self, fp=0, roll_modifier=0.0, show_messages=True, auto_kill=False, auto_serious=False):
-		
-		# can't get worse
-		if self.status == 'Dead': return None
-		
-		# only show messages if this is the player unit
-		if self.unit != scenario.player_unit: show_messages = False
-		
-		# final wound roll modifier
-		modifier = 0
-		
-		# exposed to an fp attack
-		if fp > 0:
-			
-			# currently in an armoured vehicle
-			if self.unit.GetStat('armour') is not None:
-				
-				# not exposed
-				if not self.ce: return None
-				
-				# Unconcious crew are assumed to be slumped down and are protected
-				if self.status == 'Unconscious': return None
-				
-				if fp <= 4:
-					modifier -= 10.0
-				elif fp <= 6:
-					modifier -= 5.0
-				elif 8 < fp <= 10:
-					modifier += 5.0
-				elif fp <= 12:
-					modifier += 10.0
-				elif fp <= 16:
-					modifier += 15.0
-				else:
-					modifier += 20.0
-		
-		# apply additional modifier if any
-		modifier += roll_modifier
-				
-		# roll for wound
-		roll = GetPercentileRoll()
-		
-		if DEBUG:
-			if session.debug['Player Crew Hapless']:
-				roll = 100.0
-		if auto_kill:
-			roll = 100.0
-		elif auto_serious:
-			roll = 85.0
-		else:
-		
-			# unmodified 99.0-100.0 always counts as KIA, otherwise modifier is applied
-			if roll < 99.0:
-				roll += modifier
-
-		if roll < 45.0:
-			
-			# near miss - no wound or other effect
-			return None
-		
-		elif roll <= 55.0:
-			
-			if self.status in ['Stunned', 'Unconscious']:
-				return None
-				
-			self.DoStunCheck(0)
-			if self.status == 'Stunned':
-				if show_messages:
-					ShowMessage('Your ' + self.current_position.name + ' has been Stunned.')
-				return 'Stunned'
-			return None
-		
-		elif roll <= 70.0:
-			
-			if self.wound in ['Serious', 'Critical']: return None
-			
-			# light wound and possible stun
-			self.wound = 'Light'
-			if self.status not in ['Stunned', 'Unconscious']:
-				self.DoStunCheck(15)
-				if self.status == 'Stunned':
-					if show_messages:
-						ShowMessage('Your ' + self.current_position.name + ' has received a Light Wound and has been Stunned.')
-					return 'Light Wound, Stunned'
-			
-			if show_messages:
-				ShowMessage('Your ' + self.current_position.name + ' has received a Light Wound.')
-			return 'Light Wound'
-		
-		# everything from here on would be a serious, critical wound, or KIA
-		# player saved by fate point
-		if campaign_day.fate_points > 0 and self.current_position in PLAYER_POSITIONS:
-			campaign_day.fate_points -= 1
-			return None
-			
-		if roll <= 85.0:
-			
-			if self.wound == 'Critical': return None
-			
-			# serious wound, possibly knocked unconscious, otherwise stunned
-			self.wound = 'Serious'
-			
-			if self.status != 'Unconscious':
-				self.DoKOCheck(0)
-				if self.status == 'Unconscious':
-					if show_messages:
-						ShowMessage('Your ' + self.current_position.name + ' has received a Serious Wound ' +
-							'and has been knocked Unconscious')
-					return 'Serious Wound, Unconscious'
-			
-			if show_messages:
-				ShowMessage('Your ' + self.current_position.name + ' has received a Serious Wound and is Stunned.')
-			return 'Serious Wound, Stunned'
-			
-			
-		elif roll <= 97.0:
-			
-			# critical wound, possibly knocked unconscious, otherwise stunned, may die next recovery check
-			self.wound = 'Critical'
-			
-			if self.status != 'Unconscious':
-				self.DoKOCheck(15)
-				if self.status == 'Unconscious':
-					if show_messages:
-						ShowMessage('Your ' + self.current_position.name + ' has received a Critical Wound ' +
-							'and has been knocked Unconscious.')
-					return 'Critical Wound, Unconscious'
-				
-				if show_messages:
-					ShowMessage('Your ' + self.current_position.name + ' has received a Critical Wound and is Stunned.')
-				return 'Critical Wound, Stunned'
-		
-		else:
-			
-			# killed
-			self.status = 'Dead'
-			self.wound = ''
-			self.fatigue = 0
-			
-			if show_messages:
-				if campaign.options['permadeath'] and self.current_position.name in PLAYER_POSITIONS:
-					ShowMessage('You have been killed. Your campaign is over.')	
-				else:
-					ShowMessage('Your ' + self.current_position.name + ' has been killed.')
-					campaign.AddJournal(self.current_position.name + ' was killed')
-			
-			# check for commander death
-			if campaign.options['permadeath'] and self.current_position.name in PLAYER_POSITIONS:
-				scenario.finished = True
-				campaign_day.ended = True
-				campaign.ended = True
-				campaign.player_oob = True
-			return 'Dead'
-				
-	
-	# check to see if this personnel is Stunned
-	def DoStunCheck(self, modifier):
-		
-		# can't make it worse
-		if self.status in ['Stunned', 'Unconscious', 'Dead']: return
-		
-		roll = GetPercentileRoll() + modifier
-		
-		# roll passed
-		if roll <= self.stats['Grit'] * 15.0: return
-		
-		self.status = 'Stunned'
-
-
-	# check to see if this personnel is knocked unconscious
-	def DoKOCheck(self, modifier):
-		
-		if self.status in ['Unconscious', 'Dead']: return False
-		roll = GetPercentileRoll() + modifier
-		if roll <= self.stats['Grit'] * 10.0:
-			# not knocked out, but Stunned
-			self.status = 'Stunned'
-			return
-		self.status = 'Unconscious'
-
-
-	# check for recovery from any critical wound, stunned or unconscious status
-	def DoRecoveryCheck(self):
-		if self.wound != 'Critical' and self.status in ['', 'Dead']: return
-		
-		roll = GetPercentileRoll()
-		
-		if self.status == 'Critical':
-			if roll > 97.0:
-				self.status = 'Dead'
-				self.wound = ''
-				self.fatigue = 0
-				if self.unit == scenario.player_unit:
-					ShowMessage('Your ' + self.current_position.name + ' has died from his wounds.')
-					campaign.AddJournal(self.current_position.name + ' died from his wounds')
-				return
-		
-		# check for fellow crewmen on First Aid command
-		for position in self.unit.positions_list:
-			if position.crewman is None: continue
-			if position.crewman == self: continue
-			if position.crewman.current_cmd == 'First Aid':
-				roll -= 15.0
-		
-		if self.status == 'Unconscious': roll += 15.0
-		
-		if roll <= self.stats['Grit'] * 9.0:
-			
-			if self.wound == 'Critical':
-				self.wound = 'Serious'
-				if self.unit == scenario.player_unit:
-					ShowMessage('Your ' + self.current_position.name + "'s wound has stabilized.")
-			
-			elif self.status == 'Stunned':
-				self.status = ''
-				if self.unit == scenario.player_unit:
-					ShowMessage('Your ' + self.current_position.name + ' recovers from being Stunned.')
-			
-			# unconscious
-			else:
-				self.status = 'Stunned'
-				if self.unit == scenario.player_unit:
-					ShowMessage('Your ' + self.current_position.name + ' regains consciousness and is now Stunned.')
-
-	
 	# (re)build a list of possible commands for this turn
 	def BuildCommandList(self):
 		self.cmd_list = []
 		
 		# unconscious and dead crewmen cannot act
-		if self.status in ['Unconscious', 'Dead']:
+		if not self.alive or self.condition in ['Unconscious', 'Critical']:
 			self.cmd_list.append('None')
 			return
 		
@@ -6552,7 +6757,7 @@ class Personnel:
 					can_abandon = True 
 				for position in self.unit.positions_list:
 					if position.crewman is None: continue
-					if position.crewman.status == 'Dead' or position.crewman.wound in ['Critical']:
+					if not position.crewman.alive or position.crewman.condition == 'Critical':
 						can_abandon = True
 						break
 				if not can_abandon:
@@ -6621,7 +6826,7 @@ class Personnel:
 		if self.current_position.crew_always_ce: return False
 		
 		# crewman unable to act
-		if self.status in ['Dead', 'Unconscious']: return False
+		if not self.alive or self.condition in ['Unconscious', 'Critical']: return False
 		
 		self.current_position.hatch_open = not self.current_position.hatch_open
 		
@@ -7849,11 +8054,14 @@ class Unit:
 		
 		# update crew positions
 		for position in self.positions_list:
+			
 			# update visible hexes
 			position.UpdateVisibleHexes()
+			
 			if position.crewman is None: continue
-			# check for crew status recovery
-			position.crewman.DoRecoveryCheck()
+			
+			# check for crew condition or injury change
+			position.crewman.DoInjuryCheck()
 		
 		# check for weapon unjam attempts
 		if self == scenario.player_unit:
@@ -7990,15 +8198,13 @@ class Unit:
 	
 	# returns list of crew in this unit that are vulnerable to small-arms fire
 	def VulnerableCrew(self):
-		
 		crew_list = []
-		
 		for position in self.positions_list:
 			if position.crewman is None: continue
 			if not position.crewman.ce: continue
-			if position.crewman.status in ['Dead', 'Unconscious']: continue
+			if not position.crewman.alive: continue
+			if position.crewman.condition in ['Unconscious', 'Critical']: continue
 			crew_list.append(position.crewman)
-
 		return crew_list
 		
 	
@@ -9169,7 +9375,8 @@ class Unit:
 					if 0.0 < difference <= AP_STUN_MARGIN:
 						for position in self.positions_list:
 							if position.crewman is None: continue
-							position.crewman.DoStunCheck(AP_STUN_MARGIN - difference)
+							if not position.crewman.DoStunCheck(AP_STUN_MARGIN - difference):
+								ShowMessage('Your ' + position.name + 'is Stunned from the impact.')
 					
 			elif profile['result'] == 'PENETRATED':
 				
@@ -9218,8 +9425,9 @@ class Unit:
 							if position.location is not None:
 								if position.location != profile['location']: continue
 							
-							# check for crew wound and apply modifier
-							position.crewman.DoWoundCheck(roll_modifier=15.0)
+							# check for crew injury
+							position.crewman.ResolveAttack({'spalling' : True})
+							
 							scenario.UpdateCrewInfoCon()
 						
 						continue
@@ -9289,7 +9497,8 @@ class Unit:
 				
 				for position in self.positions_list:
 					if position.crewman is None: continue
-					position.crewman.DoWoundCheck(fp=self.fp_to_resolve)
+					if position.crewman.ResolveAttack({'firepower' : self.fp_to_resolve}):
+						scenario.UpdateCrewInfoCon()
 				
 			self.fp_to_resolve = 0
 			return
@@ -9618,7 +9827,7 @@ class Scenario:
 		crew_exposed = False
 		for position in self.player_unit.positions_list:
 			if position.crewman is None: continue
-			if position.crewman.status in ['Dead', 'Unconscious']: continue
+			if not position.crewman.alive or position.crewman.condition in ['Unconscious', 'Critical']: continue
 			if position.crewman.ce:
 				crew_exposed = True
 				break
@@ -9646,7 +9855,7 @@ class Scenario:
 		all_crew_dead = True
 		for position in self.player_unit.positions_list:
 			if position.crewman is None: continue
-			if position.crewman.status != 'Dead':
+			if position.crewman.alive:
 				all_crew_dead = False
 				break
 		if all_crew_dead:
@@ -9761,7 +9970,7 @@ class Scenario:
 					text = 'Your ' + crew_target.current_position.name + ' has'
 				text += ' been hit by a sniper!'
 				ShowMessage(text, longer_pause=True)
-				crew_target.DoWoundCheck(roll_modifier = 45.0)
+				crew_target.ResolveAttack({'sniper' : True})
 		
 		# random enemy tank is immobilized
 		elif roll <= 60.0:
@@ -9900,16 +10109,23 @@ class Scenario:
 						text = 'BU'
 					libtcod.console_print_ex(con, x+24, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
 				
-					# display current status
-					if position.crewman.status != '':
-						if position.crewman.status == 'Dead':
-							libtcod.console_set_default_foreground(crew_con, libtcod.dark_grey)
-						elif position.crewman.status == 'Unconscious':
-							libtcod.console_set_default_foreground(crew_con, libtcod.grey)
-						elif position.crewman.status == 'Stunned':
-							libtcod.console_set_default_foreground(crew_con, libtcod.light_grey)
-						libtcod.console_print_ex(con, x+24, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
-							position.crewman.status)
+					# display current condition
+					if not position.crewman.alive:
+						libtcod.console_set_default_foreground(con, libtcod.dark_grey)
+						text = 'Dead'
+					
+					else:
+						if position.crewman.condition == 'Stunned':
+							libtcod.console_set_default_foreground(con, libtcod.light_grey)
+							text = 'Stunned'
+						elif position.crewman.condition == 'Unconscious':
+							libtcod.console_set_default_foreground(con, libtcod.grey)
+							text = 'Unconscious'
+						else:
+							text = ''
+					
+					libtcod.console_print_ex(con, x+24, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
+						text)
 				
 				y += 4
 			
@@ -9940,16 +10156,16 @@ class Scenario:
 				y += 4
 				
 				if position.crewman is None: continue
-				if position.crewman.status == 'Dead': continue
+				if not position.crewman.alive: continue
 				
 				# FUTURE: modify by location on tank penetrated
 				if DEBUG:
 					if session.debug['Player Crew Safe in Bail Out']:
 						result = None
 					else:
-						result = position.crewman.DoWoundCheck(show_messages=False)
+						result = position.crewman.ResolveAttack({'ko' : True}, show_messages=False)
 				else:
-					result = position.crewman.DoWoundCheck(show_messages=False)
+					result = position.crewman.ResolveAttack({'ko' : True}, show_messages=False)
 				
 				if result is None:
 					text = 'OK'
@@ -9976,19 +10192,16 @@ class Scenario:
 			
 			if position.crewman is None: continue
 			
-			if position.crewman.status in ['Unconscious', 'Dead']:
+			if not position.crewman.alive or position.crewman.condition == 'Unconscious':
 				text = 'N/A'
 				pause = 10
 			else:
 				pause = 100
 				modifier = 0.0
-				if position.crewman.status == 'Stunned':
+				if position.crewman.condition == 'Stunned':
 					modifier += 5.0
 				
-				if position.crewman.wound == 'Critical':
-					modifier += 15.0
-				elif position.crewman.wound == 'Serious':
-					modifier += 10.0
+				# TODO: apply modifiers from any leg/foot injuries
 				
 				if not position.hatch:
 					modifier += 15.0
@@ -10046,7 +10259,7 @@ class Scenario:
 				y += 4
 				if position.crewman is None: continue
 				if position.crewman.bailed_out: continue
-				if position.crewman.status == 'Dead': continue
+				if not position.crewman.alive: continue
 				libtcod.console_print(con, 60, y, 'Vulnerable')
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -10063,14 +10276,15 @@ class Scenario:
 			
 			if position.crewman is None: continue
 			if position.crewman.bailed_out: continue
-			if position.crewman.status == 'Dead': continue
+			if not position.crewman.alive: continue
 			
 			text = 'Rescued'
 			
 			if burns:
 			
 				# check for wound from burn-up before rescue
-				result = position.crewman.DoWoundCheck(roll_modifier=20.0, show_messages=False)
+				
+				result = position.crewman.ResolveAttack({'burn_up' : True}, show_messages=False)
 				
 				if result:
 					text = result
@@ -13027,10 +13241,6 @@ class Scenario:
 				else:
 					position.crewman.DisplayName(crew_con, 0, y+1, first_initial=True)
 				
-				# display wound status if any
-				if position.crewman.wound != '':
-					libtcod.console_put_char_ex(crew_con, 21, y+1, position.crewman.wound[0], libtcod.black, libtcod.red)
-				
 				if not position.hatch:
 					text = '--'
 				elif position.crewman.ce:
@@ -13039,26 +13249,36 @@ class Scenario:
 					text = 'BU'
 				libtcod.console_print_ex(crew_con, 24, y+1, libtcod.BKGND_NONE, libtcod.RIGHT, text)
 			
-				# display current command
+				# display if crewman is dead
+				if not position.crewman.alive:
+					libtcod.console_set_default_foreground(crew_con, libtcod.dark_grey)
+					libtcod.console_print(crew_con, 0, y+2, 'Dead')
 				
-				# truncate string if required
-				text = position.crewman.current_cmd
-				if len(text) + len(position.crewman.status) > 24:
-					text = text[:(19 - len(position.crewman.status))] + '...'
-				
-				libtcod.console_set_default_foreground(crew_con, libtcod.dark_yellow)
-				libtcod.console_print(crew_con, 0, y+2, text)
+				else:
+			
+					# display warning if crewman has 1+ critical injuries, otherwise display current command
+					critical_injury = False
+					for (k, v) in position.crewman.injury.items():
+						if v == 'Critical':
+							critical_injury = True
+							break
 					
-				# display current status on same line
-				if position.crewman.status != '':
-					if position.crewman.status == 'Dead':
-						libtcod.console_set_default_foreground(crew_con, libtcod.dark_grey)
-					elif position.crewman.status == 'Unconscious':
-						libtcod.console_set_default_foreground(crew_con, libtcod.grey)
-					elif position.crewman.status == 'Stunned':
+					if critical_injury:
+						libtcod.console_set_default_foreground(crew_con, libtcod.light_red)
+						libtcod.console_print(crew_con, 0, y+2, 'Critical Injury')
+					else:
+						# display current command
+						libtcod.console_set_default_foreground(crew_con, libtcod.dark_yellow)
+						libtcod.console_print(crew_con, 0, y+2, position.crewman.current_cmd)
+					
+					# current condition
+					if position.crewman.condition != 'Good Order':
 						libtcod.console_set_default_foreground(crew_con, libtcod.light_grey)
+						text = position.crewman.condition
+					else:
+						text = ''
 					libtcod.console_print_ex(crew_con, 24, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
-						position.crewman.status)
+						text)
 			
 			libtcod.console_set_default_foreground(crew_con, libtcod.darker_grey)
 			for x in range(25):
@@ -15039,6 +15259,12 @@ def SaveGame():
 def LoadGame(directory):
 	global campaign, campaign_day, scenario
 	
+	# loading seems to take a little longer now, so added this
+	libtcod.console_clear(0)
+	libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+		'Loading...')
+	libtcod.console_flush()
+	
 	save = shelve.open(SAVEPATH + directory + os.sep + 'savegame')
 	campaign = save['campaign']
 	campaign_day = save['campaign_day']
@@ -15586,7 +15812,7 @@ def ShowDebugMenu():
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		libtcod.console_print(con, x+2, y, 'Regenerate CD Map Roads & Rivers')
-		libtcod.console_print(con, x+2, y+2, 'Kill Crewman')
+		libtcod.console_print(con, x+2, y+2, 'Attack Selected Crewman (Scenario Only)')
 		libtcod.console_print(con, x+2, y+4, 'Immobilize Player')
 		libtcod.console_print(con, x+2, y+6, 'Set Time to End of Day')
 		libtcod.console_print(con, x+2, y+8, 'End Current Scenario')
@@ -15658,7 +15884,7 @@ def ShowDebugMenu():
 				exit_menu = True
 				continue
 		
-		# kill crewman in selected position
+		# attack crewman in selected position
 		elif key_num == 2:
 			if scenario is not None:
 				option_list = []
@@ -15668,7 +15894,8 @@ def ShowDebugMenu():
 				if position_name is None: return
 				crewman = scenario.player_unit.GetPersonnelByPosition(position_name)
 				if crewman is None: continue
-				crewman.DoWoundCheck(auto_kill=True)
+				if crewman.ResolveAttack({'firepower' : 6}):
+					scenario.UpdateCrewInfoCon()
 				exit_menu = True
 				continue
 		
@@ -15763,11 +15990,13 @@ def DisplayCrew(unit, console, x, y, highlight):
 			if position.crewman.nickname != '':
 				libtcod.console_print(console, x, y+3, '"' + position.crewman.nickname + '"')
 			
+			# display current condition if not Good Order
+			
 			# display current status if any
-			if position.crewman.status != '':
+			if position.crewman.condition != 'Good Order':
 				libtcod.console_set_default_foreground(console, libtcod.red)
 				libtcod.console_print_ex(console, x+23, y+2, libtcod.BKGND_NONE, libtcod.RIGHT, 
-					position.crewman.status)
+					position.crewman.condition)
 			
 			# display fatigue if any
 			if position.crewman.fatigue > 0:
@@ -15866,8 +16095,6 @@ def LoadCampaignMenu(continue_most_recent):
 	# make sure there's at least one saved game
 	if len(saved_game_list) == 0:
 		return False
-	
-	print('DEBUG: found ' + str(len(saved_game_list)) + ' saved campaigns')
 	
 	# sort by most recently saved
 	saved_game_list = sorted(saved_game_list, key=lambda k: k['datetime'], reverse=True)

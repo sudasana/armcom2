@@ -3371,12 +3371,6 @@ class CampaignDay:
 	# menu for restocking ammo for main guns on the player tank
 	def AmmoReloadMenu(self):
 		
-		weapon = None
-		ammo_num = 0
-		rr_num = 0
-		add_num = 1
-		use_rr = False
-		
 		# update the menu console and draw to screen
 		def UpdateMenuCon():
 			
@@ -3426,14 +3420,16 @@ class CampaignDay:
 			libtcod.console_print(con, x+2, y+9, 'Default Load')
 			libtcod.console_print(con, x+6, y+12, 'Accept and Continue')
 			
-			
-			# possible but not likely
-			if weapon is None:
-				libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-				return
-			
-			libtcod.console_print_ex(con, WINDOW_XM, 18, libtcod.BKGND_NONE,
-				libtcod.CENTER, weapon.GetStat('name'))
+			# list guns in gun list
+			y = 18
+			for gun in gun_list:
+				if gun == weapon:
+					libtcod.console_set_default_background(con, libtcod.dark_blue)
+					libtcod.console_rect(con, WINDOW_XM-10, y, 20, 1, True, libtcod.BKGND_SET)
+					libtcod.console_set_default_background(con, libtcod.black)
+				libtcod.console_print_ex(con, WINDOW_XM, y, libtcod.BKGND_NONE,
+					libtcod.CENTER, gun.GetStat('name'))
+				y += 1
 			
 			# description of ammo types available to current gun
 			x = 3
@@ -3601,15 +3597,23 @@ class CampaignDay:
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
-		# select first weapon by default, and first ammo type
-		weapon = campaign.player_unit.weapon_list[0]
+		ammo_num = 0
+		rr_num = 0
+		add_num = 1
+		use_rr = False
 		
-		# skip if main weapon is not a gun
-		if 'ammo_type_list' not in weapon.stats:
-			return
 		
-		# NEW: auto load and skip if only one ammo type choice for main gun
-		if len(weapon.stats['ammo_type_list']) == 1:
+		# NEW: Build list of all guns on unit
+		gun_list = []
+		for weapon in campaign.player_unit.weapon_list:
+			if weapon.stats['type'] != 'Gun': continue
+			gun_list.append(weapon)
+		
+		# no guns to load
+		if len(gun_list) == 0: return
+		
+		# auto load and skip if only one ammo type choice for only gun
+		if len(gun_list) == 1 and len(gun_list[0].stats['ammo_type_list']) == 1:
 			ammo_type = weapon.stats['ammo_type_list'][0]
 			weapon.ammo_stores[ammo_type] = int(weapon.stats['max_ammo'])
 			weapon.ready_rack[ammo_type] = weapon.rr_size
@@ -3617,6 +3621,8 @@ class CampaignDay:
 			ShowMessage(text)
 			return
 		
+		# select first weapon in list and first ammo type
+		weapon = gun_list[0]
 		selected_ammo_type = weapon.stats['ammo_type_list'][0]
 		
 		# record initial loaded number of ammo
@@ -3645,8 +3651,16 @@ class CampaignDay:
 			if key.vk == libtcod.KEY_ENTER:
 				
 				# NEW: check to see if player might have skipped this step by mistake
-				if ammo_num == 0 and rr_num == 0:
-					text = 'No ammo loaded! Are you sure you want to proceed?'
+				no_ammo_loaded = False
+				for gun in gun_list:
+					for ammo_type in AMMO_TYPES:
+						if ammo_type in gun.ammo_stores:
+							if gun.ammo_stores[ammo_type] == 0:
+								no_ammo_loaded = True
+								break
+				
+				if no_ammo_loaded:
+					text = 'No ammo loaded in at least one gun! Are you sure you want to proceed?'
 					if ShowNotification(text, confirm=True):
 						exit_menu = True
 						continue
@@ -3657,8 +3671,28 @@ class CampaignDay:
 			# mapped key commands
 			key_char = DeKey(chr(key.c).lower())
 			
+			# cycle selected gun
+			if key_char == 'q':
+				if len(gun_list) == 1: continue
+				
+				i = gun_list.index(weapon)
+				if i == len(gun_list) - 1:
+					weapon = gun_list[0]
+				else:
+					weapon = gun_list[i+1]
+				ammo_num = 0
+				for ammo_type in AMMO_TYPES:
+					if ammo_type in weapon.ammo_stores:
+						ammo_num += weapon.ammo_stores[ammo_type]
+				rr_num = 0
+				for ammo_type in AMMO_TYPES:
+					if ammo_type in weapon.ready_rack:
+						rr_num += weapon.ready_rack[ammo_type]
+				UpdateMenuCon()
+				continue
+			
 			# cycle selected ammo type
-			if key_char == 'c':
+			elif key_char == 'c':
 				i = weapon.stats['ammo_type_list'].index(selected_ammo_type)
 				
 				if i == len(weapon.stats['ammo_type_list']) - 1:

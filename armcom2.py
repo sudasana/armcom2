@@ -5830,7 +5830,7 @@ class Session:
 	# set the master volume for sound effects (1-10)
 	def SetMasterVolume(self, new_volume):
 		mixer.Mix_Volume(-1, new_volume * 12)
-		mixer.Mix_VolumeMusic(new_volume * 12)
+		mixer.Mix_VolumeMusic(new_volume * 6)
 
 
 # Personnel Class: represents an individual person within a unit 

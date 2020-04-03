@@ -3219,7 +3219,7 @@ class CampaignDay:
 			for position in campaign.player_unit.positions_list:
 				if position.crewman is None: continue
 				if not position.crewman.alive: continue
-				position.crewman.fatigue -= position.crewman.stats['Morale']
+				position.crewman.fatigue -= int(position.crewman.stats['Morale'] / 2)
 				if position.crewman.fatigue < -5:
 					position.crewman.fatigue = -5
 			ShowMessage('Your crew feel a little less fatigued than before.')

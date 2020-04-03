@@ -4375,7 +4375,7 @@
 				"reloaded_by" : ["Commander/Gunner"],
 				"firing_group" : 0,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "100"
+				"max_ammo" : "50"
 			},
 			{
 				"type" : "Co-ax MG",
@@ -4394,7 +4394,7 @@
 				"reloaded_by" : ["Loader"],
 				"firing_group" : 1,
 				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "100"
+				"max_ammo" : "74"
 			},
 			{
 				"type" : "Hull MG",
@@ -4409,7 +4409,7 @@
 		],
 		"crew_positions" : [
 			{
-				"name" : "Commander",
+				"name" : "Commander/Gunner",
 				"location" : "Turret",
 				"hatch" : "TRUE",
 				"ce_visible" : ["0", "1", "2", "3", "4", "5"],

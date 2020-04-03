@@ -34,11 +34,11 @@
 			"OQF 18-Pounder",
 			"Riflemen", "Motorcycle MG Team", "HMG Team"
 		]
-	],
+	},
 	"enemy_unit_class_odds" : {
 		"Light Tank" : "80",
 		"Medium Tank" : "50",
-		"Heavy Tank" : "20"
+		"Heavy Tank" : "20",
 		"Assault Gun" : "70",
 		"Tank Destroyer" : "50",
 		"Armoured Car" : "80",

@@ -1168,6 +1168,13 @@ class Campaign:
 			
 			# proceed with selected campaign
 			elif key.vk == libtcod.KEY_ENTER:
+				
+				# check to see whether there's already a saved game for this campaign
+				if os.path.isdir(SAVEPATH + selected_campaign['filename'].rsplit('.', 1)[0]):
+					if not ShowNotification('WARNING: Saved campaign already exists, erase and start a new one?', confirm=True):
+						UpdateCampaignSelectionScreen(selected_campaign)
+						continue
+				
 				exit_menu = True
 			
 			key_char = DeKey(chr(key.c).lower())
@@ -1575,6 +1582,7 @@ class Campaign:
 			# clear all minor wounds, display if 1+ serious injuries
 			serious_injury = False
 			for (k, v) in position.crewman.injury.items():
+				if v is None: continue
 				if v == 'Serious':
 					serious_injury = True
 				else:
@@ -1712,6 +1720,7 @@ class Campaign:
 				# check for 1+ serious wounds
 				serious_wound = False
 				for (k, v) in crewman.injury.items():
+					if v is None: continue
 					if v == 'Serious':
 						serious_wound = True
 						break
@@ -3786,6 +3795,7 @@ class CampaignDay:
 			
 			# do a final check for each critical wound improving or getting worse
 			for (k, v) in position.crewman.injury.items():
+				if v is None: continue
 				if v != 'Critical': continue
 				roll = GetPercentileRoll() - 20.0
 				if roll <= position.crewman.stats['Grit'] * 10.0:
@@ -5932,19 +5942,19 @@ class Personnel:
 			fp = attack_profile['firepower']
 			
 			if fp <= 2:
-				modifier -= 25.0
+				modifier -= 75.0
 			elif fp <= 4:
-				modifier -= 15.0
+				modifier -= 55.0
 			elif fp <= 6:
-				modifier -= 5.0
+				modifier -= 35.0
 			elif fp <= 8:
 				modifier += 5.0
 			elif fp <= 10:
 				modifier += 15.0
 			elif fp <= 12:
-				modifier += 25.0
+				modifier += 20.0
 			else:
-				modifier += 40.0
+				modifier += 25.0
 		
 		# random event: sniper, landmine, etc.
 		elif 'random_event' in attack_profile:
@@ -5974,8 +5984,8 @@ class Personnel:
 		# do injury roll
 		roll = GetPercentileRoll()
 		
-		# unmodified 99.0-100.0 always counts as KIA, otherwise modifier is applied
-		if roll < 99.0: roll += modifier
+		# unmodified high roll always counts as KIA, otherwise modifier is applied
+		if roll <= 99.5: roll += modifier
 		
 		print('DEBUG: Modified injury roll was: ' + str(roll))
 		
@@ -6204,6 +6214,7 @@ class Personnel:
 		
 		# check for critical injuries either stabilizing or causing death
 		for (k, v) in self.injury.items():
+			if v is None: continue
 			if v != 'Critical': continue
 			
 			print('DEBUG: Checking for change in critical injury to ' + k)
@@ -8545,6 +8556,11 @@ class Unit:
 				if 'Eagle Eyed' in position.crewman.skills and position.crewman.ce:
 					chance += position.crewman.GetSkillMod(10.0)
 				
+				# spotting crew head/neck injury
+				if position.crewman.injury['Head & Neck'] is not None:
+					if position.crewman.injury['Head & Neck'] != 'Light':
+						chance = chance * 0.5
+				
 				# target is HD to spotter
 				if len(unit.hull_down) > 0:
 					if GetDirectionToward(unit.hx, unit.hy, self.hx, self.hy) in unit.hull_down:
@@ -10202,7 +10218,12 @@ class Scenario:
 				if position.crewman.condition == 'Stunned':
 					modifier += 5.0
 				
-				# TODO: apply modifiers from any leg/foot injuries
+				# apply modifiers from any leg/foot injuries
+				for (k, v) in position.crewman.injury.items():
+					if k not in ['Right Leg & Foot', 'Left Leg & Foot']: continue
+					if v is None: continue
+					if v not in ['Heavy', 'Serious', 'Critical']: continue
+					modifier += 20.0
 				
 				if not position.hatch:
 					modifier += 15.0
@@ -10951,7 +10972,13 @@ class Scenario:
 					if skill_mod > abs(mod):
 						skill_mod = abs(mod)
 					modifier_list.append(('Target Focus', skill_mod))
-					
+			
+			# check for injury modifiers
+			for (k, v) in profile['crewman'].injury.items():
+				if k not in ['Right Arm & Hand', 'Left Arm & Hand']: continue
+				if v is None: continue
+				if v not in ['Heavy', 'Serious', 'Critical']: continue
+				modifier_list.append(('Arm/Hand Injury', -15.0))	
 		
 		# save the list of modifiers
 		profile['modifier_list'] = modifier_list[:]
@@ -13263,6 +13290,7 @@ class Scenario:
 					# display warning if crewman has 1+ critical injuries, otherwise display current command
 					critical_injury = False
 					for (k, v) in position.crewman.injury.items():
+						if v is None: continue
 						if v == 'Critical':
 							critical_injury = True
 							break
@@ -16053,7 +16081,7 @@ def LoadCampaignMenu(continue_most_recent):
 		# list saved campaigns
 		libtcod.console_set_default_foreground(con, libtcod.white)
 		libtcod.console_set_default_background(con, libtcod.darker_blue)
-		y = 5
+		y = 27 - len(saved_game_list)
 		
 		for save in saved_game_list:
 			if save == selected_save:
@@ -16061,7 +16089,26 @@ def LoadCampaignMenu(continue_most_recent):
 			libtcod.console_print(con, 2, y, save['campaign_name'])
 			y += 2
 		
-		# TODO: display details about selected saved campaign
+		# display details about selected saved campaign on right
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_set_default_background(con, libtcod.black)
+		
+		y = 25
+		libtcod.console_print_ex(con, 74, y, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Saved Campaign')
+		libtcod.console_print_ex(con, 74, y+3, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Current VP')
+		libtcod.console_print_ex(con, 74, y+6, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Date')
+		
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		libtcod.console_print_ex(con, 74, y+1, libtcod.BKGND_NONE, libtcod.CENTER,
+			selected_save['campaign_name'])
+		libtcod.console_print_ex(con, 74, y+4, libtcod.BKGND_NONE, libtcod.CENTER,
+			str(selected_save['total_vp']))
+		libtcod.console_print_ex(con, 74, y+7, libtcod.BKGND_NONE, libtcod.CENTER,
+			str(selected_save['date']))
+		
 		
 		# display key commands
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
@@ -16093,6 +16140,8 @@ def LoadCampaignMenu(continue_most_recent):
 			game_info['directory'] = directory
 			game_info['datetime'] = save['datetime']
 			game_info['campaign_name'] = save['campaign'].stats['name']
+			game_info['total_vp'] = save['campaign'].player_vp
+			game_info['date'] = save['campaign'].today
 		
 		saved_game_list.append(game_info)
 	
@@ -16132,9 +16181,23 @@ def LoadCampaignMenu(continue_most_recent):
 		
 		key_char = DeKey(chr(key.c).lower())
 		
-		# TODO: change selected campaign
+		# change selected campaign
 		if key_char in ['w', 's']:
-			pass
+			
+			i = saved_game_list.index(selected_save)
+			
+			if key_char == 'w':
+				if i == 0:
+					selected_save = saved_game_list[-1]
+				else:
+					selected_save = saved_game_list[i-1]
+			else:
+				if i == len(saved_game_list) - 1:
+					selected_save = saved_game_list[0]
+				else:
+					selected_save = saved_game_list[i+1]
+			UpdateLoadCampaignScreen(selected_save)
+			continue
 	
 	# load the game and return
 	LoadGame(selected_save['directory'])

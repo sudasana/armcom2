@@ -4388,6 +4388,7 @@
 			{
 				"type" : "Gun",
 				"calibre" : "75",
+				"long_range" : "S",
 				"rr_size" : "4",
 				"mount" : "Hull",
 				"fired_by" : ["Gunner"],

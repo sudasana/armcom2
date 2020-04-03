@@ -3820,13 +3820,20 @@ class CampaignDay:
 		
 		for position in unit.positions_list:
 			if position.crewman is None: continue
-			if not position.crewman.alive:
+			
+			# FUTURE: send crewmen with serious wounds to recover in hospital
+			serious_wound = False
+			for (k, v) in position.crewman.injury.items():
+				if v is None: continue
+				if v != 'Serious': continue
+				serious_wound = True
+				break
+			
+			if serious_wound or not position.crewman.alive:
 				position.crewman = Personnel(unit, unit.nation, position)
 				if unit == campaign.player_unit:
 					text = 'A new crewman joins your crew in the ' + position.name + ' position.'
 					ShowMessage(text)
-			
-			# TODO: send crewmen with serious wounds to recover in hospital
 	
 	
 	# generate roads linking zones; only dirt roads for now
@@ -9584,17 +9591,17 @@ class Unit:
 		
 		if self.pinned: return
 		
-		chance = float(fp) * 5.0
+		chance = float(fp) * 7.0
 		
 		# apply modifiers
 		if self.fortified:
-			chance -= 50.0
+			chance -= 35.0
 		elif self.entrenched:
-			chance -= 30.0
-		elif self.dug_in:
 			chance -= 20.0
-		elif self.terrain in ['Wooden Buildings', 'Woods']:
+		elif self.dug_in:
 			chance -= 15.0
+		elif self.terrain in ['Wooden Buildings', 'Woods']:
+			chance -= 10.0
 		
 		chance = RestrictChance(chance)
 		

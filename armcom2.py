@@ -10171,7 +10171,6 @@ class Scenario:
 				if position.crewman is None: continue
 				if not position.crewman.alive: continue
 				
-				# FUTURE: modify by location on tank penetrated
 				if DEBUG:
 					if session.debug['Player Crew Safe in Bail Out']:
 						result = None
@@ -10301,7 +10300,6 @@ class Scenario:
 			if burns:
 			
 				# check for wound from burn-up before rescue
-				
 				result = position.crewman.ResolveAttack({'burn_up' : True}, show_messages=False)
 				
 				if result:

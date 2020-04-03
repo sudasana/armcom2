@@ -5888,10 +5888,47 @@
 		}
 	},
 	
+	"OQF 2-Pounder" : {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_2_pdr.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"turntable" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "40",
+				"long_range" : "L",
+				"rof" : "50.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander/Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"}
+		],
+		"description" : [
+			"With a tripod mounting, a 40mm calibre gun, and a fast rate of ",
+			"fire, the 2pdr is one of the best anti-tank guns of the early war."
+		],
+		"rarity" : {
+			"1940.05.01" : "80",
+			"1940.07.01" : "0"
+		}
+	},
+	
 	"OQF 18-Pounder" : {
 		"category" : "Gun",
 		"class" : "Artillery Gun",
-		"portrait" : "unit_18_pdr_gun.xp",
+		"portrait" : "unit_18_pdr.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",

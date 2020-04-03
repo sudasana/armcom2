@@ -7,11 +7,12 @@
 	"region" : "Northwestern Europe",
 	"desc" : "After months of a 'Drole de guerre', Germany has attacked through the Low Countries. Help defend France from this attempted invasion.",
 	"player_unit_list" : [
-		"H35", "H35 (Late)", "SOMUA S35", "R35 (Late)"
+		"H35", "H35 (Late)", "SOMUA S35", "R35 (Late)", "Char B-1 Bis"
 	],
 	"player_squad_list" : {
 		"H35" : ["H35", "H35 (Late)"],
-		"H35 (Late)" : ["H35", "H35 (Late)"]
+		"H35 (Late)" : ["H35", "H35 (Late)"],
+		"Char B-1 Bis" : ["SOMUA S35", "R35 (Late)"]
 	},
 	"national_skills" : [
 		"Defensive Strategy"

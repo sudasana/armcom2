@@ -4352,6 +4352,101 @@
 		}
 	},
 	
+	"Char B-1 Bis": {
+		"category" : "Vehicle",
+		"class" : "Heavy Tank",
+		"portrait" : "unit_B-1_bis.xp",
+		"size_class" : "Large",
+		"movement_class" : "Slow Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "8",
+			"hull_side" : "6"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "47",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rr_size" : "4",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 1,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "1",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 1
+			}
+			
+			
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed as a Battle Tank, able to support infantry but also engage ",
+			"enemy tanks, the Char B-1 was the largest and most heavily-armoured ",
+			"fighting vehicle of its day. The bis variant was the only mass-produced ",
+			"version, and added additional armour and a slightly better turret gun ",
+			"compared to the prototype."
+		],
+		"rarity" : {
+			"1940.05.01" : "80",
+			"1940.06.01" : "60",
+			"1940.07.01" : "0"
+		}
+	},
+	
 	"75mm mle 1928": {
 		"category" : "Gun",
 		"class" : "Field Gun",

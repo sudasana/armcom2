@@ -8566,15 +8566,11 @@ class Unit:
 					if GetDirectionToward(unit.hx, unit.hy, self.hx, self.hy) in unit.hull_down:
 						chance = chance * 0.5
 				
-				chance = RestrictChance(chance)
-				
-				# special: target has been hit by effective fp
+				# target has been hit by effective fp
 				if unit.hit_by_fp:
-					chance = 100.0
+					chance = chance * 4.0
 				
-				roll = GetPercentileRoll()
-				
-				if roll <= chance:
+				if GetPercentileRoll() <= RestrictChance(chance):
 					
 					unit.SpotMe()
 					scenario.UpdateUnitCon()

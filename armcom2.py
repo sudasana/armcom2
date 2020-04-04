@@ -9520,6 +9520,38 @@ class Unit:
 		self.MoveToTopOfStack()
 		scenario.UpdateUnitCon()
 		
+		# highlight unit and show initial message
+		text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + '.'
+		ShowMessage(text, scenario_highlight=(self.hx, self.hy))
+		
+		# create pop-up window
+		window_con = libtcod.console_new(26, 30)
+		libtcod.console_set_default_background(window_con, libtcod.black)
+		libtcod.console_set_default_foreground(window_con, libtcod.white)
+		DrawFrame(window_con, 0, 0, 26, 30)
+		
+		# window title and portrait if any
+		libtcod.console_set_default_background(window_con, libtcod.darker_blue)
+		libtcod.console_rect(window_con, 1, 1, 24, 2, False, libtcod.BKGND_SET)
+		libtcod.console_set_default_background(window_con, libtcod.black)
+		
+		libtcod.console_print_ex(window_con, 13, 1, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Resolving ' + str(self.fp_to_resolve) + ' firepower')
+		libtcod.console_print_ex(window_con, 13, 2, libtcod.BKGND_NONE, libtcod.CENTER,
+			'on ' + self.GetName())
+		
+		portrait = self.GetStat('portrait')
+		if portrait is not None:
+			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, window_con, 1, 3)
+		
+		# list of possible outcomes
+		libtcod.console_print_ex(window_con, 13, 12, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Outcome Odds:')
+		
+		destroy_odds = 0.0
+		rout_odds = 0.0
+		reduction_odds = 0.0
+		
 		# fp has a different type of effect on vehicles and armoured trains
 		if self.GetStat('category') in ['Vehicle', 'Train Car']:
 			
@@ -9527,70 +9559,115 @@ class Unit:
 			if self.GetStat('armour') is None:
 				for (fp, score) in VEH_FP_TK:
 					if fp <= self.fp_to_resolve:
+						destroy_odds = score
 						break
-				
-				text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + '. '
-				text += str(score) + '% chance to destroy.'
-				ShowMessage(text, scenario_highlight=(self.hx, self.hy))
-				
-				if GetPercentileRoll() <= score:
-					text = self.GetName() + ' was destroyed.'
-					ShowMessage(text, scenario_highlight=(self.hx, self.hy))
-					campaign.AddJournal(self.GetName() + ' was destroyed.')
-					self.DestroyMe()
-				else:
-					ShowMessage('No effect.', scenario_highlight=(self.hx, self.hy))
-				return
-			
-			# FUTURE: chance of minor damage to vehicle
-			
-			# check for crew wound - Player unit only
-			# FUTURE: also apply to AI units?
-			if self == scenario.player_unit:
-				
-				for position in self.positions_list:
-					if position.crewman is None: continue
-					if position.crewman.ResolveAttack({'firepower' : self.fp_to_resolve}):
-						scenario.UpdateCrewInfoCon()
-				
-			self.fp_to_resolve = 0
-			return
 		
-		# calculate base chance of destruction
-		base_chance = RESOLVE_FP_BASE_CHANCE
-		for i in range(2, self.fp_to_resolve + 1):
-			base_chance += RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
-		
-		# apply any modifiers
-		if self.unit_fatigue > 0:
-			base_chance += float(self.unit_fatigue) * 15.0
-		
-		# restrict final chance
-		base_chance = RestrictChance(base_chance)
-		
-		text = 'Resolving ' + str(self.fp_to_resolve) + ' firepower on ' + self.GetName() + '. '
-		text += str(base_chance) + '% chance to destroy.'
-		ShowMessage(text, scenario_highlight=(self.hx, self.hy))
-		
-		# roll for effect
-		roll = GetPercentileRoll()
-		
-		if roll <= base_chance:
-			text = self.GetName() + ' was destroyed.'
-			ShowMessage(text, scenario_highlight=(self.hx, self.hy))
-			campaign.AddJournal(self.GetName() + ' was destroyed')
-			self.DestroyMe()
 		else:
-			# pin test if not already pinned
-			if self.pinned:
-				ShowMessage('No effect.', scenario_highlight=(self.hx, self.hy))
-			else:
-				self.PinTest(self.fp_to_resolve)
-				if not self.pinned:
-					ShowMessage('No effect.', scenario_highlight=(self.hx, self.hy))
 		
+			# calculate chance of destruction
+			destroy_odds = RESOLVE_FP_BASE_CHANCE
+			for i in range(2, self.fp_to_resolve + 1):
+				destroy_odds += RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
+			if self.unit_fatigue > 0:
+				destroy_odds += float(self.unit_fatigue) * 15.0
+			destroy_odds = RestrictChance(destroy_odds)
+			
+			# calculate other odds
+			reduction_odds = round(destroy_odds * 0.85, 1)
+			
+			rout_odds = reduction_odds * 0.75
+			if self.fortified:
+				rout_odds -= 15.0
+			elif self.entrenched:
+				rout_odds -= 10.0
+			elif self.dug_in:
+				rout_odds -= 5.0
+			elif self.terrain in ['Wooden Buildings', 'Woods']:
+				rout_odds -= 10.0
+			if rout_odds < 0.0:
+				rout_odds = 0.0
+			rout_odds = round(rout_odds, 1)
+			
+			# add unit fatigue
+			self.unit_fatigue += 1
+			
+		
+		# only display if there are odds of any effect
+		if destroy_odds + rout_odds + reduction_odds > 0.0:
+			
+			y = 14
+			if destroy_odds > 0.0:
+				libtcod.console_print(window_con, 1, y, 'Destroy:')
+				libtcod.console_print_ex(window_con, 24, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(destroy_odds) + '%')
+				y += 1
+			
+			if reduction_odds > 0.0:
+				libtcod.console_print(window_con, 1, y, 'Reduce:')
+				libtcod.console_print_ex(window_con, 24, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(reduction_odds) + '%')
+				y += 1
+			
+			if rout_odds > 0.0:
+				libtcod.console_print(window_con, 1, y, 'Rout:')
+				libtcod.console_print_ex(window_con, 24, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(rout_odds) + '%')
+				y += 1
+			
+		
+			# blit window to screen and wait
+			libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM, WINDOW_YM-14)
+			libtcod.console_flush()
+			Wait(400 + (40 * config['ArmCom2'].getint('message_pause')), ignore_animations=True)
+			
+			# do roll and apply effects
+			roll = GetPercentileRoll()
+			
+			if roll <= destroy_odds:
+				text = 'Destroyed'
+				campaign.AddJournal(self.GetName() + ' was destroyed.')
+				self.DestroyMe()
+			
+			elif roll <= destroy_odds + reduction_odds:
+				text = 'Reduced'
+				campaign.AddJournal(self.GetName() + ' was reduced.')
+				# TODO: apply effect here
+			
+			elif roll <= destroy_odds + reduction_odds + rout_odds:
+				text = 'Routed'
+				campaign.AddJournal(self.GetName() + ' was routed.')
+				# TODO: apply effect here
+			
+			else:
+				# guns and infantry test for pin here
+				if self.GetStat('category') in ['Gun', 'Infantry'] and not self.pinned:
+					self.PinTest(self.fp_to_resolve)
+					if self.pinned:
+						text = 'Pinned'
+					else:
+						text = 'No effect'
+				else:
+					text = 'No effect'
+			
+			libtcod.console_print_ex(window_con, 13, 26, libtcod.BKGND_NONE,
+				libtcod.CENTER, 'Roll: ' + str(roll))
+			libtcod.console_print_ex(window_con, 13, 27, libtcod.BKGND_NONE,
+				libtcod.CENTER, text)
+			
+			libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM, WINDOW_YM-14)
+			libtcod.console_flush()
+			Wait(400 + (40 * config['ArmCom2'].getint('message_pause')), ignore_animations=True)
+		
+		# if player unit, check for crew injury
+		# FUTURE: also apply to AI units?
+		if self == scenario.player_unit:
+			for position in self.positions_list:
+				if position.crewman is None: continue
+				if position.crewman.ResolveAttack({'firepower' : self.fp_to_resolve}):
+					scenario.UpdateCrewInfoCon()
+		
+		# clear fp to resolve and return
 		self.fp_to_resolve = 0
-		self.unit_fatigue += 1
 	
 	
 	# do a morale check for this unit to recover from Pinned status
@@ -9617,7 +9694,7 @@ class Unit:
 	
 	
 	# do a pin test on this unit
-	def PinTest(self, fp, no_msg=False):
+	def PinTest(self, fp):
 		
 		# only infantry and guns are subject to pinning
 		if self.GetStat('category') not in ['Infantry', 'Gun']:
@@ -9641,17 +9718,15 @@ class Unit:
 		
 		roll = GetPercentileRoll()
 		if roll <= chance:
-			self.PinMe(no_msg)
+			self.PinMe()
 	
 	
 	# pin this unit
-	def PinMe(self, no_msg):
+	def PinMe(self):
 		self.pinned = True
 		self.ClearAcquiredTargets()
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
-		if not no_msg:
-			ShowMessage(self.GetName() + ' is now Pinned.', scenario_highlight=(self.hx, self.hy))
 
 
 	# immobilize this unit
@@ -10411,6 +10486,9 @@ class Scenario:
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			
+			# TEMP testing
+			unit_class = 'Infantry Squad'
+			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
 				enemy_unit_list.append(self.class_type_dict[unit_class])
@@ -10572,7 +10650,7 @@ class Scenario:
 			
 			# if player used advancing fire, test for pin
 			if campaign_day.advancing_fire:
-				unit.PinTest(10.0, no_msg=True)
+				unit.PinTest(10.0)
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a

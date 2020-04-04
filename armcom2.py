@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2.0.0-dev'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -680,9 +680,9 @@ FP_FULL_EFFECT = 0.75		# multiplier for full effect
 FP_CRIT_EFFECT = 0.1		# multipler for critical effect
 
 
-RESOLVE_FP_BASE_CHANCE = 5.0	# base chance of a 1 firepower attack destroying a unit
-RESOLVE_FP_CHANCE_STEP = 5.0	# each additional firepower beyond 1 adds this additional chance
-RESOLVE_FP_CHANCE_MOD = 1.05	# additional firepower modifier increased by this much beyond 1
+RESOLVE_FP_BASE_CHANCE = 2.0	# base chance of a 1 firepower attack destroying a unit
+RESOLVE_FP_CHANCE_STEP = 2.0	# each additional firepower beyond 1 adds this additional chance
+RESOLVE_FP_CHANCE_MOD = 1.03	# additional firepower modifier increased by this much beyond 1
 
 MORALE_CHECK_BASE_CHANCE = 70.0	# base chance of passing a morale check
 
@@ -3817,8 +3817,6 @@ class CampaignDay:
 		
 		# don't bother for dead units or if campaign is already over
 		if not unit.alive or campaign.ended: return
-		
-		print('DEBUG: Doing post-scenario crew check')
 		
 		for position in unit.positions_list:
 			if position.crewman is None: continue
@@ -7616,7 +7614,7 @@ class AI:
 		if self.owner.fortified and self.disposition == 'Movement':
 			self.disposition = 'Combat'
 		
-		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
+		print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 				
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
@@ -7707,7 +7705,7 @@ class AI:
 				return
 			
 			# NEW: guns don't move, they are abandoned instead
-			if self.GetStat('category') == 'Gun':
+			if self.owner.GetStat('category') == 'Gun':
 				ShowMessage(self.owner.unit_id + ' crew has abandoned their gun.',
 					scenario_highlight=(self.owner.hx, self.owner.hy))
 				self.owner.DestroyMe(no_vp=True)
@@ -7816,7 +7814,7 @@ class AI:
 		
 		# no possible attacks
 		if len(attack_list) == 0:
-			#print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
+			print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
 			return None
 		
 		# score each possible weapon-ammo-target combination
@@ -7896,29 +7894,29 @@ class AI:
 		
 		# no possible attacks
 		if len(scored_list) == 0:
-			#print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
+			print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
 			return None
 		
 		# sort list by score
 		scored_list.sort(key=lambda x:x[0], reverse=True)
 		
 		# DEBUG: list scored attacks
-		#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-		#n = 1
-		#for (score, weapon, target, ammo_type) in scored_list:
-		#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-		#	if ammo_type != '':
-		#		text += '(' + ammo_type + ')'
-		#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-		#	print (text)
-		#	n += 1
+		print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+		n = 1
+		for (score, weapon, target, ammo_type) in scored_list:
+			text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+			if ammo_type != '':
+				text += '(' + ammo_type + ')'
+			text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+			print (text)
+			n += 1
 		
 		# select best attack
 		(score, weapon, target, ammo_type) = scored_list[0]
 		
 		# no good attacks
 		if score <= 3.0:
-			#print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
+			print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
 			return None
 		
 		# proceed with best attack
@@ -7959,12 +7957,6 @@ class AI:
 						self.owner.ClearAcquiredTargets(no_enemy=True)
 						for weapon in self.owner.weapon_list:
 							weapon.UpdateCoveredHexes()
-		
-		#text = 'AI DEBUG: ' + self.owner.unit_id + ' attacking with ' + weapon.stats['name']
-		#if ammo_type != '':
-		#	text += '(' + ammo_type + ')'
-		#text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-		#print(text)
 		
 		# move target to top of hex stack
 		target.MoveToTopOfStack()

@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.0-dev-1'					# game version
+VERSION = '2.0.0-dev-2'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
@@ -1171,7 +1171,7 @@ class Campaign:
 				
 				# check to see whether there's already a saved game for this campaign
 				if os.path.isdir(SAVEPATH + selected_campaign['filename'].rsplit('.', 1)[0]):
-					if not ShowNotification('WARNING: Saved campaign already exists, erase and start a new one?', confirm=True):
+					if not ShowNotification('WARNING: Saved campaign already exists for this campaign, erase and start a new one?', confirm=True):
 						UpdateCampaignSelectionScreen(selected_campaign)
 						continue
 				
@@ -1191,9 +1191,7 @@ class Campaign:
 			
 			# change selected campaign
 			if key_char in ['w', 's']:
-				
 				i = campaign_list.index(selected_campaign)
-				
 				if key_char == 's':
 					if i == len(campaign_list) - 1:
 						selected_campaign = campaign_list[0]
@@ -1208,7 +1206,18 @@ class Campaign:
 			
 			# select a random campaign (not keymapped)
 			elif chr(key.c).lower() == 'r':
+				old_campaign = selected_campaign
 				selected_campaign = choice(campaign_list)
+				
+				# check to see whether there's already a saved game for this campaign
+				if os.path.isdir(SAVEPATH + selected_campaign['filename'].rsplit('.', 1)[0]):
+					if not ShowNotification('WARNING: Saved campaign already exists for ' +
+						selected_campaign['name'] + ', erase and start a new one?',
+						confirm=True):
+						selected_campaign = old_campaign
+						UpdateCampaignSelectionScreen(selected_campaign)
+						continue
+				
 				exit_menu = True
 				
 		

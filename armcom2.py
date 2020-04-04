@@ -9081,6 +9081,10 @@ class Unit:
 			libtcod.console_rect(console, x, y+ys, 25, 2, True, libtcod.BKGND_SET)
 			
 			text = ''
+			if self.routed:
+				text += 'Routed '
+			elif self.pinned:
+				text += 'Pinned '
 			if self.moving:
 				text += 'Moving '
 			if self.fired:
@@ -10529,9 +10533,6 @@ class Scenario:
 				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
-			
-			# TEMP testing
-			unit_class = 'Infantry Squad'
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
@@ -13804,11 +13805,16 @@ class Scenario:
 				session.nations[unit.nation]['adjective'])
 			libtcod.console_print(unit_info_con, 0, 2, unit.GetStat('class'))
 			
-			# immobilized/moving/fired status
+			# statuses
 			if unit.immobilized:
 				libtcod.console_print(unit_info_con, 0, 3, 'Immobilized')
+			elif unit.pinned:
+				libtcod.console_print(unit_info_con, 0, 3, 'Pinned')
 			elif unit.moving:
 				libtcod.console_print(unit_info_con, 0, 3, 'Moving')
+			
+			if unit.routed:
+				libtcod.console_print(unit_info_con, 0, 4, 'Routed')
 			
 			if unit.fired:
 				libtcod.console_print(unit_info_con, 12, 3, 'Fired')
@@ -13840,7 +13846,7 @@ class Scenario:
 			
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_grey)
 			libtcod.console_print(unit_info_con, 20, 3, 'Right click for details')
-			libtcod.console_print(unit_info_con, 14, 4, 'Mousewheel to cycle units in stack')
+			libtcod.console_print(unit_info_con, 14, 4, 'Mousewheel to cycle unit stack')
 	
 	
 	# starts or re-starts looping animations based on weather conditions
@@ -16643,8 +16649,7 @@ gradient_x = WINDOW_WIDTH + 5
 def UpdateMainTitleCon(options_menu_active):
 	
 	# TODO: set flag to say whether 1+ saved campaigns are available
-	
-	
+	# and grey out continue and load options
 	libtcod.console_blit(main_title, 0, 0, 0, 0, con, 0, 0)
 	
 	y = 38
@@ -16757,7 +16762,6 @@ while not exit_game:
 					continue
 			
 			# start a new campaign
-			# TODO: new campaign menu will warn if this will overwrite a saved game
 			else:
 				
 				# create a new campaign object and allow player to select a campaign

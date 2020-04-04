@@ -7600,6 +7600,14 @@ class AI:
 			if self.disposition not in ['None', 'Combat']:
 				self.disposition = 'Combat'
 		
+		# unit has been routed
+		if self.owner.routed:
+			roll = GetPercentileRoll()
+			if roll <= 50.0:
+				self.disposition = 'None'
+			else:
+				self.disposition = 'Movement'
+		
 		# immobilized units can't move
 		if self.owner.immobilized and self.disposition == 'Movement':
 			self.disposition = 'Combat'
@@ -7641,8 +7649,8 @@ class AI:
 						hex_list.remove((hx, hy))
 						continue
 				
-				# if unit is being recalled, can only move further away
-				elif self.recall:
+				# if unit is being recalled or has been routed, can only move further away
+				elif self.recall or self.owner.routed:
 					if dist < current_range:
 						hex_list.remove((hx, hy))
 						continue
@@ -7696,6 +7704,13 @@ class AI:
 			
 			# move was successful but may be cancelled by a breakdown
 			if self.owner.BreakdownCheck():
+				return
+			
+			# NEW: guns don't move, they are abandoned instead
+			if self.GetStat('category') == 'Gun':
+				ShowMessage(self.owner.unit_id + ' crew has abandoned their gun.',
+					scenario_highlight=(self.owner.hx, self.owner.hy))
+				self.owner.DestroyMe(no_vp=True)
 				return
 			
 			# clear any bonus and move into new hex
@@ -8047,6 +8062,8 @@ class Unit:
 		self.pinned = False
 		self.deployed = False
 		self.unit_fatigue = 0			# unit fatigue points
+		self.reduced = False			# unit has been reduced through casualites
+		self.routed = False			# unit has been routed
 		
 		self.dug_in = False			# unit is dug-in
 		self.entrenched = False			# " entrenched
@@ -9052,8 +9069,13 @@ class Unit:
 				libtcod.console_print(console, x+8, ys-1, 'HD')
 				char = GetDirectionalArrow(self.hull_down[0])
 				libtcod.console_put_char_ex(console, x+10, ys-1, char, libtcod.sepia, libtcod.black)
-		
-			# reset of unit status
+			
+			# reduction if any
+			elif self.reduced:
+				libtcod.console_set_default_foreground(console, libtcod.light_red)
+				libtcod.console_print(console, x, ys-1, 'Reduced')
+			
+			# rest of unit status
 			libtcod.console_set_default_foreground(console, libtcod.light_grey)
 			libtcod.console_set_default_background(console, libtcod.darkest_blue)
 			libtcod.console_rect(console, x, y+ys, 25, 2, True, libtcod.BKGND_SET)
@@ -9573,20 +9595,26 @@ class Unit:
 			destroy_odds = RestrictChance(destroy_odds)
 			
 			# calculate other odds
-			reduction_odds = round(destroy_odds * 0.85, 1)
+			if self.reduced:
+				destroy_odds = RestrictChance(destroy_odds * 2.0)
+			else:
+				reduction_odds = round(destroy_odds * 0.85, 1)
 			
-			rout_odds = reduction_odds * 0.75
-			if self.fortified:
-				rout_odds -= 15.0
-			elif self.entrenched:
-				rout_odds -= 10.0
-			elif self.dug_in:
-				rout_odds -= 5.0
-			elif self.terrain in ['Wooden Buildings', 'Woods']:
-				rout_odds -= 10.0
-			if rout_odds < 0.0:
-				rout_odds = 0.0
-			rout_odds = round(rout_odds, 1)
+			if not self.routed:
+				rout_odds = reduction_odds * 0.75
+				if self.fortified:
+					rout_odds -= 15.0
+				elif self.entrenched:
+					rout_odds -= 10.0
+				elif self.dug_in:
+					rout_odds -= 5.0
+				elif self.terrain in ['Wooden Buildings', 'Woods']:
+					rout_odds -= 10.0
+				if rout_odds < 0.0:
+					rout_odds = 0.0
+				rout_odds = round(rout_odds, 1)
+			else:
+				destroy_odds = RestrictChance(destroy_odds * 3.0)
 			
 			# add unit fatigue
 			self.unit_fatigue += 1
@@ -9618,7 +9646,7 @@ class Unit:
 			# blit window to screen and wait
 			libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM, WINDOW_YM-14)
 			libtcod.console_flush()
-			Wait(400 + (40 * config['ArmCom2'].getint('message_pause')), ignore_animations=True)
+			Wait(300 + (40 * config['ArmCom2'].getint('message_pause')), ignore_animations=True)
 			
 			# do roll and apply effects
 			roll = GetPercentileRoll()
@@ -9631,12 +9659,12 @@ class Unit:
 			elif roll <= destroy_odds + reduction_odds:
 				text = 'Reduced'
 				campaign.AddJournal(self.GetName() + ' was reduced.')
-				# TODO: apply effect here
+				self.ReduceMe()
 			
 			elif roll <= destroy_odds + reduction_odds + rout_odds:
 				text = 'Routed'
 				campaign.AddJournal(self.GetName() + ' was routed.')
-				# TODO: apply effect here
+				self.RoutMe()
 			
 			else:
 				# guns and infantry test for pin here
@@ -9725,6 +9753,22 @@ class Unit:
 	def PinMe(self):
 		self.pinned = True
 		self.ClearAcquiredTargets()
+		scenario.UpdateUnitCon()
+		scenario.UpdateScenarioDisplay()
+
+
+	# reduce this unit
+	def ReduceMe(self):
+		if self.GetStat('category') not in ['Gun', 'Infantry']: return
+		self.reduced = True
+		scenario.UpdateUnitCon()
+		scenario.UpdateScenarioDisplay()
+	
+	
+	# rout this unit
+	def RoutMe(self):
+		self.routed = True
+		self.pinned = False
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
 
@@ -10836,9 +10880,11 @@ class Scenario:
 						mod = -20.0
 					modifier_list.append(('Turret Rotated', mod))
 			
-			# attacker pinned
+			# attacker pinned or reduced
 			if attacker.pinned:
 				modifier_list.append(('Attacker Pinned', -60.0))
+			elif attacker.reduced:
+				modifier_list.append(('Attacker Reduced', -40.0))
 			
 			# precipitation effects
 			if campaign_day.weather['Precipitation'] == 'Rain':
@@ -10993,10 +11039,13 @@ class Scenario:
 					mod = round(base_chance / 4.0, 1)
 					modifier_list.append(('Turret Rotated', 0.0 - mod))
 			
-			# attacker pinned
+			# attacker pinned or reduced
 			if attacker.pinned:
 				mod = round(base_chance / 2.0, 1)
 				modifier_list.append(('Attacker Pinned', 0.0 - mod))
+			elif attacker.reduced:
+				mod = round(base_chance / 3.0, 1)
+				modifier_list.append(('Attacker Reduced', 0.0 - mod))
 			
 			# smoke
 			total_smoke = attacker.smoke + target.smoke

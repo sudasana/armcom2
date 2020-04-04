@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.0-dev'					# game version
+VERSION = '2.0.0-dev-1'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
@@ -1971,21 +1971,6 @@ class Campaign:
 			else:
 				text = str(campaign.current_week['arty_support_level'])
 			libtcod.console_print(calendar_main_panel, x+19, y+19, text)
-			
-			# expected enemy forces
-			# TODO: Is this still needed?
-			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
-			libtcod.console_print_ex(calendar_main_panel, x+10, y+23, libtcod.BKGND_NONE,
-				libtcod.CENTER,	'Expected Enemy Forces')
-			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
-			
-			text = 'Infantry, guns, and AFVs'
-			lines = wrap(text, 30)
-			y1 = y+25
-			for line in lines:
-				libtcod.console_print(calendar_main_panel, x, y1, line)
-				y1+=1
-				if y1 == y+28: break
 		
 		# crew and tank menu
 		elif self.active_calendar_menu == 2:

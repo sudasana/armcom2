@@ -10795,9 +10795,30 @@ class Scenario:
 							text += '+'
 						modifier_list.append((text, AC_BONUS[distance][level]))
 				
-				# target vehicle moving
-				if target.moving and target.GetStat('category') == 'Vehicle':
-					modifier_list.append(('Target Moving', -30.0))
+				# target is moving
+				if target.moving:
+					
+					if attacker.GetStat('category') == 'Vehicle':
+						
+						# NEW: fixed mount guns have a higher penalty
+						if weapon.GetStat('mount') == 'Hull':
+							mod = -45.0
+						else:
+							mod = -30.0
+					
+					elif attacker.GetStat('category') == 'Gun':
+						
+						if attacker.GetStat('turntable') is not None:
+							mod = -15.0
+						else:
+							mod = -30.0
+					
+					# what else mounts a gun?
+					else:
+						mod = 0.0
+					
+					if mod != 0.0:
+						modifier_list.append(('Target Moving', mod))
 				
 				# target size
 				size_class = target.GetStat('size_class')
@@ -16310,12 +16331,11 @@ def PlaySoundFor(obj, action):
 		return
 	
 	elif action == 'movement':
-		
 		if obj.GetStat('movement_class') in ['Wheeled', 'Fast Wheeled']:
 			PlaySound('wheeled_moving_0' + str(libtcod.random_get_int(0, 0, 2)))
 			return
 		
-		elif obj.GetStat('class') in ['Tankette', 'Light Tank', 'Medium Tank', 'Half-Tracked']:
+		elif obj.GetStat('class') in ['Tankette', 'Light Tank', 'Medium Tank', 'Heavy Tank', 'Half-Tracked']:
 			PlaySound('light_tank_moving_0' + str(libtcod.random_get_int(0, 0, 2)))
 			return
 	

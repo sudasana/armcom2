@@ -6115,6 +6115,30 @@
 		}
 	},
 	
+	"Morris 15 cwt" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_morris_15_cwt_truck.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
+		"description" : [
+			"Also known as the R-Type, this truck was originally designed for ",
+			"civilian commercial service, but was used by some British companies ",
+			"during the early years of the war."
+		],
+		"rarity" : {
+			"1928.01.01" : "100"
+		}
+	},
 	
 	"Typhoon": {
 		"category" : "Airplane",

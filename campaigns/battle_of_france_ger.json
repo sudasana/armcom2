@@ -33,7 +33,8 @@
 			"Mk VI B", "Mk VI C", "A9 Cruiser Mk I", "A10 Cruiser Mk II",
 			"A12 Matilda II",
 			"OQF 2-Pounder", "OQF 18-Pounder",
-			"Riflemen", "Motorcycle MG Team", "HMG Team"
+			"Riflemen", "Motorcycle MG Team", "HMG Team",
+			"Morris 15 cwt"
 		]
 	},
 	"enemy_unit_class_odds" : {

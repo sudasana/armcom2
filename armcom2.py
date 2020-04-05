@@ -5789,6 +5789,7 @@ class Session:
 		self.tank_portrait = None
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
 			unit_types = json.load(data_file)
+		print('Loaded ' + str(len(unit_types)) + ' unit types.')
 		
 		for tries in range(300):
 			unit_id = choice(list(unit_types.keys()))
@@ -9578,6 +9579,12 @@ class Unit:
 		libtcod.console_print_ex(window_con, 13, 12, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Outcome Odds:')
 		
+		# player can skip pause
+		libtcod.console_set_default_foreground(window_con, ACTION_KEY_COL)
+		libtcod.console_print(window_con, 8, 28, 'Enter')
+		libtcod.console_set_default_foreground(window_con, libtcod.light_grey)
+		libtcod.console_print(window_con, 15, 28, 'Skip')
+		
 		destroy_odds = 0.0
 		rout_odds = 0.0
 		reduction_odds = 0.0
@@ -9654,7 +9661,7 @@ class Unit:
 			# blit window to screen and wait
 			libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM, WINDOW_YM-14)
 			libtcod.console_flush()
-			Wait(300 + (40 * config['ArmCom2'].getint('message_pause')), ignore_animations=True)
+			Wait(300 + (40 * config['ArmCom2'].getint('message_pause')), allow_skip=True, ignore_animations=True)
 			
 			# do roll and apply effects
 			roll = GetPercentileRoll()
@@ -9685,14 +9692,14 @@ class Unit:
 				else:
 					text = 'No effect'
 			
-			libtcod.console_print_ex(window_con, 13, 26, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(window_con, 13, 24, libtcod.BKGND_NONE,
 				libtcod.CENTER, 'Roll: ' + str(roll))
-			libtcod.console_print_ex(window_con, 13, 27, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(window_con, 13, 25, libtcod.BKGND_NONE,
 				libtcod.CENTER, text)
 			
 			libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM, WINDOW_YM-14)
 			libtcod.console_flush()
-			Wait(400 + (40 * config['ArmCom2'].getint('message_pause')), ignore_animations=True)
+			Wait(400 + (40 * config['ArmCom2'].getint('message_pause')), allow_skip=True, ignore_animations=True)
 		
 		# if player unit, check for crew injury
 		# FUTURE: also apply to AI units?
@@ -14849,7 +14856,7 @@ def FlushKeyboardEvents():
 
 
 # wait for a specified amount of miliseconds, refreshing the screen in the meantime
-def Wait(wait_time, ignore_animations=False):
+def Wait(wait_time, allow_skip=False, ignore_animations=False):
 	
 	# check for debug fast mode
 	if DEBUG:
@@ -14863,8 +14870,14 @@ def Wait(wait_time, ignore_animations=False):
 		# check for animation update in scenario or campaign day or layer
 		if not ignore_animations:
 			CheckForAnimationUpdate()
-			
 		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		if not GetInputEvent(): continue
+		
+		if allow_skip:
+			if key.vk == libtcod.KEY_ENTER:
+				return
+		
 		FlushKeyboardEvents()
 
 

@@ -4486,6 +4486,27 @@
 		}
 	},
 
+	"Laffly S20TL" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_S20TL.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
+		"description" : [
+			"Designed to transport a 10-man platoon cross country, this open-topped ",
+			"truck was produced for the new mechanized divisions of the French army."
+		]
+	},
+	
 	
 	"American Forces" : {},
 	

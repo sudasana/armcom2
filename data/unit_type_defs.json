@@ -4507,6 +4507,27 @@
 		]
 	},
 	
+	"Citroen 23" : {
+		"category" : "Vehicle",
+		"class" : "Truck",
+		"portrait" : "unit_citroen_23.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull"
+			}
+		],
+		"transport" : [
+			"Riflemen", "HMG Team"
+		],
+		"description" : [
+			"Originally produced for the civilian market, these trucks were used to ",
+			"transport supplies and troops."
+		]
+	},
+	
 	
 	"American Forces" : {},
 	

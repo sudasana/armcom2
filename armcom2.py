@@ -10539,9 +10539,6 @@ class Scenario:
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
 			
-			# TEMP testing
-			unit_class = 'Infantry Squad'
-			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
 				enemy_unit_list.append(self.class_type_dict[unit_class])

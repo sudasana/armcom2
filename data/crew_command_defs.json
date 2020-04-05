@@ -54,6 +54,12 @@
 		"spotting_allowed" : false
 	},
 	
+	"Overrun" : {
+		"desc" : "Move forward into close range with enemy infantry or guns",
+		"position_list" : ["Driver"],
+		"spotting_allowed" : false
+	},
+	
 	"Reposition" : {
 		"desc" : "Move within the area, possibly into a new terrain type",
 		"position_list" : ["Driver"],

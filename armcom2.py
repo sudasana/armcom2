@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2.0.0-dev-2'					# game version
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
@@ -155,19 +155,18 @@ PHASE_SPOTTING = 1
 PHASE_CREW_ACTION = 2
 PHASE_MOVEMENT = 3
 PHASE_SHOOTING = 4
-PHASE_CC = 5
-PHASE_ALLIED_ACTION = 6
-PHASE_ENEMY_ACTION = 7
+PHASE_ALLIED_ACTION = 5
+PHASE_ENEMY_ACTION = 6
 
 # text names for scenario turn phases
 SCEN_PHASE_NAMES = [
-	'Command', 'Spotting', 'Crew Action', 'Movement', 'Shooting', 'Close Combat', 'Allied Action',
+	'Command', 'Spotting', 'Crew Action', 'Movement', 'Shooting', 'Allied Action',
 	'Enemy Action'
 ]
 
 # colour associated with phases
 SCEN_PHASE_COL = [
-	libtcod.yellow, libtcod.purple, libtcod.light_blue, libtcod.green, libtcod.red, libtcod.white,
+	libtcod.yellow, libtcod.purple, libtcod.light_blue, libtcod.green, libtcod.red,
 	ALLIED_UNIT_COL, ENEMY_UNIT_COL 
 ]
 
@@ -6812,6 +6811,21 @@ class Personnel:
 				if self.unit.immobilized: continue
 				if self.unit.bogged: continue
 			
+			# must be mobile and have 1+ enemy infantry or gun units in adjacent hex
+			elif k == 'Overrun':
+				if self.unit.immobilized: continue
+				if self.unit.bogged: continue
+				
+				defending_units = False
+				for unit in scenario.hex_dict[(0,-1)].unit_stack:
+					if unit.owning_player != 1: continue
+					if not unit.spotted: continue
+					if unit.GetStat('category') not in ['Infantry', 'Gun']: continue
+					defending_units = True
+					break
+				
+				if not defending_units: continue
+			
 			# can only unbog if vehicle is already bogged
 			elif k == 'Attempt Unbog':
 				if not self.unit.bogged: continue
@@ -8036,6 +8050,7 @@ class Unit:
 		
 		self.hull_down = []			# list of directions unit in which Hull Down
 		self.moving = False
+		self.overrun = False			# unit is doing an overrun attack
 		self.bogged = False			# unit is bogged down, cannot move or pivot
 		self.fired = False
 		self.hit_by_fp = False			# was hit by an effective fp attack
@@ -8758,6 +8773,9 @@ class Unit:
 			(x,y) = self.animation_cells[0]
 		else:
 			(x,y) = scenario.PlotHex(self.hx, self.hy)
+		
+		if self.overrun:
+			y -= 1
 		
 		# determine normal background colour to us
 		if campaign_day.weather['Ground'] in ['Snow', 'Heavy Snow']:
@@ -10197,7 +10215,8 @@ class Scenario:
 			if len(unit_list) == 0:
 				return
 			
-			self.ResolveCC([choice(unit_list)], 0, 0)
+			# TODO: add new function here to represent close-range attack
+			# with grenades
 		
 		# FUTURE: add more event types
 		else:
@@ -10519,6 +10538,9 @@ class Scenario:
 				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
+			
+			# TEMP testing
+			unit_class = 'Infantry Squad'
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
@@ -10982,6 +11004,11 @@ class Scenario:
 		# area fire
 		elif profile['type'] == 'Area Fire':
 			
+			# set flag if this is a valid overrun attack
+			overrun_attack = False
+			if attacker.overrun and target.GetStat('category') in ['Infantry', 'Gun'] and target.hx == 0 and target.hy == -1:
+				overrun_attack = True
+			
 			# calculate base FP
 			fp = int(weapon.GetStat('fp'))
 			
@@ -11025,6 +11052,10 @@ class Scenario:
 				if attacker.turret_facing != attacker.previous_turret_facing:
 					mod = round(base_chance / 4.0, 1)
 					modifier_list.append(('Turret Rotated', 0.0 - mod))
+			
+			# overrun attack
+			if overrun_attack:
+				modifier_list.append(('Overrun Attack', base_chance))
 			
 			# attacker pinned or reduced
 			if attacker.pinned:
@@ -11076,17 +11107,19 @@ class Scenario:
 						modifier_list.append((text, mod))
 				
 				# gun shield
-				if target.GetStat('gun_shield') is not None:
+				if not overrun_attack and target.GetStat('gun_shield') is not None:
 					if GetFacing(attacker, target) == 'Front':
 						modifier_list.append(('Gun Shield', -15.0))
 				
 			# fortified, entrenched, or dug-in
 			if target.fortified:
 				modifier_list.append(('Target Fortified', -50.0))
-			elif target.entrenched:
-				modifier_list.append(('Target Entrenched', -30.0))
-			elif target.dug_in:
-				modifier_list.append(('Target Dug-in', -15.0))
+			else:
+				if not overrun_attack:
+					if target.entrenched:
+						modifier_list.append(('Target Entrenched', -30.0))
+					elif target.dug_in:
+						modifier_list.append(('Target Dug-in', -15.0))
 				
 		# check for Commander directing fire
 		# FUTURE: may be possible for other positions as well (Commander/Driver?)
@@ -12812,6 +12845,12 @@ class Scenario:
 				unit.ResolveFP()
 				libtcod.console_flush()
 			
+			# NEW: reset any overrun statuses
+			self.player_unit.overrun = False
+			for unit in self.player_unit.squad:
+				unit.overrun = False
+			self.UpdateUnitCon()
+			
 			self.phase = PHASE_ENEMY_ACTION
 			self.active_player = 1
 		
@@ -12977,34 +13016,37 @@ class Scenario:
 			if not input_command:
 				self.advance_phase = True
 		
-		# movement phase: 
+		# movement phase
 		elif self.phase == PHASE_MOVEMENT:
 			
+			# reset player pivot
 			self.player_pivot = 0
 			
-			# skip phase if driver not on move command
+			# don't wait for player input phase if no crewman in position
 			crewman = self.player_unit.GetPersonnelByPosition('Driver')
 			if crewman is None:
 				self.advance_phase = True
 			else:
-				# driver not on Drive command
-				if crewman.current_cmd != 'Drive':
+				# driver is on Drive command
+				if crewman.current_cmd == 'Drive':
+					scenario.player_unit.CalculateMoveChances()
+				
+				# driver is not on Drive command
+				else:
+					# advance past phase without waiting for player input
 					self.advance_phase = True
-			
-			# if we're not doing the phase, player squad might still be assaulting
-			if self.advance_phase:
-				if crewman.current_cmd == 'Close Assault':
-					PlaySoundFor(self.player_unit, 'movement')
-					ShowMessage('Your squad advances forward')
-					self.player_unit.moving = True
-					self.player_unit.ClearAcquiredTargets()
-					for unit in scenario.player_unit.squad:
-						unit.moving = True
-						unit.ClearAcquiredTargets()
-			
-			# if we're doing the phase, calculate move chances for player unit
-			else:
-				scenario.player_unit.CalculateMoveChances()
+					
+					# if Driver is on overrun command, set statuses and flags now
+					if crewman.current_cmd == 'Overrun':
+						PlaySoundFor(self.player_unit, 'movement')
+						self.player_unit.moving = True
+						self.player_unit.overrun = True
+						self.player_unit.ClearAcquiredTargets()
+						for unit in self.player_unit.squad:
+							unit.moving = True
+							unit.overrun = True
+							unit.ClearAcquiredTargets()
+						self.UpdateUnitCon()
 		
 		# shooting phase
 		elif self.phase == PHASE_SHOOTING:
@@ -13023,34 +13065,7 @@ class Scenario:
 				self.BuildTargetList()
 				self.UpdateGuiCon()
 		
-		# close combat phase
-		elif self.phase == PHASE_CC:
-			
-			self.advance_phase = False
-			
-			# driver not on correct order
-			crewman = self.player_unit.GetPersonnelByPosition('Driver')
-			if crewman is None:
-				self.advance_phase = True
-			else:
-				# driver not on Drive command
-				if crewman.current_cmd != 'Drive':
-					self.advance_phase = True
-			
-			# check to see possible to assault target ahead
-			unit_list = scenario.hex_dict[(0,-1)].unit_stack
-			found_target = False
-			for unit in unit_list:
-				if unit.owning_player != 1: continue
-				if not unit.spotted: continue
-				if unit.GetStat('category') not in ['Infantry', 'Gun']: continue
-				found_target = True
-				break
-			
-			if not found_target:
-				self.advance_phase = True
-		
-		# allied action
+		# allied action phase
 		elif self.phase == PHASE_ALLIED_ACTION:
 			
 			# player squad acts
@@ -13115,136 +13130,6 @@ class Scenario:
 		self.UpdateScenarioDisplay()
 		libtcod.console_flush()
 	
-	
-	# resolve a close combat attack between 1+ units and a target hex
-	def ResolveCC(self, attacking_units, hx, hy):
-		
-		def CheckForKO(chance, unit_list, attackers_fight):
-			
-			if chance <= 0.0: return
-			roll = GetPercentileRoll()
-			if roll > chance: return
-			
-			unit = choice(unit_list)
-				
-			# check for armour or fortification save
-			if unit.GetStat('armour') is not None or unit.fortified:
-				roll = GetPercentileRoll()
-				if roll > chance:
-					return
-			
-			if unit == scenario.player_unit:
-				text = 'Your tank was destroyed in close combat!'
-			else:
-				if attackers_fight:
-					text = 'A defending'
-				else:
-					text = 'An attacking'
-				
-				text += ' ' + unit.unit_id + ' was destroyed in close combat'
-			PlaySoundFor(None, 'cc_combat')
-			ShowMessage(text)
-			unit.DestroyMe()
-			unit_list.remove(unit)
-			
-		
-		# FUTURE: make sure that pinned units are not attacking in CC
-		
-		#print('DEBUG: Starting close combat procedure with ' + str(len(attacking_units)) + ' attackers')
-		
-		# build list of defending units
-		defending_units = []
-		for unit in self.hex_dict[(hx,hy)].unit_stack:
-			defending_units.append(unit)
-		
-		# no units to defend!
-		if len(defending_units) == 0:
-			#print('DEBUG: No units to defend!')
-			return
-		
-		# if player is defending, let them know
-		if defending_units[0].owning_player == 0:
-			ShowMessage('You are being assaulted in close combat!')
-		
-		# defending AI units get a chance for defensive fire
-		else:
-			ShowMessage('Defending units engage in defensive fire')
-			for unit in defending_units:
-				if unit.ai is None: continue
-				unit.ai.disposition = 'Combat'
-				unit.ai.DoBestAttack(attacking_units)
-		
-		# resolve any hits on attacking units
-		for unit in attacking_units:
-			unit.ResolveFP()
-			unit.ResolveAPHits()
-		
-		# start combat rounds
-		combat_over = False
-		combat_round = 1
-		while not combat_over:
-			
-			#print('DEBUG: Starting close combat, round #' + str(combat_round) + '.')
-			
-			# calculate total firepower rating for attackers and defenders
-			attack_fp, defend_fp = 1,1
-			
-			for unit in attacking_units:
-				# may have been destroyed or pinned during defensive fire
-				if not unit.alive: continue
-				if unit.pinned: continue
-				(a_fp, d_fp) = unit.GetAssaultFP()
-				attack_fp += a_fp
-			
-			for unit in defending_units:
-				if unit.GetStat('assault_firepower') is not None:
-					defend_fp += unit.GetStat('assault_firepower')
-					continue
-				(a_fp, d_fp) = unit.GetAssaultFP()
-				if unit.pinned:
-					d_fp = int(float(d_fp) * 0.5)	
-				if unit.entrenched or unit.dug_in:
-					d_fp = int(float(d_fp) * 1.5)
-					
-				defend_fp += d_fp
-			
-			attack_ratio = round(float(attack_fp) / float(defend_fp), 1)
-			defend_ratio = round(float(defend_fp) / float(attack_fp), 1)
-			
-			#print('DEBUG: attack ratio: ' + str(attack_ratio))
-			#print('DEBUG: defend ratio: ' + str(defend_ratio))
-			
-			# attackers fight
-			for ratio, chance in CC_TK.items():
-				if ratio <= attack_ratio:
-					break
-			CheckForKO(chance, defending_units, True)
-			if not self.player_unit.alive: return
-			
-			# defenders fight
-			PlaySoundFor(None, 'cc_combat')
-			for ratio, chance in CC_TK.items():
-				if ratio <= defend_ratio:
-					break
-			CheckForKO(chance, attacking_units, False)
-			if not self.player_unit.alive: return
-			
-			# no units left
-			if len(attacking_units) == 0:
-				ShowMessage('No attackers remain, ending close combat.')
-				combat_over = True
-				continue
-			if len(defending_units) == 0:
-				ShowMessage('No defenders remain, ending close combat.')
-				combat_over = True
-				continue
-			
-			self.UpdateUnitCon()
-			self.UpdateUnitInfoCon()
-			self.UpdateScenarioDisplay()
-			libtcod.console_flush()
-			
-			combat_round += 1
 	
 	# update contextual info console
 	# 18x12
@@ -13577,14 +13462,6 @@ class Scenario:
 			libtcod.console_print(cmd_menu_con, 8, 4, 'Cycle Ammo Type')
 			libtcod.console_print(cmd_menu_con, 8, 5, 'Toggle RR Use')
 			libtcod.console_print(cmd_menu_con, 8, 6, 'Fire at Target')
-
-		# Close Combat phase
-		elif self.phase == PHASE_CC:
-			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
-			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper())
-			
-			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
-			libtcod.console_print(cmd_menu_con, 8, 1, 'Begin Assault')
 	
 	
 	# plot the center of a given in-game hex on the scenario hex map console
@@ -14464,22 +14341,6 @@ class Scenario:
 						self.UpdateUnitInfoCon()
 						self.UpdateContextCon()
 						self.UpdateScenarioDisplay()
-					continue
-
-			# close combat phase
-			elif scenario.phase == PHASE_CC:
-				
-				# init assault
-				if key_char == 'w':
-					
-					self.ResolveCC([self.player_unit] + self.player_unit.squad, 0, -1)
-					
-					# player did not survive
-					if not self.player_unit.alive:
-						campaign_day.ended = True
-						return
-					
-					self.advance_phase = True
 					continue
 					
 					
@@ -16309,7 +16170,6 @@ def LoadCampaignMenu(continue_most_recent):
 			
 			# check for saved game version compatibility
 			if CheckSavedGameVersion(save['version']) != '':
-				print('DEBUG: discarded a saved campaign from an earlier game version')
 				continue
 			
 			game_info['directory'] = directory

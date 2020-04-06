@@ -1892,19 +1892,21 @@ class Campaign:
 			
 			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
 			libtcod.console_print(calendar_cmd_con, 1, 4, EnKey('w').upper() + '/' + EnKey('s').upper())
-			libtcod.console_print(calendar_cmd_con, 1, 5, EnKey('f').upper())
-			libtcod.console_print(calendar_cmd_con, 1, 6, 'N')
+			libtcod.console_print(calendar_cmd_con, 1, 5, 'P')
+			libtcod.console_print(calendar_cmd_con, 1, 6, EnKey('f').upper())
+			libtcod.console_print(calendar_cmd_con, 1, 7, 'N')
 			
 			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
 			libtcod.console_print(calendar_cmd_con, 5, 4, 'Select Position')
-			libtcod.console_print(calendar_cmd_con, 5, 5, 'Crewman Menu')
-			libtcod.console_print(calendar_cmd_con, 5, 6, 'Crewman Nickname')
+			libtcod.console_print(calendar_cmd_con, 5, 5, 'Swap Position')
+			libtcod.console_print(calendar_cmd_con, 5, 6, 'Crewman Menu')
+			libtcod.console_print(calendar_cmd_con, 5, 7, 'Crewman Nickname')
 			
 			if campaign.player_unit.unit_name == '':
 				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
-				libtcod.console_print(calendar_cmd_con, 1, 7, 'T')
+				libtcod.console_print(calendar_cmd_con, 1, 8, 'T')
 				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
-				libtcod.console_print(calendar_cmd_con, 5, 7, 'Tank Name')
+				libtcod.console_print(calendar_cmd_con, 5, 8, 'Tank Name')
 		
 		# day log
 		elif self.active_calendar_menu == 3:
@@ -2273,6 +2275,13 @@ class Campaign:
 					crewman = campaign.player_unit.positions_list[selected_position].crewman
 					if crewman is None: continue
 					crewman.ShowCrewmanMenu()
+					self.UpdateCCDisplay()
+					continue
+				
+				# swap position menu (not keymapped)
+				elif chr(key.c).lower() == 'p':
+					ShowSwapPositionMenu()
+					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 					continue
 				
@@ -15553,7 +15562,6 @@ def ShowNotification(text, confirm=False):
 		key_char = chr(key.c).lower()
 		
 		if confirm:
-			
 			if key_char == 'y':
 				# restore original screen before returning
 				libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
@@ -15570,6 +15578,132 @@ def ShowNotification(text, confirm=False):
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
 	del temp_con
 
+
+# display the swap crew position menu, can be accessed from the scenario, campaign day, or
+# campaign calendar layer
+def ShowSwapPositionMenu():
+	
+	# draw the menu console
+	def DrawMenuCon():
+		libtcod.console_clear(con)
+		
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		DrawFrame(con, 32, 0, 27, 60)
+		DrawFrame(con, 32, 17, 27, 35)
+		
+		# display player unit
+		unit.DisplayMyInfo(con, 33, 1, status=False)
+		
+		# display list of player crew
+		DisplayCrew(unit, con, 33, 19, None)
+		
+		# note usual position in left column
+		libtcod.console_set_default_foreground(con, libtcod.white)
+		libtcod.console_print(con, 14, 17, 'Normal Position')
+		libtcod.console_set_default_foreground(con, libtcod.lighter_blue)
+		
+		y = 14
+		for position in unit.positions_list:
+			y += 5
+			if position.crewman is None:
+				continue
+			libtcod.console_print(con, 12, y, position.crewman.normal_position)
+		
+		# display currently selected position 1 and 2
+		libtcod.console_set_default_foreground(con, libtcod.lighter_blue)
+		y1 = 19 + position_1 * 5
+		y2 = 19 + position_2 * 5
+		libtcod.console_print(con, 60, y1, '<' + chr(191))
+		for y in range(y1+1, y2):
+			libtcod.console_put_char(con, 61, y, 179)
+		libtcod.console_print(con, 60, y2, '<' + chr(217))
+		
+		# main commands
+		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+		libtcod.console_print(con, 34, 53, EnKey('q').upper() + '/' + EnKey('a').upper())
+		libtcod.console_print(con, 34, 54, EnKey('w').upper() + '/' + EnKey('s').upper())
+		libtcod.console_print(con, 34, 55, 'Enter')
+		libtcod.console_print(con, 34, 57, 'Esc')
+		
+		libtcod.console_set_default_foreground(con, libtcod.light_grey)
+		libtcod.console_print(con, 40, 53, 'Select Position 1')
+		libtcod.console_print(con, 40, 54, 'Select Position 2')
+		libtcod.console_print(con, 40, 55, 'Swap Positions')
+		libtcod.console_print(con, 40, 57, 'Exit Menu')
+		
+		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	
+	# determine which object we're working with
+	if scenario is not None:
+		unit = scenario.player_unit
+	else:
+		unit = campaign.player_unit
+	
+	# select first and second position as default
+	position_1 = 0
+	position_2 = 1
+	
+	# generate menu console for the first time and blit to screen
+	DrawMenuCon()
+	
+	# get input from player
+	exit_menu = False
+	while not exit_menu:
+		if libtcod.console_is_window_closed(): sys.exit()
+		libtcod.console_flush()
+		if not GetInputEvent(): continue
+		
+		if key.vk == libtcod.KEY_ESCAPE:
+			exit_menu = True
+			continue
+		
+		# swap selected positions
+		elif key.vk == libtcod.KEY_ENTER:
+			
+			# TODO: do check to see whether swap is possible
+			
+			
+			temp = unit.positions_list[position_1].crewman
+			unit.positions_list[position_1].crewman = unit.positions_list[position_2].crewman
+			unit.positions_list[position_2].crewman = temp
+			DrawMenuCon()
+			continue
+		
+		key_char = DeKey(chr(key.c).lower())
+		
+		# select position 1
+		if key_char in ['q', 'a']:
+			
+			new_position = position_1
+			if key_char == 'q':
+				new_position -= 1
+			else:
+				new_position += 1
+			if new_position < 0:
+				continue
+			if new_position >= position_2:
+				continue
+			
+			position_1 = new_position
+			DrawMenuCon()
+			continue
+		
+		# select position 2
+		elif key_char in ['w', 's']:
+			
+			new_position = position_2
+			if key_char == 'w':
+				new_position -= 1
+			else:
+				new_position += 1
+			if new_position <= position_1:
+				continue
+			if new_position >= len(unit.positions_list):
+				continue
+			
+			position_2 = new_position
+			DrawMenuCon()
+			continue
 
 
 # display the in-game menu: 84x54

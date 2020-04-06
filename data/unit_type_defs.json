@@ -6335,6 +6335,12 @@
 				"name" : "Rifles",
 				"fp" : "4",
 				"max_range" : "1"
+			},
+			{
+				"type" : "Close Combat",
+				"name" : "Grenades",
+				"fp" : "4",
+				"max_range" : "1"
 			}
 		],
 		"crew_positions" : [

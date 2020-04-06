@@ -229,41 +229,6 @@ MISSION_DESC = {
 # Spearhead mission zone capture VP values: adds one per this many hexrows reached
 SPEARHEAD_HEXROW_LEVELS = 2
 
-# base firepower ratings for units participating in close combat
-ASSAULT_FP = {
-	'Infantry Squad' : (6, 6),
-	'MG Team' : (4, 8),
-	'Motorcycle Team' : (8, 8),
-	'Tankette' : (4, 8),
-	'Light Tank' : (6, 10),
-	'Medium Tank' : (10, 14),
-	'Heavy Tank' : (11, 15),
-	'Assault Gun' : (16, 20),
-	'Tank Destroyer' : (4, 8),
-	'Armoured Car' : (6, 10),
-	'Anti-Tank Gun' : (0, 4),
-	'Field Gun' : (0, 8),
-	'Artillery Gun' : (0, 8),
-	'Anti-Aircraft Gun' : (0, 8),
-	'Truck' : (0, 0),
-	'Armoured Train Car' : (0, 8),
-	'Armoured Personnel Carrier' : (4, 4)
-}
-
-# odds to destroy an opposing unit in close combat, by firepower ratios
-CC_TK = {
-	10.0 : 100.0,
-	4.0 : 80.0,
-	2.0 : 60.0,
-	1.5 : 40.0,
-	1.0 : 28.0,
-	0.7 : 22.0,
-	0.5 : 17.0,
-	0.3 : 8.4,
-	0.2 : 3.0,
-	0.0 : 0.0
-}
-
 # level at which crew become eligible for promotion to the next rank
 LEVEL_RANK_LIST = {
 	'2' : 1,
@@ -698,6 +663,11 @@ VEH_FP_TK = [
 	(4, 28.0),(2, 17.0),(1, 8.0)
 ]
 
+# ap scores of various close combat weapons
+CC_WEAPON_AP = {
+	'Grenades' : 6
+}
+
 # amount within an AFV armour save that will result in Stun tests for crew/unit
 AP_STUN_MARGIN = 10.0
 
@@ -765,6 +735,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 	},
 	'Broken Ground' : {
 		'TEM' : {
+			'Vehicle' : -10.0,
 			'Infantry' : -15.0,
 			'Deployed Gun' : -15.0
 		},
@@ -809,6 +780,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 	},
 	'Wooden Buildings': {
 		'TEM' : {
+			'Vehicle' : -20.0,
 			'Infantry' : -30.0,
 			'Deployed Gun' : -30.0
 		},
@@ -827,6 +799,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 	},
 	'Rubble': {
 		'TEM' : {
+			'Vehicle' : -15.0,
 			'Infantry' : -30.0,
 			'Deployed Gun' : -30.0
 		},
@@ -7623,7 +7596,7 @@ class AI:
 		if self.owner.fortified and self.disposition == 'Movement':
 			self.disposition = 'Combat'
 		
-		print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
+		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 				
 		# Step 2: Determine action to take
 		if self.disposition == 'Movement':
@@ -7823,8 +7796,10 @@ class AI:
 		
 		# no possible attacks
 		if len(attack_list) == 0:
-			print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
+			#print ('AI DEBUG: No possible attacks for ' + self.owner.unit_id)
 			return None
+		
+		#print ('AI DEBUG: ' + str(len(attack_list)) + ' possible attacks for ' + self.owner.unit_id)
 		
 		# score each possible weapon-ammo-target combination
 		scored_list = []
@@ -7832,7 +7807,7 @@ class AI:
 			
 			# skip small arms attacks on targets that have no chance of effect
 			if self.disposition != 'Harass Player' and target.GetStat('category') == 'Vehicle':
-				if weapon.GetStat('type') != 'Gun' and weapon.GetStat('type') not in MG_WEAPONS:
+				if weapon.GetStat('type') not in ['Gun', 'Close Combat'] and weapon.GetStat('type') not in MG_WEAPONS:
 					continue
 			
 			# determine if a pivot or turret rotation would be required
@@ -7875,7 +7850,7 @@ class AI:
 			
 			# avoid small arms on armoured targets and MG attacks unless within AP range
 			if self.disposition != 'Harass Player':
-				if weapon.GetStat('type') != 'Gun' and target.GetStat('armour') is not None:
+				if weapon.GetStat('type') not in ['Gun', 'Close Combat'] and target.GetStat('armour') is not None:
 					if weapon.GetStat('type') not in MG_WEAPONS:
 						score -= 40.0
 					elif GetHexDistance(self.owner.hx, self.owner.hy, target.hx, target.hy) > MG_AP_RANGE:
@@ -7910,22 +7885,22 @@ class AI:
 		scored_list.sort(key=lambda x:x[0], reverse=True)
 		
 		# DEBUG: list scored attacks
-		print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-		n = 1
-		for (score, weapon, target, ammo_type) in scored_list:
-			text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-			if ammo_type != '':
-				text += '(' + ammo_type + ')'
-			text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-			print (text)
-			n += 1
+		#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+		#n = 1
+		#for (score, weapon, target, ammo_type) in scored_list:
+		#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+		#	if ammo_type != '':
+		#		text += '(' + ammo_type + ')'
+		#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+		#	print (text)
+		#	n += 1
 		
 		# select best attack
 		(score, weapon, target, ammo_type) = scored_list[0]
 		
 		# no good attacks
 		if score <= 3.0:
-			print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
+			#print('AI DEBUG: ' + self.owner.unit_id + ': no good scored attacks on target list')
 			return None
 		
 		# proceed with best attack
@@ -8148,14 +8123,6 @@ class Unit:
 		return self.stats[stat_name]
 	
 	
-	# NEW: return the pair of assault firepower ratings for this unit
-	def GetAssaultFP(self):
-		if self.stats['class'] in ASSAULT_FP:
-			return ASSAULT_FP[self.stats['class']]
-		print('ERROR: Assault fp for class not found: ' + self.stats['class'])
-		return (1,1)
-	
-	
 	# clear all ammo loads for all guns in this unit
 	def ClearGunAmmo(self):
 		for weapon in self.weapon_list:
@@ -8288,6 +8255,10 @@ class Unit:
 		tem_dict = terrain_dict['TEM']
 		
 		if 'All' in tem_dict: return tem_dict['All']
+		
+		if self.GetStat('category') == 'Vehicle':
+			if 'Vehicle' in tem_dict:
+				return tem_dict['Vehicle']
 		
 		if self.GetStat('category') == 'Infantry':
 			if 'Infantry' in tem_dict:
@@ -8775,8 +8746,9 @@ class Unit:
 		else:
 			(x,y) = scenario.PlotHex(self.hx, self.hy)
 		
-		if self.overrun:
-			y -= 1
+		# TEMP
+		#if self.overrun:
+		#	y -= 1
 		
 		# determine normal background colour to us
 		if campaign_day.weather['Ground'] in ['Snow', 'Heavy Snow']:
@@ -9133,7 +9105,7 @@ class Unit:
 		
 		# display message if player is the target
 		if target == scenario.player_unit:
-			text = self.GetName() + ' fires at you with ' + weapon.stats['name']
+			text = self.GetName() + ' attacks you with ' + weapon.stats['name']
 			ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 		
 		# attack loop, possible to maintain RoF and do multiple attacks within this loop
@@ -9171,6 +9143,13 @@ class Unit:
 			# set weapon and unit fired flags
 			weapon.fired = True
 			self.fired = True
+			
+			# set flags if initiating a close combat attack
+			if profile['type'] == 'Close Combat':
+				self.moving = True
+				self.dug_in = False
+				self.entrenched = False
+				self.fortified = False
 			
 			# expend a shell if gun weapon is firing
 			if weapon.GetStat('type') == 'Gun' and weapon.ammo_type is not None:
@@ -9237,6 +9216,19 @@ class Unit:
 						if libtcod.console_is_window_closed(): sys.exit()
 						libtcod.console_flush()
 						CheckForAnimationUpdate()
+				
+				elif weapon.GetStat('type') == 'Close Combat':
+					
+					# TEMP
+					(x, y) = scenario.PlotHex(target.hx, target.hy)
+					scenario.animation['bomb_effect'] = (x, y)
+					scenario.animation['bomb_effect_lifetime'] = 4
+					
+					# let animation run
+					while scenario.animation['bomb_effect'] is not None:
+						if libtcod.console_is_window_closed(): sys.exit()
+						libtcod.console_flush()
+						CheckForAnimationUpdate()
 			
 			# do the roll, display results to the screen, and modify the attack profile
 			profile = scenario.DoAttackRoll(profile)
@@ -9295,8 +9287,25 @@ class Unit:
 					# also applies fp
 					target.fp_to_resolve += profile['effective_fp']
 			
-			# point fire attack hit
-			elif profile['result'] in ['CRITICAL HIT', 'HIT']:
+			# close combat hit
+			elif profile['type'] == 'Close Combat' and profile['result'] in ['CRITICAL HIT', 'HIT']:
+				
+				# infantry or gun target, or unarmoured vehicle
+				if target.GetStat('category') in ['Infantry', 'Gun'] or target.GetStat('armour') is None:
+					
+					fp = int(weapon.GetStat('fp'))
+					if profile['result'] == 'CRITICAL HIT':
+						fp = fp * 2
+					target.fp_to_resolve += fp
+					if not target.spotted:
+						target.hit_by_fp = True
+				
+				# armoured target
+				elif target.GetStat('armour') is not None:
+					target.ap_hits_to_resolve.append(profile)
+			
+			# point fire hit
+			elif profile['type'] == 'Point Fire' and profile['result'] in ['CRITICAL HIT', 'HIT']:
 				
 				# record if player hit
 				if self == scenario.player_unit:
@@ -9306,7 +9315,7 @@ class Unit:
 				if profile['ammo_type'] == 'Smoke':
 					target.smoke = 2
 				
-				# infantry, gun, or unarmoured target
+				# infantry or gun target
 				elif target.GetStat('category') in ['Infantry', 'Gun']:
 					
 					# if HE hit, apply effective FP
@@ -9657,29 +9666,25 @@ class Unit:
 					libtcod.RIGHT, str(rout_odds) + '%')
 				y += 1
 			
-		
 			# blit window to screen and wait
 			libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM, WINDOW_YM-14)
 			libtcod.console_flush()
 			Wait(300 + (40 * config['ArmCom2'].getint('message_pause')), allow_skip=True, ignore_animations=True)
 			
-			# do roll and apply effects
+			# do roll
 			roll = GetPercentileRoll()
 			
 			if roll <= destroy_odds:
 				text = 'Destroyed'
 				campaign.AddJournal(self.GetName() + ' was destroyed.')
-				self.DestroyMe()
 			
 			elif roll <= destroy_odds + reduction_odds:
 				text = 'Reduced'
 				campaign.AddJournal(self.GetName() + ' was reduced.')
-				self.ReduceMe()
 			
 			elif roll <= destroy_odds + reduction_odds + rout_odds:
 				text = 'Routed'
 				campaign.AddJournal(self.GetName() + ' was routed.')
-				self.RoutMe()
 			
 			else:
 				# guns and infantry test for pin here
@@ -9697,9 +9702,18 @@ class Unit:
 			libtcod.console_print_ex(window_con, 13, 25, libtcod.BKGND_NONE,
 				libtcod.CENTER, text)
 			
+			# blit window to screen again and wait
 			libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM, WINDOW_YM-14)
 			libtcod.console_flush()
 			Wait(400 + (40 * config['ArmCom2'].getint('message_pause')), allow_skip=True, ignore_animations=True)
+		
+		# apply effect - we wait until here so that messages don't pop up before the window is finished
+		if text == 'Destroyed':
+			self.DestroyMe()
+		elif text == 'Reduced':
+			self.ReduceMe()
+		elif text == 'Routed':
+			self.RoutMe()
 		
 		# if player unit, check for crew injury
 		# FUTURE: also apply to AI units?
@@ -10750,6 +10764,13 @@ class Scenario:
 		if weapon.fired:
 			return 'Weapon has already fired this turn'
 		
+		# close combat attacks
+		if weapon.GetStat('type') == 'Close Combat':
+			if not target.spotted:
+				return 'Target location unknown'
+			if attacker.pinned:
+				return 'Cannot initiate Close Combat when Pinned'
+		
 		# if we're not ignoring facing,
 		# check that target is in covered hexes and range
 		if not ignore_facing:
@@ -10822,6 +10843,8 @@ class Scenario:
 		elif weapon_type == 'Small Arms' or weapon_type in MG_WEAPONS:
 			profile['type'] = 'Area Fire'
 			profile['effective_fp'] = 0		# placeholder for effective fp
+		elif weapon_type == 'Close Combat':
+			profile['type'] = 'Close Combat'
 		else:
 			print('ERROR: Weapon type not recognized: ' + weapon.stats['name'])
 			return None
@@ -11124,7 +11147,49 @@ class Scenario:
 						modifier_list.append(('Target Entrenched', -30.0))
 					elif target.dug_in:
 						modifier_list.append(('Target Dug-in', -15.0))
-				
+		
+		# close combat attacks (eg. grenades, demo charges, etc.)
+		elif profile['type'] == 'Close Combat':
+			
+			# determine base success chance
+			if target.GetStat('category') == 'Vehicle':
+				profile['base_chance'] = PF_BASE_CHANCE[0][0]
+			else:
+				profile['base_chance'] = PF_BASE_CHANCE[0][1]
+			
+			# calculate modifiers
+			
+			# attacker has been reduced
+			if attacker.reduced:
+				modifier_list.append(('Attacker Reduced', -40.0))
+			
+			# smoke in target location
+			if target.smoke >= 2:
+				modifier_list.append(('Smoke', -25.0))
+			elif target.smoke == 1:
+				modifier_list.append(('Smoke', -10.0))
+			
+			# target is a moving vehicle
+			if target.moving and target.GetStat('category') == 'Vehicle':
+				modifier_list.append(('Target Vehicle Moving', -30.0))
+			
+			# target size
+			size_class = target.GetStat('size_class')
+			if size_class is not None:
+				if size_class != 'Normal':
+					text = size_class + ' Target'
+					mod = PF_SIZE_MOD[size_class]
+					modifier_list.append((text, mod))
+			
+			# target terrain
+			tem = target.GetTEM()
+			if tem != 0.0:
+				modifier_list.append((target.terrain, tem))
+			
+			if target.fortified:
+				modifier_list.append(('Target Fortified', -20.0))
+		
+		
 		# check for Commander directing fire
 		# FUTURE: may be possible for other positions as well (Commander/Driver?)
 		for position in ['Commander']:
@@ -11230,6 +11295,8 @@ class Scenario:
 		
 		if air_attack:
 			facing = 'Side'
+		elif weapon.GetStat('type') == 'Close Combat':
+			facing = 'Side'
 		else:
 			facing = GetFacing(attacker, target, turret_facing=turret_facing)
 		
@@ -11276,6 +11343,16 @@ class Scenario:
 				base_score = 6
 			else:
 				base_score = 5
+		
+		elif weapon.GetStat('type') == 'Close Combat':
+			if weapon.GetStat('name') not in CC_WEAPON_AP:
+				print('ERROR: Close combat weapon not found: ' + weapon.GetStat('name'))
+				base_score = 2
+			else:
+				base_score = CC_WEAPON_AP[weapon.GetStat('name')]
+				if unarmoured_location:
+					base_score = int(float(base_score) * 1.5)
+
 		else:
 			calibre = weapon.GetStat('calibre')
 			
@@ -11485,6 +11562,8 @@ class Scenario:
 		
 		if profile['type'] == 'ap':
 			text = 'Armour Penetration'
+		elif profile['type'] == 'Close Combat':
+			text = 'Close Combat'
 		else:
 			text = 'Ranged Attack'
 		libtcod.console_print_ex(attack_con, 13, 1, libtcod.BKGND_NONE, libtcod.CENTER, text)
@@ -11514,12 +11593,11 @@ class Scenario:
 		else:
 			text1 = profile['attacker'].GetName()
 			if attacker_spotted:
-				text2 = 'firing ' + profile['weapon'].GetStat('name')
+				text2 = 'attacking with ' + profile['weapon'].GetStat('name')
 				if profile['weapon'].ammo_type is not None:
 					text2 += ' ' + profile['weapon'].ammo_type
-				text2 += ' at'
 			else:
-				text2 = 'firing at'
+				text2 = 'attacking'
 			text3 = profile['target'].GetName()
 			
 		libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE, libtcod.CENTER, text1)
@@ -11670,6 +11748,7 @@ class Scenario:
 			libtcod.console_set_default_background(attack_con, libtcod.black)
 			
 			text = str(profile['final_chance']) + '%'
+			
 			# AP checks may be automatic or impossible
 			if profile['type'] == 'ap':
 				if profile['final_chance'] == 0.0:
@@ -11827,7 +11906,7 @@ class Scenario:
 							else:
 								result_text = 'CRITICAL HIT'
 	
-			# point fire attack
+			# point fire or close combat attack
 			else:
 				
 				if roll >= CRITICAL_MISS:
@@ -11848,7 +11927,7 @@ class Scenario:
 						profile['attacker'].hy)
 					if direction in profile['target'].hull_down:
 						result_text = 'MISS - HULL DOWN'
-			
+		
 		profile['result'] = result_text
 		
 		# if player is not involved, we can return here
@@ -15352,7 +15431,10 @@ def LoadGame(directory):
 
 # check the saved game to see if it is compatible with the current game version
 def CheckSavedGameVersion(saved_version):
-
+	
+	# TEMP
+	return ''
+	
 	# if either is a development version, versions must match exactly
 	if 'dev' in saved_version or 'dev' in VERSION:
 		if saved_version != VERSION:

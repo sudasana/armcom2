@@ -5321,10 +5321,16 @@ class CampaignDay:
 						self.AmmoReloadMenu()
 						self.UpdateCDDisplay()
 						
-						# crew have a chance to rest
+						# check for dead crewman removal, living crew have a chance to rest 
 						for position in campaign.player_unit.positions_list:
 							if position.crewman is None: continue
-							position.crewman.Rest()
+							if not position.crewman.alive:
+								position.crewman = None
+								self.UpdateCrewInfoCon()
+								self.UpdateScenarioDisplay()
+								ShowMessage('The body of your ' + position.name + ' is taken back by the supply team.')
+							else:
+								position.crewman.Rest()
 						
 						# check for player squad replenishment
 						if len(self.player_squad) < campaign.player_squad_max:
@@ -6766,6 +6772,7 @@ class Personnel:
 			if self.current_position.name not in POSITION_SWITCH_LIST[self.normal_position]:
 				self.cmd_list.append('Spot')
 				self.cmd_list.append('First Aid')
+				self.cmd_list.append('Swap Position')
 				return
 		
 		for (k, d) in session.crew_commands.items():
@@ -7907,6 +7914,16 @@ class AI:
 					if ammo_type == 'AP':
 						score -= 20.0
 			
+			# avoid close combat attacks, especially if already in a good position
+			if weapon.GetStat('type') == 'Close Combat':
+				score -= 15.0
+				if self.fortified:
+					score -= 45.0
+				elif self.entrenched:
+					score -= 30.0
+				elif self.dug_in:
+					score -= 20.0
+			
 			# not sure if this is required, but seems to work
 			score = round(score, 2)
 			
@@ -7917,22 +7934,22 @@ class AI:
 		
 		# no possible attacks
 		if len(scored_list) == 0:
-			print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
+			#print('AI DEBUG: ' + self.owner.unit_id + ': no possible scored attacks on targets')
 			return None
 		
 		# sort list by score
 		scored_list.sort(key=lambda x:x[0], reverse=True)
 		
 		# DEBUG: list scored attacks
-		#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-		#n = 1
-		#for (score, weapon, target, ammo_type) in scored_list:
-		#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-		#	if ammo_type != '':
-		#		text += '(' + ammo_type + ')'
-		#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-		#	print (text)
-		#	n += 1
+		print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+		n = 1
+		for (score, weapon, target, ammo_type) in scored_list:
+			text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+			if ammo_type != '':
+				text += '(' + ammo_type + ')'
+			text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+			print (text)
+			n += 1
 		
 		# select best attack
 		(score, weapon, target, ammo_type) = scored_list[0]
@@ -8785,9 +8802,8 @@ class Unit:
 		else:
 			(x,y) = scenario.PlotHex(self.hx, self.hy)
 		
-		# TEMP
-		#if self.overrun:
-		#	y -= 1
+		if self.overrun:
+			y -= 1
 		
 		# determine normal background colour to us
 		if campaign_day.weather['Ground'] in ['Snow', 'Heavy Snow']:
@@ -9258,7 +9274,7 @@ class Unit:
 				
 				elif weapon.GetStat('type') == 'Close Combat':
 					
-					# TEMP effect?
+					# TODO: replace with better effect
 					(x, y) = scenario.PlotHex(target.hx, target.hy)
 					scenario.animation['bomb_effect'] = (x, y)
 					scenario.animation['bomb_effect_lifetime'] = 4
@@ -13063,6 +13079,17 @@ class Scenario:
 		# spotting phase: do spotting then automatically advance
 		elif self.phase == PHASE_SPOTTING:
 			
+			# first check for swap position, since this may change current command
+			# for crewmen who swap
+			for position in self.player_unit.positions_list:
+				if position.crewman is None: continue
+				if position.crewman.current_cmd == 'Swap Position':
+					ShowSwapPositionMenu()
+					self.UpdateCrewInfoCon()
+					self.UpdateScenarioDisplay()
+					libtcod.console_flush()
+					break
+			
 			self.player_unit.DoSpotChecks()
 			self.advance_phase = True
 		
@@ -13432,7 +13459,11 @@ class Scenario:
 				libtcod.console_set_default_background(crew_con, libtcod.black)
 			
 			# display position name and location in vehicle (eg. turret/hull)
+			# if this is not the crewman's normal position, highlight this
 			libtcod.console_set_default_foreground(crew_con, libtcod.light_blue)
+			if position.crewman is not None:
+				if position.crewman.normal_position != position.name:
+					libtcod.console_set_default_foreground(crew_con, libtcod.light_red)
 			libtcod.console_print(crew_con, 0, y, position.name)
 			libtcod.console_set_default_foreground(crew_con, libtcod.white)
 			libtcod.console_print_ex(crew_con, 0+24, y, libtcod.BKGND_NONE, 
@@ -15471,9 +15502,6 @@ def LoadGame(directory):
 # check the saved game to see if it is compatible with the current game version
 def CheckSavedGameVersion(saved_version):
 	
-	# TEMP
-	return ''
-	
 	# if either is a development version, versions must match exactly
 	if 'dev' in saved_version or 'dev' in VERSION:
 		if saved_version != VERSION:
@@ -15656,6 +15684,11 @@ def ShowSwapPositionMenu():
 	# no positions to switch!
 	if len(unit.positions_list) <= 1: return
 	
+	# record original crewman in each position
+	original_crew = []
+	for position in unit.positions_list:
+		original_crew.append(position.crewman)
+	
 	# select first and second position as default
 	position_1 = 0
 	position_2 = 1
@@ -15681,7 +15714,11 @@ def ShowSwapPositionMenu():
 			# do the swap
 			temp = unit.positions_list[position_1].crewman
 			unit.positions_list[position_1].crewman = unit.positions_list[position_2].crewman
+			if unit.positions_list[position_1].crewman is not None:
+				unit.positions_list[position_1].crewman.current_position = unit.positions_list[position_1]
 			unit.positions_list[position_2].crewman = temp
+			if unit.positions_list[position_2].crewman is not None:
+				unit.positions_list[position_2].crewman.current_position = unit.positions_list[position_2]
 			DrawMenuCon()
 			continue
 		
@@ -15716,6 +15753,20 @@ def ShowSwapPositionMenu():
 			position_2 = new_position
 			DrawMenuCon()
 			continue
+	
+	# if we're in a scenario right now, any crewman that swapped positions has their current
+	# command set to None
+	if scenario is not None:
+		i = 0
+		for position in unit.positions_list:
+			if position.crewman is None:
+				i += 1
+				continue
+			
+			if position.crewman != original_crew[i]:
+				position.crewman.current_cmd = 'None'
+				print('DEBUG: Set command for ' + position.name + ' to None')
+			i += 1
 
 
 # display the in-game menu: 84x54

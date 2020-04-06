@@ -88,6 +88,11 @@
 		"spotting_allowed" : false
 	},
 	
+	"Swap Position" : {
+		"desc" : "Swap positions in the tank with another crewman, or take up a vacant position",
+		"spotting_allowed" : false
+	},
+	
 	"Fire Smoke Mortar" : {
 		"desc" : "Fire the smoke mortar, creating concealing smoke in front of the turret",
 		"spotting_allowed" : false

@@ -583,6 +583,22 @@ POSITION_TRANSFER_LIST = {
 	"Radio Operator" : ["Radio Operator", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Assistant Driver"]
 }
 
+# list of possible new positions that can be temporarily taken by a crewman, in case of serious
+# injury or death during a campaign day
+POSITION_SWITCH_LIST = {
+	"Commander" : ["Commander", "Commander/Gunner", "Gunner", "Gunner/Loader", "Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Commander/Gunner" : ["Commander", "Commander/Gunner", "Gunner", "Gunner/Loader", "Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Gunner" : ["Gunner", "Gunner/Loader", "Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Gunner/Loader" : ["Gunner", "Gunner/Loader", "Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Loader" : ["Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Driver" : ["Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Assistant Driver" : ["Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Port MG Gunner" : ["Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Starboard MG Gunner" : ["Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"MG Gunner" : ["Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"],
+	"Radio Operator" : ["Loader", "Driver", "Assistant Driver", "Port MG Gunner", "Starboard MG Gunner", "MG Gunner", "Radio Operator"]
+}
+
 # length of scenario turn in minutes
 TURN_LENGTH = 2
 
@@ -1440,10 +1456,9 @@ class Campaign:
 			for position in new_unit.positions_list:
 				if position.name == new_position:
 					position.crewman = crewman
-					
-					# NEW - should fix bug with weird hatch/visibility statuses
 					crewman.current_position = position
 					crewman.unit = new_unit
+					crewman.normal_position = position.name
 					break
 			
 		# generate new crewmen if required
@@ -5803,6 +5818,7 @@ class Personnel:
 	def __init__(self, unit, nation, position):
 		self.unit = unit				# pointer to which unit they belong
 		self.nation = nation				# nationality of person
+		self.normal_position = position.name		# position that crewman is normally supposed to be in
 		self.current_position = position		# pointer to current position in a unit
 		
 		# core data
@@ -9219,7 +9235,7 @@ class Unit:
 				
 				elif weapon.GetStat('type') == 'Close Combat':
 					
-					# TEMP
+					# TEMP effect?
 					(x, y) = scenario.PlotHex(target.hx, target.hy)
 					scenario.animation['bomb_effect'] = (x, y)
 					scenario.animation['bomb_effect_lifetime'] = 4
@@ -16127,8 +16143,14 @@ def DisplayCrew(unit, console, x, y, highlight):
 				libtcod.console_set_default_background(console, libtcod.black)
 		
 		# display position name and location in vehicle (eg. turret/hull)
+		
+		# if this is not the crewman's normal position, highlight this
 		libtcod.console_set_default_foreground(console, libtcod.light_blue)
+		if position.crewman is not None:
+			if position.crewman.normal_position != position.name:
+				libtcod.console_set_default_foreground(console, libtcod.light_red)
 		libtcod.console_print(console, x, y, position.name)
+		
 		libtcod.console_set_default_foreground(console, libtcod.white)
 		libtcod.console_print_ex(console, x+23, y, libtcod.BKGND_NONE, 
 			libtcod.RIGHT, position.location)

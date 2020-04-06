@@ -6754,6 +6754,13 @@ class Personnel:
 			self.cmd_list.append('None')
 			return
 		
+		# NEW: if crewman can not normally work this position, only a few actions possible
+		if self.current_position.name != self.normal_position:
+			if self.current_position.name not in POSITION_SWITCH_LIST[self.normal_position]:
+				self.cmd_list.append('Spot')
+				self.cmd_list.append('First Aid')
+				return
+		
 		for (k, d) in session.crew_commands.items():
 			
 			# don't add "None" automatically
@@ -15639,6 +15646,9 @@ def ShowSwapPositionMenu():
 	else:
 		unit = campaign.player_unit
 	
+	# no positions to switch!
+	if len(unit.positions_list) <= 1: return
+	
 	# select first and second position as default
 	position_1 = 0
 	position_2 = 1
@@ -15653,6 +15663,7 @@ def ShowSwapPositionMenu():
 		libtcod.console_flush()
 		if not GetInputEvent(): continue
 		
+		# quit menu
 		if key.vk == libtcod.KEY_ESCAPE:
 			exit_menu = True
 			continue
@@ -15660,9 +15671,7 @@ def ShowSwapPositionMenu():
 		# swap selected positions
 		elif key.vk == libtcod.KEY_ENTER:
 			
-			# TODO: do check to see whether swap is possible
-			
-			
+			# do the swap
 			temp = unit.positions_list[position_1].crewman
 			unit.positions_list[position_1].crewman = unit.positions_list[position_2].crewman
 			unit.positions_list[position_2].crewman = temp
@@ -15679,10 +15688,8 @@ def ShowSwapPositionMenu():
 				new_position -= 1
 			else:
 				new_position += 1
-			if new_position < 0:
-				continue
-			if new_position >= position_2:
-				continue
+			if new_position < 0: continue
+			if new_position >= position_2: continue
 			
 			position_1 = new_position
 			DrawMenuCon()
@@ -15696,10 +15703,8 @@ def ShowSwapPositionMenu():
 				new_position -= 1
 			else:
 				new_position += 1
-			if new_position <= position_1:
-				continue
-			if new_position >= len(unit.positions_list):
-				continue
+			if new_position <= position_1: continue
+			if new_position >= len(unit.positions_list): continue
 			
 			position_2 = new_position
 			DrawMenuCon()

@@ -4636,12 +4636,14 @@ class CampaignDay:
 			DisplayCrew(campaign.player_unit, cd_command_con, 0, 3, self.selected_position)
 			
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 3, 37, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cd_command_con, 3, 36, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(cd_command_con, 3, 37, 'P')
 			libtcod.console_print(cd_command_con, 3, 38, EnKey('f').upper())
 			libtcod.console_print(cd_command_con, 3, 39, 'H')
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 8, 37, 'Select Position')
+			libtcod.console_print(cd_command_con, 8, 36, 'Select Position')
+			libtcod.console_print(cd_command_con, 8, 37, 'Swap Position')
 			libtcod.console_print(cd_command_con, 8, 38, 'Crewman Menu')
 			libtcod.console_print(cd_command_con, 8, 39, 'Toggle Hatch')
 		
@@ -5174,8 +5176,6 @@ class CampaignDay:
 						(hx, hy) = self.player_unit_location
 						self.map_hexes[(hx,hy)].CaptureMe(0)
 					
-					#self.DoCrewRecoveryCheck(campaign.player_unit)
-					
 					# check for automatic unbog, weapon unjamming
 					if campaign.player_unit.bogged:
 						ShowMessage('You free your tank from being bogged down.')
@@ -5360,6 +5360,13 @@ class CampaignDay:
 					crewman = campaign.player_unit.positions_list[self.selected_position].crewman
 					if crewman is None: continue
 					crewman.ShowCrewmanMenu()
+					self.UpdateCDDisplay()
+					continue
+				
+				# swap position menu (not keymapped)
+				elif chr(key.c).lower() == 'p':
+					ShowSwapPositionMenu()
+					self.UpdateCDCommandCon()
 					self.UpdateCDDisplay()
 					continue
 				

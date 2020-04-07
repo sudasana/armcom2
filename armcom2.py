@@ -8460,6 +8460,13 @@ class Unit:
 					self.reverse_move_chance += 10.0
 				break
 		
+		# NEW: apply modifier for untrained driver
+		crewman = self.GetPersonnelByPosition('Driver')
+		if crewman is not None:
+			if crewman.UntrainedPosition():
+				self.forward_move_chance = self.forward_move_chance * 0.4
+				self.reverse_move_chance = self.reverse_move_chance * 0.4
+		
 		# limit chances
 		self.forward_move_chance = RestrictChance(self.forward_move_chance)
 		self.reverse_move_chance = RestrictChance(self.reverse_move_chance)
@@ -12731,13 +12738,8 @@ class Scenario:
 			# check for driver skill
 			crewman = self.player_unit.GetPersonnelByPosition('Driver')
 			if crewman is not None:
-				
-				# NEW: check for untrained position
-				if crewman.UntrainedPosition():
-					chance -= 40.0
-				else:
-					if 'Quick Shifter' in crewman.skills:
-						chance += crewman.GetSkillMod(5.0)
+				if 'Quick Shifter' in crewman.skills:
+					chance += crewman.GetSkillMod(5.0)
 			
 			# check for debug flag
 			if DEBUG:

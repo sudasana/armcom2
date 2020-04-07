@@ -5799,7 +5799,7 @@ class Session:
 		self.tank_portrait = None
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
 			unit_types = json.load(data_file)
-		print('Loaded ' + str(len(unit_types)) + ' unit types.')
+		#print('Loaded ' + str(len(unit_types)) + ' unit types.')
 		
 		for tries in range(300):
 			unit_id = choice(list(unit_types.keys()))

@@ -5928,6 +5928,17 @@ class Personnel:
 		self.current_cmd = 'Spot'			# currently assigned command in scenario
 	
 	
+	# returns true if this crewmen is currently working a position for which they lack training
+	# only used for player during scenarios for now
+	def UntrainedPosition(self):
+		if scenario is None: return False
+		if self.unit != scenario.player_unit: return False
+		if self.current_position.name == self.normal_position: return False
+		if self.current_position.name in POSITION_SWITCH_LIST[self.normal_position]: return False
+		print ('DEBUG: ' + self.current_position.name + ' in untrained position')
+		return True
+		
+	
 	# resolve an incoming attack on this personnel
 	# returns true if there was a change in injury or status
 	def ResolveAttack(self, attack_profile, show_messages=True):
@@ -6766,14 +6777,6 @@ class Personnel:
 		if not self.alive or self.condition in ['Unconscious', 'Critical']:
 			self.cmd_list.append('None')
 			return
-		
-		# NEW: if crewman can not normally work this position, only a few actions possible
-		if self.current_position.name != self.normal_position:
-			if self.current_position.name not in POSITION_SWITCH_LIST[self.normal_position]:
-				self.cmd_list.append('Spot')
-				self.cmd_list.append('First Aid')
-				self.cmd_list.append('Swap Position')
-				return
 		
 		for (k, d) in session.crew_commands.items():
 			
@@ -8491,9 +8494,14 @@ class Unit:
 		if driver_attempt:
 			crewman = self.GetPersonnelByPosition('Driver')
 			if crewman is not None:
-				mod = crewman.GetSkillMod(6.0)
-				if not crewman.ce:
-					mod = mod * 0.5
+				
+				# NEW: check for operating crewman in untrained position
+				if crewman.UntrainedPosition():
+					mod = -20.0
+				else:
+					mod = crewman.GetSkillMod(6.0)
+					if not crewman.ce:
+						mod = mod * 0.5
 				chance += mod
 			
 			for position in ['Commander', 'Commander/Gunner']:
@@ -8515,7 +8523,7 @@ class Unit:
 		else:
 			crewman = self.GetPersonnelByPosition('Driver')
 			if crewman is not None:
-				if 'Eye for Cover' in crewman.skills:
+				if 'Eye for Cover' in crewman.skills and not crewman.UntrainedPosition():
 					chance += crewman.GetSkillMod(5.0)
 		
 		chance = RestrictChance(chance)
@@ -11244,7 +11252,6 @@ class Scenario:
 			if target.fortified:
 				modifier_list.append(('Target Fortified', -20.0))
 		
-		
 		# check for Commander directing fire
 		# FUTURE: may be possible for other positions as well (Commander/Driver?)
 		for position in ['Commander']:
@@ -11279,26 +11286,31 @@ class Scenario:
 		# check for firing crew skills
 		if profile['crewman'] is not None:
 			
-			if weapon_type == 'Gun':
-				if 'Crack Shot' in profile['crewman'].skills:
-					mod = profile['crewman'].GetSkillMod(3.0)
-					modifier_list.append(('Crack Shot', mod))
-				if target.moving and 'Target Tracker' in profile['crewman'].skills:
-					mod = profile['crewman'].GetSkillMod(7.0)
-					modifier_list.append(('Target Tracker', mod))
-				if distance == 3 and 'Sniper' in profile['crewman'].skills:
-					mod = profile['crewman'].GetSkillMod(7.0)
-					modifier_list.append(('Sniper', mod))
-				
-				# skill for firing in precepitation
-				if campaign_day.weather['Precipitation'] in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard'] and 'Target Focus' in profile['crewman'].skills:
-					for (text, mod) in modifier_list:
-						if text in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard']:
-							break
-					skill_mod = profile['crewman'].GetSkillMod(8.0)
-					if skill_mod > abs(mod):
-						skill_mod = abs(mod)
-					modifier_list.append(('Target Focus', skill_mod))
+			# NEW: check for operating crewman in untrained position
+			if profile['crewman'].UntrainedPosition():
+				modifier_list.append(('Untrained Position', -50.0))
+			
+			else:
+				if weapon_type == 'Gun':
+					if 'Crack Shot' in profile['crewman'].skills:
+						mod = profile['crewman'].GetSkillMod(3.0)
+						modifier_list.append(('Crack Shot', mod))
+					if target.moving and 'Target Tracker' in profile['crewman'].skills:
+						mod = profile['crewman'].GetSkillMod(7.0)
+						modifier_list.append(('Target Tracker', mod))
+					if distance == 3 and 'Sniper' in profile['crewman'].skills:
+						mod = profile['crewman'].GetSkillMod(7.0)
+						modifier_list.append(('Sniper', mod))
+					
+					# skill for firing in precepitation
+					if campaign_day.weather['Precipitation'] in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard'] and 'Target Focus' in profile['crewman'].skills:
+						for (text, mod) in modifier_list:
+							if text in ['Rain', 'Snow', 'Heavy Rain', 'Blizzard']:
+								break
+						skill_mod = profile['crewman'].GetSkillMod(8.0)
+						if skill_mod > abs(mod):
+							skill_mod = abs(mod)
+						modifier_list.append(('Target Focus', skill_mod))
 			
 			# check for injury modifiers
 			for (k, v) in profile['crewman'].injury.items():
@@ -12719,8 +12731,13 @@ class Scenario:
 			# check for driver skill
 			crewman = self.player_unit.GetPersonnelByPosition('Driver')
 			if crewman is not None:
-				if 'Quick Shifter' in crewman.skills:
-					chance += crewman.GetSkillMod(5.0)
+				
+				# NEW: check for untrained position
+				if crewman.UntrainedPosition():
+					chance -= 40.0
+				else:
+					if 'Quick Shifter' in crewman.skills:
+						chance += crewman.GetSkillMod(5.0)
 			
 			# check for debug flag
 			if DEBUG:

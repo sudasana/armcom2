@@ -3492,7 +3492,7 @@ class CampaignDay:
 					for i in range(ammo_count[ammo_type]):
 						
 						# if we're in extra ammo territory, set background colour to red
-						if total >= max_ammo:
+						if total >= weapon.max_ammo:
 							bg_col = libtcod.dark_red
 	
 						libtcod.console_put_char_ex(con, x+xm, y+ym, 7,
@@ -3507,8 +3507,8 @@ class CampaignDay:
 						total += 1
 			
 			# fill out empty slots up to max ammo
-			if total < int(weapon.stats['max_ammo']):
-				for i in range(int(weapon.stats['max_ammo']) - total):
+			if total < weapon.max_ammo:
+				for i in range(weapon.max_ammo - total):
 					libtcod.console_put_char(con, x+xm, y+ym, 9)
 					if xm == 8:
 						xm = 0
@@ -3535,7 +3535,7 @@ class CampaignDay:
 						
 						total += 1
 			
-			# fill out empty slots up to max ammo
+			# fill out empty slots up to max ready rack size
 			if total < weapon.rr_size:
 				for i in range(weapon.rr_size - total):
 					libtcod.console_put_char(con, x+xm, y+ym, 9)
@@ -3581,7 +3581,7 @@ class CampaignDay:
 			libtcod.console_print(con, x+2, y, 'Max')
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			libtcod.console_print_ex(con, x+10, y, libtcod.BKGND_NONE,
-				libtcod.RIGHT, str(max_ammo))
+				libtcod.RIGHT, str(weapon.max_ammo))
 			libtcod.console_print_ex(con, x+13, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(weapon.rr_size))
 			
@@ -3589,7 +3589,7 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(con, libtcod.light_red)
 			libtcod.console_print(con, x+2, y+1, 'Extra')
 			libtcod.console_print_ex(con, x+10, y+1, libtcod.BKGND_NONE,
-				libtcod.RIGHT, str(max_plus_extra_ammo - max_ammo))
+				libtcod.RIGHT, str(weapon.max_plus_extra_ammo - weapon.max_ammo))
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			libtcod.console_print(con, x+13, y+1, '-')
 			
@@ -3606,15 +3606,10 @@ class CampaignDay:
 			for ammo_type in AMMO_TYPES:
 				if ammo_type in weapon.ready_rack:
 					rr_num += weapon.ready_rack[ammo_type]
-			max_ammo = int(weapon.stats['max_ammo'])
-			max_plus_extra_ammo = max_ammo + int(floor(float(max_ammo) * 0.15))
-			
-			return (ammo_num, rr_num, max_ammo, max_plus_extra_ammo)
+			return (ammo_num, rr_num)
 		
 		ammo_num = 0
 		rr_num = 0
-		max_ammo = 0
-		max_plus_extra_ammo = 0
 		add_num = 1
 		use_rr = False
 		
@@ -3628,20 +3623,21 @@ class CampaignDay:
 		if len(gun_list) == 0: return
 		
 		# auto load and skip if only one ammo type choice for only gun
-		if len(gun_list) == 1 and len(gun_list[0].stats['ammo_type_list']) == 1:
-			ammo_type = weapon.stats['ammo_type_list'][0]
-			weapon.ammo_stores[ammo_type] = int(weapon.stats['max_ammo'])
-			weapon.ready_rack[ammo_type] = weapon.rr_size
-			text = 'Your main gun has been fully loaded with ' + ammo_type + ' ammo.'
-			ShowMessage(text)
-			return
+		# NEW: removed since player can choose to overload ammo
+		#if len(gun_list) == 1 and len(gun_list[0].stats['ammo_type_list']) == 1:
+		#	ammo_type = weapon.stats['ammo_type_list'][0]
+		#	weapon.ammo_stores[ammo_type] = weapon.max_ammo
+		#	weapon.ready_rack[ammo_type] = weapon.rr_size
+		#	text = 'Your main gun has been fully loaded with ' + ammo_type + ' ammo.'
+		#	ShowMessage(text)
+		#	return
 		
 		# select first weapon in list and first ammo type
 		weapon = gun_list[0]
 		selected_ammo_type = weapon.stats['ammo_type_list'][0]
 		
 		# calculate current ammo load
-		(ammo_num, rr_num, max_ammo, max_plus_extra_ammo) = CalculateAmmoLoads()
+		(ammo_num, rr_num) = CalculateAmmoLoads()
 		
 		# draw screen for first time
 		UpdateMenuCon()
@@ -3689,7 +3685,7 @@ class CampaignDay:
 					weapon = gun_list[i+1]
 				
 				# calculate ammo load numbers for this gun
-				(ammo_num, rr_num, max_ammo, max_plus_extra_ammo) = CalculateAmmoLoads()
+				(ammo_num, rr_num) = CalculateAmmoLoads()
 				UpdateMenuCon()
 				continue
 			
@@ -3722,7 +3718,7 @@ class CampaignDay:
 					weapon.ready_rack[selected_ammo_type] += add_num
 					rr_num += add_num
 				else:
-					if ammo_num + add_num > max_plus_extra_ammo:
+					if ammo_num + add_num > weapon.max_plus_extra_ammo:
 						continue
 					weapon.ammo_stores[selected_ammo_type] += add_num
 					ammo_num += add_num
@@ -3781,30 +3777,30 @@ class CampaignDay:
 				
 				# HE only
 				if 'HE' in weapon.ammo_stores and 'AP' not in weapon.ammo_stores:
-					weapon.ammo_stores['HE'] = int(weapon.stats['max_ammo'])
+					weapon.ammo_stores['HE'] = weapon.max_ammo
 					weapon.ready_rack['HE'] = weapon.rr_size
 					
 				# AP only
 				elif 'AP' in weapon.ammo_stores and 'HE' not in weapon.ammo_stores:
-					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo'])
+					weapon.ammo_stores['AP'] = weapon.max_ammo
 					weapon.ready_rack['AP'] = weapon.rr_size
 				
 				# HE, AP, and Smoke
 				elif 'AP' in weapon.ammo_stores and 'HE' in weapon.ammo_stores and 'Smoke' in weapon.ammo_stores:
-					weapon.ammo_stores['HE'] = int(float(weapon.stats['max_ammo']) * 0.65)
-					weapon.ammo_stores['Smoke'] = int(float(weapon.stats['max_ammo']) * 0.10)
-					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo']) - weapon.ammo_stores['HE'] - weapon.ammo_stores['Smoke']
+					weapon.ammo_stores['HE'] = int(float(weapon.max_ammo) * 0.65)
+					weapon.ammo_stores['Smoke'] = int(float(weapon.max_ammo) * 0.10)
+					weapon.ammo_stores['AP'] = weapon.max_ammo - weapon.ammo_stores['HE'] - weapon.ammo_stores['Smoke']
 					weapon.ready_rack['HE'] = int(float(weapon.rr_size * 0.75))
 					weapon.ready_rack['AP'] = weapon.rr_size - weapon.ready_rack['HE']
 				
 				# HE and AP
 				else:
-					weapon.ammo_stores['HE'] = int(float(weapon.stats['max_ammo']) * 0.75)
+					weapon.ammo_stores['HE'] = int(float(weapon.max_ammo) * 0.75)
 					weapon.ready_rack['HE'] = int(float(weapon.rr_size * 0.75))
-					weapon.ammo_stores['AP'] = int(weapon.stats['max_ammo']) - weapon.ammo_stores['HE']
+					weapon.ammo_stores['AP'] = weapon.max_ammo - weapon.ammo_stores['HE']
 					weapon.ready_rack['AP'] = weapon.rr_size - weapon.ready_rack['HE']
 				
-				ammo_num = int(weapon.stats['max_ammo'])
+				ammo_num = weapon.max_ammo
 				rr_num = weapon.rr_size
 				
 				PlaySoundFor(None, 'move_10_shell')
@@ -7093,6 +7089,8 @@ class Weapon:
 		if self.GetStat('type') == 'Gun' and 'ammo_type_list' in self.stats:
 			self.ammo_stores = {}
 			self.ready_rack = {}
+			self.max_ammo = int(self.stats['max_ammo'])
+			self.max_plus_extra_ammo = self.max_ammo + int(floor(float(self.max_ammo) * 0.15))
 			
 			# set maximum ready rack capacity
 			if 'rr_size' in self.stats:
@@ -7204,7 +7202,8 @@ class Weapon:
 			return False
 		
 		# no room in general stores
-		elif total_num - add_num > int(self.stats['max_ammo']):
+		# allow one more shell here just to give some room to rearrange ready rack
+		elif total_num - add_num > self.max_plus_extra_ammo + 1:
 			return False
 		
 		self.ready_rack[self.ammo_type] += add_num

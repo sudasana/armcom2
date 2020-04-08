@@ -197,7 +197,7 @@ CD_TRAVEL_CMDS = [
 AMMO_TYPES = ['HE', 'AP', 'Smoke']
 
 # display colours for ammo types (FUTURE: store text descriptions here too)
-AMMO_TYPE = {
+AMMO_TYPE_COLOUR = {
 	'HE' : libtcod.lighter_grey,
 	'AP' : libtcod.yellow,
 	'Smoke' : libtcod.darker_grey
@@ -3486,12 +3486,17 @@ class CampaignDay:
 			xm = 0
 			ym = 0
 			total = 0
+			bg_col = libtcod.black
 			for ammo_type in AMMO_TYPES:
 				if ammo_type in ammo_count:
 					for i in range(ammo_count[ammo_type]):
 						
-						col = AMMO_TYPE[ammo_type]
-						libtcod.console_put_char_ex(con, x+xm, y+ym, 7, col, libtcod.black)
+						# if we're in extra ammo territory, set background colour to red
+						if total >= max_ammo:
+							bg_col = libtcod.dark_red
+	
+						libtcod.console_put_char_ex(con, x+xm, y+ym, 7,
+							AMMO_TYPE_COLOUR[ammo_type], bg_col)
 						
 						if xm == 8:
 							xm = 0
@@ -3520,10 +3525,8 @@ class CampaignDay:
 			for ammo_type in AMMO_TYPES:
 				if ammo_type in rr_count:
 					for i in range(rr_count[ammo_type]):
-						
-						col = AMMO_TYPE[ammo_type]
-						libtcod.console_put_char_ex(con, x+xm, y+ym, 7, col, libtcod.black)
-						
+						libtcod.console_put_char_ex(con, x+xm, y+ym, 7,
+							AMMO_TYPE_COLOUR[ammo_type], libtcod.black)
 						if xm == 8:
 							xm = 0
 							ym += 1
@@ -3549,7 +3552,7 @@ class CampaignDay:
 			y = 25
 			
 			libtcod.console_set_default_foreground(con, libtcod.white)
-			libtcod.console_print_ex(con, x+12, y, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(con, x+13, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, 'RR')
 			y += 1
 			for ammo_type in AMMO_TYPES:
@@ -3557,18 +3560,19 @@ class CampaignDay:
 					
 					if selected_ammo_type == ammo_type:
 						libtcod.console_set_default_background(con, libtcod.dark_blue)
-						libtcod.console_rect(con, x+2, y, 11, 1, True, libtcod.BKGND_SET)
+						libtcod.console_rect(con, x+2, y, 12, 1, True, libtcod.BKGND_SET)
 						libtcod.console_set_default_background(con, libtcod.black)
 					
-					col = AMMO_TYPE[ammo_type]
-					libtcod.console_put_char_ex(con, x, y, 7, col, libtcod.black)
+					libtcod.console_put_char_ex(con, x, y, 7, AMMO_TYPE_COLOUR[ammo_type],
+						libtcod.black)
 					
 					libtcod.console_set_default_foreground(con, libtcod.white)
 					libtcod.console_print(con, x+2, y, ammo_type)
+					
 					libtcod.console_set_default_foreground(con, libtcod.light_grey)
-					libtcod.console_print_ex(con, x+9, y, libtcod.BKGND_NONE,
+					libtcod.console_print_ex(con, x+10, y, libtcod.BKGND_NONE,
 						libtcod.RIGHT, str(weapon.ammo_stores[ammo_type]))
-					libtcod.console_print_ex(con, x+12, y, libtcod.BKGND_NONE,
+					libtcod.console_print_ex(con, x+13, y, libtcod.BKGND_NONE,
 						libtcod.RIGHT, str(weapon.ready_rack[ammo_type]))
 					
 					y += 1
@@ -3576,22 +3580,43 @@ class CampaignDay:
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print(con, x+2, y, 'Max')
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
-			libtcod.console_print_ex(con, x+9, y, libtcod.BKGND_NONE,
-				libtcod.RIGHT, weapon.stats['max_ammo'])
-			libtcod.console_print_ex(con, x+12, y, libtcod.BKGND_NONE,
+			libtcod.console_print_ex(con, x+10, y, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(max_ammo))
+			libtcod.console_print_ex(con, x+13, y, libtcod.BKGND_NONE,
 				libtcod.RIGHT, str(weapon.rr_size))
 			
+			# note maximum possible extra ammo
+			libtcod.console_set_default_foreground(con, libtcod.light_red)
+			libtcod.console_print(con, x+2, y+1, 'Extra')
+			libtcod.console_print_ex(con, x+10, y+1, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(max_plus_extra_ammo - max_ammo))
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
-			
-			# FUTURE: visual depicition of extra ammo
+			libtcod.console_print(con, x+13, y+1, '-')
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
+		
+		# (re)calculate total ammo loads, max load, and max extra ammo
+		def CalculateAmmoLoads():
+			ammo_num = 0
+			for ammo_type in AMMO_TYPES:
+				if ammo_type in weapon.ammo_stores:
+					ammo_num += weapon.ammo_stores[ammo_type]
+			rr_num = 0
+			for ammo_type in AMMO_TYPES:
+				if ammo_type in weapon.ready_rack:
+					rr_num += weapon.ready_rack[ammo_type]
+			max_ammo = int(weapon.stats['max_ammo'])
+			max_plus_extra_ammo = max_ammo + int(floor(float(max_ammo) * 0.15))
+			
+			return (ammo_num, rr_num, max_ammo, max_plus_extra_ammo)
+		
 		ammo_num = 0
 		rr_num = 0
+		max_ammo = 0
+		max_plus_extra_ammo = 0
 		add_num = 1
 		use_rr = False
-		
 		
 		# NEW: Build list of all guns on unit
 		gun_list = []
@@ -3615,16 +3640,8 @@ class CampaignDay:
 		weapon = gun_list[0]
 		selected_ammo_type = weapon.stats['ammo_type_list'][0]
 		
-		# record initial loaded number of ammo
-		ammo_num = 0
-		for ammo_type in AMMO_TYPES:
-			if ammo_type in weapon.ammo_stores:
-				ammo_num += weapon.ammo_stores[ammo_type]
-		rr_num = 0
-		for ammo_type in AMMO_TYPES:
-			if ammo_type in weapon.ready_rack:
-				rr_num += weapon.ready_rack[ammo_type]
-		
+		# calculate current ammo load
+		(ammo_num, rr_num, max_ammo, max_plus_extra_ammo) = CalculateAmmoLoads()
 		
 		# draw screen for first time
 		UpdateMenuCon()
@@ -3670,14 +3687,9 @@ class CampaignDay:
 					weapon = gun_list[0]
 				else:
 					weapon = gun_list[i+1]
-				ammo_num = 0
-				for ammo_type in AMMO_TYPES:
-					if ammo_type in weapon.ammo_stores:
-						ammo_num += weapon.ammo_stores[ammo_type]
-				rr_num = 0
-				for ammo_type in AMMO_TYPES:
-					if ammo_type in weapon.ready_rack:
-						rr_num += weapon.ready_rack[ammo_type]
+				
+				# calculate ammo load numbers for this gun
+				(ammo_num, rr_num, max_ammo, max_plus_extra_ammo) = CalculateAmmoLoads()
 				UpdateMenuCon()
 				continue
 			
@@ -3710,7 +3722,7 @@ class CampaignDay:
 					weapon.ready_rack[selected_ammo_type] += add_num
 					rr_num += add_num
 				else:
-					if ammo_num + add_num > int(weapon.stats['max_ammo']):
+					if ammo_num + add_num > max_plus_extra_ammo:
 						continue
 					weapon.ammo_stores[selected_ammo_type] += add_num
 					ammo_num += add_num
@@ -4883,6 +4895,7 @@ class CampaignDay:
 		if True in cd_hex.road_links:
 			libtcod.console_set_default_foreground(cd_hex_info_con, STONE_ROAD_COL)
 			libtcod.console_print(cd_hex_info_con, 0, 16, 'Stone road')
+	
 	
 	# starts or re-starts looping animations based on weather conditions
 	def InitAnimations(self):
@@ -7281,10 +7294,11 @@ class Weapon:
 			libtcod.console_set_default_foreground(console, libtcod.white)
 		else:
 			libtcod.console_set_default_foreground(console, libtcod.grey)
-		libtcod.console_print_ex(console, x+10, y, libtcod.BKGND_NONE,
+		libtcod.console_print_ex(console, x+11, y, libtcod.BKGND_NONE,
 			libtcod.RIGHT, 'RR')
 		
 		y += 1
+		total_general = 0
 		# general stores and RR contents
 		for ammo_type in AMMO_TYPES:
 			if ammo_type in self.ammo_stores:
@@ -7293,16 +7307,17 @@ class Weapon:
 				if self.ammo_type is not None and not skip_active:
 					if self.ammo_type == ammo_type:
 						libtcod.console_set_default_background(console, libtcod.darker_blue)
-						libtcod.console_rect(console, x, y, 11, 1, True, libtcod.BKGND_SET)
+						libtcod.console_rect(console, x, y, 12, 1, True, libtcod.BKGND_SET)
 						libtcod.console_set_default_background(console, libtcod.darkest_grey)
 				
 				libtcod.console_set_default_foreground(console, libtcod.white)
 				libtcod.console_print(console, x, y, ammo_type)
 				libtcod.console_set_default_foreground(console, libtcod.light_grey)
-				libtcod.console_print_ex(console, x+7, y, libtcod.BKGND_NONE,
+				libtcod.console_print_ex(console, x+8, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, str(self.ammo_stores[ammo_type]))
+				total_general += self.ammo_stores[ammo_type]
 				
-				libtcod.console_print_ex(console, x+10, y, libtcod.BKGND_NONE,
+				libtcod.console_print_ex(console, x+11, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, str(self.ready_rack[ammo_type]))
 				
 				y += 1
@@ -7310,10 +7325,18 @@ class Weapon:
 		y += 1
 		libtcod.console_print(console, x, y, 'Max')
 		libtcod.console_set_default_foreground(console, libtcod.light_grey)
-		libtcod.console_print_ex(console, x+7, y, libtcod.BKGND_NONE,
+		libtcod.console_print_ex(console, x+8, y, libtcod.BKGND_NONE,
 			libtcod.RIGHT, self.stats['max_ammo'])
-		libtcod.console_print_ex(console, x+10, y, libtcod.BKGND_NONE,
+		libtcod.console_print_ex(console, x+11, y, libtcod.BKGND_NONE,
 			libtcod.RIGHT, str(self.rr_size))
+		
+		# NEW: show if current total exceeds safe maximum
+		extra_ammo = total_general - int(self.stats['max_ammo'])
+		if extra_ammo > 0:
+			libtcod.console_set_default_foreground(console, libtcod.light_red)
+			libtcod.console_print(console, x, y+1, 'Extra')
+			libtcod.console_print_ex(console, x+8, y+1, libtcod.BKGND_NONE,
+				libtcod.RIGHT, str(extra_ammo))
 	
 	
 	# add a target as the current acquired target, or add one level
@@ -16575,24 +16598,13 @@ def LoadCampaignMenu(continue_most_recent):
 #                                     Sound Effects                                      #
 ##########################################################################################
 
-# play a given sample, and return the channel it is playing on
+# play a given sample
 def PlaySound(sound_name):
-	
 	sample = mixer.Mix_LoadWAV((SOUNDPATH + sound_name + '.ogg').encode('ascii'))
 	if sample is None:
 		print('ERROR: Sound not found: ' + sound_name)
 		return
-	
-	channel = mixer.Mix_PlayChannel(-1, sample, 0)
-	
-	del sample
-	
-	if channel == -1:
-		print('ERROR: could not play sound: ' + sound_name)
-		print(mixer.Mix_GetError())
-		return
-	
-	return channel
+	mixer.Mix_PlayChannel(-1, sample, 0)
 
 
 # select and play a sound effect for a given situation

@@ -2477,6 +2477,15 @@ class CampaignDay:
 		self.abandoned_tank = False			# set to true if player abandoned their tank that day
 		self.player_withdrew = False			# set to true if player withdrew from the battle
 		
+		self.gun_list = []				# guns on player tank
+		self.selected_gun = None			# selected gun for Resupply menu
+		
+		for weapon in campaign.player_unit.weapon_list:
+			if weapon.GetStat('type') == 'Gun':
+				self.gun_list.append(weapon)
+		if len(self.gun_list) > 0:
+			self.selected_gun = self.gun_list[0]
+		
 		self.air_support_level = 0.0
 		if 'air_support_level' in campaign.current_week:
 			self.air_support_level = campaign.current_week['air_support_level']
@@ -4610,18 +4619,19 @@ class CampaignDay:
 		# supply
 		if self.active_menu == 1:
 			
-			# display current main gun ammo levels
-			weapon = campaign.player_unit.weapon_list[0]
-			if weapon.GetStat('type') == 'Gun':
-				libtcod.console_print(cd_command_con, 6, 3, weapon.stats['name'])
-				weapon.DisplayAmmo(cd_command_con, 6, 5)
+			# NEW: display current ammo levels for selected gun if any
+			if self.selected_gun is not None:
+				libtcod.console_print(cd_command_con, 6, 3, self.selected_gun.stats['name'])
+				self.selected_gun.DisplayAmmo(cd_command_con, 6, 5)
 			
-			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-			libtcod.console_print(cd_command_con, 2, 14, EnKey('d').upper() + '/' + EnKey('a').upper())
-			libtcod.console_print(cd_command_con, 4, 15, EnKey('c').upper())
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			libtcod.console_print(cd_command_con, 6, 14, 'Add/Remove to RR')
-			libtcod.console_print(cd_command_con, 6, 15, 'Cycle Ammo Type')
+				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+				libtcod.console_print(cd_command_con, 2, 14, EnKey('d').upper() + '/' + EnKey('a').upper())
+				libtcod.console_print(cd_command_con, 4, 15, EnKey('c').upper())
+				libtcod.console_print(cd_command_con, 4, 16, EnKey('q').upper())
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
+				libtcod.console_print(cd_command_con, 6, 14, 'Add/Remove to RR')
+				libtcod.console_print(cd_command_con, 6, 15, 'Cycle Ammo Type')
+				libtcod.console_print(cd_command_con, 6, 16, 'Cycle Selected Gun')
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			libtcod.console_print_ex(cd_command_con, 12, 34, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -4654,7 +4664,6 @@ class CampaignDay:
 			libtcod.console_print(cd_command_con, 8, 37, 'Swap Position')
 			libtcod.console_print(cd_command_con, 8, 38, 'Crewman Menu')
 			libtcod.console_print(cd_command_con, 8, 39, 'Toggle Hatch')
-		
 		
 		# travel
 		elif self.active_menu == 3:
@@ -5276,12 +5285,11 @@ class CampaignDay:
 			# supply menu active
 			if self.active_menu == 1:
 				
-				weapon = campaign.player_unit.weapon_list[0]
-				if weapon.GetStat('type') == 'Gun':
+				if self.selected_gun is not None:
 					
 					# cycle active ammo type
 					if key_char == 'c':
-						if weapon.CycleAmmo():
+						if self.selected_gun.CycleAmmo():
 							self.UpdateCDCommandCon()
 							self.UpdateCDDisplay()
 						continue
@@ -5293,11 +5301,24 @@ class CampaignDay:
 						else:
 							add_num = 1
 						
-						if weapon.ManageRR(add_num):
+						if self.selected_gun.ManageRR(add_num):
 							self.UpdateCDCommandCon()
 							self.UpdateCDDisplay()
 						continue
 					
+					# cycle selected gun
+					elif key_char == 'q':
+						if len(self.gun_list) <= 1: continue
+						i = self.gun_list.index(self.selected_gun)
+						if i == len(self.gun_list) - 1:
+							i = 0
+						else:
+							i += 1
+						self.selected_gun = self.gun_list[i]
+						self.UpdateCDCommandCon()
+						self.UpdateCDDisplay()
+						continue
+
 				# request resupply
 				if key_char == 'r':
 					
@@ -6020,7 +6041,7 @@ class Personnel:
 			else:
 				modifier += 25.0
 		
-		# random event: sniper, landmine, etc.
+		# TODO: random event: sniper, landmine, etc.
 		elif 'random_event' in attack_profile:
 			pass
 		
@@ -6030,7 +6051,23 @@ class Personnel:
 		
 		# initial KO hit on vehicle
 		elif 'ko_hit' in attack_profile:
-			pass
+			
+			# NEW: additional risk from extra ammo from each gun
+			for weapon in campaign_day.gun_list:
+				total_ammo = 0
+				for ammo_type in AMMO_TYPES:
+					if ammo_type in weapon.ammo_stores:
+						total_ammo += weapon.ammo_stores[ammo_type]
+				
+				if total_ammo > weapon.max_ammo:
+					if weapon.stats['calibre'] is not None:
+						calibre = int(weapon.stats['calibre'])
+						if calibre <= 37:
+							mod = 1.0 * (total_ammo - weapon.max_ammo)
+						else:
+							mod = 2.0 * (total_ammo - weapon.max_ammo)
+						print('DEBUG: Added an extra ammo modifer of: ' + str(mod))
+						modifier += mod
 		
 		# part of bail-out - caught in burning vehicle
 		elif 'burn_up' in attack_profile:

@@ -6085,6 +6085,11 @@ class Personnel:
 		# do injury roll
 		roll = GetPercentileRoll()
 		
+		# check for debug flag
+		if DEBUG:
+			if session.debug['Player Crew Hapless']:
+				roll = 100.0
+		
 		# unmodified high roll always counts as KIA, otherwise modifier is applied
 		if roll <= 99.5: roll += modifier
 		
@@ -15057,7 +15062,6 @@ def ShowMessage(text, longer_pause=False, portrait=None, cd_highlight=None, scen
 	libtcod.console_flush()
 
 
-
 # get keyboard and/or mouse event; returns False if no new key press
 def GetInputEvent():
 	event = libtcod.sys_check_for_event(libtcod.EVENT_KEY_RELEASE|libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,
@@ -15933,11 +15937,11 @@ def ShowGameMenu():
 			SaveGame()
 			session.exiting = True
 			exit_menu = True
-		
-		if ChangeGameSettings(key_char):
-			# redraw menu to reflect new settings
-			DrawMenuCon()
 			continue
+		
+		ChangeGameSettings(key_char)
+		DrawMenuCon()
+		continue
 	
 	# re-draw original screen
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
@@ -16001,9 +16005,6 @@ def ChangeGameSettings(key_char, main_menu=False):
 	
 	global main_theme
 
-	if key_char not in ['f', 's', 'v', 'p', 'k']:
-		return False
-	
 	# switch font size
 	if key_char == 'f':
 		libtcod.console_delete(0)
@@ -16015,9 +16016,8 @@ def ChangeGameSettings(key_char, main_menu=False):
 			fontname = 'c64_16x16_ext.png'
 		libtcod.console_set_custom_font(DATAPATH+fontname,
 			libtcod.FONT_LAYOUT_ASCII_INROW, 16, 18)
-		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT,
-			NAME + ' - ' + VERSION, fullscreen = False,
-			renderer = RENDERER)
+		libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
+			fullscreen = False, renderer=RENDERER, vsync=True)
 	
 	# toggle sound effects on/off
 	elif key_char == 's':
@@ -16066,9 +16066,8 @@ def ChangeGameSettings(key_char, main_menu=False):
 			i += 1
 		config['ArmCom2']['keyboard'] = str(i)
 		GenerateKeyboards()
-		
+
 	SaveCFG()
-	return True
 
 
 # display a pop-up window with a prompt and allow player to enter a text string
@@ -16769,8 +16768,8 @@ else:
 # set up custom font and root console
 libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
         16, 18)
-root_console = libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
-	fullscreen = False, renderer = RENDERER, vsync=True)
+libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
+	fullscreen=False, renderer=RENDERER, vsync=True)
 
 libtcod.sys_set_fps(LIMIT_FPS)
 libtcod.console_set_default_background(0, libtcod.black)
@@ -16789,7 +16788,6 @@ session = Session()
 main_theme = None
 if config['ArmCom2'].getboolean('sounds_enabled'):
 	if session.InitMixer():
-		# load main menu theme
 		session.LoadMainTheme()
 	else:
 		config['ArmCom2']['sounds_enabled'] = 'false'
@@ -16953,13 +16951,12 @@ while not exit_game:
 	# options sub-menu
 	if options_menu_active:
 		
-		if ChangeGameSettings(key_char, main_menu=True):
-			UpdateMainTitleCon(options_menu_active)
-			
 		# exit options menu
-		elif key.vk == libtcod.KEY_ESCAPE:
+		if key.vk == libtcod.KEY_ESCAPE:
 			options_menu_active = False
-			UpdateMainTitleCon(options_menu_active)
+		else:
+			ChangeGameSettings(key_char, main_menu=True)
+		UpdateMainTitleCon(options_menu_active)
 	
 	# root main menu
 	else:

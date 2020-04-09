@@ -6388,6 +6388,31 @@
 		}
 	},
 	
+	"Flame Thrower Team": {
+		"category" : "Infantry",
+		"class" : "Close Assault Team",
+		"portrait" : "unit_ft_team.xp",
+		"movement_class" : "Infantry",
+		"weapon_list" : [
+			{
+				"type" : "Close Combat",
+				"name" : "Flame Thrower",
+				"fp" : "6",
+				"max_range" : "1"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Flamethrower Operator"},
+			{"name" : "Spotter"}
+		],
+		"description" : [
+			""
+		],
+		"rarity" : {
+			"1935.01.01" : "100"
+		}
+	},
+	
 	"Motorcycle MG Team": {
 		"category" : "Infantry",
 		"class" : "Motorcycle Team",

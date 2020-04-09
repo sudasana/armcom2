@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2.0.0-dev-2'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
@@ -682,7 +682,8 @@ VEH_FP_TK = [
 
 # ap scores of various close combat weapons
 CC_WEAPON_AP = {
-	'Grenades' : 6
+	'Grenades' : 6,
+	'Flame Thrower' : 8
 }
 
 # amount within an AFV armour save that will result in Stun tests for crew/unit
@@ -1099,7 +1100,7 @@ class Campaign:
 			#	'campaign. If your commander is killed, your campaign ends. ' +
 			#	'Required for entry into the Campaign Records.')
 			
-			# TEMP
+			# FUTURE: chance text once serious injury recovery time has been added
 			text = ('You take on the role of the tank commander. If your commander ' +
 				'is seriously injured or killed, your campaign ends.')
 			
@@ -2054,7 +2055,7 @@ class Campaign:
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
 				libtcod.console_print(calendar_main_panel, 2, y, time)
 				
-				# TODO: determine if journal text needs to be wrapped
+				# FUTURE: determine if journal text needs to be wrapped
 				
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
 				libtcod.console_print(calendar_main_panel, 10, y, text)
@@ -6123,6 +6124,12 @@ class Personnel:
 		# initial KO hit on vehicle
 		elif 'ko_hit' in attack_profile:
 			
+			# NEW: additional risk if attack was close combat and crewman is CE
+			if attack_profile['weapon'] is not None:
+				if attack_profile['weapon'].GetStat('type') == 'Close Combat' and self.ce:
+					print('DEBUG: Crewman was CE when Close Combat attack occured')
+					modifier += 25.0
+			
 			# NEW: additional risk if in area of tank that was hit
 			if attack_profile['location'] is not None and self.current_position.location is not None:
 				if attack_profile['location'] == self.current_position.location:
@@ -6137,17 +6144,16 @@ class Personnel:
 				
 				if total_ammo > weapon.max_ammo:
 					if weapon.stats['calibre'] is not None:
-						calibre = int(weapon.stats['calibre'])
-						if calibre <= 37:
+						if int(weapon.stats['calibre']) <= 37:
 							mod = 1.0 * (total_ammo - weapon.max_ammo)
 						else:
 							mod = 2.0 * (total_ammo - weapon.max_ammo)
-						print('DEBUG: Added an extra ammo modifer of: ' + str(mod))
 						modifier += mod
 		
 		# part of bail-out - caught in burning vehicle
 		elif 'burn_up' in attack_profile:
-			pass
+			if not self.ce:
+				modifier += (libtcod.random_get_int(0, 2, 5) * 10.0)
 		
 		# crewman grit modifier
 		modifier -= self.stats['Grit'] * 3.0
@@ -7625,10 +7631,6 @@ class AI:
 		
 		# no action if it's not alive
 		if not self.owner.alive: return
-		
-		# TEMP - testing
-		if self.owner in scenario.player_unit.squad:
-			return
 		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
@@ -9457,16 +9459,31 @@ class Unit:
 				
 				elif weapon.GetStat('type') == 'Close Combat':
 					
-					# TODO: replace with better effect
-					(x, y) = scenario.PlotHex(target.hx, target.hy)
-					scenario.animation['bomb_effect'] = (x, y)
-					scenario.animation['bomb_effect_lifetime'] = 4
+					if weapon.GetStat('name') == 'Grenades':
+						
+						# TODO: add sound effect here
+						(x, y) = scenario.PlotHex(target.hx, target.hy)
+						scenario.animation['grenade_effect'] = (x, y)
+						scenario.animation['grenade_effect_lifetime'] = 3
+						
+						# let animation run
+						while scenario.animation['grenade_effect'] is not None:
+							if libtcod.console_is_window_closed(): sys.exit()
+							libtcod.console_flush()
+							CheckForAnimationUpdate()
 					
-					# let animation run
-					while scenario.animation['bomb_effect'] is not None:
-						if libtcod.console_is_window_closed(): sys.exit()
-						libtcod.console_flush()
-						CheckForAnimationUpdate()
+					elif weapon.GetStat('name') == 'Flame Thrower':
+						
+						# TODO: add sound effect here
+						(x, y) = scenario.PlotHex(target.hx, target.hy)
+						scenario.animation['ft_effect'] = (x, y)
+						scenario.animation['ft_effect_lifetime'] = 9
+						
+						# let animation run
+						while scenario.animation['ft_effect'] is not None:
+							if libtcod.console_is_window_closed(): sys.exit()
+							libtcod.console_flush()
+							CheckForAnimationUpdate()
 			
 			# do the roll, display results to the screen, and modify the attack profile
 			profile = scenario.DoAttackRoll(profile)
@@ -9781,11 +9798,11 @@ class Unit:
 					text += profile['attacker'].GetName() + '.'
 				ShowMessage(text)
 				
-				# destroy the unit, NEW: pass the hit location (hull/turret) if any
-				self.DestroyMe(location=profile['location'])
-				
 				if profile['attacker'] == scenario.player_unit:
 					campaign.AddJournal('Destroyed a ' + self.GetName())
+				
+				# destroy the unit
+				self.DestroyMe(location=profile['location'], dest_weapon=profile['weapon'])
 				
 				# don't resolve any further hits
 				break
@@ -10055,7 +10072,7 @@ class Unit:
 	
 	# destroy this unit and remove it from the game
 	# if location is set, that was the location of the knock-out hit for vehicles
-	def DestroyMe(self, location=None, no_vp=False):
+	def DestroyMe(self, location=None, dest_weapon=None, no_vp=False):
 		
 		# check for debug flag
 		if self == scenario.player_unit and DEBUG:
@@ -10142,9 +10159,9 @@ class Unit:
 				
 				# set end-scenario flag
 				scenario.finished = True
-			
+				
 				# do bail-out procedure
-				scenario.PlayerBailOut(location=location)
+				scenario.PlayerBailOut(location=location, weapon=dest_weapon)
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
@@ -10196,6 +10213,10 @@ class Scenario:
 			'air_attack_line' : [],
 			'bomb_effect' : None,
 			'bomb_effect_lifetime' : 0,
+			'grenade_effect' : None,
+			'grenade_effect_lifetime' : 0,
+			'ft_effect' : None,
+			'ft_effect_lifetime' : 0,
 			'hex_highlight' : False,
 			'hex_flash' : 0
 		}
@@ -10463,24 +10484,6 @@ class Scenario:
 			ShowMessage('Enemy artillery forces fire a bombardment!')
 			self.DoArtilleryAttack(player_target=True)
 		
-		# enemy infantry assault on player
-		elif roll <= 90.0:
-			# check to see if 1+ rifle squads within 1 hex
-			unit_list = []
-			for unit in self.units:
-				if unit.owning_player == 0: continue
-				if unit.unit_id != 'Riflemen': continue
-				if unit.pinned: continue
-				if GetHexDistance(unit.hx, unit.hy, 0, 0) > 1: continue
-				unit_list.append(unit)
-			
-			# no unit within range and able to attack
-			if len(unit_list) == 0:
-				return
-			
-			# TODO: add new function here to represent close-range attack
-			# with grenades
-		
 		# FUTURE: add more event types
 		else:
 			return
@@ -10492,7 +10495,7 @@ class Scenario:
 	# go through procedure for player crew bailing out of tank
 	# if skip_ko is true, no chance of a crew injury from the initial knock-out hit (used for abandoning tank)
 	# if location is set, crew in hull/turret as appropriate will have a higher chance of injury
-	def PlayerBailOut(self, location=None, skip_ko=False):
+	def PlayerBailOut(self, location=None, weapon=None, skip_ko=False):
 		
 		# (re)draw the bail-out console and display on screen
 		def UpdateBailOutConsole():
@@ -10609,9 +10612,9 @@ class Scenario:
 					if session.debug['Player Crew Safe in Bail Out']:
 						result = None
 					else:
-						result = position.crewman.ResolveAttack({'ko_hit' : True, 'location' : location}, show_messages=False)
+						result = position.crewman.ResolveAttack({'ko_hit' : True, 'location' : location, 'weapon' : weapon}, show_messages=False)
 				else:
-					result = position.crewman.ResolveAttack({'ko_hit' : True, 'location' : location}, show_messages=False)
+					result = position.crewman.ResolveAttack({'ko_hit' : True, 'location' : location, 'weapon' : weapon}, show_messages=False)
 				
 				if result is None:
 					text = 'OK'
@@ -10652,7 +10655,10 @@ class Scenario:
 					if k not in ['Right Leg & Foot', 'Left Leg & Foot']: continue
 					if v is None: continue
 					if v not in ['Heavy', 'Serious', 'Critical']: continue
-					modifier += 20.0
+					if v in ['Heavy', 'Serious']:
+						modifier += 40.0
+					else:
+						modifier += 60.0
 				
 				if not position.hatch:
 					modifier += 15.0
@@ -10684,12 +10690,14 @@ class Scenario:
 			Wait(pause, ignore_animations=True)
 		
 		# tank burn up roll
+		burns = False
 		chance = 80.0
 		if self.player_unit.GetStat('wet_stowage') is not None:
 			chance = 25.0
 		
-		# FUTURE: apply further modifiers based on killing hit
-		burns = False
+		# apply further modifiers based on killing hit
+		if weapon.GetStat('name') == 'Flame Thrower':
+			chance = 90.0
 		
 		roll = GetPercentileRoll()
 		if DEBUG:
@@ -10802,9 +10810,6 @@ class Scenario:
 				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
-			
-			# TEMP testing
-			unit_class = 'Anti-Tank Gun'
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
@@ -14245,6 +14250,35 @@ class Scenario:
 				libtcod.console_put_char_ex(anim_con, x, y, 42, col,
 					libtcod.black)
 		
+		# update grenade effect if any
+		if self.animation['grenade_effect'] is not None:
+			
+			if self.animation['grenade_effect_lifetime'] == 0:
+				self.animation['grenade_effect'] = None
+			else:
+				self.animation['grenade_effect_lifetime'] -= 1
+				(x,y) = self.animation['grenade_effect']
+				x += libtcod.random_get_int(0, -1, 1)
+				y += libtcod.random_get_int(0, -1, 1)
+				col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+				libtcod.console_put_char_ex(anim_con, x, y, 250, col,
+					libtcod.black)
+		
+		# update flamethrower effect if any
+		if self.animation['ft_effect'] is not None:
+			
+			if self.animation['ft_effect_lifetime'] == 0:
+				self.animation['ft_effect'] = None
+			else:
+				self.animation['ft_effect_lifetime'] -= 1
+				(x,y) = self.animation['ft_effect']
+				x += libtcod.random_get_int(0, -1, 1)
+				y += libtcod.random_get_int(0, -1, 1)
+				fg_col = choice([libtcod.light_red, libtcod.light_yellow, libtcod.grey])
+				bg_col = choice([libtcod.red, libtcod.yellow, libtcod.black])
+				libtcod.console_put_char_ex(anim_con, x, y, 177, fg_col,
+					bg_col)
+		
 		# update hex highlight if any
 		if self.animation['hex_highlight']:
 			
@@ -15715,8 +15749,8 @@ def LoadGame(directory):
 # check the saved game to see if it is compatible with the current game version
 def CheckSavedGameVersion(saved_version):
 	
-	# if either is a development version, versions must match exactly
-	if 'dev' in saved_version or 'dev' in VERSION:
+	# if either is a development or release candidate version, versions must match exactly
+	if 'dev' in saved_version or 'rc' in saved_version or 'dev' in VERSION or 'rc' in VERSION:
 		if saved_version != VERSION:
 			return saved_version
 	
@@ -15788,6 +15822,7 @@ def ShowNotification(text, confirm=False):
 	
 	# draw a black rect and an outline
 	libtcod.console_rect(0, x, y, 60, h, True, libtcod.BKGND_SET)
+	
 	DrawFrame(0, x, y, 60, h)
 	
 	# display message
@@ -15796,7 +15831,7 @@ def ShowNotification(text, confirm=False):
 		libtcod.console_print(0, x+2, ly, line)
 		ly += 1
 	
-	# if asking for confirmation, display yes/no choices, otherwise display a simple messages
+	# if asking for confirmation, display yes/no choices, otherwise display a simple message
 	if confirm:
 		text = 'Proceed? Y/N'
 	else:
@@ -16972,6 +17007,7 @@ if not DEBUG:
 	for line in lines:
 		libtcod.console_print_ex(0, WINDOW_XM, y, libtcod.BKGND_NONE, libtcod.CENTER, line)
 		y += 1
+	libtcod.console_set_default_foreground(0, libtcod.white)
 	
 	libtcod.console_flush()
 	Wait(200, ignore_animations=True)

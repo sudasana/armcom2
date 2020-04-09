@@ -1093,10 +1093,14 @@ class Campaign:
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			
 			y += 2
-			text = ('You take on the role of a tank commander. If your commander ' +
-				'is seriously injured, you will miss a number of weeks of the ' +
-				'campaign. If your commander is killed, your campaign ends. ' +
-				'Required for entry into the Campaign Records.')
+			#text = ('You take on the role of the tank commander. If your commander ' +
+			#	'is seriously injured, you will miss a number of weeks of the ' +
+			#	'campaign. If your commander is killed, your campaign ends. ' +
+			#	'Required for entry into the Campaign Records.')
+			
+			# TEMP
+			text = ('You take on the role of the tank commander. If your commander ' +
+				'is seriously injured or killed, your campaign ends.')
 			
 			lines = wrap(text, 24)
 			for line in lines:
@@ -9746,7 +9750,9 @@ class Unit:
 					
 					# otherwise: destroyed
 				
-				self.DestroyMe()
+				# play sound effect
+				if self.GetStat('category') in ['Vehicle', 'Train Car']:
+					PlaySoundFor(self, 'vehicle_explosion')
 				
 				# display message
 				if self == scenario.player_unit:
@@ -9759,6 +9765,9 @@ class Unit:
 				else:
 					text += profile['attacker'].GetName() + '.'
 				ShowMessage(text)
+				
+				# destroy the unit
+				self.DestroyMe()
 				
 				if profile['attacker'] == scenario.player_unit:
 					campaign.AddJournal('Destroyed a ' + self.GetName())
@@ -10038,9 +10047,6 @@ class Unit:
 				ShowMessage('Debug powers will save you from death!')
 				self.ap_hits_to_resolve = []
 				return
-		
-		if self.GetStat('category') in ['Vehicle', 'Train Car']:
-			PlaySoundFor(self, 'vehicle_explosion')
 		
 		# set flag
 		self.alive = False

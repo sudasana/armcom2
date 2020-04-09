@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2.0.0-dev-2'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
@@ -6122,6 +6122,13 @@ class Personnel:
 		# initial KO hit on vehicle
 		elif 'ko_hit' in attack_profile:
 			
+			# NEW: additional risk if in area of tank that was hit
+			if attack_profile['location'] is not None and self.current_position.location is not None:
+				print('DEBUG: Hit location is: ' + attack_profile['location'])
+				if attack_profile['location'] == self.current_position.location:
+					print('DEBUG: Added modifier for being in part of tank that was hit')
+					modifier += 20.0
+			
 			# NEW: additional risk from extra ammo from each gun
 			for weapon in campaign_day.gun_list:
 				total_ammo = 0
@@ -9767,8 +9774,8 @@ class Unit:
 					text += profile['attacker'].GetName() + '.'
 				ShowMessage(text)
 				
-				# destroy the unit
-				self.DestroyMe()
+				# destroy the unit, NEW: pass the hit location (hull/turret) if any
+				self.DestroyMe(location=profile['location'])
 				
 				if profile['attacker'] == scenario.player_unit:
 					campaign.AddJournal('Destroyed a ' + self.GetName())
@@ -10040,7 +10047,8 @@ class Unit:
 	
 	
 	# destroy this unit and remove it from the game
-	def DestroyMe(self, no_vp=False):
+	# if location is set, that was the location of the knock-out hit for vehicles
+	def DestroyMe(self, location=None, no_vp=False):
 		
 		# check for debug flag
 		if self == scenario.player_unit and DEBUG:
@@ -10129,7 +10137,7 @@ class Unit:
 				scenario.finished = True
 			
 				# do bail-out procedure
-				scenario.PlayerBailOut()
+				scenario.PlayerBailOut(location=location)
 		
 		scenario.UpdateUnitCon()
 		scenario.UpdateScenarioDisplay()
@@ -10475,7 +10483,9 @@ class Scenario:
 		
 	
 	# go through procedure for player crew bailing out of tank
-	def PlayerBailOut(self, skip_ko=False):
+	# if skip_ko is true, no chance of a crew injury from the initial knock-out hit (used for abandoning tank)
+	# if location is set, crew in hull/turret as appropriate will have a higher chance of injury
+	def PlayerBailOut(self, location=None, skip_ko=False):
 		
 		# (re)draw the bail-out console and display on screen
 		def UpdateBailOutConsole():
@@ -10592,9 +10602,9 @@ class Scenario:
 					if session.debug['Player Crew Safe in Bail Out']:
 						result = None
 					else:
-						result = position.crewman.ResolveAttack({'ko' : True}, show_messages=False)
+						result = position.crewman.ResolveAttack({'ko_hit' : True, 'location' : location}, show_messages=False)
 				else:
-					result = position.crewman.ResolveAttack({'ko' : True}, show_messages=False)
+					result = position.crewman.ResolveAttack({'ko_hit' : True, 'location' : location}, show_messages=False)
 				
 				if result is None:
 					text = 'OK'

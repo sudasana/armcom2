@@ -63,9 +63,10 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2.0.0-dev-2'					# game version
+DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
 SOUNDPATH = 'sounds/'.replace('/', os.sep)		# path to sound samples
@@ -16937,12 +16938,24 @@ key = libtcod.Key()
 #                                        Main Menu                                       #
 ##########################################################################################
 
-# display studio logo and pause
+# display studio logo and disclaimer
 if not DEBUG:
 	libtcod.console_clear(0)
-	libtcod.console_blit(LoadXP('cats.xp'), 0, 0, 0, 0, 0, WINDOW_XM-15, WINDOW_YM-19)
+	libtcod.console_blit(LoadXP('cats.xp'), 0, 0, 0, 0, 0, WINDOW_XM-15, WINDOW_YM-25)
+	
+	libtcod.console_set_default_foreground(0, libtcod.white)
+	libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM+20, libtcod.BKGND_NONE,
+		libtcod.CENTER, 'Copyright 2016-2020')
+	
+	libtcod.console_set_default_foreground(0, libtcod.light_grey)
+	y = WINDOW_YM+22
+	lines = wrap(DISCLAIMER, 40)
+	for line in lines:
+		libtcod.console_print_ex(0, WINDOW_XM, y, libtcod.BKGND_NONE, libtcod.CENTER, line)
+		y += 1
+	
 	libtcod.console_flush()
-	Wait(80, ignore_animations=True)
+	Wait(200, ignore_animations=True)
 	libtcod.console_clear(0)
 	libtcod.console_flush()
 

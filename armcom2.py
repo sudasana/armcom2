@@ -1563,9 +1563,10 @@ class Campaign:
 		
 		# crew advances and wound recovery
 		libtcod.console_set_default_foreground(con, libtcod.red)
-		libtcod.console_print(con, 43, 18, 'Wound')
+		libtcod.console_print(con, 40, 17, 'Serious Wound/')
+		libtcod.console_print(con, 45, 18, 'KIA')
 		libtcod.console_set_default_foreground(con, libtcod.light_blue)
-		libtcod.console_print(con, 55, 18, 'Level Up')
+		libtcod.console_print(con, 56, 18, 'Level Up')
 		
 		y = 20
 		for position in campaign.player_unit.positions_list:
@@ -6070,7 +6071,7 @@ class Personnel:
 		
 		# crewman is already dead, can't get worse
 		if not self.alive:
-			return False
+			return None
 		
 		# don't show messages if this is not the player unit
 		if self.unit != scenario.player_unit:
@@ -6124,9 +6125,7 @@ class Personnel:
 			
 			# NEW: additional risk if in area of tank that was hit
 			if attack_profile['location'] is not None and self.current_position.location is not None:
-				print('DEBUG: Hit location is: ' + attack_profile['location'])
 				if attack_profile['location'] == self.current_position.location:
-					print('DEBUG: Added modifier for being in part of tank that was hit')
 					modifier += 20.0
 			
 			# NEW: additional risk from extra ammo from each gun
@@ -6177,7 +6176,7 @@ class Personnel:
 		
 		# if crewman is exposed in an AFV and leg/foot location is rolled, no effect
 		if 'firepower' in attack_profile and location in ['Right Leg & Foot', 'Left Leg & Foot']:
-			return False
+			return None
 		
 		#print('DEBUG: Location roll was: ' + location)
 		
@@ -6185,7 +6184,7 @@ class Personnel:
 		
 		# miss - no effect
 		if roll < 35.0:
-			return False
+			return None
 		
 		# near miss - possible change in condition
 		elif roll <= 45.0:
@@ -6197,7 +6196,7 @@ class Personnel:
 					ShowMessage('You had a near miss and are now Shaken.')
 				else:
 					ShowMessage('Your ' + self.current_position.name + ' had a near miss and is now Shaken.')
-				return True
+			return 'Shaken'
 		
 		# grazing hit, no injury but possible stun
 		elif roll <= 65.0:
@@ -6207,7 +6206,7 @@ class Personnel:
 						ShowMessage('You suffer a grazing hit but are no worse for wear.')
 					else:
 						ShowMessage('Your ' + self.current_position.name + ' suffers a grazing hit but is no worse for wear.')
-				return False
+				return None
 			if self.DoMoraleCheck(0.0):
 				self.condition = 'Shaken'
 				self.DoFatigueCheck()
@@ -6216,6 +6215,7 @@ class Personnel:
 						ShowMessage('You suffer a grazing hit and are now Shaken.')
 					else:
 						ShowMessage('Your ' + self.current_position.name + ' suffers a grazing hit and is now Shaken.')
+				return 'Shaken'
 			else:
 				self.condition = 'Stunned'
 				self.DoFatigueCheck()
@@ -6224,7 +6224,7 @@ class Personnel:
 						ShowMessage('You suffer a grazing hit and are now Stunned.')
 					else:
 						ShowMessage('Your ' + self.current_position.name + ' suffers a grazing hit and is now Stunned.')
-			return True
+				return 'Stunned'
 		
 		# hit in a non-critical location
 		elif roll <= 80.0:
@@ -6271,7 +6271,7 @@ class Personnel:
 				ShowMessage(text)
 			campaign.AddJournal(text)
 			
-			return True
+			return 'KIA'
 		
 		# apply injury
 		
@@ -6279,7 +6279,7 @@ class Personnel:
 		if injury in ['Serious', 'Critical'] and self.current_position.name in PLAYER_POSITIONS and campaign_day.fate_points > 0:
 			campaign_day.fate_points -= 1
 			#print('DEBUG: Player saved from ' + injury + ' injury by fate point')
-			return False
+			return None
 		
 		injury_change = False
 		# no previous injury in this location
@@ -6335,7 +6335,8 @@ class Personnel:
 			ShowMessage(text)
 		campaign.AddJournal(text)
 		
-		if not injury_change: return
+		if not injury_change:
+			return injury
 		
 		# check for condition change (to Shaken, Stunned, or Unconscious) as a result of injury
 		condition_change = None
@@ -6353,11 +6354,12 @@ class Personnel:
 			elif not self.DoGritCheck(-10.0):
 				condition_change = 'Unconscious'
 		
-		if condition_change is None: return
+		if condition_change is None:
+			return injury
 		
-		if condition_change == 'Shaken' and self.condition != 'Good Order': return
-		if condition_change == 'Stunned' and self.condition in ['Stunned', 'Unconscious']: return
-		if condition_change == 'Unconscious' and self.condition == 'Unconscious': return
+		if condition_change == 'Shaken' and self.condition != 'Good Order': return injury
+		if condition_change == 'Stunned' and self.condition in ['Stunned', 'Unconscious']: return injury
+		if condition_change == 'Unconscious' and self.condition == 'Unconscious': return injury
 		
 		self.condition = condition_change
 		
@@ -6368,6 +6370,7 @@ class Personnel:
 		if show_messages:
 			ShowMessage(text)
 		campaign.AddJournal(text)
+		return injury + ', ' + condition_change
 	
 	
 	# do a grit test for this crewman
@@ -7622,6 +7625,10 @@ class AI:
 		
 		# no action if it's not alive
 		if not self.owner.alive: return
+		
+		# TEMP - testing
+		if self.owner in scenario.player_unit.squad:
+			return
 		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
@@ -9956,7 +9963,7 @@ class Unit:
 		if self == scenario.player_unit:
 			for position in self.positions_list:
 				if position.crewman is None: continue
-				if position.crewman.ResolveAttack({'firepower' : self.fp_to_resolve}):
+				if position.crewman.ResolveAttack({'firepower' : self.fp_to_resolve}) is not None:
 					scenario.UpdateCrewInfoCon()
 		
 		# clear fp to resolve and return
@@ -10538,10 +10545,6 @@ class Scenario:
 					libtcod.console_print(con, x, y+1, 'Empty')
 				else:
 					position.crewman.DisplayName(con, x, y+1, first_initial=True)
-					if position.crewman.wound != '':
-						libtcod.console_put_char_ex(con, x+21, y+1,
-							position.crewman.wound[0], libtcod.black,
-							libtcod.red)
 					
 					if position.crewman.ce:
 						text = 'CE'
@@ -10578,7 +10581,11 @@ class Scenario:
 			libtcod.console_set_default_background(con, libtcod.black)
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
-			
+		
+		# NEW: reset crew flags
+		for position in self.player_unit.positions_list:
+			if position.crewman is None: continue
+			position.crewman.bailed_out = False
 		
 		# draw screen for first time and pause
 		UpdateBailOutConsole()
@@ -10723,7 +10730,6 @@ class Scenario:
 			if not position.crewman.alive: continue
 			
 			text = 'Rescued'
-			
 			if burns:
 			
 				# check for wound from burn-up before rescue
@@ -10796,6 +10802,9 @@ class Scenario:
 				k, value = choice(list(campaign.stats['enemy_unit_class_odds'].items()))
 				if GetPercentileRoll() <= float(value):
 					unit_class = k
+			
+			# TEMP testing
+			unit_class = 'Anti-Tank Gun'
 			
 			# if class unit type has already been set, use that one instead
 			if unit_class in self.class_type_dict:
@@ -16467,7 +16476,7 @@ def ShowDebugMenu():
 				if position_name is None: return
 				crewman = scenario.player_unit.GetPersonnelByPosition(position_name)
 				if crewman is None: continue
-				if crewman.ResolveAttack({'firepower' : 6}):
+				if crewman.ResolveAttack({'firepower' : 6}) is not None:
 					scenario.UpdateCrewInfoCon()
 				exit_menu = True
 				continue

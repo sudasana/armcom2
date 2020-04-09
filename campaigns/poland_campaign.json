@@ -67,7 +67,10 @@
 			},
 			"enemy_nations" : ["Poland"],
 			"air_support_level" : 80.0,
-			"arty_support_level" : 50.0
+			"arty_support_level" : 50.0,
+			"terrain_odds_modifier" : {
+				"Forest" : 30
+			}
 		},
 		{
 			"start_date" : "1939.09.08",

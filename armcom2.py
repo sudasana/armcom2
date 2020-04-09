@@ -261,12 +261,12 @@ REGIONS = {
 		# campaign day map terrain type odds
 		# NEW: can be modified by campaign weeks
 		'cd_terrain_odds' : {
-			'Flat' : 50.0,
-			'Forest' : 10.0,
-			'Hills' : 15.0,
-			'Fields' : 10.0,
-			'Marsh' : 5.0,
-			'Villages' : 10.0
+			'Flat' : 50,
+			'Forest' : 10,
+			'Hills' : 15,
+			'Fields' : 10,
+			'Marsh' : 5,
+			'Villages' : 10
 		},
 		
 		# odds of dirt road network being present on the map
@@ -365,12 +365,12 @@ REGIONS = {
 	
 	'Northwestern Europe' : {
 		'cd_terrain_odds' : {
-			'Flat' : 40.0,
-			'Forest' : 20.0,
-			'Hills' : 10.0,
-			'Fields' : 15.0,
-			'Marsh' : 5.0,
-			'Villages' : 10.0
+			'Flat' : 40,
+			'Forest' : 20,
+			'Hills' : 10,
+			'Fields' : 15,
+			'Marsh' : 5,
+			'Villages' : 10
 		},
 		
 		'dirt_road_odds' : 80.0,
@@ -460,12 +460,12 @@ REGIONS = {
 	
 	'Nordic' : {
 		'cd_terrain_odds' : {
-			'Flat' : 20.0,
-			'Forest' : 40.0,
-			'Hills' : 20.0,
-			'Fields' : 10.0,
-			'Marsh' : 5.0,
-			'Villages' : 5.0
+			'Flat' : 20,
+			'Forest' : 40,
+			'Hills' : 20,
+			'Fields' : 10,
+			'Marsh' : 5,
+			'Villages' : 5
 		},
 		
 		'dirt_road_odds' : 20.0,
@@ -5805,10 +5805,20 @@ class CDMapHex:
 	
 	# generate a random terrain type for this zone hex
 	def GenerateTerrainType(self):
-		roll = GetPercentileRoll()
-		terrain_dict = REGIONS[campaign.stats['region']]['cd_terrain_odds']
 		
-		# TODO: check to see if current campaign week modifies this and change dictionary value
+		terrain_dict = REGIONS[campaign.stats['region']]['cd_terrain_odds'].copy()
+		
+		# check to see if current campaign week modifies this and change dictionary value
+		if 'terrain_odds_modifier' in campaign.current_week:
+			for k, v in campaign.current_week['terrain_odds_modifier'].items():
+				terrain_dict[k] = v
+
+		# base odds should total 100, but campaign week may modify this, so we can scale the odds
+		total_chance = 0
+		for terrain_type, odds in terrain_dict.items():
+			total_chance += odds
+		
+		roll = libtcod.random_get_int(0, 0, total_chance)
 		
 		for terrain_type, odds in terrain_dict.items():
 			if roll <= odds:

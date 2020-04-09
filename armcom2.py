@@ -259,6 +259,7 @@ REGIONS = {
 	'Northeastern Europe' : {
 		
 		# campaign day map terrain type odds
+		# NEW: can be modified by campaign weeks
 		'cd_terrain_odds' : {
 			'Flat' : 50.0,
 			'Forest' : 10.0,
@@ -358,10 +359,8 @@ REGIONS = {
 					'Light Snow' : 10.0, 'Snow' : 0.0,
 					'Blizzard' : 0.0
 				}
-				
 			}
 		}
-		
 	},
 	
 	'Northwestern Europe' : {
@@ -455,10 +454,8 @@ REGIONS = {
 					'Light Snow' : 10.0, 'Snow' : 0.0,
 					'Blizzard' : 0.0
 				}
-				
 			}
 		}
-		
 	},
 	
 	'Nordic' : {

@@ -1076,31 +1076,50 @@ class Campaign:
 			
 			# campaign options
 			libtcod.console_set_default_foreground(con, libtcod.light_green)
-			libtcod.console_print(con, 69, 3, 'Campaign Options')
+			libtcod.console_print(con, 69, 2, 'Campaign Options')
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_print_ex(con, 77, 4, libtcod.BKGND_NONE, libtcod.CENTER,
+				'Press number to toggle')
+			
+			y = 9
 			
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-			libtcod.console_print(con, 64, 6, '1')
-			libtcod.console_print(con, 64, 13, '2')
-			
+			libtcod.console_print(con, 64, y, '1')
 			if self.options['permadeath']:
 				libtcod.console_set_default_foreground(con, libtcod.white)
 			else:
 				libtcod.console_set_default_foreground(con, libtcod.darker_grey)
-			libtcod.console_print(con, 66, 6, 'Permadeath')
+			libtcod.console_print(con, 66, y, 'Player Commander')
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
-			libtcod.console_print(con, 64, 8, 'If your commander is')
-			libtcod.console_print(con, 64, 9, 'killed, your campaign')
-			libtcod.console_print(con, 64, 10, 'ends.')
 			
+			y += 2
+			text = ('You take on the role of a tank commander. If your commander ' +
+				'is seriously injured, you will miss a number of weeks of the ' +
+				'campaign. If your commander is killed, your campaign ends. ' +
+				'Required for entry into the Campaign Records.')
+			
+			lines = wrap(text, 24)
+			for line in lines:
+				libtcod.console_print(con, 64, y, line)
+				y += 1
+			
+			y += 4
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print(con, 64, y, '2')
 			if self.options['fate_points']:
 				libtcod.console_set_default_foreground(con, libtcod.white)
 			else:
 				libtcod.console_set_default_foreground(con, libtcod.darker_grey)
-			libtcod.console_print(con, 66, 13, 'Fate Points')
+			libtcod.console_print(con, 66, y, 'Fate Points')
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
-			libtcod.console_print(con, 64, 15, 'You are protected by')
-			libtcod.console_print(con, 64, 16, 'fate, negating a few')
-			libtcod.console_print(con, 64, 17, 'incoming attacks per day.')
+			
+			y += 2
+			text = ('You are protected by fate, negating a few incoming attacks ' +
+				'per day that would otherwise destroy your tank.')
+			lines = wrap(text, 24)
+			for line in lines:
+				libtcod.console_print(con, 64, y, line)
+				y += 1
 			
 			# key commands
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
@@ -3854,11 +3873,20 @@ class CampaignDay:
 	# check to see whether dead or seriously injured crewmen need to be replaced in this unit
 	def DoCrewReplacementCheck(self, unit):
 		
+		# don't do for any unit other than the player unit right now
+		if unit != campaign.player_unit: return
+		
 		# don't bother for dead units or if campaign is already over
 		if not unit.alive or campaign.ended: return
 		
+		# remove dead and seriously wounded crewmen
 		for position in unit.positions_list:
 			if position.crewman is None: continue
+			
+			if not position.crewman.alive:
+				text = 'The body of your ' + position.crewman.normal_position + ' is removed.'
+				ShowMessage(text)
+				position.crewman = None
 			
 			# FUTURE: send crewmen with serious wounds to recover in hospital
 			serious_wound = False
@@ -3869,10 +3897,51 @@ class CampaignDay:
 				break
 			
 			if serious_wound or not position.crewman.alive:
-				position.crewman = Personnel(unit, unit.nation, position)
-				if unit == campaign.player_unit:
-					text = 'A new crewman joins your crew in the ' + position.name + ' position.'
+				text = 'Your ' + position.crewman.normal_position + ' is taken off the front lines to recover.'
+				ShowMessage(text)
+				position.crewman = None
+		
+		
+		# if any remaining crewmen are not in their normal position, move them back now
+		print('DEBUG: Starting to swap crewmen back to their normal positions')
+		holding_list = []
+
+		for position in unit.positions_list:
+			if position.crewman is None: continue
+			if position.crewman.normal_position == position.name: continue
+			
+			# find the position this crewman should be in
+			for position2 in unit.positions_list:
+				if position2.name == position.crewman.normal_position:
+					
+					# if there's another crewman here, put them into the holding list
+					if position2.crewman is not None:
+						holding_list.append(position2.crewman)
+						print('DEBUG: Moved a crewman into a holding list')
+					
+					# move the crewman to the new position
+					position2.crewman = position.crewman
+					position.crewman = None
+					position2.crewman.current_position = position2
+					text = 'Your ' + position2.crewman.normal_position + ' returns to his position.'
 					ShowMessage(text)
+		
+		# run through the holding list and move them to where they should be
+		for position in holding_list:
+			for position2 in unit.positions_list:
+				if position2.name == position.crewman.normal_position:
+					position2.crewman = position.crewman
+					position2.crewman.current_position = position2
+					text = 'Your ' + position2.crewman.normal_position + ' returns to his position.'
+					ShowMessage(text)
+		
+		
+		# add new recruits to fill in any empty positions
+		for position in unit.positions_list:
+			if position.crewman is None:
+				position.crewman = Personnel(unit, unit.nation, position)
+				text = 'A new crewman joins your crew in the ' + position.name + ' position.'
+				ShowMessage(text)
 	
 	
 	# generate roads linking zones; only dirt roads for now
@@ -7984,11 +8053,11 @@ class AI:
 			# avoid close combat attacks, especially if already in a good position
 			if weapon.GetStat('type') == 'Close Combat':
 				score -= 15.0
-				if self.fortified:
+				if self.owner.fortified:
 					score -= 45.0
-				elif self.entrenched:
+				elif self.owner.entrenched:
 					score -= 30.0
-				elif self.dug_in:
+				elif self.owner.dug_in:
 					score -= 20.0
 			
 			# not sure if this is required, but seems to work
@@ -8008,15 +8077,15 @@ class AI:
 		scored_list.sort(key=lambda x:x[0], reverse=True)
 		
 		# DEBUG: list scored attacks
-		print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
-		n = 1
-		for (score, weapon, target, ammo_type) in scored_list:
-			text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
-			if ammo_type != '':
-				text += '(' + ammo_type + ')'
-			text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
-			print (text)
-			n += 1
+		#print ('AI DEBUG: ' + str(len(scored_list)) + ' possible attacks for ' + self.owner.unit_id + ':')
+		#n = 1
+		#for (score, weapon, target, ammo_type) in scored_list:
+		#	text = '#' + str(n) + ' (' + str(score) + '): ' + weapon.stats['name']
+		#	if ammo_type != '':
+		#		text += '(' + ammo_type + ')'
+		#	text += ' against ' + target.unit_id + ' in ' + str(target.hx) + ',' + str(target.hy)
+		#	print (text)
+		#	n += 1
 		
 		# select best attack
 		(score, weapon, target, ammo_type) = scored_list[0]
@@ -8068,10 +8137,30 @@ class AI:
 		# move target to top of hex stack
 		target.MoveToTopOfStack()
 		scenario.UpdateUnitCon()
+		
+		# NEW: show descriptive text if applicable
+		if self.owner.owning_player == 0 or self.owner.spotted:
+			scenario.context_text = self.owner.GetName() + ' attacks ' + target.GetName() + ' with ' + weapon.stats['name']
+			if ammo_type != '':
+				scenario.context_text += ' (' + ammo_type + ')'
+			scenario.context_text += '.'
+			scenario.UpdateContextCon()
+		
 		scenario.UpdateScenarioDisplay()
 		libtcod.console_flush()
+		Wait(20)
 		
-		return self.owner.Attack(weapon, target)
+		# do the attack!
+		result = self.owner.Attack(weapon, target)
+		
+		# clear any descriptive text and return
+		if scenario.context_text != '':
+			scenario.context_text = ''
+			scenario.UpdateContextCon()
+			scenario.UpdateScenarioDisplay()
+			libtcod.console_flush()
+		
+		return result
 
 
 
@@ -9754,7 +9843,7 @@ class Unit:
 			
 			# calculate other odds
 			if self.reduced:
-				destroy_odds = RestrictChance(destroy_odds * 2.0)
+				destroy_odds = RestrictChance(destroy_odds * 1.5)
 			else:
 				reduction_odds = round(destroy_odds * 0.85, 1)
 			
@@ -10123,6 +10212,7 @@ class Scenario:
 		self.active_player = 0					# currently active player (0 is human player)
 		self.phase = PHASE_COMMAND				# current phase
 		self.advance_phase = False				# flag for input loop to automatically advance to next phase/turn
+		self.context_text = ''					# text to be displayed in the context console, description of AI attacks for example
 		
 		self.player_pivot = 0					# keeps track of player unit pivoting
 		
@@ -11305,7 +11395,7 @@ class Scenario:
 			
 			# target is a moving vehicle
 			if target.moving and target.GetStat('category') == 'Vehicle':
-				modifier_list.append(('Target Vehicle Moving', -30.0))
+				modifier_list.append(('Moving Target', -30.0))
 			
 			# target size
 			size_class = target.GetStat('size_class')
@@ -13059,6 +13149,9 @@ class Scenario:
 		# end of player turn, switching to enemy turn
 		if self.phase == PHASE_ALLIED_ACTION:
 			
+			# clear any descriptive text
+			self.context_text = ''
+			
 			# resolve fp on enemy units first
 			for unit in reversed(self.units):
 				if not unit.alive: continue
@@ -13077,6 +13170,9 @@ class Scenario:
 		
 		# end of enemy activation, player's turn
 		elif self.phase == PHASE_ENEMY_ACTION:
+			
+			# clear any descriptive text
+			self.context_text = ''
 		
 			# resolve fp on player units first
 			for unit in reversed(self.units):
@@ -13518,7 +13614,20 @@ class Scenario:
 						libtcod.console_print(context_con, 0, y, line)
 						y += 1
 						if y == 12: break
-				
+		
+		# allied or enemy action phase
+		elif self.phase in [PHASE_ALLIED_ACTION, PHASE_ENEMY_ACTION]:
+			
+			# no text to display
+			if self.context_text == '': return
+			
+			libtcod.console_set_default_foreground(context_con, libtcod.light_grey)
+			lines = wrap(self.context_text, 18)
+			y = 0
+			for line in lines[:11]:
+				libtcod.console_print(context_con, 0, y, line)
+				y += 1		
+	
 	
 	# update player unit info console
 	def UpdatePlayerInfoCon(self):
@@ -15753,7 +15862,7 @@ def ShowSwapPositionMenu():
 		libtcod.console_print(con, 40, 53, 'Select Position 1')
 		libtcod.console_print(con, 40, 54, 'Select Position 2')
 		libtcod.console_print(con, 40, 55, 'Swap Positions')
-		libtcod.console_print(con, 40, 57, 'Exit Menu')
+		libtcod.console_print(con, 40, 57, 'Finish and Exit Menu')
 		
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 	
@@ -16007,7 +16116,8 @@ def ChangeGameSettings(key_char, main_menu=False):
 
 	# switch font size
 	if key_char == 'f':
-		libtcod.console_delete(0)
+		# removed - fixes bug where sound would disappear upon switching fonts
+		#libtcod.console_delete(0)
 		if config.getboolean('ArmCom2', 'large_display_font'):
 			config['ArmCom2']['large_display_font'] = 'false'
 			fontname = 'c64_8x8_ext.png'
@@ -16262,7 +16372,7 @@ def ShowDebugMenu():
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		libtcod.console_print(con, x+2, y, 'Regenerate CD Map Roads & Rivers')
-		libtcod.console_print(con, x+2, y+2, 'Attack Selected Crewman (Scenario Only)')
+		libtcod.console_print(con, x+2, y+2, 'Attack Selected Crewman (Scenario)')
 		libtcod.console_print(con, x+2, y+4, 'Immobilize Player')
 		libtcod.console_print(con, x+2, y+6, 'Set Time to End of Day')
 		libtcod.console_print(con, x+2, y+8, 'End Current Scenario')

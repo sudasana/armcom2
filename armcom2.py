@@ -63,9 +63,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.0-dev-2'					# game version
+VERSION = '2.0.0-dev-3'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -365,7 +365,6 @@ REGIONS = {
 	},
 	
 	'Northwestern Europe' : {
-
 		'cd_terrain_odds' : {
 			'Flat' : 40.0,
 			'Forest' : 20.0,
@@ -5811,6 +5810,9 @@ class CDMapHex:
 	def GenerateTerrainType(self):
 		roll = GetPercentileRoll()
 		terrain_dict = REGIONS[campaign.stats['region']]['cd_terrain_odds']
+		
+		# TODO: check to see if current campaign week modifies this and change dictionary value
+		
 		for terrain_type, odds in terrain_dict.items():
 			if roll <= odds:
 				self.terrain_type = terrain_type
@@ -16676,7 +16678,7 @@ def LoadCampaignMenu(continue_most_recent):
 		
 		for save in saved_game_list:
 			if save == selected_save:
-				libtcod.console_rect(con, 2, y, 23, 2, True, libtcod.BKGND_SET)
+				libtcod.console_rect(con, 2, y, 30, 2, True, libtcod.BKGND_SET)
 			libtcod.console_print(con, 2, y, save['campaign_name'])
 			y += 2
 		
@@ -16690,7 +16692,7 @@ def LoadCampaignMenu(continue_most_recent):
 		libtcod.console_print_ex(con, 74, y+3, libtcod.BKGND_NONE, libtcod.CENTER,
 			'Current VP')
 		libtcod.console_print_ex(con, 74, y+6, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Date')
+			'Current Date')
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
 		libtcod.console_print_ex(con, 74, y+1, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -17065,9 +17067,6 @@ def UpdateMainTitleCon(options_menu_active):
 		for (char, text) in [('C', 'Continue'), ('L', 'Load Campaign'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]:
 			# grey-out option if not possible
 			disabled = False
-			
-			#if char == 'C' and not os.path.exists('savegame.dat'):
-			#	disabled = True
 			
 			if disabled:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)

@@ -1593,22 +1593,23 @@ class Campaign:
 			if not position.crewman.alive:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
 				libtcod.console_print(con, 43, y+1, 'Dead')
-			
-			# clear all minor wounds, display if 1+ serious injuries
-			serious_injury = False
-			for (k, v) in position.crewman.injury.items():
-				if v is None: continue
-				if v == 'Serious':
-					serious_injury = True
-				else:
-					position.crewman.injury[k] = None
-			
-			if serious_injury:
-				libtcod.console_set_default_foreground(con, libtcod.dark_red)
-				libtcod.console_print(con, 43, y+1, 'Serious')
 			else:
-				libtcod.console_set_default_foreground(con, libtcod.light_grey)
-				libtcod.console_print(con, 43, y+1, 'None')
+			
+				# clear all minor wounds, display if 1+ serious injuries
+				serious_injury = False
+				for (k, v) in position.crewman.injury.items():
+					if v is None: continue
+					if v == 'Serious':
+						serious_injury = True
+					else:
+						position.crewman.injury[k] = None
+				
+				if serious_injury:
+					libtcod.console_set_default_foreground(con, libtcod.dark_red)
+					libtcod.console_print(con, 43, y+1, 'Serious')
+				else:
+					libtcod.console_set_default_foreground(con, libtcod.light_grey)
+					libtcod.console_print(con, 43, y+1, 'None')
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(30, ignore_animations=True)
@@ -3887,6 +3888,7 @@ class CampaignDay:
 				text = 'The body of your ' + position.crewman.normal_position + ' is removed.'
 				ShowMessage(text)
 				position.crewman = None
+				continue
 			
 			# FUTURE: send crewmen with serious wounds to recover in hospital
 			serious_wound = False
@@ -3903,7 +3905,6 @@ class CampaignDay:
 		
 		
 		# if any remaining crewmen are not in their normal position, move them back now
-		print('DEBUG: Starting to swap crewmen back to their normal positions')
 		holding_list = []
 
 		for position in unit.positions_list:
@@ -3917,7 +3918,6 @@ class CampaignDay:
 					# if there's another crewman here, put them into the holding list
 					if position2.crewman is not None:
 						holding_list.append(position2.crewman)
-						print('DEBUG: Moved a crewman into a holding list')
 					
 					# move the crewman to the new position
 					position2.crewman = position.crewman
@@ -3934,7 +3934,6 @@ class CampaignDay:
 					position2.crewman.current_position = position2
 					text = 'Your ' + position2.crewman.normal_position + ' returns to his position.'
 					ShowMessage(text)
-		
 		
 		# add new recruits to fill in any empty positions
 		for position in unit.positions_list:
@@ -6066,7 +6065,6 @@ class Personnel:
 		
 		# crewman is already dead, can't get worse
 		if not self.alive:
-			print('DEBUG: Crewman already dead')
 			return False
 		
 		# don't show messages if this is not the player unit
@@ -6084,12 +6082,10 @@ class Personnel:
 				
 				# not exposed
 				if not self.ce:
-					print('DEBUG: Crewman not exposed')
 					return False
 				
 				# unconscious and critical crewman are assumed to be slumped down and are protected
 				if self.condition in ['Unconscious', 'Critical']:
-					print('DEBUG: Crewman slumped down, not exposed')
 					return False
 			
 			# determine chance of injury based on total incoming firepower
@@ -6149,7 +6145,7 @@ class Personnel:
 		if self.condition == 'Shaken':
 			modifier += 15.0
 		
-		print('DEBUG: Total injury modifier for ' + self.first_name + ' ' + self.last_name + ' is: ' + str(modifier))
+		#print('DEBUG: Total injury modifier for ' + self.first_name + ' ' + self.last_name + ' is: ' + str(modifier))
 		
 		# do injury roll
 		roll = GetPercentileRoll()
@@ -6162,7 +6158,7 @@ class Personnel:
 		# unmodified high roll always counts as KIA, otherwise modifier is applied
 		if roll <= 99.5: roll += modifier
 		
-		print('DEBUG: Modified injury roll was: ' + str(roll))
+		#print('DEBUG: Modified injury roll was: ' + str(roll))
 		
 		# determine location
 		location = GetHitLocation(attack_profile)
@@ -6171,7 +6167,7 @@ class Personnel:
 		if 'firepower' in attack_profile and location in ['Right Leg & Foot', 'Left Leg & Foot']:
 			return False
 		
-		print('DEBUG: Location roll was: ' + location)
+		#print('DEBUG: Location roll was: ' + location)
 		
 		# determine effect
 		
@@ -6250,7 +6246,7 @@ class Personnel:
 			# check for fate point use
 			if self.current_position.name in PLAYER_POSITIONS and campaign_day.fate_points > 0:
 				campaign_day.fate_points -= 1
-				print('DEBUG: Player saved from death by fate point')
+				#print('DEBUG: Player saved from death by fate point')
 				return False
 			
 			self.KIA()
@@ -6270,7 +6266,7 @@ class Personnel:
 		# check for fate point use
 		if injury in ['Serious', 'Critical'] and self.current_position.name in PLAYER_POSITIONS and campaign_day.fate_points > 0:
 			campaign_day.fate_points -= 1
-			print('DEBUG: Player saved from ' + injury + ' injury by fate point')
+			#print('DEBUG: Player saved from ' + injury + ' injury by fate point')
 			return False
 		
 		injury_change = False
@@ -6392,7 +6388,7 @@ class Personnel:
 			if v is None: continue
 			if v != 'Critical': continue
 			
-			print('DEBUG: Checking for change in critical injury to ' + k)
+			#print('DEBUG: Checking for change in critical injury to ' + k)
 			
 			roll = GetPercentileRoll()
 			
@@ -15956,7 +15952,7 @@ def ShowSwapPositionMenu():
 			
 			if position.crewman != original_crew[i]:
 				position.crewman.current_cmd = 'None'
-				print('DEBUG: Set command for ' + position.name + ' to None')
+				#print('DEBUG: Set command for ' + position.name + ' to None')
 			i += 1
 
 

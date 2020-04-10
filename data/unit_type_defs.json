@@ -600,7 +600,7 @@
 	
 	"75mm wz. 02/26": {
 		"category" : "Gun",
-		"class" : "Field Gun",
+		"class" : "Artillery Gun",
 		"portrait" : "unit_75mm_gun.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Gun",
@@ -4012,7 +4012,7 @@
 	
 	"76.2mm obr. 00/02P": {
 		"category" : "Gun",
-		"class" : "Field Gun",
+		"class" : "Artillery Gun",
 		"portrait" : "unit_76mm_gun.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Gun",
@@ -4450,7 +4450,7 @@
 	
 	"75mm mle 1928": {
 		"category" : "Gun",
-		"class" : "Field Gun",
+		"class" : "Artillery Gun",
 		"portrait" : "unit_75mm_gun.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Gun",
@@ -6286,6 +6286,44 @@
 		}
 	},
 	
+	"OQF 4.5\" Howitzer" : {
+		"category" : "Gun",
+		"class" : "Artillery Gun",
+		"portrait" : "unit_4_5_inch_howitzer.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "114",
+				"long_range" : "S",
+				"rof" : "8.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "Smoke"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			"First built for use in the Great War, substantial numbers of these ",
+			"guns were still in service as of 1940."
+		],
+		"rarity" : {
+			"1940.05.01" : "50",
+			"1940.07.01" : "0"
+		}
+	},
+	
 	"Morris 15 cwt" : {
 		"category" : "Vehicle",
 		"class" : "Truck",
@@ -6380,7 +6418,7 @@
 	
 	"76 K/02" : {
 		"category" : "Gun",
-		"class" : "Field Gun",
+		"class" : "Artillery Gun",
 		"portrait" : "unit_76mm_gun.xp",
 		"size_class" : "Normal",
 		"movement_class" : "Gun",

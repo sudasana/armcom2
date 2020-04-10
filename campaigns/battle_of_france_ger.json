@@ -36,7 +36,7 @@
 			"A12 Matilda II",
 			"Morris CS9 (MG)", "Daimler Scout Car",
 			"OQF 2-Pounder",
-			"OQF 18-Pounder",
+			"OQF 18-Pounder", "OQF 4.5\" Howitzer",
 			"Riflemen", "Motorcycle MG Team", "HMG Team",
 			"Morris 15 cwt"
 		]
@@ -49,7 +49,6 @@
 		"Tank Destroyer" : "50",
 		"Armoured Car" : "80",
 		"Anti-Tank Gun" : "30",
-		"Field Gun" : "5",
 		"Artillery Gun" : "15",
 		"Anti-Aircraft Gun" : "5",
 		"Armoured Personnel Carrier" : "75",

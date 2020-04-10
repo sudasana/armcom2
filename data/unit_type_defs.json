@@ -6081,6 +6081,135 @@
 		}
 	},
 	
+	"Morris CS9 (MG)": {
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_morris_cs9.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Wheeled",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "0",
+			"turret_side" : "0",
+			"hull_front" : "0",
+			"hull_side" : "0"
+		},
+		"open_topped" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"name" : "AT Rifle",
+				"rof" : "10.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"reloaded_by" : ["Gunner/Loader"],
+				"firing_group" : 0,
+				"max_range" : "2",
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "120"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner/Loader"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Gunner/Loader",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Radio Operator",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Converted from Morris 4x2 15-cwt trucks, these armoured cars were ",
+			"built as a stop-gap measure to supply the BEF. This early model is ",
+			"armed with a co-axial machine gun."
+		],
+		"rarity" : {
+			"1940.05.01" : "60",
+			"1940.06.01" : "0"
+		}
+	},
+	
+	"Daimler Scout Car": {
+		"nick_name" : "Dingo",
+		"category" : "Vehicle",
+		"class" : "Armoured Car",
+		"portrait" : "unit_daimler_sc.xp",
+		"size_class" : "Very Small",
+		"movement_class" : "Wheeled",
+		"ground_pressure" : "Light",
+		"off_road" : "TRUE",
+		"recce" : "TRUE",
+		"armour" : {
+			"turret_front" : "3",
+			"turret_side" : "1",
+			"hull_front" : "4",
+			"hull_side" : "1"
+		},
+		"open_topped" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Hull MG",
+				"fp" : "2",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Assistant Driver"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			},
+			{
+				"name" : "Assistant Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"open_top" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"]
+			}
+		],
+		"description" : [
+			"Designed as a scout vehicle, this small, two-man 4WD vehicle is ",
+			"primarily intended for reconnaisance and transporting small teams."
+		],
+		"rarity" : {
+			"1940.05.01" : "50",
+			"1941.05.01" : "60",
+			"1941.11.01" : "70",
+			"1942.05.01" : "80"
+		}
+	},
+	
 	"OQF 2-Pounder" : {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
@@ -6326,7 +6455,7 @@
 			{
 				"type" : "Gun",
 				"name" : "AT Rifle",
-				"max_range" : "1",
+				"max_range" : "2",
 				"ammo_type_list" : ["AP"],
 				"max_ammo" : "40"
 			},

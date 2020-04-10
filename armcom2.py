@@ -239,6 +239,7 @@ LEVEL_RANK_LIST = {
 	'20' : 5,
 	'25' : 6
 }
+
 # chance that eligible crew will receive a promotion
 PROMOTION_CHANCE = 18.0
 
@@ -8566,6 +8567,9 @@ class Unit:
 		elif movement_class == 'Wheeled':
 			self.forward_move_chance += 5.0
 			self.bog_chance += 4.0
+		elif movement_class == 'Fast Wheeled':
+			self.forward_move_chance += 15.0
+			self.bog_chance += 5.0
 		
 		if self.GetStat('powerful_engine') is not None:
 			self.forward_move_chance += 5.0
@@ -8577,20 +8581,24 @@ class Unit:
 		
 		# apply modifier from current terrain type
 		if self.terrain is not None:
-			if 'Movement Mod' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
-				mod = SCENARIO_TERRAIN_EFFECTS[self.terrain]['Movement Mod']
-				self.forward_move_chance += mod
-				self.reverse_move_chance += mod
-			if 'Bog Mod' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
-				mod = SCENARIO_TERRAIN_EFFECTS[self.terrain]['Bog Mod']
-				self.bog_chance += mod
-		
+			
+			# NEW: off-road vehicles not affected by terrain
+			if self.GetStat('off_road') is None:
+			
+				if 'Movement Mod' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
+					mod = SCENARIO_TERRAIN_EFFECTS[self.terrain]['Movement Mod']
+					self.forward_move_chance += mod
+					self.reverse_move_chance += mod
+				if 'Bog Mod' in SCENARIO_TERRAIN_EFFECTS[self.terrain]:
+					mod = SCENARIO_TERRAIN_EFFECTS[self.terrain]['Bog Mod']
+					self.bog_chance += mod
+
 		# apply modifiers for ground conditions
 		if campaign_day.weather['Ground'] != 'Dry':
 			mod = 0.0
 			bog_mod = 0.0
 			if campaign_day.weather['Ground'] == 'Deep Snow':
-				if movement_class == 'Wheeled':
+				if movement_class in ['Fast Wheeled', 'Wheeled']:
 					mod = -65.0
 					bog_mod = 4.0
 				elif movement_class == 'Half-Tracked':
@@ -8600,7 +8608,7 @@ class Unit:
 					mod = -50.0
 					bog_mod = 2.0
 			elif campaign_day.weather['Ground'] in ['Muddy', 'Snow']:
-				if movement_class == 'Wheeled':
+				if movement_class in ['Fast Wheeled', 'Wheeled']:
 					mod = -45.0
 					bog_mod = 2.0
 				elif movement_class == 'Half-Tracked':
@@ -16854,12 +16862,6 @@ def PlaySoundFor(obj, action):
 	
 	elif action == 'vehicle_explosion':
 		PlaySound('vehicle_explosion_00')
-		return
-	
-	elif action == 'cc_combat':
-		PlaySound('rifle_fire_0' + str(libtcod.random_get_int(0, 0, 1)))
-		PlaySound('rifle_fire_0' + str(libtcod.random_get_int(0, 2, 3)))
-		PlaySound('37mm_he_explosion_0' + str(libtcod.random_get_int(0, 0, 1)))
 		return
 	
 	elif action == 'movement':

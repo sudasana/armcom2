@@ -7615,6 +7615,10 @@ class Weapon:
 			print('ERROR: ' + self.stats['name'] + ' is not a gun, cannot generate effective FP')
 			return 1
 		
+		# NEW: some weapons might have a higher base firepower
+		if self.GetStat('fp') is not None:
+			return int(self.GetStat('fp'))
+		
 		for (calibre, fp) in HE_FP_EFFECT:
 			if calibre <= int(self.GetStat('calibre')):
 				return fp

@@ -5587,6 +5587,112 @@
 		}
 	},
 	
+	"A9 Cruiser Mk I CS" : {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_a9_mk1_cs.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "94",
+				"fp" : "50",
+				"long_range" : "S",
+				"rof" : "10.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "Smoke"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "6",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Port MG Gunner"],
+				"firing_group" : 1
+			},
+			{
+				"type" : "Hull MG",
+				"fp" : "4",
+				"rof" : "8.4",
+				"mount" : "Hull",
+				"fired_by" : ["Starboard MG Gunner"],
+				"firing_group" : 2
+			}
+		],
+		
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Port MG Gunner",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Starboard MG Gunner",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The A9 was the first of a series of tanks designed for mobility and ",
+			"for engaging with enemy tanks. The Close Support variant was intended ",
+			"to support attacks with its 3.7\" howitzer main gun."
+		],
+		"rarity" : {
+			"1940.05.01" : "60",
+			"1940.07.01" : "0"
+		}
+	},
+	
 	"A10 Cruiser Mk II" : {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",

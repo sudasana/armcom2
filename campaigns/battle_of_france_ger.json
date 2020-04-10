@@ -23,6 +23,9 @@
 	"player_arty_support": [
 		"7.5cm leIG 18"
 	],
+	"enemy_arty_support": [
+		"OQF 25-Pounder", "OQF 4.5\" Howitzer"
+	],
 	"enemy_unit_list" : {
 		"France" : [
 			"H35", "H35 (Late)", "SOMUA S35", "R35 (Late)", "Char B-1 Bis",
@@ -36,7 +39,7 @@
 			"A12 Matilda II",
 			"Morris CS9 (MG)", "Daimler Scout Car",
 			"OQF 2-Pounder",
-			"OQF 18-Pounder", "OQF 4.5\" Howitzer",
+			"OQF 18-Pounder", "OQF 25-Pounder", "OQF 4.5\" Howitzer",
 			"Riflemen", "Motorcycle MG Team", "HMG Team",
 			"Morris 15 cwt"
 		]

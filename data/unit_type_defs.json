@@ -6286,6 +6286,47 @@
 		}
 	},
 	
+	"OQF 25-Pounder" : {
+		"category" : "Gun",
+		"class" : "Artillery Gun",
+		"portrait" : "unit_25_pdr.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"turntable" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "88",
+				"rof" : "8.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP", "HE", "Smoke"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			"Designed as a replacement for the Great War-era 18pdr, the earliest ",
+			"25pdr guns were conversions of the earlier model. It quickly became ",
+			"the standard artillery piece of British and Commonwealth forces."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.07.01" : "0"
+		}
+	},
+	
 	"OQF 4.5\" Howitzer" : {
 		"category" : "Gun",
 		"class" : "Artillery Gun",

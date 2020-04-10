@@ -24,7 +24,7 @@
 		"7.5cm leIG 18"
 	],
 	"enemy_arty_support": [
-		"OQF 25-Pounder", "OQF 4.5\" Howitzer"
+		"75mm mle 1928", "OQF 25-Pounder", "OQF 4.5\" Howitzer"
 	],
 	"enemy_unit_list" : {
 		"France" : [

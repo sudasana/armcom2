@@ -9885,12 +9885,14 @@ class Unit:
 		# fp has a different type of effect on vehicles and armoured trains
 		if self.GetStat('category') in ['Vehicle', 'Train Car']:
 			
-			# FUTURE: if vehicle has any unarmoured area, possible that it will be destroyed
 			if self.GetStat('armour') is None:
 				for (fp, score) in VEH_FP_TK:
 					if fp <= self.fp_to_resolve:
 						destroy_odds = score
 						break
+			else:
+				# FUTURE: if vehicle has any unarmoured area, possible that it will be destroyed
+				pass
 		
 		else:
 		
@@ -9926,7 +9928,6 @@ class Unit:
 			
 			# add unit fatigue
 			self.unit_fatigue += 1
-			
 		
 		# only display if there are odds of any effect
 		if destroy_odds + rout_odds + reduction_odds > 0.0:

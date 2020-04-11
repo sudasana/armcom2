@@ -9861,9 +9861,12 @@ class Unit:
 		libtcod.console_print_ex(window_con, 13, 2, libtcod.BKGND_NONE, libtcod.CENTER,
 			'on ' + self.GetName())
 		
-		portrait = self.GetStat('portrait')
-		if portrait is not None:
-			libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, window_con, 1, 3)
+		if not self.spotted and self.owning_player == 1:
+			libtcod.console_blit(LoadXP('unit_unknown.xp'), 0, 0, 0, 0, window_con, 1, 3)
+		else:
+			portrait = self.GetStat('portrait')
+			if portrait is not None:
+				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, window_con, 1, 3)
 		
 		# list of possible outcomes
 		libtcod.console_print_ex(window_con, 13, 12, libtcod.BKGND_NONE, libtcod.CENTER,
@@ -11855,6 +11858,8 @@ class Scenario:
 				portrait = profile['attacker'].GetStat('portrait')
 				if portrait is not None:
 					libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 2)
+			else:
+				libtcod.console_blit(LoadXP('unit_unknown.xp'), 0, 0, 0, 0, attack_con, 1, 2)
 		
 		# attack description
 		if profile['type'] == 'ap':
@@ -11889,6 +11894,8 @@ class Scenario:
 			portrait = profile['target'].GetStat('portrait')
 			if portrait is not None:
 				libtcod.console_blit(LoadXP(portrait), 0, 0, 0, 0, attack_con, 1, 13)
+		else:
+			libtcod.console_blit(LoadXP('unit_unknown.xp'), 0, 0, 0, 0, attack_con, 1, 13)
 		
 		# base chance
 		text = 'Base '

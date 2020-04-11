@@ -31,7 +31,7 @@
 			"Vickers 6-Ton Mark E", "7TP",
 			"wz. 34 (MG)", "wz. 34 (37mm)", "37mm wz. 36", "75mm wz. 02/26",
 			"75mm wz. 97/25", "Polski Fiat 621", "Riflemen", "HMG Team",
-			"Light Artillery Car"
+			"AT Rifle Team", "Light Artillery Car"
 		]
 	},
 	"enemy_unit_class_odds" : {
@@ -44,6 +44,7 @@
 		"Truck" : "80",
 		"Infantry Squad" : "100",
 		"MG Team" : "80",
+		"ATR Team" : "60",
 		"Armoured Train Car" : "10"
 	},
 	"decorations_list" : {

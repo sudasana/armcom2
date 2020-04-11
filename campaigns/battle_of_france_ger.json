@@ -30,7 +30,7 @@
 		"France" : [
 			"H35", "H35 (Late)", "SOMUA S35", "R35 (Late)", "Char B-1 Bis",
 			"75mm mle 1928",
-			"Riflemen", "Motorcycle MG Team", "HMG Team",
+			"Riflemen", "Motorcycle MG Team", "HMG Team", "AT Rifle Team",
 			"Laffly S20TL", "Citroen 23"
 		],
 		"United Kingdom" : [
@@ -40,7 +40,7 @@
 			"Morris CS9 (MG)", "Daimler Scout Car",
 			"OQF 2-Pounder",
 			"OQF 18-Pounder", "OQF 25-Pounder", "OQF 4.5\" Howitzer",
-			"Riflemen", "Motorcycle MG Team", "HMG Team",
+			"Riflemen", "Motorcycle MG Team", "HMG Team", "AT Rifle Team",
 			"Morris 15 cwt"
 		]
 	},
@@ -58,6 +58,7 @@
 		"Truck" : "80",
 		"Infantry Squad" : "100",
 		"MG Team" : "80",
+		"ATR Team" : "90",
 		"Motorcycle Team" : "85"
 	},
 	"decorations_list" : {

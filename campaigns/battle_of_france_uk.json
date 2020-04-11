@@ -33,7 +33,7 @@
 			"StuG III B", "Panzerjager I", "SPW 251/10",
 			"Sd. Kfz. 13", "PSW 221", "PSW 222", "PSW 231 (6 rad)",
 			"PSW 231 (8 rad)", "PaK 35/36", "8.8cm FlaK 18 o. 36", "Opel Blitz 3-ton",
-			"SPW 251/1", "Riflemen", "Motorcycle MG Team", "HMG Team"
+			"SPW 251/1", "Riflemen", "Motorcycle MG Team", "HMG Team", "AT Rifle Team"
 		]
 	},
 	"enemy_unit_class_odds" : {
@@ -49,6 +49,7 @@
 		"Truck" : "80",
 		"Infantry Squad" : "100",
 		"MG Team" : "80",
+		"ATR Team" : "80",
 		"Motorcycle Team" : "85"
 	},
 	"decorations_list" : {

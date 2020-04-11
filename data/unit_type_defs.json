@@ -6638,13 +6638,6 @@
 		"movement_class" : "Infantry",
 		"weapon_list" : [
 			{
-				"type" : "Gun",
-				"name" : "AT Rifle",
-				"max_range" : "2",
-				"ammo_type_list" : ["AP"],
-				"max_ammo" : "40"
-			},
-			{
 				"type" : "Small Arms",
 				"name" : "Rifles",
 				"fp" : "4",
@@ -6668,6 +6661,35 @@
 			{"name" : "Rifleman"},
 			{"name" : "Rifleman"},
 			{"name" : "Rifleman"}
+		],
+		"description" : [
+			"Infantry are still the backbone of armed forces around the world. ",
+			"Although they are not as fast as armoured fighting vehicles, they ",
+			"can hold positions and they are armed with grenades for close-range ",
+			"combat."
+		],
+		"rarity" : {
+			"1935.01.01" : "100"
+		}
+	},
+	
+	"AT Rifle Team": {
+		"category" : "Infantry",
+		"class" : "ATR Team",
+		"portrait" : "unit_atr_team.xp",
+		"movement_class" : "Infantry",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"name" : "AT Rifle",
+				"max_range" : "2",
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "40"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Gunner"},
+			{"name" : "Spotter"}
 		],
 		"description" : [
 			""

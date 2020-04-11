@@ -13156,20 +13156,30 @@ class Scenario:
 		libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
 		
 		# create window and draw frame
-		window_con = libtcod.console_new(27, 26)
+		window_con = libtcod.console_new(27, 44)
 		libtcod.console_set_default_background(window_con, libtcod.black)
 		libtcod.console_set_default_foreground(window_con, libtcod.white)
-		DrawFrame(window_con, 0, 0, 27, 26)
+		DrawFrame(window_con, 0, 0, 27, 44)
 		
-		# draw unit info and command instructions
+		# draw unit info, description, and command instructions
 		unit.DisplayMyInfo(window_con, 1, 1)
+		
+		for t in unit.GetStat('description'):
+			text += t
+		lines = wrap(text, 33)
+		y = 21
+		libtcod.console_set_default_foreground(window_con, libtcod.light_grey)
+		for line in lines[:20]:
+			libtcod.console_print(window_con, 1, y, line)
+			y+=1
+		
 		libtcod.console_set_default_foreground(window_con, ACTION_KEY_COL)
-		libtcod.console_print(window_con, 7, 24, 'ESC')
+		libtcod.console_print(window_con, 7, 42, 'ESC')
 		libtcod.console_set_default_foreground(window_con, libtcod.lighter_grey)
-		libtcod.console_print(window_con, 12, 24, 'Return')
+		libtcod.console_print(window_con, 12, 42, 'Return')
 		
 		# blit window to screen and then delete
-		libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM-13, WINDOW_YM-13)
+		libtcod.console_blit(window_con, 0, 0, 0, 0, 0, WINDOW_XM-13, 7)
 		del window_con
 		
 		# wait for player to exit view

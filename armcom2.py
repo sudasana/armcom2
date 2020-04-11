@@ -1148,14 +1148,25 @@ class Campaign:
 		
 		for filename in os.listdir(CAMPAIGNPATH):
 			if not filename.endswith('.json'): continue
-			with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
-				campaign_data = json.load(data_file)
+			
+			# NEW: players might create their own campaigns, so add a check in case json parsing fails
+			try:
+				with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
+					campaign_data = json.load(data_file)
+			except:
+				ShowNotification('Error: Unable to parse campaign file: ' + filename)
+				continue
 			new_campaign = {}
 			new_campaign['filename'] = filename
 			for k in BASIC_INFO:
 				new_campaign[k] = campaign_data[k]
 			campaign_list.append(new_campaign)
 			del campaign_data
+		
+		# no campaign files!
+		if len(campaign_list) == 0:
+			ShowNotification('Error: No campaign files available!')
+			return False
 		
 		# sort campaigns by start date
 		campaign_list = sorted(campaign_list, key = lambda x : (x['start_date']))

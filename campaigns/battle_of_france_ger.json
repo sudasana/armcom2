@@ -28,7 +28,9 @@
 	],
 	"enemy_unit_list" : {
 		"France" : [
-			"H35", "H35 (Late)", "SOMUA S35", "R35 (Late)", "Char B-1 Bis",
+			"H35", "H35 (Late)", "R35 (Late)"
+			"SOMUA S35",
+			"Char B-1 Bis",
 			"75mm mle 1928",
 			"Riflemen", "Motorcycle MG Team", "HMG Team", "AT Rifle Team",
 			"Laffly S20TL", "Citroen 23"

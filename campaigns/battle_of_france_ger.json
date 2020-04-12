@@ -24,7 +24,8 @@
 		"7.5cm leIG 18"
 	],
 	"enemy_arty_support": [
-		"75mm mle 1928", "OQF 25-Pounder", "OQF 4.5\" Howitzer"
+		"75mm mle 1897", "75mm mle 1928", "OQF 25-Pounder", "OQF 4.5\" Howitzer",
+		"105mm C mle 1935"
 	],
 	"enemy_unit_list" : {
 		"France" : [
@@ -34,7 +35,7 @@
 			"Char B-1 Bis",
 			"AMD 35",
 			"SA-L 34",
-			"75mm mle 1928",
+			"75mm mle 1897", "75mm mle 1928", "105mm C mle 1935",
 			"Riflemen", "Motorcycle MG Team", "HMG Team", "AT Rifle Team",
 			"Laffly S20TL", "Citroen 23"
 		],

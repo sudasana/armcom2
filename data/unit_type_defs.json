@@ -4490,6 +4490,47 @@
 		}
 	},
 	
+	"75mm mle 1897": {
+		"category" : "Gun",
+		"class" : "Artillery Gun",
+		"portrait" : "unit_75mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "75",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			"This artillery gun was the first modern artillery piece, and provided ",
+			"the model for most artillery pieces of the early twentieth century. It ",
+			"saw extended use during the Great War, and were still used at the outset of ",
+			"the Second World War."
+		],
+		"rarity" : {
+			"1939.01.01" : "70",
+			"1943.06.01" : "0"
+		}
+	},
+	
 	"75mm mle 1928": {
 		"category" : "Gun",
 		"class" : "Artillery Gun",
@@ -4521,10 +4562,53 @@
 			{"name" : "Ammo Handler"}
 		],
 		"description" : [
-			""
+			"Designed as a mountain gun, these helped to equip mountain and ",
+			"colonial artillery groups of the French army."
 		],
 		"rarity" : {
-			"1940.05.01" : "50"
+			"1940.05.01" : "50",
+			"1940.07.01" : "70",
+			"1941.06.01" : "50",
+			"1943.06.01" : "0"
+		}
+	},
+	
+	"105mm C mle 1935": {
+		"category" : "Gun",
+		"class" : "Artillery Gun",
+		"portrait" : "unit_105mm_gun.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "105",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			"This is a howiter gun, originally designed in 1935."
+		],
+		"rarity" : {
+			"1940.05.01" : "60",
+			"1940.07.01" : "0"
 		}
 	},
 

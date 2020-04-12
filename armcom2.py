@@ -1967,7 +1967,7 @@ class Campaign:
 			
 			# sunrise gradient
 			for y in range(0, 58):
-				col = libtcod.Color(int(180 * (y / WINDOW_HEIGHT)), int(180 * (y / WINDOW_HEIGHT)), 0)
+				col = libtcod.Color(int(210 * (y / WINDOW_HEIGHT)), int(50 * (y / WINDOW_HEIGHT)), 0)
 				libtcod.console_set_default_background(calendar_main_panel, col)
 				libtcod.console_rect(calendar_main_panel, 0, y, 63, 1, True, libtcod.BKGND_SET)
 			
@@ -9511,26 +9511,20 @@ class Unit:
 				elif weapon.GetStat('type') == 'Close Combat':
 					
 					if weapon.GetStat('name') == 'Grenades':
-						
-						# TODO: add sound effect here
 						(x, y) = scenario.PlotHex(target.hx, target.hy)
 						scenario.animation['grenade_effect'] = (x, y)
 						scenario.animation['grenade_effect_lifetime'] = 3
-						
-						# let animation run
+						PlaySoundFor(weapon, 'fire')
 						while scenario.animation['grenade_effect'] is not None:
 							if libtcod.console_is_window_closed(): sys.exit()
 							libtcod.console_flush()
 							CheckForAnimationUpdate()
 					
 					elif weapon.GetStat('name') == 'Flame Thrower':
-						
-						# TODO: add sound effect here
 						(x, y) = scenario.PlotHex(target.hx, target.hy)
 						scenario.animation['ft_effect'] = (x, y)
 						scenario.animation['ft_effect_lifetime'] = 9
-						
-						# let animation run
+						# TODO: add sound effect here
 						while scenario.animation['ft_effect'] is not None:
 							if libtcod.console_is_window_closed(): sys.exit()
 							libtcod.console_flush()
@@ -16998,6 +16992,10 @@ def PlaySoundFor(obj, action):
 		
 		if obj.GetStat('name') == 'Rifles':
 			PlaySound('rifle_fire_0' + str(libtcod.random_get_int(0, 0, 3)))
+			return
+		
+		if obj.GetStat('name') == 'Grenades':
+			PlaySound('grenades')
 			return
 	
 	elif action == 'he_explosion':

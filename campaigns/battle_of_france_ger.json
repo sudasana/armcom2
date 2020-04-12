@@ -28,6 +28,7 @@
 	],
 	"enemy_unit_list" : {
 		"France" : [
+			"Renault FT", "Renault FT (MG)",
 			"H35", "H35 (Late)", "R35 (Late)",
 			"SOMUA S35",
 			"Char B-1 Bis",

@@ -1288,7 +1288,7 @@ class Campaign:
 			
 			# list of tank types
 			y = 15
-			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_set_default_foreground(con, libtcod.white)
 			for unit_type in unit_list:
 				
 				if unit_type == selected_unit:
@@ -1965,16 +1965,29 @@ class Campaign:
 			if campaign_day.ended:
 				return
 			
-			x = 15
-			y = 10
+			# sunrise gradient
+			for y in range(0, 58):
+				col = libtcod.Color(int(180 * (y / WINDOW_HEIGHT)), int(180 * (y / WINDOW_HEIGHT)), 0)
+				libtcod.console_set_default_background(calendar_main_panel, col)
+				libtcod.console_rect(calendar_main_panel, 0, y, 63, 1, True, libtcod.BKGND_SET)
+			
+			x = 17
+			y = 18
+			
+			# box and frame
+			libtcod.console_set_default_background(calendar_main_panel, libtcod.black)
+			libtcod.console_rect(calendar_main_panel,  x-3, y-3, 36, 27, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.dark_yellow)
+			DrawFrame(calendar_main_panel, x-3, y-3, 36, 27)
 			
 			# mission type and description
-			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
+			libtcod.console_set_default_background(calendar_main_panel, libtcod.darker_blue)
+			libtcod.console_rect(calendar_main_panel, x, y-1, 30, 3, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(calendar_main_panel, libtcod.black)
+			
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_yellow)
 			libtcod.console_print_ex(calendar_main_panel, x+15, y, libtcod.BKGND_NONE,
 				libtcod.CENTER,	"Today's Mission")
-			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_yellow)
-			libtcod.console_print_ex(calendar_main_panel, x+15, y+1, libtcod.BKGND_NONE,
-				libtcod.CENTER,	'---------------')
 			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_blue)
 			libtcod.console_print_ex(calendar_main_panel, x+15, y+4, libtcod.BKGND_NONE,
@@ -1998,15 +2011,19 @@ class Campaign:
 				text = 'None'
 			else:
 				text = str(campaign.current_week['air_support_level'])
-			libtcod.console_print(calendar_main_panel, x+19, y+18, text)
+			libtcod.console_print(calendar_main_panel, x+23, y+18, text)
 			if 'arty_support_level' not in campaign.current_week:
 				text = 'None'
 			else:
 				text = str(campaign.current_week['arty_support_level'])
-			libtcod.console_print(calendar_main_panel, x+19, y+19, text)
+			libtcod.console_print(calendar_main_panel, x+23, y+19, text)
 		
 		# crew and tank menu
 		elif self.active_calendar_menu == 2:
+			
+			# frame
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.dark_blue)
+			DrawFrame(calendar_main_panel, 1, 8, 61, 35)
 			
 			# show list of crewmen
 			libtcod.console_set_default_foreground(calendar_main_panel, TITLE_COL)
@@ -2042,6 +2059,9 @@ class Campaign:
 					self.active_journal_day = k
 					break
 			
+			libtcod.console_set_default_background(calendar_main_panel, libtcod.darker_grey)
+			libtcod.console_rect(calendar_main_panel, 15, 1, 32, 3, False, libtcod.BKGND_SET)
+			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
 			libtcod.console_print_ex(calendar_main_panel, 31, 2, libtcod.BKGND_NONE,
 				libtcod.CENTER, GetDateText(self.active_journal_day))
@@ -2066,7 +2086,7 @@ class Campaign:
 				# FUTURE: determine if journal text needs to be wrapped
 				
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
-				libtcod.console_print(calendar_main_panel, 10, y, text)
+				libtcod.console_print(calendar_main_panel, 11, y, text)
 				
 				y += 1
 	

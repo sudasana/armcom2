@@ -10872,7 +10872,7 @@ class Scenario:
 			
 			else:
 				
-				# choose a random unit type
+				# choose a random unit type within this class
 				type_list = []
 				for unit_id in unit_type_list:
 					# unrecognized unit id
@@ -10881,9 +10881,8 @@ class Scenario:
 					if unit_types[unit_id]['class'] != unit_class: continue
 					type_list.append(unit_id)
 				
-				# no units of the correct class found
-				if len(type_list) == 0:
-					continue
+				# no unit types of the required class found
+				if len(type_list) == 0: continue
 				
 				# select unit type: run through shuffled list and roll against rarity if any
 				shuffle(type_list)
@@ -10918,7 +10917,7 @@ class Scenario:
 						# earlier than or equal to today's date, use this rarity factor 
 						rarity = int(chance)
 					
-					# not able to get a rarity factor
+					# not able to get a rarity factor, skip
 					if rarity is None:
 						continue
 					
@@ -10926,6 +10925,10 @@ class Scenario:
 					if GetPercentileRoll() <= float(rarity):
 						selected_unit_id = unit_id
 						break
+				
+				# unable to select a valid unit id
+				if selected_unit_id == None:
+					continue
 				
 				# add the final selected unit id to list to spawn
 				if selected_unit_id is not None:
@@ -10975,16 +10978,18 @@ class Scenario:
 			unit.GenerateNewPersonnel()
 			unit.SpawnAt(hx, hy)
 			
-			# deploy if gun
+			# automatically deploy if gun
+			# FUTURE: guns might be surprised undeployed
 			if unit.GetStat('category') == 'Gun':
 				unit.deployed = True
 			
-			# if required, set facing toward player
-			if unit.GetStat('category') != 'Infantry':
-				direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)
-				unit.facing = direction
-				if 'turret' in unit.stats:
-					unit.turret_facing = direction
+			# if ambush, set facing toward player if required
+			if self.ambush:
+				if unit.GetStat('category') != 'Infantry':
+					direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)
+					unit.facing = direction
+					if 'turret' in unit.stats:
+						unit.turret_facing = direction
 			
 			# some units can be spawned dug-in, entrenched, or fortified
 			if unit.GetStat('category') in ['Infantry', 'Gun'] and campaign_day.mission != 'Fighting Withdrawal':
@@ -11019,6 +11024,8 @@ class Scenario:
 			
 			# set up transported unit or cargo
 			if unit.GetStat('transport') is not None:
+				
+				# FUTURE: trucks and APCs will have different rolls here
 				roll = GetPercentileRoll()
 				if roll <= 60.0:
 					unit.transport = choice(unit.GetStat('transport'))

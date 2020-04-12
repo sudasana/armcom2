@@ -11346,7 +11346,7 @@ class Scenario:
 			
 			# set flag if this is a valid overrun attack
 			overrun_attack = False
-			if attacker.overrun and target.GetStat('category') in ['Infantry', 'Gun'] and target.hx == 0 and target.hy == -1:
+			if attacker.overrun and target.spotted and target.GetStat('category') in ['Infantry', 'Gun'] and target.hx == 0 and target.hy == -1:
 				overrun_attack = True
 			
 			# calculate base FP
@@ -11372,30 +11372,32 @@ class Scenario:
 			
 			# calculate modifiers
 			
-			# attacker moving
-			if attacker.moving:
-				mod = round(base_chance / 2.0, 1)
-				modifier_list.append(('Attacker Moving', 0.0 - mod))
-			
-			# attacker pivoted
-			elif attacker.facing != attacker.previous_facing:
-				mod = round(base_chance / 3.0, 1)
-				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
-
-			# player attacker pivoted
-			elif attacker == scenario.player_unit and self.player_pivot != 0:
-				mod = round(base_chance / 3.0, 1)
-				modifier_list.append(('Attacker Pivoted', 0.0 - mod))
-
-			# weapon turret rotated
-			elif weapon.GetStat('mount') == 'Turret':
-				if attacker.turret_facing != attacker.previous_turret_facing:
-					mod = round(base_chance / 4.0, 1)
-					modifier_list.append(('Turret Rotated', 0.0 - mod))
-			
 			# overrun attack
 			if overrun_attack:
 				modifier_list.append(('Overrun Attack', base_chance))
+			
+			else:
+			
+				# attacker moving
+				if attacker.moving:
+					mod = round(base_chance / 2.0, 1)
+					modifier_list.append(('Attacker Moving', 0.0 - mod))
+				
+				# attacker pivoted
+				elif attacker.facing != attacker.previous_facing:
+					mod = round(base_chance / 3.0, 1)
+					modifier_list.append(('Attacker Pivoted', 0.0 - mod))
+	
+				# player attacker pivoted
+				elif attacker == scenario.player_unit and self.player_pivot != 0:
+					mod = round(base_chance / 3.0, 1)
+					modifier_list.append(('Attacker Pivoted', 0.0 - mod))
+	
+				# weapon turret rotated
+				elif weapon.GetStat('mount') == 'Turret':
+					if attacker.turret_facing != attacker.previous_turret_facing:
+						mod = round(base_chance / 4.0, 1)
+						modifier_list.append(('Turret Rotated', 0.0 - mod))
 			
 			# attacker pinned or reduced
 			if attacker.pinned:
@@ -13263,9 +13265,13 @@ class Scenario:
 				libtcod.console_flush()
 			
 			# NEW: reset any overrun statuses
-			self.player_unit.overrun = False
-			for unit in self.player_unit.squad:
+			for unit in self.units:
+				if unit != self.player_unit and unit not in self.player_unit.squad: continue
 				unit.overrun = False
+				unit.GenerateTerrain()
+				unit.CheckForHD()
+				unit.SetSmokeLevel()
+			
 			self.UpdateUnitCon()
 			
 			self.phase = PHASE_ENEMY_ACTION
@@ -13469,15 +13475,14 @@ class Scenario:
 					
 					# if Driver is on overrun command, set statuses and flags now
 					if crewman.current_cmd == 'Overrun':
-						PlaySoundFor(self.player_unit, 'movement')
-						self.player_unit.moving = True
+						ShowMessage('You move into position for an Overrun attack.')
+						self.MovePlayer(False, reposition=True)
 						self.player_unit.overrun = True
-						self.player_unit.ClearAcquiredTargets()
 						for unit in self.player_unit.squad:
-							unit.moving = True
 							unit.overrun = True
-							unit.ClearAcquiredTargets()
 						self.UpdateUnitCon()
+						self.UpdateScenarioDisplay()
+						libtcod.console_flush()
 		
 		# shooting phase
 		elif self.phase == PHASE_SHOOTING:

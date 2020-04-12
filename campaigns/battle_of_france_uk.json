@@ -7,12 +7,14 @@
 	"region" : "Northwestern Europe",
 	"desc" : "After months of a 'Phoney War', Germany has attacked through the Low Countries. Help defend France from this attempted invasion.",
 	"player_unit_list" : [
-		"Mk VI C", "A9 Cruiser Mk I", "A10 Cruiser Mk II", "A13 Cruiser Mk II",
-		"A12 Matilda II"
+		"Mk VI C", "A9 Cruiser Mk I", "A10 Cruiser Mk II", "A13 Mk I", "A13 Mk II",
+		"A11", "A12"
 	],
 	"player_squad_list" : {
-		"A13 Cruiser Mk II" : ["Mk VI C", "A13 Cruiser Mk II"],
-		"A12 Matilda II" : ["Mk VI C", "A12 Matilda II"]
+		"A13 Mk I" : ["Mk VI C", "A13 Mk I", "A13 Mk II"],
+		"A13 Mk II" : ["Mk VI C", "A13 Mk I", "A13 Mk II"],
+		"A11" : ["Mk VI C", "A11", "A12"],
+		"A12" : ["Mk VI C", "A11", "A12"]
 	},
 	"national_skills" : [
 		"Combined Bombardment"

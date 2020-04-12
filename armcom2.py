@@ -218,7 +218,7 @@ RECORD_LIST = [
 MISSION_DESC = {
 	'Advance' : 'Enemy resistance is scattered and we are pushing forward. Advance into enemy territory, destroy any resistance, and capture territory.',
 	'Battle' : 'Your group has been posted to the front line where there is heavy resistance. Break through the enemy defenses, destroy enemy units, and capture territory.',
-	'Counterattack' : 'After being on the defensive, your battlegroup has been ordered to attack the enemy advance.',
+	'Counterattack' : 'After being on the defensive, your battlegroup has been ordered to mount a counterattack against the enemy advance.',
 	'Fighting Withdrawal' : 'The enemy is mounting a strong attack against our lines. Destroy enemy units but withdraw into friendly territory if necessary.',
 	'Spearhead' : 'You must pierce the enemy lines, driving forward as far as possible before the end of the day.'
 }

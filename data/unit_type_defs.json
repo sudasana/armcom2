@@ -4226,6 +4226,67 @@
 		}
 	},
 	
+	"R35 (Late)": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_R35_late.xp",
+		"size_class" : "Small",
+		"movement_class" : "Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "4",
+			"hull_side" : "4"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "2",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["5", "0", "1"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"Designed as a light infantry tank, the R35 is well-protected ",
+			"but lacks armour penetration power, so later models such as ",
+			"this have been fitted with a longer 37mm main gun."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.06.01" : "60"
+		}
+	},
+	
 	"SOMUA S35": {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
@@ -4288,67 +4349,6 @@
 		"rarity" : {
 			"1940.05.01" : "80",
 			"1940.06.01" : "70"
-		}
-	},
-	
-	"R35 (Late)": {
-		"category" : "Vehicle",
-		"class" : "Light Tank",
-		"portrait" : "unit_R35_late.xp",
-		"size_class" : "Small",
-		"movement_class" : "Tank",
-		"turret" : "TRUE",
-		"armour" : {
-			"turret_front" : "6",
-			"turret_side" : "6",
-			"hull_front" : "4",
-			"hull_side" : "4"
-		},
-		"weapon_list" : [
-			{
-				"type" : "Gun",
-				"calibre" : "37",
-				"rr_size" : "4",
-				"mount" : "Turret",
-				"fired_by" : ["Commander/Gunner"],
-				"reloaded_by" : ["Commander/Gunner"],
-				"firing_group" : 0,
-				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "100"
-			},
-			{
-				"type" : "Co-ax MG",
-				"fp" : "2",
-				"rof" : "17.0",
-				"mount" : "Turret",
-				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : 0
-			}
-		],
-		"crew_positions" : [
-			{
-				"name" : "Commander/Gunner",
-				"location" : "Turret",
-				"hatch" : "TRUE",
-				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
-				"bu_visible" : ["0"]
-			},
-			{
-				"name" : "Driver",
-				"location" : "Hull",
-				"hatch" : "TRUE",
-				"ce_visible" : ["5", "0", "1"],
-				"bu_visible" : ["0"]
-			}
-		],
-		"description" : [
-			"Designed as a light infantry tank, the R35 is well-protected ",
-			"but lacks armour penetration power, so later models such as ",
-			"this have been fitted with a longer 37mm main gun."
-		],
-		"rarity" : {
-			"1940.05.01" : "70",
-			"1940.06.01" : "60"
 		}
 	},
 	
@@ -5781,7 +5781,82 @@
 		}
 	},
 	
-	"A13 Cruiser Mk II" : {
+	"A13 Mk I" : {
+		"category" : "Vehicle",
+		"class" : "Medium Tank",
+		"portrait" : "unit_a13_mk1.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Tank",
+		"unreliable" : true,
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "1",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "40",
+				"long_range" : "L",
+				"rof" : "28.0",
+				"rr_size" : "6",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "100"
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "6",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Loader",
+				"location" : "Turret",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The A13 was inspired by the Russian BT tank and based on the design ",
+			"of the American Christie tank. First designed in 1937, it is fast but ",
+			"suffers from very light armour and an unreliable engine."
+		],
+		"rarity" : {
+			"1940.05.01" : "90",
+			"1940.07.01" : "0"
+		}
+	},
+	
+	"A13 Mk II" : {
 		"category" : "Vehicle",
 		"class" : "Medium Tank",
 		"portrait" : "unit_a13_mk2.xp",
@@ -5856,7 +5931,57 @@
 		}
 	},
 	
-	"A12 Matilda II" : {
+	"A11" : {
+		"nick_name" : "Matilda",
+		"category" : "Vehicle",
+		"class" : "Heavy Tank",
+		"portrait" : "unit_matilda.xp",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"turret" : "TRUE",
+		"armour" : {
+			"turret_front" : "6",
+			"turret_side" : "6",
+			"hull_front" : "6",
+			"hull_side" : "6"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"The Matilda was developed as an infantry support tank, and as such is ",
+			"heavily-armoured but carries only a Vickers .303 machine gun."
+		],
+		"rarity" : {
+			"1940.05.01" : "70",
+			"1940.06.01" : "0"
+		}
+	},
+	
+	"A12" : {
+		"nick_name" : "Matilda II",
 		"category" : "Vehicle",
 		"class" : "Heavy Tank",
 		"portrait" : "unit_matilda_ii.xp",

@@ -11740,6 +11740,66 @@ class Scenario:
 						print('ERROR: not able to find AP score for ' + calibre)
 						base_score = 2
 			
+			# APCR ammo
+			elif profile['ammo_type'] in ['APCR', 'APDS']:
+				
+				# unarmoured location
+				if unarmoured_location:
+					calibre = int(calibre)
+					if calibre <= 28:
+						base_score = 7
+					elif calibre <= 57:
+						base_score = 8
+					elif calibre <= 77:
+						base_score = 9
+					elif calibre <= 95:
+						base_score = 10
+					else:
+						base_score = 11
+				
+				# armoured location
+				else:
+					
+					if weapon.GetStat('long_range') is not None:
+						calibre += weapon.GetStat('long_range')
+					
+					if profile['ammo_type'] == 'APDS':
+						if calibre == '57L':
+							base_score = 18
+						elif calibre == '76LL':
+							base_score = 25
+					else:
+						if calibre == '37L':
+							base_score = 10
+						elif calibre in ['28LL', '45L']:
+							base_score = 12
+						elif calibre in ['45LL', '47L']:
+							base_score = 13
+						elif calibre in ['40LL', '50']:
+							base_score = 14
+						elif calibre == '76L':
+							if attacker.nation == 'Soviet Union':
+								base_score = 14
+							elif attacker.nation == 'United States of America':
+								base_score = 22
+							else:
+								base_score = 20
+						elif calibre == '50L':
+							base_score = 17
+						elif calibre == '57LL':
+							base_score = 18
+						elif calibre == '85L':
+							base_score = 19
+						elif calibre in ['75L', '76L']:
+							base_score = 20
+						elif calibre == '88L':
+							base_score = 23
+						elif calibre == '90L':
+							base_score = 27
+						else:
+							print('ERROR: not able to find AP score for ' + calibre)
+							base_score = 2
+			
 			# HE hit
 			elif profile['ammo_type'] == 'HE':
 				
@@ -11825,6 +11885,30 @@ class Scenario:
 					modifier_list.append(('Close Range', 1))
 				elif 2 <= distance <= 3:
 					modifier_list.append(('Long Range', -1))
+		
+		elif profile['ammo_type'] == 'APCR' and weapon.GetStat('calibre') is not None and not unarmoured_location:
+			
+			calibre = int(weapon.GetStat('calibre'))
+			
+			if calibre <= 57:
+				if distance <= 1:
+					modifier_list.append(('Close Range', 2))
+				elif distance == 2:
+					modifier_list.append(('Medium Range', -2))
+				else:
+					modifier_list.append(('Long Range', -4))
+			else:
+				if distance <= 1:
+					modifier_list.append(('Close Range', 2))
+				elif distance == 2:
+					modifier_list.append(('Medium Range', -1))
+				else:
+					modifier_list.append(('Long Range', -3))
+		
+		elif profile['ammo_type'] == 'APDS' and not unarmoured_location:
+		
+			if distance <= 1:
+				modifier_list.append(('Close Range', 1))
 		
 		# armoured location modifier
 		if not unarmoured_location:	

@@ -168,116 +168,6 @@
 		}
 	},
 	
-	"Renault FT": {
-		"category" : "Vehicle",
-		"class" : "Light Tank",
-		"portrait" : "unit_FT-17C.xp",
-		"size_class" : "Small",
-		"movement_class" : "Slow Tank",
-		"ground_pressure" : "Light",
-		"turret" : "TRUE",
-		"unreliable" : true,
-		"armour" : {
-			"turret_front" : "2",
-			"turret_side" : "1",
-			"hull_front" : "1",
-			"hull_side" : "0"
-		},
-		"weapon_list" : [
-			{
-				"type" : "Gun",
-				"calibre" : "37",
-				"long_range" : "S",
-				"rr_size" : "4",
-				"mount" : "Turret",
-				"fired_by" : ["Commander/Gunner"],
-				"reloaded_by" : ["Commander/Gunner"],
-				"firing_group" : 0,
-				"ammo_type_list" : ["HE", "AP"],
-				"max_ammo" : "233"
-			}
-		],
-		"crew_positions" : [
-			{
-				"name" : "Commander/Gunner",
-				"location" : "Turret",
-				"hatch" : "TRUE",
-				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
-				"bu_visible" : ["0"]
-			},
-			{
-				"name" : "Driver",
-				"location" : "Hull",
-				"hatch" : "TRUE",
-				"large_hatch" : "TRUE",
-				"ce_visible" : ["0", "1", "5"],
-				"bu_visible" : ["0"]
-			}
-		],
-		"description" : [
-			"First developed during the Great War, the Renault FT was the world's",
-			"first modern tank. By the outbreak of the Second World War several ",
-			"thousand were still in use throughout the world. This model has a ",
-			"short-barreled 37mm main gun."
-		],
-		"rarity" : {
-			"1939.09.01" : "80"
-		}
-	},
-	
-	"Renault FT (MG)": {
-		"category" : "Vehicle",
-		"class" : "Light Tank",
-		"portrait" : "unit_FT-17M.xp",
-		"size_class" : "Small",
-		"movement_class" : "Slow Tank",
-		"ground_pressure" : "Light",
-		"turret" : "TRUE",
-		"unreliable" : true,
-		"armour" : {
-			"turret_front" : "2",
-			"turret_side" : "1",
-			"hull_front" : "1",
-			"hull_side" : "0"
-		},
-		"weapon_list" : [
-			{
-				"type" : "Turret MG",
-				"fp" : "4",
-				"rof" : "17.0",
-				"mount" : "Hull",
-				"fired_by" : ["Commander/Gunner"],
-				"firing_group" : 0
-			}
-		],
-		"crew_positions" : [
-			{
-				"name" : "Commander/Gunner",
-				"location" : "Turret",
-				"hatch" : "TRUE",
-				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
-				"bu_visible" : ["0"]
-			},
-			{
-				"name" : "Driver",
-				"location" : "Hull",
-				"hatch" : "TRUE",
-				"large_hatch" : "TRUE",
-				"ce_visible" : ["0", "1", "5"],
-				"bu_visible" : ["0"]
-			}
-		],
-		"description" : [
-			"First developed during the Great War, the Renault FT was the world's",
-			"first modern tank. By the outbreak of the Second World War several ",
-			"thousand were still in use throughout the world. This model is armed ",
-			"only with a turret-mounted machine gun."
-		],
-		"rarity" : {
-			"1939.09.01" : "80"
-		}
-	},
-	
 	"Vickers 6-Ton Mark E": {
 		"category" : "Vehicle",
 		"class" : "Light Tank",
@@ -4448,6 +4338,158 @@
 		}
 	},
 	
+	"AMD 35": {
+		"category" : "Vehicle",
+		"nickname" : "Panhard 178",
+		"class" : "Armoured Car",
+		"portrait" : "unit_amd_35.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Fast Wheeled",
+		"turret" : "TRUE",
+		"recce" : "TRUE",
+		"reverse_driver" : "TRUE",
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "2",
+			"hull_front" : "2",
+			"hull_side" : "1"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "25",
+				"long_range" : "LL",
+				"rof" : "17.0",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "180",
+				"unreliable" : true
+			},
+			{
+				"type" : "Co-ax MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Co-Driver",
+				"location" : "Hull",
+				"ce_visible" : ["2", "1", "3"],
+				"bu_visible" : ["2"]
+			}
+		],
+		"description" : [
+			"This was the standard scout vehicle for French forces in the early ",
+			"war. Its powerful engine and relatively large 25mm main gun made it ",
+			"an effective armoured car for the time."
+		],
+		"rarity" : {
+			"1940.05.01" : "80",
+			"1940.06.01" : "70"
+		}
+	},
+	
+	"SA-L 34": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_sa_l_34.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "25",
+				"long_range" : "LL",
+				"rof" : "50.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["AP"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander/Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"}
+		],
+		"description" : [
+			"The standard anti-tank gun of French forces during the early war. ",
+			"Even though its design was finalized in 1934, by 1940 production was ",
+			"still not sufficient to fulfill demand."
+		],
+		"rarity" : {
+			"1939.09.01" : "80",
+			"1940.07.01" : "70",
+			"1943.06.01" : "0"
+		}
+	},
+	
+	"SA 37 APX": {
+		"category" : "Gun",
+		"class" : "Anti-Tank Gun",
+		"portrait" : "unit_sa_37_apx.xp",
+		"size_class" : "Small",
+		"movement_class" : "Gun",
+		"gun_shield" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "47",
+				"long_range" : "L",
+				"rof" : "50.0",
+				"mount" : "Hull",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["APCR"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander/Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"}
+		],
+		"description" : [
+			"Designed to use a tungsten-cored AP round, this was the most powerful ",
+			"anti-armour gun when it was delivered in 1939."
+		],
+		"rarity" : {
+			"1940.05.01" : "60",
+			"1943.06.01" : "0"
+		}
+	},
+	
 	"75mm mle 1928": {
 		"category" : "Gun",
 		"class" : "Artillery Gun",
@@ -6793,7 +6835,7 @@
 	},
 	
 	
-	"Generic Forces" : {},
+	"Generic Multi-National Forces" : {},
 	
 	"Riflemen": {
 		"category" : "Infantry",
@@ -6937,6 +6979,116 @@
 		],
 		"rarity" : {
 			"1935.01.01" : "100"
+		}
+	},
+	
+	"Renault FT": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_FT-17C.xp",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "37",
+				"long_range" : "S",
+				"rr_size" : "4",
+				"mount" : "Turret",
+				"fired_by" : ["Commander/Gunner"],
+				"reloaded_by" : ["Commander/Gunner"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE", "AP"],
+				"max_ammo" : "233"
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First developed during the Great War, the Renault FT was the world's",
+			"first modern tank. By the outbreak of the Second World War several ",
+			"thousand were still in use throughout the world. This model has a ",
+			"short-barreled 37mm main gun."
+		],
+		"rarity" : {
+			"1939.09.01" : "80"
+		}
+	},
+	
+	"Renault FT (MG)": {
+		"category" : "Vehicle",
+		"class" : "Light Tank",
+		"portrait" : "unit_FT-17M.xp",
+		"size_class" : "Small",
+		"movement_class" : "Slow Tank",
+		"ground_pressure" : "Light",
+		"turret" : "TRUE",
+		"unreliable" : true,
+		"armour" : {
+			"turret_front" : "2",
+			"turret_side" : "1",
+			"hull_front" : "1",
+			"hull_side" : "0"
+		},
+		"weapon_list" : [
+			{
+				"type" : "Turret MG",
+				"fp" : "4",
+				"rof" : "17.0",
+				"mount" : "Hull",
+				"fired_by" : ["Commander/Gunner"],
+				"firing_group" : 0
+			}
+		],
+		"crew_positions" : [
+			{
+				"name" : "Commander/Gunner",
+				"location" : "Turret",
+				"hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "2", "3", "4", "5"],
+				"bu_visible" : ["0"]
+			},
+			{
+				"name" : "Driver",
+				"location" : "Hull",
+				"hatch" : "TRUE",
+				"large_hatch" : "TRUE",
+				"ce_visible" : ["0", "1", "5"],
+				"bu_visible" : ["0"]
+			}
+		],
+		"description" : [
+			"First developed during the Great War, the Renault FT was the world's",
+			"first modern tank. By the outbreak of the Second World War several ",
+			"thousand were still in use throughout the world. This model is armed ",
+			"only with a turret-mounted machine gun."
+		],
+		"rarity" : {
+			"1939.09.01" : "80"
 		}
 	},
 	

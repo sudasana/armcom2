@@ -6596,6 +6596,45 @@
 		}
 	},
 	
+	"OQF 3.7\" AA Gun": {
+		"category" : "Gun",
+		"class" : "Anti-Aircraft Gun",
+		"portrait" : "unit_oqf_37_aa.xp",
+		"size_class" : "Normal",
+		"movement_class" : "Gun",
+		"turntable" : "TRUE",
+		"weapon_list" : [
+			{
+				"type" : "Gun",
+				"calibre" : "94",
+				"long_range" : "S",
+				"rof" : "17.0",
+				"mount" : "Turret",
+				"fired_by" : ["Gunner"],
+				"reloaded_by" : ["Loader"],
+				"firing_group" : 0,
+				"ammo_type_list" : ["HE"],
+				"max_ammo" : "180"
+			}
+		],
+		"crew_positions" : [
+			{"name" : "Commander"},
+			{"name" : "Spotter"},
+			{"name" : "Gunner"},
+			{"name" : "Loader"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"},
+			{"name" : "Ammo Handler"}
+		],
+		"description" : [
+			"First designed in 1934, this was the standard heavy anti-aircraft gun ",
+			"of Commonwealth forces throughout the war."
+		],
+		"rarity" : {
+			"1939.09.01" : "80"
+		}
+	},
+	
 	"Morris 15 cwt" : {
 		"category" : "Vehicle",
 		"class" : "Truck",

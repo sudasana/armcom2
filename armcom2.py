@@ -2061,7 +2061,6 @@ class Campaign:
 			
 			libtcod.console_set_default_background(calendar_main_panel, libtcod.darker_grey)
 			libtcod.console_rect(calendar_main_panel, 15, 1, 32, 3, False, libtcod.BKGND_SET)
-			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
 			libtcod.console_print_ex(calendar_main_panel, 31, 2, libtcod.BKGND_NONE,
 				libtcod.CENTER, GetDateText(self.active_journal_day))

@@ -9493,16 +9493,12 @@ class Unit:
 							CheckForAnimationUpdate()
 				
 				elif weapon.GetStat('type') == 'Small Arms' or weapon.GetStat('type') in MG_WEAPONS:
-					
-					PlaySoundFor(weapon, 'fire')
-					# start small arms / MG animation
-					
 					scenario.animation['small_arms_fire_action'] = True
 					(x1, y1) = scenario.PlotHex(self.hx, self.hy)
 					(x2, y2) = scenario.PlotHex(target.hx, target.hy)
 					scenario.animation['small_arms_fire_line'] = GetLine(x1,y1,x2,y2)
 					scenario.animation['small_arms_lifetime'] = 12
-					
+					PlaySoundFor(weapon, 'fire')
 					while scenario.animation['small_arms_fire_action']:
 						if libtcod.console_is_window_closed(): sys.exit()
 						libtcod.console_flush()
@@ -9524,7 +9520,7 @@ class Unit:
 						(x, y) = scenario.PlotHex(target.hx, target.hy)
 						scenario.animation['ft_effect'] = (x, y)
 						scenario.animation['ft_effect_lifetime'] = 9
-						# TODO: add sound effect here
+						PlaySoundFor(weapon, 'fire')
 						while scenario.animation['ft_effect'] is not None:
 							if libtcod.console_is_window_closed(): sys.exit()
 							libtcod.console_flush()
@@ -16997,6 +16993,10 @@ def PlaySoundFor(obj, action):
 		if obj.GetStat('name') == 'Grenades':
 			PlaySound('grenades')
 			return
+		if obj.GetStat('name') == 'Flame Thrower':
+			PlaySound('flamethrower')
+			return
+		
 	
 	elif action == 'he_explosion':
 		PlaySound('37mm_he_explosion_0' + str(libtcod.random_get_int(0, 0, 1)))

@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2.0.0-rc1'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
@@ -9762,7 +9762,7 @@ class Unit:
 						for position in self.positions_list:
 							if position.crewman is None: continue
 							if not position.crewman.DoStunCheck(AP_STUN_MARGIN - difference):
-								ShowMessage('Your ' + position.name + 'is Stunned from the impact.')
+								ShowMessage('Your ' + position.name + ' is Stunned from the impact.')
 					
 			elif profile['result'] == 'PENETRATED':
 				
@@ -10913,10 +10913,6 @@ class Scenario:
 						selected_unit_id = unit_id
 						break
 				
-				# unable to select a valid unit id
-				if selected_unit_id == None:
-					continue
-				
 				# add the final selected unit id to list to spawn
 				if selected_unit_id is not None:
 					enemy_unit_list.append(selected_unit_id)
@@ -10970,13 +10966,17 @@ class Scenario:
 			if unit.GetStat('category') == 'Gun':
 				unit.deployed = True
 			
-			# if ambush, set facing toward player if required
-			if self.ambush:
-				if unit.GetStat('category') != 'Infantry':
+			# set facing
+			if unit.GetStat('category') != 'Infantry':
+				if self.ambush:
+					# set facing toward player
 					direction = GetDirectionToward(unit.hx, unit.hy, 0, 0)
-					unit.facing = direction
-					if 'turret' in unit.stats:
-						unit.turret_facing = direction
+				else:
+					# random facing
+					direction = libtcod.random_get_int(0, 0, 5)
+				unit.facing = direction
+				if 'turret' in unit.stats:
+					unit.turret_facing = direction
 			
 			# some units can be spawned dug-in, entrenched, or fortified
 			if unit.GetStat('category') in ['Infantry', 'Gun'] and campaign_day.mission != 'Fighting Withdrawal':
@@ -11990,11 +11990,11 @@ class Scenario:
 		else:
 			text1 = profile['attacker'].GetName()
 			if attacker_spotted:
-				text2 = 'attacking with ' + profile['weapon'].GetStat('name')
+				text2 = 'attacks w/ ' + profile['weapon'].GetStat('name')
 				if profile['weapon'].ammo_type is not None:
 					text2 += ' ' + profile['weapon'].ammo_type
 			else:
-				text2 = 'attacking'
+				text2 = 'attacks'
 			text3 = profile['target'].GetName()
 			
 		libtcod.console_print_ex(attack_con, 13, 10, libtcod.BKGND_NONE, libtcod.CENTER, text1)
@@ -12215,8 +12215,8 @@ class Scenario:
 											# apply fate point
 											campaign_day.fate_points -= 1
 											roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
-											if roll > 97.0:
-												roll = 97.0
+											if roll > 100.0:
+												roll = 100.0
 								
 								# AP penetration
 								elif profile['type'] == 'ap':
@@ -12224,8 +12224,8 @@ class Scenario:
 									# apply fate point
 									campaign_day.fate_points -= 1
 									roll = profile['final_chance'] + float(libtcod.random_get_int(0, 10, 500)) / 10.0
-									if roll > 97.0:
-										roll = 97.0
+									if roll > 100.0:
+										roll = 100.0
 					
 						# check for debug flag - force a hit or penetration
 						if DEBUG:
@@ -17213,8 +17213,6 @@ def UpdateMainTitleCon(options_menu_active):
 	if len(os.listdir(SAVEPATH)) == 0:
 		no_saved_games = True
 	
-	# TODO: set flag to say whether 1+ saved campaigns are available
-	# and grey out continue and load options
 	libtcod.console_blit(main_title, 0, 0, 0, 0, con, 0, 0)
 	
 	y = 38

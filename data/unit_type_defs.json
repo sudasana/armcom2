@@ -4419,7 +4419,7 @@
 	"SA-L 34": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
-		"portrait" : "unit_sa_l_34.xp",
+		"portrait" : "unit_25_mm_gun.xp",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",
@@ -4457,7 +4457,7 @@
 	"SA 37 APX": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
-		"portrait" : "unit_sa_37_apx.xp",
+		"portrait" : "unit_45mm_gun.xp",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",

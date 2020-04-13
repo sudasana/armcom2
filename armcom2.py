@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.0-dev-3'					# game version
+VERSION = '2.0.0-rc1'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -6093,9 +6093,10 @@ class Personnel:
 			
 			roll = GetPercentileRoll()
 			
-			# sniper attack has greater chance of hitting head or torso
+			# sniper attack has greater chance of hitting head or torso,
+			# no chance of hitting legs
 			if 'sniper' in attack_profile:
-				roll -= 20.0
+				roll -= 21.0
 			
 			if roll <= 15.0:
 				return 'Head & Neck'
@@ -6152,10 +6153,6 @@ class Personnel:
 				modifier += 20.0
 			else:
 				modifier += 25.0
-		
-		# TODO: random event: sniper, landmine, etc.
-		elif 'random_event' in attack_profile:
-			pass
 		
 		# spalling
 		elif 'spalling' in attack_profile:
@@ -11129,7 +11126,7 @@ class Scenario:
 	
 	
 	# generate a profile for a given attack
-	# if pivot or turret_rotate are set to True or False, will override actual attacker status
+	# if pivot or turret_rotate are set to True, will override actual attacker status
 	def CalcAttack(self, attacker, weapon, target, pivot=False, turret_rotate=False):
 		
 		profile = {}
@@ -11311,8 +11308,13 @@ class Scenario:
 					elif distance >= 2:
 						modifier_list.append(('Long Gun', 24.0))
 			
-			# smaller-calibre gun at longer range
 			if weapon_type == 'Gun':
+				
+				# NEW: APCR/APDS ammo
+				if profile['ammo_type'] in ['APCR', 'APDS'] and distance == 3:
+					modifier_list.append(profile['ammo_type'], -12.0)
+				
+				# smaller-calibre gun at longer range
 				calibre_mod = 0
 				
 				if weapon.stats['name'] == 'AT Rifle':
@@ -15888,7 +15890,6 @@ def SaveGame():
 def LoadGame(directory):
 	global campaign, campaign_day, scenario
 	
-	# loading seems to take a little longer now, so added this
 	libtcod.console_clear(0)
 	libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
 		'Loading...')
@@ -15923,7 +15924,8 @@ def EraseGame(directory):
 	os.remove(SAVEPATH + directory + os.sep + 'savegame.dat')
 	os.remove(SAVEPATH + directory + os.sep + 'savegame.dir')
 	os.remove(SAVEPATH + directory + os.sep + 'savegame.bak')
-
+	os.remove(SAVEPATH + directory)
+	
 
 # try to load game settings from config file
 def LoadCFG():
@@ -17207,6 +17209,10 @@ gradient_x = WINDOW_WIDTH + 5
 # if options_menu_active, draw the options menu instead
 def UpdateMainTitleCon(options_menu_active):
 	
+	no_saved_games = False
+	if len(os.listdir(SAVEPATH)) == 0:
+		no_saved_games = True
+	
 	# TODO: set flag to say whether 1+ saved campaigns are available
 	# and grey out continue and load options
 	libtcod.console_blit(main_title, 0, 0, 0, 0, con, 0, 0)
@@ -17222,6 +17228,9 @@ def UpdateMainTitleCon(options_menu_active):
 		for (char, text) in [('C', 'Continue'), ('L', 'Load Campaign'), ('N', 'New Campaign'), ('O', 'Options'), ('Q', 'Quit')]:
 			# grey-out option if not possible
 			disabled = False
+			
+			if char in ['C', 'L'] and no_saved_games:
+				disabled = True
 			
 			if disabled:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)

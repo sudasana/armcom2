@@ -17187,7 +17187,7 @@ libtcod.console_set_default_foreground(main_title, libtcod.light_grey)
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-5, libtcod.BKGND_NONE,
 	libtcod.CENTER, VERSION)
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-3,
-	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2016-2020')
+	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2016-2020 Gregory Adam Scott')
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-2,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'Open Source under the GNU GPL')
 

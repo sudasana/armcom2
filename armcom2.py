@@ -404,7 +404,7 @@ REGIONS = {
 				'end_date' : '06.14',
 				'ground_conditions' : {
 					'Dry' : 50.0, 'Wet' : 20.0, 'Muddy' : 25.0,
-					'Snow' : 5.0, 'Deep Snow' : 0.0
+					'Snow' : 0.0, 'Deep Snow' : 0.0
 				},
 				'freezing' : 5.0,
 				'cloud_cover' : {
@@ -414,7 +414,7 @@ REGIONS = {
 				'precipitation' : {
 					'None' : 30.0, 'Mist' : 10.0,
 					'Rain' : 30.0, 'Heavy Rain' : 20.0,
-					'Light Snow' : 10.0, 'Snow' : 0.0,
+					'Light Snow' : 0.0, 'Snow' : 0.0,
 					'Blizzard' : 0.0
 				}
 				

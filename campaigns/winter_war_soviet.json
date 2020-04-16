@@ -55,7 +55,7 @@
 			"day_end" : "15:20",
 			"combat_chance" : "80",
 			"average_resistance" : "2",
-			"week_description" : "The Tide Breaks",
+			"week_title" : "The Tide Breaks",
 			"mission_odds" : {
 				"Advance" : "90",
 				"Battle" : "10"
@@ -70,7 +70,7 @@
 			"day_end" : "15:15",
 			"combat_chance" : "80",
 			"average_resistance" : "3",
-			"week_description" : "Invasion",
+			"week_title" : "Invasion",
 			"mission_odds" : {
 				"Advance" : "80",
 				"Battle" : "20"
@@ -85,7 +85,7 @@
 			"day_end" : "15:15",
 			"combat_chance" : "65",
 			"average_resistance" : "4",
-			"week_description" : "Invasion",
+			"week_title" : "Invasion",
 			"mission_odds" : {
 				"Advance" : "40",
 				"Battle" : "60"
@@ -100,7 +100,7 @@
 			"day_end" : "15:15",
 			"combat_chance" : "50",
 			"average_resistance" : "4",
-			"week_description" : "Invasion",
+			"week_title" : "Invasion",
 			"mission_odds" : {
 				"Advance" : "20",
 				"Battle" : "80"
@@ -120,7 +120,7 @@
 			"day_end" : "15:25",
 			"combat_chance" : "50",
 			"average_resistance" : "6",
-			"week_description" : "Counterattack",
+			"week_title" : "Counterattack",
 			"mission_odds" : {
 				"Battle" : "20",
 				"Fighting Withdrawal" : "80"
@@ -135,7 +135,7 @@
 			"day_end" : "15:40",
 			"combat_chance" : "50",
 			"average_resistance" : "6",
-			"week_description" : "Counterattack",
+			"week_title" : "Counterattack",
 			"mission_odds" : {
 				"Battle" : "20",
 				"Fighting Withdrawal" : "80"
@@ -150,7 +150,7 @@
 			"day_end" : "15:55",
 			"combat_chance" : "50",
 			"average_resistance" : "6",
-			"week_description" : "Counterattack",
+			"week_title" : "Counterattack",
 			"mission_odds" : {
 				"Battle" : "40",
 				"Fighting Withdrawal" : "60"
@@ -170,7 +170,7 @@
 			"day_end" : "16:35",
 			"combat_chance" : "80",
 			"average_resistance" : "9",
-			"week_description" : "Soviet Offensive",
+			"week_title" : "Soviet Offensive",
 			"mission_odds" : {
 				"Advance" : "10",
 				"Counterattack" : "90"
@@ -185,7 +185,7 @@
 			"day_end" : "16:50",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Soviet Offensive Continues",
+			"week_title" : "Soviet Offensive Continues",
 			"mission_odds" : {
 				"Advance" : "50",
 				"Counterattack" : "50"
@@ -200,7 +200,7 @@
 			"day_end" : "17:05",
 			"combat_chance" : "50",
 			"average_resistance" : "5",
-			"week_description" : "Desparation",
+			"week_title" : "Desparation",
 			"mission_odds" : {
 				"Advance" : "90",
 				"Battle" : "10"
@@ -215,7 +215,7 @@
 			"day_end" : "17:25",
 			"combat_chance" : "50",
 			"average_resistance" : "3",
-			"week_description" : "Counterattack",
+			"week_title" : "Counterattack",
 			"mission_odds" : {
 				"Advance" : "90",
 				"Battle" : "10"
@@ -230,7 +230,7 @@
 			"day_end" : "17:45",
 			"combat_chance" : "50",
 			"average_resistance" : "3",
-			"week_description" : "Counterattack",
+			"week_title" : "Counterattack",
 			"mission_odds" : {
 				"Advance" : "90",
 				"Battle" : "10"
@@ -245,7 +245,7 @@
 			"day_end" : "18:00",
 			"combat_chance" : "50",
 			"average_resistance" : "3",
-			"week_description" : "Counterattack",
+			"week_title" : "Counterattack",
 			"mission_odds" : {
 				"Advance" : "100"
 			},

@@ -57,7 +57,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "85",
-			"week_description" : "Cintheaux",
+			"week_title" : "Cintheaux",
 			"mission_odds" : {
 				"Advance" : "10",
 				"Battle" : "45",
@@ -72,7 +72,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "80",
-			"week_description" : "Laison Valley",
+			"week_title" : "Laison Valley",
 			"mission_odds" : {
 				"Advance" : "35",
 				"Battle" : "25",
@@ -87,7 +87,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "40",
-			"week_description" : "Chambois and Le Newbourg",
+			"week_title" : "Chambois and Le Newbourg",
 			"mission_odds" : {
 				"Advance" : "5",
 				"Battle" : "85",
@@ -102,7 +102,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "60",
-			"week_description" : "Elbeuf-Seine Crossing",
+			"week_title" : "Elbeuf-Seine Crossing",
 			"mission_odds" : {
 				"Advance" : "80",
 				"Spearhead" : "20"
@@ -120,7 +120,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "60",
-			"week_description" : "Ghent Canal and Molentje",
+			"week_title" : "Ghent Canal and Molentje",
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "50"
@@ -133,7 +133,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "40",
-			"week_description" : "Braakman Inlet",
+			"week_title" : "Braakman Inlet",
 			"mission_odds" : {
 				"Advance" : "70",
 				"Battle" : "10",
@@ -147,7 +147,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "50",
-			"week_description" : "Leopold Canal",
+			"week_title" : "Leopold Canal",
 			"mission_odds" : {
 				"Advance" : "40",
 				"Battle" : "30",
@@ -162,7 +162,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "30",
-			"week_description" : "Regroup and Mop Up",
+			"week_title" : "Regroup and Mop Up",
 			"mission_odds" : {
 				"Advance" : "90",
 				"Battle" : "10"
@@ -180,7 +180,7 @@
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "40",
-			"week_description" : "Brecht and Stroolburg",
+			"week_title" : "Brecht and Stroolburg",
 			"mission_odds" : {
 				"Advance" : "40",
 				"Battle" : "10",
@@ -194,7 +194,7 @@
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "60",
-			"week_description" : "Esschen",
+			"week_title" : "Esschen",
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "10",
@@ -208,7 +208,7 @@
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "50",
-			"week_description" : "Beveland Canal and Bergen op Zoom",
+			"week_title" : "Beveland Canal and Bergen op Zoom",
 			"mission_odds" : {
 				"Advance" : "60",
 				"Battle" : "10",
@@ -222,7 +222,7 @@
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "70",
-			"week_description" : "Steebergen",
+			"week_title" : "Steebergen",
 			"mission_odds" : {
 				"Advance" : "40",
 				"Battle" : "50",
@@ -236,7 +236,7 @@
 			"day_start" : "07:15",
 			"day_end" : "16:15",
 			"combat_chance" : "30",
-			"week_description" : "Zijpe",
+			"week_title" : "Zijpe",
 			"mission_odds" : {
 				"Advance" : "60",
 				"Battle" : "10",
@@ -251,7 +251,7 @@
 			"day_start" : "07:15",
 			"day_end" : "16:15",
 			"combat_chance" : "20",
-			"week_description" : "Clearing Zone of Responsibility",
+			"week_title" : "Clearing Zone of Responsibility",
 			"mission_odds" : {
 				"Advance" : "90",
 				"Battle" : "10"
@@ -270,7 +270,7 @@
 			"day_start" : "07:45",
 			"day_end" : "16:00",
 			"combat_chance" : "70",
-			"week_description" : "Operation Elephant",
+			"week_title" : "Operation Elephant",
 			"mission_odds" : {
 				"Advance" : "5",
 				"Battle" : "95"
@@ -289,7 +289,7 @@
 			"day_start" : "07:15",
 			"day_end" : "17:30",
 			"combat_chance" : "80",
-			"week_description" : "Hochwald Gap",
+			"week_title" : "Hochwald Gap",
 			"mission_odds" : {
 				"Advance" : "10",
 				"Battle" : "90"
@@ -308,7 +308,7 @@
 			"day_start" : "06:15",
 			"day_end" : "18:00",
 			"combat_chance" : "80",
-			"week_description" : "Veen",
+			"week_title" : "Veen",
 			"mission_odds" : {
 				"Advance" : "10",
 				"Battle" : "90"
@@ -326,7 +326,7 @@
 			"day_start" : "05:15",
 			"day_end" : "19:00",
 			"combat_chance" : "50",
-			"week_description" : "Eiten, Twente, Almedo, Meppen",
+			"week_title" : "Eiten, Twente, Almedo, Meppen",
 			"mission_odds" : {
 				"Advance" : "40",
 				"Battle" : "50",
@@ -340,7 +340,7 @@
 			"day_start" : "05:15",
 			"day_end" : "19:00",
 			"combat_chance" : "40",
-			"week_description" : "Sogel",
+			"week_title" : "Sogel",
 			"mission_odds" : {
 				"Advance" : "60",
 				"Battle" : "10",
@@ -354,7 +354,7 @@
 			"day_start" : "05:15",
 			"day_end" : "19:00",
 			"combat_chance" : "60",
-			"week_description" : "Edewechterdamm",
+			"week_title" : "Edewechterdamm",
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "20",
@@ -369,7 +369,7 @@
 			"day_start" : "05:15",
 			"day_end" : "19:00",
 			"combat_chance" : "50",
-			"week_description" : "Edewecht and Querenstede",
+			"week_title" : "Edewecht and Querenstede",
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "10",
@@ -384,7 +384,7 @@
 			"day_start" : "05:15",
 			"day_end" : "19:00",
 			"combat_chance" : "50",
-			"week_description" : "Bad Zwischerwahn and Oldenburg",
+			"week_title" : "Bad Zwischerwahn and Oldenburg",
 			"mission_odds" : {
 				"Advance" : "30",
 				"Battle" : "10",

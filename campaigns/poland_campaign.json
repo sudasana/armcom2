@@ -60,7 +60,8 @@
 			"day_end" : "18:15",
 			"combat_chance" : "80",
 			"average_resistance" : "7",
-			"week_description" : "Over the Polish Border",
+			"week_title" : "Over the Polish Border",
+			"week_description" : "The first major engagement of the new German panzerwaffe begins - lead your forces across the border and into Polish territory.",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "5",
@@ -79,7 +80,7 @@
 			"day_end" : "18:15",
 			"combat_chance" : "70",
 			"average_resistance" : "5",
-			"week_description" : "Into Western Poland",
+			"week_title" : "Into Western Poland",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "15",
@@ -98,7 +99,7 @@
 			"day_end" : "18:15",
 			"combat_chance" : "60",
 			"average_resistance" : "4",
-			"week_description" : "Breaking Resistance",
+			"week_title" : "Breaking Resistance",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "35",
@@ -117,7 +118,7 @@
 			"day_end" : "18:15",
 			"combat_chance" : "50",
 			"average_resistance" : "4",
-			"week_description" : "Mopping Up",
+			"week_title" : "Mopping Up",
 			"mission_odds" : {
 				"Advance" : "30",
 				"Battle" : "20",
@@ -134,7 +135,7 @@
 			"day_end" : "17:15",
 			"combat_chance" : "50",
 			"average_resistance" : "3",
-			"week_description" : "Taking the Capital",
+			"week_title" : "Taking the Capital",
 			"mission_odds" : {
 				"Advance" : "80",
 				"Spearhead" : "20"

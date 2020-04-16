@@ -67,7 +67,7 @@
 			"day_end" : "21:15",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Counterattack",
+			"week_title" : "Counterattack",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "5",
@@ -82,7 +82,7 @@
 			"day_end" : "21:30",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Stalemate",
+			"week_title" : "Stalemate",
 			"mission_odds" : {
 				"Advance" : "5",
 				"Battle" : "70",
@@ -102,7 +102,7 @@
 			"day_end" : "21:45",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Second Offensive",
+			"week_title" : "Second Offensive",
 			"mission_odds" : {
 				"Advance" : "5",
 				"Battle" : "70",
@@ -117,7 +117,7 @@
 			"day_end" : "21:45",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Fall of the Maginot Line",
+			"week_title" : "Fall of the Maginot Line",
 			"mission_odds" : {
 				"Advance" : "5",
 				"Battle" : "70",
@@ -132,7 +132,7 @@
 			"day_end" : "21:45",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Collapse",
+			"week_title" : "Collapse",
 			"mission_odds" : {
 				"Battle" : "70",
 				"Counterattack" : "30"

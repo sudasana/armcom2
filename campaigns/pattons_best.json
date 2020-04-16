@@ -54,7 +54,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "80",
-			"week_description" : "Cobra Breakout",
+			"week_title" : "Cobra Breakout",
 			"mission_odds" : {
 				"Advance" : "45",
 				"Battle" : "15",
@@ -69,7 +69,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "80",
-			"week_description" : "Advance Through Brittany",
+			"week_title" : "Advance Through Brittany",
 			"mission_odds" : {
 				"Advance" : "55",
 				"Battle" : "5",
@@ -83,7 +83,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "60",
-			"week_description" : "Liberating Nantes and Orleans",
+			"week_title" : "Liberating Nantes and Orleans",
 			"mission_odds" : {
 				"Advance" : "65",
 				"Battle" : "5",
@@ -98,7 +98,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "60",
-			"week_description" : "Across Northern France",
+			"week_title" : "Across Northern France",
 			"mission_odds" : {
 				"Advance" : "35",
 				"Battle" : "5",
@@ -113,7 +113,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "60",
-			"week_description" : "Into North-eastern France",
+			"week_title" : "Into North-eastern France",
 			"mission_odds" : {
 				"Advance" : "55",
 				"Battle" : "5",
@@ -129,7 +129,7 @@
 			"day_start" : "05:00",
 			"day_end" : "19:15",
 			"combat_chance" : "60",
-			"week_description" : "Taking Commercy",
+			"week_title" : "Taking Commercy",
 			"mission_odds" : {
 				"Advance" : "65",
 				"Battle" : "25",
@@ -148,7 +148,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "80",
-			"week_description" : "Moselle Crossing",
+			"week_title" : "Moselle Crossing",
 			"mission_odds" : {
 				"Advance" : "45",
 				"Battle" : "25",
@@ -164,7 +164,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "40",
-			"week_description" : "Arracourt",
+			"week_title" : "Arracourt",
 			"mission_odds" : {
 				"Advance" : "45",
 				"Battle" : "45",
@@ -178,7 +178,7 @@
 			"day_start" : "05:30",
 			"day_end" : "18:15",
 			"combat_chance" : "70",
-			"week_description" : "Hill 318",
+			"week_title" : "Hill 318",
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "5",
@@ -192,7 +192,7 @@
 			"day_start" : "06:30",
 			"day_end" : "17:15",
 			"combat_chance" : "80",
-			"week_description" : "Return to Arracourt",
+			"week_title" : "Return to Arracourt",
 			"mission_odds" : {
 				"Battle" : "15",
 				"Counterattack" : "85"
@@ -210,7 +210,7 @@
 			"day_start" : "07:15",
 			"day_end" : "16:15",
 			"combat_chance" : "30",
-			"week_description" : "Fonteny",
+			"week_title" : "Fonteny",
 			"mission_odds" : {
 				"Advance" : "30",
 				"Counterattack" : "60",
@@ -224,7 +224,7 @@
 			"day_start" : "07:15",
 			"day_end" : "16:15",
 			"combat_chance" : "30",
-			"week_description" : "Dieuze and Rodalbe",
+			"week_title" : "Dieuze and Rodalbe",
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "10",
@@ -238,7 +238,7 @@
 			"day_start" : "07:15",
 			"day_end" : "16:15",
 			"combat_chance" : "70",
-			"week_description" : "Crossing the Saare",
+			"week_title" : "Crossing the Saare",
 			"mission_odds" : {
 				"Advance" : "90",
 				"Counterattack" : "10"
@@ -251,7 +251,7 @@
 			"day_start" : "07:15",
 			"day_end" : "16:15",
 			"combat_chance" : "40",
-			"week_description" : "Attacking Saare Union",
+			"week_title" : "Attacking Saare Union",
 			"mission_odds" : {
 				"Advance" : "60",
 				"Battle" : "20",
@@ -270,7 +270,7 @@
 			"day_start" : "07:45",
 			"day_end" : "16:00",
 			"combat_chance" : "80",
-			"week_description" : "Martelange and Chaumont",
+			"week_title" : "Martelange and Chaumont",
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "30",
@@ -286,7 +286,7 @@
 			"day_start" : "07:45",
 			"day_end" : "16:00",
 			"combat_chance" : "80",
-			"week_description" : "Defense of Bastogne Corridor",
+			"week_title" : "Defense of Bastogne Corridor",
 			"mission_odds" : {
 				"Advance" : "20",
 				"Counterattack" : "80"
@@ -304,7 +304,7 @@
 			"day_start" : "07:45",
 			"day_end" : "16:00",
 			"combat_chance" : "30",
-			"week_description" : "Defensive Positions",
+			"week_title" : "Defensive Positions",
 			"mission_odds" : {
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
@@ -317,7 +317,7 @@
 			"day_start" : "07:45",
 			"day_end" : "16:00",
 			"combat_chance" : "30",
-			"week_description" : "Defensive Positions",
+			"week_title" : "Defensive Positions",
 			"mission_odds" : {
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
@@ -330,7 +330,7 @@
 			"day_start" : "07:45",
 			"day_end" : "16:00",
 			"combat_chance" : "30",
-			"week_description" : "Defensive Positions",
+			"week_title" : "Defensive Positions",
 			"mission_odds" : {
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
@@ -344,7 +344,7 @@
 			"day_start" : "07:45",
 			"day_end" : "16:00",
 			"combat_chance" : "30",
-			"week_description" : "Defensive Positions",
+			"week_title" : "Defensive Positions",
 			"mission_odds" : {
 				"Counterattack" : "90",
 				"Fighting Withdrawal" : "10"
@@ -362,7 +362,7 @@
 			"day_start" : "07:15",
 			"day_end" : "17:30",
 			"combat_chance" : "80",
-			"week_description" : "Rittersdorf and Bitburg",
+			"week_title" : "Rittersdorf and Bitburg",
 			"mission_odds" : {
 				"Advance" : "15",
 				"Battle" : "80",
@@ -381,7 +381,7 @@
 			"day_start" : "06:15",
 			"day_end" : "18:00",
 			"combat_chance" : "20",
-			"week_description" : "To the Rhine",
+			"week_title" : "To the Rhine",
 			"mission_odds" : {
 				"Advance" : "40",
 				"Battle" : "10",
@@ -400,7 +400,7 @@
 			"day_start" : "06:15",
 			"day_end" : "18:00",
 			"combat_chance" : "60",
-			"week_description" : "Bad Kreuznauch",
+			"week_title" : "Bad Kreuznauch",
 			"mission_odds" : {
 				"Advance" : "30",
 				"Battle" : "30",
@@ -419,7 +419,7 @@
 			"day_start" : "06:15",
 			"day_end" : "18:00",
 			"combat_chance" : "40",
-			"week_description" : "Across the Rhine and Main",
+			"week_title" : "Across the Rhine and Main",
 			"mission_odds" : {
 				"Advance" : "70",
 				"Battle" : "30"
@@ -432,7 +432,7 @@
 			"day_start" : "05:15",
 			"day_end" : "19:00",
 			"combat_chance" : "40",
-			"week_description" : "Creuzburg and Gotha",
+			"week_title" : "Creuzburg and Gotha",
 			"mission_odds" : {
 				"Advance" : "40",
 				"Battle" : "10",
@@ -446,7 +446,7 @@
 			"day_start" : "05:15",
 			"day_end" : "19:00",
 			"combat_chance" : "40",
-			"week_description" : "Toward the Saale River",
+			"week_title" : "Toward the Saale River",
 			"mission_odds" : {
 				"Advance" : "60",
 				"Battle" : "10",
@@ -460,7 +460,7 @@
 			"day_start" : "05:15",
 			"day_end" : "19:00",
 			"combat_chance" : "20",
-			"week_description" : "Holding Wolkenburg",
+			"week_title" : "Holding Wolkenburg",
 			"mission_odds" : {
 				"Battle" : "10",
 				"Counterattack" : "90"

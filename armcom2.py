@@ -1527,7 +1527,7 @@ class Campaign:
 			libtcod.console_print_ex(con, WINDOW_XM, 23, libtcod.BKGND_NONE, libtcod.CENTER,
 				self.current_week['day_start'])
 			libtcod.console_print_ex(con, WINDOW_XM, 25, libtcod.BKGND_NONE, libtcod.CENTER,
-				self.current_week['week_description'])
+				self.current_week['week_title'])
 		
 		# fade in from black
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -1839,16 +1839,25 @@ class Campaign:
 				libtcod.CENTER, 'Refitting')
 		else:
 		
-			# week description, max 3 lines
+			# week title - max 2 lines
 			libtcod.console_set_default_foreground(day_outline, libtcod.white)
-			lines = wrap(campaign.current_week['week_description'], 20)
+			lines = wrap(campaign.current_week['week_title'], 20)
 			y = 9
-			for line in lines[:4]:
+			for line in lines[:2]:
 				libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
 					libtcod.CENTER, line)
 				y += 1
 		
-		# FUTURE: additional descriptive text can be displayed here
+		# NEW: check for week description and display wrapped text if any
+		if 'week_description' in campaign.current_week:
+			libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
+			lines = wrap(campaign.current_week['week_description'], 22)
+			y = 12
+			for line in lines[:12]:
+				libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
+					libtcod.CENTER, line)
+				y += 1
+		
 		
 		libtcod.console_set_default_foreground(day_outline, libtcod.white)
 		libtcod.console_print_ex(day_outline, 12, 28, libtcod.BKGND_NONE,

@@ -81,7 +81,7 @@
 			"day_end" : "21:15",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Fall Gelb",
+			"week_title" : "Fall Gelb",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Spearhead" : "75"
@@ -96,7 +96,7 @@
 			"day_end" : "21:30",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Stalemate",
+			"week_title" : "Stalemate",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "10",
@@ -117,7 +117,7 @@
 			"day_end" : "21:45",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Second Offensive",
+			"week_title" : "Second Offensive",
 			"mission_odds" : {
 				"Advance" : "50",
 				"Battle" : "50"
@@ -132,7 +132,7 @@
 			"day_end" : "21:45",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Fall Rot",
+			"week_title" : "Fall Rot",
 			"mission_odds" : {
 				"Advance" : "95",
 				"Battle" : "5"
@@ -147,7 +147,7 @@
 			"day_end" : "21:45",
 			"combat_chance" : "80",
 			"average_resistance" : "8",
-			"week_description" : "Fall of France",
+			"week_title" : "Fall of France",
 			"mission_odds" : {
 				"Advance" : "70",
 				"Battle" : "10",

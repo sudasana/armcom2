@@ -50,7 +50,7 @@
 			"day_end" : "18:15",
 			"combat_chance" : "80",
 			"average_resistance" : "6",
-			"week_description" : "The Liberation Begins",
+			"week_title" : "The Liberation Begins",
 			"mission_odds" : {
 				"Advance" : "40",
 				"Battle" : "10",
@@ -65,7 +65,7 @@
 			"day_end" : "18:15",
 			"combat_chance" : "70",
 			"average_resistance" : "6",
-			"week_description" : "Further Into Poland",
+			"week_title" : "Further Into Poland",
 			"mission_odds" : {
 				"Advance" : "40",
 				"Battle" : "15",
@@ -85,7 +85,7 @@
 			"day_end" : "17:15",
 			"combat_chance" : "70",
 			"average_resistance" : "3",
-			"week_description" : "Final Resistance",
+			"week_title" : "Final Resistance",
 			"mission_odds" : {
 				"Advance" : "35",
 				"Battle" : "5",

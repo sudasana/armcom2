@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.0-rc2'					# game version
+VERSION = '2.0.0-rc3'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders

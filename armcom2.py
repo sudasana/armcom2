@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.0-rc1'					# game version
+VERSION = '2.0.0-rc2'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -2061,6 +2061,7 @@ class Campaign:
 			
 			libtcod.console_set_default_background(calendar_main_panel, libtcod.darker_grey)
 			libtcod.console_rect(calendar_main_panel, 15, 1, 32, 3, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(calendar_main_panel, libtcod.black)
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
 			libtcod.console_print_ex(calendar_main_panel, 31, 2, libtcod.BKGND_NONE,
 				libtcod.CENTER, GetDateText(self.active_journal_day))
@@ -2448,9 +2449,9 @@ class CampaignDay:
 		player_unit_class = campaign.player_unit.GetStat('class')
 		if player_unit_class == 'Tankette':
 			campaign.player_squad_max = 4
-		elif player_unit_class == 'Light Tank':
+		elif player_unit_class in ['Light Tank', 'Tank Destroyer']:
 			campaign.player_squad_max = 3
-		elif player_unit_class == 'Medium Tank':
+		elif player_unit_class in ['Medium Tank', 'Assault Gun']:
 			campaign.player_squad_max = 2
 		elif player_unit_class == 'Heavy Tank':
 			campaign.player_squad_max = 1
@@ -7959,7 +7960,7 @@ class AI:
 			# spawn passenger unit
 			unit = Unit(self.owner.transport)
 			unit.owning_player = 1
-			unit.nation = campaign.current_week['enemy_nation']
+			unit.nation = scenario.enemy_nation
 			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			unit.SpawnAt(self.owner.hx, self.owner.hy)

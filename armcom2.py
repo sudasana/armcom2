@@ -63,7 +63,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2.0.0-rc3'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
@@ -2544,11 +2544,7 @@ class CampaignDay:
 		self.gun_list = []				# guns on player tank
 		self.selected_gun = None			# selected gun for Resupply menu
 		
-		for weapon in campaign.player_unit.weapon_list:
-			if weapon.GetStat('type') == 'Gun':
-				self.gun_list.append(weapon)
-		if len(self.gun_list) > 0:
-			self.selected_gun = self.gun_list[0]
+		self.BuildPlayerGunList()
 		
 		self.air_support_level = 0.0
 		if 'air_support_level' in campaign.current_week:
@@ -2576,6 +2572,15 @@ class CampaignDay:
 			'hex_highlight' : False
 		}
 	
+	# set up the list of player guns and select the first one if any
+	def BuildPlayerGunList(self):
+		self.gun_list = []
+		self.selected_gun = None
+		for weapon in campaign.player_unit.weapon_list:
+			if weapon.GetStat('type') == 'Gun':
+				self.gun_list.append(weapon)
+		if len(self.gun_list) > 0:
+			self.selected_gun = self.gun_list[0]
 	
 	# spawn squad members to bring player squad up to full strength
 	def SpawnPlayerSquad(self):
@@ -3727,12 +3732,12 @@ class CampaignDay:
 			if key.vk == libtcod.KEY_ENTER:
 				
 				# NEW: check to see if player might have skipped this step by mistake
-				no_ammo_loaded = False
+				no_ammo_loaded = True
 				for gun in gun_list:
 					for ammo_type in AMMO_TYPES:
 						if ammo_type in gun.ammo_stores:
-							if gun.ammo_stores[ammo_type] == 0:
-								no_ammo_loaded = True
+							if gun.ammo_stores[ammo_type] > 0:
+								no_ammo_loaded = False
 								break
 				
 				if no_ammo_loaded:
@@ -14611,6 +14616,7 @@ class Scenario:
 			if self.finished:
 				# copy the scenario unit over to the campaign version
 				campaign.player_unit = self.player_unit
+				campaign_day.BuildPlayerGunList()
 				
 				# copy the squad over too
 				campaign_day.player_squad = []

@@ -8,9 +8,11 @@
 ##########################################################################################
 #             Project Started February 23, 2016; Restarted July 25, 2016                 #
 #          Restarted again January 11, 2018; Restarted again January 2, 2019             #
+#                           First stable release March 14, 2020                          #
 ##########################################################################################
 #
-#    Copyright (c) 2016-2020 Gregory Adam Scott (sudasana@gmail.com)
+#    Copyright (c) 2016-2020 Gregory Adam Scott
+#    (sudasana@gmail.com or armouredcommander@gmail.com)
 #
 #    This file is part of Armoured Commander II.
 #
@@ -23,7 +25,7 @@
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 #    GNU General Public License for more details.
-
+#
 #    You should have received a copy of the GNU General Public License
 #    along with Armoured Commander II, in the form of a file named "gpl.txt".
 #    If not, see <https://www.gnu.org/licenses/>.
@@ -86,6 +88,7 @@ WINDOW_XM, WINDOW_YM = int(WINDOW_WIDTH/2), int(WINDOW_HEIGHT/2)	# center of gam
 KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak', 'Custom']	# list of possible keyboard layout settings
 MAX_TANK_NAME_LENGTH = 20				# maximum length of tank names
 MAX_NICKNAME_LENGTH = 10				# " for crew nicknames
+
 
 ##### Hex geometry definitions #####
 

@@ -13297,9 +13297,10 @@ class Scenario:
 		# draw unit info, description, and command instructions
 		unit.DisplayMyInfo(window_con, 1, 1)
 		
+		text = ''
 		for t in unit.GetStat('description'):
 			text += t
-		lines = wrap(text, 33)
+		lines = wrap(text, 25)
 		y = 21
 		libtcod.console_set_default_foreground(window_con, libtcod.light_grey)
 		for line in lines[:20]:

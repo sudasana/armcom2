@@ -4755,12 +4755,10 @@ class CampaignDay:
 			
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 			libtcod.console_print_ex(cd_command_con, 12, 34, libtcod.BKGND_NONE, libtcod.CENTER,
-				'Request resupply, ')
+				'Request resupply')
 			libtcod.console_print_ex(cd_command_con, 12, 35, libtcod.BKGND_NONE, libtcod.CENTER,
-				'reserve units,')
+				'and reserve units,')
 			libtcod.console_print_ex(cd_command_con, 12, 36, libtcod.BKGND_NONE, libtcod.CENTER,
-				'and replacement crew')
-			libtcod.console_print_ex(cd_command_con, 12, 37, libtcod.BKGND_NONE, libtcod.CENTER,
 				'30 mins.')
 			
 			libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)

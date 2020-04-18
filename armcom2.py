@@ -4918,12 +4918,15 @@ class CampaignDay:
 		# group
 		elif self.active_menu == 4:
 			
-			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			libtcod.console_set_default_foreground(cd_command_con, TITLE_COL)
 			libtcod.console_print(cd_command_con, 1, 3, 'Squad')
+			
+			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+			libtcod.console_print(cd_command_con, 2, 5, campaign.player_unit.unit_id)
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-			y = 5
+			y = 6
 			for unit in self.player_squad:
-				libtcod.console_print(cd_command_con, 1, y, unit.unit_id)
+				libtcod.console_print(cd_command_con, 2, y, unit.unit_id)
 				y += 1
 	
 	
@@ -9936,17 +9939,17 @@ class Unit:
 			for i in range(2, self.fp_to_resolve + 1):
 				destroy_odds += RESOLVE_FP_CHANCE_STEP * (RESOLVE_FP_CHANCE_MOD ** (i-1)) 
 			if self.unit_fatigue > 0:
-				destroy_odds += float(self.unit_fatigue) * 15.0
+				destroy_odds += float(self.unit_fatigue) * 5.0
 			destroy_odds = RestrictChance(destroy_odds)
 			
 			# calculate other odds
 			if self.reduced:
-				destroy_odds = RestrictChance(destroy_odds * 1.5)
+				destroy_odds = RestrictChance(destroy_odds * 1.2)
 			else:
 				reduction_odds = round(destroy_odds * 0.85, 1)
 			
 			if not self.routed:
-				rout_odds = reduction_odds * 0.75
+				rout_odds = reduction_odds * 0.50
 				if self.fortified:
 					rout_odds -= 15.0
 				elif self.entrenched:

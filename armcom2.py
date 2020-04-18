@@ -4788,9 +4788,28 @@ class CampaignDay:
 		# travel
 		elif self.active_menu == 3:
 			
+			# display current support levels at top
+			libtcod.console_print(cd_command_con, 0, 3, 'Air Support:')
+			if 'air_support_level' not in campaign.current_week:
+				text = 'None'
+			elif campaign_day.weather['Cloud Cover'] == 'Overcast':
+				text = '[N/A: Overcast]'
+			else:
+				text = str(self.air_support_level) + '%'
+			libtcod.console_print_ex(cd_command_con, 24, 3, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
+			
+			libtcod.console_print(cd_command_con, 0, 4, 'Artillery Support:')
+			if 'arty_support_level' not in campaign.current_week:
+				text = 'None'
+			else:
+				text = str(self.arty_support_level) + '%'
+			libtcod.console_print_ex(cd_command_con, 24, 4, libtcod.BKGND_NONE,
+				libtcod.RIGHT, text)
+			
 			# display directional options
 			x1 = 12
-			y1 = 6
+			y1 = 10
 			
 			# display possible support/move/recon directions
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
@@ -4834,7 +4853,7 @@ class CampaignDay:
 			
 			# calculate and display travel time
 			libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-			libtcod.console_print(cd_command_con, 1, 19, 'Travel Time:')
+			libtcod.console_print(cd_command_con, 0, 19, 'Travel Time:')
 			text = self.CheckTravel(hx1, hy1, hx2, hy2)
 			
 			# travel not allowed
@@ -4842,20 +4861,20 @@ class CampaignDay:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.light_red)
 			else:
 				text = str(self.CalculateTravelTime(hx1, hy1, hx2, hy2)) + ' mins.'
-			libtcod.console_print(cd_command_con, 1, 20, text)
+			libtcod.console_print(cd_command_con, 13, 19, text)
 			
 			# display enemy strength/organization if any and chance of encounter
 			map_hex = self.map_hexes[(hx2,hy2)]
 			if map_hex.controlled_by == 1:
 				
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.red)
-				libtcod.console_print(cd_command_con, 3, 12, 'Destination is')
-				libtcod.console_print(cd_command_con, 3, 13, 'Enemy Controlled')
+				libtcod.console_print(cd_command_con, 3, 15, 'Destination is')
+				libtcod.console_print(cd_command_con, 3, 16, 'Enemy Controlled')
 				
 				# display recon option if strength is unknown travel is possible
 				if not map_hex.known_to_player and 'N/A' not in text:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
-					libtcod.console_print(cd_command_con, 1, 17, 'Recon: 10 mins.')
+					libtcod.console_print(cd_command_con, 0, 18, 'Recon: 10 mins.')
 					libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
 					libtcod.console_print(cd_command_con, 3, 38, EnKey('r').upper())
 					
@@ -4878,42 +4897,38 @@ class CampaignDay:
 			
 			# display support commands if moving into an enemy zone
 			if map_hex.controlled_by == 1:
-				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
-				libtcod.console_print(cd_command_con, 1, 23, EnKey('t').upper())
-				libtcod.console_print(cd_command_con, 1, 26, EnKey('g').upper())
-				libtcod.console_print(cd_command_con, 1, 29, EnKey('b').upper())
 				
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
-				libtcod.console_print(cd_command_con, 3, 23, 'Advancing Fire')
+				libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
+				libtcod.console_print(cd_command_con, 1, 28, 'Movement Options')
+				
+				libtcod.console_set_default_foreground(cd_command_con, ACTION_KEY_COL)
+				libtcod.console_print(cd_command_con, 1, 30, EnKey('t').upper())
+				libtcod.console_print(cd_command_con, 1, 31, EnKey('g').upper())
+				libtcod.console_print(cd_command_con, 1, 32, EnKey('b').upper())
+				
 				if self.advancing_fire:
-					text = 'ON'
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 				else:
-					text = 'OFF'
-				libtcod.console_print(cd_command_con, 4, 24, '(' + text + ')')
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
+				libtcod.console_print(cd_command_con, 3, 30, 'Advancing Fire')
 				
 				# air support request
 				if 'air_support_level' not in campaign.current_week or campaign_day.weather['Cloud Cover'] == 'Overcast':
-					libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
-				libtcod.console_print(cd_command_con, 3, 26, 'Request Air Support')
-				
-				if self.air_support_request:
-					text = 'ON'
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.darkest_grey)
+				elif self.air_support_request:
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 				else:
-					text = 'OFF'
-				if 'air_support_level' in campaign.current_week:
-					libtcod.console_print(cd_command_con, 4, 27, '(' + text + ') ' + str(self.air_support_level))
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
+				libtcod.console_print(cd_command_con, 3, 31, 'Request Air Support')
 				
 				# artillery support request
-				libtcod.console_set_default_foreground(cd_command_con, libtcod.lighter_grey)
 				if 'arty_support_level' not in campaign.current_week:
 					libtcod.console_set_default_foreground(cd_command_con, libtcod.darker_grey)
-				libtcod.console_print(cd_command_con, 3, 29, 'Request Arty Support')
-				if self.arty_support_request:
-					text = 'ON'
+				elif self.arty_support_request:
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.white)
 				else:
-					text = 'OFF'
-				if 'arty_support_level' in campaign.current_week:
-					libtcod.console_print(cd_command_con, 4, 30, '(' + text + ') ' + str(self.arty_support_level))
+					libtcod.console_set_default_foreground(cd_command_con, libtcod.dark_grey)
+				libtcod.console_print(cd_command_con, 3, 32, 'Request Arty Support')
 			
 		# group
 		elif self.active_menu == 4:

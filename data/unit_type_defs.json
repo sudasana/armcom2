@@ -4419,7 +4419,7 @@
 	"SA-L 34": {
 		"category" : "Gun",
 		"class" : "Anti-Tank Gun",
-		"portrait" : "unit_25_mm_gun.xp",
+		"portrait" : "unit_25mm_gun.xp",
 		"size_class" : "Small",
 		"movement_class" : "Gun",
 		"gun_shield" : "TRUE",

@@ -52,7 +52,7 @@ Windows PyInstaller builds are also available from [the game's website](https://
 
 --- 
 
-# Game Manual
+# Game Manual - Version 1.0.7
 
 ## 1. General Principles
 

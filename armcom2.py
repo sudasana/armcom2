@@ -65,9 +65,9 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.0-rc3'					# game version
+VERSION = '2.0.1'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -2089,18 +2089,17 @@ class Campaign:
 					continue
 				
 				# stop displaying if we're near the bottom of the console
-				if y >= 50:
+				if y >= 56:
 					break
 				
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
 				libtcod.console_print(calendar_main_panel, 2, y, time)
 				
-				# FUTURE: determine if journal text needs to be wrapped
-				
 				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.light_grey)
-				libtcod.console_print(calendar_main_panel, 11, y, text)
-				
-				y += 1
+				lines = wrap(text, 44, subsequent_indent=' ')
+				for line in lines:
+					libtcod.console_print(calendar_main_panel, 11, y, line)
+					y += 1
 	
 	
 	# update the display of the campaign calendar interface
@@ -2404,7 +2403,7 @@ class Campaign:
 				# shift display scroll
 				elif key_char in ['w', 's']:
 					
-					if key_char == 'w':
+					if key_char == 's':
 						self.journal_scroll_line += 1
 					else:
 						self.journal_scroll_line -= 1
@@ -2414,8 +2413,8 @@ class Campaign:
 					else:
 						journal_length = len(self.journal[self.active_journal_day])
 					
-						if self.journal_scroll_line > journal_length - 44:
-							self.journal_scroll_line = journal_length - 44
+					if self.journal_scroll_line > journal_length - 50:
+						self.journal_scroll_line = journal_length - 50
 					
 					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
@@ -4791,7 +4790,7 @@ class CampaignDay:
 			if 'air_support_level' not in campaign.current_week:
 				text = 'None'
 			elif campaign_day.weather['Cloud Cover'] == 'Overcast':
-				text = '[N/A: Overcast]'
+				text = '*Overcast*'
 			else:
 				text = str(self.air_support_level) + '%'
 			libtcod.console_print_ex(cd_command_con, 24, 3, libtcod.BKGND_NONE,

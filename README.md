@@ -52,7 +52,7 @@ Windows PyInstaller builds are also available from [the game's website](https://
 
 --- 
 
-# Game Manual - Version 1.0.7
+# Game Manual - Version 2.0.0
 
 ## 1. General Principles
 
@@ -66,9 +66,9 @@ The [original Armoured Commander](https://www.armouredcommander.com/blog/armoure
 ## 2. Main Menu
 
 ![Main menu image](https://raw.githubusercontent.com/sudasana/armcom2/master/manual_images/armcom2_main_menu.png "Main Menu")
-In the **Main Menu**, you can continue a previously saved campaign, start a new campaign, change game options, or quit the game.
+In the **Main Menu**, you can continue your most recently saved campaign, load and continue a saved campaign, start a new campaign, change game options, or quit the game.
 
-To **Continue** a campaign, it must have been saved with a compatible version of the game. If the first two version numbers (separated by single dots) match, it will be compatible. Otherwise you won't be able to resume your campaign.
+To **Continue** or **Load** a campaign, it must have been saved with a compatible version of the game. If the first two version numbers (separated by single dots) match, it will be compatible. Otherwise, you won't be able to resume your campaign unless you load it with a compatible version of the game.
 
 If you start a **New Campaign**, any current saved campaign will be erased. You can only have one saved campaign at any one time.
 
@@ -242,9 +242,13 @@ For example, in the image above, if the player completes a successful Move Forwa
 
 When starting a scenario and after a move action, the player may find themselves in a Hull Down position in one direction. This means that a hill or other large solid object is covering their hull from that direction. Any incoming attacks that would have affected the Hull coming from that direction will instead have no effect. The Driver can try to get the tank into a HD position in the forward firection with the Attempt HD action.
 
+##### Overrun
+
+If your driver is on an Overrun command, your squad will move close to the hex immediately ahead of you, allowing you to attack them at very close range with MG weapons. This command is only available if there are 1+ gun of infantry units directly head of your location. While on an Overrun command, your squad counts as moving, but there are no movement penalties to MG attacks.
+
 ##### Bogging Down
 
-If the player's tank becomes bogged down, then the Driver must successfully unbog the tank in a subsequent Movemeng Phase before the tank can move again. Surviving player tanks are automatically unbogged at the end of a scenario.
+If the player's tank becomes bogged down, then the Driver must successfully unbog the tank in a subsequent Movement Phase before the tank can move again. Surviving player tanks are automatically unbogged at the end of a scenario.
 
 #### 8.15 Shooting Phase
 
@@ -272,19 +276,11 @@ Armoured targets hit with AP will undergo an Armour Penetration check immediatel
 
 The chance of the hit penetrating the target armour depends on the gun calibre, barrel length, distance from target, and thickness of target armour on the location hit. Especially powerful guns will automatically penetrate all but he thickest armour, as shown here. Enemy armoured targets that are penetrated are destroyed.
 
-#### 8.16 Close Combat Phase
-
-If there is an enemy infantry or gun unit directly in front of your tank during this phase, and if the Driver is on a 'Drive' command, you have the option of assaulting into the hex in front of you, engaging enemies there in close-range combat.
-
-Close Combat is effective but risky, especially for armoured vehicles. The current system is a placeholder until a future, better system can de designed. Each class of unit has a base firepower rating for when it is attacking or defending in close combat. If Close Combat is initiated, the defending unit gets a chance to engage in defensive fire, after which the attacking side has a chance to destroy one defending unit. The ratio between the total effective close combat firepower for each side determines the chance of destroying an opposing unit during each close combat round. Rounds continue until there are no units remaining on one side.
-
-Assaulting enemy units is likely best saved for when you have overwhelming firepower, and ideally when your target has already been Pinned.
-
-#### 8.17 Allied Action Phase
+#### 8.16 Allied Action Phase
 
 During this phase any other tanks in your squad will attack enemy targets automatically.
 
-#### 8.18 Enemy Action Phase
+#### 8.17 Enemy Action Phase
 
 During this phase enemy units will move around the map, and may attack you or your squadmates.
 

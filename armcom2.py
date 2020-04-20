@@ -65,7 +65,7 @@ from calendar import monthrange				# for date calculations
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
 VERSION = '2.0.1'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
@@ -6992,9 +6992,7 @@ class Personnel:
 			
 			# weapon operation needs a weapon in the unit
 			if k in ['Operate Gun', 'Operate MG']:
-				
 				for weapon in self.unit.weapon_list:
-					
 					if k == 'Operate Gun' and weapon.GetStat('type') != 'Gun': continue
 					if k == 'Operate MG' and weapon.GetStat('type') not in MG_WEAPONS: continue
 					if weapon.GetStat('fired_by') is None: continue
@@ -7045,6 +7043,14 @@ class Personnel:
 			elif k == 'Overrun':
 				if self.unit.immobilized: continue
 				if self.unit.bogged: continue
+				
+				# needs at least one MG
+				has_mg = False
+				for weapon in self.unit.weapon_list:
+					if weapon.GetStat('type') in MG_WEAPONS:
+						has_mg = True
+						break
+				if not has_mg: continue
 				
 				defending_units = False
 				for unit in scenario.hex_dict[(0,-1)].unit_stack:
@@ -11321,10 +11327,19 @@ class Scenario:
 						mod = PF_SIZE_MOD[size_class]
 						modifier_list.append((text, mod))
 				
-				# target terrain
-				tem = target.GetTEM()
-				if tem != 0.0:
-					modifier_list.append((target.terrain, tem))
+				# target is on overrun
+				if target.overrun:
+					
+					# point blank range
+					if attacker.hx == 0 and attacker.hy == -1:
+						modifier_list.append(('Point Blank Range', 20.0))
+				
+				else:
+				
+					# target terrain
+					tem = target.GetTEM()
+					if tem != 0.0:
+						modifier_list.append((target.terrain, tem))
 			
 			# long / short-barreled gun
 			long_range = weapon.GetStat('long_range')
@@ -11482,10 +11497,16 @@ class Scenario:
 			if target.fortified:
 				modifier_list.append(('Target Fortified', -50.0))
 			else:
-				if not overrun_attack:
-					if target.entrenched:
+				
+				if target.entrenched:
+					if overrun_attack:
+						modifier_list.append(('Target Entrenched', -20.0))
+					else:
 						modifier_list.append(('Target Entrenched', -30.0))
-					elif target.dug_in:
+				elif target.dug_in:
+					if overrun_attack:
+						modifier_list.append(('Target Dug-in', -5.0))
+					else:
 						modifier_list.append(('Target Dug-in', -15.0))
 		
 		# close combat attacks (eg. grenades, demo charges, etc.)

@@ -11189,6 +11189,8 @@ class Scenario:
 			return None
 		
 		# determine crewman operating weapon
+		# TODO: fix this; need to find a match between positions that can fire the weapon,
+		# and who is on the correct command
 		profile['crewman'] = None
 		if weapon.GetStat('fired_by') is not None:
 			profile['crewman'] = attacker.GetPersonnelByPosition(weapon.stats['fired_by'][0])
@@ -13395,16 +13397,6 @@ class Scenario:
 				unit.ResolveFP()
 				libtcod.console_flush()
 			
-			# NEW: reset any overrun statuses
-			for unit in self.units:
-				if unit != self.player_unit and unit not in self.player_unit.squad: continue
-				unit.overrun = False
-				unit.GenerateTerrain()
-				unit.CheckForHD()
-				unit.SetSmokeLevel()
-			
-			self.UpdateUnitCon()
-			
 			self.phase = PHASE_ENEMY_ACTION
 			self.active_player = 1
 		
@@ -13420,6 +13412,15 @@ class Scenario:
 				if unit.owning_player == self.active_player: continue
 				unit.ResolveFP()
 				libtcod.console_flush()
+			
+			# NEW: reset any overrun statuses
+			for unit in self.units:
+				if unit != self.player_unit and unit not in self.player_unit.squad: continue
+				unit.overrun = False
+				unit.GenerateTerrain()
+				unit.CheckForHD()
+				unit.SetSmokeLevel()
+			self.UpdateUnitCon()
 			
 			# advance clock
 			campaign_day.AdvanceClock(0, TURN_LENGTH)
@@ -14127,6 +14128,11 @@ class Scenario:
 				y_mod = 1
 			else:
 				y_mod = -1
+			
+			# top unit is on overrun
+			if map_hex.unit_stack[0].overrun:
+				y_mod -= 1
+			
 			(x,y) = scenario.PlotHex(map_hex.unit_stack[0].hx, map_hex.unit_stack[0].hy)
 			text = str(len(map_hex.unit_stack))
 			libtcod.console_set_default_foreground(unit_con, libtcod.grey)

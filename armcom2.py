@@ -8528,8 +8528,20 @@ class Unit:
 	# see if this unit has moved quickly enough to take another move action
 	# player only for now
 	def ExtraMoveCheck(self):
-		# TEMP
-		return True
+		
+		chance = 0.0
+		if self.GetStat('movement_class') not in ['Fast Tank', 'Fast Wheeled']:
+			return False
+		chance += 10.0
+		
+		if self.GetStat('recce') is None:
+			return False
+		chance += 10.0
+		
+		if GetPercentileRoll() <= chance:
+			return True
+		return False
+
 	
 	# attempt to dig-in; infantry and guns only
 	def AttemptDigIn(self):

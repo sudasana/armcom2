@@ -67,7 +67,7 @@ from calendar import monthrange				# for date calculations
 
 DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.1'					# game version
+VERSION = '2.0.2'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -15018,8 +15018,14 @@ def ExportLog():
 				f.write('  [Empty]\n\n')
 				continue
 			f.write('  ' + position.crewman.first_name + ' ' + position.crewman.last_name + '\n')
-			if position.crewman.wound != '':
-				f.write('  ' + position.crewman.wound + '\n')
+			f.write('  Injuries:\n')
+			injured = False
+			for (k, v) in position.crewman.injury.items():
+				if not v: continue
+				f.write('  ' + k + ': ' + v + '\n')
+				injured = True
+			if not injured:
+				f.write('  None\n')
 			f.write('\n')
 		f.write('\n')
 		

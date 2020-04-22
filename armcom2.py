@@ -3152,7 +3152,6 @@ class CampaignDay:
 			self.random_event_chance += 2.0
 			return
 		
-		
 		# roll for type of event
 		roll = GetPercentileRoll()
 		
@@ -3195,6 +3194,11 @@ class CampaignDay:
 			
 			self.map_hexes[(hx, hy)].target_of_opportunity = 10
 			
+			# NEW: increase enemy strength here
+			self.map_hexes[(hx, hy)].enemy_strength += libtcod.random_get_int(0, 2, 5)
+			if self.map_hexes[(hx, hy)].enemy_strength > 10:
+				self.map_hexes[(hx, hy)].enemy_strength = 10
+			
 			# set flavour text
 			roll = GetPercentileRoll()
 			if roll <= 20.0:
@@ -3208,6 +3212,9 @@ class CampaignDay:
 			else:
 				text = 'Fuel Dump'
 			self.map_hexes[(hx, hy)].too_text = text
+			
+			self.UpdateCDUnitCon()
+			self.UpdateCDDisplay()
 			
 			ShowMessage('We have received word of a new target of opportunity (' + text +
 				'), capture this zone if possible.', cd_highlight=(hx,hy))
@@ -15231,8 +15238,14 @@ def ExportLog():
 				f.write('  [Empty]\n\n')
 				continue
 			f.write('  ' + position.crewman.first_name + ' ' + position.crewman.last_name + '\n')
-			if position.crewman.wound != '':
-				f.write('  ' + position.crewman.wound + '\n')
+			f.write('  Injuries:\n')
+			injured = False
+			for (k, v) in position.crewman.injury.items():
+				if not v: continue
+				f.write('  ' + k + ': ' + v + '\n')
+				injured = True
+			if not injured:
+				f.write('  None\n')
 			f.write('\n')
 		f.write('\n')
 		
@@ -16917,13 +16930,8 @@ def ShowDebugMenu():
 			DrawDebugMenu()
 			continue
 		
-		# filter out odd characters
-		if key_char == '\0': continue
-		
-		key_num = int(key_char)
-		
 		# regenerate CD map roads
-		if key_num == 1:
+		if key_char == '1':
 			if campaign_day is not None:
 				campaign_day.GenerateRoads()
 				campaign_day.GenerateRivers()
@@ -16934,7 +16942,7 @@ def ShowDebugMenu():
 				continue
 		
 		# attack crewman in selected position
-		elif key_num == 2:
+		if key_char == '2':
 			if scenario is not None:
 				option_list = []
 				for position in scenario.player_unit.positions_list:
@@ -16949,7 +16957,7 @@ def ShowDebugMenu():
 				continue
 		
 		# immobilize player
-		elif key_num == 3:
+		if key_char == '3':
 			if scenario is not None:
 				if scenario.player_unit.immobilized:
 					continue
@@ -16960,7 +16968,7 @@ def ShowDebugMenu():
 				continue
 		
 		# set current time to end of combat day
-		elif key_num == 4:
+		if key_char == '4':
 			if campaign_day is not None:
 				campaign_day.day_clock['hour'] = campaign_day.end_of_day['hour']
 				campaign_day.day_clock['minute'] = campaign_day.end_of_day['minute']
@@ -16971,7 +16979,7 @@ def ShowDebugMenu():
 				continue
 		
 		# end the current scenario
-		elif key_num == 5:
+		if key_char == '5':
 			if scenario is not None:
 				scenario.finished = True
 				ShowMessage('Scenario finished flag set to True')
@@ -16979,7 +16987,7 @@ def ShowDebugMenu():
 				continue
 		
 		# export current campaign log
-		elif key_num == 6:
+		if key_char == '6':
 			if campaign is not None:
 				ExportLog()
 				ShowMessage('Log exported')
@@ -16987,7 +16995,7 @@ def ShowDebugMenu():
 				continue
 		
 		# generate new weather
-		elif key_num == 7:
+		if key_char == '7':
 			if campaign_day is not None:
 				campaign_day.GenerateWeather()
 				ShowMessage('New weather conditions generated')

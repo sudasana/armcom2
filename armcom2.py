@@ -8017,6 +8017,7 @@ class AI:
 			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			unit.SpawnAt(self.owner.hx, self.owner.hy)
+			scenario.AddNewUnitToLoS(unit)
 			
 			if self.owner.spotted:
 				unit.spotted = True
@@ -10358,6 +10359,9 @@ class Scenario:
 	# roll to see whether two units on the scenario map have LoS to each other
 	def DoLoSRoll(self, unit1, unit2):
 		
+		# no need for dead units
+		if not unit1.alive or not unit2.alive: return False
+		
 		print('\nDEBUG: Rolling for LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
 		
 		# base odds of LoS based on range between the two units
@@ -10427,6 +10431,38 @@ class Scenario:
 				print('LOS DEBUG: No LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
 				unit1.los_table[unit2] = False
 				unit2.los_table[unit1] = False
+
+
+	# add a newly spawned unit to the existing units' LoS tables
+	def AddNewUnitToLoS(self, unit1):
+		
+		def AddLoS(unit1, unit2):
+			unit1.los_table[unit2] = True
+			unit2.los_table[unit1] = True
+			print('LOS DEBUG: Added LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
+		
+		unit1.los_table = {}
+		
+		for unit2 in self.units:
+			
+			# same unit
+			if unit1 == unit2:
+				AddLoS(unit1, unit2)
+				continue
+			
+			# same side and same hex
+			if unit1.owning_player == unit2.owning_player and unit1.hx == unit2.hx and unit1.hy == unit2.hy:
+				AddLoS(unit1, unit2)
+				continue
+			
+			# roll for LoS between the units
+			if self.DoLoSRoll(unit1, unit2):
+				AddLoS(unit1, unit2)
+				continue
+			
+			print('LOS DEBUG: No LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
+			unit1.los_table[unit2] = False
+			unit2.los_table[unit1] = False
 
 	
 	# roll at start of scenario to see whether player has been ambushed
@@ -10530,7 +10566,7 @@ class Scenario:
 				if GetPercentileRoll() <= (float(self.enemy_reinforcements) * 40.0):
 					return
 			self.enemy_reinforcements += 1
-			self.SpawnEnemyUnits(num_units=1)
+			self.SpawnEnemyUnits(reinforcement=True)
 			ShowMessage('Enemy reinforcements have arrived!')
 		
 		# random enemy unit is recalled
@@ -10945,8 +10981,8 @@ class Scenario:
 		
 	
 	# spawn enemy units on the hex map
-	# can be overidden to spawn a specific number of units
-	def SpawnEnemyUnits(self, num_units=None):
+	# if reinformcent is True, only spawn one unit and add them to the LoS tables
+	def SpawnEnemyUnits(self, reinforcement=False):
 		
 		# if not enemy nation set yet, set it now
 		if self.enemy_nation == None:
@@ -10960,7 +10996,9 @@ class Scenario:
 			unit_types = json.load(data_file)
 		
 		# determine initial number of enemy units to spawn: 1-4
-		if num_units is None:
+		if reinforcement:
+			num_units = 1
+		else:
 			num_units = 4
 			for i in range(3):
 				if libtcod.random_get_int(0, 0, 10) >= self.cd_map_hex.enemy_strength:
@@ -11144,9 +11182,15 @@ class Scenario:
 				else:
 					unit.cargo = choice(['Ammo', 'Food', 'Supplies'])
 			
-			# if player used advancing fire, test for pin
-			if campaign_day.advancing_fire:
-				unit.PinTest(10.0)
+			# reinforcements need to be added to the LoS table
+			if reinforcement:
+				self.AddNewUnitToLoS(unit)
+			
+			else:
+			
+				# if player used advancing fire, test for pin
+				if campaign_day.advancing_fire:
+					unit.PinTest(10.0)
 	
 	
 	# given a combination of an attacker, weapon, and target, see if this would be a

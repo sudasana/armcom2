@@ -76,7 +76,7 @@ if STEAM_ON:
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '3.0.0-dev'					# game version
+VERSION = '3.0.0-dev-1'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -7437,8 +7437,13 @@ class Weapon:
 	# calculate the odds for maintain RoF with this weapon
 	def GetRoFChance(self):
 		
-		# no RoF set for this weapon
+		# NEW: no RoF chance if weapon is gun and unit is moving
+		if self.GetStat('type') == 'Gun' and self.unit.moving:
+			return 0.0
+		
 		rof = self.GetStat('rof')
+		
+		# no RoF set for this weapon, use base chance
 		if rof is None: rof = '5.0'
 		
 		# calculate base chance
@@ -7449,9 +7454,9 @@ class Weapon:
 			if not self.using_rr:
 				chance = round(chance * 0.50, 2)
 		
-		bonus = 0.0
+		modifier = 0.0
 		
-		# Gun-specific bonuses
+		# Gun-specific modifiers
 		if self.GetStat('type') == 'Gun':
 			
 			# guns must have at least one shell of the current type available
@@ -7474,12 +7479,16 @@ class Weapon:
 					if crewman is None: continue
 					if crewman.current_cmd != 'Reload': continue
 					
-					bonus = 10.0
+					modifier = 20.0
 					if 'Fast Hands' in crewman.skills:
-						bonus += crewman.GetSkillMod(15.0)
+						modifier += crewman.GetSkillMod(15.0)
 					break
+			
+			# no loader working
+			if modifier == 0.0:
+				modifier = -15.0
 		
-		# more general bonuses based on firing crewman
+		# more general modifiers based on firing crewman
 		position_list = self.GetStat('fired_by')
 		if position_list is not None:
 			for position in position_list:
@@ -7488,21 +7497,24 @@ class Weapon:
 				
 				if self.GetStat('type') == 'Gun':
 					if 'Quick Trigger' in crewman.skills:
-						bonus += crewman.GetSkillMod(5.0)
+						modifier += crewman.GetSkillMod(5.0)
 					if self.selected_target is not None:
 						if 'Time on Target' in crewman.skills:
-							bonus += crewman.GetSkillMod(10.0)
+							modifier += crewman.GetSkillMod(10.0)
 				
 				elif self.GetStat('type') in MG_WEAPONS:
 					if 'Burst Fire' in crewman.skills:
-						bonus += crewman.GetSkillMod(10.0)
+						modifier += crewman.GetSkillMod(10.0)
 		
 		# national skill bonus
 		if self.unit == scenario.player_unit and self.GetStat('type') in MG_WEAPONS:
 			if campaign.CheckForNationalSkill('Superior Firepower'):
-				bonus += 25.0
+				modifier += 25.0
 		
-		return chance + bonus
+		chance += modifier
+		if chance < 0.0:
+			chance = 0.0
+		return chance
 		
 	
 	# display information about current available ammo to a console
@@ -7720,9 +7732,11 @@ class AI:
 	# do activation for this unit
 	def DoActivation(self):
 		
-		# check for debug flag
+		# check for debug flags
 		if DEBUG:
 			if session.debug['No AI Actions']:
+				return
+			if self.owner in scenario.player_unit.squad and session.debug['No Player Squad Actions']:
 				return
 		
 		# no action if it's not alive
@@ -8888,7 +8902,7 @@ class Unit:
 	# do a round of spotting from this unit
 	# for now, only the player unit does these
 	def DoSpotChecks(self):
-				
+			
 		# unit out of play range
 		if GetHexDistance(0, 0, self.hx, self.hy) > 3:
 			return
@@ -9493,6 +9507,13 @@ class Unit:
 			text = self.GetName() + ' attacks you with ' + weapon.stats['name']
 			ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 		
+		# determine if attack profile should be displayed on screen
+		display_profile = False
+		if self == scenario.player_unit:
+			display_profile = True
+		elif self.spotted and target == scenario.player_unit:
+			display_profile = True
+		
 		# attack loop, possible to maintain RoF and do multiple attacks within this loop
 		attack_finished = False
 		while not attack_finished:
@@ -9513,7 +9534,7 @@ class Unit:
 				continue
 			
 			# display attack profile on screen if is player involved
-			if self == scenario.player_unit or target == scenario.player_unit:
+			if display_profile:
 				scenario.DisplayAttack(profile)
 				# activate the attack console and display to screen
 				scenario.attack_con_active = True
@@ -9634,10 +9655,10 @@ class Unit:
 					attack_finished = True
 					weapon.maintained_rof = False
 			
-			# wait for the player if they are involved
+			# wait for the player if the attack was displayed
 			# if RoF is maintained, may choose to attack again
 			attack_finished = True
-			if self == scenario.player_unit or target == scenario.player_unit:
+			if display_profile:
 				scenario.UpdateScenarioDisplay()
 				
 				end_pause = False
@@ -9766,6 +9787,11 @@ class Unit:
 				# armoured target
 				elif target.GetStat('armour') is not None:
 					target.ap_hits_to_resolve.append(profile)
+			
+			# NEW: if player was target but attacker was not spotted, display result as a pop-up message
+			if not display_profile and target == scenario.player_unit:
+				text = 'Result: ' + profile['result']
+				ShowMessage(text, scenario_highlight=(self.hx, self.hy))
 			
 			# update context console in case we maintained RoF
 			scenario.UpdateContextCon()
@@ -10117,10 +10143,14 @@ class Unit:
 		# if player unit, check for crew injury
 		# FUTURE: also apply to AI units?
 		if self == scenario.player_unit:
+			result = False
 			for position in self.positions_list:
 				if position.crewman is None: continue
 				if position.crewman.ResolveAttack({'firepower' : self.fp_to_resolve}) is not None:
 					scenario.UpdateCrewInfoCon()
+					result = True
+			if not result:
+				ShowMessage('No Effect', scenario_highlight=(self.hx, self.hy))
 		
 		# clear fp to resolve and return
 		self.fp_to_resolve = 0
@@ -10410,13 +10440,13 @@ class Scenario:
 		# base odds of LoS based on range between the two units
 		distance = GetHexDistance(unit1.hx, unit1.hy, unit2.hx, unit2.hy)
 		if distance == 0:		# same hex
-			chance = 90.0
+			chance = 95.0
 		elif distance == 1:		# close range
-			chance = 75.0
+			chance = 85.0
 		elif distance == 2:		# medium range
-			chance = 50.0
+			chance = 70.0
 		elif distance == 3:		# long range
-			chance = 20.0
+			chance = 50.0
 		else:
 			return False		# off map: no chance
 		

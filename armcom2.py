@@ -770,7 +770,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'HD Chance' : 10.0,
 		'Movement Mod' : -5.0,
 		'Bog Mod' : 1.0,
-		'los_mod' : 5.0
+		'los_mod' : 3.0
 	},
 	'Brush': {
 		'TEM' : {
@@ -781,7 +781,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'Bog Mod' : 2.0,
 		'Air Burst' : 10.0,
 		'Burnable' : True,
-		'los_mod' : 10.0
+		'los_mod' : 5.0
 	},
 	'Woods': {
 		'TEM' : {
@@ -793,7 +793,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'Double Bog Check' : True,		# player must test to bog before moving out of this terrain type
 		'Air Burst' : 20.0,
 		'Burnable' : True,
-		'los_mod' : 20.0
+		'los_mod' : 10.0
 	},
 	'Fields': {
 		'TEM' : {
@@ -801,14 +801,14 @@ SCENARIO_TERRAIN_EFFECTS = {
 		},
 		'HD Chance' : 5.0,
 		'Burnable' : True,
-		'los_mod' : 10.0
+		'los_mod' : 5.0
 	},
 	'Hills': {
 		'TEM' : {
 			'All' : -20.0
 		},
 		'HD Chance' : 40.0,
-		'los_mod' : 30.0
+		'los_mod' : 15.0
 	},
 	'Wooden Buildings': {
 		'TEM' : {
@@ -817,7 +817,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 			'Deployed Gun' : -30.0
 		},
 		'HD Chance' : 30.0,
-		'los_mod' : 20.0,
+		'los_mod' : 10.0,
 		'Burnable' : True
 	},
 	'Marsh': {
@@ -828,7 +828,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'Movement Mod' : -30.0,
 		'Bog Mod' : 10.0,
 		'Double Bog Check' : True,
-		'los_mod' : 5.0,
+		'los_mod' : 3.0,
 	},
 	'Rubble': {
 		'TEM' : {
@@ -837,7 +837,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 			'Deployed Gun' : -30.0
 		},
 		'HD Chance' : 30.0,
-		'los_mod' : 20.0,
+		'los_mod' : 10.0,
 		'Bog Mod' : 10.0,
 		'Double Bog Check' : True
 	}
@@ -7747,6 +7747,15 @@ class AI:
 			if session.debug['AI Hates Player']:
 				roll = 0.0
 		
+		# check for LoS on enemy units
+		has_los_to_enemy = False
+		for unit in scenario.units:
+			if not unit.alive: continue
+			if unit.owning_player == self.owner.owning_player: continue
+			if not self.owner.los_table[unit]: continue
+			has_los_to_enemy = True
+			break
+		
 		# check for player crew vulnerability
 		player_crew_vulnerable = False
 		if len(scenario.player_unit.VulnerableCrew()) > 0:
@@ -7837,20 +7846,6 @@ class AI:
 			if self.disposition == 'Combat':
 				self.disposition = 'None'
 		
-		# MG teams less likely to move
-		if self.owner.GetStat('class') == 'MG Team':
-			if self.disposition == 'Movement':
-				if GetPercentileRoll() <= 80.0:
-					self.disposition = 'Combat'
-		
-		# dug-in and entrenched units much less likely to move
-		if self.owner.dug_in and self.disposition == 'Movement':
-			if GetPercentileRoll() <= 80.0:
-				self.disposition = 'Combat'
-		if self.owner.entrenched and self.disposition == 'Movement':
-			if GetPercentileRoll() <= 97.0:
-				self.disposition = 'Combat'
-		
 		# recalled units much more likely to move
 		if self.recall and self.owner.GetStat('category') != 'Gun':
 			if self.disposition != 'Movement':
@@ -7873,6 +7868,31 @@ class AI:
 		if self.owner in scenario.player_unit.squad:
 			if self.disposition not in ['None', 'Combat']:
 				self.disposition = 'Combat'
+
+		# want to attack player but no LoS to player
+		if self.disposition in ['Attack Player', 'Harass Player']:
+			if not self.owner.los_table[scenario.player_unit]:
+				self.disposition = 'Combat'
+		
+		# need to reposition if no LoS to enemy units at all
+		if self.disposition == 'Combat' and self.owner.GetStat('category') != 'Gun' and not has_los_to_enemy:
+			self.disposition = 'Reposition'
+		
+		# MG teams less likely to move or reposition
+		if self.owner.GetStat('class') == 'MG Team' and  self.disposition in ['Movement', 'Reposition']:
+			if GetPercentileRoll() <= 80.0:
+				self.disposition = 'Combat'
+		
+		# dug-in and entrenched units much less likely to move or reposition
+		if self.owner.dug_in and self.disposition in ['Movement', 'Reposition']:
+			if GetPercentileRoll() <= 80.0:
+				self.disposition = 'Combat'
+		if self.owner.entrenched and self.disposition in ['Movement', 'Reposition']:
+			if GetPercentileRoll() <= 97.0:
+				self.disposition = 'Combat'
+		# fortified units won't move or reposition
+		if self.owner.fortified and self.disposition in ['Movement', 'Reposition']:
+			self.disposition = 'Combat'
 		
 		# unit has been routed
 		if self.owner.routed:
@@ -7883,17 +7903,36 @@ class AI:
 				self.disposition = 'Movement'
 		
 		# immobilized units can't move
-		if self.owner.immobilized and self.disposition == 'Movement':
+		if self.owner.immobilized and self.disposition in ['Movement', 'Reposition']:
 			self.disposition = 'Combat'
 		
-		# fortified units won't move
-		if self.owner.fortified and self.disposition == 'Movement':
-			self.disposition = 'Combat'
+		
 		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' set disposition to: ' + self.disposition)
 				
 		# Step 2: Determine action to take
-		if self.disposition == 'Movement':
+		
+		# NEW
+		if self.disposition == 'Reposition':
+			
+			print('AI DEBUG: ' + self.owner.unit_id + ' is repositioning')
+			
+			# set statuses
+			self.owner.moving = True
+			self.owner.dug_in = False
+			self.owner.entrenched = False
+			self.owner.ClearAcquiredTargets()
+			
+			if self.owner.BreakdownCheck(): return
+			
+			self.owner.GenerateTerrain()
+			scenario.GenerateUnitLoS(self.owner)
+			self.owner.CheckForHD()
+			self.owner.SetSmokeLevel()
+			scenario.UpdateUnitCon()
+			scenario.UpdateScenarioDisplay()
+		
+		elif self.disposition == 'Movement':
 			
 			# build a list of adjacent hexes
 			hex_list = GetHexRing(self.owner.hx, self.owner.hy, 1)
@@ -7998,6 +8037,7 @@ class AI:
 				weapon.UpdateCoveredHexes()
 			
 			self.owner.GenerateTerrain()
+			scenario.GenerateUnitLoS(self.owner)
 			self.owner.CheckForHD()
 			self.owner.SetSmokeLevel()
 			scenario.UpdateUnitCon()
@@ -8017,7 +8057,7 @@ class AI:
 			unit.ai = AI(unit)
 			unit.GenerateNewPersonnel()
 			unit.SpawnAt(self.owner.hx, self.owner.hy)
-			scenario.AddNewUnitToLoS(unit)
+			scenario.GenerateUnitLoS(unit)
 			
 			if self.owner.spotted:
 				unit.spotted = True
@@ -8026,6 +8066,9 @@ class AI:
 		
 		# combat dispositions
 		elif self.disposition in ['Combat', 'Attack Player', 'Harass Player']:
+			
+			# routed units won't attack
+			if self.owner.routed: return
 			
 			# determine target list
 			target_list = []
@@ -10362,7 +10405,7 @@ class Scenario:
 		# no need for dead units
 		if not unit1.alive or not unit2.alive: return False
 		
-		print('\nDEBUG: Rolling for LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
+		print('DEBUG: Rolling for LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
 		
 		# base odds of LoS based on range between the two units
 		distance = GetHexDistance(unit1.hx, unit1.hy, unit2.hx, unit2.hy)
@@ -10434,12 +10477,15 @@ class Scenario:
 
 
 	# add a newly spawned unit to the existing units' LoS tables
-	def AddNewUnitToLoS(self, unit1):
+	# can also regenerated LoS links between this unit and every other unit
+	def GenerateUnitLoS(self, unit1):
 		
 		def AddLoS(unit1, unit2):
 			unit1.los_table[unit2] = True
 			unit2.los_table[unit1] = True
-			print('LOS DEBUG: Added LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
+			print('LOS DEBUG: Set LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
+		
+		print('\nLOS DEBUG: Starting to generate new LoS for: ' + unit1.unit_id)
 		
 		unit1.los_table = {}
 		
@@ -10464,7 +10510,6 @@ class Scenario:
 			unit1.los_table[unit2] = False
 			unit2.los_table[unit1] = False
 
-	
 	# roll at start of scenario to see whether player has been ambushed
 	def DoAmbushRoll(self):
 		
@@ -11184,10 +11229,8 @@ class Scenario:
 			
 			# reinforcements need to be added to the LoS table
 			if reinforcement:
-				self.AddNewUnitToLoS(unit)
-			
+				self.GenerateUnitLoS(unit)
 			else:
-			
 				# if player used advancing fire, test for pin
 				if campaign_day.advancing_fire:
 					unit.PinTest(10.0)
@@ -13357,10 +13400,11 @@ class Scenario:
 				unit.dest_hex = None
 				unit.animation_cells = []
 		
-		# set new terrain for player and squad
+		# set new terrain, generate new LoS for player and squad
 		for unit in self.units:
 			if unit != self.player_unit and unit not in self.player_unit.squad: continue
 			unit.GenerateTerrain()
+			self.GenerateUnitLoS(unit)
 			unit.CheckForHD()
 			unit.SetSmokeLevel()
 		
@@ -13778,14 +13822,14 @@ class Scenario:
 				libtcod.console_flush()
 				unit.ai.DoActivation()
 				
-				# do recover roll for this unit
-				unit.DoRecoveryRoll()
-				
 				# resolve any ap hits caused by this unit
 				for unit2 in self.units:
 					if not unit2.alive: continue
 					if unit2.owning_player == self.active_player: continue
 					unit2.ResolveAPHits()
+				
+				# do recovery roll for this unit
+				unit.DoRecoveryRoll()
 				
 				libtcod.console_flush()
 			
@@ -13816,6 +13860,9 @@ class Scenario:
 					if not unit2.alive: continue
 					if unit2.owning_player == self.active_player: continue
 					unit2.ResolveAPHits()
+				
+				# do recovery roll for this unit
+				unit.DoRecoveryRoll()
 				
 				libtcod.console_flush()
 			

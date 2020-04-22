@@ -7915,8 +7915,6 @@ class AI:
 		# NEW
 		if self.disposition == 'Reposition':
 			
-			print('AI DEBUG: ' + self.owner.unit_id + ' is repositioning')
-			
 			# set statuses
 			self.owner.moving = True
 			self.owner.dug_in = False
@@ -10405,8 +10403,6 @@ class Scenario:
 		# no need for dead units
 		if not unit1.alive or not unit2.alive: return False
 		
-		print('DEBUG: Rolling for LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
-		
 		# base odds of LoS based on range between the two units
 		distance = GetHexDistance(unit1.hx, unit1.hy, unit2.hx, unit2.hy)
 		if distance == 0:		# same hex
@@ -10420,8 +10416,6 @@ class Scenario:
 		else:
 			return False		# off map: no chance
 		
-		print('DEBUG: Base chance is: ' + str(chance))
-		
 		# modify base chance by terrain of both units
 		terrain_mod = 0.0
 		
@@ -10429,7 +10423,6 @@ class Scenario:
 			terrain_mod -= SCENARIO_TERRAIN_EFFECTS[unit1.terrain]['los_mod']
 		if unit2.terrain is not None:
 			terrain_mod -= SCENARIO_TERRAIN_EFFECTS[unit2.terrain]['los_mod']
-		print('DEBUG: Total terrain modifier is: ' + str(terrain_mod))
 		
 		chance += terrain_mod
 		if GetPercentileRoll() <= chance:
@@ -10443,7 +10436,6 @@ class Scenario:
 		def AddLoS(unit1, unit2):
 			unit1.los_table[unit2] = True
 			unit2.los_table[unit1] = True
-			print('LOS DEBUG: Added LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
 		
 		# clear all LoS tables
 		for unit in self.units:
@@ -10471,7 +10463,6 @@ class Scenario:
 					AddLoS(unit1, unit2)
 					continue
 				
-				print('LOS DEBUG: No LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
 				unit1.los_table[unit2] = False
 				unit2.los_table[unit1] = False
 
@@ -10483,9 +10474,6 @@ class Scenario:
 		def AddLoS(unit1, unit2):
 			unit1.los_table[unit2] = True
 			unit2.los_table[unit1] = True
-			print('LOS DEBUG: Set LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
-		
-		print('\nLOS DEBUG: Starting to generate new LoS for: ' + unit1.unit_id)
 		
 		unit1.los_table = {}
 		
@@ -10506,7 +10494,6 @@ class Scenario:
 				AddLoS(unit1, unit2)
 				continue
 			
-			print('LOS DEBUG: No LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
 			unit1.los_table[unit2] = False
 			unit2.los_table[unit1] = False
 

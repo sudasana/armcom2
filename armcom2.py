@@ -14393,7 +14393,7 @@ class Scenario:
 		# smoke if any
 		if unit.smoke > 0:
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.grey)
-			libtcod.console_print(unit_info_con, 23, 2, 'Smoke lvl ' + str(unit.smoke))
+			libtcod.console_print(unit_info_con, 30, 2, 'Smoke lvl ' + str(unit.smoke))
 		
 		if unit.owning_player == 1 and not unit.spotted:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)

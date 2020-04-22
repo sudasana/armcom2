@@ -8525,6 +8525,12 @@ class Unit:
 					weapon.ammo_stores[ammo_type] = 0
 	
 	
+	# see if this unit has moved quickly enough to take another move action
+	# player only for now
+	def ExtraMoveCheck(self):
+		# TEMP
+		return True
+	
 	# attempt to dig-in; infantry and guns only
 	def AttemptDigIn(self):
 		if self.GetStat('category') not in ['Infantry', 'Gun']: return False
@@ -13291,9 +13297,7 @@ class Scenario:
 			unit.moving = True
 			unit.ClearAcquiredTargets()
 		
-		if reposition:
-			roll = -100.0
-		else:
+		if not reposition:
 		
 			# do move success roll
 			if forward:
@@ -13332,36 +13336,33 @@ class Scenario:
 				if session.debug['Player Always Moves']:
 					roll = 1.0
 		
-		# move was not successful
-		if not reposition and roll > chance:
-			
-			# clear any alternative bonus and apply bonus for future moves
-			if forward:
-				self.player_unit.reverse_move_bonus = 0.0
-				self.player_unit.forward_move_bonus += BASE_MOVE_BONUS
-			else:
-				self.player_unit.forward_move_bonus = 0.0
-				self.player_unit.reverse_move_bonus += BASE_MOVE_BONUS
-			
-			# show pop-up message to player
-			ShowMessage('You move but not far enough to enter a new map hex')
-			
-			# set new terrain and LoS for player and squad
-			for unit in self.units:
-				if unit != self.player_unit and unit not in self.player_unit.squad: continue
-				unit.GenerateTerrain()
-				self.GenerateUnitLoS(unit)
-				unit.CheckForHD()
-			
-			# end movement phase
-			self.advance_phase = True
-			
-			return
+			# move was not successful
+			if roll > chance:
+				
+				# clear any alternative bonus and apply bonus for future moves
+				if forward:
+					self.player_unit.reverse_move_bonus = 0.0
+					self.player_unit.forward_move_bonus += BASE_MOVE_BONUS
+				else:
+					self.player_unit.forward_move_bonus = 0.0
+					self.player_unit.reverse_move_bonus += BASE_MOVE_BONUS
+				
+				# show pop-up message to player
+				ShowMessage('You move but not far enough to enter a new map hex')
+				
+				# set new terrain and LoS for player and squad
+				for unit in self.units:
+					if unit != self.player_unit and unit not in self.player_unit.squad: continue
+					unit.GenerateTerrain()
+					self.GenerateUnitLoS(unit)
+					unit.CheckForHD()
+				
+				self.advance_phase = True
+				return
 		
 		# successful move may be cancelled by breakdown
 		if self.player_unit.BreakdownCheck():
 			ShowMessage('Your vehicle stalls, making you unable to move further.')
-			if reposition: return
 			self.advance_phase = True
 			return
 		
@@ -13429,6 +13430,10 @@ class Scenario:
 				unit.dest_hex = None
 				unit.animation_cells = []
 		
+		# reposition move
+		else:
+			ShowMessage('You move to a new location within the same hex.')
+		
 		# set new terrain, generate new LoS for player and squad
 		for unit in self.units:
 			if unit != self.player_unit and unit not in self.player_unit.squad: continue
@@ -13452,8 +13457,13 @@ class Scenario:
 			ShowMessage('Your tank has becomed bogged.')
 			self.UpdatePlayerInfoCon()
 			self.UpdateUnitCon()
+			self.advance_phase = True
+			return
 		
-		if reposition: return
+		# NEW: check for extra move
+		if self.player_unit.ExtraMoveCheck():
+			ShowMessage('You have moved swiftly enough to take another move action.')
+			return
 		self.advance_phase = True
 	
 	
@@ -13747,13 +13757,6 @@ class Scenario:
 					campaign_day.abandoned_tank = True
 					self.finished = True
 					return
-				
-				# check for reposition
-				if position.crewman.current_cmd == 'Reposition':
-					self.MovePlayer(False, reposition=True)
-					self.UpdateUnitCon()
-					self.UpdateScenarioDisplay()
-					libtcod.console_flush()
 				
 				# check for unbog attempt
 				if position.crewman.current_cmd == 'Attempt Unbog':
@@ -14224,20 +14227,19 @@ class Scenario:
 				libtcod.console_print(cmd_menu_con, 8, 2, 'Add/Remove Shell')
 				libtcod.console_print(cmd_menu_con, 8, 3, 'Cycle Ammo Type')
 		
-			
 		# Movement phase
 		elif self.phase == PHASE_MOVEMENT:
 			libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 			libtcod.console_print(cmd_menu_con, 1, 1, EnKey('w').upper() + '/' + EnKey('s').upper())
 			libtcod.console_print(cmd_menu_con, 1, 2, EnKey('a').upper() + '/' + EnKey('d').upper())
 			libtcod.console_print(cmd_menu_con, 1, 3, 'H')
-			#libtcod.console_print(cmd_menu_con, 1, 4, EnKey('r').upper())
+			libtcod.console_print(cmd_menu_con, 1, 4, EnKey('r').upper())
 			
 			libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 			libtcod.console_print(cmd_menu_con, 8, 1, 'Forward/Reverse')
 			libtcod.console_print(cmd_menu_con, 8, 2, 'Pivot Hull')
 			libtcod.console_print(cmd_menu_con, 8, 3, 'Attempt HD')
-			#libtcod.console_print(cmd_menu_con, 8, 4, 'Reposition')
+			libtcod.console_print(cmd_menu_con, 8, 4, 'Reposition')
 			
 		
 		# Shooting phase
@@ -15084,7 +15086,7 @@ class Scenario:
 			# Movement phase only
 			elif scenario.phase == PHASE_MOVEMENT:
 				
-				# move forward/backward (also ends the phase)
+				# move forward/backward (may also end the phase)
 				if key_char in ['w', 's']:
 					self.MovePlayer(key_char == 'w')
 					self.UpdateContextCon()
@@ -15128,8 +15130,19 @@ class Scenario:
 					self.UpdateUnitInfoCon()
 					self.UpdateScenarioDisplay()
 					
-					# end movement phase
+					# NEW: check for extra move
+					if self.player_unit.ExtraMoveCheck():
+						ShowMessage('You have moved swiftly enough to take another move action.')
+						continue
 					self.advance_phase = True
+					continue
+				
+				# reposition
+				elif key_char == 'r':
+					self.MovePlayer(False, reposition=True)
+					self.UpdateUnitCon()
+					self.UpdateScenarioDisplay()
+					libtcod.console_flush()
 					continue
 				
 			# Shooting phase

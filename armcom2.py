@@ -1171,8 +1171,9 @@ class Campaign:
 			try:
 				with open(CAMPAIGNPATH + filename, encoding='utf8') as data_file:
 					campaign_data = json.load(data_file)
-			except:
-				ShowNotification('Error: Unable to parse campaign file: ' + filename)
+			except Exception as e:
+				ShowNotification('Error: Unable to parse campaign file ' + filename + ': ' +
+					str(e))
 				continue
 			new_campaign = {}
 			new_campaign['filename'] = filename
@@ -17326,8 +17327,6 @@ print('Starting ' + NAME + ' version ' + VERSION)	# startup message
 
 # try to load game settings from config file, will create a new file if none present
 LoadCFG()
-
-os.putenv('SDL_VIDEO_CENTERED', '1')			# center game window on screen
 
 # determine font to use based on settings file
 if config['ArmCom2'].getboolean('large_display_font'):

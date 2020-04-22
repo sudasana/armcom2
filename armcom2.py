@@ -36,7 +36,15 @@
 #    Some sound samples from the C64 sample pack by Odo:
 #    <https://howtomakeelectronicmusic.com/270mb-of-free-c64-samples-made-by-odo/>
 #
+#    Steam integration thanks to SteamworksPy, covered under a MIT License (MIT)
+#    Copyright (c) 2016 GP Garcia, CoaguCo Industries
+#    https://github.com/Gramps/SteamworksPy
+#
 ##########################################################################################
+
+##### Debug Flags #####
+STEAM_ON = False						# load steamworks
+DEBUG = True						# debug flag - set to False in all distribution versions
 
 
 ##### Libraries #####
@@ -59,15 +67,16 @@ from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
 import sdl2.sdlmixer as mixer				# sound effects
 from calendar import monthrange				# for date calculations
+if STEAM_ON:
+	from steamworks import STEAMWORKS			# main steamworks library
 
 
 ##########################################################################################
 #                                        Constants                                       #
 ##########################################################################################
 
-DEBUG = False						# debug flag - set to False in all distribution versions
 NAME = 'Armoured Commander II'				# game name
-VERSION = '2.0.1'					# game version
+VERSION = '3.0.0-dev'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -749,7 +758,8 @@ SCENARIO_TERRAIN_ODDS = {
 # modifiers and effects for different types of terrain on the scenario layer
 SCENARIO_TERRAIN_EFFECTS = {
 	'Open Ground' : {
-		'HD Chance' : 5.0
+		'HD Chance' : 5.0,
+		'los_mod' : 0.0
 	},
 	'Broken Ground' : {
 		'TEM' : {
@@ -759,7 +769,8 @@ SCENARIO_TERRAIN_EFFECTS = {
 		},
 		'HD Chance' : 10.0,
 		'Movement Mod' : -5.0,
-		'Bog Mod' : 1.0
+		'Bog Mod' : 1.0,
+		'los_mod' : 5.0
 	},
 	'Brush': {
 		'TEM' : {
@@ -769,7 +780,8 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'Movement Mod' : -15.0,
 		'Bog Mod' : 2.0,
 		'Air Burst' : 10.0,
-		'Burnable' : True
+		'Burnable' : True,
+		'los_mod' : 10.0
 	},
 	'Woods': {
 		'TEM' : {
@@ -780,21 +792,23 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'Bog Mod' : 5.0,
 		'Double Bog Check' : True,		# player must test to bog before moving out of this terrain type
 		'Air Burst' : 20.0,
-		'Burnable' : True
+		'Burnable' : True,
+		'los_mod' : 20.0
 	},
 	'Fields': {
 		'TEM' : {
 			'All' : -10.0
 		},
 		'HD Chance' : 5.0,
-		'Burnable' : True
+		'Burnable' : True,
+		'los_mod' : 10.0
 	},
 	'Hills': {
 		'TEM' : {
 			'All' : -20.0
 		},
 		'HD Chance' : 40.0,
-		'Hidden Mod' : 30.0
+		'los_mod' : 30.0
 	},
 	'Wooden Buildings': {
 		'TEM' : {
@@ -803,7 +817,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 			'Deployed Gun' : -30.0
 		},
 		'HD Chance' : 30.0,
-		'Hidden Mod' : 20.0,
+		'los_mod' : 20.0,
 		'Burnable' : True
 	},
 	'Marsh': {
@@ -813,7 +827,8 @@ SCENARIO_TERRAIN_EFFECTS = {
 		'HD Chance' : 15.0,
 		'Movement Mod' : -30.0,
 		'Bog Mod' : 10.0,
-		'Double Bog Check' : True
+		'Double Bog Check' : True,
+		'los_mod' : 5.0,
 	},
 	'Rubble': {
 		'TEM' : {
@@ -822,7 +837,7 @@ SCENARIO_TERRAIN_EFFECTS = {
 			'Deployed Gun' : -30.0
 		},
 		'HD Chance' : 30.0,
-		'Hidden Mod' : 20.0,
+		'los_mod' : 20.0,
 		'Bog Mod' : 10.0,
 		'Double Bog Check' : True
 	}
@@ -8268,8 +8283,6 @@ class Unit:
 		self.unit_id = unit_id			# unique ID for unit type
 		self.nick_name = ''			# nickname for model, eg. Sherman
 		self.unit_name = ''			# name of tank, etc.
-		self.alive = True			# unit is alive
-		self.immobilized = False		# vehicle or gun unit is immobilized
 		self.owning_player = 0			# unit is allied to 0:player 1:enemy
 		self.nation = None			# nationality of unit and personnel
 		self.ai = None				# AI controller if any
@@ -8323,6 +8336,8 @@ class Unit:
 	# set/reset all scenario statuses for this unit
 	def ResetMe(self):
 		
+		self.alive = True			# unit is alive
+		
 		self.hx = 0				# location in scenario hex map
 		self.hy = 0
 		self.terrain = None			# surrounding terrain
@@ -8330,12 +8345,14 @@ class Unit:
 		self.dest_hex = None			# destination hex for move
 		self.animation_cells = []		# list of x,y unit console locations for animation
 		
+		self.los_table = {}			# other units to which this one has line of sight
 		self.spotted = False			# unit has been spotted by opposing side
 		self.smoke = 0				# unit smoke level
 		
 		self.hull_down = []			# list of directions unit in which Hull Down
 		self.moving = False
-		self.overrun = False			# unit is doing an overrun attack
+		self.immobilized = False		# vehicle or gun unit is immobilized
+		self.overrun = False			# unit is doing an overrun attack (player and player squad only)
 		self.bogged = False			# unit is bogged down, cannot move or pivot
 		self.fired = False
 		self.hit_by_fp = False			# was hit by an effective fp attack
@@ -8839,24 +8856,19 @@ class Unit:
 			if position.crewman is None:
 				continue
 			
-			# build list of units it's possible to spot
-			
+			# build list of units that it's possible to spot
 			spot_list = []
 			for unit in scenario.units:
-				if unit.owning_player == self.owning_player:
-					continue
-				if not unit.alive:
-					continue
-				if unit.spotted:
-					continue
-				if (unit.hx, unit.hy) not in position.visible_hexes:
-					continue
-				
+				if unit.owning_player == self.owning_player: continue
+				if not unit.alive: continue
+				if unit.spotted: continue
+				if (unit.hx, unit.hy) not in position.visible_hexes: continue
+				# FUTURE: no LoS to target
+				#if unit not in self.los_table: continue
 				spot_list.append(unit)
 			
 			# no units possible to spot from this position
-			if len(spot_list) == 0:
-				continue
+			if len(spot_list) == 0: continue
 			
 			# roll once for each unit
 			for unit in spot_list:
@@ -10343,6 +10355,80 @@ class Scenario:
 		self.selected_position = 0				# index of selected position in player unit
 	
 	
+	# roll to see whether two units on the scenario map have LoS to each other
+	def DoLoSRoll(self, unit1, unit2):
+		
+		print('\nDEBUG: Rolling for LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
+		
+		# base odds of LoS based on range between the two units
+		distance = GetHexDistance(unit1.hx, unit1.hy, unit2.hx, unit2.hy)
+		if distance == 0:		# same hex
+			chance = 90.0
+		elif distance == 1:		# close range
+			chance = 75.0
+		elif distance == 2:		# medium range
+			chance = 50.0
+		elif distance == 3:		# long range
+			chance = 20.0
+		else:
+			return False		# off map: no chance
+		
+		print('DEBUG: Base chance is: ' + str(chance))
+		
+		# modify base chance by terrain of both units
+		terrain_mod = 0.0
+		
+		if unit1.terrain is not None:
+			terrain_mod -= SCENARIO_TERRAIN_EFFECTS[unit1.terrain]['los_mod']
+		if unit2.terrain is not None:
+			terrain_mod -= SCENARIO_TERRAIN_EFFECTS[unit2.terrain]['los_mod']
+		print('DEBUG: Total terrain modifier is: ' + str(terrain_mod))
+		
+		chance += terrain_mod
+		if GetPercentileRoll() <= chance:
+			return True
+		return False
+	
+	
+	# do the initial line of sight checks between all units
+	def GenerateLoS(self):
+		
+		def AddLoS(unit1, unit2):
+			unit1.los_table[unit2] = True
+			unit2.los_table[unit1] = True
+			print('LOS DEBUG: Added LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
+		
+		# clear all LoS tables
+		for unit in self.units:
+			unit.los_table = {}
+		
+		# check each unit against every other
+		for unit1 in self.units:
+			for unit2 in self.units:
+				
+				# already added in opposite direction
+				if unit1 in unit2.los_table: continue
+				
+				# same unit
+				if unit1 == unit2:
+					AddLoS(unit1, unit2)
+					continue
+				
+				# same side and same hex
+				if unit1.owning_player == unit2.owning_player and unit1.hx == unit2.hx and unit1.hy == unit2.hy:
+					AddLoS(unit1, unit2)
+					continue
+				
+				# roll for LoS between the units
+				if self.DoLoSRoll(unit1, unit2):
+					AddLoS(unit1, unit2)
+					continue
+				
+				print('LOS DEBUG: No LoS between ' + unit1.unit_id + ' and ' + unit2.unit_id)
+				unit1.los_table[unit2] = False
+				unit2.los_table[unit1] = False
+
+	
 	# roll at start of scenario to see whether player has been ambushed
 	def DoAmbushRoll(self):
 		
@@ -11109,6 +11195,10 @@ class Scenario:
 				return 'Target location unknown'
 			if attacker.pinned:
 				return 'Cannot initiate Close Combat when Pinned'
+		else:
+			# no LoS
+			if not attacker.los_table[target]:
+				return 'No Line of Sight to Target'
 		
 		# if we're not ignoring facing,
 		# check that target is in covered hexes and range
@@ -14215,7 +14305,7 @@ class Scenario:
 		# no units in hex
 		if len(map_hex.unit_stack) == 0: return
 		
-		# display unit info
+		# display info for top unit in stack
 		unit = map_hex.unit_stack[0]
 		
 		# smoke if any
@@ -14265,41 +14355,48 @@ class Scenario:
 				libtcod.console_print(unit_info_con, 0, 3, 'Pinned')
 			elif unit.moving:
 				libtcod.console_print(unit_info_con, 0, 3, 'Moving')
-			
 			if unit.routed:
 				libtcod.console_print(unit_info_con, 0, 4, 'Routed')
-			
 			if unit.fired:
 				libtcod.console_print(unit_info_con, 12, 3, 'Fired')
-			
 				
 			
 			# second column
 			
+			# LoS
+			if not self.player_unit.los_table[unit]:
+				libtcod.console_set_default_background(unit_info_con, libtcod.grey)
+				libtcod.console_rect(unit_info_con, 20, 0, 21, 1, False, libtcod.BKGND_SET)
+				libtcod.console_set_default_background(unit_info_con, libtcod.darkest_grey)
+				libtcod.console_set_default_foreground(unit_info_con, libtcod.black)
+				libtcod.console_print(unit_info_con, 20, 0, 'Line of Sight Blocked')
+			
+			# current terrain
+			if unit.terrain is not None:
+				libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
+				libtcod.console_print_ex(unit_info_con, 30, 1, libtcod.BKGND_NONE,
+					libtcod.CENTER, unit.terrain)
+			
 			# facing if any
 			if unit.facing is not None and unit.GetStat('category') != 'Infantry':
-				libtcod.console_put_char_ex(unit_info_con, 23, 0, 'H',
+				libtcod.console_put_char_ex(unit_info_con, 23, 2, 'H',
 					libtcod.light_grey, libtcod.darkest_grey)
-				libtcod.console_put_char_ex(unit_info_con, 24, 0,
+				libtcod.console_put_char_ex(unit_info_con, 24, 2,
 					GetDirectionalArrow(unit.facing), libtcod.light_grey,
 					libtcod.darkest_grey)
 			
 			# HD status if any
 			if len(unit.hull_down) > 0:
 				libtcod.console_set_default_foreground(unit_info_con, libtcod.sepia)
-				libtcod.console_print(unit_info_con, 26, 0, 'HD')
-				libtcod.console_put_char_ex(unit_info_con, 28, 0,
+				libtcod.console_print(unit_info_con, 26, 2, 'HD')
+				libtcod.console_put_char_ex(unit_info_con, 28, 2,
 					GetDirectionalArrow(unit.hull_down[0]), libtcod.sepia,
 					libtcod.darkest_grey)
 			
-			# current terrain
-			if unit.terrain is not None:
-				libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_green)
-				libtcod.console_print(unit_info_con, 23, 1, unit.terrain)
-			
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.dark_grey)
-			libtcod.console_print(unit_info_con, 20, 3, 'Right click for details')
-			libtcod.console_print(unit_info_con, 14, 4, 'Mousewheel to cycle unit stack')
+			libtcod.console_print(unit_info_con, 0, 4, 'Right click for details')
+			libtcod.console_print_ex(unit_info_con, 60, 4, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Mousewheel to cycle stack')
 	
 	
 	# starts or re-starts looping animations based on weather conditions
@@ -14599,6 +14696,9 @@ class Scenario:
 			
 			# generate enemy units (also checks for pins from advancing fire)
 			self.SpawnEnemyUnits()
+			
+			# do initial LoS generation
+			self.GenerateLoS()
 			
 			# set up player unit and squad for first activation
 			self.player_unit.BuildCmdLists()
@@ -17206,7 +17306,10 @@ libtcod.console_clear(game_menu_con)
 mouse = libtcod.Mouse()
 key = libtcod.Key()
 
-
+# start up steamworks
+if STEAM_ON:
+	steamworks = STEAMWORKS()
+	steamworks.initialize()
 
 
 ##########################################################################################

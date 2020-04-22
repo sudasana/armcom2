@@ -8008,32 +8008,35 @@ class AI:
 			chance = self.owner.forward_move_chance + self.owner.forward_move_bonus
 			roll = GetPercentileRoll()
 			
+			# move was successful
+			if roll <= chance:
+				
+				# move was successful but may be cancelled by a breakdown
+				if self.owner.BreakdownCheck():
+					return
+				
+				# NEW: guns don't move, they are abandoned instead
+				if self.owner.GetStat('category') == 'Gun':
+					ShowMessage(self.owner.unit_id + ' crew has abandoned their gun.',
+						scenario_highlight=(self.owner.hx, self.owner.hy))
+					self.owner.DestroyMe(no_vp=True)
+					return
+				
+				# clear any bonus and move into new hex
+				self.owner.forward_move_chance = BASE_FORWARD_MOVE_CHANCE
+				self.owner.forward_move_bonus = 0.0
+				scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
+				self.owner.hx = hx
+				self.owner.hy = hy
+				scenario.hex_dict[(hx, hy)].unit_stack.append(self.owner)
+				for weapon in self.owner.weapon_list:
+					weapon.UpdateCoveredHexes()
+			
 			# move was not successful
-			if roll > chance:
+			else:
 				self.owner.forward_move_bonus += BASE_MOVE_BONUS
-				return
 			
-			# move was successful but may be cancelled by a breakdown
-			if self.owner.BreakdownCheck():
-				return
-			
-			# NEW: guns don't move, they are abandoned instead
-			if self.owner.GetStat('category') == 'Gun':
-				ShowMessage(self.owner.unit_id + ' crew has abandoned their gun.',
-					scenario_highlight=(self.owner.hx, self.owner.hy))
-				self.owner.DestroyMe(no_vp=True)
-				return
-			
-			# clear any bonus and move into new hex
-			self.owner.forward_move_chance = BASE_FORWARD_MOVE_CHANCE
-			self.owner.forward_move_bonus = 0.0
-			scenario.hex_dict[(self.owner.hx, self.owner.hy)].unit_stack.remove(self.owner)
-			self.owner.hx = hx
-			self.owner.hy = hy
-			scenario.hex_dict[(hx, hy)].unit_stack.append(self.owner)
-			for weapon in self.owner.weapon_list:
-				weapon.UpdateCoveredHexes()
-			
+			# whether successful or not, generate new terrain, LoS, etc.
 			self.owner.GenerateTerrain()
 			scenario.GenerateUnitLoS(self.owner)
 			self.owner.CheckForHD()
@@ -13305,10 +13308,11 @@ class Scenario:
 			# show pop-up message to player
 			ShowMessage('You move but not far enough to enter a new map hex')
 			
-			# set new terrain for player and squad
+			# set new terrain and LoS for player and squad
 			for unit in self.units:
 				if unit != self.player_unit and unit not in self.player_unit.squad: continue
 				unit.GenerateTerrain()
+				self.GenerateUnitLoS(unit)
 				unit.CheckForHD()
 			
 			# end movement phase

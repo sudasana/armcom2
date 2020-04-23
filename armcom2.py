@@ -8940,20 +8940,20 @@ class Unit:
 			# no units possible to spot from this position
 			if len(spot_list) == 0: continue
 			
-			# roll once for each unit
-			for unit in spot_list:
-				chance = scenario.CalcSpotChance(self, unit, crewman=position.crewman)
-				if chance <= 0.0: continue
-				if GetPercentileRoll() <= chance:
-					unit.SpotMe()
-					scenario.UpdateUnitCon()
-					scenario.UpdateScenarioDisplay()
-					
-					# display message
-					# TODO: use special pop-up display for player crew spotting enemies
-					text = unit.GetName() + ' spotted!'
-					ShowMessage(text, portrait=unit.GetStat('portrait'),
-						scenario_highlight=(unit.hx, unit.hy))
+			# select a random target unit and attempt to reveal it
+			unit = choice(spot_list)
+			chance = scenario.CalcSpotChance(self, unit, crewman=position.crewman)
+			if GetPercentileRoll() > chance: continue
+			
+			unit.SpotMe()
+			scenario.UpdateUnitCon()
+			scenario.UpdateScenarioDisplay()
+			
+			# display message
+			# TODO: use special pop-up display for player crew spotting enemies
+			text = unit.GetName() + ' spotted!'
+			ShowMessage(text, portrait=unit.GetStat('portrait'),
+				scenario_highlight=(unit.hx, unit.hy))
 	
 	
 	# reveal this unit after being spotted
@@ -9980,12 +9980,13 @@ class Unit:
 				destroy_odds += float(self.unit_fatigue) * 5.0
 			destroy_odds = RestrictChance(destroy_odds)
 			
-			# calculate other odds
+			# calculate reduction odds if possible
 			if self.reduced:
 				destroy_odds = RestrictChance(destroy_odds * 1.2)
 			else:
 				reduction_odds = round(destroy_odds * 0.85, 1)
 			
+			# calculate rout odds if possible
 			if not self.routed:
 				rout_odds = reduction_odds * 0.50
 				if self.fortified:
@@ -10001,6 +10002,19 @@ class Unit:
 				rout_odds = round(rout_odds, 1)
 			else:
 				destroy_odds = RestrictChance(destroy_odds * 3.0)
+			
+			# make sure total is <= 100%
+			if destroy_odds + rout_odds + reduction_odds > 100.0:
+				if rout_odds > 0.0:
+					rout_odds = 100.0 - destroy_odds - reduction_odds
+					if rout_odds < 0.0:
+						rout_odds = 0.0
+			
+			if destroy_odds + rout_odds + reduction_odds > 100.0:
+				if reduction_odds > 0.0:
+					reduction_odds = 100.0 - destroy_odds - rout_odds
+					if reduction_odds < 0.0:
+						reduction_odds = 0.0
 			
 			# add unit fatigue
 			self.unit_fatigue += 1
@@ -10401,7 +10415,6 @@ class Scenario:
 			chance = chance * 0.3
 		
 		if unit2.moving: chance = chance * 1.5
-		
 		if unit2.fired: chance = chance * 2.0
 		
 		# infantry are not as good at spotting from their lower position
@@ -10495,13 +10508,13 @@ class Scenario:
 		# base odds of LoS based on range between the two units
 		distance = GetHexDistance(unit1.hx, unit1.hy, unit2.hx, unit2.hy)
 		if distance == 0:		# same hex
-			chance = 95.0
+			chance = 100.0
 		elif distance == 1:		# close range
-			chance = 85.0
+			chance = 95.0
 		elif distance == 2:		# medium range
-			chance = 70.0
+			chance = 85.0
 		elif distance == 3:		# long range
-			chance = 50.0
+			chance = 70.0
 		else:
 			return False		# off map: no chance
 		
@@ -11441,12 +11454,22 @@ class Scenario:
 			print('ERROR: Weapon type not recognized: ' + weapon.stats['name'])
 			return None
 		
-		# determine crewman operating weapon
-		# TODO: fix this; need to find a match between positions that can fire the weapon,
+		# determine crewman operating weapon:
+		# need to find a match between positions that can fire the weapon,
 		# and who is on the correct command
 		profile['crewman'] = None
 		if weapon.GetStat('fired_by') is not None:
-			profile['crewman'] = attacker.GetPersonnelByPosition(weapon.stats['fired_by'][0])
+			
+			if weapon.GetStat('type') == 'Gun':
+				command_req = 'Operate Gun'
+			elif weapon.GetStat('type') in MG_WEAPONS:
+				command_req = 'Operate MG'
+			for position in attacker.positions_list:
+				if position.crewman is None: continue
+				if position.name in weapon.stats['fired_by']:
+					if positon.crewman.current_cmd != command_req: continue
+					profile['crewman'] = position.crewman
+					break
 		
 		# calculate distance to target
 		distance = GetHexDistance(attacker.hx, attacker.hy, target.hx, target.hy)
@@ -14477,6 +14500,14 @@ class Scenario:
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.grey)
 			libtcod.console_print(unit_info_con, 30, 2, 'Smoke lvl ' + str(unit.smoke))
 		
+		# LoS blocked
+		if not self.player_unit.los_table[unit]:
+			libtcod.console_set_default_background(unit_info_con, libtcod.grey)
+			libtcod.console_rect(unit_info_con, 20, 0, 21, 1, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(unit_info_con, libtcod.darkest_grey)
+			libtcod.console_set_default_foreground(unit_info_con, libtcod.black)
+			libtcod.console_print(unit_info_con, 20, 0, 'Line of Sight Blocked')
+		
 		if unit.owning_player == 1 and not unit.spotted:
 			libtcod.console_set_default_foreground(unit_info_con, UNKNOWN_UNIT_COL)
 			libtcod.console_print(unit_info_con, 0, 0, 'Unspotted Enemy')
@@ -14526,14 +14557,6 @@ class Scenario:
 				
 			
 			# second column
-			
-			# LoS
-			if not self.player_unit.los_table[unit]:
-				libtcod.console_set_default_background(unit_info_con, libtcod.grey)
-				libtcod.console_rect(unit_info_con, 20, 0, 21, 1, False, libtcod.BKGND_SET)
-				libtcod.console_set_default_background(unit_info_con, libtcod.darkest_grey)
-				libtcod.console_set_default_foreground(unit_info_con, libtcod.black)
-				libtcod.console_print(unit_info_con, 20, 0, 'Line of Sight Blocked')
 			
 			# current terrain
 			if unit.terrain is not None:

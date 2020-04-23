@@ -8911,8 +8911,7 @@ class Unit:
 				position.crewman.current_cmd = position.crewman.cmd_list[0]
 	
 	
-	# do a round of spotting from this unit
-	# for now, only the player unit does these
+	# do a round of spotting from the player unit
 	def DoSpotChecks(self):
 			
 		# unit out of play range
@@ -8935,8 +8934,7 @@ class Unit:
 				if not unit.alive: continue
 				if unit.spotted: continue
 				if (unit.hx, unit.hy) not in position.visible_hexes: continue
-				# FUTURE: no LoS to target
-				#if unit not in self.los_table: continue
+				if unit not in self.los_table: continue
 				spot_list.append(unit)
 			
 			# no units possible to spot from this position
@@ -8944,89 +8942,18 @@ class Unit:
 			
 			# roll once for each unit
 			for unit in spot_list:
-			
-				distance = GetHexDistance(self.hx, self.hy, unit.hx, unit.hy)
-				
-				chance = SPOT_BASE_CHANCE[distance]
-				
-				# target size
-				size_class = unit.GetStat('size_class')
-				if size_class is not None:
-					if size_class == 'Small':
-						chance -= 7.0
-					elif size_class == 'Very Small':
-						chance -= 18.0
-					elif size_class == 'Large':
-						chance += 7.0
-					elif size_class == 'Very Large':
-						chance += 18.0
-				
-				# precipitation
-				if campaign_day.weather['Precipitation'] in ['Rain', 'Snow']:
-					chance -= 5.0 * float(distance)
-				elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Blizzard']:
-					chance -= 10.0 * float(distance)
-				
-				# smoke concealment
-				smoke = self.smoke + unit.smoke
-				if self.smoke == 1:
-					chance = chance * 0.75
-				elif smoke == 2:
-					chance = chance * 0.5
-				elif smoke > 2:
-					chance = chance * 0.3
-				
-				# target moving
-				if unit.moving:
-					chance = chance * 1.5
-				
-				# target fired
-				if unit.fired:
-					chance = chance * 2.0
-				
-				# infantry are not as good at spotting from their lower position
-				if self.GetStat('category') == 'Infantry':
-					chance = chance * 0.5
-				
-				# target terrain
-				chance += unit.GetTEM()
-				
-				# spotting crew modifier
-				mod = float(position.crewman.stats['Perception'] * PERCEPTION_SPOTTING_MOD)
-				chance += position.crewman.GetSkillMod(mod)
-				
-				# spotting crew skill
-				if 'Eagle Eyed' in position.crewman.skills and position.crewman.ce:
-					chance += position.crewman.GetSkillMod(10.0)
-				
-				# spotting crew head/neck injury
-				if position.crewman.injury['Head & Neck'] is not None:
-					if position.crewman.injury['Head & Neck'] != 'Light':
-						chance = chance * 0.5
-				
-				# target is HD to spotter
-				if len(unit.hull_down) > 0:
-					if GetDirectionToward(unit.hx, unit.hy, self.hx, self.hy) in unit.hull_down:
-						chance = chance * 0.5
-				
-				# target has been hit by effective fp
-				if unit.hit_by_fp:
-					chance = chance * 4.0
-				
-				if GetPercentileRoll() <= RestrictChance(chance):
-					
+				chance = scenario.CalcSpotChance(self, unit, crewman=position.crewman)
+				if chance <= 0.0: continue
+				if GetPercentileRoll() <= chance:
 					unit.SpotMe()
 					scenario.UpdateUnitCon()
 					scenario.UpdateScenarioDisplay()
 					
 					# display message
-					if self.owning_player == 0:
-						text = unit.GetName() + ' spotted!'
-						ShowMessage(text, portrait=unit.GetStat('portrait'),
-							scenario_highlight=(unit.hx, unit.hy))
-						
-					elif unit == scenario.player_unit:
-						ShowMessage('You have been spotted!')
+					# TODO: use special pop-up display for player crew spotting enemies
+					text = unit.GetName() + ' spotted!'
+					ShowMessage(text, portrait=unit.GetStat('portrait'),
+						scenario_highlight=(unit.hx, unit.hy))
 	
 	
 	# reveal this unit after being spotted
@@ -10438,6 +10365,125 @@ class Scenario:
 		self.selected_weapon = None				# player's currently selected weapon
 		
 		self.selected_position = 0				# index of selected position in player unit
+	
+	
+	# return the chance for unit1 to spot unit2
+	def CalcSpotChance(self, unit1, unit2, crewman=None):
+		
+		distance = GetHexDistance(unit1.hx, unit1.hy, unit2.hx, unit2.hy)	
+		chance = SPOT_BASE_CHANCE[distance]
+		
+		# target size
+		size_class = unit2.GetStat('size_class')
+		if size_class is not None:
+			if size_class == 'Small':
+				chance -= 7.0
+			elif size_class == 'Very Small':
+				chance -= 18.0
+			elif size_class == 'Large':
+				chance += 7.0
+			elif size_class == 'Very Large':
+				chance += 18.0
+		
+		# precipitation
+		if campaign_day.weather['Precipitation'] in ['Rain', 'Snow']:
+			chance -= 5.0 * float(distance)
+		elif campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Blizzard']:
+			chance -= 10.0 * float(distance)
+		
+		# smoke concealment
+		smoke = unit1.smoke + unit2.smoke
+		if smoke == 1:
+			chance = chance * 0.75
+		elif smoke == 2:
+			chance = chance * 0.5
+		elif smoke > 2:
+			chance = chance * 0.3
+		
+		if unit2.moving: chance = chance * 1.5
+		
+		if unit2.fired: chance = chance * 2.0
+		
+		# infantry are not as good at spotting from their lower position
+		if unit1.GetStat('category') == 'Infantry' and distance > 1:
+			if distance == 2:
+				chance = chance * 0.75
+			else:
+				chance = chance * 0.5
+		
+		# target terrain
+		chance += unit2.GetTEM()
+		
+		# crewman modifiers if any
+		if crewman is not None:
+		
+			mod = float(crewman.stats['Perception'] * PERCEPTION_SPOTTING_MOD)
+			chance += crewman.GetSkillMod(mod)
+			
+			# spotting crew skill
+			if 'Eagle Eyed' in crewman.skills and crewman.ce:
+				chance += crewman.GetSkillMod(10.0)
+			
+			# spotting crew head/neck injury
+			if crewman.injury['Head & Neck'] is not None:
+				if crewman.injury['Head & Neck'] != 'Light':
+					chance = chance * 0.5
+		
+		# target is HD to spotter
+		if len(unit2.hull_down) > 0:
+			if GetDirectionToward(unit2.hx, unit2.hy, unit1.hx, unit1.hy) in unit2.hull_down:
+				chance = chance * 0.5
+		
+		# target has been hit by effective fp
+		if unit2.hit_by_fp:
+			chance = chance * 4.0
+		
+		#print('DEBUG: Spot chance for ' + unit1.unit_id + ' to ' + unit2.unit_id + ' is: ' + str(chance))
+		
+		return chance
+	
+	
+	# do a round of spotting for AI units on one side, uses a simplified procedure
+	def DoAISpotChecks(self, owning_player):
+		
+		for unit1 in self.units:
+			if not unit1.alive: continue
+			if unit1.owning_player != owning_player: continue
+			
+			# build list of units that it's possible to spot
+			spot_list = []
+			for unit2 in scenario.units:
+				if unit2.owning_player == owning_player: continue
+				if not unit2.alive: continue
+				if unit2.spotted: continue
+				if unit2 not in unit1.los_table: continue
+				spot_list.append(unit2)
+			
+			# no units possible to spot
+			if len(spot_list) == 0: continue
+			
+			# roll once for each unit
+			for unit2 in spot_list:
+				chance = scenario.CalcSpotChance(unit1, unit2)
+				if chance <= 0.0: continue
+				if GetPercentileRoll() <= chance:
+					unit2.SpotMe()
+					scenario.UpdateUnitCon()
+					scenario.UpdateScenarioDisplay()
+					
+					# display message
+					if unit2 == scenario.player_unit:
+						text = 'You were'
+					else:
+						text = unit2.GetName()
+						if unit2.owning_player == 0:
+							text += ' was'
+					text += ' spotted'
+					if unit2.owning_player == 0:
+						text += ' by ' + unit1.GetName()
+					text += '!'
+					ShowMessage(text, portrait=unit2.GetStat('portrait'),
+						scenario_highlight=(unit2.hx, unit2.hy))
 	
 	
 	# roll to see whether two units on the scenario map have LoS to each other
@@ -13842,6 +13888,8 @@ class Scenario:
 		# allied action phase
 		elif self.phase == PHASE_ALLIED_ACTION:
 			
+			self.DoAISpotChecks(0)
+			
 			# player squad acts
 			for unit in scenario.player_unit.squad:
 				unit.MoveToTopOfStack()
@@ -13866,9 +13914,7 @@ class Scenario:
 		# enemy action
 		elif self.phase == PHASE_ENEMY_ACTION:
 			
-			DisplayTimeInfo(time_con)
-			self.UpdateScenarioDisplay()
-			libtcod.console_flush()
+			self.DoAISpotChecks(1)
 			
 			# run through list in reverse since we might remove units from play
 			for unit in reversed(self.units):
@@ -13894,7 +13940,7 @@ class Scenario:
 				
 				libtcod.console_flush()
 			
-			# clear any scenario ambush flag
+			# clear scenario ambush flag if any
 			self.ambush = False
 			
 			self.advance_phase = True
@@ -15607,6 +15653,11 @@ def ShowMessage(text, longer_pause=False, portrait=None, cd_highlight=None, scen
 		(x,y) = campaign_day.PlotCDHex(hx, hy)
 		
 		x += 29 - int(width/2)
+		
+		# make sure window is not too far to the right
+		if x + width > WINDOW_WIDTH:
+			x = WINDOW_WIDTH - width
+		
 		if hy <= 4:
 			y += 11
 		else:

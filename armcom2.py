@@ -8562,9 +8562,7 @@ class Unit:
 				chance = 3.0
 		
 		# do roll and apply result
-		roll = GetPercentileRoll()
-		
-		if roll <= chance:
+		if GetPercentileRoll() <= chance:
 			self.dug_in = True
 			return True
 		return False
@@ -8573,7 +8571,6 @@ class Unit:
 	# do a bog check
 	def DoBogCheck(self, forward, pivot=False, reposition=False):
 		
-		# some unit types don't bog
 		if self.GetStat('category') not in ['Vehicle', 'Gun']:
 			return
 		
@@ -8587,22 +8584,15 @@ class Unit:
 			chance = chance * 1.5 
 		chance = round(chance, 1)
 		
-		roll = GetPercentileRoll()
-		
-		if roll <= chance:
+		if GetPercentileRoll() <= chance:
 			self.bogged = True
 	
 	
 	# attempt to unbog unit
 	def DoUnbogCheck(self):
 		if not self.bogged: return
-		
 		self.moving = True
-		
-		chance = self.bog_chance
-		roll = GetPercentileRoll()
-		
-		if roll > chance:
+		if GetPercentileRoll() > self.bog_chance:
 			self.bogged = False
 			return True
 		return False
@@ -8610,18 +8600,15 @@ class Unit:
 	
 	# do a breakdown check
 	def BreakdownCheck(self):
-		
-		# only certain classes of unit can break down
 		if self.GetStat('category') not in ['Vehicle']:
 			return False
 		
-		chance = 1.0
-		
 		if 'unreliable' in self.stats:
-			chance = 5.0
+			chance = 3.0
+		else:
+			chance = 0.8
 		
-		roll = GetPercentileRoll()
-		if roll <= chance:
+		if GetPercentileRoll() <= chance:
 			return True
 		return False
 	
@@ -8637,9 +8624,9 @@ class Unit:
 		elif campaign_day.weather['Precipitation'] == 'Heavy Rain':
 			roll -= 4.0
 		
-		if roll <= 95.0:
+		if roll <= 97.0:
 			self.smoke = 0
-		elif roll <= 98.5:
+		elif roll <= 99.0:
 			self.smoke = 1
 		else:
 			self.smoke = 2
@@ -9064,11 +9051,8 @@ class Unit:
 				map_hex.unit_stack.append(self)
 				break
 		
-		# generate terrain for this unit
 		self.GenerateTerrain()
-		# check for HD status
 		self.CheckForHD()
-		# set random smoke level
 		self.SetSmokeLevel()
 	
 	
@@ -14812,7 +14796,6 @@ class Scenario:
 			self.player_unit.turret_facing = 0
 			self.player_unit.squad = []
 			self.player_unit.SpawnAt(0,0)
-			self.player_unit.spotted = True
 			
 			# reset player crewman actions
 			for position in self.player_unit.positions_list:
@@ -14824,7 +14807,6 @@ class Scenario:
 				unit.ResetMe()
 				unit.facing = 0
 				unit.turret_facing = 0
-				unit.spotted = True
 				unit.SpawnAt(0,0)
 				self.player_unit.squad.append(unit)
 			
@@ -15490,6 +15472,16 @@ def DisplayTimeInfo(console):
 	libtcod.console_set_default_foreground(console, SCEN_PHASE_COL[scenario.phase])
 	libtcod.console_print_ex(console, 10, 2, libtcod.BKGND_NONE, libtcod.CENTER, 
 		SCEN_PHASE_NAMES[scenario.phase] + ' Phase')
+	
+	# current spotted status
+	if scenario.player_unit.spotted:
+		libtcod.console_set_default_foreground(console, libtcod.light_grey)
+		text = 'Spotted'
+	else:
+		libtcod.console_set_default_foreground(console, libtcod.grey)
+		text = 'Unspotted'
+	libtcod.console_print_ex(console, 10, 5, libtcod.BKGND_NONE, libtcod.CENTER, 
+		text)
 	
 
 

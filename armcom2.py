@@ -1343,7 +1343,7 @@ class Campaign:
 			libtcod.console_print(con, 32, 55, 'Enter')
 			libtcod.console_set_default_foreground(con, libtcod.white)
 			libtcod.console_print(con, 38, 52, 'Select Unit Type')
-			libtcod.console_print(con, 38, 53, 'Set/Generate Tank Name')
+			libtcod.console_print(con, 38, 53, 'Set Tank Name')
 			if replacing_tank and campaign.player_unit.alive:
 				libtcod.console_print(con, 38, 54, 'Keep Current Tank')
 			libtcod.console_print(con, 38, 55, 'Proceed')
@@ -15299,13 +15299,13 @@ def ExportLog():
 			
 		# campaign information
 		f.write(campaign.stats['name'] + '\n')
-		f.write(campaign.stats['desc'] + '\n')
 		f.write(GetDateText(campaign.stats['start_date']) + ' - ' + GetDateText(campaign.today) + '\n')
 		f.write('\n')
 		
 		# final player tank and crew information
 		f.write(campaign.player_unit.unit_id + '\n')
-		f.write(campaign.player_unit.GetStat('class') + '\n')
+		if campaign.player_unit.unit_name != '':
+			f.write('"' + campaign.player_unit.unit_name + '"\n')
 		f.write('\n')
 		
 		for position in campaign.player_unit.positions_list:
@@ -15314,14 +15314,17 @@ def ExportLog():
 				f.write('  [Empty]\n\n')
 				continue
 			f.write('  ' + position.crewman.first_name + ' ' + position.crewman.last_name + '\n')
-			f.write('  Injuries:\n')
-			injured = False
-			for (k, v) in position.crewman.injury.items():
-				if not v: continue
-				f.write('  ' + k + ': ' + v + '\n')
-				injured = True
-			if not injured:
-				f.write('  None\n')
+			if not position.crewman.alive:
+				f.write('  KIA\n')
+			else:
+				f.write('  Injuries:\n')
+				injured = False
+				for (k, v) in position.crewman.injury.items():
+					if not v: continue
+					f.write('  ' + k + ': ' + v + '\n')
+					injured = True
+				if not injured:
+					f.write('  None\n')
 			f.write('\n')
 		f.write('\n')
 		
@@ -15331,6 +15334,13 @@ def ExportLog():
 			for record in RECORD_LIST:
 				f.write('  ' + record + ': ' + str(value[record]) + '\n')
 			f.write('\n\n')
+		
+		# list of campaign day journal entries
+		for (day, day_entry) in campaign.journal.items():
+			f.write(GetDateText(day) + '\n\n')
+			for (time, text) in day_entry:
+				f.write(time + ' - ' + text + '\n')
+
 
 
 # show a menu for selecting a new crewman skill
@@ -17708,7 +17718,7 @@ while not exit_game:
 					UpdateMainTitleCon(options_menu_active)
 					continue
 				
-				# allow player to select their tank and tank name
+				# allow player to select their tank and set their tank name
 				(unit_id, tank_name) = campaign.TankSelectionMenu()
 				
 				# create the player unit

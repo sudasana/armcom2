@@ -898,7 +898,10 @@ class Campaign:
 		self.combat_calendar = []	# list of combat days
 		self.today = None		# pointer to current day in calendar
 		self.current_week = None	# " week
-		self.enemy_class_odds = {}	# placeholder for enemy unit spawn odds, set by campaign days
+		
+		self.hospital = []		# holds crewmen currently in the field hospital
+		
+		#self.enemy_class_odds = {}	# placeholder for enemy unit spawn odds, set by campaign days
 		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
 		self.active_journal_day = None	# currently displayed journal day
 		self.journal_scroll_line = 0	# current level of scroll on the journal display
@@ -1697,11 +1700,23 @@ class Campaign:
 			Wait(30, ignore_animations=True)
 			y += 6
 		
-		# TODO: move crewman to field hospital where required and roll for length of stay 
+		# remove dead crewmen
+		for position in campaign.player_unit.positions_list:
+			if position.crewman is None: continue
+			if not position.crewman.alive:
+				text = 'The body of your ' + position.crewman.normal_position + ' is taken away.'
+				ShowMessage(text)
+				position.crewman = None
+				continue
+		
+		# move crewman to field hospital where required
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
 			if position.crewman.field_hospital is None: continue
-			pass
+			
+			position.crewman.current_position = None
+			campaign.hospital.append(position.crewman)
+			position.crewman = None
 		
 		# repair tank if required
 		if campaign.player_unit.immobilized:
@@ -2140,22 +2155,40 @@ class Campaign:
 			libtcod.console_print_ex(calendar_main_panel, 31, 2, libtcod.BKGND_NONE,
 				libtcod.CENTER, '+ Field Hospital +')
 			
-			libtcod.console_print(calendar_main_panel, 5, 10, 'Crewman')
-			libtcod.console_print(calendar_main_panel, 28, 10, 'Days until Expected Recovery')
+			libtcod.console_print(calendar_main_panel, 2, 10, 'Crewman')
+			libtcod.console_print(calendar_main_panel, 22, 10, 'Position')
+			libtcod.console_print_ex(calendar_main_panel, 58, 10, libtcod.BKGND_NONE,
+				libtcod.RIGHT, 'Days until Recovery')
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.grey)
-			for x in range(5, 56):
+			for x in range(2, 59):
 				libtcod.console_put_char(calendar_main_panel, x, 11, '-')
 			
 			# list any crewmen currently in the field hospital
 			y = 13
-			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.grey)
-			libtcod.console_print(calendar_main_panel, 5, y, 'No crewmen currently in hospital')
 			
-	
-	
+			if len(campaign.hospital) == 0:
+				libtcod.console_set_default_foreground(calendar_main_panel, libtcod.grey)
+				libtcod.console_print(calendar_main_panel, 2, y, 'No crewmen currently in hospital')
+				return
+			
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.lighter_grey)
+			for crewman in campaign.hospital:
+				crewman.DisplayName(calendar_main_panel, 2, y, first_initial=True)
+				libtcod.console_print(calendar_main_panel, 22, y, crewman.normal_position)
+				(days_min, days_max) = crewman.field_hospital
+				
+				if days_min == 0:
+					text = 'Maximum '
+				else:
+					text = str(days_min) + '-'
+				text += str(days_max)
+				libtcod.console_print_ex(calendar_main_panel, 50, y, libtcod.BKGND_NONE,
+					libtcod.RIGHT, text)
+				y += 4
+			
+			
 	# update the display of the campaign calendar interface
 	def UpdateCCDisplay(self):
-		
 		libtcod.console_blit(calendar_bkg, 0, 0, 0, 0, con, 0, 0)		# background frame
 		libtcod.console_blit(day_outline, 0, 0, 0, 0, con, 1, 1)		# summary of current day
 		libtcod.console_blit(calendar_cmd_con, 0, 0, 0, 0, con, 1, 38)		# command menu
@@ -3994,18 +4027,6 @@ class CampaignDay:
 		# don't bother for dead units or if campaign is already over
 		if not unit.alive or campaign.ended: return
 		
-		# remove dead and seriously wounded crewmen
-		for position in unit.positions_list:
-			if position.crewman is None: continue
-			
-			if not position.crewman.alive:
-				text = 'The body of your ' + position.crewman.normal_position + ' is removed.'
-				ShowMessage(text)
-				position.crewman = None
-				continue
-			
-			# TODO: check for crew being sent to hospital here
-			
 		# if any remaining crewmen are not in their normal position, move them back now
 		holding_list = []
 
@@ -6175,17 +6196,17 @@ class Personnel:
 		for (k, v) in self.injury.items():
 			if v is None: continue
 			
-			# light injuries automatically heal
-			if v == 'Light':
-				self.injury[k] = None
-			
 			# Heavy injuries have a small chance
-			elif v == 'Heavy':
+			if v == 'Heavy':
 				hospital_chance += 3.0
 				if hospital_min == 0:
-					hospital_min = 1
+					hospital_min = 3
+				else:
+					hospital_min += libtcod.random_get_int(0, 0, 1)
 				if hospital_max < 7:
 					hospital_max = 7
+				else:
+					hospital_max += libtcod.random_get_int(0, 0, 2)
 			
 			# serious injuries have a larger chance
 			elif v == 'Serious':
@@ -6199,10 +6220,14 @@ class Personnel:
 				else:
 					hospital_max += libtcod.random_get_int(0, 2, 4)
 		
+		# clear injuries now that odds have been calculated
+		for k in self.injury.keys():
+			self.injury[k] = None
+		
 		if hospital_chance == 0.0: return
 		
 		roll = GetPercentileRoll()
-		# TEMP
+		# TEMP - automatically sent to hospital
 		roll = 0.0
 		if roll <= hospital_chance:
 			self.field_hospital = (hospital_min, hospital_max)
@@ -6998,7 +7023,7 @@ class Personnel:
 	
 	
 	# display this crewman's name to the screen, required because crew names use extended characters
-	def DisplayName(self, console, x, y, firstname_only = False, lastname_only = False, first_initial = False):
+	def DisplayName(self, console, x, y, firstname_only=False, lastname_only=False, first_initial=False):
 	
 		CHAR_MAP = {
 			'Ą' : 256,

@@ -2237,8 +2237,9 @@ class Campaign:
 		global calendar_bkg, day_outline, calendar_cmd_con, calendar_main_panel
 		global campaign_day
 		
-		# selected crew position
+		# selected crew position and selected field hospital crewman if any
 		selected_position = 0
+		selected_hospital_crewman = 0
 		
 		# create consoles
 		calendar_bkg = LoadXP('calendar_bkg.xp')

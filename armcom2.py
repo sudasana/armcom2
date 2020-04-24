@@ -17498,12 +17498,11 @@ if config['ArmCom2'].getboolean('large_display_font'):
 else:
 	fontname = 'c64_8x8_ext.png'
 
-# set up custom font and root console
-libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW,
-        16, 18)
-libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, NAME + ' - ' + VERSION,
-	fullscreen=False, renderer=RENDERER, vsync=True)
-
+# set up custom font and create the root console
+libtcod.console_set_custom_font(DATAPATH+fontname, libtcod.FONT_LAYOUT_ASCII_INROW, 16, 18)
+WINDOW_NAME = NAME + ' - ' + VERSION
+if DEBUG: WINDOW_NAME += ' DEBUG'
+libtcod.console_init_root(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME, fullscreen=False, renderer=RENDERER, vsync=True)
 libtcod.sys_set_fps(LIMIT_FPS)
 libtcod.console_set_default_background(0, libtcod.black)
 libtcod.console_set_default_foreground(0, libtcod.white)
@@ -17603,7 +17602,6 @@ libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-3,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'Copyright 2016-2020 Gregory Adam Scott')
 libtcod.console_print_ex(main_title, WINDOW_XM, WINDOW_HEIGHT-2,
 	libtcod.BKGND_NONE, libtcod.CENTER, 'Open Source under the GNU GPL')
-
 libtcod.console_blit(LoadXP('poppy.xp'), 0, 0, 0, 0, main_title, 1, WINDOW_HEIGHT-8)
 
 # gradient animated effect for main menu
@@ -17687,7 +17685,6 @@ exit_game = False
 
 while not exit_game:
 	
-	# emergency exit in case of endless loop
 	if libtcod.console_is_window_closed(): sys.exit()
 	
 	# trigger animation and update screen

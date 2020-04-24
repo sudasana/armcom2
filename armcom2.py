@@ -1624,46 +1624,34 @@ class Campaign:
 			libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, (i * 0.01))
 			Wait(5, ignore_animations=True)
 		
-		# roll and display crew wounds and advances
+		# roll for crew injury resolution and level ups, apply results
+		for position in campaign.player_unit.positions_list:
+			if position.crewman is None: continue
+			position.crewman.ResolveInjuries()
+		
+		# save now to fix these results in place
+		SaveGame()
+		
+		# display results of crew injury resolution and level ups
 		y = 15
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
 			
+			# KIA or field hospital result
 			if not position.crewman.alive:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
 				libtcod.console_print(con, 43, y+1, 'KIA')
 			else:
-				
-				# TODO: roll to see if wounds result in field hospital or discharge
-				
-				
-				# display worst injury sustained and result (recovered, etc.)
-				
-				
-				# TEMP: clear all minor wounds, display if 1+ serious injuries
-				serious_injury = False
-				for (k, v) in position.crewman.injury.items():
-					if v is None: continue
-					if v == 'Serious':
-						serious_injury = True
-					else:
-						position.crewman.injury[k] = None
-				
-				if serious_injury:
-					libtcod.console_set_default_foreground(con, libtcod.dark_red)
-					libtcod.console_print_ex(con, 47, y-1, libtcod.BKGND_NONE, libtcod.CENTER,
-						'Serious')
-				else:
+				if position.crewman.field_hospital is None:
 					libtcod.console_set_default_foreground(con, libtcod.light_grey)
 					libtcod.console_print_ex(con, 47, y, libtcod.BKGND_NONE, libtcod.CENTER,
 						'None')
-				
-				# TEMP testing
-				if serious_injury:
-					text = 'Field Hospital'
+				else:
+					libtcod.console_set_default_foreground(con, libtcod.dark_red)
 					libtcod.console_print_ex(con, 47, y, libtcod.BKGND_NONE, libtcod.CENTER,
-						text)
-					text = '4-8 Days'
+						'Field Hospital')
+					(days_min, days_max) = position.crewman.field_hospital
+					text = str(days_min) + '-' + str(days_max) + ' days'
 					libtcod.console_print_ex(con, 47, y+1, libtcod.BKGND_NONE, libtcod.CENTER,
 						text)
 			
@@ -1708,6 +1696,12 @@ class Campaign:
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(30, ignore_animations=True)
 			y += 6
+		
+		# TODO: move crewman to field hospital where required and roll for length of stay 
+		for position in campaign.player_unit.positions_list:
+			if position.crewman is None: continue
+			if position.crewman.field_hospital is None: continue
+			pass
 		
 		# repair tank if required
 		if campaign.player_unit.immobilized:
@@ -2147,7 +2141,7 @@ class Campaign:
 				libtcod.CENTER, '+ Field Hospital +')
 			
 			libtcod.console_print(calendar_main_panel, 5, 10, 'Crewman')
-			libtcod.console_print(calendar_main_panel, 31, 10, 'Date of Expected Recovery')
+			libtcod.console_print(calendar_main_panel, 28, 10, 'Days until Expected Recovery')
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.grey)
 			for x in range(5, 56):
 				libtcod.console_put_char(calendar_main_panel, x, 11, '-')
@@ -4010,20 +4004,8 @@ class CampaignDay:
 				position.crewman = None
 				continue
 			
-			# FUTURE: send crewmen with serious wounds to recover in hospital
-			serious_wound = False
-			for (k, v) in position.crewman.injury.items():
-				if v is None: continue
-				if v != 'Serious': continue
-				serious_wound = True
-				break
+			# TODO: check for crew being sent to hospital here
 			
-			if serious_wound or not position.crewman.alive:
-				text = 'Your ' + position.crewman.normal_position + ' is taken off the front lines to recover.'
-				ShowMessage(text)
-				position.crewman = None
-		
-		
 		# if any remaining crewmen are not in their normal position, move them back now
 		holding_list = []
 
@@ -6105,6 +6087,7 @@ class Personnel:
 			'Right Leg & Foot' : None,
 			'Left Leg & Foot' : None
 		}
+		self.field_hospital = None			# crewman must be send to field hospital if set
 		
 		self.first_name = ''				# placeholders for first and last name
 		self.last_name = ''				#   set by GenerateName()
@@ -6176,6 +6159,56 @@ class Personnel:
 		self.cmd_list = []				# list of possible commands
 		self.current_cmd = 'Spot'			# currently assigned command in scenario
 	
+	
+	# resolve current injuries - called at end of campaign day
+	def ResolveInjuries(self):
+		if not self.alive: return
+		
+		# TODO: also calculate chance of discharge
+		# record each time a critical injury was sustained during the day
+		
+		hospital_min = 0
+		hospital_max = 0
+		hospital_chance = 0.0
+		
+		# run through injuries
+		for (k, v) in self.injury.items():
+			if v is None: continue
+			
+			# light injuries automatically heal
+			if v == 'Light':
+				self.injury[k] = None
+			
+			# Heavy injuries have a small chance
+			elif v == 'Heavy':
+				hospital_chance += 3.0
+				if hospital_min == 0:
+					hospital_min = 1
+				if hospital_max < 7:
+					hospital_max = 7
+			
+			# serious injuries have a larger chance
+			elif v == 'Serious':
+				hospital_chance += 15.0
+				if hospital_min < 7:
+					hospital_min = 7
+				else:
+					hospital_min += libtcod.random_get_int(0, 2, 4)
+				if hospital_max < 21:
+					hospital_max = 21
+				else:
+					hospital_max += libtcod.random_get_int(0, 2, 4)
+		
+		if hospital_chance == 0.0: return
+		
+		roll = GetPercentileRoll()
+		# TEMP
+		roll = 0.0
+		if roll <= hospital_chance:
+			self.field_hospital = (hospital_min, hospital_max)
+		else:
+			self.field_hospital = None
+		
 	
 	# returns true if this crewmen is currently working a position for which they lack training
 	# only used for player during scenarios for now

@@ -98,6 +98,11 @@ KEYBOARDS = ['QWERTY', 'AZERTY', 'QWERTZ', 'Dvorak', 'Custom']	# list of possibl
 MAX_TANK_NAME_LENGTH = 20				# maximum length of tank names
 MAX_NICKNAME_LENGTH = 10				# " for crew nicknames
 
+DEBUG_OPTIONS  = [
+	'Regenerate CD Map Roads & Rivers', 'Attack Selected Crewman (Scenario)', 'Set Crewman Injury',
+	'Set Time to End of Day', 'End Current Scenario', 'Export Campaign Log',
+	'Regenerate Weather'
+]
 
 ##### Hex geometry definitions #####
 
@@ -16921,24 +16926,26 @@ def ShowTextInputMenu(prompt, original_text, max_length, string_list):
 # allow the player to select one option from a list
 def GetOption(option_list):
 	
-	# create a local copy of the current screen to re-draw when we're done
-	temp_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
-	libtcod.console_blit(0, 0, 0, 0, 0, temp_con, 0, 0)
-	# darken screen background
-	libtcod.console_blit(darken_con, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.7)
+	# create the menu console
+	menu_con = libtcod.console_new(WINDOW_WIDTH, WINDOW_HEIGHT)
+	libtcod.console_set_default_background(menu_con, libtcod.black)
+	libtcod.console_set_default_foreground(menu_con, libtcod.white)
+	libtcod.console_clear(menu_con)
 	
 	# show list of options
 	c = 65
-	y = 15
+	x = 40
+	y = 25
 	for text in option_list:
-		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		libtcod.console_put_char(con, 25, y, chr(c))
-		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		libtcod.console_print(con, 27, y, text)
+		libtcod.console_set_default_foreground(menu_con, ACTION_KEY_COL)
+		libtcod.console_put_char(menu_con, x, y, chr(c))
+		libtcod.console_set_default_foreground(menu_con, libtcod.light_grey)
+		libtcod.console_print(menu_con, x+2, y, text)
 		y += 1
 		c += 1
 	
-	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	libtcod.console_blit(menu_con, 0, 0, 0, 0, 0, 0, 0)
+	libtcod.console_flush()
 	
 	option = None
 	
@@ -16957,14 +16964,13 @@ def GetOption(option_list):
 			option = option_list[option_code]
 			exit_menu = True
 	
-	# re-draw original root console
-	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)
-	del temp_con
-	
+	# re-draw original screen console
+	libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+	libtcod.console_flush()
 	return option
 	
 
-# display the debug flags menu, not enabled in distribution versions
+# display the debug menu, not enabled in distribution versions
 def ShowDebugMenu():
 	
 	# draw the debug menu to screen
@@ -16999,14 +17005,10 @@ def ShowDebugMenu():
 			libtcod.console_print(con, x, y+(xm*2), str(xm+1))
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		libtcod.console_print(con, x+2, y, 'Regenerate CD Map Roads & Rivers')
-		libtcod.console_print(con, x+2, y+2, 'Attack Selected Crewman (Scenario)')
-		libtcod.console_print(con, x+2, y+4, 'Immobilize Player')
-		libtcod.console_print(con, x+2, y+6, 'Set Time to End of Day')
-		libtcod.console_print(con, x+2, y+8, 'End Current Scenario')
-		libtcod.console_print(con, x+2, y+10, 'Export Campaign Log')
-		libtcod.console_print(con, x+2, y+12, 'Generate New Weather')
-		
+		for text in DEBUG_OPTIONS:
+			libtcod.console_print(con, x+2, y, text)
+			y += 2
+			
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
 		libtcod.console_print(con, 33, 56, 'Esc')
 		libtcod.console_print(con, 33, 57, 'Enter')
@@ -17056,80 +17058,91 @@ def ShowDebugMenu():
 			DrawDebugMenu()
 			continue
 		
-		# regenerate CD map roads
-		if key_char == '1':
-			if campaign_day is not None:
-				campaign_day.GenerateRoads()
-				campaign_day.GenerateRivers()
-				campaign_day.UpdateCDMapCon()
-				campaign_day.UpdateCDDisplay()
-				ShowMessage('Roads and rivers regenerated')
-				exit_menu = True
-				continue
+		# debug menu option
+		num = ord(key_char) - 49
+		if num < 0 or num > len(DEBUG_OPTIONS) - 1: continue
 		
-		# attack crewman in selected position
-		if key_char == '2':
-			if scenario is not None:
-				option_list = []
-				for position in scenario.player_unit.positions_list:
-					option_list.append(position.name)
-				position_name = GetOption(option_list)
-				if position_name is None: return
-				crewman = scenario.player_unit.GetPersonnelByPosition(position_name)
-				if crewman is None: continue
-				if crewman.ResolveAttack({'firepower' : 6}) is not None:
-					scenario.UpdateCrewInfoCon()
-				exit_menu = True
-				continue
+		text = DEBUG_OPTIONS[num]
 		
-		# immobilize player
-		if key_char == '3':
-			if scenario is not None:
-				if scenario.player_unit.immobilized:
-					continue
-				scenario.player_unit.ImmobilizeMe()
-				scenario.UpdatePlayerInfoCon()
-				ShowMessage('Player tank immobilized')
-				exit_menu = True
-				continue
+		if text == 'Regenerate CD Map Roads & Rivers':
+			if campaign_day is None: continue
+			campaign_day.GenerateRoads()
+			campaign_day.GenerateRivers()
+			campaign_day.UpdateCDMapCon()
+			campaign_day.UpdateCDDisplay()
+			ShowMessage('Roads and rivers regenerated')
+			exit_menu = True
 		
-		# set current time to end of combat day
-		if key_char == '4':
-			if campaign_day is not None:
-				campaign_day.day_clock['hour'] = campaign_day.end_of_day['hour']
-				campaign_day.day_clock['minute'] = campaign_day.end_of_day['minute']
-				DisplayTimeInfo(time_con)
-				text = 'Time is now ' + str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
-				ShowMessage(text)
-				exit_menu = True
-				continue
+		elif text == 'Attack Selected Crewman (Scenario)':
+			if scenario is None: continue
+			option_list = []
+			for position in scenario.player_unit.positions_list:
+				option_list.append(position.name)
+			position_name = GetOption(option_list)
+			if position_name is None: return
+			crewman = scenario.player_unit.GetPersonnelByPosition(position_name)
+			if crewman is None: continue
+			if crewman.ResolveAttack({'firepower' : 6}) is not None:
+				scenario.UpdateCrewInfoCon()
+			exit_menu = True
 		
-		# end the current scenario
-		if key_char == '5':
-			if scenario is not None:
-				scenario.finished = True
-				ShowMessage('Scenario finished flag set to True')
-				exit_menu = True
-				continue
+		elif text == 'Set Crewman Injury':
+			if scenario is None:
+				unit = campaign.player_unit
+			else:
+				unit = scenario.player_unit
+			option_list = []
+			for position in unit.positions_list:
+				option_list.append(position.name)
+			position_name = GetOption(option_list)
+			if position_name is None: continue
+			
+			crewman = unit.GetPersonnelByPosition(position_name)
+			if crewman is None: continue
+			
+			option_list = []
+			for text in crewman.injury.keys():
+				option_list.append(text)
+			location_name = GetOption(option_list)
+			if location_name is None: continue
+			
+			option_list = ['None', 'Light', 'Heavy', 'Serious', 'Critical']
+			injury_name = GetOption(option_list)
+			if injury_name is None: continue
+			
+			# set the injury and show message
+			crewman.injury[location_name] = injury_name
+			ShowMessage('Crewman ' + location_name + ' injury now ' + injury_name)
+			exit_menu = True
 		
-		# export current campaign log
-		if key_char == '6':
-			if campaign is not None:
-				ExportLog()
-				ShowMessage('Log exported')
-				exit_menu = True
-				continue
+		elif text == 'Set Time to End of Day':
+			if campaign_day is None: continue
+			campaign_day.day_clock['hour'] = campaign_day.end_of_day['hour']
+			campaign_day.day_clock['minute'] = campaign_day.end_of_day['minute']
+			DisplayTimeInfo(time_con)
+			text = 'Time is now ' + str(campaign_day.day_clock['hour']).zfill(2) + ':' + str(campaign_day.day_clock['minute']).zfill(2)
+			ShowMessage(text)
+			exit_menu = True
 		
-		# generate new weather
-		if key_char == '7':
-			if campaign_day is not None:
-				campaign_day.GenerateWeather()
-				ShowMessage('New weather conditions generated')
-				DisplayWeatherInfo(cd_weather_con)
-				campaign_day.InitAnimations()
-				exit_menu = True
-				continue
-				
+		elif text == 'End Current Scenario':
+			if scenario is None: continute
+			scenario.finished = True
+			ShowMessage('Scenario finished flag set to True')
+			exit_menu = True
+		
+		elif text == 'Export Campaign Log':
+			if campaign is None: continue
+			ExportLog()
+			ShowMessage('Log exported')
+			exit_menu = True
+		
+		elif text == 'Regenerate Weather':
+			if campaign_day is None: continue
+			campaign_day.GenerateWeather()
+			ShowMessage('New weather conditions generated')
+			DisplayWeatherInfo(cd_weather_con)
+			campaign_day.InitAnimations()
+			exit_menu = True
 	
 	# re-draw original root console
 	libtcod.console_blit(temp_con, 0, 0, 0, 0, 0, 0, 0)

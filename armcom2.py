@@ -44,7 +44,7 @@
 
 ##### Debug Flags #####
 STEAM_ON = False						# load steamworks
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 
 
 ##### Libraries #####
@@ -187,7 +187,8 @@ SCEN_PHASE_COL = [
 CC_MENU_LIST = [
 	('Proceed', 1, libtcod.Color(70, 140, 0)),
 	('Crew and Tank', 2, libtcod.Color(140, 140, 0)),
-	('Journal', 3, libtcod.Color(140, 0, 0))
+	('Journal', 3, libtcod.Color(0, 0, 150)),
+	('Field Hospital', 4, libtcod.Color(200, 0, 0))
 ]
 
 # list of campaign day menus and their highlight colours
@@ -1867,22 +1868,17 @@ class Campaign:
 					libtcod.CENTER, line)
 				y += 1
 		
-		# NEW: check for week description and display wrapped text if any
+		# check for week description and display wrapped text if any
 		if 'week_description' in campaign.current_week:
 			libtcod.console_set_default_foreground(day_outline, libtcod.light_grey)
 			lines = wrap(campaign.current_week['week_description'], 22)
 			y = 12
 			for line in lines[:12]:
-				libtcod.console_print_ex(day_outline, 12, y, libtcod.BKGND_NONE,
-					libtcod.CENTER, line)
+				libtcod.console_print(day_outline, 1, y, line)
 				y += 1
 		
-		
 		libtcod.console_set_default_foreground(day_outline, libtcod.white)
-		libtcod.console_print_ex(day_outline, 12, 28, libtcod.BKGND_NONE,
-			libtcod.CENTER, 'Current Campaign VP:')
-		libtcod.console_print_ex(day_outline, 12, 29, libtcod.BKGND_NONE,
-			libtcod.CENTER, str(campaign.player_vp))
+		libtcod.console_print(day_outline, 2, 29, 'Campaign VP: ' + str(campaign.player_vp))
 		
 		if 'refitting' in campaign.current_week:
 			return
@@ -2116,6 +2112,28 @@ class Campaign:
 				for line in lines:
 					libtcod.console_print(calendar_main_panel, 11, y, line)
 					y += 1
+		
+		# field hospital menu
+		elif self.active_calendar_menu == 4:
+			
+			libtcod.console_set_default_background(calendar_main_panel, libtcod.Color(200, 0, 0))
+			libtcod.console_rect(calendar_main_panel, 15, 1, 32, 3, False, libtcod.BKGND_SET)
+			libtcod.console_set_default_background(calendar_main_panel, libtcod.black)
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.white)
+			libtcod.console_print_ex(calendar_main_panel, 31, 2, libtcod.BKGND_NONE,
+				libtcod.CENTER, '+ Field Hospital +')
+			
+			libtcod.console_print(calendar_main_panel, 5, 10, 'Crewman')
+			libtcod.console_print(calendar_main_panel, 31, 10, 'Date of Expected Recovery')
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.grey)
+			for x in range(5, 56):
+				libtcod.console_put_char(calendar_main_panel, x, 11, '-')
+			
+			# list any crewmen currently in the field hospital
+			y = 13
+			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.grey)
+			libtcod.console_print(calendar_main_panel, 5, y, 'No crewmen currently in hospital')
+			
 	
 	
 	# update the display of the campaign calendar interface
@@ -2237,7 +2255,7 @@ class Campaign:
 			key_char = DeKey(chr(key.c).lower())
 			
 			# switch active menu
-			if key_char in ['1', '2', '3']:
+			if key_char in ['1', '2', '3', '4']:
 				if self.active_calendar_menu != int(key_char):
 					self.active_calendar_menu = int(key_char)
 					self.UpdateCalendarCmdCon()
@@ -2435,6 +2453,11 @@ class Campaign:
 					self.UpdateCCMainPanel(selected_position)
 					self.UpdateCCDisplay()
 					continue
+			
+			# field hospital menu active
+			elif self.active_calendar_menu == 4:
+				
+				pass
 				
 
 
@@ -5998,6 +6021,7 @@ class Session:
 		
 		# tank portrait for main menu
 		self.tank_portrait = None
+		self.tank_id = None
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
 			unit_types = json.load(data_file)
 		#print('Loaded ' + str(len(unit_types)) + ' unit types.')
@@ -6008,6 +6032,7 @@ class Session:
 			if unit_types[unit_id]['class'] not in ['Light Tank', 'Medium Tank', 'Heavy Tank', 'Tank Destroyer']: continue
 			if not os.path.exists(DATAPATH + unit_types[unit_id]['portrait']): continue
 			self.tank_portrait = LoadXP(unit_types[unit_id]['portrait'])
+			self.tank_id = unit_id
 			break
 		del unit_types
 		
@@ -17566,6 +17591,9 @@ if main_theme is not None:
 main_title = LoadXP('main_title.xp')
 if session.tank_portrait is not None:
 	libtcod.console_blit(session.tank_portrait, 0, 0, 0, 0, main_title, 7, 6)
+if session.tank_id is not None:
+	libtcod.console_set_default_foreground(main_title, libtcod.darker_grey)
+	libtcod.console_print(main_title, 14, 15, session.tank_id)
 
 # display version number and program info
 libtcod.console_set_default_foreground(main_title, libtcod.light_grey)

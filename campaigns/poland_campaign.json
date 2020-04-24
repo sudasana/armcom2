@@ -61,7 +61,7 @@
 			"combat_chance" : "80",
 			"average_resistance" : "7",
 			"week_title" : "Over the Polish Border",
-			"week_description" : "The first major engagement of the new German panzerwaffe begins - lead your forces across the border and into Polish territory.",
+			"week_description" : "The first major engagement of the new German panzerwaffe has begun. Lead your tank across the border and into Polish territory.",
 			"mission_odds" : {
 				"Advance" : "25",
 				"Battle" : "5",

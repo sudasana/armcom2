@@ -1714,6 +1714,7 @@ class Campaign:
 			if position.crewman is None: continue
 			if position.crewman.field_hospital is None: continue
 			
+			position.crewman.unit = None
 			position.crewman.current_position = None
 			campaign.hospital.append(position.crewman)
 			position.crewman = None
@@ -2021,7 +2022,7 @@ class Campaign:
 	
 	
 	# update the main calendar display panel 63x58
-	def UpdateCCMainPanel(self, selected_position):
+	def UpdateCCMainPanel(self, selected_position, selected_hospital_crewman):
 		libtcod.console_clear(calendar_main_panel)
 		
 		# proceed menu - show summary of expected day
@@ -2182,7 +2183,14 @@ class Campaign:
 				return
 			
 			libtcod.console_set_default_foreground(calendar_main_panel, libtcod.lighter_grey)
+			n = 0
 			for crewman in campaign.hospital:
+				
+				if n == selected_hospital_crewman:
+					libtcod.console_set_default_background(calendar_main_panel, libtcod.darker_blue)
+					libtcod.console_rect(calendar_main_panel, 2, y, 57, 2, False, libtcod.BKGND_SET)
+					libtcod.console_set_default_background(calendar_main_panel, libtcod.black)
+				
 				crewman.DisplayName(calendar_main_panel, 2, y, first_initial=True)
 				libtcod.console_print(calendar_main_panel, 22, y, crewman.normal_position)
 				(days_min, days_max) = crewman.field_hospital
@@ -2195,6 +2203,7 @@ class Campaign:
 				libtcod.console_print_ex(calendar_main_panel, 50, y, libtcod.BKGND_NONE,
 					libtcod.RIGHT, text)
 				y += 4
+				n += 1
 			
 			
 	# update the display of the campaign calendar interface
@@ -2260,7 +2269,7 @@ class Campaign:
 		# generate consoles for the first time
 		self.UpdateDayOutlineCon()
 		self.UpdateCalendarCmdCon()
-		self.UpdateCCMainPanel(selected_position)
+		self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 		
 		if not (campaign_day.started and not campaign_day.ended):
 			self.UpdateCCDisplay()
@@ -2294,7 +2303,7 @@ class Campaign:
 				# redraw the screen
 				self.UpdateDayOutlineCon()
 				self.UpdateCalendarCmdCon()
-				self.UpdateCCMainPanel(selected_position)
+				self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 				self.UpdateCCDisplay()
 				
 			if libtcod.console_is_window_closed(): sys.exit()
@@ -2323,7 +2332,7 @@ class Campaign:
 				if self.active_calendar_menu != int(key_char):
 					self.active_calendar_menu = int(key_char)
 					self.UpdateCalendarCmdCon()
-					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 					self.UpdateCCDisplay()
 				continue
 			
@@ -2335,7 +2344,7 @@ class Campaign:
 					campaign_day.started = True
 					campaign_day.ended = True
 					self.UpdateCalendarCmdCon()
-					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 					self.UpdateCCDisplay()
 					continue
 				
@@ -2408,7 +2417,7 @@ class Campaign:
 						# redraw the screen
 						self.UpdateDayOutlineCon()
 						self.UpdateCalendarCmdCon()
-						self.UpdateCCMainPanel(selected_position)
+						self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 						self.UpdateCCDisplay()
 						continue
 					
@@ -2427,7 +2436,7 @@ class Campaign:
 						if selected_position == len(campaign.player_unit.positions_list):
 							selected_position = 0
 				
-					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 					self.UpdateCCDisplay()
 					continue
 				
@@ -2442,7 +2451,7 @@ class Campaign:
 				# swap position menu (not keymapped)
 				elif chr(key.c).lower() == 'p':
 					ShowSwapPositionMenu()
-					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 					self.UpdateCCDisplay()
 					continue
 				
@@ -2455,7 +2464,7 @@ class Campaign:
 						'', MAX_NICKNAME_LENGTH, [])
 					if new_nickname != '':
 						crewman.nickname = new_nickname
-					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 					self.UpdateCCDisplay()
 					continue
 				
@@ -2466,7 +2475,7 @@ class Campaign:
 					if player_tank_name != '':
 						campaign.player_unit.unit_name = player_tank_name
 					self.UpdateCalendarCmdCon()
-					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 					self.UpdateCCDisplay()
 					continue
 			
@@ -2491,7 +2500,7 @@ class Campaign:
 							i += 1
 					self.active_journal_day = keys_list[i]
 					
-					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 					self.UpdateCCDisplay()
 					continue
 				
@@ -2511,14 +2520,35 @@ class Campaign:
 					if self.journal_scroll_line > journal_length - 50:
 						self.journal_scroll_line = journal_length - 50
 					
-					self.UpdateCCMainPanel(selected_position)
+					self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
 					self.UpdateCCDisplay()
 					continue
 			
 			# field hospital menu active
 			elif self.active_calendar_menu == 4:
 				
-				pass
+				# select different crewman
+				if key_char in ['w', 's']:
+					if key_char == 'w':
+						selected_hospital_crewman -= 1
+						if selected_hospital_crewman < 0:
+							selected_hospital_crewman = len(campaign.hospital) - 1
+				
+					else:
+						selected_hospital_crewman += 1
+						if selected_hospital_crewman == len(campaign.hospital):
+							selected_hospital_crewman = 0
+				
+					self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
+					self.UpdateCCDisplay()
+					continue
+				
+				# open crewman menu
+				elif key_char == 'f':
+					crewman = campaign.hospital[selected_hospital_crewman]
+					crewman.ShowCrewmanMenu()
+					self.UpdateCCDisplay()
+					continue
 				
 
 
@@ -6779,9 +6809,12 @@ class Personnel:
 			libtcod.console_print(crewman_menu_con, 39, 11, session.nations[self.nation]['rank_names'][str(self.rank)])
 			
 			
-			# current position
-			libtcod.console_print(crewman_menu_con, 39, 13, self.unit.unit_id)
-			libtcod.console_print(crewman_menu_con, 39, 14, self.current_position.name)
+			# current unit and position if any
+			if self.field_hospital is not None:
+				libtcod.console_print(crewman_menu_con, 39, 13, 'Field Hospital')
+			else:
+				libtcod.console_print(crewman_menu_con, 39, 13, self.unit.unit_id)
+				libtcod.console_print(crewman_menu_con, 39, 14, self.current_position.name)
 			
 			# stats
 			libtcod.console_put_char_ex(crewman_menu_con, 39, 16, chr(4), libtcod.yellow, libtcod.black)
@@ -6821,11 +6854,11 @@ class Personnel:
 				libtcod.console_print(crewman_menu_con, 39, y, skill)
 				y += 1
 				number_of_skills += 1
-			if self.alive:
+			if self.alive and self.field_hospital is None:
 				libtcod.console_print(crewman_menu_con, 39, y, '[Add New Skill]')
 			
 			# highlight selected skill
-			if self.alive:
+			if self.alive and self.field_hospital is None:
 				libtcod.console_set_default_background(crewman_menu_con, HIGHLIGHT_MENU_COL)
 				libtcod.console_rect(crewman_menu_con, 39, 24 + selected_skill, 21, 1, False, libtcod.BKGND_SET)
 				libtcod.console_set_default_background(crewman_menu_con, libtcod.black)
@@ -6833,7 +6866,7 @@ class Personnel:
 			# display info about selected skill or info about adding a new skill
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
 			y = 24
-			if not self.alive:
+			if not self.alive or self.field_hospital is not None:
 				text = ''
 			elif selected_skill == number_of_skills:
 				text = 'Select this option to spend an advance point and add a new skill'
@@ -6893,7 +6926,7 @@ class Personnel:
 			
 			# player commands
 			libtcod.console_set_default_foreground(crewman_menu_con, ACTION_KEY_COL)
-			if self.alive:
+			if self.alive and self.field_hospital is None:
 				libtcod.console_print(crewman_menu_con, 10, 22, '1')
 				libtcod.console_print(crewman_menu_con, 10, 23, '2')
 				libtcod.console_print(crewman_menu_con, 10, 24, '3')
@@ -6904,7 +6937,7 @@ class Personnel:
 			libtcod.console_print(crewman_menu_con, 10, 29, 'Esc')
 			
 			libtcod.console_set_default_foreground(crewman_menu_con, libtcod.light_grey)
-			if self.alive:
+			if self.alive and self.field_hospital is None:
 				libtcod.console_print(crewman_menu_con, 14, 22, 'Increase')
 				libtcod.console_print(crewman_menu_con, 14, 23, 'Increase')
 				libtcod.console_print(crewman_menu_con, 14, 24, 'Increase')
@@ -6946,8 +6979,8 @@ class Personnel:
 				exit_menu = True
 				continue
 			
-			# limited options if crewman is dead
-			if not self.alive: continue
+			# limited options if crewman is dead or in hospital
+			if not self.alive or self.field_hospital is not None: continue
 			
 			key_char = DeKey(chr(key.c).lower())
 			

@@ -6676,9 +6676,9 @@ class Personnel:
 			if roll <= self.stats['Grit'] * 9.0:
 				self.injury[k] = 'Serious'
 				if self.current_position.name in PLAYER_POSITIONS:
-					text = 'Your ' + location + ' injury has stabilized and is now Serious.'
+					text = 'Your ' + k + ' injury has stabilized and is now Serious.'
 				else:
-					text = 'Your ' + self.current_position.name + "'s " + location + ' injury has stabilized and is now Serious.'
+					text = 'Your ' + self.current_position.name + "'s " + k + ' injury has stabilized and is now Serious.'
 				ShowMessage(text)
 				campaign.AddJournal(text)
 			

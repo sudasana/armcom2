@@ -1564,7 +1564,7 @@ class Campaign:
 		Wait(95, ignore_animations=True)
 	
 	
-	# do automatic actions that end a campaign day: resolve wounds and check for crewman level up
+	# do automatic actions that end a campaign day: resolve injuries and check for crewman level up
 	def ShowEndOfDay(self):
 		
 		# create background console
@@ -1584,39 +1584,38 @@ class Campaign:
 		
 		# window
 		libtcod.console_set_default_background(con, libtcod.black)
-		libtcod.console_rect(con, 15, 12, 60, 40, True, libtcod.BKGND_SET)
+		libtcod.console_rect(con, 15, 6, 60, 50, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		DrawFrame(con, 15, 12, 60, 40)
+		DrawFrame(con, 15, 6, 60, 50)
 		
 		libtcod.console_set_default_background(con, libtcod.darker_blue)
-		libtcod.console_rect(con, 39, 13, 12, 3, True, libtcod.BKGND_SET)
+		libtcod.console_rect(con, 39, 7, 12, 3, True, libtcod.BKGND_SET)
 		libtcod.console_set_default_background(con, libtcod.black)
 		libtcod.console_set_default_foreground(con, libtcod.lighter_blue)
-		libtcod.console_print_ex(con, WINDOW_XM, 14, libtcod.BKGND_NONE, libtcod.CENTER,
-				'End of Day')
+		libtcod.console_print_ex(con, WINDOW_XM, 8, libtcod.BKGND_NONE, libtcod.CENTER,
+			'End of Day')
 		
-		# crew advances and wound recovery
+		# column titles
 		libtcod.console_set_default_foreground(con, libtcod.red)
-		libtcod.console_print(con, 40, 17, 'Serious Wound/')
-		libtcod.console_print(con, 45, 18, 'KIA')
+		libtcod.console_print(con, 42, 12, 'Injury/KIA')
 		libtcod.console_set_default_foreground(con, libtcod.light_blue)
-		libtcod.console_print(con, 56, 18, 'Level Up')
+		libtcod.console_print(con, 60, 12, 'Level Up')
 		
-		y = 20
+		y = 15
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
 			libtcod.console_set_default_foreground(con, libtcod.white)
-			libtcod.console_print(con, 19, y, position.name)
-			position.crewman.DisplayName(con, 19, y+1, first_initial=True)
+			libtcod.console_print(con, 18, y, position.name)
+			position.crewman.DisplayName(con, 18, y+1, first_initial=True)
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
-			for x in range(19, 68):
-				libtcod.console_put_char(con, x, y+2, '.')
-			y += 5
+			for x in range(18, 72):
+				libtcod.console_put_char(con, x, y+3, '.')
+			y += 6
 		
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		for y1 in range(19, y-3):
-			libtcod.console_put_char(con, 40, y1, '.')
-			libtcod.console_put_char(con, 52, y1, '.')
+		for y1 in range(13, y-3):
+			libtcod.console_put_char(con, 38, y1, '.')
+			libtcod.console_put_char(con, 56, y1, '.')
 		
 		# fade in from black
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
@@ -1626,16 +1625,22 @@ class Campaign:
 			Wait(5, ignore_animations=True)
 		
 		# roll and display crew wounds and advances
-		y = 20
+		y = 15
 		for position in campaign.player_unit.positions_list:
 			if position.crewman is None: continue
 			
 			if not position.crewman.alive:
 				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
-				libtcod.console_print(con, 43, y+1, 'Dead')
+				libtcod.console_print(con, 43, y+1, 'KIA')
 			else:
-			
-				# clear all minor wounds, display if 1+ serious injuries
+				
+				# TODO: roll to see if wounds result in field hospital or discharge
+				
+				
+				# display worst injury sustained and result (recovered, etc.)
+				
+				
+				# TEMP: clear all minor wounds, display if 1+ serious injuries
 				serious_injury = False
 				for (k, v) in position.crewman.injury.items():
 					if v is None: continue
@@ -1646,10 +1651,21 @@ class Campaign:
 				
 				if serious_injury:
 					libtcod.console_set_default_foreground(con, libtcod.dark_red)
-					libtcod.console_print(con, 43, y+1, 'Serious')
+					libtcod.console_print_ex(con, 47, y-1, libtcod.BKGND_NONE, libtcod.CENTER,
+						'Serious')
 				else:
 					libtcod.console_set_default_foreground(con, libtcod.light_grey)
-					libtcod.console_print(con, 43, y+1, 'None')
+					libtcod.console_print_ex(con, 47, y, libtcod.BKGND_NONE, libtcod.CENTER,
+						'None')
+				
+				# TEMP testing
+				if serious_injury:
+					text = 'Field Hospital'
+					libtcod.console_print_ex(con, 47, y, libtcod.BKGND_NONE, libtcod.CENTER,
+						text)
+					text = '4-8 Days'
+					libtcod.console_print_ex(con, 47, y+1, libtcod.BKGND_NONE, libtcod.CENTER,
+						text)
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(30, ignore_animations=True)
@@ -1676,12 +1692,14 @@ class Campaign:
 				
 				if levels_up == 0:
 					libtcod.console_set_default_foreground(con, libtcod.light_grey)
-					libtcod.console_print(con, 55, y+1, 'None')
+					text = 'None'
 				else:
 					position.crewman.level += levels_up
 					position.crewman.adv += levels_up
 					libtcod.console_set_default_foreground(con, libtcod.white)
-					libtcod.console_print(con, 55, y+1, '+' + str(levels_up))
+					text = '+' + str(levels_up)
+				libtcod.console_print_ex(con, 64, y, libtcod.BKGND_NONE,
+					libtcod.CENTER, text)
 			
 			# crewmen recover from any negative condition (except for death)
 			if position.crewman.alive: 
@@ -1689,16 +1707,16 @@ class Campaign:
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 			Wait(30, ignore_animations=True)
-			y += 5
+			y += 6
 		
 		# repair tank if required
 		if campaign.player_unit.immobilized:
 			campaign.player_unit.immobilized = False
 		
 		libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-		libtcod.console_print(con, 38, 49, 'Enter')
+		libtcod.console_print(con, 38, 53, 'Enter')
 		libtcod.console_set_default_foreground(con, libtcod.light_grey)
-		libtcod.console_print(con, 45, 49, 'Continue')
+		libtcod.console_print(con, 45, 53, 'Continue')
 		libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
 		exit_menu = False

@@ -3459,7 +3459,7 @@ class CampaignDay:
 		
 		enemy_max_capture = 1
 		
-		if campaign_day.mission == 'Advance':
+		if campaign_day.mission in ['Advance', 'Spearhead']:
 			friendly_capture_odds = 45.0
 			enemy_capture_odds = 5.0
 		elif campaign_day.mission == 'Battle':
@@ -10750,7 +10750,7 @@ class Scenario:
 	# roll at start of scenario to see whether player has been ambushed
 	def DoAmbushRoll(self):
 		
-		# skip if no enemy units remaining
+		# skip roll entirely if no enemy units remaining
 		all_enemies_dead = True
 		for unit in self.units:
 			if unit.owning_player == 1 and unit.alive:
@@ -10758,21 +10758,30 @@ class Scenario:
 				break
 		if all_enemies_dead: return
 		
-		# no ambush if player has Motti national skill
+		# no ambush possible if player has Motti national skill
 		if campaign.CheckForNationalSkill('Motti'):
 			return
 		
-		roll = GetPercentileRoll()
+		chance = 10.0
+		
+		if campaign_day.weather['Precipitation'] in ['Heavy Rain', 'Snow', 'Blizzard']:
+			chance += 10.0
+		if campaign_day.mission in ['Advance', 'Spearhead']:
+			chance += 10.0
+		if self.cd_map_hex.terrain_type in ['Forest', 'Villages']:
+			chance += 10.0
+		elif self.cd_map_hex.terrain_type == 'Hills':
+			chance += 15.0
 		
 		for position in ['Commander', 'Commander/Gunner']:
 			crewman = self.player_unit.GetPersonnelByPosition(position)
 			if crewman is None: continue
 			if 'Enemy Spotted!' in crewman.skills:
-				roll += crewman.GetSkillMod(10.0)
+				chance -= crewman.GetSkillMod(10.0)
 				break
 		
 		if self.player_unit.GetStat('recce') is not None:
-			roll += 5.0
+			chance -= 5.0
 		
 		crew_exposed = False
 		for position in self.player_unit.positions_list:
@@ -10781,10 +10790,13 @@ class Scenario:
 			if position.crewman.ce:
 				crew_exposed = True
 				break
-		if not crew_exposed:
-			roll -= 25.0
+		if crew_exposed:
+			chance -= 10.0
 		
-		if roll <= 20.0:
+		if chance < 3.0:
+			chance = 3.0
+		
+		if GetPercentileRoll() <= chance:
 			self.ambush = True
 	
 	

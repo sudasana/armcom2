@@ -1963,52 +1963,62 @@ class Campaign:
 			
 			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
 			if DEBUG:
-				libtcod.console_print(calendar_cmd_con, 4, 9, 'S')
-			libtcod.console_print(calendar_cmd_con, 4, 10, 'Enter')
+				libtcod.console_print(calendar_cmd_con, 2, 9, 'S')
+			libtcod.console_print(calendar_cmd_con, 2, 10, 'Enter')
 			
 			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
 			if DEBUG:
-				libtcod.console_print(calendar_cmd_con, 11, 9, 'Skip Day')
+				libtcod.console_print(calendar_cmd_con, 9, 9, 'Skip Day')
 			
 			# day has not yet started
 			if not campaign_day.started:
-				libtcod.console_print(calendar_cmd_con, 11, 10, 'Start Day')
+				libtcod.console_print(calendar_cmd_con, 9, 10, 'Start Day')
 			
 			# day has finished
 			else:
-				libtcod.console_print(calendar_cmd_con, 11, 10, 'Next Day')
+				libtcod.console_print(calendar_cmd_con, 9, 10, 'Next Day')
 		
 		# crew and tank menu
 		elif self.active_calendar_menu == 2:
 			
 			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
-			libtcod.console_print(calendar_cmd_con, 1, 4, EnKey('w').upper() + '/' + EnKey('s').upper())
-			libtcod.console_print(calendar_cmd_con, 1, 5, 'P')
-			libtcod.console_print(calendar_cmd_con, 1, 6, EnKey('f').upper())
-			libtcod.console_print(calendar_cmd_con, 1, 7, 'N')
+			libtcod.console_print(calendar_cmd_con, 2, 7, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(calendar_cmd_con, 2, 8, 'P')
+			libtcod.console_print(calendar_cmd_con, 2, 9, EnKey('f').upper())
+			libtcod.console_print(calendar_cmd_con, 2, 10, 'N')
 			
 			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
-			libtcod.console_print(calendar_cmd_con, 5, 4, 'Select Position')
-			libtcod.console_print(calendar_cmd_con, 5, 5, 'Swap Position')
-			libtcod.console_print(calendar_cmd_con, 5, 6, 'Crewman Menu')
-			libtcod.console_print(calendar_cmd_con, 5, 7, 'Crewman Nickname')
+			libtcod.console_print(calendar_cmd_con, 6, 7, 'Select Position')
+			libtcod.console_print(calendar_cmd_con, 6, 8, 'Swap Position')
+			libtcod.console_print(calendar_cmd_con, 6, 9, 'Crewman Menu')
+			libtcod.console_print(calendar_cmd_con, 6, 10, 'Crewman Nickname')
 			
 			if campaign.player_unit.unit_name == '':
 				libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
-				libtcod.console_print(calendar_cmd_con, 1, 8, 'T')
+				libtcod.console_print(calendar_cmd_con, 2, 11, 'T')
 				libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
-				libtcod.console_print(calendar_cmd_con, 5, 8, 'Tank Name')
+				libtcod.console_print(calendar_cmd_con, 6, 11, 'Set Tank Name')
 		
 		# day log
 		elif self.active_calendar_menu == 3:
 			
 			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
-			libtcod.console_print(calendar_cmd_con, 4, 9, EnKey('w').upper() + '/' + EnKey('s').upper())
-			libtcod.console_print(calendar_cmd_con, 4, 10, EnKey('a').upper() + '/' + EnKey('d').upper())
-			
+			libtcod.console_print(calendar_cmd_con, 2, 9, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(calendar_cmd_con, 2, 10, EnKey('a').upper() + '/' + EnKey('d').upper())
 			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
-			libtcod.console_print(calendar_cmd_con, 10, 9, 'Scroll Log')
-			libtcod.console_print(calendar_cmd_con, 10, 10, 'Select Day')
+			libtcod.console_print(calendar_cmd_con, 7, 9, 'Scroll Log')
+			libtcod.console_print(calendar_cmd_con, 7, 10, 'Select Day')
+		
+		# field hospital
+		elif self.active_calendar_menu == 4:
+			
+			libtcod.console_set_default_foreground(calendar_cmd_con, ACTION_KEY_COL)
+			libtcod.console_print(calendar_cmd_con, 2, 9, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(calendar_cmd_con, 2, 10, EnKey('f').upper())
+			libtcod.console_set_default_foreground(calendar_cmd_con, libtcod.light_grey)
+			libtcod.console_print(calendar_cmd_con, 7, 9, 'Select Crewman')
+			libtcod.console_print(calendar_cmd_con, 7, 10, 'Crewman Menu')
+	
 	
 	# update the main calendar display panel 63x58
 	def UpdateCCMainPanel(self, selected_position):
@@ -6008,7 +6018,7 @@ class Session:
 		self.exiting = False
 		
 		# pointer to player unit
-		self.player_unit = None
+		#self.player_unit = None
 		
 		# flag: the last time the keyboard was polled, a key was pressed
 		self.key_down = False
@@ -6048,7 +6058,6 @@ class Session:
 		
 		# tank portrait for main menu
 		self.tank_portrait = None
-		self.tank_id = None
 		with open(DATAPATH + 'unit_type_defs.json', encoding='utf8') as data_file:
 			unit_types = json.load(data_file)
 		#print('Loaded ' + str(len(unit_types)) + ' unit types.')
@@ -6059,7 +6068,6 @@ class Session:
 			if unit_types[unit_id]['class'] not in ['Light Tank', 'Medium Tank', 'Heavy Tank', 'Tank Destroyer']: continue
 			if not os.path.exists(DATAPATH + unit_types[unit_id]['portrait']): continue
 			self.tank_portrait = LoadXP(unit_types[unit_id]['portrait'])
-			self.tank_id = unit_id
 			break
 		del unit_types
 		
@@ -17680,9 +17688,6 @@ if main_theme is not None:
 main_title = LoadXP('main_title.xp')
 if session.tank_portrait is not None:
 	libtcod.console_blit(session.tank_portrait, 0, 0, 0, 0, main_title, 7, 6)
-if session.tank_id is not None:
-	libtcod.console_set_default_foreground(main_title, libtcod.darker_grey)
-	libtcod.console_print(main_title, 14, 15, session.tank_id)
 
 # display version number and program info
 libtcod.console_set_default_foreground(main_title, libtcod.light_grey)

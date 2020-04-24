@@ -21,6 +21,10 @@ along with Armoured Commander II, in the form of a file named "license.txt".
 If not, see <https://www.gnu.org/licenses/>.
 
 ## Running ArmCom2
+To run armcom2.exe, you will need:
+
+* Python 3.6.6 https://www.python.org/downloads/release/python-366/
+* Visual C++ Redistributables https://visualstudio.microsoft.com/downloads/
 
 To run armcom2.py, you will need:
 

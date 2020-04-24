@@ -2250,6 +2250,9 @@ class Campaign:
 					exit_loop = True
 					continue
 				
+				# do end-of-campaign day stuff
+				self.ShowEndOfDay()
+				
 				# redraw the screen
 				self.UpdateDayOutlineCon()
 				self.UpdateCalendarCmdCon()
@@ -2309,9 +2312,6 @@ class Campaign:
 				
 					# proceed to next day or end campaign
 					else:
-						
-						# do end-of-day stuff
-						self.ShowEndOfDay()
 						
 						# add day records to campaign log
 						self.LogDayRecords()

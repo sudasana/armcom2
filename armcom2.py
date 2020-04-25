@@ -901,7 +901,6 @@ class Campaign:
 		
 		self.hospital = []		# holds crewmen currently in the field hospital
 		
-		#self.enemy_class_odds = {}	# placeholder for enemy unit spawn odds, set by campaign days
 		self.active_calendar_menu = 1	# currently active menu in the campaign calendar interface
 		self.active_journal_day = None	# currently displayed journal day
 		self.journal_scroll_line = 0	# current level of scroll on the journal display
@@ -914,6 +913,13 @@ class Campaign:
 		self.records = {}
 		for text in RECORD_LIST:
 			self.records[text] = 0
+	
+	# TODO: show a menu giving player the option of accepting a crewman returning from the field hospital
+	def ShowReturningCrewMenu(self, crewman):
+		
+		# TEMP - automatically transferred
+		print('DEBUG: Crewman was transferred out of field hospital')
+		self.hospital.remove(crewman)
 	
 	
 	# add an entry to the journal
@@ -1567,7 +1573,7 @@ class Campaign:
 		Wait(95, ignore_animations=True)
 	
 	
-	# do automatic actions that end a campaign day: resolve injuries and check for crewman level up
+	# determine and show results of a completed campaign day: injury results and level ups
 	def ShowEndOfDay(self):
 		
 		# create background console
@@ -2253,17 +2259,42 @@ class Campaign:
 			
 			# subtract days elapsed from days remaining from any crewmen in field hospital
 			#if len(self.hospital) == 0: return
-			
 			(year1, month1, day1) = previous_day.split('.')
 			(year2, month2, day2) = self.today.split('.')
 			a = datetime(int(year1), int(month1), int(day1), 0, 0, 0)
 			b = datetime(int(year2), int(month2), int(day2), 0, 0, 0)
 			days_past = (b-a).days
-			
 			print('DEBUG: ' + str(days_past) + ' days have past in the calendar')
 			
-			for crewman in self.hospital:
-				pass
+			# iterate in reverse order since we may remove some crewmen from the list
+			for crewman in reversed(self.hospital):
+				
+				(min_days, max_days) = crewman.field_hospital
+				if min_days > 0:
+					min_days -= days_past
+					if min_days < 0:
+						min_days = 0
+				
+				if max_days > 0:
+					max_days -= days_past
+					if max_days < 0:
+						max_days = 0
+				
+				# crewman with 0 max days left are automatically returned to action
+				if max_days == 0:
+					self.ShowReturningCrewMenu(crewman)
+					continue
+				
+				# roll for return to action based on how many days elapsed
+				roll = GetPercentileRoll()
+				# TEMP
+				roll = 1.0
+				if roll <= days_past * 3.0:
+					self.ShowReturningCrewMenu(crewman)
+					continue
+				
+				# crewman remains in hospital, update days remaining
+				crewman.field_hospital = (min_days, max_days)
 		
 		
 		# consoles for campaign calendar interface
@@ -6280,8 +6311,10 @@ class Personnel:
 		if hospital_chance == 0.0: return
 		
 		roll = GetPercentileRoll()
+		
 		# TEMP - automatically sent to hospital
 		roll = 0.0
+		
 		if roll <= hospital_chance:
 			self.field_hospital = (hospital_min, hospital_max)
 		else:

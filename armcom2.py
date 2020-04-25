@@ -62,7 +62,7 @@ from math import floor, cos, sin, sqrt, degrees, atan2, ceil	# math and heading 
 import xp_loader, gzip					# loading xp image files
 import json						# for loading JSON data
 import time
-from datetime import datetime				# for timestamping logs
+from datetime import datetime				# for timestamping logs, date calculations
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
 import sdl2.sdlmixer as mixer				# sound effects
@@ -1000,9 +1000,9 @@ class Campaign:
 				if roll <= chance:
 					self.combat_calendar.append(day_text)
 		
-		#print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
-		#for day_text in self.combat_calendar:
-		#	print(day_text)
+		print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
+		for day_text in self.combat_calendar:
+			print(day_text)
 	
 	
 	# copy over day's records to a new entry in the campaign record log
@@ -2250,6 +2250,20 @@ class Campaign:
 					for position in campaign.player_unit.positions_list:
 						if position.crewman is None: continue
 						position.crewman.PromotionCheck()
+			
+			# subtract days elapsed from days remaining from any crewmen in field hospital
+			#if len(self.hospital) == 0: return
+			
+			(year1, month1, day1) = previous_day.split('.')
+			(year2, month2, day2) = self.today.split('.')
+			a = datetime(int(year1), int(month1), int(day1), 0, 0, 0)
+			b = datetime(int(year2), int(month2), int(day2), 0, 0, 0)
+			days_past = (b-a).days
+			
+			print('DEBUG: ' + str(days_past) + ' days have past in the calendar')
+			
+			for crewman in self.hospital:
+				pass
 		
 		
 		# consoles for campaign calendar interface

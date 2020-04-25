@@ -924,11 +924,20 @@ class Campaign:
 			
 			# TODO: draw frames?
 			
-			# TODO: display player unit and current position and crew list
+			# display player unit and current position and current crew list
 			self.player_unit.DisplayMyInfo(con, 33, 1, status=False)
 			DisplayCrew(self.player_unit, con, 33, 20, selected_position)
 			
-			# TODO: display command keys
+			# display commands
+			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+			libtcod.console_print(con, 34, 53, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(con, 34, 54, 'Enter')
+			libtcod.console_print(con, 34, 56, 'Esc')
+			
+			libtcod.console_set_default_foreground(con, libtcod.light_grey)
+			libtcod.console_print(con, 40, 53, 'Select Position')
+			libtcod.console_print(con, 40, 54, 'Swap Crewmen')
+			libtcod.console_print(con, 40, 56, 'Cancel Return')
 			
 			# TODO: display returning crewman and crewman that would be replaced
 			
@@ -950,8 +959,9 @@ class Campaign:
 			if key.vk == libtcod.KEY_ESCAPE:
 				if not ShowNotification('Crewman will be permanently transferred to another unit, continue?', confirm=True):
 					continue
-				print('DEBUG: Crewman was transferred out of field hospital')
-				self.hospital.remove(crewman)
+				# TEMP disabled
+				#print('DEBUG: Crewman was transferred out of field hospital')
+				#self.hospital.remove(crewman)
 				exit_menu = True
 		
 	

@@ -245,6 +245,10 @@ MISSION_DESC = {
 #                                Game Engine Definitions                                 #
 ##########################################################################################
 
+# percent chance per day after minimum stay that a crewman in the Field Hospital will be released
+# to active duty
+FIELD_HOSPITAL_RELEASE_CHANCE = 4.0
+
 # Spearhead mission zone capture VP values: adds one per this many hexrows reached
 SPEARHEAD_HEXROW_LEVELS = 2
 
@@ -914,6 +918,31 @@ class Campaign:
 		for text in RECORD_LIST:
 			self.records[text] = 0
 	
+	
+	# handle a Player Commander heading to the field hospital for a period of time
+	def CommanderInAComa(self, crewman):
+		
+		print('DEBUG: Player Commander heading to Field Hospital')
+		
+		# roll for actual length of hospital stay
+		(days_min, days_max) = crewman.field_hospital
+		days = days_min
+		
+		for i in range(days_max):
+			if GetPercentileRoll() <= FIELD_HOSPITAL_RELEASE_CHANCE:
+				break
+			days += 1
+		
+		# TODO: check to see if this would take the player beyond the end of the campaign
+		
+		
+		# TODO: we're still in the campaign, set the current day to the next possible combat day
+		
+		# TODO: allow player to select a new tank, and generate a crew for it
+		
+		
+		
+	
 	# show a menu giving player the option of accepting a crewman returning from the field hospital
 	def ShowReturningCrewMenu(self, crewman):
 		
@@ -922,24 +951,93 @@ class Campaign:
 			
 			libtcod.console_clear(con)
 			
-			# TODO: draw frames?
+			# draw frames
+			libtcod.console_set_default_foreground(con, libtcod.white)
+			DrawFrame(con, 32, 0, 27, 60)
+			DrawFrame(con, 32, 16, 27, 37)
 			
 			# display player unit and current position and current crew list
 			self.player_unit.DisplayMyInfo(con, 33, 1, status=False)
-			DisplayCrew(self.player_unit, con, 33, 20, selected_position)
+			DisplayCrew(self.player_unit, con, 33, 18, selected_position)
 			
 			# display commands
 			libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
-			libtcod.console_print(con, 34, 53, EnKey('w').upper() + '/' + EnKey('s').upper())
-			libtcod.console_print(con, 34, 54, 'Enter')
-			libtcod.console_print(con, 34, 56, 'Esc')
+			libtcod.console_print(con, 34, 54, EnKey('w').upper() + '/' + EnKey('s').upper())
+			libtcod.console_print(con, 34, 55, 'Enter')
+			libtcod.console_print(con, 34, 57, 'Esc')
 			
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
-			libtcod.console_print(con, 40, 53, 'Select Position')
-			libtcod.console_print(con, 40, 54, 'Swap Crewmen')
-			libtcod.console_print(con, 40, 56, 'Cancel Return')
+			libtcod.console_print(con, 40, 54, 'Select Position')
+			libtcod.console_print(con, 40, 55, 'Swap Crewmen')
+			libtcod.console_print(con, 40, 57, 'Cancel Return')
 			
 			# TODO: display returning crewman and crewman that would be replaced
+			libtcod.console_set_default_foreground(con, libtcod.cyan)
+			libtcod.console_print(con, 8, 13, 'Returning Crewman')
+			libtcod.console_print(con, 66, 13, 'Replaced Crewman')
+			
+			for c in [crewman, campaign.player_unit.positions_list[selected_position].crewman]:
+				if c is None:
+					libtcod.console_set_default_foreground(con, libtcod.white)
+					libtcod.console_print(con, 65, 17, 'No Crewman')
+					libtcod.console_print(con, 65, 18, 'Currently in Position')
+					continue
+				
+				if c == crewman:
+					x = 3
+				else:
+					x = 60
+				libtcod.console_set_default_foreground(con, libtcod.dark_grey)
+				libtcod.console_hline(con, x, 18, 28)
+				libtcod.console_hline(con, x, 20, 28)
+				libtcod.console_hline(con, x, 23, 28)
+				libtcod.console_hline(con, x, 28, 28)
+				
+				libtcod.console_set_default_foreground(con, ACTION_KEY_COL)
+				libtcod.console_print(con, x, 17, 'Name')
+				libtcod.console_print(con, x, 19, 'Rank')
+				libtcod.console_print(con, x, 21, 'Normal')
+				libtcod.console_print(con, x, 22, 'Position')
+				libtcod.console_print(con, x, 24, 'Stats')
+				libtcod.console_print(con, x, 29, 'Skills')
+				libtcod.console_print(con, x+5, 55, 'Level')
+				libtcod.console_print(con, x+5, 56, 'Experience')
+				libtcod.console_print(con, x+5, 57, 'Advance Points')
+				
+				libtcod.console_set_default_foreground(con, libtcod.white)
+				c.DisplayName(con, x+9, 17)
+				libtcod.console_print(con, x+9, 19, session.nations[c.nation]['rank_names'][str(c.rank)])
+				libtcod.console_print(con, x+9, 21, c.normal_position)
+				
+				# stats
+				libtcod.console_put_char_ex(con, x+9, 24, chr(4), libtcod.yellow, libtcod.black)
+				libtcod.console_put_char_ex(con, x+9, 25, chr(3), libtcod.red, libtcod.black)
+				libtcod.console_put_char_ex(con, x+9, 26, chr(5), libtcod.blue, libtcod.black)
+				libtcod.console_put_char_ex(con, x+9, 27, chr(6), libtcod.green, libtcod.black)
+				y = 24
+				for t in CREW_STATS:
+					libtcod.console_set_default_foreground(con, libtcod.white)
+					libtcod.console_print(con, x+11, y, t)
+					libtcod.console_set_default_foreground(con, libtcod.light_grey)
+					libtcod.console_print_ex(con, x+23, y, libtcod.BKGND_NONE,
+						libtcod.RIGHT, str(c.stats[t]))
+					y += 1
+				
+				# skills
+				y = 29
+				libtcod.console_set_default_foreground(con, libtcod.white)
+				for skill in c.skills:
+					libtcod.console_print(con, x+9, y, skill)
+					y += 1
+				
+				libtcod.console_set_default_foreground(con, libtcod.white)
+				libtcod.console_print_ex(con, x+22, 55, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(c.level))
+				libtcod.console_print_ex(con, x+22, 56, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(c.exp))
+				libtcod.console_print_ex(con, x+22, 57, libtcod.BKGND_NONE,
+					libtcod.RIGHT, str(c.adv))
+				
 			
 			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
 		
@@ -957,13 +1055,45 @@ class Campaign:
 			
 			# don't accept the return and transfer the crewman
 			if key.vk == libtcod.KEY_ESCAPE:
-				if not ShowNotification('Crewman will be permanently transferred to another unit, continue?', confirm=True):
+				if not ShowNotification('Crewman will be permanently transferred to another unit. Continue?', confirm=True):
 					continue
-				# TEMP disabled
-				#print('DEBUG: Crewman was transferred out of field hospital')
-				#self.hospital.remove(crewman)
+				
+				self.hospital.remove(crewman)
 				exit_menu = True
-		
+				continue
+			
+			# accept the return and transfer the crewman
+			elif key.vk == libtcod.KEY_ENTER:
+				if campaign.player_unit.positions_list[selected_position].crewman is None:
+					text = 'Crewman will return to a currently empty position. Continue?'
+				else:
+					text = 'Crewman will return and replace current crewman in this position. Current crewman will be permanently transferred to another unit. Continue?'
+				if not ShowNotification(text, confirm=True):
+					continue
+				
+				campaign.player_unit.positions_list[selected_position].crewman = crewman
+				crewman.current_position = campaign.player_unit.positions_list[selected_position]
+				crewman.unit = campaign.player_unit
+				self.hospital.remove(crewman)
+				exit_menu = True
+				continue
+			
+			key_char = DeKey(chr(key.c).lower())
+			
+			# select different crew position
+			if key_char in ['w', 's']:
+				if key_char == 'w':
+					selected_position -= 1
+					if selected_position < 0:
+						selected_position = len(campaign.player_unit.positions_list) - 1
+			
+				else:
+					selected_position += 1
+					if selected_position == len(campaign.player_unit.positions_list):
+						selected_position = 0
+			
+				DrawMenu(selected_position)
+				continue
 	
 	
 	# add an entry to the journal
@@ -2302,7 +2432,8 @@ class Campaign:
 						position.crewman.PromotionCheck()
 			
 			# subtract days elapsed from days remaining from any crewmen in field hospital
-			#if len(self.hospital) == 0: return
+			if len(self.hospital) == 0: return
+			
 			(year1, month1, day1) = previous_day.split('.')
 			(year2, month2, day2) = self.today.split('.')
 			a = datetime(int(year1), int(month1), int(day1), 0, 0, 0)
@@ -2330,12 +2461,10 @@ class Campaign:
 					continue
 				
 				# roll for return to action based on how many days elapsed
-				roll = GetPercentileRoll()
-				# TEMP
-				roll = 1.0
-				if roll <= days_past * 3.0:
-					self.ShowReturningCrewMenu(crewman)
-					continue
+				if min_days <= 0:
+					if GetPercentileRoll() <= days_past * FIELD_HOSPITAL_RELEASE_CHANCE:
+						self.ShowReturningCrewMenu(crewman)
+						continue
 				
 				# crewman remains in hospital, update days remaining
 				crewman.field_hospital = (min_days, max_days)
@@ -2459,10 +2588,31 @@ class Campaign:
 							exit_loop = True
 							continue
 						
-						# check for crew replacement
-						campaign_day.DoCrewReplacementCheck(campaign.player_unit)
-						
-						ProceedToNextDay()
+						# if Player Commander is active and the player character has just been sent
+						# to the field hospital, need to jump ahead in calendar, choose a new tank, generate a new crew
+						if self.options['permadeath'] == True:
+							commander_in_a_coma = False
+							for position in self.player_unit.positions_list:
+								if position.crewman is None: continue
+								if position.name not in PLAYER_POSITIONS: continue
+								if position.crewman.field_hospital is None: continue
+								
+								self.CommanderInAComa(crewman)
+								
+								# TODO: commander might have stayed in the field hospital past the end of the campaign
+								
+								
+								
+								SaveGame()
+								self.UpdateDayOutlineCon()
+								self.UpdateCalendarCmdCon()
+								self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
+								self.UpdateCCDisplay()
+								commander_in_a_coma = True
+								break
+							
+							# if commander just spent time in the field hospital, return to the input loop
+							if commander_in_a_coma: continue
 						
 						# if player tank was destroyed, allow player to choose a new one
 						if not self.player_unit.alive:
@@ -2473,6 +2623,12 @@ class Campaign:
 								if weapon.broken:
 									ShowMessage('Your ' + weapon.GetStat('name') + ' is repaired.')
 									weapon.broken = False
+						
+						# start new calendar day, may also trigger return of field hospital crewmen
+						ProceedToNextDay()
+						
+						# check for crew replacement if there remain any empty positions on the tank
+						campaign_day.DoCrewReplacementCheck(campaign.player_unit)
 						
 						# handle refitting weeks here
 						if 'refitting' in campaign.current_week:
@@ -6354,12 +6510,7 @@ class Personnel:
 		
 		if hospital_chance == 0.0: return
 		
-		roll = GetPercentileRoll()
-		
-		# TEMP - automatically sent to hospital
-		roll = 0.0
-		
-		if roll <= hospital_chance:
+		if GetPercentileRoll() <= hospital_chance:
 			self.field_hospital = (hospital_min, hospital_max)
 		else:
 			self.field_hospital = None

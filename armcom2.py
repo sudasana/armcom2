@@ -914,12 +914,46 @@ class Campaign:
 		for text in RECORD_LIST:
 			self.records[text] = 0
 	
-	# TODO: show a menu giving player the option of accepting a crewman returning from the field hospital
+	# show a menu giving player the option of accepting a crewman returning from the field hospital
 	def ShowReturningCrewMenu(self, crewman):
 		
-		# TEMP - automatically transferred
-		print('DEBUG: Crewman was transferred out of field hospital')
-		self.hospital.remove(crewman)
+		# draw the menu screen
+		def DrawMenu(selected_position):
+			
+			libtcod.console_clear(con)
+			
+			# TODO: draw frames?
+			
+			# TODO: display player unit and current position and crew list
+			self.player_unit.DisplayMyInfo(con, 33, 1, status=False)
+			DisplayCrew(self.player_unit, con, 33, 20, selected_position)
+			
+			# TODO: display command keys
+			
+			# TODO: display returning crewman and crewman that would be replaced
+			
+			libtcod.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
+		
+		# select first position by default
+		selected_position = 0
+		
+		# draw menu screen for the first time
+		DrawMenu(selected_position)
+		
+		exit_menu = False
+		while not exit_menu:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			if not GetInputEvent(): continue
+			
+			# don't accept the return and transfer the crewman
+			if key.vk == libtcod.KEY_ESCAPE:
+				if not ShowNotification('Crewman will be permanently transferred to another unit, continue?', confirm=True):
+					continue
+				print('DEBUG: Crewman was transferred out of field hospital')
+				self.hospital.remove(crewman)
+				exit_menu = True
+		
 	
 	
 	# add an entry to the journal

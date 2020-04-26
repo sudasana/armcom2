@@ -43,8 +43,8 @@
 ##########################################################################################
 
 ##### Debug Flags #####
-STEAM_ON = True						# load steamworks
-DEBUG = False						# debug flag - set to False in all distribution versions
+STEAM_ON = False						# load steamworks
+DEBUG = True						# debug flag - set to False in all distribution versions
 
 
 ##### Libraries #####
@@ -62,7 +62,7 @@ from math import floor, cos, sin, sqrt, degrees, atan2, ceil	# math and heading 
 import xp_loader, gzip					# loading xp image files
 import json						# for loading JSON data
 import time
-from datetime import datetime				# for timestamping logs, date calculations
+from datetime import datetime, timedelta		# for timestamping logs, date calculations
 from textwrap import wrap				# breaking up strings
 import shelve						# saving and loading games
 import sdl2.sdlmixer as mixer				# sound effects
@@ -919,10 +919,32 @@ class Campaign:
 			self.records[text] = 0
 	
 	
+	# check for the start of a new campaign week given the current date, apply any modifiers
+	def CheckForNewWeek(self):
+		week_index = self.stats['calendar_weeks'].index(self.current_week)
+		if week_index < len(self.stats['calendar_weeks']) - 1:
+			week_index += 1
+			if self.today >= self.stats['calendar_weeks'][week_index]['start_date']:
+				self.current_week = self.stats['calendar_weeks'][week_index]
+				
+				# check for modified class spawn odds
+				if 'enemy_class_odds_modifier' in self.current_week:
+					for k, v in self.current_week['enemy_class_odds_modifier'].items():
+						if k in self.stats['enemy_unit_class_odds']:
+							self.stats['enemy_unit_class_odds'][k] = v
+				
+				# check for promotions
+				for position in self.player_unit.positions_list:
+					if position.crewman is None: continue
+					position.crewman.PromotionCheck()
+	
+	
 	# handle a Player Commander heading to the field hospital for a period of time
 	def CommanderInAComa(self, crewman):
 		
-		print('DEBUG: Player Commander heading to Field Hospital')
+		# clear all remaining crewmen from current player tank
+		for position in self.player_unit.positions_list:
+			position.crewman = None
 		
 		# roll for actual length of hospital stay
 		(days_min, days_max) = crewman.field_hospital
@@ -933,13 +955,64 @@ class Campaign:
 				break
 			days += 1
 		
-		# TODO: check to see if this would take the player beyond the end of the campaign
+		# check to see if this would take the player beyond the end of the campaign
+		(year, month, day) = self.today.split('.')
+		a = datetime(int(year), int(month), int(day), 0, 0, 0) + timedelta(days=10)
+		release_day = str(a.year) + '.' + str(a.month).zfill(2) + '.' + str(a.day).zfill(2)
+		if release_day > self.stats['end_date']:
+			ShowMessage('While you are still recovering in the field hospital, you receive word that your campaign has ended.')
+			return True
 		
+		# we're still in the campaign, set the current day to the next possible combat day
+		previous_day = self.today
+		i = self.combat_calendar.index(self.today)
+		for combat_day in self.combat_calendar[i+1:]:
+			
+			# set the campaign week and apply modified class spawn odds if any
+			self.CheckForNewWeek()
+			
+			# check for player commander birthday
+			if previous_day < crewman.birthday <= self.today:
+				print('DEBUG: ' + crewman.last_name + ' is one year older!')
+				crewman.age += 1
+			
+			# ignore refitting weeks
+			if 'refitting' in self.current_week:
+				continue
+			
+			if combat_day >= release_day:
+				self.today = self.combat_calendar[i]
+				break
+			i+=1
+			previous_day = self.combat_calendar[i]
+		else:
+			# unable to find a combat day on or after the release date, campaign ends
+			ShowMessage('While you are still recovering in the field hospital, you receive word that your campaign has ended.')
+			return True
+		ShowMessage('After ' + str(days) + ' days in the field hospital, you recover and return to active duty on ' +
+			GetDateText(self.today))
 		
-		# TODO: we're still in the campaign, set the current day to the next possible combat day
+		self.hospital.remove(crewman)
 		
-		# TODO: allow player to select a new tank, and generate a crew for it
+		# player selects a new tank, and generate a crew for it
+		(unit_id, tank_name) = self.TankSelectionMenu()
+		self.player_unit = Unit(unit_id)
+		self.player_unit.unit_name = tank_name
+		self.player_unit.nation = campaign.stats['player_nation']
 		
+		# put the player commander in the new unit
+		for position in self.player_unit.positions_list:
+			if position.name in PLAYER_POSITIONS:
+				position.crewman = crewman
+				crewman.current_position = position
+				crewman.unit = self.player_unit
+				break
+		
+		# generate rest of crew and set up the main gun
+		self.player_unit.GenerateNewPersonnel()
+		self.player_unit.ClearGunAmmo()
+		
+		return False
 		
 		
 	
@@ -1180,9 +1253,9 @@ class Campaign:
 				if roll <= chance:
 					self.combat_calendar.append(day_text)
 		
-		print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
-		for day_text in self.combat_calendar:
-			print(day_text)
+		#print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
+		#for day_text in self.combat_calendar:
+		#	print(day_text)
 	
 	
 	# copy over day's records to a new entry in the campaign record log
@@ -2414,22 +2487,7 @@ class Campaign:
 					position.crewman.age += 1
 			
 			# check for start of new week
-			week_index = campaign.stats['calendar_weeks'].index(campaign.current_week)
-			if week_index < len(campaign.stats['calendar_weeks']) - 1:
-				week_index += 1
-				if self.today >= campaign.stats['calendar_weeks'][week_index]['start_date']:
-					campaign.current_week = campaign.stats['calendar_weeks'][week_index]
-					
-					# check for modified class spawn odds
-					if 'enemy_class_odds_modifier' in campaign.current_week:
-						for k, v in campaign.current_week['enemy_class_odds_modifier'].items():
-							if k in campaign.stats['enemy_unit_class_odds']:
-								campaign.stats['enemy_unit_class_odds'][k] = v
-					
-					# check for promotions
-					for position in campaign.player_unit.positions_list:
-						if position.crewman is None: continue
-						position.crewman.PromotionCheck()
+			self.CheckForNewWeek()
 			
 			# subtract days elapsed from days remaining from any crewmen in field hospital
 			if len(self.hospital) == 0: return
@@ -2439,7 +2497,7 @@ class Campaign:
 			a = datetime(int(year1), int(month1), int(day1), 0, 0, 0)
 			b = datetime(int(year2), int(month2), int(day2), 0, 0, 0)
 			days_past = (b-a).days
-			print('DEBUG: ' + str(days_past) + ' days have past in the calendar')
+			#print('DEBUG: ' + str(days_past) + ' days have past in the calendar')
 			
 			# iterate in reverse order since we may remove some crewmen from the list
 			for crewman in reversed(self.hospital):
@@ -2592,45 +2650,42 @@ class Campaign:
 						# to the field hospital, need to jump ahead in calendar, choose a new tank, generate a new crew
 						if self.options['permadeath'] == True:
 							commander_in_a_coma = False
-							for position in self.player_unit.positions_list:
-								if position.crewman is None: continue
-								if position.name not in PLAYER_POSITIONS: continue
-								if position.crewman.field_hospital is None: continue
+							for crewman in self.hospital:
+								if crewman.normal_position not in PLAYER_POSITIONS: continue
+								commander_in_a_coma = True
 								
-								# TEMP disabled
-								#self.CommanderInAComa(crewman)
+								# returns True if Commander stays in hospital past end of campaign
+								if self.CommanderInAComa(crewman):
+									self.DoEnd()
+									exit_loop = True
 								
-								# TODO: commander might have stayed in the field hospital past the end of the campaign
-								
-								#SaveGame()
-								#self.UpdateDayOutlineCon()
-								#self.UpdateCalendarCmdCon()
-								#self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
-								#self.UpdateCCDisplay()
-								#commander_in_a_coma = True
 								break
 							
-							# if commander just spent time in the field hospital, return to the input loop
-							if commander_in_a_coma: continue
+							# if commander just spent time in the field hospital, remove anyone else who was in the hospital
+							if commander_in_a_coma:
+								self.hospital = []
 						
-						# if player tank was destroyed, allow player to choose a new one
-						if not self.player_unit.alive:
-							self.ReplacePlayerTank()
-						else:
-							# fix any broken weapons on player tank
-							for weapon in self.player_unit.weapon_list:
-								if weapon.broken:
-									ShowMessage('Your ' + weapon.GetStat('name') + ' is repaired.')
-									weapon.broken = False
-						
-						# start new calendar day, may also trigger return of field hospital crewmen
-						ProceedToNextDay()
-						
-						# check for crew replacement if there remain any empty positions on the tank
-						campaign_day.DoCrewReplacementCheck(campaign.player_unit)
+						# only do the following if commander did not just return from field hospital
+						if not commander_in_a_coma:
+							
+							# if player tank was destroyed, allow player to choose a new one
+							if not self.player_unit.alive:
+								self.ReplacePlayerTank()
+							else:
+								# fix any broken weapons on player tank
+								for weapon in self.player_unit.weapon_list:
+									if weapon.broken:
+										ShowMessage('Your ' + weapon.GetStat('name') + ' is repaired.')
+										weapon.broken = False
+							
+							# start new calendar day, may also trigger return of field hospital crewmen
+							ProceedToNextDay()
+							
+							# check for crew replacement if there remain any empty positions on the tank
+							campaign_day.DoCrewReplacementCheck(self.player_unit)
 						
 						# handle refitting weeks here
-						if 'refitting' in campaign.current_week:
+						if 'refitting' in self.current_week:
 							
 							self.ShowStartOfDay()
 							
@@ -2649,8 +2704,8 @@ class Campaign:
 								campaign_day.map_hexes[(hx,hy)].CalcCaptureVP()
 							campaign_day.GenerateRoads()
 							campaign_day.GenerateRivers()
+							
 							self.ShowStartOfDay()
-							# add journal entry for start of day
 							campaign.AddJournal('Start of day')
 							
 							# set currently displayed journal entry to the new day
@@ -6468,7 +6523,7 @@ class Personnel:
 	def ResolveInjuries(self):
 		if not self.alive: return
 		
-		# TODO: also calculate chance of discharge
+		# FUTURE: also calculate chance of discharge
 		# record each time a critical injury was sustained during the day
 		
 		hospital_min = 0
@@ -6509,7 +6564,11 @@ class Personnel:
 		
 		if hospital_chance == 0.0: return
 		
-		if GetPercentileRoll() <= hospital_chance:
+		# TEMP
+		#roll = GetPercentileRoll()
+		roll = 0.0
+		
+		if roll <= hospital_chance:
 			self.field_hospital = (hospital_min, hospital_max)
 		else:
 			self.field_hospital = None
@@ -6522,7 +6581,6 @@ class Personnel:
 		if self.unit != scenario.player_unit: return False
 		if self.current_position.name == self.normal_position: return False
 		if self.current_position.name in POSITION_SWITCH_LIST[self.normal_position]: return False
-		print ('DEBUG: ' + self.current_position.name + ' in untrained position')
 		return True
 		
 	
@@ -7524,8 +7582,6 @@ class Personnel:
 	# attempt to toggle current hatch status
 	def ToggleHatch(self):
 		
-		#print('DEBUG: Current position is in unit: ' + str(id(self.current_position.unit)))
-		
 		# no hatch in position
 		if not self.current_position.hatch: return False
 		if self.current_position.open_top: return False
@@ -7620,8 +7676,6 @@ class Position:
 	
 	# update the list of hexes currently visible from this position
 	def UpdateVisibleHexes(self):
-		
-		#print('DEBUG: Updating hexes for position in unit: ' + str(id(self.unit)))
 		
 		self.visible_hexes = []
 		
@@ -9353,6 +9407,7 @@ class Unit:
 	# generate new personnel sufficent to fill all personnel positions
 	def GenerateNewPersonnel(self):
 		for position in self.positions_list:
+			if position.crewman is not None: continue
 			position.crewman = Personnel(self, self.nation, position)
 	
 	
@@ -10839,8 +10894,6 @@ class Scenario:
 		# target has been hit by effective fp
 		if unit2.hit_by_fp:
 			chance = chance * 4.0
-		
-		#print('DEBUG: Spot chance for ' + unit1.unit_id + ' to ' + unit2.unit_id + ' is: ' + str(chance))
 		
 		return chance
 	
@@ -16960,7 +17013,6 @@ def ShowSwapPositionMenu():
 			
 			if position.crewman != original_crew[i]:
 				position.crewman.current_cmd = 'None'
-				#print('DEBUG: Set command for ' + position.name + ' to None')
 			i += 1
 
 

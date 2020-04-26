@@ -5283,7 +5283,7 @@ class CampaignDay:
 				libtcod.console_set_default_foreground(cd_command_con, libtcod.light_red)
 			else:
 				text = str(self.CalculateTravelTime(hx1, hy1, hx2, hy2)) + ' mins.'
-			libtcod.console_print(cd_command_con, 13, 19, text)
+			libtcod.console_print(cd_command_con, 0, 20, text)
 			
 			# display enemy strength/organization if any and chance of encounter
 			map_hex = self.map_hexes[(hx2,hy2)]

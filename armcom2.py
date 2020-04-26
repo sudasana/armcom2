@@ -949,7 +949,6 @@ class Campaign:
 		# roll for actual length of hospital stay
 		(days_min, days_max) = crewman.field_hospital
 		days = days_min
-		
 		for i in range(days_max-days_min):
 			if GetPercentileRoll() <= FIELD_HOSPITAL_RELEASE_CHANCE:
 				break
@@ -989,9 +988,9 @@ class Campaign:
 			# unable to find a combat day on or after the release date, campaign ends
 			ShowMessage('While you are still recovering in the field hospital, you receive word that your campaign has ended.')
 			return True
+		
 		ShowMessage('After ' + str(days) + ' days in the field hospital, you recover and return to active duty on ' +
 			GetDateText(self.today))
-		
 		self.hospital.remove(crewman)
 		
 		# player selects a new tank, and generate a crew for it

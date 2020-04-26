@@ -43,8 +43,8 @@
 ##########################################################################################
 
 ##### Debug Flags #####
-STEAM_ON = False						# load steamworks
-DEBUG = True						# debug flag - set to False in all distribution versions
+STEAM_ON = True						# load steamworks
+DEBUG = False						# debug flag - set to False in all distribution versions
 
 
 ##### Libraries #####
@@ -2597,18 +2597,17 @@ class Campaign:
 								if position.name not in PLAYER_POSITIONS: continue
 								if position.crewman.field_hospital is None: continue
 								
-								self.CommanderInAComa(crewman)
+								# TEMP disabled
+								#self.CommanderInAComa(crewman)
 								
 								# TODO: commander might have stayed in the field hospital past the end of the campaign
 								
-								
-								
-								SaveGame()
-								self.UpdateDayOutlineCon()
-								self.UpdateCalendarCmdCon()
-								self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
-								self.UpdateCCDisplay()
-								commander_in_a_coma = True
+								#SaveGame()
+								#self.UpdateDayOutlineCon()
+								#self.UpdateCalendarCmdCon()
+								#self.UpdateCCMainPanel(selected_position, selected_hospital_crewman)
+								#self.UpdateCCDisplay()
+								#commander_in_a_coma = True
 								break
 							
 							# if commander just spent time in the field hospital, return to the input loop

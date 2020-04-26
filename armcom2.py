@@ -950,7 +950,7 @@ class Campaign:
 		(days_min, days_max) = crewman.field_hospital
 		days = days_min
 		
-		for i in range(days_max):
+		for i in range(days_max-days_min):
 			if GetPercentileRoll() <= FIELD_HOSPITAL_RELEASE_CHANCE:
 				break
 			days += 1

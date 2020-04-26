@@ -44,7 +44,7 @@
 
 ##### Debug Flags #####
 STEAM_ON = False						# load steamworks
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 
 
 ##### Libraries #####
@@ -76,7 +76,7 @@ if STEAM_ON:
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '3.0.0'					# game version
+VERSION = '3.0.0-dev-1'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -967,7 +967,7 @@ class Campaign:
 		i = self.combat_calendar.index(self.today)
 		for combat_day in self.combat_calendar[i+1:]:
 			
-			# set the campaign week and apply modified class spawn odds if any
+			# set the current campaign week and apply modified class spawn odds if any
 			self.CheckForNewWeek()
 			
 			# check for player commander birthday
@@ -1013,7 +1013,6 @@ class Campaign:
 		
 		return False
 		
-		
 	
 	# show a menu giving player the option of accepting a crewman returning from the field hospital
 	def ShowReturningCrewMenu(self, crewman):
@@ -1043,7 +1042,7 @@ class Campaign:
 			libtcod.console_print(con, 40, 55, 'Swap Crewmen')
 			libtcod.console_print(con, 40, 57, 'Cancel Return')
 			
-			# TODO: display returning crewman and crewman that would be replaced
+			# display returning crewman and crewman that would be replaced
 			libtcod.console_set_default_foreground(con, libtcod.cyan)
 			libtcod.console_print(con, 8, 13, 'Returning Crewman')
 			libtcod.console_print(con, 66, 13, 'Replaced Crewman')
@@ -1254,7 +1253,7 @@ class Campaign:
 				
 				possible_days.append((day_text, week['combat_chance']))
 		
-		print('DEBUG: ' + str(len(possible_days)) + ' possible combat days.')
+		#print('DEBUG: ' + str(len(possible_days)) + ' possible combat days.')
 		
 		# keep rolling until combat calendar is full
 		while len(self.combat_calendar) < self.stats['combat_days']:
@@ -1266,9 +1265,9 @@ class Campaign:
 
 		self.combat_calendar.sort()
 		
-		print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
-		for day_text in self.combat_calendar:
-			print(day_text)
+		#print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
+		#for day_text in self.combat_calendar:
+		#	print(day_text)
 	
 	
 	# copy over day's records to a new entry in the campaign record log
@@ -6577,10 +6576,7 @@ class Personnel:
 		
 		if hospital_chance == 0.0: return
 		
-		# TEMP
-		#roll = GetPercentileRoll()
-		roll = 0.0
-		
+		roll = GetPercentileRoll()
 		if roll <= hospital_chance:
 			self.field_hospital = (hospital_min, hospital_max)
 		else:
@@ -9058,12 +9054,10 @@ class Unit:
 	def BreakdownCheck(self):
 		if self.GetStat('category') not in ['Vehicle']:
 			return False
-		
 		if 'unreliable' in self.stats:
 			chance = 3.0
 		else:
 			chance = 0.8
-		
 		if GetPercentileRoll() <= chance:
 			return True
 		return False
@@ -9390,7 +9384,7 @@ class Unit:
 				if not unit.alive: continue
 				if unit.spotted: continue
 				if (unit.hx, unit.hy) not in position.visible_hexes: continue
-				if unit not in self.los_table: continue
+				if not self.los_table[unit]: continue
 				spot_list.append(unit)
 			
 			# no units possible to spot from this position
@@ -9406,7 +9400,7 @@ class Unit:
 			scenario.UpdateScenarioDisplay()
 			
 			# display message
-			# TODO: use special pop-up display for player crew spotting enemies
+			# FUTURE: use special pop-up display for player crew spotting enemies
 			text = unit.GetName() + ' spotted!'
 			ShowMessage(text, portrait=unit.GetStat('portrait'),
 				scenario_highlight=(unit.hx, unit.hy))
@@ -9627,12 +9621,17 @@ class Unit:
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
-			col = ENEMY_UNIT_COL
+			if not scenario.player_unit.los_table[self]:
+				col = libtcod.grey
+			else:
+				col = ENEMY_UNIT_COL
 		else:	
 			if self == scenario.player_unit:
 				col = libtcod.white
 			else:
 				col = ALLIED_UNIT_COL
+		
+		
 		
 		# armoured trains have more display characters
 		if self.GetStat('class') == 'Armoured Train Car' and not (self.owning_player == 1 and not self.spotted):
@@ -10924,7 +10923,8 @@ class Scenario:
 				if unit2.owning_player == owning_player: continue
 				if not unit2.alive: continue
 				if unit2.spotted: continue
-				if unit2 not in unit1.los_table: continue
+				#if unit2 not in unit1.los_table: continue
+				if not unit1.los_table[unit2]: continue
 				spot_list.append(unit2)
 			
 			# no units possible to spot
@@ -10959,6 +10959,10 @@ class Scenario:
 		
 		# no need for dead units
 		if not unit1.alive or not unit2.alive: return False
+		
+		# if unit1 is on Overrun and unit2 is directly ahead, automatically has LoS
+		if unit1.overrun and unit2.hx == 0 and unit2.hy == -1:
+			return True
 		
 		# base odds of LoS based on range between the two units
 		distance = GetHexDistance(unit1.hx, unit1.hy, unit2.hx, unit2.hy)
@@ -11934,7 +11938,7 @@ class Scenario:
 			for position in attacker.positions_list:
 				if position.crewman is None: continue
 				if position.name in weapon.stats['fired_by']:
-					if positon.crewman.current_cmd != command_req: continue
+					if position.crewman.current_cmd != command_req: continue
 					profile['crewman'] = position.crewman
 					break
 		
@@ -13894,7 +13898,7 @@ class Scenario:
 		
 		# successful move may be cancelled by breakdown
 		if self.player_unit.BreakdownCheck():
-			ShowMessage('Your vehicle stalls, making you unable to move further.')
+			ShowMessage('Your vehicle stalls for a moment, making you unable to move further this turn.')
 			self.advance_phase = True
 			return
 		

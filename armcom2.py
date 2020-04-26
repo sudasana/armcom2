@@ -9209,23 +9209,23 @@ class Unit:
 			bog_mod = 0.0
 			if campaign_day.weather['Ground'] == 'Deep Snow':
 				if movement_class in ['Fast Wheeled', 'Wheeled']:
-					mod = -65.0
+					mod = -45.0
 					bog_mod = 4.0
 				elif movement_class == 'Half-Tracked':
-					mod = -40.0
+					mod = -20.0
 					bog_mod = 1.0
 				else:
-					mod = -50.0
+					mod = -30.0
 					bog_mod = 2.0
 			elif campaign_day.weather['Ground'] in ['Muddy', 'Snow']:
 				if movement_class in ['Fast Wheeled', 'Wheeled']:
-					mod = -45.0
+					mod = -25.0
 					bog_mod = 2.0
 				elif movement_class == 'Half-Tracked':
-					mod = -20.0
+					mod = -10.0
 					bog_mod = 0.5
 				else:
-					mod = -30.0
+					mod = -15.0
 					bog_mod = 1.0
 			
 			if campaign_day.weather['Ground'] in ['Snow', 'Deep Snow']:
@@ -9622,10 +9622,11 @@ class Unit:
 		
 		# determine foreground color to use
 		if self.owning_player == 1:
-			if not scenario.player_unit.los_table[self]:
-				col = libtcod.grey
-			else:
-				col = ENEMY_UNIT_COL
+			col = ENEMY_UNIT_COL
+			if self in scenario.player_unit.los_table:
+				if not scenario.player_unit.los_table[self]:
+					col = libtcod.grey
+				
 		else:	
 			if self == scenario.player_unit:
 				col = libtcod.white

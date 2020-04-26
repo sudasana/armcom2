@@ -14291,6 +14291,7 @@ class Scenario:
 					campaign.player_unit.alive = False
 					ShowMessage('You abandon your tank.')
 					campaign.AddJournal('Abandoned tank')
+					self.player_unit.alive = False
 					self.PlayerBailOut(skip_ko=True)
 					campaign_day.ended = True
 					campaign_day.abandoned_tank = True

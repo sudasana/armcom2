@@ -44,7 +44,7 @@
 
 ##### Debug Flags #####
 STEAM_ON = False						# load steamworks
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 
 
 ##### Libraries #####
@@ -992,6 +992,7 @@ class Campaign:
 		ShowMessage('After ' + str(days) + ' days in the field hospital, you recover and return to active duty on ' +
 			GetDateText(self.today))
 		self.hospital.remove(crewman)
+		crewman.field_hospital = None
 		
 		# player selects a new tank, and generate a crew for it
 		(unit_id, tank_name) = self.TankSelectionMenu()
@@ -6577,6 +6578,10 @@ class Personnel:
 		if hospital_chance == 0.0: return
 		
 		roll = GetPercentileRoll()
+		
+		# TEMP testing
+		roll = 0.0
+		
 		if roll <= hospital_chance:
 			self.field_hospital = (hospital_min, hospital_max)
 		else:

@@ -43,6 +43,7 @@
 		"700" : "Order of the Red Banner",
 		"800" : "Order of Lenin"
 	},
+	"combat_days" : 12,
 	"calendar_weeks": [
 		{
 			"start_date" : "1939.09.17",

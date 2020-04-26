@@ -50,6 +50,7 @@
 		"4200" : "Distinguished Service Order",
 		"4500" : "Victoria Cross"
 	},
+	"combat_days" : 70,
 	"calendar_weeks": [
 		{
 			"start_date" : "1944.08.08",

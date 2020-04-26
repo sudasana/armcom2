@@ -47,6 +47,7 @@
 		"2000" : "Order of the White Rose of Finland",
 		"2500" : "Order of the Cross of Liberty"
 	},
+	"combat_days" : 50,
 	"calendar_weeks": [
 		{
 			"start_date" : "1939.11.30",

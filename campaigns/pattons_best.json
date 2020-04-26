@@ -48,6 +48,7 @@
 		"4200" : "Distinguished Service Cross",
 		"4500" : "Congressional Medal of Honor"
 	},
+	"combat_days" : 92,
 	"calendar_weeks": [
 		{
 			"start_date" : "1944.07.27",

@@ -60,6 +60,7 @@
 		"1200" : "Distinguished Service Order",
 		"1300" : "Victoria Cross"
 	},
+	"combat_days" : 18,
 	"calendar_weeks": [
 		{
 			"start_date" : "1940.05.10",

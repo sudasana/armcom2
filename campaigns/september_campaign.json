@@ -50,6 +50,7 @@
 		"1000" : "Order of Polonia Restituta Fourth Class",
 		"1100" : "Cross of Independance"
 	},
+	"combat_days" : 16,
 	"calendar_weeks": [
 		{
 			"start_date" : "1939.09.01",

@@ -53,6 +53,7 @@
 		"1000" : "Knight's Cross",
 		"1100" : "Knight's Cross with Oak Leaves"
 	},
+	"combat_days" : 16,
 	"calendar_weeks": [
 		{
 			"start_date" : "1939.09.01",

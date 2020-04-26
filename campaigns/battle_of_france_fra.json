@@ -56,6 +56,7 @@
 		"1100" : "Croix de Guerre",
 		"1300" : "Medaille militaire"
 	},
+	"combat_days" : 18,
 	"calendar_weeks": [
 		{
 			"start_date" : "1940.05.10",

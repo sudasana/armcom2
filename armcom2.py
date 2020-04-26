@@ -1199,21 +1199,33 @@ class Campaign:
 	# randomly generate a list of combat days for this campaign
 	def GenerateCombatCalendar(self):
 		
-		# roll separately for each week of campaign
+		libtcod.console_clear(0)
+		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
+			'Generating Combat Calendar...')
+		
+		self.combat_calendar = []
+		
+		# add one day per refitting week as standard
 		for week in self.stats['calendar_weeks']:
-			
-			# if refitting week, automatically add the first day to the calendar
 			if 'refitting' in week:
 				self.combat_calendar.append(week['start_date'])
+		
+		# build a list of possible combat days
+		possible_days = []
+		for week in self.stats['calendar_weeks']:
+			
+			# skip refitting weeks
+			if 'refitting' in week:
 				continue
 			
 			# build list of possible dates this week: add the first date, then the following 6
-			possible_days = []
-			possible_days.append(week['start_date'])
-			day_text = possible_days[0]
+			possible_days.append((week['start_date'], week['combat_chance']))
+			day_text = week['start_date']
+			(year, month, day) = day_text.split('.')
+			
 			for i in range(6):
-				(year, month, day) = day_text.split('.')
 				
+				# find the next day in the calendar
 				# last day of month
 				if int(day) == monthrange(int(year), int(month))[1]:
 					
@@ -1231,30 +1243,32 @@ class Campaign:
 				
 				day_text = year + '.' + month.zfill(2) + '.' + day.zfill(2)
 				
+				# if day is past end of calendar week, stop checking week
+				if 'end_date' in week:
+					if day_text > week['end_date']:
+						break
+				
 				# check that day is not past end of campaign
 				if day_text > self.stats['end_date']:
 					break
 				
-				possible_days.append(day_text)
-			
-			# for each possible day in this campaign week, roll to see if it's added to the combat calendar
-			chance = float(week['combat_chance'])
-			for day_text in possible_days:
-				# if day is past end of calendar week, stop
-				if 'end_date' in week:
-					if day_text > week['end_date']:
-						continue
-				
-				roll = GetPercentileRoll()
-				# trying to get a good number of combat days in a campaign
-				roll += 15.0
-				
-				if roll <= chance:
-					self.combat_calendar.append(day_text)
+				possible_days.append((day_text, week['combat_chance']))
+		
+		print('DEBUG: ' + str(len(possible_days)) + ' possible combat days.')
+		
+		# keep rolling until combat calendar is full
+		while len(self.combat_calendar) < self.stats['combat_days']:
+			if libtcod.console_is_window_closed(): sys.exit()
+			libtcod.console_flush()
+			(day_text, combat_chance) = choice(possible_days)
+			if GetPercentileRoll() <= float(combat_chance):
+				self.combat_calendar.append(day_text)
+
+		self.combat_calendar.sort()
 		
 		print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
-		#for day_text in self.combat_calendar:
-		#	print(day_text)
+		for day_text in self.combat_calendar:
+			print(day_text)
 	
 	
 	# copy over day's records to a new entry in the campaign record log
@@ -1344,9 +1358,12 @@ class Campaign:
 			text = GetDateText(selected_campaign['end_date'])
 			libtcod.console_print_ex(con, 45, 34, libtcod.BKGND_NONE, libtcod.CENTER, text)
 			
+			text = 'Combat Days: ' + str(selected_campaign['combat_days'])
+			libtcod.console_print_ex(con, 45, 37, libtcod.BKGND_NONE, libtcod.CENTER, text)
+			
 			# wrapped description text
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
-			y = 39
+			y = 41
 			lines = wrap(selected_campaign['desc'], 33)
 			for line in lines[:10]:
 				libtcod.console_print(con, 28, y, line)
@@ -1371,14 +1388,11 @@ class Campaign:
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			
 			y += 2
-			#text = ('You take on the role of the tank commander. If your commander ' +
-			#	'is seriously injured, you will miss a number of weeks of the ' +
-			#	'campaign. If your commander is killed, your campaign ends. ' +
-			#	'Required for entry into the Campaign Records.')
-			
-			# FUTURE: chance text once serious injury recovery time has been added
 			text = ('You take on the role of the tank commander. If your commander ' +
-				'is seriously injured or killed, your campaign ends.')
+				'is seriously injured, you will miss a number of weeks of the ' +
+				'campaign. If your commander is killed, your campaign ends. ')
+			# FUTURE
+			#	'Required for entry into the Campaign Records.')
 			
 			lines = wrap(text, 24)
 			for line in lines:
@@ -1420,7 +1434,7 @@ class Campaign:
 		# load basic information of campaigns into a list of dictionaries
 		BASIC_INFO = [
 			'name', 'start_date', 'end_date', 'player_nation',
-			'enemy_nations', 'desc'
+			'enemy_nations', 'desc', 'combat_days'
 		]
 		
 		campaign_list = []

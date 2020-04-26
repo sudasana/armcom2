@@ -7511,8 +7511,6 @@ class Personnel:
 					if not position.crewman.alive or position.crewman.condition == 'Critical':
 						can_abandon = True
 						break
-				# TEMP
-				can_abandon = True
 				if not can_abandon:
 					continue
 			

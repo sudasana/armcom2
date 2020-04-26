@@ -76,7 +76,7 @@ if STEAM_ON:
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '3.0.0-dev-1'					# game version
+VERSION = '3.0.0-dev-2'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders

@@ -43,8 +43,8 @@
 ##########################################################################################
 
 ##### Debug Flags #####
-STEAM_ON = False						# load steamworks
-DEBUG = True						# debug flag - set to False in all distribution versions
+STEAM_ON = False					# load steamworks
+DEBUG = False						# debug flag - set to False in all distribution versions
 
 
 ##### Libraries #####

@@ -1388,9 +1388,9 @@ class Campaign:
 			libtcod.console_set_default_foreground(con, libtcod.light_grey)
 			
 			y += 2
-			text = ('You take on the role of the tank commander. If your commander ' +
-				'is seriously injured, you will miss a number of weeks of the ' +
-				'campaign. If your commander is killed, your campaign ends. ')
+			text = ('You take on the role of the tank commander. If you are seriously ' +
+				'injured, you may miss a number of days of the campaign. If you ' +
+				'are killed, your campaign ends. ')
 			# FUTURE
 			#	'Required for entry into the Campaign Records.')
 			

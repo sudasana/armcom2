@@ -20,7 +20,12 @@ You should have received a copy of the GNU General Public License
 along with Armoured Commander II, in the form of a file named "license.txt".
 If not, see <https://www.gnu.org/licenses/>.
 
+
 ## Running ArmCom2
+
+To run the armcom2.exe PyInstaller build, you may need:
+
+* Visual C++ Redistributable https://visualstudio.microsoft.com/downloads/
 
 To run armcom2.py, you will need:
 
@@ -47,8 +52,6 @@ To run the game on Linux, two steps are required:
 * Once libtcod is installed, copy the contents of /usr/lib/libtcod*.so.* into libtcodpy_local/
 
 Thanks to peterjohnhartman for this information!
-
-Windows PyInstaller builds are also available from [the game's website](https://www.armouredcommander.com/blog/).
 
 --- 
 

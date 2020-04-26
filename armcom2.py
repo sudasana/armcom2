@@ -1202,7 +1202,7 @@ class Campaign:
 		# roll separately for each week of campaign
 		for week in self.stats['calendar_weeks']:
 			
-			# if refitting week, only add the first day to the calendar
+			# if refitting week, automatically add the first day to the calendar
 			if 'refitting' in week:
 				self.combat_calendar.append(week['start_date'])
 				continue
@@ -1252,7 +1252,7 @@ class Campaign:
 				if roll <= chance:
 					self.combat_calendar.append(day_text)
 		
-		#print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
+		print('DEBUG: Generated a combat calendar of ' + str(len(self.combat_calendar)) + ' days.')
 		#for day_text in self.combat_calendar:
 		#	print(day_text)
 	

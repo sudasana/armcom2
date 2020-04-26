@@ -6578,10 +6578,6 @@ class Personnel:
 		if hospital_chance == 0.0: return
 		
 		roll = GetPercentileRoll()
-		
-		# TEMP testing
-		roll = 0.0
-		
 		if roll <= hospital_chance:
 			self.field_hospital = (hospital_min, hospital_max)
 		else:

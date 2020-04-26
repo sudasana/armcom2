@@ -45,10 +45,10 @@
 		"MG Team" : "100"
 	},
 	"decorations_list" : {
-		"3800" : "Military Medal",
-		"4000" : "Military Cross",
-		"4200" : "Distinguished Service Order",
-		"4500" : "Victoria Cross"
+		"4500" : "Military Medal",
+		"5000" : "Military Cross",
+		"5200" : "Distinguished Service Order",
+		"5500" : "Victoria Cross"
 	},
 	"combat_days" : 70,
 	"calendar_weeks": [

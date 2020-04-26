@@ -44,7 +44,7 @@
 
 ##### Debug Flags #####
 STEAM_ON = False					# load steamworks
-DEBUG = False						# debug flag - set to False in all distribution versions
+DEBUG = True						# debug flag - set to False in all distribution versions
 
 
 ##### Libraries #####
@@ -7511,6 +7511,8 @@ class Personnel:
 					if not position.crewman.alive or position.crewman.condition == 'Critical':
 						can_abandon = True
 						break
+				# TEMP
+				can_abandon = True
 				if not can_abandon:
 					continue
 			
@@ -11506,8 +11508,9 @@ class Scenario:
 			chance = 25.0
 		
 		# apply further modifiers based on killing hit
-		if weapon.GetStat('name') == 'Flame Thrower':
-			chance = 90.0
+		if weapon is not None:
+			if weapon.GetStat('name') == 'Flame Thrower':
+				chance = 90.0
 		
 		roll = GetPercentileRoll()
 		if DEBUG:

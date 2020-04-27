@@ -76,7 +76,7 @@ if STEAM_ON:
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '3.0.0-rc-1'					# game version
+VERSION = '3.0.0-rc-2'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -7483,7 +7483,7 @@ class Personnel:
 					
 				continue
 			
-			# manage ready rack needs a gun
+			# manage ready rack needs at least one gun
 			if k == 'Manage Ready Rack':
 				for weapon in self.unit.weapon_list:
 					if weapon.GetStat('type') != 'Gun': continue
@@ -8204,8 +8204,8 @@ class AI:
 		
 		#print('AI DEBUG: ' + self.owner.unit_id + ' now acting')
 		
-		# check for being recalled because campaign day is over
-		if campaign_day.ended and not self.recall:
+		# check for enemy being recalled because campaign day is over
+		if campaign_day.ended and not self.recall and self.owner.owning_player == 1:
 			if GetPercentileRoll() <= 25.0:
 				self.recall = True
 		
@@ -10473,6 +10473,11 @@ class Unit:
 					reduction_odds = 100.0 - destroy_odds - rout_odds
 					if reduction_odds < 0.0:
 						reduction_odds = 0.0
+			
+			# round final odds
+			destroy_odds = round(destroy_odds, 1)
+			reduction_odds = round(reduction_odds, 1)
+			rout_odds = round(rout_odds, 1)
 			
 			# add unit fatigue
 			self.unit_fatigue += 1
@@ -14759,13 +14764,15 @@ class Scenario:
 				
 				libtcod.console_set_default_foreground(cmd_menu_con, ACTION_KEY_COL)
 				libtcod.console_print(cmd_menu_con, 1, 1, EnKey('q').upper() + '/' + EnKey('e').upper())
-				libtcod.console_print(cmd_menu_con, 1, 2, EnKey('d').upper() + '/' + EnKey('a').upper())
-				libtcod.console_print(cmd_menu_con, 1, 3, EnKey('c').upper())
+				if self.selected_weapon.GetStat('type') == 'Gun':
+					libtcod.console_print(cmd_menu_con, 1, 2, EnKey('d').upper() + '/' + EnKey('a').upper())
+					libtcod.console_print(cmd_menu_con, 1, 3, EnKey('c').upper())
 				
 				libtcod.console_set_default_foreground(cmd_menu_con, libtcod.light_grey)
 				libtcod.console_print(cmd_menu_con, 8, 1, 'Select Weapon')
-				libtcod.console_print(cmd_menu_con, 8, 2, 'Add/Remove Shell')
-				libtcod.console_print(cmd_menu_con, 8, 3, 'Cycle Ammo Type')
+				if self.selected_weapon.GetStat('type') == 'Gun':
+					libtcod.console_print(cmd_menu_con, 8, 2, 'Add/Remove Shell')
+					libtcod.console_print(cmd_menu_con, 8, 3, 'Cycle Ammo Type')
 		
 		# Movement phase
 		elif self.phase == PHASE_MOVEMENT:
@@ -15592,6 +15599,7 @@ class Scenario:
 					# select player weapon
 					if key_char in ['q', 'e']:
 						self.SelectWeapon(key_char == 'e')
+						self.UpdateCmdCon()
 						self.UpdateGuiCon()
 						self.UpdateContextCon()
 						self.UpdateScenarioDisplay()

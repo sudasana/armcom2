@@ -44,7 +44,7 @@
 
 ##### Debug Flags #####
 STEAM_ON = False					# load steamworks
-DEBUG = True						# debug flag - set to False in all distribution versions
+DEBUG = False						# debug flag - set to False in all distribution versions
 
 
 ##### Libraries #####
@@ -76,7 +76,7 @@ if STEAM_ON:
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '3.0.0-dev-2'					# game version
+VERSION = '3.0.0-rc-1'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -1205,16 +1205,11 @@ class Campaign:
 		
 		self.combat_calendar = []
 		
-		# add one day per refitting week as standard
-		for week in self.stats['calendar_weeks']:
-			if 'refitting' in week:
-				self.combat_calendar.append(week['start_date'])
-		
 		# build a list of possible combat days
 		possible_days = []
 		for week in self.stats['calendar_weeks']:
 			
-			# skip refitting weeks
+			# skip refitting weeks for now
 			if 'refitting' in week:
 				continue
 			
@@ -1263,6 +1258,11 @@ class Campaign:
 			(day_text, combat_chance) = choice(possible_days)
 			if GetPercentileRoll() <= float(combat_chance):
 				self.combat_calendar.append(day_text)
+
+		# add one non-combat day per refitting week
+		for week in self.stats['calendar_weeks']:
+			if 'refitting' in week:
+				self.combat_calendar.append(week['start_date'])
 
 		self.combat_calendar.sort()
 		

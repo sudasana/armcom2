@@ -49,7 +49,7 @@
 			"start_date" : "1939.09.17",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "6",
 			"week_title" : "The Liberation Begins",
 			"mission_odds" : {
@@ -64,7 +64,7 @@
 			"start_date" : "1939.09.24",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "70",
+			"combat_chance" : 70,
 			"average_resistance" : "6",
 			"week_title" : "Further Into Poland",
 			"mission_odds" : {
@@ -84,7 +84,7 @@
 			"start_date" : "1939.10.01",
 			"day_start" : "06:30",
 			"day_end" : "17:15",
-			"combat_chance" : "70",
+			"combat_chance" : 70,
 			"average_resistance" : "3",
 			"week_title" : "Final Resistance",
 			"mission_odds" : {

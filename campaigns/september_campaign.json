@@ -2,7 +2,6 @@
 	"name" : "The September Campaign",
 	"start_date" : "1939.09.01",
 	"end_date" : "1939.10.06",
-	"action_days" : "1",
 	"player_nation" : "Poland",
 	"enemy_nations" : ["Germany"],
 	"region" : "Northeastern Europe",
@@ -56,7 +55,7 @@
 			"start_date" : "1939.09.01",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "7",
 			"week_title" : "Invasion",
 			"mission_odds" : {
@@ -72,7 +71,7 @@
 			"start_date" : "1939.09.08",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "70",
+			"combat_chance" : 70,
 			"average_resistance" : "8",
 			"week_title" : "Holding Back the Tide",
 			"mission_odds" : {
@@ -91,7 +90,7 @@
 			"start_date" : "1939.09.15",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "60",
+			"combat_chance" : 60,
 			"average_resistance" : "5",
 			"week_title" : "Pincer Movement",
 			"mission_odds" : {
@@ -111,7 +110,7 @@
 			"start_date" : "1939.09.22",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "60",
+			"combat_chance" : 60,
 			"average_resistance" : "7",
 			"week_title" : "Retreat",
 			"mission_odds" : {
@@ -128,7 +127,7 @@
 			"start_date" : "1939.09.22",
 			"day_start" : "06:30",
 			"day_end" : "17:15",
-			"combat_chance" : "60",
+			"combat_chance" : 60,
 			"average_resistance" : "8",
 			"week_title" : "Break Out",
 			"mission_odds" : {

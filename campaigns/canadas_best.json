@@ -57,7 +57,7 @@
 			"end_date" : "1944.08.10",
 			"day_start" : "05:00",
 			"day_end" : "19:15",
-			"combat_chance" : "85",
+			"combat_chance" : 85,
 			"week_title" : "Cintheaux",
 			"mission_odds" : {
 				"Advance" : "10",
@@ -72,7 +72,7 @@
 			"start_date" : "1944.08.14",
 			"day_start" : "05:00",
 			"day_end" : "19:15",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"week_title" : "Laison Valley",
 			"mission_odds" : {
 				"Advance" : "35",
@@ -87,7 +87,7 @@
 			"start_date" : "1944.08.21",
 			"day_start" : "05:00",
 			"day_end" : "19:15",
-			"combat_chance" : "40",
+			"combat_chance" : 40,
 			"week_title" : "Chambois and Le Newbourg",
 			"mission_odds" : {
 				"Advance" : "5",
@@ -102,7 +102,7 @@
 			"end_date" : "1944.08.30",
 			"day_start" : "05:00",
 			"day_end" : "19:15",
-			"combat_chance" : "60",
+			"combat_chance" : 60,
 			"week_title" : "Elbeuf-Seine Crossing",
 			"mission_odds" : {
 				"Advance" : "80",
@@ -120,7 +120,7 @@
 			"start_date" : "1944.09.09",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "60",
+			"combat_chance" : 60,
 			"week_title" : "Ghent Canal and Molentje",
 			"mission_odds" : {
 				"Advance" : "50",
@@ -133,7 +133,7 @@
 			"start_date" : "1944.09.16",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "40",
+			"combat_chance" : 40,
 			"week_title" : "Braakman Inlet",
 			"mission_odds" : {
 				"Advance" : "70",
@@ -147,7 +147,7 @@
 			"start_date" : "1944.09.23",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"week_title" : "Leopold Canal",
 			"mission_odds" : {
 				"Advance" : "40",
@@ -162,7 +162,7 @@
 			"end_date" : "1944.10.05",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "30",
+			"combat_chance" : 30,
 			"week_title" : "Regroup and Mop Up",
 			"mission_odds" : {
 				"Advance" : "90",
@@ -180,7 +180,7 @@
 			"start_date" : "1944.10.09",
 			"day_start" : "06:30",
 			"day_end" : "17:15",
-			"combat_chance" : "40",
+			"combat_chance" : 40,
 			"week_title" : "Brecht and Stroolburg",
 			"mission_odds" : {
 				"Advance" : "40",
@@ -194,7 +194,7 @@
 			"start_date" : "1944.10.16",
 			"day_start" : "06:30",
 			"day_end" : "17:15",
-			"combat_chance" : "60",
+			"combat_chance" : 60,
 			"week_title" : "Esschen",
 			"mission_odds" : {
 				"Advance" : "50",
@@ -208,7 +208,7 @@
 			"start_date" : "1944.10.23",
 			"day_start" : "06:30",
 			"day_end" : "17:15",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"week_title" : "Beveland Canal and Bergen op Zoom",
 			"mission_odds" : {
 				"Advance" : "60",
@@ -222,7 +222,7 @@
 			"start_date" : "1944.10.30",
 			"day_start" : "06:30",
 			"day_end" : "17:15",
-			"combat_chance" : "70",
+			"combat_chance" : 70,
 			"week_title" : "Steebergen",
 			"mission_odds" : {
 				"Advance" : "40",
@@ -236,7 +236,7 @@
 			"start_date" : "1944.11.06",
 			"day_start" : "07:15",
 			"day_end" : "16:15",
-			"combat_chance" : "30",
+			"combat_chance" : 30,
 			"week_title" : "Zijpe",
 			"mission_odds" : {
 				"Advance" : "60",
@@ -251,7 +251,7 @@
 			"end_date" : "1944.11.16",
 			"day_start" : "07:15",
 			"day_end" : "16:15",
-			"combat_chance" : "20",
+			"combat_chance" : 20,
 			"week_title" : "Clearing Zone of Responsibility",
 			"mission_odds" : {
 				"Advance" : "90",
@@ -270,7 +270,7 @@
 			"end_date" : "1945.01.30",
 			"day_start" : "07:45",
 			"day_end" : "16:00",
-			"combat_chance" : "70",
+			"combat_chance" : 70,
 			"week_title" : "Operation Elephant",
 			"mission_odds" : {
 				"Advance" : "5",
@@ -289,7 +289,7 @@
 			"end_date" : "1945.03.04",
 			"day_start" : "07:15",
 			"day_end" : "17:30",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"week_title" : "Hochwald Gap",
 			"mission_odds" : {
 				"Advance" : "10",
@@ -308,7 +308,7 @@
 			"end_date" : "1945.03.10",
 			"day_start" : "06:15",
 			"day_end" : "18:00",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"week_title" : "Veen",
 			"mission_odds" : {
 				"Advance" : "10",
@@ -326,7 +326,7 @@
 			"start_date" : "1945.04.01",
 			"day_start" : "05:15",
 			"day_end" : "19:00",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"week_title" : "Eiten, Twente, Almedo, Meppen",
 			"mission_odds" : {
 				"Advance" : "40",
@@ -340,7 +340,7 @@
 			"start_date" : "1945.04.08",
 			"day_start" : "05:15",
 			"day_end" : "19:00",
-			"combat_chance" : "40",
+			"combat_chance" : 40,
 			"week_title" : "Sogel",
 			"mission_odds" : {
 				"Advance" : "60",
@@ -354,7 +354,7 @@
 			"start_date" : "1945.04.15",
 			"day_start" : "05:15",
 			"day_end" : "19:00",
-			"combat_chance" : "60",
+			"combat_chance" : 60,
 			"week_title" : "Edewechterdamm",
 			"mission_odds" : {
 				"Advance" : "50",
@@ -369,7 +369,7 @@
 			"start_date" : "1945.04.22",
 			"day_start" : "05:15",
 			"day_end" : "19:00",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"week_title" : "Edewecht and Querenstede",
 			"mission_odds" : {
 				"Advance" : "50",
@@ -384,7 +384,7 @@
 			"end_date" : "1945.05.04",
 			"day_start" : "05:15",
 			"day_end" : "19:00",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"week_title" : "Bad Zwischerwahn and Oldenburg",
 			"mission_odds" : {
 				"Advance" : "30",

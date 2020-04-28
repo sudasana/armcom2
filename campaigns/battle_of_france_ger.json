@@ -80,7 +80,7 @@
 			"start_date" : "1940.05.10",
 			"day_start" : "06:15",
 			"day_end" : "21:15",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "8",
 			"week_title" : "Fall Gelb",
 			"mission_odds" : {
@@ -95,7 +95,7 @@
 			"start_date" : "1940.05.17",
 			"day_start" : "06:00",
 			"day_end" : "21:30",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "8",
 			"week_title" : "Stalemate",
 			"mission_odds" : {
@@ -116,7 +116,7 @@
 			"start_date" : "1940.05.31",
 			"day_start" : "06:00",
 			"day_end" : "21:45",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "8",
 			"week_title" : "Second Offensive",
 			"mission_odds" : {
@@ -131,7 +131,7 @@
 			"start_date" : "1940.06.07",
 			"day_start" : "05:45",
 			"day_end" : "21:45",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "8",
 			"week_title" : "Fall Rot",
 			"mission_odds" : {
@@ -146,7 +146,7 @@
 			"start_date" : "1940.06.14",
 			"day_start" : "05:45",
 			"day_end" : "21:45",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "8",
 			"week_title" : "Fall of France",
 			"mission_odds" : {

@@ -76,7 +76,7 @@ if STEAM_ON:
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '3.0.0-rc-2'					# game version
+VERSION = '3.0.0-rc-3'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -1199,10 +1199,6 @@ class Campaign:
 	# randomly generate a list of combat days for this campaign
 	def GenerateCombatCalendar(self):
 		
-		libtcod.console_clear(0)
-		libtcod.console_print_ex(0, WINDOW_XM, WINDOW_YM, libtcod.BKGND_NONE, libtcod.CENTER,
-			'Generating Combat Calendar...')
-		
 		self.combat_calendar = []
 		
 		# build a list of possible combat days
@@ -1253,11 +1249,10 @@ class Campaign:
 		
 		# keep rolling until combat calendar is full
 		while len(self.combat_calendar) < self.stats['combat_days']:
-			if libtcod.console_is_window_closed(): sys.exit()
-			libtcod.console_flush()
 			(day_text, combat_chance) = choice(possible_days)
-			if GetPercentileRoll() <= float(combat_chance):
+			if libtcod.random_get_int(0, 1, 100) <= combat_chance:
 				self.combat_calendar.append(day_text)
+				possible_days.remove((day_text, combat_chance))
 
 		# add one non-combat day per refitting week
 		for week in self.stats['calendar_weeks']:

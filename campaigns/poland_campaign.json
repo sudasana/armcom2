@@ -59,7 +59,7 @@
 			"start_date" : "1939.09.01",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "7",
 			"week_title" : "Over the Polish Border",
 			"week_description" : "The first major engagement of the new German panzerwaffe has begun. Lead your tank across the border and into Polish territory.",
@@ -79,7 +79,7 @@
 			"start_date" : "1939.09.08",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "70",
+			"combat_chance" : 70,
 			"average_resistance" : "5",
 			"week_title" : "Into Western Poland",
 			"mission_odds" : {
@@ -98,7 +98,7 @@
 			"start_date" : "1939.09.15",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "60",
+			"combat_chance" : 60,
 			"average_resistance" : "4",
 			"week_title" : "Breaking Resistance",
 			"mission_odds" : {
@@ -117,7 +117,7 @@
 			"start_date" : "1939.09.22",
 			"day_start" : "05:30",
 			"day_end" : "18:15",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "4",
 			"week_title" : "Mopping Up",
 			"mission_odds" : {
@@ -134,7 +134,7 @@
 			"start_date" : "1939.09.29",
 			"day_start" : "06:30",
 			"day_end" : "17:15",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "3",
 			"week_title" : "Taking the Capital",
 			"mission_odds" : {

@@ -54,7 +54,7 @@
 			"start_date" : "1939.11.30",
 			"day_start" : "08:55",
 			"day_end" : "15:20",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "2",
 			"week_title" : "The Tide Breaks",
 			"mission_odds" : {
@@ -69,7 +69,7 @@
 			"start_date" : "1939.12.07",
 			"day_start" : "09:05",
 			"day_end" : "15:15",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "3",
 			"week_title" : "Invasion",
 			"mission_odds" : {
@@ -84,7 +84,7 @@
 			"start_date" : "1939.12.14",
 			"day_start" : "09:15",
 			"day_end" : "15:15",
-			"combat_chance" : "65",
+			"combat_chance" : 65,
 			"average_resistance" : "4",
 			"week_title" : "Invasion",
 			"mission_odds" : {
@@ -99,7 +99,7 @@
 			"start_date" : "1939.12.21",
 			"day_start" : "09:25",
 			"day_end" : "15:15",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "4",
 			"week_title" : "Invasion",
 			"mission_odds" : {
@@ -119,7 +119,7 @@
 			"start_date" : "1940.01.04",
 			"day_start" : "09:20",
 			"day_end" : "15:25",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "6",
 			"week_title" : "Counterattack",
 			"mission_odds" : {
@@ -134,7 +134,7 @@
 			"start_date" : "1940.01.11",
 			"day_start" : "09:15",
 			"day_end" : "15:40",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "6",
 			"week_title" : "Counterattack",
 			"mission_odds" : {
@@ -149,7 +149,7 @@
 			"start_date" : "1940.01.18",
 			"day_start" : "09:05",
 			"day_end" : "15:55",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "6",
 			"week_title" : "Counterattack",
 			"mission_odds" : {
@@ -169,7 +169,7 @@
 			"start_date" : "1940.02.01",
 			"day_start" : "08:35",
 			"day_end" : "16:35",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "9",
 			"week_title" : "Soviet Offensive",
 			"mission_odds" : {
@@ -184,7 +184,7 @@
 			"start_date" : "1940.02.08",
 			"day_start" : "08:15",
 			"day_end" : "16:50",
-			"combat_chance" : "80",
+			"combat_chance" : 80,
 			"average_resistance" : "8",
 			"week_title" : "Soviet Offensive Continues",
 			"mission_odds" : {
@@ -199,7 +199,7 @@
 			"start_date" : "1940.02.15",
 			"day_start" : "08:00",
 			"day_end" : "17:05",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "5",
 			"week_title" : "Desparation",
 			"mission_odds" : {
@@ -214,7 +214,7 @@
 			"start_date" : "1940.02.22",
 			"day_start" : "07:40",
 			"day_end" : "17:25",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "3",
 			"week_title" : "Counterattack",
 			"mission_odds" : {
@@ -229,7 +229,7 @@
 			"start_date" : "1940.02.29",
 			"day_start" : "07:25",
 			"day_end" : "17:45",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "3",
 			"week_title" : "Counterattack",
 			"mission_odds" : {
@@ -244,7 +244,7 @@
 			"start_date" : "1940.03.07",
 			"day_start" : "07:00",
 			"day_end" : "18:00",
-			"combat_chance" : "50",
+			"combat_chance" : 50,
 			"average_resistance" : "3",
 			"week_title" : "Counterattack",
 			"mission_odds" : {

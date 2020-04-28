@@ -76,7 +76,7 @@ if STEAM_ON:
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '3.0.0-rc-3'					# game version
+VERSION = '3.0.0'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -1216,7 +1216,9 @@ class Campaign:
 			
 			for i in range(6):
 				
+				# this could be done with datetime now, but it works!
 				# find the next day in the calendar
+				
 				# last day of month
 				if int(day) == monthrange(int(year), int(month))[1]:
 					

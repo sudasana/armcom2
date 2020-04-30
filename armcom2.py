@@ -76,7 +76,7 @@ if STEAM_ON:
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '3.0.0'					# game version
+VERSION = '3.0.1'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -6568,17 +6568,24 @@ class Personnel:
 				else:
 					hospital_max += libtcod.random_get_int(0, 2, 4)
 		
-		# clear injuries now that odds have been calculated
-		for k in self.injury.keys():
-			self.injury[k] = None
-		
-		if hospital_chance == 0.0: return
-		
+		# do the field hospital roll
 		roll = GetPercentileRoll()
 		if roll <= hospital_chance:
 			self.field_hospital = (hospital_min, hospital_max)
 		else:
 			self.field_hospital = None
+		
+		# clear injuries
+		# NEW: show a message when a crewman recovers from an injury, and is not headed to the hospital
+		for k in self.injury.keys():
+			
+			if self.injury[k] is None: continue
+			
+			if self.field_hospital is None:
+				text = 'Your ' + self.current_position.name + ' recovers from his '
+				text += self.injury[k] + ' ' + k + ' injury.'
+				ShowMessage(text)
+			self.injury[k] = None
 		
 	
 	# returns true if this crewmen is currently working a position for which they lack training
@@ -9399,7 +9406,13 @@ class Unit:
 			
 			# display message
 			# FUTURE: use special pop-up display for player crew spotting enemies
-			text = unit.GetName() + ' spotted!'
+			
+			# NEW: specify if it was an allied unit that did the spotting
+			if self != scenario.player_unit:
+				text = 'A squadmate reports: '
+			else:
+				text = ''
+			text += unit.GetName() + ' spotted!'
 			ShowMessage(text, portrait=unit.GetStat('portrait'),
 				scenario_highlight=(unit.hx, unit.hy))
 	
@@ -14963,10 +14976,8 @@ class Scenario:
 		
 		if DEBUG:
 			libtcod.console_set_default_foreground(unit_info_con, libtcod.yellow)
-			libtcod.console_print_ex(unit_info_con, 60, 1, libtcod.BKGND_NONE,
-				libtcod.RIGHT, str(map_hex.hx) + ',' + str(map_hex.hy))
 			libtcod.console_print_ex(unit_info_con, 60, 2, libtcod.BKGND_NONE,
-				libtcod.RIGHT, str(x) + ',' + str(y))
+				libtcod.RIGHT, str(map_hex.hx) + ',' + str(map_hex.hy))
 	
 		# no units in hex
 		if len(map_hex.unit_stack) == 0: return
@@ -15005,7 +15016,8 @@ class Scenario:
 				libtcod.console_set_default_foreground(unit_info_con, libtcod.light_grey)
 				text = 'Fortified'
 			if text != '':
-				libtcod.console_print(unit_info_con, 26, 0, text)
+				libtcod.console_print_ex(unit_info_con, 60, 1, libtcod.BKGND_NONE,
+					libtcod.RIGHT, text)
 			
 			if unit == scenario.player_unit:
 				col = libtcod.white

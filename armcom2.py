@@ -76,7 +76,7 @@ if STEAM_ON:
 ##########################################################################################
 
 NAME = 'Armoured Commander II'				# game name
-VERSION = '3.0.1'					# game version
+VERSION = '3.0.2'					# game version
 DISCLAIMER = 'This is a work of fiction and no endorsement of any historical ideologies or events depicted within is intended.'
 DATAPATH = 'data/'.replace('/', os.sep)			# path to data files
 SAVEPATH = 'saved_campaigns/'.replace('/', os.sep)	# path to saved campaign folders
@@ -11809,8 +11809,8 @@ class Scenario:
 			if reinforcement:
 				self.GenerateUnitLoS(unit)
 			else:
-				# if player used advancing fire, test for pin
-				if campaign_day.advancing_fire:
+				# if player used advancing fire moving into an enemy zone, test for pin
+				if self.cd_map_hex.controlled_by == 1 and campaign_day.advancing_fire:
 					unit.PinTest(10.0)
 	
 	
@@ -17762,6 +17762,9 @@ def LoadCampaignMenu(continue_most_recent):
 		game_info = {}
 		
 		with shelve.open(SAVEPATH + directory + os.sep + 'savegame') as save:
+			
+			# check to see if save file has essential information
+			if 'version' not in save: continue
 			
 			# check for saved game version compatibility
 			if CheckSavedGameVersion(save['version']) != '':
